@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# CI never hits the network for model calls (plan §17). Tests run against
+# recorded completions; the LIVE=1 suite is opt-in and is not enabled here.
+env:
+  CI: 'true'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # better-sqlite3 and the tree-sitter grammars are native; the workspace
+      # allowlists exactly those build scripts in pnpm-workspace.yaml.
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Unit tests
+        run: pnpm vitest run --reporter=verbose
+
+      - name: Build
+        run: pnpm run build
+
+      # The tree is a derived layer (D8), so a rebuild must be a no-op on
+      # shape. If this drifts, determinism is broken somewhere in ingestion.
+      - name: Assert no working-tree drift after build
+        run: git diff --exit-code
