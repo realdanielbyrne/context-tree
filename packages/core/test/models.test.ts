@@ -119,6 +119,26 @@ describe('AnthropicProvider', () => {
     expect(messages[2]?.content).toBe('zone C');
   });
 
+  it('marks the system block with cache_control when systemCacheBreakpoint is set, because Zone A ships as `system` (never as a message) and is the largest permanently-cacheable segment in the prompt', async () => {
+    const stub = new AnthropicStub(anthropicResponse());
+
+    await new AnthropicProvider({ client: stub }).complete(
+      request({ system: 'zone A', systemCacheBreakpoint: true }),
+    );
+
+    expect(stub.sent[0]?.system).toEqual([
+      { type: 'text', text: 'zone A', cache_control: { type: 'ephemeral' } },
+    ]);
+  });
+
+  it('sends system as a bare string when the flag is unset, because an unmarked Zone A must keep its byte-stable serialization (D5)', async () => {
+    const stub = new AnthropicStub(anthropicResponse());
+
+    await new AnthropicProvider({ client: stub }).complete(request({ system: 'zone A' }));
+
+    expect(stub.sent[0]?.system).toBe('zone A');
+  });
+
   it('maps both cache counters off usage, because §15 reports a cache-read vs cache-write split it cannot fabricate', async () => {
     const stub = new AnthropicStub(
       anthropicResponse({
@@ -210,6 +230,26 @@ describe('OpenRouterProvider', () => {
       content: [{ type: 'text', text: 'stable', cache_control: { type: 'ephemeral' } }],
     });
     expect(messages[2]).toEqual({ role: 'user', content: 'volatile' });
+  });
+
+  it('marks the system message with cache_control when systemCacheBreakpoint is set, because the OpenAI-compatible shape allows a text part there and rule 5 needs the A/B boundary on the wire', async () => {
+    const stub = new OpenRouterStub({
+      model: 'anthropic/claude-haiku-4-5',
+      choices: [{ message: { content: 'ok' }, finish_reason: 'stop' }],
+    });
+
+    await new OpenRouterProvider({ client: stub }).complete(
+      request({
+        model: 'anthropic/claude-haiku-4-5',
+        system: 'zone A',
+        systemCacheBreakpoint: true,
+      }),
+    );
+
+    expect(stub.sent[0]?.messages[0]).toEqual({
+      role: 'system',
+      content: [{ type: 'text', text: 'zone A', cache_control: { type: 'ephemeral' } }],
+    });
   });
 
   it('subtracts cached_tokens out of prompt_tokens, because OpenAI-compatible prompt_tokens includes cached input and the meter would charge it twice', async () => {
@@ -535,6 +575,10 @@ describe('InMemoryCostMeter', () => {
     meter.record('fake', usage({ input: 1 }));
     expect(meter.totalUsd()).toBe(1);
     expect(() => meter.assertUnderCap()).toThrow(CostCapExceededError);
+    // The message must state the condition the code actually applies. Reading
+    // "$1.0000 > $1.0000" on the boundary case sends whoever hits the cap
+    // looking for a rounding bug that isn't there.
+    expect(() => meter.assertUnderCap()).toThrow('$1.0000 >= $1.0000');
   });
 
   it('never throws when the cap is null, because §16 caps CI runs and must not block an unbudgeted local run', () => {

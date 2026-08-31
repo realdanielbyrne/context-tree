@@ -10,7 +10,7 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { SummaryContractError } from '../src/contracts/index.js';
+import { SummaryContractError, SummaryInputError } from '../src/contracts/index.js';
 import type {
   CompletionRequest,
   CompletionResult,
@@ -330,9 +330,14 @@ describe('root summary', () => {
   it('refuses to roll up a root with no summarized children rather than falling back to raw events', async () => {
     const fx = fixture();
     const provider = new StubProvider(compliant);
-    await expect(summarizerFor(fx, provider).summarizeRoot(fx.root)).rejects.toThrow(
-      /no summarized child branches/,
-    );
+    const thrown = await summarizerFor(fx, provider)
+      .summarizeRoot(fx.root)
+      .catch((error: unknown) => error);
+    // A named class with a code, not an inline `new ContextTreeError(...)`: a
+    // caller can only catch what the taxonomy declares.
+    expect(thrown).toBeInstanceOf(SummaryInputError);
+    expect((thrown as SummaryInputError).code).toBe('E_SUMMARY_INPUT');
+    expect((thrown as SummaryInputError).message).toMatch(/no summarized child branches/);
     expect(provider.calls).toHaveLength(0);
   });
 });
@@ -345,6 +350,23 @@ describe('the D4 cascade', () => {
     expect(marked).toEqual([fx.f1, fx.p1, fx.root]);
     expect(fx.store.getNode(fx.p2)?.stale_since_seq).toBeNull();
     expect(fx.store.staleNodes().map((node) => node.id).sort()).toEqual([fx.f1, fx.p1, fx.root].sort());
+  });
+
+  it('empties staleNodes() after the stale path is re-summarized, or a --stale-only caller has work forever', async () => {
+    const fx = fixture();
+    const summarizer = summarizerFor(fx, new StubProvider(compliant));
+    await summarizer.summarizeTree(fx.root);
+    summarizer.onAppend(fx.f1, 4);
+    expect(fx.store.staleNodes().map((node) => node.id).sort()).toEqual([fx.f1, fx.p1, fx.root].sort());
+
+    await summarizer.resummarizeStale();
+
+    // The file node is never in `stalePlan`, so nothing would ever clear its
+    // mark; writing p1's summary is what clears it, because p1's detail is where
+    // that file's content reached the model. Without this the stale set never
+    // drains and every scheduler reading it as a work queue spins.
+    expect(fx.store.getNode(fx.f1)?.stale_since_seq).toBeNull();
+    expect(fx.store.staleNodes()).toEqual([]);
   });
 
   it('plans bottom-up with the root last, so every parent reads fresh children', async () => {

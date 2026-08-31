@@ -172,19 +172,29 @@ function deleteDerivedLayers(paths: StorePaths): void {
  * Hands the summarizer its work queue (§8) without ever calling it.
  *
  * Two marks, and the choice of *seq* in each is what makes the incremental path
- * converge on the rebuild's answer — `markStale` keeps the earliest seq, so both
- * marks have to be functions of L0 alone, not of when the mark was written:
- *  - every node that has no summary yet is stale at its own `span_start_seq`;
+ * converge on the rebuild's answer — both have to be functions of L0 alone, not
+ * of when the mark was written:
+ *  - every node that has no summary yet is stale at its own `span_start_seq`,
+ *    written with `setStale` because this is reconciliation: a re-segmentation
+ *    can move a node's `span_start_seq` *later* (§7's text fallback handing over
+ *    to the tool state machine does exactly that), and `markStale` keeps the
+ *    earliest seq by contract, so it would leave the superseded lower bound
+ *    behind — the one field on which N appends used to differ from a rebuild
+ *    (the plan's literature gap 2 is that they do not);
  *  - the leaf that covers the last event, plus its ancestors, are stale at that
  *    event (D4: leaf + ancestor path only — a sibling re-summarization is what
  *    breaks the amortized 1–3 calls per turn). For an unsummarized leaf this is
  *    a no-op, since the first mark is always earlier.
+ *
+ * A node that *has* a summary is left to `markStale`: its staleness records
+ * appends made since that summary, which is genuinely incremental state and not
+ * derivable from L0.
  */
 function markStaleForSummarizer(store: TreeStore, lastSeq: Seq | null): void {
   store.transaction(() => {
     for (const node of store.nodesInCreationOrder()) {
-      if (node.current_summary_version === 0 && node.span_start_seq !== null) {
-        store.markStale(node.id, node.span_start_seq);
+      if (node.current_summary_version === 0) {
+        store.setStale(node.id, node.span_start_seq);
       }
     }
     if (lastSeq === null) return;

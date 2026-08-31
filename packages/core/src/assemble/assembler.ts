@@ -29,11 +29,13 @@ import type {
   BlobStore,
   BudgetReport,
   ChatMessage,
+  CompletionRequest,
   NodeId,
   PromptAssembler,
   PromptBlock,
   TailEntry,
   Tokenizer,
+  ToolSchema,
   TraceLog,
   TreeNode,
   TreeStore,
@@ -327,14 +329,26 @@ function sumTokens(blocks: readonly PromptBlock[]): number {
 }
 
 /**
+ * Does `zone` end at a §10 rule 5 breakpoint? Both provider-facing projections
+ * below read this one predicate, so the system flag and the message flags cannot
+ * drift apart — which is exactly how the Zone A marker got lost before.
+ */
+function zoneEndsAtBreakpoint(prompt: AssembledPrompt, zone: Zone): boolean {
+  const last = prompt.blocks.filter((block) => block.zone === zone).at(-1);
+  if (last === undefined) return false;
+  return last.cacheBreakpointAfter === true || prompt.cacheBreakpoints.includes(last.id);
+}
+
+/**
  * Provider-facing projection of an assembled prompt: one message per zone, with
  * `cacheBreakpoint` where that zone's last block carries the §10 rule 5 marker,
  * so the models layer only has to translate a flag into a provider-native one.
  *
  * Zone A is deliberately absent — it ships as `AssembledPrompt.system`, and
- * repeating it here would duplicate the frozen prefix. The A/B breakpoint is the
- * system/messages boundary itself; `AssembledPrompt.cacheBreakpoints` still
- * names the Zone A block so §17's assertions can see both boundaries.
+ * repeating it here would duplicate the frozen prefix. Its A/B breakpoint is the
+ * system/messages boundary, which no message can express: that half of rule 5
+ * travels as `CompletionRequest.systemCacheBreakpoint`, so build the request
+ * with `toCompletionRequest` rather than assembling one around `toMessages`.
  */
 export function toMessages(prompt: AssembledPrompt): ChatMessage[] {
   const messages: ChatMessage[] = [];
@@ -345,8 +359,51 @@ export function toMessages(prompt: AssembledPrompt): ChatMessage[] {
       role: 'user',
       content: blocks.map((block) => block.text).join('\n\n'),
     };
-    if (blocks.at(-1)?.cacheBreakpointAfter === true) message.cacheBreakpoint = true;
+    if (zoneEndsAtBreakpoint(prompt, zone)) message.cacheBreakpoint = true;
     messages.push(message);
   }
   return messages;
+}
+
+/** Per-call knobs that are not the assembler's business (§11). */
+export interface CompletionRequestOptions {
+  maxTokens?: number;
+  temperature?: number;
+  /** Zone A's schemas as the provider's native tool list, not as prompt text. */
+  tools?: readonly ToolSchema[];
+  json?: boolean;
+}
+
+/**
+ * The whole prompt as one provider request — Zone A as `system`, zones B/C/tail
+ * as messages, and BOTH rule 5 breakpoints attached.
+ *
+ * This exists because the two halves of rule 5 leave the assembler by different
+ * doors: the B/C marker rides a message, while the A/B marker is the
+ * system/messages boundary itself and needs a request-level flag. A caller that
+ * built a request from `toMessages` alone dropped the Zone A marker silently —
+ * nothing fails, the session just pays full price for the frozen prefix on every
+ * turn (§17: this failure surfaces here and essentially nowhere else). Emitting
+ * both from one function is what keeps them from drifting again.
+ */
+export function toCompletionRequest(
+  prompt: AssembledPrompt,
+  model: string,
+  options: CompletionRequestOptions = {},
+): CompletionRequest {
+  const request: CompletionRequest = {
+    model,
+    system: prompt.system,
+    messages: toMessages(prompt),
+  };
+  // An empty Zone A is not worth a cache write, and a marker on an empty text
+  // block is a request the providers reject.
+  if (prompt.system !== '' && zoneEndsAtBreakpoint(prompt, 'A')) {
+    request.systemCacheBreakpoint = true;
+  }
+  if (options.maxTokens !== undefined) request.maxTokens = options.maxTokens;
+  if (options.temperature !== undefined) request.temperature = options.temperature;
+  if (options.tools !== undefined) request.tools = options.tools;
+  if (options.json !== undefined) request.json = options.json;
+  return request;
 }

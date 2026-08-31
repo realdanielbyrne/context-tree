@@ -54,6 +54,18 @@ export interface TreeStore {
   // ── staleness (D4) ───────────────────────────────────────────────────────
   /** Marks `id` stale at `seq` if it is not already stale at an earlier seq. */
   markStale(id: NodeId, seq: Seq): void;
+  /**
+   * *Sets* the mark to `seq`, raising it if it was lower, or clears it with
+   * `null`. Reserved for a derived-layer reconciliation — the append path
+   * re-segments and has to write the mark a fresh derivation from the same L0
+   * would produce (D8), which `markStale` cannot do because it keeps the
+   * earliest seq.
+   *
+   * `markStale` stays the only incremental primitive (earliest-wins, the D4
+   * path): a summarizer that could raise a mark could skip content that was
+   * never summarized, which is precisely the failure D4 exists to prevent.
+   */
+  setStale(id: NodeId, seq: Seq | null): void;
   /** Marks `id` and every ancestor stale — the §8 cascade's write half. */
   markStaleCascade(id: NodeId, seq: Seq): NodeId[];
   staleNodes(): TreeNode[];

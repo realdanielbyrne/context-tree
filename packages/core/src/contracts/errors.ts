@@ -31,10 +31,13 @@ export class StoreInvariantError extends ContextTreeError {
   }
 }
 
-/** The per-run spend cap was reached (§16). */
+/**
+ * The per-run spend cap was reached (§16). Thrown at spend >= cap, not > cap:
+ * a cap you may land exactly on is not a cap.
+ */
 export class CostCapExceededError extends ContextTreeError {
   constructor(spentUsd: number, capUsd: number) {
-    super(`cost cap exceeded: $${spentUsd.toFixed(4)} > $${capUsd.toFixed(4)}`, 'E_COST_CAP');
+    super(`cost cap exceeded: $${spentUsd.toFixed(4)} >= $${capUsd.toFixed(4)}`, 'E_COST_CAP');
   }
 }
 
@@ -45,6 +48,13 @@ export class ModelCallError extends ContextTreeError {
     readonly status?: number,
   ) {
     super(message, 'E_MODEL_CALL');
+  }
+}
+
+/** Summarization was asked for over inputs that cannot produce one (a root whose children are all unsummarized). */
+export class SummaryInputError extends ContextTreeError {
+  constructor(message: string) {
+    super(message, 'E_SUMMARY_INPUT');
   }
 }
 

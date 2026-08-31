@@ -19,9 +19,9 @@
 import { DEFAULT_CONFIG } from '../config.js';
 import {
   ConfigError,
-  ContextTreeError,
   StoreInvariantError,
   SummaryContractError,
+  SummaryInputError,
   type BlobStore,
   type CostMeter,
   type ModelProvider,
@@ -128,12 +128,24 @@ export class Summarizer {
       detail: renderBranchDetail(this.store, node, facts, { trace: this.trace, blobs: this.blobs }),
     });
     const reply = await this.complete(this.leafModel, prompt, { childIds, paths: facts.paths });
-    return this.store.putSummary({
-      node_id: nodeId,
-      model: reply.model,
-      text: reply.text,
-      meta: summaryMetaFrom(reply.meta, facts, nodeIds),
-      created_at: this.now(),
+    return this.store.transaction(() => {
+      const summary = this.store.putSummary({
+        node_id: nodeId,
+        model: reply.model,
+        text: reply.text,
+        meta: summaryMetaFrom(reply.meta, facts, nodeIds),
+        created_at: this.now(),
+      });
+      // `putSummary` clears the leaf's own mark; the span carriers beneath it
+      // (D9 file nodes) are the same content, reaching the model inside this
+      // leaf's detail, and `stalePlan` will never visit them. Clearing them here
+      // is what lets `staleNodes()` empty — otherwise a caller that reads a
+      // non-empty stale set as "work remains" (`summarize --stale-only`, a
+      // background scheduler) has work forever.
+      for (const carrier of this.store.descendants(nodeId)) {
+        if (carrier.stale_since_seq !== null) this.store.setStale(carrier.id, null);
+      }
+      return summary;
     });
   }
 
@@ -150,9 +162,8 @@ export class Summarizer {
       covered.push({ nodeId: child.id, title: child.title, text: summary.text, meta: summary.meta });
     }
     if (covered.length === 0) {
-      throw new ContextTreeError(
+      throw new SummaryInputError(
         `node ${rootId} has no summarized child branches to roll up — summarize the leaves first`,
-        'E_SUMMARY_INPUT',
       );
     }
     const facts = branchFacts(this.store, root);

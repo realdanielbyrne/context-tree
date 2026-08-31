@@ -6,7 +6,8 @@
  * mark the Zone A/B and B/C boundaries, and D5 is the decision those markers
  * serve. A breakpoint the assembler computes and this client drops costs the
  * entire caching benefit while looking like it works, so `cacheBreakpoint`
- * becomes a native `cache_control` on that message's last content block.
+ * becomes a native `cache_control` on that message's last content block, and
+ * `systemCacheBreakpoint` becomes one on the `system` block that carries Zone A.
  */
 import Anthropic from '@anthropic-ai/sdk';
 import type {
@@ -93,7 +94,17 @@ export class AnthropicProvider implements ModelProvider {
       max_tokens: request.maxTokens ?? this.defaultMaxTokens,
       messages: request.messages.map(toMessageParam),
     };
-    if (request.system !== undefined) params.system = request.system;
+    if (request.system !== undefined) {
+      // Zone A ships as `system`, so its rule 5 breakpoint cannot ride on a
+      // message. The Messages API takes `system` as an array of text blocks, and
+      // a block may carry `cache_control` — that array is the only place the
+      // A/B marker can land. Unmarked requests keep sending a bare string: an
+      // array is a different serialization and D5 wants the prefix byte-stable.
+      params.system =
+        request.systemCacheBreakpoint === true
+          ? [{ type: 'text', text: request.system, cache_control: { type: 'ephemeral' } }]
+          : request.system;
+    }
     // An empty `tools` array is a different cached prefix from no tools at all.
     if (request.tools && request.tools.length > 0) {
       params.tools = request.tools.map((tool) => ({

@@ -265,6 +265,24 @@ describe('staleness cascade (D4)', () => {
     const { store } = fixture();
     expect(() => store.markStale('n_missing', 1)).toThrow(StoreInvariantError);
     expect(() => store.markStaleCascade('n_missing', 1)).toThrow(StoreInvariantError);
+    expect(() => store.setStale('n_missing', 1)).toThrow(StoreInvariantError);
+  });
+
+  it('lets setStale raise and clear a mark, which markStale must not, because only a rebuild may overwrite a derived value (D8)', () => {
+    const { store, f1 } = fixture();
+    store.markStale(f1.id, 12);
+
+    // The whole reason `setStale` exists: ingest re-segments, a node's
+    // span_start_seq can move later, and the reconciled mark has to follow it.
+    // `markStale` keeps the earliest seq (D4) and so cannot express this.
+    store.setStale(f1.id, 30);
+    expect(store.getNode(f1.id)?.stale_since_seq).toBe(30);
+    store.markStale(f1.id, 44);
+    expect(store.getNode(f1.id)?.stale_since_seq).toBe(30);
+
+    store.setStale(f1.id, null);
+    expect(store.getNode(f1.id)?.stale_since_seq).toBeNull();
+    expect(store.staleNodes()).toEqual([]);
   });
 });
 
@@ -374,6 +392,62 @@ describe('L3 embeddings (disposable)', () => {
     // And L3 can be rebuilt at a different width after a drop.
     store.putEmbedding(p1.id, 1, new Float32Array([1, 0, 0, 0]));
     expect(store.embeddingDim()).toBe(4);
+  });
+
+  it('brute-forces KNN in the same order as vec0 when sqlite-vec is absent, because §18 degradation nobody runs is not degradation', () => {
+    const native = fixture();
+    // The seam exists only because nothing else can make the extension load
+    // fail in-process, so this path had never been executed by a test.
+    const degraded = fixture(openInMemoryStore({ forceBruteForceKnn: true }));
+    expect(native.store.vectorSearchNative).toBe(true);
+    expect(degraded.store.vectorSearchNative).toBe(false);
+
+    const query = new Float32Array([1, 0.05, 0]);
+    const seed = (fx: Fixture): void => {
+      fx.store.putEmbedding(fx.p1.id, 1, new Float32Array([1, 0, 0]));
+      fx.store.putEmbedding(fx.p2.id, 1, new Float32Array([0.9, 0.1, 0]));
+      fx.store.putEmbedding(fx.f1.id, 1, new Float32Array([0.2, 0.9, 0]));
+      fx.store.putEmbedding(fx.f2.id, 1, new Float32Array([0, 0, 1]));
+    };
+    /** Hits by fixture label — ids are minted per store, so they cannot be compared directly. */
+    const hits = (fx: Fixture, k: number): Array<{ label: string; distance: number; version: number }> => {
+      const labels = new Map([
+        [fx.p1.id, 'p1'],
+        [fx.p2.id, 'p2'],
+        [fx.f1.id, 'f1'],
+        [fx.f2.id, 'f2'],
+      ]);
+      return fx.store
+        .knn(query, k)
+        .map((hit) => ({ label: labels.get(hit.node_id) ?? hit.node_id, distance: hit.distance, version: hit.version }));
+    };
+
+    seed(native);
+    seed(degraded);
+    // The fallback records the dim exactly like the native path: `knn` reads it
+    // to decide whether L3 exists at all, so a missing dim is a silent no-op.
+    expect(degraded.store.embeddingDim()).toBe(3);
+
+    const nativeHits = hits(native, 3);
+    const degradedHits = hits(degraded, 3);
+    expect(degradedHits.map((hit) => hit.label)).toEqual(['p1', 'p2', 'f1']);
+    expect(degradedHits.map((hit) => hit.label)).toEqual(nativeHits.map((hit) => hit.label));
+    // `vec0` is built with distance_metric=cosine, so the two paths are meant to
+    // be numerically interchangeable and not merely ordered the same way.
+    degradedHits.forEach((hit, index) => {
+      expect(hit.distance).toBeCloseTo(nativeHits[index]?.distance ?? -1, 5);
+      expect(hit.version).toBe(1);
+    });
+    // k truncates on the fallback too, rather than returning the whole scan.
+    expect(hits(degraded, 1).map((hit) => hit.label)).toEqual(['p1']);
+
+    // And L3 stays disposable on the degraded path (D8).
+    degraded.store.dropEmbeddings();
+    expect(degraded.store.embeddingDim()).toBeNull();
+    expect(degraded.store.knn(query, 3)).toEqual([]);
+    expect(degraded.store.nodesInCreationOrder()).toHaveLength(5);
+    degraded.store.putEmbedding(degraded.p1.id, 1, new Float32Array([1, 0, 0, 0]));
+    expect(degraded.store.embeddingDim()).toBe(4);
   });
 
   it('rejects a vector of the wrong width instead of corrupting the index', () => {

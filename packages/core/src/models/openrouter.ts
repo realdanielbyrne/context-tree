@@ -93,7 +93,15 @@ function toParams(
 ): OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming {
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
   // The system prompt is Zone A (D5) and therefore the prefix — it goes first.
-  if (request.system !== undefined) messages.push({ role: 'system', content: request.system });
+  // Its rule 5 breakpoint has no message to ride on, so it marks a text part of
+  // the system message itself, the same way `cacheBreakpoint` marks one below.
+  if (request.system !== undefined) {
+    messages.push(
+      request.systemCacheBreakpoint === true
+        ? { role: 'system', content: [cachedTextPart(request.system)] }
+        : { role: 'system', content: request.system },
+    );
+  }
   for (const message of request.messages) messages.push(toMessageParam(message));
 
   const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
@@ -116,20 +124,26 @@ function toParams(
   return params;
 }
 
+/**
+ * OpenRouter forwards an Anthropic-style `cache_control` on a text part to the
+ * providers that support it; the OpenAI types have no field for it, hence the
+ * cast. §10 rule 5 / D5: the breakpoint has to reach the wire or it is lost.
+ */
+function cachedTextPart(text: string): OpenAI.Chat.Completions.ChatCompletionContentPartText {
+  return {
+    type: 'text',
+    text,
+    cache_control: { type: 'ephemeral' },
+  } as OpenAI.Chat.Completions.ChatCompletionContentPartText;
+}
+
 function toMessageParam(
   message: ChatMessage,
 ): OpenAI.Chat.Completions.ChatCompletionMessageParam {
   if (message.cacheBreakpoint !== true) {
     return { role: message.role, content: message.content };
   }
-  // OpenRouter forwards an Anthropic-style `cache_control` on a text part to the
-  // providers that support it; the OpenAI types have no field for it, hence the
-  // cast. §10 rule 5 / D5: the breakpoint has to reach the wire or it is lost.
-  const part = {
-    type: 'text',
-    text: message.content,
-    cache_control: { type: 'ephemeral' },
-  } as OpenAI.Chat.Completions.ChatCompletionContentPartText;
+  const part = cachedTextPart(message.content);
   return message.role === 'assistant'
     ? { role: 'assistant', content: [part] }
     : { role: 'user', content: [part] };

@@ -39,6 +39,15 @@ export interface CompletionRequest {
   tools?: readonly ToolSchema[];
   /** Ask for a JSON object back — used by the structured-summary prompts. */
   json?: boolean;
+  /**
+   * Emit a provider-native cache breakpoint after the `system` block — the Zone
+   * A/B boundary of §10 rule 5. Zone A (the frozen system contract plus the four
+   * §9 tool schemas) ships as `system`, not as a message, so no
+   * `ChatMessage.cacheBreakpoint` can express that boundary: without this flag
+   * the largest permanently-cacheable segment in the prompt is re-read as fresh
+   * input every turn and D5's saving is silently forfeited.
+   */
+  systemCacheBreakpoint?: boolean;
 }
 
 export interface TokenUsage {

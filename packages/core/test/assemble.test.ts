@@ -26,7 +26,15 @@ import { FsBlobStore } from '../src/blobs/index.js';
 import { JsonlTraceLog } from '../src/trace/index.js';
 import { openInMemoryStore, type SqliteTreeStore } from '../src/store/index.js';
 import { HeuristicTokenizer } from '../src/tokens/index.js';
-import { ZoneAssembler, toMessages, truncateToTokens } from '../src/assemble/index.js';
+import {
+  ZoneAssembler,
+  toCompletionRequest,
+  toMessages,
+  truncateToTokens,
+} from '../src/assemble/index.js';
+import type Anthropic from '@anthropic-ai/sdk';
+import { AnthropicProvider } from '../src/models/index.js';
+import type { AnthropicClientLike, AnthropicMessageLike } from '../src/models/index.js';
 
 /** Frozen Zone A stand-ins: the real ones come from `src/prompts/` (§14.1). */
 const SYSTEM = 'CONTEXT-TREE CONTRACT\nFetch before you edit.\nPeek when in doubt.';
@@ -607,5 +615,106 @@ describe('toMessages', () => {
     const messages = toMessages(h.assembler.assemble());
     expect(messages.length).toBe(1);
     expect(messages[0]?.cacheBreakpoint).toBeUndefined();
+  });
+});
+
+
+/**
+ * Records the params handed to the SDK and never touches the network (§17: CI
+ * runs against recorded completions). The point of reaching all the way to the
+ * client here is that `cache_control` on the wire is the only observable proof a
+ * breakpoint survived the assemble -> models handoff.
+ */
+class AnthropicStub implements AnthropicClientLike {
+  readonly sent: Anthropic.Messages.MessageCreateParamsNonStreaming[] = [];
+  readonly messages: AnthropicClientLike['messages'];
+
+  constructor() {
+    this.messages = {
+      create: async (
+        params: Anthropic.Messages.MessageCreateParamsNonStreaming,
+      ): Promise<AnthropicMessageLike> => {
+        this.sent.push(params);
+        return {
+          model: 'claude-haiku-4-5-20251001',
+          stop_reason: 'end_turn',
+          content: [{ type: 'text', text: 'ok' }],
+          usage: { input_tokens: 1, output_tokens: 1 },
+        };
+      },
+    };
+  }
+}
+
+describe('toCompletionRequest', () => {
+  it('gets BOTH rule 5 breakpoints all the way to the provider in one request — cache_control on the system block and on the Zone B/C message — because a Zone A marker the client never sees silently costs the frozen prefix on every single turn', async () => {
+    const h = harness();
+    h.addBranch({ title: 'reproduce', phase: 'diagnosis' });
+    h.addBranch({ title: 'patch', phase: 'implementation', status: 'open', summary: null });
+
+    const prompt = h.assembler.assemble({ toolSchemasText: TOOL_SCHEMAS });
+    // Precondition: the assembler did name the Zone A block, per rule 5.
+    expect(prompt.cacheBreakpoints[0]).toBe(inZone(prompt, 'A').at(-1)?.id);
+
+    const request = toCompletionRequest(prompt, 'claude-haiku-4-5-20251001', { maxTokens: 512 });
+    expect(request.system).toBe(prompt.system);
+    expect(request.systemCacheBreakpoint).toBe(true);
+
+    const stub = new AnthropicStub();
+    await new AnthropicProvider({ client: stub }).complete(request);
+    const sent = stub.sent[0];
+
+    expect(sent?.system).toEqual([
+      { type: 'text', text: prompt.system, cache_control: { type: 'ephemeral' } },
+    ]);
+    // Exactly one message is marked, and it is the Zone B/C boundary.
+    const marked = (sent?.messages ?? []).filter((message) => Array.isArray(message.content));
+    expect(marked).toEqual([
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: inZone(prompt, 'B')
+              .map((block) => block.text)
+              .join('\n\n'),
+            cache_control: { type: 'ephemeral' },
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('leaves the system flag off when no Zone A breakpoint was emitted, because a cache write nobody asked for is a cost, not a saving', () => {
+    const h = harness();
+    h.addBranch({ title: 'patch', phase: 'implementation', status: 'open', summary: null });
+    const prompt = h.assembler.assemble({ toolSchemasText: TOOL_SCHEMAS });
+
+    const unmarked: AssembledPrompt = {
+      ...prompt,
+      cacheBreakpoints: [],
+      blocks: prompt.blocks.map((block) => ({ ...block, cacheBreakpointAfter: false })),
+    };
+
+    expect(toCompletionRequest(unmarked, 'm').systemCacheBreakpoint).toBeUndefined();
+    expect(toCompletionRequest(prompt, 'm').systemCacheBreakpoint).toBe(true);
+  });
+
+  it('passes the per-call knobs through and nothing else, so the assembler never invents a sampling param or an empty tools array (D5)', () => {
+    const h = harness();
+    h.addBranch({ title: 'patch', phase: 'implementation', status: 'open', summary: null });
+    const prompt = h.assembler.assemble();
+
+    const bare = toCompletionRequest(prompt, 'm');
+    expect(bare.maxTokens).toBeUndefined();
+    expect(bare.temperature).toBeUndefined();
+    expect(bare.tools).toBeUndefined();
+    expect(bare.json).toBeUndefined();
+    expect(bare.messages).toEqual(toMessages(prompt));
+
+    const tuned = toCompletionRequest(prompt, 'm', { maxTokens: 8, temperature: 0, json: true });
+    expect(tuned.maxTokens).toBe(8);
+    expect(tuned.temperature).toBe(0);
+    expect(tuned.json).toBe(true);
   });
 });

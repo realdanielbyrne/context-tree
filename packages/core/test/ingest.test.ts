@@ -114,14 +114,15 @@ interface Projected {
   span: [number | null, number | null];
   status: string;
   summary_version: number;
+  stale_since_seq: number | null;
   meta: NodeMeta;
 }
 
 /**
- * The whole tree except the ULIDs and `stale_since_seq`. Ids are minted per run
- * by design; staleness is compared separately by `staleProfile` because it is
- * the one field the store's monotone `markStale` can leave as a lower bound
- * rather than an exact value (see the append test).
+ * The whole tree except the ULIDs, which are minted per run by design.
+ * `stale_since_seq` is in here deliberately: it is derived from L0 like every
+ * other column (ingest reconciles it with `setStale`), so an append path that
+ * left it differing from a rebuild's value would be a tree that differs.
  */
 function project(store: TreeStore): Projected[] {
   return store.nodesInCreationOrder().map((node) => ({
@@ -134,6 +135,7 @@ function project(store: TreeStore): Projected[] {
     span: [node.span_start_seq, node.span_end_seq] as [number | null, number | null],
     status: node.status,
     summary_version: node.current_summary_version,
+    stale_since_seq: node.stale_since_seq,
     meta: node.meta_json,
   }));
 }
@@ -370,23 +372,14 @@ describe('appendEvent', () => {
         readFileSync(join(replayed.dir, 'trace.jsonl'), 'utf8'),
       );
 
-      // Staleness: the same nodes are queued for the summarizer, and every
-      // incremental mark is at or before the replayed one — `markStale` keeps
-      // the earliest by contract and cannot raise one, so the handover from
-      // §7's text fallback (which had `diagnosis` starting at seq 1) leaves a
-      // lower bound. Erring early re-summarizes a branch that did not need it;
-      // erring late would silently skip one that did.
+      // Staleness converges exactly, marker for marker — `project` already
+      // compares it, and this spells out the case that used to differ: §7's text
+      // fallback opened `diagnosis` at seq 1, the tool state machine moved it to
+      // seq 2, and reconciliation via `setStale` follows the span instead of
+      // stranding the superseded lower bound `markStale` would have kept.
       const incrementalStale = staleProfile(incremental.handle.store);
-      const replayedStale = staleProfile(replayed.handle.store);
-      expect(incrementalStale.map(([title]) => title)).toEqual(replayedStale.map(([title]) => title));
-      incrementalStale.forEach(([, seq], index) => {
-        expect(seq ?? 0).toBeLessThanOrEqual(replayedStale[index]?.[1] ?? 0);
-      });
-      // The one field that actually differs, pinned so a change in
-      // reconciliation cannot pass unnoticed.
-      expect(incrementalStale).not.toEqual(replayedStale);
-      expect(incrementalStale.find(([title]) => title === 'diagnosis')).toEqual(['diagnosis', 1]);
-      expect(replayedStale.find(([title]) => title === 'diagnosis')).toEqual(['diagnosis', 2]);
+      expect(incrementalStale).toEqual(staleProfile(replayed.handle.store));
+      expect(incrementalStale.find(([title]) => title === 'diagnosis')).toEqual(['diagnosis', 2]);
     } finally {
       incremental.handle.close();
       replayed.handle.close();

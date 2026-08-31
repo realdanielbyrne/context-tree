@@ -162,13 +162,29 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
+export interface SqliteTreeStoreOptions {
+  /**
+   * Skips the sqlite-vec load, so `knn` takes the §18 brute-force path. Nothing
+   * else can make that load fail in-process, and a degradation no test has ever
+   * executed is a hope rather than a fallback — this is the seam that runs it.
+   */
+  forceBruteForceKnn?: boolean;
+}
+
 export class SqliteTreeStore implements TreeStore {
   readonly vectorSearchNative: boolean;
   private readonly stmts = new Map<string, Database.Statement<unknown[], unknown>>();
 
-  constructor(private readonly db: Database.Database) {
+  constructor(
+    private readonly db: Database.Database,
+    options: SqliteTreeStoreOptions = {},
+  ) {
     // §18: a missing extension degrades, it never hard-fails. The BLOB fallback
     // costs a linear scan, which is acceptable for one task's worth of nodes.
+    if (options.forceBruteForceKnn === true) {
+      this.vectorSearchNative = false;
+      return;
+    }
     try {
       loadVectorExtension(this.db);
       this.vectorSearchNative = true;
@@ -379,6 +395,14 @@ export class SqliteTreeStore implements TreeStore {
     this.stmt(
       'UPDATE nodes SET stale_since_seq = ? WHERE id = ? AND (stale_since_seq IS NULL OR stale_since_seq > ?)',
     ).run(seq, id, seq);
+  }
+
+  setStale(id: NodeId, seq: Seq | null): void {
+    this.requireNode(id);
+    // Unlike `markStale` this can raise the mark or clear it, which is why the
+    // contract reserves it for reconciliation by a derived-layer rebuild (D8):
+    // raising a mark on the incremental path could skip unsummarized content.
+    this.stmt('UPDATE nodes SET stale_since_seq = ? WHERE id = ?').run(seq, id);
   }
 
   markStaleCascade(id: NodeId, seq: Seq): NodeId[] {
@@ -599,8 +623,8 @@ export function openStore(path: string): SqliteTreeStore {
 }
 
 /** Migrated, throwaway store — the default for tests and for `rebuild --dry-run`. */
-export function openInMemoryStore(): SqliteTreeStore {
-  const store = new SqliteTreeStore(new Database(':memory:'));
+export function openInMemoryStore(options: SqliteTreeStoreOptions = {}): SqliteTreeStore {
+  const store = new SqliteTreeStore(new Database(':memory:'), options);
   store.migrate();
   return store;
 }
