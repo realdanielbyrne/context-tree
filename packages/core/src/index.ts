@@ -24,6 +24,7 @@ export * from './ingest/index.js';
 
 // derived + model-facing
 export * from './tokens/index.js';
+export * from './cache/index.js';
 export * from './models/index.js';
 export * from './prompts/index.js';
 export * from './summarize/index.js';

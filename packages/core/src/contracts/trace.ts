@@ -76,9 +76,18 @@ export type TraceEvent =
   | SegmentBoundaryEvent
   | ManualAnnotationEvent;
 
-/** A trace event before a `seq` has been assigned by the writer. */
-export type TraceEventInput<T extends TraceEvent = TraceEvent> = Omit<T, 'seq'> &
-  Partial<Pick<T, 'seq'>>;
+/**
+ * A trace event before a `seq` has been assigned by the writer.
+ *
+ * The conditional is load-bearing: `Omit` does not distribute over a union, so a
+ * non-distributive definition would collapse the bare `TraceEventInput` down to
+ * the union's common keys and erase every per-variant required field (`tool`,
+ * `blob`, `call_seq`). That would let a malformed L0 record typecheck, and L0 is
+ * the source of truth for every derived layer.
+ */
+export type TraceEventInput<T extends TraceEvent = TraceEvent> = T extends TraceEvent
+  ? Omit<T, 'seq'> & { seq?: Seq }
+  : never;
 
 /**
  * Append-only writer + replayer over `trace.jsonl`.

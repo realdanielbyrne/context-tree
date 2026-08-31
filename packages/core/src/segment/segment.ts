@@ -1,0 +1,209 @@
+/**
+ * §7 segmentation engine (D1) — a single O(n) pass over L0 that emits tree ops.
+ *
+ * Pure by construction: no store, no clock, no ULIDs, no filesystem, no network
+ * (§7.1/D15). That purity is what makes the M1 acceptance ("bit-identical across
+ * runs") a thing a test can assert at all, and what lets a segmenter change be
+ * validated by deleting L1 and replaying L0 (D8).
+ *
+ * Span convention for `ingest/`: `open` already covers its own `start_seq`, so
+ * the opening event emits no `extend` for that node. Every later event under a
+ * node emits one, and `close` carries the last seq the node covered.
+ */
+import type {
+  NodeKey,
+  PhaseType,
+  Segmentation,
+  SegmentConfig,
+  Seq,
+  TraceEvent,
+  TreeOp,
+} from '../contracts/index.js';
+import { TASK_KEY, fileKey, fileTitle, phaseKey, phaseTitle } from './keys.js';
+import { segmentByText } from './text-fallback.js';
+
+export interface SegmentOptions extends SegmentConfig {
+  /**
+   * Resolves an event's message text for the §7 unstructured-trace fallback.
+   * Optional because L0 stores blob refs, not text: L2 access belongs to the
+   * caller, so the segmenter stays pure. Absent => one `other` phase.
+   */
+  textOf?: (event: TraceEvent) => string;
+}
+
+/** The phase node currently accepting events, plus its per-phase file nodes. */
+interface OpenPhase {
+  key: NodeKey;
+  index: number;
+  phaseType: PhaseType;
+  /** path -> file node key. Scoped here because §7 reuses a file node per phase. */
+  files: Map<string, NodeKey>;
+}
+
+export function segment(
+  events: readonly TraceEvent[],
+  config: SegmentOptions,
+): Segmentation {
+  const first = events[0];
+  if (first === undefined) {
+    // An empty trace is a legal state (a task DB before its first turn), not an error.
+    return {
+      ops: [],
+      nodeOrder: [],
+      stats: { events: 0, phases: 0, fileNodes: 0, unmappedTools: [], usedTextFallback: false },
+    };
+  }
+  if (!events.some((event) => event.type === 'tool_call')) {
+    return segmentByText(events, { taskTitle: config.taskTitle, textOf: config.textOf });
+  }
+
+  const ops: TreeOp[] = [];
+  const nodeOrder: NodeKey[] = [];
+  // Sets, not `includes`: the pass must stay O(n) for a 400+ event trace (§16 M1).
+  const neutral = new Set<PhaseType>(config.neutralPhases);
+  const fileTools = new Set<string>(config.fileTools);
+  const unmappedTools: string[] = [];
+  const unmappedSeen = new Set<string>();
+  const toolsSeen = new Map<NodeKey, Set<string>>();
+  const typeOrdinals = new Map<PhaseType, number>();
+
+  let phases = 0;
+  let fileNodes = 0;
+  let open: OpenPhase | null = null;
+  /** Seq of the previous event — where a phase's span ends when the next one opens. */
+  let prevSeq: Seq = first.seq;
+
+  const openPhase = (phaseType: PhaseType, startSeq: Seq): OpenPhase => {
+    const index = phases;
+    phases += 1;
+    const ordinal = (typeOrdinals.get(phaseType) ?? 0) + 1;
+    typeOrdinals.set(phaseType, ordinal);
+    const key = phaseKey(index);
+    ops.push({
+      op: 'open',
+      key,
+      parent: TASK_KEY,
+      kind: 'phase',
+      title: phaseTitle(phaseType, ordinal),
+      phase_type: phaseType,
+      start_seq: startSeq,
+    });
+    nodeOrder.push(key);
+    return { key, index, phaseType, files: new Map() };
+  };
+
+  /** Deepest first, so `ingest/` never closes a parent before its children. */
+  const closePhase = (phase: OpenPhase, endSeq: Seq): void => {
+    for (const key of phase.files.values()) ops.push({ op: 'close', key, end_seq: endSeq });
+    ops.push({ op: 'close', key: phase.key, end_seq: endSeq });
+  };
+
+  /** One `tool` op per (node, tool) pair — `meta_json.tools` is first-seen order. */
+  const noteTool = (key: NodeKey, tool: string): void => {
+    let seen = toolsSeen.get(key);
+    if (seen === undefined) {
+      seen = new Set<string>();
+      toolsSeen.set(key, seen);
+    }
+    if (seen.has(tool)) return;
+    seen.add(tool);
+    ops.push({ op: 'tool', key, tool });
+  };
+
+  ops.push({
+    op: 'open',
+    key: TASK_KEY,
+    parent: null,
+    kind: 'task',
+    title: config.taskTitle,
+    phase_type: null,
+    start_seq: first.seq,
+  });
+  nodeOrder.push(TASK_KEY);
+
+  for (let i = 0; i < events.length; i += 1) {
+    const event = events[i]!;
+    if (i > 0) ops.push({ op: 'extend', key: TASK_KEY, seq: event.seq });
+
+    switch (event.type) {
+      case 'tool_call': {
+        const mapped = config.toolPhase[event.tool];
+        if (mapped === undefined && !unmappedSeen.has(event.tool)) {
+          // §18: tool-name drift must degrade, never crash.
+          unmappedSeen.add(event.tool);
+          unmappedTools.push(event.tool);
+        }
+        const phaseType = mapped ?? 'other';
+
+        let phase: OpenPhase;
+        if (open === null) {
+          phase = openPhase(phaseType, event.seq);
+        } else if (!neutral.has(phaseType) && open.phaseType !== phaseType) {
+          // The literal §7 rule, but only for non-neutral phases (Ruling C6):
+          // read-shaped tools dominate real traces and all map to `other`, which
+          // would shatter the tree into one-event phases if it opened nodes.
+          closePhase(open, prevSeq);
+          phase = openPhase(phaseType, event.seq);
+        } else {
+          phase = open;
+          ops.push({ op: 'extend', key: phase.key, seq: event.seq });
+        }
+        open = phase;
+
+        noteTool(TASK_KEY, event.tool);
+        noteTool(phase.key, event.tool);
+
+        if (event.path !== undefined && fileTools.has(event.tool)) {
+          const existing = phase.files.get(event.path);
+          if (existing === undefined) {
+            const key = fileKey(phase.index, event.path);
+            ops.push({
+              op: 'open',
+              key,
+              parent: phase.key,
+              kind: 'file',
+              title: fileTitle(event.path),
+              phase_type: null,
+              start_seq: event.seq,
+              path: event.path,
+            });
+            nodeOrder.push(key);
+            phase.files.set(event.path, key);
+            fileNodes += 1;
+            noteTool(key, event.tool);
+          } else {
+            // §7: re-edits of one path append spans to the same file node.
+            ops.push({ op: 'extend', key: existing, seq: event.seq });
+            noteTool(existing, event.tool);
+          }
+        }
+        break;
+      }
+
+      case 'segment_boundary': {
+        // The host knows something tool names don't, so this wins outright —
+        // even when `to` matches the open phase's type.
+        if (open !== null) closePhase(open, prevSeq);
+        open = openPhase(event.to, event.seq);
+        break;
+      }
+
+      default: {
+        // §7: messages, results and annotations attach to the open phase. They
+        // never open one — a phase is a *tool-activity* interval.
+        if (open !== null) ops.push({ op: 'extend', key: open.key, seq: event.seq });
+        break;
+      }
+    }
+    prevSeq = event.seq;
+  }
+
+  if (open !== null) closePhase(open, prevSeq);
+  ops.push({ op: 'close', key: TASK_KEY, end_seq: prevSeq });
+
+  return {
+    ops,
+    nodeOrder,
+    stats: { events: events.length, phases, fileNodes, unmappedTools, usedTextFallback: false },
+  };
+}
