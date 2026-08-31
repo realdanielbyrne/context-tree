@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "incremental": false,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "types": ["node", "vitest/globals"],
+    "paths": {
+      "@context-tree/core": ["./packages/core/src/index.ts"],
+      "@context-tree/core/*": ["./packages/core/src/*"],
+      "@context-tree/mcp": ["./packages/mcp/src/index.ts"],
+      "@context-tree/cli": ["./packages/cli/src/index.ts"]
+    }
+  },
+  "include": ["packages/*/test/**/*.ts", "packages/*/src/**/*.ts", "eval/**/*.ts"]
+}

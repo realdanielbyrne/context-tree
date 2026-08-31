@@ -1,0 +1,22 @@
+{
+  "name": "context-tree-workspace",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Monorepo root for @context-tree/{core,mcp,cli}",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "build": "tsc --build packages/core packages/mcp packages/cli",
+    "clean": "tsc --build --clean packages/core packages/mcp packages/cli",
+    "typecheck": "tsc --build --dry packages/core packages/mcp packages/cli && tsc -p tsconfig.test.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "pnpm run typecheck && pnpm run test"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.13.0",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  }
+}
