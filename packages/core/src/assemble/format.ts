@@ -1,0 +1,167 @@
+/**
+ * §10 block text rendering + the one degradation primitive Zone C needs.
+ *
+ * Everything here is a pure function of its arguments (plus L2 reads, which are
+ * write-once). That matters for D5: a block's text must be reproducible from the
+ * same L1 row + L2 blobs on every turn, or the cached prefix moves for reasons
+ * nobody can see.
+ */
+import type {
+  BlobStore,
+  NodeLink,
+  NodeSummary,
+  SymbolSpan,
+  Tokenizer,
+  TraceEvent,
+  TreeNode,
+} from '../contracts/index.js';
+
+function spanLabel(span: SymbolSpan): string {
+  const parts = [`${span.path}:${span.start_line}-${span.end_line}`];
+  if (span.symbol !== undefined) parts.push(`(${span.symbol})`);
+  if (span.degraded === true) parts.push('[line-span only]');
+  return parts.join(' ');
+}
+
+function seqRange(node: TreeNode): string {
+  if (node.span_start_seq === null) return 'seq -';
+  return `seq ${node.span_start_seq}-${node.span_end_seq ?? node.span_start_seq}`;
+}
+
+function listLine(label: string, values: readonly string[]): string | null {
+  return values.length === 0 ? null : `${label}: ${values.join(', ')}`;
+}
+
+/**
+ * A Zone B summary block. The §8 rehydration pointers (files, symbols, tests,
+ * artifacts, open questions, covered node ids) are rendered, not just the prose:
+ * they are what lets the model notice it needs `context_fetch` at all (§9).
+ */
+export function renderSummaryBlock(node: TreeNode, summary: NodeSummary, isRoot: boolean): string {
+  const heading = isRoot
+    ? `# Task: ${node.title}`
+    : `## Branch: ${node.title}${node.phase_type === null ? '' : ` [${node.phase_type}]`} (${seqRange(node)}, ${node.status})`;
+
+  const lines: (string | null)[] = [
+    heading,
+    summary.text.trim(),
+    listLine('files', summary.meta.files.map(spanLabel)),
+    listLine('symbols', summary.meta.symbols),
+    listLine(
+      'tests',
+      summary.meta.tests.map((t) => `${t.name}=${t.status}`),
+    ),
+    listLine(
+      'artifacts',
+      summary.meta.artifacts.map((a) => `${a.kind} ${a.ref}`),
+    ),
+    listLine('decisions', summary.meta.decisions),
+    listLine('open questions', summary.meta.open_questions),
+    listLine('fetchable nodes', summary.meta.node_ids),
+  ];
+  return lines.filter((line): line is string => line !== null && line !== '').join('\n');
+}
+
+/**
+ * D10 lateral links, rendered as their own block so that adding a link changes a
+ * block id (`B:links:<node>:<count>`) instead of silently mutating the summary
+ * block's text under a stable id — §17's cache assertions key on ids.
+ */
+export function renderLinksBlock(node: TreeNode, links: readonly NodeLink[]): string {
+  const rendered = links.map((link) => `${link.kind} -> ${link.to_id}`);
+  return `links from "${node.title}": ${rendered.join(', ')}`;
+}
+
+/** The Zone C header: what got expanded, so the model can tell breadth from depth. */
+export function renderActiveHeader(active: TreeNode, descendants: readonly TreeNode[]): string {
+  const lines = [
+    `## Active branch (expanded in full): ${active.title}${active.phase_type === null ? '' : ` [${active.phase_type}]`} (${seqRange(active)}, ${active.status})`,
+  ];
+  for (const node of descendants) {
+    const path = typeof node.meta_json.path === 'string' ? ` ${node.meta_json.path}` : '';
+    lines.push(`- ${node.kind}${path} "${node.title}" (${seqRange(node)})`);
+  }
+  return lines.join('\n');
+}
+
+/**
+ * One L0 event as raw Zone C detail. L1 holds coordinates only (§6), so the
+ * payload is always a blob read; a missing blob throws out of `blobs.get*`
+ * rather than yielding a plausible-looking empty block.
+ */
+export function renderEvent(event: TraceEvent, blobs: BlobStore): string {
+  switch (event.type) {
+    case 'user_message':
+      return `### user (seq ${event.seq})\n${blobs.getText(event.blob)}`;
+    case 'assistant_message':
+      return `### assistant (seq ${event.seq})\n${blobs.getText(event.blob)}`;
+    case 'tool_call': {
+      const target = event.path === undefined ? '' : ` ${event.path}`;
+      const lines = [`### tool_call ${event.tool}${target} (seq ${event.seq})`];
+      if (event.args_blob !== undefined) lines.push(`args: ${blobs.getText(event.args_blob)}`);
+      if (event.blob !== undefined) lines.push(blobs.getText(event.blob));
+      return lines.join('\n');
+    }
+    case 'tool_result': {
+      const flags = [
+        event.error === undefined ? null : `error: ${event.error}`,
+        event.truncated === true ? 'truncated by host' : null,
+      ].filter((f): f is string => f !== null);
+      const suffix = flags.length === 0 ? '' : ` [${flags.join('; ')}]`;
+      const head = `### tool_result for seq ${event.call_seq} (seq ${event.seq})${suffix}`;
+      return event.output_blob === undefined ? head : `${head}\n${blobs.getText(event.output_blob)}`;
+    }
+    case 'segment_boundary':
+      return `### phase boundary ${event.from ?? 'none'} -> ${event.to} (seq ${event.seq})`;
+    case 'manual_annotation':
+      return `### annotation (seq ${event.seq})\n${blobs.getText(event.blob)}`;
+  }
+}
+
+/** A tail block — `context_fetch` / `context_search` / `context_peek` output. */
+export function renderTailBlock(id: string, text: string, ephemeral: boolean): string {
+  return `## retrieved: ${id}${ephemeral ? ' (dropped at the next phase boundary)' : ''}\n${text}`;
+}
+
+const BARE_ELISION = '...';
+
+function elision(dropped: number): string {
+  return `\n...[${dropped} chars elided - call \`context_fetch\` for the full detail]`;
+}
+
+/** Never split a surrogate pair — a lone half is not valid text to send. */
+function safeCut(text: string, at: number): number {
+  const clamped = Math.max(0, Math.min(at, text.length));
+  if (clamped <= 0 || clamped >= text.length) return clamped;
+  const code = text.charCodeAt(clamped - 1);
+  return code >= 0xd800 && code <= 0xdbff ? clamped - 1 : clamped;
+}
+
+/**
+ * Shrinks `text` to at most `maxTokens` under `tokenizer`, keeping the head and
+ * saying loudly how much went missing. Truncation is deliberately visible in the
+ * text: §10 rule 4's Zone C overflow is supposed to push the model toward a
+ * narrow `context_fetch`, which it cannot do if the loss is invisible.
+ */
+export function truncateToTokens(text: string, maxTokens: number, tokenizer: Tokenizer): string {
+  if (tokenizer.count(text) <= maxTokens) return text;
+  // The marker's own cost is reserved against the longest form it can take
+  // (the full length as the elided count), so the result never exceeds maxTokens.
+  const bodyBudget = maxTokens - tokenizer.count(elision(text.length));
+  if (bodyBudget <= 0) {
+    // A cap this small drops the block in all but name. The `<= maxTokens`
+    // guarantee is what makes Zone C's water-filling cap actually hold, so the
+    // marker degrades to the cheapest thing that still says content was here.
+    return tokenizer.count(BARE_ELISION) <= maxTokens ? BARE_ELISION : '';
+  }
+
+  let lo = 0;
+  let hi = text.length;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (tokenizer.count(text.slice(0, safeCut(text, mid))) <= bodyBudget) lo = mid;
+    else hi = mid - 1;
+  }
+  const cut = safeCut(text, lo);
+  return text.slice(0, cut) + elision(text.length - cut);
+}

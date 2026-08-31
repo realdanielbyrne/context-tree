@@ -1,0 +1,352 @@
+/**
+ * §10 — cache-aware prompt assembly (D5).
+ *
+ * The layout is fixed and the content migrates through it:
+ *
+ *   Zone A  system contract + MCP tool schemas      frozen, cached permanently
+ *   Zone B  task root summary, then branch summaries in CREATION ORDER
+ *   Zone C  the ACTIVE branch expanded in full + this turn's tool results
+ *   tail    `context_fetch`/`context_search`/`context_peek` output (D6)
+ *
+ * The single idea the whole file exists to protect: provider caches are keyed on
+ * a *prefix*, so an edit in the middle invalidates everything after it. Zone B is
+ * therefore never relevance-ordered (§10 rule 1) — relevance is expressed by
+ * expansion in Zone C, and new summaries land at the END of Zone B where they
+ * invalidate only the suffix that Zone C rewrites anyway (rule 2). Retrieval
+ * results go after Zone C (rule 3) for the same reason.
+ *
+ * Block ids are stable functions of content coordinates (node id + summary
+ * version, or L0 seq), because §17's cache-assertion harness proves "which
+ * prefix ranges survived this event" by comparing ids and token counts across
+ * two assemblies. If an id moved for a reason unrelated to content, that harness
+ * silently stops testing anything.
+ */
+import { DEFAULT_CONFIG } from '../config.js';
+import { StoreInvariantError } from '../contracts/index.js';
+import type {
+  AssembleOptions,
+  AssembledPrompt,
+  BlobStore,
+  BudgetReport,
+  ChatMessage,
+  NodeId,
+  PromptAssembler,
+  PromptBlock,
+  TailEntry,
+  Tokenizer,
+  TraceLog,
+  TreeNode,
+  TreeStore,
+  Zone,
+} from '../contracts/index.js';
+import {
+  renderActiveHeader,
+  renderEvent,
+  renderLinksBlock,
+  renderSummaryBlock,
+  renderTailBlock,
+  truncateToTokens,
+} from './format.js';
+
+export interface ZoneAssemblerDeps {
+  store: TreeStore;
+  blobs: BlobStore;
+  /**
+   * L0 is required, not optional: Zone C is "the active branch's raw detail",
+   * and L1 stores only the seq coordinates of that detail (§6).
+   */
+  trace: TraceLog;
+  tokenizer: Tokenizer;
+  /**
+   * Zone A's frozen text. Byte-identical across every turn of a session — any
+   * per-turn value leaking in here (a timestamp, a node count, a budget number)
+   * permanently defeats caching for the whole session.
+   */
+  systemContract: string;
+  budgets?: { zoneB: number; zoneC: number };
+}
+
+/** A Zone B node contributes a summary block plus an optional links block; the
+ *  pair is kept or dropped as a unit so a dropped summary never leaves orphan
+ *  link annotations pointing at prose the model cannot see. */
+interface ZoneBEntry {
+  nodeId: NodeId;
+  isRoot: boolean;
+  blocks: PromptBlock[];
+  tokens: number;
+}
+
+export class ZoneAssembler implements PromptAssembler {
+  private readonly deps: ZoneAssemblerDeps;
+  private readonly budgets: { zoneB: number; zoneC: number };
+  /** D6 soft offloading: fetched detail lives here and dies at a phase boundary. */
+  private tail: TailEntry[] = [];
+
+  constructor(deps: ZoneAssemblerDeps) {
+    this.deps = deps;
+    this.budgets = deps.budgets ?? { ...DEFAULT_CONFIG.budgets };
+  }
+
+  /** Appends one retrieval result to the tail (after Zone C — rule 3). */
+  appendTail(entry: TailEntry): void {
+    this.tail.push(entry);
+  }
+
+  tailEntries(): readonly TailEntry[] {
+    return this.tail;
+  }
+
+  /**
+   * D6: fetched branches die at phase boundaries. This drops the ephemeral tail
+   * entries and does nothing else — in particular it does not touch L1, does not
+   * close or open a node, and does not re-summarize. Phase state belongs to the
+   * segmenter; the assembler only reads it.
+   */
+  onPhaseTransition(): void {
+    this.tail = this.tail.filter((entry) => !entry.ephemeral);
+  }
+
+  assemble(options: AssembleOptions = {}): AssembledPrompt {
+    const { store } = this.deps;
+    const root = store.root();
+
+    const activeNodeId = options.activeNodeId ?? store.openPhase()?.id ?? null;
+    const active = activeNodeId === null ? null : store.getNode(activeNodeId);
+    if (activeNodeId !== null && active === null) {
+      throw new StoreInvariantError(`assemble: unknown activeNodeId ${activeNodeId}`);
+    }
+
+    const zoneA = this.zoneA(options.toolSchemasText);
+
+    const zoneBBudget = options.zoneBBudget ?? this.budgets.zoneB;
+    const zoneB = this.zoneB(root, this.activeBranchId(active, root), zoneBBudget);
+
+    const zoneCBudget = options.zoneCBudget ?? this.budgets.zoneC;
+    const zoneC = this.zoneC(active, zoneCBudget);
+
+    const tailBlocks = (options.tail ?? this.tail).map((entry) =>
+      this.block('tail', `tail:${entry.id}`, renderTailBlock(entry.id, entry.text, entry.ephemeral)),
+    );
+
+    // Rule 5: breakpoints at the Zone A/B and Zone B/C boundaries, nowhere else.
+    const cacheBreakpoints: string[] = [];
+    for (const zoneBlocks of [zoneA, zoneB.blocks]) {
+      const last = zoneBlocks.at(-1);
+      if (last === undefined) continue;
+      last.cacheBreakpointAfter = true;
+      cacheBreakpoints.push(last.id);
+    }
+
+    const overBudget: Zone[] = [];
+    // The asymmetry is deliberate: Zone B reports its degradation through
+    // `droppedFromZoneB`, so `overBudget` only names it when dropping was not
+    // enough. Zone C has no dropped-list field, so truncation is reported here —
+    // a silent drop or truncation is indistinguishable from a summarizer bug.
+    if (zoneB.tokens > zoneBBudget) overBudget.push('B');
+    if (zoneC.truncated) overBudget.push('C');
+
+    const tailTokens = sumTokens(tailBlocks);
+    const budgets: BudgetReport = {
+      zoneA: sumTokens(zoneA),
+      zoneB: zoneB.tokens,
+      zoneC: sumTokens(zoneC.blocks),
+      tail: tailTokens,
+      total: 0,
+      overBudget,
+      droppedFromZoneB: zoneB.dropped,
+    };
+    budgets.total = budgets.zoneA + budgets.zoneB + budgets.zoneC + budgets.tail;
+
+    return {
+      system: zoneA.map((b) => b.text).join('\n\n'),
+      blocks: [...zoneA, ...zoneB.blocks, ...zoneC.blocks, ...tailBlocks],
+      budgets,
+      cacheBreakpoints,
+    };
+  }
+
+  // ── zones ──────────────────────────────────────────────────────────────────
+
+  private zoneA(toolSchemasText: string | undefined): PromptBlock[] {
+    const blocks = [this.block('A', 'A:system', this.deps.systemContract)];
+    if (toolSchemasText !== undefined && toolSchemasText !== '') {
+      blocks.push(this.block('A', 'A:tools', toolSchemasText));
+    }
+    return blocks;
+  }
+
+  /**
+   * Zone B in creation order (rule 1) from `nodesInCreationOrder()`, restricted
+   * to the task root and its direct branches — deeper nodes are detail, reachable
+   * by expansion in Zone C or by `context_fetch`, and putting them here would
+   * spend the 8k budget on exactly the content Zone C already carries.
+   */
+  private zoneB(
+    root: TreeNode | null,
+    activeBranchId: NodeId | null,
+    budget: number,
+  ): { blocks: PromptBlock[]; tokens: number; dropped: NodeId[] } {
+    if (root === null) return { blocks: [], tokens: 0, dropped: [] };
+    const { store } = this.deps;
+    const entries: ZoneBEntry[] = [];
+
+    for (const node of store.nodesInCreationOrder()) {
+      const isRoot = node.id === root.id;
+      if (!isRoot && node.parent_id !== root.id) continue;
+      // The active branch's detail is in Zone C; its summary would duplicate it.
+      // Every other block keeps its position, so promoting or demoting a branch
+      // never reorders its neighbours.
+      if (!isRoot && node.id === activeBranchId) continue;
+
+      const summary = store.currentSummary(node.id);
+      if (summary === null) continue;
+
+      const blocks = [
+        this.block(
+          'B',
+          `${isRoot ? 'B:root' : 'B:summary'}:${node.id}:${summary.version}`,
+          renderSummaryBlock(node, summary, isRoot),
+          node.id,
+        ),
+      ];
+      const links = store.linksFrom(node.id);
+      if (links.length > 0) {
+        blocks.push(
+          this.block('B', `B:links:${node.id}:${links.length}`, renderLinksBlock(node, links), node.id),
+        );
+      }
+      entries.push({ nodeId: node.id, isRoot, blocks, tokens: sumTokens(blocks) });
+    }
+
+    // Rule 4 degradation: drop the OLDEST summaries first, never reorder. The
+    // root summary is exempt — it is the task anchor a resumed session reads
+    // first, and it is also the oldest, so oldest-first would drop it first.
+    const dropped: NodeId[] = [];
+    let tokens = entries.reduce((sum, entry) => sum + entry.tokens, 0);
+    for (const entry of entries) {
+      if (tokens <= budget) break;
+      if (entry.isRoot) continue;
+      dropped.push(entry.nodeId);
+      tokens -= entry.tokens;
+    }
+
+    const droppedIds = new Set(dropped);
+    const blocks = entries.filter((e) => !droppedIds.has(e.nodeId)).flatMap((e) => e.blocks);
+    return { blocks, tokens, dropped };
+  }
+
+  /**
+   * Zone C: the active branch expanded in full, read straight out of L0 over the
+   * node's seq span, plus this turn's tool results — for an OPEN branch the read
+   * runs to `lastSeq()` so results appended since the last ingest pass are
+   * present (§10 rule 2: "+ this turn's tool results").
+   */
+  private zoneC(
+    active: TreeNode | null,
+    budget: number,
+  ): { blocks: PromptBlock[]; truncated: boolean } {
+    if (active === null) return { blocks: [], truncated: false };
+    const { store, blobs, trace } = this.deps;
+
+    const blocks = [
+      this.block(
+        'C',
+        `C:head:${active.id}`,
+        renderActiveHeader(active, store.descendants(active.id)),
+        active.id,
+      ),
+    ];
+
+    if (active.span_start_seq !== null) {
+      const from = active.span_start_seq;
+      const recorded = active.span_end_seq ?? from;
+      const to = active.status === 'open' ? Math.max(recorded, trace.lastSeq()) : recorded;
+      for (const event of trace.read({ from, to })) {
+        blocks.push(this.block('C', `C:event:${event.seq}`, renderEvent(event, blobs)));
+      }
+    }
+
+    return { blocks, truncated: this.fitZoneC(blocks, budget) };
+  }
+
+  /**
+   * Rule 4: when Zone C is over budget, truncate the LARGEST detail blocks. Cap
+   * chosen by water-filling (smallest cap `c` where `sum(min(tokens, c))` fits),
+   * so the cost falls on the blocks actually responsible for the overflow and
+   * small blocks survive intact. Returns whether anything was truncated.
+   */
+  private fitZoneC(blocks: PromptBlock[], budget: number): boolean {
+    const total = sumTokens(blocks);
+    if (total <= budget) return false;
+
+    const fill = (cap: number): number =>
+      blocks.reduce((sum, block) => sum + Math.min(block.tokens, cap), 0);
+    let lo = 0;
+    // reduce, not Math.max(...spread): Zone C can hold one block per L0 event.
+    let hi = blocks.reduce((max, block) => Math.max(max, block.tokens), 0);
+    while (lo < hi) {
+      const mid = Math.floor((lo + hi) / 2);
+      if (fill(mid) <= budget) lo = mid + 1;
+      else hi = mid;
+    }
+    // `lo` is now the smallest cap that does NOT fit; the largest that fits is
+    // lo - 1 (fill(0) === 0 always fits, so lo >= 1).
+    const cap = lo - 1;
+
+    for (const block of blocks) {
+      if (block.tokens <= cap) continue;
+      block.text = truncateToTokens(block.text, cap, this.deps.tokenizer);
+      block.tokens = this.deps.tokenizer.count(block.text);
+    }
+    return true;
+  }
+
+  // ── helpers ────────────────────────────────────────────────────────────────
+
+  /**
+   * The direct branch of the task root that owns `active`. Zone C may be pointed
+   * at a file node deep inside a phase; the summary that would duplicate it is
+   * still the phase's. When `active` IS the root, nothing is excluded — Zone C
+   * expands everything and the root summary stays as the anchor.
+   */
+  private activeBranchId(active: TreeNode | null, root: TreeNode | null): NodeId | null {
+    if (active === null || root === null || active.id === root.id) return null;
+    const path = this.deps.store.ancestorPath(active.id);
+    return path[1]?.id ?? null;
+  }
+
+  private block(zone: Zone, id: string, text: string, nodeId?: NodeId): PromptBlock {
+    const block: PromptBlock = { zone, id, text, tokens: this.deps.tokenizer.count(text) };
+    if (nodeId !== undefined) block.nodeId = nodeId;
+    return block;
+  }
+}
+
+function sumTokens(blocks: readonly PromptBlock[]): number {
+  return blocks.reduce((sum, block) => sum + block.tokens, 0);
+}
+
+/**
+ * Provider-facing projection of an assembled prompt: one message per zone, with
+ * `cacheBreakpoint` where that zone's last block carries the §10 rule 5 marker,
+ * so the models layer only has to translate a flag into a provider-native one.
+ *
+ * Zone A is deliberately absent — it ships as `AssembledPrompt.system`, and
+ * repeating it here would duplicate the frozen prefix. The A/B breakpoint is the
+ * system/messages boundary itself; `AssembledPrompt.cacheBreakpoints` still
+ * names the Zone A block so §17's assertions can see both boundaries.
+ */
+export function toMessages(prompt: AssembledPrompt): ChatMessage[] {
+  const messages: ChatMessage[] = [];
+  for (const zone of ['B', 'C', 'tail'] as const) {
+    const blocks = prompt.blocks.filter((block) => block.zone === zone);
+    if (blocks.length === 0) continue;
+    const message: ChatMessage = {
+      role: 'user',
+      content: blocks.map((block) => block.text).join('\n\n'),
+    };
+    if (blocks.at(-1)?.cacheBreakpointAfter === true) message.cacheBreakpoint = true;
+    messages.push(message);
+  }
+  return messages;
+}

@@ -4,16 +4,30 @@
   "type": "module",
   "description": "Trace log, blob store, segmenter, tree store, summarizer and prompt assembler for context-tree",
   "license": "MIT",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
-    "./contracts": { "types": "./dist/contracts/index.d.ts", "import": "./dist/contracts/index.js" },
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./contracts": {
+      "types": "./dist/contracts/index.d.ts",
+      "import": "./dist/contracts/index.js"
+    },
     "./prompts/*": "./src/prompts/*"
   },
-  "files": ["dist", "src/prompts"],
-  "scripts": { "build": "tsc --build", "clean": "tsc --build --clean" },
+  "files": [
+    "dist",
+    "src/prompts"
+  ],
+  "scripts": {
+    "build": "tsc --build && cp -R src/prompts/*.md dist/prompts/",
+    "clean": "tsc --build --clean"
+  },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.122.0",
     "better-sqlite3": "^13.0.3",
