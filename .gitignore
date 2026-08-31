@@ -1,0 +1,64 @@
+# ── dependencies ────────────────────────────────────────────────────────────
+node_modules/
+.pnpm-store/
+.pnpm-debug.log*
+npm-debug.log*
+yarn-error.log*
+
+# ── build output ────────────────────────────────────────────────────────────
+dist/
+build/
+*.tsbuildinfo
+packages/*/dist/
+
+# ── test / coverage ─────────────────────────────────────────────────────────
+coverage/
+.vitest/
+*.lcov
+.nyc_output/
+
+# ── secrets & local config ──────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+context-tree.config.local.json
+local.settings.json
+
+# ── runtime data (L0–L4 are all regenerable or local-only) ──────────────────
+# Default on-disk store for a task tree: trace.jsonl + blobs/ + SQLite + views.
+.context-tree/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# Eval runs write results + recorded completions; fixtures ARE committed.
+eval/results/
+eval/.cache/
+!eval/fixtures/
+
+# ── agent scratch ───────────────────────────────────────────────────────────
+# subagent-driven-development workspace: ledger, briefs, review packages.
+.superpowers/
+.claude/worktrees/
+.claude/settings.local.json
+
+# ── graft ───────────────────────────────────────────────────────────────────
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+# `.ignore` re-admits this tree to ripgrep so the cards stay greppable.
+graft/
+
+# ── editor / OS ─────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*.swo
+*~
