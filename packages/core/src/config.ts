@@ -3,7 +3,7 @@
  * config file, which is committed in real projects.
  */
 import { readFileSync } from 'node:fs';
-import { isAbsolute, resolve } from 'node:path';
+import { dirname, isAbsolute, resolve } from 'node:path';
 import { ConfigError } from './contracts/errors.js';
 import { PHASE_TYPES, type PhaseType } from './contracts/tree.js';
 
@@ -114,6 +114,32 @@ export const DEFAULT_CONFIG: ContextTreeConfig = {
   taskTitle: 'task',
 };
 
+/**
+ * Model ids are provider-namespaced, so the §8 role defaults differ per provider:
+ * an Anthropic-native id like `claude-haiku-4-5-20251001` 404s on OpenRouter, and
+ * vice versa. Picking the wrong set fails at the first live call rather than at
+ * config load, so `resolveConfig` substitutes the right set when the caller names
+ * a provider without naming models.
+ *
+ * OpenRouter exposes no embedding endpoint, so `embedModel` there is unusable and
+ * L3 stays empty — which is exactly why §9's lexical beam-search fallback is
+ * mandatory rather than a nicety.
+ */
+export const PROVIDER_MODEL_DEFAULTS: Readonly<
+  Record<'anthropic' | 'openrouter', Pick<ContextTreeConfig, 'leafModel' | 'rootModel' | 'judgeModel'>>
+> = Object.freeze({
+  anthropic: {
+    leafModel: 'claude-haiku-4-5-20251001',
+    rootModel: 'claude-sonnet-5',
+    judgeModel: 'claude-opus-5',
+  },
+  openrouter: {
+    leafModel: 'anthropic/claude-haiku-4.5',
+    rootModel: 'anthropic/claude-sonnet-5',
+    judgeModel: 'anthropic/claude-opus-5',
+  },
+});
+
 export const CONFIG_FILENAME = 'context-tree.config.json';
 
 function assertPhase(value: unknown, where: string): PhaseType {
@@ -139,6 +165,15 @@ export function resolveConfig(
     neutralPhases: partial.neutralPhases ? [...partial.neutralPhases] : [...DEFAULT_CONFIG.neutralPhases],
     fileTools: partial.fileTools ? [...partial.fileTools] : [...DEFAULT_CONFIG.fileTools],
   };
+
+  // A caller who names a provider but not models gets that provider's ids,
+  // rather than the Anthropic-native defaults that would 404 on OpenRouter.
+  const providerDefaults = PROVIDER_MODEL_DEFAULTS[merged.provider as 'anthropic' | 'openrouter'];
+  if (providerDefaults) {
+    if (partial.leafModel === undefined) merged.leafModel = providerDefaults.leafModel;
+    if (partial.rootModel === undefined) merged.rootModel = providerDefaults.rootModel;
+    if (partial.judgeModel === undefined) merged.judgeModel = providerDefaults.judgeModel;
+  }
 
   for (const [tool, phase] of Object.entries(merged.toolPhase)) {
     merged.toolPhase[tool] = assertPhase(phase, `toolPhase.${tool}`);
@@ -182,11 +217,127 @@ export interface ApiKeys {
   voyage?: string;
 }
 
+/**
+ * Accepted environment variable names per key, in precedence order.
+ *
+ * The `*_API_KEY` form is canonical; the shorter aliases are accepted because
+ * they are what people actually put in a `.env`, and silently ignoring a key
+ * that is plainly present is a worse failure than accepting two spellings —
+ * it presents as "no key configured" while the key sits right there.
+ */
+export const API_KEY_ENV_NAMES: Readonly<Record<keyof ApiKeys, readonly string[]>> = Object.freeze({
+  anthropic: ['ANTHROPIC_API_KEY', 'ANTHROPIC_KEY'],
+  openrouter: ['OPENROUTER_API_KEY', 'OPENROUTER_KEY'],
+  voyage: ['VOYAGE_API_KEY', 'VOYAGE_KEY'],
+});
+
 /** API keys, environment only (§11). */
 export function loadApiKeys(env: NodeJS.ProcessEnv = process.env): ApiKeys {
   const keys: ApiKeys = {};
-  if (env.ANTHROPIC_API_KEY) keys.anthropic = env.ANTHROPIC_API_KEY;
-  if (env.OPENROUTER_API_KEY) keys.openrouter = env.OPENROUTER_API_KEY;
-  if (env.VOYAGE_API_KEY) keys.voyage = env.VOYAGE_API_KEY;
+  for (const [key, names] of Object.entries(API_KEY_ENV_NAMES) as Array<
+    [keyof ApiKeys, readonly string[]]
+  >) {
+    for (const name of names) {
+      const value = env[name];
+      if (value) {
+        keys[key] = value;
+        break;
+      }
+    }
+  }
   return keys;
+}
+
+/** Which key names a provider needs, so a caller can say what is missing. */
+export const PROVIDER_KEY: Readonly<Record<ContextTreeConfig['provider'], keyof ApiKeys | null>> =
+  Object.freeze({
+    anthropic: 'anthropic' as const,
+    openrouter: 'openrouter' as const,
+    mock: null,
+    recorded: null,
+  });
+
+export interface DotEnvResult {
+  /** Files actually read, nearest-first. */
+  loaded: string[];
+  /** Names set into `process.env` by this call. Names only — never values. */
+  applied: string[];
+  /** Names present in a file but left alone because the environment already had them. */
+  skipped: string[];
+}
+
+/**
+ * Loads `.env` into `process.env` so §11's env-only key rule has something to
+ * read. Without this, a key in a `.env` file is invisible: `loadApiKeys` reads
+ * the environment and nothing populates it.
+ *
+ * An existing environment variable always wins — an explicit `KEY=… command`
+ * must not be silently overridden by a stale file. Search walks up from `cwd`
+ * so a workspace-level `.env` covers a nested package, and stops at the first
+ * directory holding one unless `all` is set.
+ *
+ * Values are never logged or returned; only names appear in the result, because
+ * this function's whole input is secrets.
+ */
+export function loadDotEnv(cwd = process.cwd(), options: { all?: boolean } = {}): DotEnvResult {
+  const result: DotEnvResult = { loaded: [], applied: [], skipped: [] };
+  let dir = resolve(cwd);
+
+  for (;;) {
+    const file = resolve(dir, '.env');
+    let raw: string;
+    try {
+      raw = readFileSync(file, 'utf8');
+    } catch {
+      const parent = dirname(dir);
+      if (parent === dir) break;
+      dir = parent;
+      continue;
+    }
+
+    result.loaded.push(file);
+    for (const [name, value] of parseDotEnv(raw)) {
+      if (process.env[name] === undefined) {
+        process.env[name] = value;
+        result.applied.push(name);
+      } else if (!result.applied.includes(name)) {
+        result.skipped.push(name);
+      }
+    }
+    if (!options.all) break;
+
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+
+  return result;
+}
+
+/**
+ * Minimal `.env` parser: `KEY=value`, `export KEY=value`, `#` comments, and
+ * single- or double-quoted values. Deliberately not a dependency — the format
+ * this needs to read is four lines of shell-ish text, and a parser that also
+ * does interpolation would let a `.env` expand one secret into another.
+ */
+function parseDotEnv(raw: string): Array<[string, string]> {
+  const out: Array<[string, string]> = [];
+  for (const line of raw.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const match = /^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(trimmed);
+    if (!match) continue;
+    const name = match[1];
+    let value = (match[2] ?? '').trim();
+    if (!name) continue;
+    const quote = value[0];
+    if ((quote === '"' || quote === "'") && value.length >= 2 && value.endsWith(quote)) {
+      value = value.slice(1, -1);
+    } else {
+      // Strip a trailing unquoted comment, which quoting would have protected.
+      value = value.replace(/\s+#.*$/, '');
+    }
+    out.push([name, value]);
+  }
+  return out;
 }
