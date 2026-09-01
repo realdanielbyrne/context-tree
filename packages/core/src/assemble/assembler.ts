@@ -43,6 +43,7 @@ import type {
 } from '../contracts/index.js';
 import {
   renderActiveHeader,
+  renderActiveMap,
   renderEvent,
   renderLinksBlock,
   renderSummaryBlock,
@@ -268,14 +269,7 @@ export class ZoneAssembler implements PromptAssembler {
     if (active === null) return { blocks: [], truncated: false };
     const { store, blobs, trace } = this.deps;
 
-    const blocks = [
-      this.block(
-        'C',
-        `C:head:${active.id}`,
-        renderActiveHeader(active, store.descendants(active.id)),
-        active.id,
-      ),
-    ];
+    const blocks = [this.block('C', `C:head:${active.id}`, renderActiveHeader(active), active.id)];
 
     if (active.span_start_seq !== null) {
       const from = active.span_start_seq;
@@ -284,6 +278,15 @@ export class ZoneAssembler implements PromptAssembler {
       for (const event of trace.read({ from, to })) {
         blocks.push(this.block('C', `C:event:${event.seq}`, renderEvent(event, blobs)));
       }
+    }
+
+    // The descendant map goes LAST: it grows with every edit, and churn ahead
+    // of the append-only event stream voids the events' cache (see
+    // renderActiveMap). Callers that cache Zone C must keep it after their
+    // moving breakpoint.
+    const descendants = store.descendants(active.id);
+    if (descendants.length > 0) {
+      blocks.push(this.block('C', `C:map:${active.id}`, renderActiveMap(descendants), active.id));
     }
 
     return { blocks, truncated: this.fitZoneC(blocks, budget) };

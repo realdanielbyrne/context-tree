@@ -586,10 +586,13 @@ describe('e2e: summaries -> prompt (§10)', () => {
     );
     expect(zoneBStarts).toEqual([...zoneBStarts].sort((a, b) => (a ?? 0) - (b ?? 0)));
 
-    // Zone C: the active branch's own L0 span, and nothing else's.
+    // Zone C: the active branch's own L0 span, and nothing else's. The
+    // descendant map trails the events so its per-edit churn never sits ahead
+    // of the append-only stream a caller may be caching.
     expect(blocksIn(prompt, 'C').map((block) => block.id)).toEqual([
       `C:head:${active.id}`,
       ...[6, 7, 8, 9, 10, 11].map((seq) => `C:event:${seq}`),
+      `C:map:${active.id}`,
     ]);
     const zoneC = textIn(prompt, 'C');
     expect(zoneC).toContain('applyDiscount');

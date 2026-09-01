@@ -818,3 +818,44 @@ describe('the opening task statement (§8, §9, §15)', () => {
     handle.close();
   });
 });
+
+describe('§8 truncation retry (FM-1)', () => {
+  /** Returns a mid-JSON truncation once, then a compliant reply; records each call's maxTokens. */
+  class TruncatingProvider implements ModelProvider {
+    readonly id = 'truncating-stub';
+    readonly budgets: (number | undefined)[] = [];
+
+    async complete(request: CompletionRequest): Promise<CompletionResult> {
+      this.budgets.push(request.maxTokens);
+      const content = request.messages.map((m) => m.content).join('\n');
+      const body = replyBody(echoedNodeIds(content));
+      const truncated = this.budgets.length === 1;
+      return {
+        // The failure shape observed live: the JSON opens but never closes.
+        text: truncated ? body.slice(0, Math.floor(body.length / 2)) : body,
+        model: request.model,
+        usage: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0 },
+        toolCalls: [],
+        stopReason: truncated ? 'max_tokens' : 'end_turn',
+      };
+    }
+  }
+
+  it('doubles the output budget when the reply was cut off by max_tokens, instead of retrying the identical guaranteed-to-truncate call', async () => {
+    const fx = fixture();
+    const provider = new TruncatingProvider();
+    const summarizer = new Summarizer({
+      store: fx.store,
+      provider,
+      leafModel: LEAF_MODEL,
+      rootModel: ROOT_MODEL,
+      now: () => NOW,
+      maxSummaryTokens: 256,
+    });
+
+    const summary = await summarizer.summarizeLeaf(fx.p1);
+
+    expect(provider.budgets).toEqual([256, 512]);
+    expect(summary.text).toBe('the branch did work');
+  });
+});

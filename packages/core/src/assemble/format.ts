@@ -78,11 +78,28 @@ export function renderLinksBlock(node: TreeNode, links: readonly NodeLink[]): st
   return `links from "${node.title}": ${rendered.join(', ')}`;
 }
 
-/** The Zone C header: what got expanded, so the model can tell breadth from depth. */
-export function renderActiveHeader(active: TreeNode, descendants: readonly TreeNode[]): string {
-  const lines = [
-    `## Active branch (expanded in full): ${active.title}${active.phase_type === null ? '' : ` [${active.phase_type}]`} (${seqRange(active)}, ${active.status})`,
-  ];
+/**
+ * The Zone C header: what got expanded, so the model can tell breadth from depth.
+ * Same volatile-bit rule as the Zone B heading: the active branch's span extends
+ * on every append, and this block is Zone C's FIRST — a seq range here rewrites
+ * the whole zone each turn, which defeats any caching of Zone C's append-only
+ * event stream. The events themselves carry their seq numbers. The descendant
+ * map lives in its own block (`renderActiveMap`) at the END of the zone for the
+ * same reason: every file edit grows it, and churn ahead of stable bytes voids
+ * their cache (measured: iter8-rep1 re-wrote 10–16k tokens/turn, cacheRead
+ * pinned at the A+B prefix, exactly while edits were landing).
+ */
+export function renderActiveHeader(active: TreeNode): string {
+  return `## Active branch (expanded in full): ${active.title}${active.phase_type === null ? '' : ` [${active.phase_type}]`} (${active.status})`;
+}
+
+/**
+ * The descendant map of the active branch, rendered after the event stream so
+ * its per-edit churn never invalidates the cached events before it. Seq ranges
+ * here are fine — this block is expected to change and is never cached.
+ */
+export function renderActiveMap(descendants: readonly TreeNode[]): string {
+  const lines = ['## Expanded above — descendant index'];
   for (const node of descendants) {
     const path = typeof node.meta_json.path === 'string' ? ` ${node.meta_json.path}` : '';
     lines.push(`- ${node.kind}${path} "${node.title}" (${seqRange(node)})`);

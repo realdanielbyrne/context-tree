@@ -14,10 +14,12 @@ import { disabledSink } from '../src/langfuse.js';
 import {
   branchContentText,
   dedupSummarizePlan,
+  mergeKeepSets,
   runScenario,
   selectTopKMessages,
   selectTopKBranches,
   splitSummarizePlan,
+  toZoneCCachedRequest,
   contentWords,
   cosineSimilarity,
   idfVectors,
@@ -186,6 +188,90 @@ describe('summary circuit breaker (splitSummarizePlan)', () => {
     expect(splitSummarizePlan(['n_a', 'n_fresh'], failed)).toEqual({ pending: ['n_fresh'], skipped: 1 });
     expect(splitSummarizePlan(['n_fresh'], failed)).toEqual({ pending: ['n_fresh'], skipped: 0 });
     expect(splitSummarizePlan([], failed)).toEqual({ pending: [], skipped: 0 });
+  });
+});
+
+describe('v6 keep-set combinator (mergeKeepSets)', () => {
+  it('never evicts a guarded branch — unfinished work survives any score', () => {
+    const keptEver = new Set<string>();
+    const keep = mergeKeepSets(['a', 'b', 'c', 'd'], new Set(['a', 'b']), new Set(['d']), keptEver);
+    expect(keep).toBeDefined();
+    expect([...keep!].sort()).toEqual(['a', 'b', 'd']);
+  });
+
+  it('is monotone — a branch kept once is kept on every later turn, so the cached prefix never churns', () => {
+    const keptEver = new Set<string>();
+    mergeKeepSets(['a', 'b', 'c'], new Set(['a', 'b']), new Set(), keptEver);
+    // Next turn the scorer changes its mind about b; membership must not shrink.
+    const keep = mergeKeepSets(['a', 'b', 'c', 'd'], new Set(['a', 'd']), new Set(), keptEver);
+    expect([...keep!].sort()).toEqual(['a', 'b', 'd']);
+  });
+
+  it('returns undefined when everything is kept — the floor property (byte-identical prompt)', () => {
+    const keptEver = new Set<string>();
+    expect(mergeKeepSets(['a', 'b'], undefined, new Set(), keptEver)).toBeUndefined();
+    expect(mergeKeepSets(['a', 'b'], new Set(['a']), new Set(['b']), keptEver)).toBeUndefined();
+  });
+});
+
+describe('v5.5 incremental Zone C caching (toZoneCCachedRequest)', () => {
+  const block = (zone: string, id: string, text: string) => ({ zone, id, text, tokens: 1 });
+  const prompt = {
+    system: 'zone A contract',
+    blocks: [
+      block('A', 'A:contract', 'zone A contract'),
+      block('B', 'B:summary:n1', 'branch one summary'),
+      block('B', 'B:summary:n2', 'branch two summary'),
+      block('C', 'C:head:n3', 'active header'),
+      block('C', 'C:event:5', 'event five'),
+      block('C', 'C:event:6', 'event six'),
+      block('C', 'C:map:n3', 'descendant index'),
+      block('tail', 'tail:fetch-1', 'fetched detail'),
+    ],
+    budgets: { zoneA: 1, zoneB: 2, zoneC: 3, tail: 1, total: 7, overBudget: [], droppedFromZoneB: [] },
+    cacheBreakpoints: ['A:contract', 'B:summary:n2'],
+  } as never;
+
+  it('emits one message per Zone C block with the moving breakpoint on the LAST — prior events become 0.1x reads and only the delta is written, which is native v5.2\'s economics', () => {
+    const request = toZoneCCachedRequest(prompt, 'test-model', {});
+    const contents = request.messages.map((m) => m.content);
+    expect(contents).toEqual([
+      'branch one summary\n\nbranch two summary',
+      'active header',
+      'event five',
+      'event six',
+      'descendant index\n\nfetched detail',
+    ]);
+    const marked = request.messages.filter((m) => m.cacheBreakpoint === true).map((m) => m.content);
+    // Exactly Zone B's end and the last cached C block. The C:map (churns on
+    // every edit) and the tail (rewritten per turn) ride AFTER the marker.
+    expect(marked).toEqual(['branch one summary\n\nbranch two summary', 'event six']);
+    expect(request.systemCacheBreakpoint).toBe(true);
+  });
+
+  it('stays within Anthropic\'s 4-breakpoint limit: system + Zone B + Zone C = 3 markers', () => {
+    const request = toZoneCCachedRequest(prompt, 'test-model', {});
+    const count =
+      (request.systemCacheBreakpoint === true ? 1 : 0) +
+      request.messages.filter((m) => m.cacheBreakpoint === true).length;
+    expect(count).toBe(3);
+  });
+
+  it('appending a Zone C event leaves every earlier message byte-identical — the cached-prefix property the whole design rides on', () => {
+    const before = toZoneCCachedRequest(prompt, 'test-model', {});
+    const grown = {
+      ...(prompt as { blocks: unknown[] }),
+      blocks: [
+        ...(prompt as { blocks: { zone: string }[] }).blocks.filter((b) => b.zone !== 'tail'),
+        block('C', 'C:event:7', 'event seven'),
+        block('tail', 'tail:fetch-2', 'newer fetched detail'),
+      ],
+    } as never;
+    const after = toZoneCCachedRequest(grown, 'test-model', {});
+    const beforeC = before.messages.slice(0, -1); // drop tail message
+    for (const [index, message] of beforeC.entries()) {
+      expect(after.messages[index]?.content).toBe(message.content);
+    }
   });
 });
 

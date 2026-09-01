@@ -12,6 +12,7 @@ export {
 } from './assembler.js';
 export {
   renderActiveHeader,
+  renderActiveMap,
   renderEvent,
   renderLinksBlock,
   renderSummaryBlock,

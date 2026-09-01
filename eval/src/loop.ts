@@ -34,6 +34,7 @@ import {
   toCompletionRequest,
   usdFor,
   type AppendResult,
+  type AssembledPrompt,
   type ChatMessage,
   type CompletionRequest,
   type CompletionResult,
@@ -543,6 +544,135 @@ export function branchContentText(detail: string): string {
  */
 type BranchSelector = (handle: TaskStore, activeNodeId: string | undefined) => ReadonlySet<string> | undefined;
 
+/**
+ * v6 keep-set combinator (pure, for tests): the score-selected branches, plus
+ * two overrides that turn top-k from an evictor into an admitter —
+ *
+ *   guards    branches whose §8 meta shows unfinished work (open questions or
+ *             failing tests) are never evicted; evicting the unsolved dedent
+ *             branch is exactly how iter6's only selector-active run failed.
+ *   monotone  once kept, always kept: membership only grows, so a later turn
+ *             never churns the Zone B prefix that an earlier turn cached.
+ *
+ * Returns undefined (the floor property: no selection, byte-identical prompt)
+ * when the merged keep-set covers every branch.
+ */
+export function mergeKeepSets(
+  allIds: readonly string[],
+  selected: ReadonlySet<string> | undefined,
+  guarded: ReadonlySet<string>,
+  keptEver: Set<string>,
+): ReadonlySet<string> | undefined {
+  const keep = new Set<string>(selected ?? allIds);
+  for (const id of guarded) keep.add(id);
+  for (const id of keptEver) if (allIds.includes(id)) keep.add(id);
+  for (const id of keep) keptEver.add(id);
+  if (allIds.every((id) => keep.has(id))) return undefined;
+  return keep;
+}
+
+/**
+ * v5.5 (EVAL_ZONEC_CACHE=1): the correspondence-principle request builder.
+ * `toCompletionRequest` folds all of Zone C into ONE message, so a breakpoint
+ * there would re-WRITE the whole zone at 1.25x on every turn — worse than
+ * paying it fresh. Native v5.2 is cheap because its transcript is many
+ * messages and the moving breakpoint bills only the newest message as a cache
+ * write; everything before it is a 0.1x read. Zone C is append-only within a
+ * phase, so emitting one message per Zone C block with the breakpoint on the
+ * last reproduces native's incremental economics exactly: at short horizons
+ * (one phase) the tree degenerates to cached-native behavior, and the tree
+ * only pays for its machinery at phase boundaries, where Zone C swaps
+ * wholesale and the old detail has collapsed into a Zone B summary. Requires
+ * the Zone C header to carry no volatile bits (seq ranges) — the header is the
+ * zone's first block, and a byte of churn there rewrites everything after it.
+ */
+export function toZoneCCachedRequest(
+  prompt: AssembledPrompt,
+  model: string,
+  options: { tools?: CompletionRequest['tools']; maxTokens?: number },
+): CompletionRequest {
+  const byZone = (zone: string) => prompt.blocks.filter((block) => block.zone === zone);
+  const messages: ChatMessage[] = [];
+  const zoneB = byZone('B');
+  if (zoneB.length > 0) {
+    messages.push({
+      role: 'user',
+      content: zoneB.map((block) => block.text).join('\n\n'),
+      cacheBreakpoint: true,
+    });
+  }
+  // The C:map block (descendant index) churns on every edit; it must ride
+  // AFTER the moving breakpoint or its churn voids the cached event stream —
+  // Anthropic cache lookups match previously cached prefixes byte-for-byte,
+  // so one changed block ahead of the marker re-writes the whole zone
+  // (measured: iter8-rep1, 10–16k cacheWrite/turn with cacheRead pinned).
+  const zoneC = byZone('C');
+  const cached = zoneC.filter((block) => !block.id.startsWith('C:map:'));
+  cached.forEach((block, index) => {
+    const message: ChatMessage = { role: 'user', content: block.text };
+    if (index === cached.length - 1) message.cacheBreakpoint = true;
+    messages.push(message);
+  });
+  const uncached = [
+    ...zoneC.filter((block) => block.id.startsWith('C:map:')),
+    ...byZone('tail'),
+  ];
+  if (uncached.length > 0) {
+    messages.push({ role: 'user', content: uncached.map((block) => block.text).join('\n\n') });
+  }
+  const request: CompletionRequest = { model, system: prompt.system, messages };
+  if (prompt.system !== '') request.systemCacheBreakpoint = true;
+  if (options.tools !== undefined) request.tools = options.tools;
+  if (options.maxTokens !== undefined) request.maxTokens = options.maxTokens;
+  return request;
+}
+
+/**
+ * v6 selector (EVAL_DSA_V6=1): the DSA question asked properly — "given the
+ * CURRENT context, which branches matter?" The v2 selector scored against the
+ * static task text; on a multi-module task every branch matches the task about
+ * equally, so eviction degenerated to recency+diversity noise. Here the query
+ * is the tail of the active branch's own detail (what the agent is doing right
+ * now) blended with the task, matching DSA's real formulation where the
+ * selection query is the current token, not the prompt head.
+ */
+const DSA_V6_FOCUS_TAIL_CHARS = 2_000;
+const DSA_V6_KEEP_FRACTION = 0.5;
+
+function makeTreeDsaV6Selector(task: string): BranchSelector {
+  const keptEver = new Set<string>();
+  return (handle, activeNodeId) => {
+    const rootId = handle.store.root()?.id;
+    const nodes = handle.store
+      .nodesInCreationOrder()
+      .filter((node) => node.id !== rootId && node.id !== activeNodeId && node.parent_id === rootId);
+    const branches = nodes.map((node) => ({
+      id: node.id as string,
+      text: `${node.title}\n${handle.store.currentSummary(node.id)?.text ?? ''}`,
+    }));
+    const k = Math.max(TREE_DSA_TOP_K_BRANCHES, Math.ceil(branches.length * DSA_V6_KEEP_FRACTION));
+    let focus = task;
+    const active = handle.store.nodesInCreationOrder().find((node) => node.id === activeNodeId);
+    if (active !== undefined) {
+      const detail = renderBranchDetail(handle.store, active, branchFacts(handle.store, active), {
+        trace: handle.trace,
+        blobs: handle.blobs,
+      });
+      focus = `${task}\n${detail.slice(-DSA_V6_FOCUS_TAIL_CHARS)}`;
+    }
+    const selected = selectTopKBranches(branches, contentWords(focus), k);
+    const guarded = new Set<string>();
+    for (const node of nodes) {
+      const meta = handle.store.currentSummary(node.id)?.meta;
+      if (meta === undefined) continue;
+      if (meta.open_questions.length > 0 || meta.tests.some((t) => t.status === 'failed')) {
+        guarded.add(node.id as string);
+      }
+    }
+    return mergeKeepSets(branches.map((b) => b.id), selected, guarded, keptEver);
+  };
+}
+
 /** The tree-dsa arm's selector: top-k branch summaries by recency + task relevance. */
 function makeTreeDsaSelector(task: string): BranchSelector {
   const taskWords = contentWords(task);
@@ -735,10 +865,16 @@ async function runTreeArm(
         activeNodeId,
         selection: keepBranches === undefined ? undefined : { keepBranches },
       });
-      const request = toCompletionRequest(prompt, args.options.model, {
-        tools: treeTools,
-        maxTokens: AGENT_MAX_TOKENS,
-      });
+      const request =
+        process.env.EVAL_ZONEC_CACHE === '1'
+          ? toZoneCCachedRequest(prompt, args.options.model, {
+              tools: treeTools,
+              maxTokens: AGENT_MAX_TOKENS,
+            })
+          : toCompletionRequest(prompt, args.options.model, {
+              tools: treeTools,
+              maxTokens: AGENT_MAX_TOKENS,
+            });
       const { result, record } = await callModel({
         provider: args.provider,
         request,
@@ -889,7 +1025,10 @@ export async function runScenario(loop: LoopOptions): Promise<LoopOutput> {
             ? await runTreeArm({
                 ...armArgs,
                 summarizerProvider: meteredSummarizer,
-                selectBranches: makeTreeDsaSelector(scenario.task),
+                selectBranches:
+                  process.env.EVAL_DSA_V6 === '1'
+                    ? makeTreeDsaV6Selector(scenario.task)
+                    : makeTreeDsaSelector(scenario.task),
               })
             : await runTreeArm({ ...armArgs, summarizerProvider: meteredSummarizer });
     status = output.status;

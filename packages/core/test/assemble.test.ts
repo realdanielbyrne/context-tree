@@ -366,7 +366,15 @@ describe('Zone C (rewritten each phase, rule 2)', () => {
     expect(text).toContain('applied patch'); // this turn's tool_result blob
     expect(text).not.toContain('do not show this in Zone C');
     // One block per L0 event in the branch's span — the finest truncation unit.
-    expect(ids(zoneC).slice(1)).toEqual(['C:event:5', 'C:event:6', 'C:event:7', 'C:event:8']);
+    // The descendant map trails the events: it churns on every edit, and churn
+    // ahead of the append-only stream would void the events' cache.
+    expect(ids(zoneC).slice(1)).toEqual([
+      'C:event:5',
+      'C:event:6',
+      'C:event:7',
+      'C:event:8',
+      `C:map:${active.id}`,
+    ]);
   });
 
   it('reads an OPEN branch through to lastSeq so this turn’s tool results appear before the next ingest pass extends the span', () => {
@@ -733,5 +741,21 @@ describe('Zone B blocks carry no volatile bits (D5)', () => {
     const blockAfter = after.blocks.find((b) => b.id.startsWith(`B:summary:${node.id}`));
     expect(blockAfter?.text).toBe(blockBefore?.text);
     expect(blockAfter?.id).toBe(blockBefore?.id);
+  });
+});
+
+describe('Zone C header carries no volatile bits (D5)', () => {
+  it('keeps the active-branch header byte-identical while the branch span grows, because the header is Zone C\'s FIRST block and a seq range there re-writes the whole zone on every append — defeating any cache of the append-only event stream behind it', () => {
+    const h = harness();
+    const node = h.addBranch({ title: 'reproduce', phase: 'diagnosis', summary: 'found the bug' });
+    const before = h.assembler.assemble({ activeNodeId: node.id });
+    const headBefore = before.blocks.find((b) => b.id === `C:head:${node.id}`);
+    expect(headBefore).toBeDefined();
+
+    h.store.extendSpan(node.id, ((node.span_end_seq ?? 0) + 40) as never);
+
+    const after = h.assembler.assemble({ activeNodeId: node.id });
+    const headAfter = after.blocks.find((b) => b.id === `C:head:${node.id}`);
+    expect(headAfter?.text).toBe(headBefore?.text);
   });
 });

@@ -263,6 +263,7 @@ export class Summarizer {
     expected: ContractExpectation,
   ): Promise<{ text: string; meta: SummaryMeta; model: string }> {
     let violation: string | null = null;
+    let maxTokens = this.maxSummaryTokens;
     for (let attempt = 0; ; attempt += 1) {
       const content = violation === null ? prompt : `${prompt}\n\n${RETRY_PREAMBLE}\n${violation}`;
       // §16: refuse to spend past the cap *before* the call. In a batch this
@@ -273,18 +274,27 @@ export class Summarizer {
         model,
         messages: [{ role: 'user', content }],
         json: true,
-        maxTokens: this.maxSummaryTokens,
+        maxTokens,
       });
       this.costMeter?.record(result.model || model, result.usage);
 
       let parsed: { text: string; meta: SummaryMeta } | null = null;
       let problem: string | null = null;
-      try {
-        parsed = parseSummaryReply(result.text);
-        problem = contractViolation(parsed.meta, expected);
-      } catch (error) {
-        if (!(error instanceof SummaryContractError)) throw error;
-        problem = error.message;
+      if (result.stopReason === 'max_tokens') {
+        // A reply cut off mid-JSON is not a contract violation by the model —
+        // it is a budget failure by us, and retrying at the SAME cap fails
+        // byte-identically (the retry preamble even lengthens the prompt).
+        // Double the budget for the retry instead of lecturing the model.
+        maxTokens *= 2;
+        problem = `reply truncated at ${maxTokens / 2} output tokens; answer completely`;
+      } else {
+        try {
+          parsed = parseSummaryReply(result.text);
+          problem = contractViolation(parsed.meta, expected);
+        } catch (error) {
+          if (!(error instanceof SummaryContractError)) throw error;
+          problem = error.message;
+        }
       }
       if (parsed !== null && problem === null) {
         return { text: parsed.text, meta: parsed.meta, model: result.model || model };
