@@ -718,3 +718,20 @@ describe('toCompletionRequest', () => {
     expect(tuned.json).toBe(true);
   });
 });
+
+describe('Zone B blocks carry no volatile bits (D5)', () => {
+  it('keeps a branch summary block byte-identical while the branch span grows, because span_end_seq extends on every append and a seq range in the heading re-writes the whole B segment each turn', () => {
+    const h = harness();
+    const node = h.addBranch({ title: 'reproduce', phase: 'diagnosis', summary: 'found the bug' });
+    const before = h.assembler.assemble();
+    const blockBefore = before.blocks.find((b) => b.id.startsWith(`B:summary:${node.id}`));
+
+    // The event: the branch absorbs more trace (re-ingestion extends the span).
+    h.store.extendSpan(node.id, ((node.span_end_seq ?? 0) + 40) as never);
+
+    const after = h.assembler.assemble();
+    const blockAfter = after.blocks.find((b) => b.id.startsWith(`B:summary:${node.id}`));
+    expect(blockAfter?.text).toBe(blockBefore?.text);
+    expect(blockAfter?.id).toBe(blockBefore?.id);
+  });
+});

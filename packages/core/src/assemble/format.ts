@@ -38,9 +38,15 @@ function listLine(label: string, values: readonly string[]): string | null {
  * they are what lets the model notice it needs `context_fetch` at all (§9).
  */
 export function renderSummaryBlock(node: TreeNode, summary: NodeSummary, isRoot: boolean): string {
+  // No seq range here, deliberately: `span_end_seq` grows on every append to
+  // the newest branch, and a volatile bit in a Zone B heading re-writes the
+  // whole B segment each turn (the assembler's own "no per-block volatile
+  // bits" rule — measured live as a ~2k cacheWrite every turn with cacheRead
+  // pinned at Zone A). Seq coordinates stay reachable via `fetchable nodes`
+  // and Zone C's active header, both outside the cached prefix.
   const heading = isRoot
     ? `# Task: ${node.title}`
-    : `## Branch: ${node.title}${node.phase_type === null ? '' : ` [${node.phase_type}]`} (${seqRange(node)}, ${node.status})`;
+    : `## Branch: ${node.title}${node.phase_type === null ? '' : ` [${node.phase_type}]`} (${node.status})`;
 
   const lines: (string | null)[] = [
     heading,

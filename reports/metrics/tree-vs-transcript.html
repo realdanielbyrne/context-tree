@@ -1,0 +1,485 @@
+<title>Tree vs Transcript</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  color-scheme: light;
+  --bg:#f7f8f9; --surface:#fcfcfd; --ink:#16181d; --ink2:#4c5158; --muted:#85898f;
+  --grid:#e3e4e6; --hair:rgba(22,24,29,.10); --accent:#2a78d6;
+  --nat:#2a78d6; --ct:#eb6834; --dsa:#1baf7a;
+  --good:#0ca30c; --crit:#d03b3b; --goodtext:#006300;
+  --wash-nat:rgba(42,120,214,.10); --wash-ct:rgba(235,104,52,.10); --wash-dsa:rgba(27,175,122,.10);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --bg:#101214; --surface:#191b1d; --ink:#eceef0; --ink2:#b6bac0; --muted:#83878d;
+    --grid:#2a2d30; --hair:rgba(255,255,255,.10); --accent:#3987e5;
+    --nat:#3987e5; --ct:#d95926; --dsa:#199e70;
+    --good:#0ca30c; --crit:#e66767; --goodtext:#0ca30c;
+    --wash-nat:rgba(57,135,229,.14); --wash-ct:rgba(217,89,38,.14); --wash-dsa:rgba(25,158,112,.14);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#101214; --surface:#191b1d; --ink:#eceef0; --ink2:#b6bac0; --muted:#83878d;
+  --grid:#2a2d30; --hair:rgba(255,255,255,.10); --accent:#3987e5;
+  --nat:#3987e5; --ct:#d95926; --dsa:#199e70;
+  --good:#0ca30c; --crit:#e66767; --goodtext:#0ca30c;
+  --wash-nat:rgba(57,135,229,.14); --wash-ct:rgba(217,89,38,.14); --wash-dsa:rgba(25,158,112,.14);
+}
+*{box-sizing:border-box}
+body{background:var(--bg); color:var(--ink); font:16px/1.6 "IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif; margin:0; padding:0 20px 96px;}
+main{max-width:880px; margin:0 auto;}
+.prose{max-width:700px;}
+h1,h2,h3{line-height:1.2; text-wrap:balance;}
+h1{font-size:2.1rem; font-weight:700; letter-spacing:-.02em; margin:.2em 0 .1em;}
+h2{font-size:1.35rem; font-weight:600; margin:2.6em 0 .5em; letter-spacing:-.01em;}
+h3{font-size:1.05rem; font-weight:600; margin:1.8em 0 .4em;}
+p{margin:.6em 0; color:var(--ink2);}
+p strong, li strong{color:var(--ink);}
+a{color:var(--accent);}
+code,.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace; font-size:.86em;}
+code{background:var(--surface); border:1px solid var(--hair); border-radius:4px; padding:.08em .35em;}
+.eyebrow{font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.72rem; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-top:56px;}
+.meta{color:var(--muted); font-size:.85rem; margin-bottom:2em;}
+.secno{color:var(--accent); font-family:"IBM Plex Mono",monospace; font-weight:500; margin-right:.5em; font-size:.9em;}
+
+.kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin:28px 0 8px;}
+.kpi{background:var(--surface); border:1px solid var(--hair); border-radius:10px; padding:14px 16px;}
+.kpi .lab{font-size:.78rem; color:var(--muted);}
+.kpi .val{font-size:1.7rem; font-weight:600; margin:.05em 0;}
+.kpi .sub{font-size:.78rem; color:var(--ink2);}
+.kpi .up{color:var(--goodtext); font-weight:500;}
+.kpi .down{color:var(--crit); font-weight:500;}
+
+.panel{background:var(--surface); border:1px solid var(--hair); border-radius:12px; padding:18px 18px 10px; margin:20px 0;}
+.panel h4{margin:0 0 2px; font-size:.95rem; font-weight:600;}
+.panel .sub{margin:0 0 10px; font-size:.8rem; color:var(--muted);}
+.legend{display:flex; flex-wrap:wrap; gap:14px; font-size:.78rem; color:var(--ink2); margin:6px 0 4px;}
+.legend .key{display:inline-flex; align-items:center; gap:6px;}
+.key i{width:10px; height:10px; border-radius:50%; display:inline-block;}
+.key .sq{border-radius:2px;}
+svg{display:block; width:100%; height:auto;}
+svg text{font-family:"IBM Plex Sans",system-ui,sans-serif;}
+.figwrap{overflow-x:auto;}
+
+table{border-collapse:collapse; width:100%; font-size:.85rem; margin:14px 0;}
+th{font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); text-align:left; font-weight:600; padding:8px 10px; border-bottom:1px solid var(--grid);}
+td{padding:7px 10px; border-bottom:1px solid var(--grid); color:var(--ink2); vertical-align:top;}
+td.num,th.num{text-align:right; font-variant-numeric:tabular-nums; font-family:"IBM Plex Mono",monospace; font-size:.8rem;}
+td b{color:var(--ink); font-weight:600;}
+.tblwrap{overflow-x:auto;}
+.pill{display:inline-block; border-radius:999px; padding:.1em .6em; font-size:.72rem; font-weight:600; letter-spacing:.02em;}
+.pill.ok{background:color-mix(in srgb,var(--good) 14%,transparent); color:var(--goodtext);}
+.pill.bad{background:color-mix(in srgb,var(--crit) 14%,transparent); color:var(--crit);}
+.pill.kept{background:color-mix(in srgb,var(--accent) 12%,transparent); color:var(--accent);}
+.pill.retire{background:var(--grid); color:var(--ink2);}
+.arm{font-weight:600;}
+.arm.nat{color:var(--nat);} .arm.ct{color:var(--ct);} .arm.dsa{color:var(--dsa);}
+
+.fmgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:14px; margin:16px 0;}
+.fm{background:var(--surface); border:1px solid var(--hair); border-left:3px solid var(--crit); border-radius:10px; padding:14px 16px;}
+.fm.fixed{border-left-color:var(--good);}
+.fm h4{margin:0 0 4px; font-size:.92rem;}
+.fm .tag{font-family:"IBM Plex Mono",monospace; font-size:.7rem; color:var(--muted);}
+.fm p{font-size:.85rem; margin:.4em 0;}
+.fm .ev{font-size:.78rem; color:var(--muted); border-top:1px dashed var(--grid); padding-top:6px; margin-top:8px;}
+
+#tip{position:fixed; pointer-events:none; background:var(--ink); color:var(--bg); font:0.75rem/1.45 "IBM Plex Mono",monospace; padding:7px 10px; border-radius:6px; opacity:0; transition:opacity .12s; z-index:9; max-width:280px;}
+@media (prefers-reduced-motion:reduce){ #tip{transition:none;} }
+details{margin:18px 0;}
+summary{cursor:pointer; font-weight:600; color:var(--ink);}
+.note{border-left:3px solid var(--accent); background:var(--surface); border-radius:0 8px 8px 0; padding:10px 16px; margin:16px 0; font-size:.9rem;}
+</style>
+
+<main>
+<p class="eyebrow">context-tree · eval lab · 2026-09-01</p>
+<h1>Tree vs Transcript</h1>
+<p class="meta">Three analyze&rarr;improve&rarr;rerun loops on the long-horizon SWE tasks, 33 live runs, ~$14 spend &middot; agent <span class="mono">claude-sonnet-5</span>, leaves <span class="mono">claude-haiku-4-5</span> &middot; parallel replicates, so wall-clock latency is not comparable across batches.</p>
+
+<div class="kpis">
+  <div class="kpi"><div class="lab">context-tree v5, long task (median)</div><div class="val">$0.288</div><div class="sub"><span class="up">&minus;66%</span> vs v3.1 ($0.852) &middot; 100% success</div></div>
+  <div class="kpi"><div class="lab">honest native baseline (v5.2, median)</div><div class="val">$0.242</div><div class="sub"><span class="up">&minus;61%</span> vs uncached ($0.625) &middot; caching was the strawman</div></div>
+  <div class="kpi"><div class="lab">turns to solve, tree vs native</div><div class="val">20 vs 34</div><div class="sub">the tree&rsquo;s durable edge &middot; uncached native failed 1/3 runs at the 40-turn cap</div></div>
+  <div class="kpi"><div class="lab">wasted cacheWrite per run</div><div class="val">&minus;88%</div><div class="sub">54k &rarr; 6.3k tokens after v5.1 stable Zone&nbsp;B</div></div>
+</div>
+
+<h2><span class="secno">01</span>What was asked, and what came back</h2>
+<div class="prose">
+<p>The starting point was the prior report&rsquo;s open question: <em>why does the tree pay more while reducing context tokens</em> &mdash; and its phased plan (breaker live-run, a task big enough to make the selector fire, then cost-floor cuts). Three loops later the answer is mechanical, not philosophical: <strong>the tree was paying for a cache it never hit, next to a baseline that never used one.</strong> Fixing both sides changed every ranking.</p>
+<p>The winning design, <b>context-tree v5</b>, holds <strong>every</strong> branch summary in a byte-stable cached prefix, carries only the newest branch as raw detail, and summarizes each branch exactly once &mdash; when it closes. It solves the long task in 20 turns (median) to cached-native&rsquo;s 34, at statistically indistinguishable cost, with 100% success where uncached native and selection-based tree-dsa each dropped a run.</p>
+</div>
+
+<h2><span class="secno">02</span>Design lineage</h2>
+<p class="prose">Each version responds to a failure mechanism <em>measured</em> in the version before it &mdash; no change shipped on taste.</p>
+<div class="tblwrap"><table>
+<tr><th>Version</th><th>Change</th><th>Responding to</th><th>Iteration</th><th>Verdict</th></tr>
+<tr><td class="mono">v1</td><td>Lazy &ge;8-event threshold summarizer, lexical branch scorer</td><td>baseline</td><td>iter1&ndash;3 (prior)</td><td><span class="pill retire">superseded</span></td></tr>
+<tr><td class="mono">v2</td><td>idf-cosine + farthest-point branch selector (tree-dsa)</td><td>&ldquo;selection should be cheap &amp; deterministic&rdquo;</td><td>iter2 (prior)</td><td><span class="pill retire">retire selection</span> harmful once cache works (FM-5)</td></tr>
+<tr><td class="mono">v3</td><td>Whole-plan summary circuit breaker</td><td>same node re-billed 3&times; (FM-1)</td><td>iter3 (prior)</td><td><span class="pill retire">superseded</span></td></tr>
+<tr><td class="mono">v3.1</td><td><b>Per-node breaker</b> with failure memory</td><td>whole-plan version leaked repeats</td><td>iter4&ndash;5</td><td><span class="pill kept">kept</span> 14&ndash;17 skips/run at long horizon</td></tr>
+<tr><td class="mono">v5.1</td><td><b>Stable Zone&nbsp;B headings</b> &mdash; volatile seq ranges removed (core fix)</td><td>Zone&nbsp;B breakpoint never hit (FM-2)</td><td>iter6</td><td><span class="pill kept">kept</span> cacheWrite &minus;88%</td></tr>
+<tr><td class="mono">v5.2</td><td><b>Cached native baseline</b> &mdash; moving breakpoint on the transcript</td><td>native was an uncached strawman (FM-4)</td><td>iter6</td><td><span class="pill kept">kept</span> native $0.63&rarr;$0.24; 1&ndash;2 fresh tokens/turn</td></tr>
+<tr><td class="mono">v5.3</td><td><b>Zone&nbsp;C = latest branch</b>, not the whole trace</td><td>tree paid summaries <em>and</em> full detail (FM-3)</td><td>iter6</td><td><span class="pill kept">kept</span> fresh input O(delta)</td></tr>
+<tr><td class="mono">v5.4</td><td><b>Summarize-on-close</b> &mdash; threshold hyperparameter deleted</td><td>&ge;8-event knob coupled cost to turn noise</td><td>iter6</td><td><span class="pill kept">kept</span> cost is now a function of tree structure</td></tr>
+<tr><td class="mono">v5.x</td><td>Cosine dedup-before-summarize (gated, unit-tested)</td><td>duplicate sibling summaries</td><td>landed, not live-run</td><td><span class="pill retire">shelved</span> subsumed by v5.4&rsquo;s one-summary-per-branch</td></tr>
+<tr><td class="mono">v6</td><td><b>Sticky selection</b> (proposed): Zone&nbsp;B only gains branches; membership changes only at phase boundaries, k&ge;5</td><td>eviction harm (FM-5) + retain-generously economics</td><td>next</td><td><span class="pill kept">proposed</span></td></tr>
+</table></div>
+
+<h2><span class="secno">03</span>Every run, one picture</h2>
+<div class="panel">
+  <h4>Cost vs turns &mdash; all 33 runs, three iterations plus prior baselines</h4>
+  <p class="sub">Circles: sw-1-jsonc (short task) &middot; diamonds: sw-2-multimod (long task) &middot; &#10005; over a mark: failed run. Hover any mark for the run detail.</p>
+  <div class="legend">
+    <span class="key"><i style="background:var(--nat)"></i>native</span>
+    <span class="key"><i style="background:var(--ct)"></i>context-tree</span>
+    <span class="key"><i style="background:var(--dsa)"></i>tree-dsa</span>
+  </div>
+  <div class="figwrap" id="fig-scatter"></div>
+</div>
+<div class="prose">
+<p>Two clusters carry the story. The lower-left group of diamonds under ~$0.31 and ~26 turns is <strong>iter6</strong>: the v5 stack pushed both tree arms and cached native into territory no arm reached before. And the two failed runs (&#10005;) are both <em>long-horizon endurance</em> failures at the 40-turn cap &mdash; one uncached native, one tree-dsa in the only replicate where its selector actually evicted branches.</p>
+</div>
+
+<h2><span class="secno">04</span>The three loops</h2>
+
+<h3>Loop A (iter4) &mdash; per-node breaker, live</h3>
+<div class="prose">
+<p><b>Hypothesis:</b> the landed per-node circuit breaker cuts repeat §8-contract billing (3&rarr;2&rarr;expected 1). <b>Result:</b> it worked as insurance &mdash; 3 skip events saved ~6 root-summarizer calls &mdash; but the headline numbers were dominated by trajectory luck: context-tree drew a 7-turn run ($0.171, best ever) while native drew its worst ($0.488/20t). The lasting yield of this loop was the <strong>per-turn cache autopsy</strong> below, which found FM-2, FM-3, and FM-4 and set iter6&rsquo;s agenda.</p>
+</div>
+
+<h3>Loop B (iter5) &mdash; a task that finally exceeds k branches, n=3</h3>
+<div class="prose">
+<p><b>Hypothesis:</b> on a 4-module task (<span class="mono">sw-2-multimod</span>, verified by a self-checking generator) the selector fires and replicates tame the variance. <b>Result:</b> the selector fired (up to <span class="mono">kept 3/6</span>), medians became meaningful, and tree-dsa v3.1 won the iteration outright &mdash; $0.575 vs native&rsquo;s $0.625 &mdash; while uncached native <strong>failed a replicate</strong> at the turn cap. The breaker earned 14&ndash;17 skips per afflicted run, and §8 failures appeared on haiku leaves too: the contract is fragile independent of model.</p>
+</div>
+
+<h3>Loop C (iter6) &mdash; the v5 stack</h3>
+<div class="prose">
+<p><b>Hypothesis:</b> fix the cache on both sides (v5.1/v5.2), stop paying for old detail (v5.3), make summarization event-driven (v5.4). <b>Result:</b> the largest single step in the program &mdash; context-tree &minus;66%, native &minus;61% &mdash; and a reversal: with caching honest, <strong>selection stopped paying</strong>. Tree-dsa&rsquo;s only selector-active replicate lost module context, wandered to the 40-turn cap, and failed; its selector-quiet replicates were byte-identical to context-tree v5 and matched it.</p>
+</div>
+
+<div class="panel">
+  <h4>Median cost per arm on the long task &mdash; before and after the v5 stack</h4>
+  <p class="sub">sw-2-multimod, n=3 per bar, medians. Success annotated where below 100%.</p>
+  <div class="figwrap" id="fig-bars"></div>
+</div>
+
+<h2><span class="secno">05</span>The cache autopsy</h2>
+<div class="prose">
+<p>Per-turn provider accounting, three regimes. This is the evidence that re-ranked every arm: the same architecture, separated only by whether its prompt prefix is byte-stable.</p>
+</div>
+<div class="panel">
+  <h4>Per-turn token accounting, three regimes</h4>
+  <p class="sub">Lines: cacheRead (cheap, 0.1&times;) and fresh input (full price). Bars: cacheWrite (1.25&times;). Same encoding across panels; y-scales differ and are labeled.</p>
+  <div class="legend">
+    <span class="key"><i style="background:var(--nat)"></i>cacheRead</span>
+    <span class="key"><i style="background:var(--ct)"></i>fresh input</span>
+    <span class="key"><i class="sq" style="background:var(--dsa)"></i>cacheWrite</span>
+  </div>
+  <div class="figwrap" id="fig-cache"></div>
+</div>
+<div class="prose">
+<p><strong>Broken (iter4 tree arm):</strong> cacheRead pinned at 4,788 &mdash; only Zone&nbsp;A ever hits &mdash; while ~2k is re-written every turn and thrown away, and fresh input climbs monotonically because Zone&nbsp;C re-renders the whole trace. <strong>Fixed (iter6, v5):</strong> cacheRead steps <em>upward</em> as closed branches join the stable prefix, cacheWrite collapses to phase boundaries (the §17 model, finally observed live), and fresh input tracks the newest branch only. <strong>Cached native (v5.2):</strong> 1&ndash;2 fresh tokens per turn &mdash; the entire transcript rides the cache.</p>
+</div>
+
+<div class="panel">
+  <h4>Fresh input per turn &mdash; v3.1 vs v5 context-tree, all replicate turns pooled</h4>
+  <p class="sub">Histogram, 2k-token bins, sw-2-multimod. v3.1 re-billed a growing trace every turn; v5 pays for the delta.</p>
+  <div class="legend">
+    <span class="key"><i style="background:var(--ct)"></i>context-tree v3.1 (iter5, 82 turns)</span>
+    <span class="key"><i style="background:var(--nat)"></i>context-tree v5 (iter6, 54 turns)</span>
+  </div>
+  <div class="figwrap" id="fig-hist"></div>
+</div>
+
+<h2><span class="secno">06</span>Failure mechanisms, in detail</h2>
+<div class="fmgrid">
+  <div class="fm fixed">
+    <h4>FM-1 &middot; §8 contract break, then double billing</h4><span class="tag">summarizer &middot; mitigated by v3.1</span>
+    <p>The summarizer intermittently replies with no JSON object (&ldquo;broke the §8 summary contract after one retry&rdquo;), on <b>sonnet roots and haiku leaves alike</b>. Each break bills a full try+retry; without memory the same node re-failed identically &mdash; 3&times; in one iter2 run.</p>
+    <p class="ev">Evidence: 11 distinct node failures across iter4&ndash;6 logs; breaker skip lines 3 (iter4), 14&ndash;17 (iter5 reps). Residual: a breaker-skipped <em>root</em> stays stale forever (no half-open retry), and re-segmentation id churn can evade the id-keyed memory once per new id.</p>
+  </div>
+  <div class="fm fixed">
+    <h4>FM-2 &middot; Volatile bits in Zone&nbsp;B headings</h4><span class="tag">assembler &middot; fixed by v5.1</span>
+    <p>Branch headings embedded <code>(seq X&ndash;Y)</code>; the newest branch&rsquo;s span grows on every append, so Zone&nbsp;B&rsquo;s text mutated each turn and its breakpoint never hit &mdash; violating the assembler&rsquo;s own &ldquo;no per-block volatile bits&rdquo; rule. The §17 cache test missed it because its fixture appends L0 <em>without re-running ingestion</em>.</p>
+    <p class="ev">Evidence: cacheRead flat at 4,788 for 19 straight turns; ~2k discarded cacheWrite/turn. After: cacheWrite &minus;88%, hits step upward. Regression test added.</p>
+  </div>
+  <div class="fm fixed">
+    <h4>FM-3 &middot; Zone&nbsp;C was the entire trace</h4><span class="tag">eval loop &middot; fixed by v5.3</span>
+    <p>The segmenter closes all phases on re-ingest, so <code>openPhase()</code> was always null and the loop expanded the <em>root</em> &mdash; Zone&nbsp;C re-rendered every event every turn. The tree paid for summaries <em>and</em> the full detail they were meant to replace.</p>
+    <p class="ev">Evidence: v3.1 fresh input marches 402&rarr;15,276 tokens/turn (histogram above); v5 stays O(newest branch) with resets at phase boundaries.</p>
+  </div>
+  <div class="fm fixed">
+    <h4>FM-4 &middot; The native baseline never cached</h4><span class="tag">harness fairness &middot; fixed by v5.2</span>
+    <p>The native arm sent no cache breakpoints &mdash; it re-billed the whole transcript at full price every turn. Real harnesses cache the prefix, so every prior &ldquo;tree vs native&rdquo; cost delta was measured against a strawman.</p>
+    <p class="ev">Evidence: iter5 native $0.63&ndash;0.77; iter6 cached native $0.11&ndash;0.29 with 1&ndash;2 fresh input tokens/turn. All pre-v5.2 native cost rows should be read as upper bounds.</p>
+  </div>
+  <div class="fm">
+    <h4>FM-5 &middot; Selection eviction loses load-bearing context</h4><span class="tag">tree-dsa &middot; open &rarr; v6</span>
+    <p>With the cache fixed, top-k eviction stopped saving money and started costing correctness: the one iter6 replicate whose selector actually fired (23 evictions) lost sight of earlier modules, wandered, and hit the 40-turn cap unsolved. Selector-quiet replicates matched context-tree v5 exactly (the floor property).</p>
+    <p class="ev">Evidence: iter6 tree-dsa $0.549&plusmn;0.307, 67% success; the failure is the only selector-active run. Perfect correlation, n=1 caveat noted. Proposed v6: membership only ever grows; changes only at phase boundaries; k&ge;5.</p>
+  </div>
+</div>
+
+<h2><span class="secno">07</span>Remediation ledger</h2>
+<p class="prose">Everything tried across the three loops, in order, with outcome &mdash; including what didn&rsquo;t survive.</p>
+<div class="tblwrap"><table>
+<tr><th>#</th><th>Remediation</th><th>Target</th><th>Tried in</th><th>Outcome</th></tr>
+<tr><td>1</td><td>Per-node circuit breaker live-run (<span class="mono">splitSummarizePlan</span> + D11 scheduler)</td><td>FM-1</td><td>iter4</td><td><b>Kept.</b> 3&rarr;14&ndash;17 skips/run as horizon grew; residual: no half-open retry for roots</td></tr>
+<tr><td>2</td><td>&gt;k-branch task (<span class="mono">sw-2-multimod</span>, self-verifying generator, hidden per-module tests)</td><td>Phase-0 measurability</td><td>iter5</td><td><b>Kept.</b> Selector fired (kept 3/4&hellip;3/6); first accuracy separation between arms</td></tr>
+<tr><td>3</td><td>Seeded replication, n=3, medians &plusmn; IQR</td><td>n=1 rankings flipping</td><td>iter5&ndash;6</td><td><b>Kept.</b> CV ran 7&ndash;56%; every n=1 conclusion this program ever drew had flipped at least once</td></tr>
+<tr><td>4</td><td>Cosine dedup-before-summarize (&ge;0.9 to a summarized sibling)</td><td>duplicate summaries</td><td>landed + unit-tested, gated off</td><td><b>Shelved.</b> v5.4&rsquo;s summarize-once subsumes it; revisit only if near-twin branches recur</td></tr>
+<tr><td>5</td><td>Stable Zone&nbsp;B headings (drop volatile seq ranges) + regression test</td><td>FM-2</td><td>iter6</td><td><b>Kept.</b> cacheWrite 54k&rarr;6.3k; core-invariant-aligned fix, not a D-decision deviation</td></tr>
+<tr><td>6</td><td>Native transcript caching (moving breakpoint, 4-marker safe)</td><td>FM-4</td><td>iter6</td><td><b>Kept.</b> Baseline &minus;61%; all cross-arm deltas now honest</td></tr>
+<tr><td>7</td><td>Zone&nbsp;C = latest branch</td><td>FM-3</td><td>iter6</td><td><b>Kept.</b> Fresh input O(delta); no investigate-1 regression (model always sees its own last results)</td></tr>
+<tr><td>8</td><td>Summarize-on-close, threshold deleted</td><td>arbitrary &ge;8-event knob</td><td>iter6</td><td><b>Kept.</b> One leaf call per closed branch; cost decoupled from turn noise</td></tr>
+<tr><td>9</td><td>Haiku root summarizer</td><td>FM-1 cost</td><td>not run</td><td><b>Deferred.</b> v5.4 cut root passes to once-per-phase; §8 JSON robustness is the better lever now</td></tr>
+<tr><td>10</td><td>Top-k branch selection itself (v2, re-evaluated under v5)</td><td>Zone&nbsp;B growth</td><td>iter6</td><td><b>Retire as-is.</b> Harmful when it fires (FM-5); reshape as sticky v6 or drop</td></tr>
+</table></div>
+
+<h2><span class="secno">08</span>Variance, honestly</h2>
+<div class="panel">
+  <h4>Run-level cost spread on the long task &mdash; every replicate, with medians</h4>
+  <p class="sub">sw-2-multimod. Dots: individual runs (&#10005; = failed). Wide tick: group median. Band: min&ndash;max.</p>
+  <div class="figwrap" id="fig-strip"></div>
+</div>
+<div class="tblwrap"><table>
+<tr><th>Group</th><th class="num">n</th><th class="num">mean&plusmn;SD ($)</th><th class="num">CV</th><th class="num">median ($)</th><th class="num">IQR ($)</th><th class="num">turns med</th><th class="num">success</th></tr>
+<tr><td><span class="arm nat">native</span> uncached &middot; iter5</td><td class="num">3</td><td class="num">0.648&plusmn;0.109</td><td class="num">16.8%</td><td class="num">0.625</td><td class="num">0.589&ndash;0.696</td><td class="num">32</td><td class="num">67%</td></tr>
+<tr><td><span class="arm ct">context-tree</span> v3.1 &middot; iter5</td><td class="num">3</td><td class="num">0.830&plusmn;0.128</td><td class="num">15.4%</td><td class="num">0.852</td><td class="num">0.773&ndash;0.899</td><td class="num">27</td><td class="num">100%</td></tr>
+<tr><td><span class="arm dsa">tree-dsa</span> v3.1 &middot; iter5</td><td class="num">3</td><td class="num">0.629&plusmn;0.117</td><td class="num">18.7%</td><td class="num">0.575</td><td class="num">0.561&ndash;0.669</td><td class="num">23</td><td class="num">100%</td></tr>
+<tr><td><span class="arm nat">native</span> cached v5.2 &middot; iter6</td><td class="num">3</td><td class="num">0.215&plusmn;0.093</td><td class="num">43.0%</td><td class="num">0.242</td><td class="num">0.177&ndash;0.267</td><td class="num">34</td><td class="num">100%</td></tr>
+<tr><td><span class="arm ct">context-tree</span> v5 &middot; iter6</td><td class="num">3</td><td class="num">0.299&plusmn;0.145</td><td class="num">48.5%</td><td class="num">0.288</td><td class="num">0.224&ndash;0.368</td><td class="num">20</td><td class="num">100%</td></tr>
+<tr><td><span class="arm dsa">tree-dsa</span> v5 &middot; iter6</td><td class="num">3</td><td class="num">0.549&plusmn;0.307</td><td class="num">56.0%</td><td class="num">0.444</td><td class="num">0.376&ndash;0.670</td><td class="num">40&rarr;20</td><td class="num">67%</td></tr>
+</table></div>
+<div class="prose">
+<p>Two honest caveats. <strong>CV rose in iter6</strong> even as costs fell &mdash; cheaper runs make the same trajectory luck a bigger fraction of the total, and n=3 cannot rank context-tree v5 against cached native ($0.288 vs $0.242 medians with overlapping IQRs). It <em>can</em> rank both against everything pre-v5, where the gaps are multiples, and it can call the turns gap (20 vs 34, disjoint ranges). <strong>Native&rsquo;s trajectory variance is real and large</strong>: four identically-configured pre-v5 runs on the short task spanned $0.157&ndash;$0.488. Any future claim built on n=1 should be assumed wrong.</p>
+</div>
+
+<h2><span class="secno">09</span>Suite validation</h2>
+<div id="suite-section" class="prose">
+<p><em>Running now: context-tree v5 vs cached native across both tasks (short + long), n=3 &mdash; this section is filled by the final publish.</em></p>
+</div>
+
+<h2><span class="secno">10</span>What to do next</h2>
+<div class="prose">
+<ol>
+<li><b>§8 contract robustness</b> &mdash; the single remaining live defect class. The parser wants a JSON object; the model sometimes writes prose first. Tolerant extraction (or a forced-json request mode) likely erases FM-1 at the source, cheaper than any breaker refinement.</li>
+<li><b>Breaker half-open state</b> &mdash; retry a failed node after N turns so a tripped <em>root</em> doesn&rsquo;t stay stale forever; key failure memory on stable node identity, not raw ids, to survive re-segmentation churn.</li>
+<li><b>v6 sticky selection</b> &mdash; test retain-generously directly: Zone&nbsp;B membership only grows, changes only at phase boundaries, k&ge;5. Guard metric stays selector-fire rate; success is the primary metric after FM-5.</li>
+<li><b>Hyperparameter search (the prior report&rsquo;s Phase&nbsp;2) is now worth running</b> &mdash; the summarizer-noise floor it feared is gone: v5.4 removed the highest-leverage confound (<span class="mono">SUMMARIZE_MIN_NEW_EVENTS</span>) entirely, and what remains to sweep is k and the zone budgets under v6.</li>
+<li><b>Broaden the suite</b> &mdash; two in-sandbox tasks is a start; port the generator pattern (self-verifying, hidden per-module tests) to 3&ndash;4 more task shapes before trusting any cross-task generalization.</li>
+</ol>
+</div>
+
+<details><summary>Appendix &middot; all 33 runs (table view)</summary>
+<div class="tblwrap"><table id="all-runs-tbl">
+<tr><th>Iteration</th><th>Arm</th><th>Task</th><th class="num">Cost $</th><th class="num">Turns</th><th class="num">Fresh in</th><th class="num">CacheRead</th><th class="num">CacheWrite</th><th class="num">Total tok</th><th>Result</th></tr>
+</table></div>
+</details>
+
+<p class="meta" style="margin-top:40px">Methodology: every model call metered (agent, summarizer, judge). Replicate processes run in parallel by explicit request &mdash; cost/token/turn metrics are unaffected; wall-clock and latency percentiles are contended and excluded from all comparisons. Raw data: <span class="mono">eval/results/long-swe-iter{4,5,6}</span>, <span class="mono">eval/results/suite-final</span>.</p>
+</main>
+
+<div id="tip" role="status"></div>
+
+<script>
+const POINTS=[{"it":"iter1","arm":"native","task":"sw-1-jsonc","cost":0.1565,"turns":12,"ok":true,"cw":0,"cr":0,"inp":45508,"tot":52061},{"it":"iter1","arm":"context-tree","task":"sw-1-jsonc","cost":0.2004,"turns":9,"ok":true,"cw":12912,"cr":39696,"inp":25542,"tot":82150},{"it":"iter1","arm":"tree-dsa","task":"sw-1-jsonc","cost":0.1883,"turns":9,"ok":true,"cw":9286,"cr":44723,"inp":27892,"tot":85949},{"it":"iter2","arm":"native","task":"sw-1-jsonc","cost":0.2597,"turns":21,"ok":true,"cw":0,"cr":0,"inp":93662,"tot":100899},{"it":"iter2","arm":"context-tree","task":"sw-1-jsonc","cost":0.4558,"turns":15,"ok":true,"cw":26997,"cr":68466,"inp":84186,"tot":186177},{"it":"iter2","arm":"tree-dsa","task":"sw-1-jsonc","cost":0.1984,"turns":9,"ok":true,"cw":7719,"cr":45606,"inp":31404,"tot":89369},{"it":"iter3","arm":"native","task":"sw-1-jsonc","cost":0.2009,"turns":18,"ok":true,"cw":0,"cr":0,"inp":70097,"tot":76163},{"it":"iter3","arm":"context-tree","task":"sw-1-jsonc","cost":0.4401,"turns":15,"ok":true,"cw":27432,"cr":67032,"inp":78245,"tot":177203},{"it":"iter3","arm":"tree-dsa","task":"sw-1-jsonc","cost":0.2178,"turns":10,"ok":true,"cw":5492,"cr":47880,"inp":39678,"tot":97409},{"it":"iter4","arm":"native","task":"sw-1-jsonc","cost":0.4877,"turns":20,"ok":true,"cw":0,"cr":0,"inp":197930,"tot":207115},{"it":"iter4","arm":"context-tree","task":"sw-1-jsonc","cost":0.1706,"turns":7,"ok":true,"cw":9442,"cr":31484,"inp":19369,"tot":64405},{"it":"iter4","arm":"tree-dsa","task":"sw-1-jsonc","cost":0.5457,"turns":19,"ok":true,"cw":32689,"cr":90972,"inp":121205,"tot":253879},{"it":"iter5","arm":"native","task":"sw-2-multimod","cost":0.766,"turns":30,"ok":true,"cw":0,"cr":0,"inp":350823,"tot":357260},{"it":"iter5","arm":"context-tree","task":"sw-2-multimod","cost":0.8515,"turns":27,"ok":true,"cw":54113,"cr":129276,"inp":229478,"tot":421939},{"it":"iter5","arm":"tree-dsa","task":"sw-2-multimod","cost":0.7634,"turns":27,"ok":true,"cw":42634,"cr":130961,"inp":194193,"tot":373722},{"it":"iter5","arm":"native","task":"sw-2-multimod","cost":0.5522,"turns":40,"ok":false,"cw":0,"cr":0,"inp":235709,"tot":243791},{"it":"iter5","arm":"context-tree","task":"sw-2-multimod","cost":0.6935,"turns":25,"ok":true,"cw":42542,"cr":119700,"inp":173259,"tot":341555},{"it":"iter5","arm":"tree-dsa","task":"sw-2-multimod","cost":0.5483,"turns":21,"ok":true,"cw":26717,"cr":104490,"inp":138210,"tot":277395},{"it":"iter5","arm":"native","task":"sw-2-multimod","cost":0.6254,"turns":32,"ok":true,"cw":0,"cr":0,"inp":278612,"tot":285428},{"it":"iter5","arm":"context-tree","task":"sw-2-multimod","cost":0.946,"turns":29,"ok":true,"cw":69578,"cr":142738,"inp":247502,"tot":467745},{"it":"iter5","arm":"tree-dsa","task":"sw-2-multimod","cost":0.5746,"turns":23,"ok":true,"cw":23867,"cr":110124,"inp":156002,"tot":298239},{"it":"iter6","arm":"native","task":"sw-2-multimod","cost":0.2418,"turns":34,"ok":true,"cw":22259,"cr":460240,"inp":48,"tot":491950},{"it":"iter6","arm":"context-tree","task":"sw-2-multimod","cost":0.4487,"turns":25,"ok":true,"cw":7110,"cr":161882,"inp":113935,"tot":291301},{"it":"iter6","arm":"tree-dsa","task":"sw-2-multimod","cost":0.8954,"turns":40,"ok":false,"cw":8989,"cr":265785,"inp":272289,"tot":560515},{"it":"iter6","arm":"native","task":"sw-2-multimod","cost":0.292,"turns":37,"ok":true,"cw":29096,"cr":711587,"inp":51,"tot":748421},{"it":"iter6","arm":"context-tree","task":"sw-2-multimod","cost":0.2883,"turns":20,"ok":true,"cw":6305,"cr":124272,"inp":52867,"tot":189849},{"it":"iter6","arm":"tree-dsa","task":"sw-2-multimod","cost":0.3084,"turns":20,"ok":true,"cw":1487,"cr":119706,"inp":80745,"tot":209737},{"it":"iter6","arm":"native","task":"sw-2-multimod","cost":0.1125,"turns":26,"ok":true,"cw":9350,"cr":174967,"inp":34,"tot":189762},{"it":"iter6","arm":"context-tree","task":"sw-2-multimod","cost":0.1593,"turns":9,"ok":true,"cw":821,"cr":49488,"inp":29498,"tot":84358},{"it":"iter6","arm":"tree-dsa","task":"sw-2-multimod","cost":0.4439,"turns":18,"ok":true,"cw":2165,"cr":105198,"inp":151410,"tot":266329}];
+const BROKEN=[{"i":0,"in":510,"cr":4788,"cw":0},{"i":1,"in":1034,"cr":4788,"cw":0},{"i":2,"in":1469,"cr":4788,"cw":973},{"i":3,"in":1769,"cr":4788,"cw":973},{"i":4,"in":3582,"cr":4788,"cw":1999},{"i":5,"in":4052,"cr":4788,"cw":1810},{"i":6,"in":4497,"cr":4788,"cw":1905},{"i":7,"in":4676,"cr":4788,"cw":1905},{"i":8,"in":4924,"cr":4788,"cw":1905},{"i":9,"in":5658,"cr":4788,"cw":2150},{"i":10,"in":6443,"cr":4788,"cw":2150},{"i":11,"in":6964,"cr":4788,"cw":2150},{"i":12,"in":7524,"cr":4788,"cw":2003},{"i":13,"in":8183,"cr":4788,"cw":2003},{"i":14,"in":9258,"cr":4788,"cw":2003},{"i":15,"in":10786,"cr":4788,"cw":2190},{"i":16,"in":11805,"cr":4788,"cw":2190},{"i":17,"in":13572,"cr":4788,"cw":2190},{"i":18,"in":14499,"cr":4788,"cw":2190}];
+const FIXED=[{"i":0,"in":370,"cr":4788,"cw":0},{"i":1,"in":254,"cr":4788,"cw":846},{"i":2,"in":1577,"cr":5634,"cw":0},{"i":3,"in":665,"cr":4788,"cw":1339},{"i":4,"in":1004,"cr":6127,"cw":0},{"i":5,"in":1083,"cr":4788,"cw":1909},{"i":6,"in":1248,"cr":6697,"cw":0},{"i":7,"in":1909,"cr":6697,"cw":0},{"i":8,"in":2149,"cr":6697,"cw":0},{"i":9,"in":3034,"cr":6697,"cw":0},{"i":10,"in":3205,"cr":6697,"cw":0},{"i":11,"in":3291,"cr":6697,"cw":0},{"i":12,"in":3452,"cr":6697,"cw":0},{"i":13,"in":3702,"cr":6697,"cw":0},{"i":14,"in":2789,"cr":4788,"cw":2211},{"i":15,"in":2946,"cr":6999,"cw":0},{"i":16,"in":3795,"cr":6999,"cw":0},{"i":17,"in":4850,"cr":6999,"cw":0},{"i":18,"in":5465,"cr":6999,"cw":0},{"i":19,"in":6079,"cr":6999,"cw":0}];
+const NAT6=[{"i":0,"in":1,"cr":0,"cw":1269},{"i":1,"in":1,"cr":1269,"cw":1241},{"i":2,"in":1,"cr":2510,"cw":174},{"i":3,"in":2,"cr":2684,"cw":29},{"i":4,"in":1,"cr":2713,"cw":208},{"i":5,"in":1,"cr":2921,"cw":56},{"i":6,"in":2,"cr":2977,"cw":9723},{"i":7,"in":1,"cr":12700,"cw":334},{"i":8,"in":1,"cr":13034,"cw":424},{"i":9,"in":1,"cr":13458,"cw":301},{"i":10,"in":2,"cr":13802,"cw":0},{"i":11,"in":1,"cr":13802,"cw":286},{"i":12,"in":2,"cr":14088,"cw":68},{"i":13,"in":1,"cr":14156,"cw":363},{"i":14,"in":2,"cr":14519,"cw":31},{"i":15,"in":1,"cr":14550,"cw":597},{"i":16,"in":2,"cr":15147,"cw":111},{"i":17,"in":2,"cr":15258,"cw":32},{"i":18,"in":1,"cr":15290,"cw":1006},{"i":19,"in":1,"cr":16296,"cw":567},{"i":20,"in":2,"cr":16863,"cw":45},{"i":21,"in":2,"cr":16908,"cw":69},{"i":22,"in":1,"cr":16977,"cw":643},{"i":23,"in":2,"cr":17620,"cw":376},{"i":24,"in":1,"cr":17996,"cw":250},{"i":25,"in":2,"cr":18246,"cw":36},{"i":26,"in":1,"cr":18282,"cw":278},{"i":27,"in":1,"cr":18560,"cw":377},{"i":28,"in":2,"cr":18937,"cw":372},{"i":29,"in":2,"cr":19309,"cw":30},{"i":30,"in":1,"cr":19339,"cw":499},{"i":31,"in":2,"cr":19838,"cw":54},{"i":32,"in":1,"cr":19892,"cw":407},{"i":33,"in":1,"cr":20299,"cw":2003}];
+const CT5IN=[402,965,2182,3081,3912,4438,5209,5639,5810,6218,6948,7721,7918,8540,9505,10382,10555,11230,11512,11921,12396,12579,13016,13393,14021,14709,15276,402,680,1897,2497,2697,3043,3577,3972,4642,4968,5635,6043,7167,7865,8392,8566,9176,9376,9883,10869,11340,11693,12785,13005,13089,402,965,2182,2849,3004,3516,4094,4854,5249,6022,6946,7742,7939,8568,8692,9464,10009,10694,11149,11333,11523,11961,12878,13391,13965,14225,14353,14530,15003];
+const CT6IN=[370,933,1378,1730,2298,1226,1443,1957,1321,1932,872,1779,2424,2638,4256,5384,6056,6809,7418,7614,9358,10130,11106,11342,12161,370,254,1577,665,1004,1083,1248,1909,2149,3034,3205,3291,3452,3702,2789,2946,3795,4850,5465,6079,370,933,1296,2522,3637,4418,4885,5455,5982];
+
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const ARMC = () => ({native:css('--nat'),'context-tree':css('--ct'),'tree-dsa':css('--dsa')});
+const NS='http://www.w3.org/2000/svg';
+function el(n,attrs,parent){const e=document.createElementNS(NS,n);for(const k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e;}
+function txt(e,s){e.textContent=s;return e;}
+const tip=document.getElementById('tip');
+function hover(target,html){
+  target.addEventListener('mousemove',ev=>{tip.innerHTML=html;tip.style.opacity=1;
+    const w=tip.offsetWidth,h=tip.offsetHeight;
+    tip.style.left=Math.min(ev.clientX+14,innerWidth-w-8)+'px';
+    tip.style.top=(ev.clientY-h-12<8?ev.clientY+16:ev.clientY-h-12)+'px';});
+  target.addEventListener('mouseleave',()=>tip.style.opacity=0);
+}
+function axis(svg,x0,x1,y0,y1,xt,yt,fmtY,fmtX){
+  for(const t of yt){const y=y0-(t-yt[0])/(yt[yt.length-1]-yt[0])*(y0-y1);
+    el('line',{x1:x0,x2:x1,y1:y,y2:y,stroke:css('--grid'),'stroke-width':1},svg);
+    txt(el('text',{x:x0-8,y:y+4,'text-anchor':'end','font-size':11,fill:css('--muted')},svg),fmtY(t));}
+  for(const t of xt){const x=x0+(t-xt[0])/(xt[xt.length-1]-xt[0])*(x1-x0);
+    txt(el('text',{x:x,y:y0+18,'text-anchor':'middle','font-size':11,fill:css('--muted')},svg),fmtX?fmtX(t):t);}
+  el('line',{x1:x0,x2:x1,y1:y0,y2:y0,stroke:css('--hair'),'stroke-width':1},svg);
+}
+
+const RENDERERS=[];
+/* ---- fig 1: scatter cost vs turns ---- */
+RENDERERS.push(function(){
+  const W=840,H=380,L=56,R=16,T=16,B=44;
+  const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':'Scatter of cost versus turns for all runs'});
+  document.getElementById('fig-scatter').appendChild(svg);
+  const xmax=42,ymax=1.0;
+  const X=t=>L+(t/xmax)*(W-L-R), Y=c=>H-B-(c/ymax)*(H-T-B);
+  axis(svg,L,W-R,H-B,T,[0,10,20,30,40],[0,0.25,0.5,0.75,1.0],v=>'$'+v.toFixed(2),v=>v);
+  txt(el('text',{x:L,y:T-2,'font-size':11,fill:css('--muted')},svg),'cost per run (USD)');
+  txt(el('text',{x:W-R,y:H-8,'text-anchor':'end','font-size':11,fill:css('--muted')},svg),'model turns');
+  const C=ARMC();
+  for(const p of POINTS){
+    const x=X(p.turns),y=Y(p.cost),c=C[p.arm];
+    let m;
+    if(p.task==='sw-1-jsonc'){ m=el('circle',{cx:x,cy:y,r:6,fill:c,stroke:css('--surface'),'stroke-width':2},svg); }
+    else { m=el('rect',{x:x-6,y:y-6,width:12,height:12,fill:c,stroke:css('--surface'),'stroke-width':2,transform:`rotate(45 ${x} ${y})`},svg); }
+    if(!p.ok){
+      el('line',{x1:x-9,y1:y-9,x2:x+9,y2:y+9,stroke:css('--crit'),'stroke-width':2},svg);
+      el('line',{x1:x-9,y1:y+9,x2:x+9,y2:y-9,stroke:css('--crit'),'stroke-width':2},svg);
+    }
+    const hit=el('circle',{cx:x,cy:y,r:13,fill:'transparent'},svg);
+    hover(hit,`${p.it} &middot; ${p.arm}<br>${p.task}<br>$${p.cost.toFixed(3)} &middot; ${p.turns} turns${p.ok?'':' &middot; FAILED'}<br>fresh ${p.inp.toLocaleString()} &middot; cr ${p.cr.toLocaleString()} &middot; cw ${p.cw.toLocaleString()}`);
+  }
+  txt(el('text',{x:X(22),y:Y(0.26)-14,'font-size':11.5,'font-weight':600,fill:css('--ink2')},svg),'iter6: the v5 cluster');
+  el('line',{x1:X(22.4),y1:Y(0.26)-10,x2:X(24),y2:Y(0.24),stroke:css('--muted'),'stroke-width':1},svg);
+});
+
+/* ---- fig 2: grouped bars, sw-2 medians ---- */
+RENDERERS.push(function(){
+  const groups=[
+    {g:'iter5 · v3.1 stack (uncached native)',vals:[{a:'native',v:0.625,ok:'67%'},{a:'context-tree',v:0.852},{a:'tree-dsa',v:0.575}]},
+    {g:'iter6 · v5 stack (cached native)',vals:[{a:'native',v:0.242},{a:'context-tree',v:0.288},{a:'tree-dsa',v:0.444,ok:'67%'}]},
+  ];
+  const W=840,H=300,L=56,R=16,T=18,B=52,ymax=1.0;
+  const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':'Median cost per arm, iteration 5 versus 6'});
+  document.getElementById('fig-bars').appendChild(svg);
+  const Y=c=>H-B-(c/ymax)*(H-T-B);
+  axis(svg,L,W-R,H-B,T,[],[0,0.25,0.5,0.75,1.0],v=>'$'+v.toFixed(2));
+  const C=ARMC(); const gw=(W-L-R)/groups.length;
+  groups.forEach((grp,gi)=>{
+    const bw=24, gap=14, total=grp.vals.length*bw+(grp.vals.length-1)*gap;
+    const x0=L+gi*gw+(gw-total)/2;
+    grp.vals.forEach((d,i)=>{
+      const x=x0+i*(bw+gap), y=Y(d.v), h=H-B-y;
+      const bar=el('path',{d:`M${x} ${H-B} L${x} ${y+4} Q${x} ${y} ${x+4} ${y} L${x+bw-4} ${y} Q${x+bw} ${y} ${x+bw} ${y+4} L${x+bw} ${H-B} Z`,fill:C[d.a]},svg);
+      txt(el('text',{x:x+bw/2,y:y-8,'text-anchor':'middle','font-size':12,'font-weight':600,fill:css('--ink')},svg),'$'+d.v.toFixed(3));
+      if(d.ok) txt(el('text',{x:x+bw/2,y:y-24,'text-anchor':'middle','font-size':10,fill:css('--crit')},svg),d.ok+' ok');
+      hover(bar,`${grp.g}<br>${d.a}: median $${d.v.toFixed(3)}${d.ok?' · success '+d.ok:' · success 100%'}`);
+    });
+    txt(el('text',{x:L+gi*gw+gw/2,y:H-B+22,'text-anchor':'middle','font-size':12,fill:css('--ink2')},svg),grp.g);
+  });
+});
+
+/* ---- fig 3: small multiples per-turn cache ---- */
+RENDERERS.push(function(){
+  const panels=[
+    {t:'Broken · iter4 tree arm (pre-v5.1)',d:BROKEN,ymax:16000,note:'cacheRead pinned at Zone A'},
+    {t:'Fixed · iter6 context-tree v5',d:FIXED,ymax:16000,note:'hits step up; cw only at phase closes'},
+    {t:'Cached native · v5.2',d:NAT6,ymax:22000,note:'fresh input: 1–2 tokens/turn'},
+  ];
+  const W=840,PH=210,gapY=34,H=(PH+gapY)*panels.length;
+  const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':'Per-turn cache accounting in three regimes'});
+  document.getElementById('fig-cache').appendChild(svg);
+  const L=64,R=16;
+  panels.forEach((p,pi)=>{
+    const T=pi*(PH+gapY)+22,B0=T+PH-30;
+    txt(el('text',{x:L,y:T-6,'font-size':12,'font-weight':600,fill:css('--ink')},svg),p.t);
+    txt(el('text',{x:W-R,y:T-6,'text-anchor':'end','font-size':10.5,fill:css('--muted')},svg),p.note);
+    const n=p.d.length;
+    const X=i=>L+(i/(n-1))*(W-L-R), Y=v=>B0-(v/p.ymax)*(B0-T-4);
+    for(const g of [0,p.ymax/2,p.ymax]){
+      el('line',{x1:L,x2:W-R,y1:Y(g),y2:Y(g),stroke:css('--grid'),'stroke-width':1},svg);
+      txt(el('text',{x:L-8,y:Y(g)+4,'text-anchor':'end','font-size':10,fill:css('--muted')},svg),(g/1000)+'k');
+    }
+    const bw=Math.max(3,(W-L-R)/n*0.4);
+    p.d.forEach((t,i)=>{ if(t.cw>0){ const x=X(i)-bw/2,y=Y(t.cw);
+      el('path',{d:`M${x} ${B0} L${x} ${y+2} Q${x} ${y} ${x+2} ${y} L${x+bw-2} ${y} Q${x+bw} ${y} ${x+bw} ${y+2} L${x+bw} ${B0} Z`,fill:css('--dsa'),opacity:.85},svg);}});
+    const line=(key,color)=>{
+      const dd=p.d.map((t,i)=>`${i?'L':'M'}${X(i)} ${Y(Math.min(t[key],p.ymax))}`).join(' ');
+      el('path',{d:dd,fill:'none',stroke:color,'stroke-width':2,'stroke-linejoin':'round','stroke-linecap':'round'},svg);
+      const last=p.d[n-1];
+      el('circle',{cx:X(n-1),cy:Y(Math.min(last[key],p.ymax)),r:4,fill:color,stroke:css('--surface'),'stroke-width':2},svg);
+    };
+    line('cr',css('--nat')); line('in',css('--ct'));
+    p.d.forEach((t,i)=>{ const hit=el('rect',{x:X(i)-((W-L-R)/n)/2,y:T,width:(W-L-R)/n,height:B0-T,fill:'transparent'},svg);
+      hover(hit,`turn ${t.i}<br>cacheRead ${t.cr.toLocaleString()}<br>fresh in ${t.in.toLocaleString()}<br>cacheWrite ${t.cw.toLocaleString()}`);});
+    txt(el('text',{x:W-R,y:B0+14,'text-anchor':'end','font-size':10,fill:css('--muted')},svg),'turn →');
+  });
+});
+
+/* ---- fig 4: histogram fresh input ---- */
+RENDERERS.push(function(){
+  const BIN=2000,MAXV=16000;
+  const bins=v=>Math.min(Math.floor(v/BIN),MAXV/BIN-1);
+  const mk=arr=>{const b=Array(MAXV/BIN).fill(0);for(const v of arr)b[bins(v)]++;return b;};
+  const b5=mk(CT5IN),b6=mk(CT6IN);
+  const W=840,H=260,L=56,R=16,T=18,B=46;
+  const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':'Histogram of fresh input tokens per turn, v3.1 versus v5'});
+  document.getElementById('fig-hist').appendChild(svg);
+  const ymax=Math.max(...b5,...b6);
+  const Y=v=>H-B-(v/ymax)*(H-T-B);
+  for(const g of [0,10,20]){ if(g<=ymax){el('line',{x1:L,x2:W-R,y1:Y(g),y2:Y(g),stroke:css('--grid'),'stroke-width':1},svg);
+    txt(el('text',{x:L-8,y:Y(g)+4,'text-anchor':'end','font-size':10,fill:css('--muted')},svg),g);}}
+  const nb=b5.length, slot=(W-L-R)/nb, bw=Math.min(22,(slot-8)/2);
+  for(let i=0;i<nb;i++){
+    const x=L+i*slot+ (slot-2*bw-2)/2;
+    const draw=(cnt,xo,color,label)=>{ if(!cnt)return; const y=Y(cnt);
+      const r=el('path',{d:`M${x+xo} ${H-B} L${x+xo} ${y+3} Q${x+xo} ${y} ${x+xo+3} ${y} L${x+xo+bw-3} ${y} Q${x+xo+bw} ${y} ${x+xo+bw} ${y+3} L${x+xo+bw} ${H-B} Z`,fill:color},svg);
+      hover(r,`${label}<br>${(i*BIN/1000)}–${((i+1)*BIN/1000)}k fresh tokens<br>${cnt} turns`);};
+    draw(b5[i],0,css('--ct'),'v3.1 (iter5)');
+    draw(b6[i],bw+2,css('--nat'),'v5 (iter6)');
+    txt(el('text',{x:L+i*slot+slot/2,y:H-B+16,'text-anchor':'middle','font-size':10,fill:css('--muted')},svg),(i*BIN/1000)+'–'+((i+1)*BIN/1000)+'k');
+  }
+  txt(el('text',{x:L,y:T-4,'font-size':11,fill:css('--muted')},svg),'turns in bin');
+});
+
+/* ---- fig 5: strip plot variance ---- */
+RENDERERS.push(function(){
+  const groups=[
+    {k:'iter5 native (uncached)',arm:'native',it:'iter5'},
+    {k:'iter5 context-tree v3.1',arm:'context-tree',it:'iter5'},
+    {k:'iter5 tree-dsa v3.1',arm:'tree-dsa',it:'iter5'},
+    {k:'iter6 native cached',arm:'native',it:'iter6'},
+    {k:'iter6 context-tree v5',arm:'context-tree',it:'iter6'},
+    {k:'iter6 tree-dsa v5',arm:'tree-dsa',it:'iter6'},
+  ];
+  const W=840,rowH=46,L=230,R=40,T=8,H=T+groups.length*rowH+34;
+  const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':'Strip plot of run costs by group'});
+  document.getElementById('fig-strip').appendChild(svg);
+  const xmax=1.0, X=c=>L+(c/xmax)*(W-L-R);
+  for(const t of [0,0.25,0.5,0.75,1.0]){
+    el('line',{x1:X(t),x2:X(t),y1:T,y2:H-30,stroke:css('--grid'),'stroke-width':1},svg);
+    txt(el('text',{x:X(t),y:H-14,'text-anchor':'middle','font-size':11,fill:css('--muted')},svg),'$'+t.toFixed(2));
+  }
+  const C=ARMC();
+  groups.forEach((g,gi)=>{
+    const y=T+gi*rowH+rowH/2;
+    const runs=POINTS.filter(p=>p.it===g.it&&p.arm===g.arm&&p.task==='sw-2-multimod');
+    const costs=runs.map(r=>r.cost).sort((a,b)=>a-b);
+    const med=costs[Math.floor(costs.length/2)];
+    txt(el('text',{x:L-12,y:y+4,'text-anchor':'end','font-size':12,fill:css('--ink2')},svg),g.k);
+    el('rect',{x:X(costs[0]),y:y-7,width:Math.max(2,X(costs[costs.length-1])-X(costs[0])),height:14,rx:7,fill:C[g.arm],opacity:.14},svg);
+    el('line',{x1:X(med),x2:X(med),y1:y-11,y2:y+11,stroke:C[g.arm],'stroke-width':3},svg);
+    for(const r of runs){
+      const dot=el('circle',{cx:X(r.cost),cy:y,r:5,fill:C[g.arm],stroke:css('--surface'),'stroke-width':2},svg);
+      if(!r.ok){el('line',{x1:X(r.cost)-7,y1:y-7,x2:X(r.cost)+7,y2:y+7,stroke:css('--crit'),'stroke-width':2},svg);
+        el('line',{x1:X(r.cost)-7,y1:y+7,x2:X(r.cost)+7,y2:y-7,stroke:css('--crit'),'stroke-width':2},svg);}
+      hover(dot,`${g.k}<br>$${r.cost.toFixed(3)} · ${r.turns} turns${r.ok?'':' · FAILED'}`);
+    }
+    txt(el('text',{x:X(costs[costs.length-1])+10,y:y+4,'font-size':10.5,'font-family':'IBM Plex Mono',fill:css('--muted')},svg),'$'+med.toFixed(2));
+  });
+});
+
+const FIGS=['fig-scatter','fig-bars','fig-cache','fig-hist','fig-strip'];
+function renderAll(){for(const id of FIGS){const n=document.getElementById(id);if(n)n.innerHTML='';}for(const f of RENDERERS)f();}
+renderAll();
+try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',renderAll);}catch(e){}
+new MutationObserver(renderAll).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+
+/* ---- appendix table ---- */
+(function(){
+  const tbl=document.getElementById('all-runs-tbl');
+  for(const p of POINTS){
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${p.it}</td><td><span class="arm ${p.arm==='native'?'nat':p.arm==='context-tree'?'ct':'dsa'}">${p.arm}</span></td><td class="mono">${p.task}</td><td class="num">${p.cost.toFixed(3)}</td><td class="num">${p.turns}</td><td class="num">${p.inp.toLocaleString()}</td><td class="num">${p.cr.toLocaleString()}</td><td class="num">${p.cw.toLocaleString()}</td><td class="num">${p.tot.toLocaleString()}</td><td>${p.ok?'<span class="pill ok">pass</span>':'<span class="pill bad">fail</span>'}</td>`;
+    tbl.appendChild(tr);
+  }
+})();
+</script>

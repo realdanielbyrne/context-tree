@@ -12,6 +12,8 @@ import { MockProvider } from '@context-tree/core';
 import { CONTEXT_SEARCH } from '@context-tree/mcp';
 import { disabledSink } from '../src/langfuse.js';
 import {
+  branchContentText,
+  dedupSummarizePlan,
   runScenario,
   selectTopKMessages,
   selectTopKBranches,
@@ -184,6 +186,54 @@ describe('summary circuit breaker (splitSummarizePlan)', () => {
     expect(splitSummarizePlan(['n_a', 'n_fresh'], failed)).toEqual({ pending: ['n_fresh'], skipped: 1 });
     expect(splitSummarizePlan(['n_fresh'], failed)).toEqual({ pending: ['n_fresh'], skipped: 0 });
     expect(splitSummarizePlan([], failed)).toEqual({ pending: [], skipped: 0 });
+  });
+});
+
+describe('cosine dedup-before-summarize (dedupSummarizePlan)', () => {
+  const detail = (body: string) =>
+    `ran the test suite for ${body} and edited the module until the cases passed; reran to confirm green`;
+
+  it('skips a pending branch that duplicates an already-summarized sibling', () => {
+    const { kept, deduped } = dedupSummarizePlan(
+      [{ id: 'n_new', text: detail('slugify hyphen collapse boundary strip') }],
+      [{ id: 'n_done', text: detail('slugify hyphen collapse boundary strip') }],
+    );
+    expect(kept).toEqual([]);
+    expect(deduped).toHaveLength(1);
+    expect(deduped[0]).toMatchObject({ id: 'n_new', against: 'n_done' });
+    expect(deduped[0]!.cosine).toBeGreaterThanOrEqual(0.9);
+  });
+
+  it('dedupes within the plan itself — the first twin summarizes, the second is skipped', () => {
+    const { kept, deduped } = dedupSummarizePlan(
+      [
+        { id: 'n_first', text: detail('wordwrap greedy width joining space overflow') },
+        { id: 'n_twin', text: detail('wordwrap greedy width joining space overflow') },
+      ],
+      [],
+    );
+    expect(kept).toEqual(['n_first']);
+    expect(deduped.map((entry) => entry.id)).toEqual(['n_twin']);
+  });
+
+  it('keeps genuinely distinct branches — one summary per topic, not per plan', () => {
+    const { kept, deduped } = dedupSummarizePlan(
+      [
+        { id: 'n_slug', text: detail('slugify hyphen collapse punctuation runs') },
+        { id: 'n_num', text: detail('numparse decimal multiplier truncation suffix') },
+      ],
+      [{ id: 'n_wrap', text: detail('wordwrap greedy width joining space') }],
+    );
+    expect(kept).toEqual(['n_slug', 'n_num']);
+    expect(deduped).toEqual([]);
+  });
+
+  it('branchContentText drops the coordinates header so unique node ids cannot dilute the cosine', () => {
+    const rendered =
+      'BRANCH COORDINATES (from the tree; authoritative — do not contradict these):\nnode: n_abc123 kind=phase\n\nEVENTS (L0 4..9):\nuser: fix the bug';
+    expect(branchContentText(rendered)).toBe('EVENTS (L0 4..9):\nuser: fix the bug');
+    // No events section => the text passes through rather than vanishing.
+    expect(branchContentText('coordinates only')).toBe('coordinates only');
   });
 });
 

@@ -25,8 +25,10 @@ import {
   TreeRetriever,
   ZoneAssembler,
   appendEvent,
+  branchFacts,
   openTaskStore,
   priceFor,
+  renderBranchDetail,
   resolveConfig,
   systemContract,
   toCompletionRequest,
@@ -295,16 +297,30 @@ async function runDsaArm(args: ArmArgs): Promise<ArmOutput> {
 async function runNativeArm(args: ArmArgs): Promise<ArmOutput> {
   const messages: ChatMessage[] = [{ role: 'user', content: args.scenario.task }];
   const guard = makeRepeatGuard();
+  // v5.2 (EVAL_NATIVE_CACHE=1): real harnesses cache the growing transcript
+  // prefix; without this the native arm re-bills the whole conversation as
+  // fresh input every turn — a strawman baseline (iter4: 207k cumulative input
+  // tokens, cacheRead 0). One breakpoint on the newest message per turn is the
+  // provider-documented incremental pattern: each turn reads the prefix the
+  // previous turn wrote. Only the copy is marked — mutating history would
+  // accumulate markers past the provider's 4-breakpoint limit.
+  const nativeCache = process.env.EVAL_NATIVE_CACHE === '1';
   let finalText = '';
   for (let turnIndex = 0; turnIndex < args.options.maxTurns; turnIndex += 1) {
     if (Date.now() >= args.deadlineMs) return { status: 'time_cap', finalText };
+    const turnMessages = [...messages];
+    if (nativeCache && turnMessages.length > 0) {
+      const last = turnMessages.length - 1;
+      turnMessages[last] = { ...turnMessages[last]!, cacheBreakpoint: true };
+    }
     const request: CompletionRequest = {
       model: args.options.model,
       system: NATIVE_SYSTEM_PROMPT,
-      messages: [...messages],
+      messages: turnMessages,
       tools: HARNESS_TOOL_SCHEMAS,
       maxTokens: AGENT_MAX_TOKENS,
     };
+    if (nativeCache) request.systemCacheBreakpoint = true;
     const { result, record } = await callModel({
       provider: args.provider,
       request,
@@ -473,6 +489,53 @@ export function splitSummarizePlan(
 }
 
 /**
+ * Cosine dedup-before-summarize (report §9 Phase 1 item 5), gated behind
+ * EVAL_SUMMARY_DEDUP=1 so arms can A/B it. A stale branch whose content is
+ * near-identical (>= threshold cosine, in the same idf space the tree-dsa
+ * selector uses) to an already-summarized sibling — or to an earlier branch
+ * kept in the same plan — is skipped: one summary serves the group. Skipping
+ * leaves the branch stale (its old summary or bare title stays in Zone B),
+ * which §8 defines as usable degradation, and saves the leaf model call that
+ * is the tree arm's dominant marginal cost. The root is never deduped: its
+ * input is the leaf summaries, not raw content.
+ */
+export const SUMMARY_DEDUP_COSINE = 0.9;
+
+export function dedupSummarizePlan(
+  pending: readonly { id: string; text: string }[],
+  summarized: readonly { id: string; text: string }[],
+  threshold: number = SUMMARY_DEDUP_COSINE,
+): { kept: string[]; deduped: { id: string; against: string; cosine: number }[] } {
+  const entries = [...pending, ...summarized];
+  const { vectors } = idfVectors(entries.map((entry) => entry.text), new Set());
+  const vecOf = new Map<string, Map<string, number>>();
+  entries.forEach((entry, i) => vecOf.set(entry.id, vectors[i]!));
+  const kept: string[] = [];
+  const deduped: { id: string; against: string; cosine: number }[] = [];
+  const anchors = summarized.map((entry) => entry.id);
+  for (const entry of pending) {
+    let nearest: { against: string; cosine: number } | undefined;
+    for (const other of [...anchors, ...kept]) {
+      const cosine = cosineSimilarity(vecOf.get(entry.id)!, vecOf.get(other)!);
+      if (nearest === undefined || cosine > nearest.cosine) nearest = { against: other, cosine };
+    }
+    if (nearest !== undefined && nearest.cosine >= threshold) deduped.push({ id: entry.id, ...nearest });
+    else kept.push(entry.id);
+  }
+  return { kept, deduped };
+}
+
+/**
+ * The comparable slice of a branch's detail: the L0 events, without the
+ * coordinates header (node ids and seq ranges are unique per branch and would
+ * dilute the cosine between genuinely identical contents).
+ */
+export function branchContentText(detail: string): string {
+  const index = detail.indexOf('EVENTS (L0');
+  return index === -1 ? detail : detail.slice(index);
+}
+
+/**
  * Optional Zone B branch filter for the tree arm, evaluated each turn BEFORE
  * assemble(). Returning `undefined` means "no selection" — the plain tree
  * path, byte-identical prompt. This is the seam the tree-dsa arm hangs its
@@ -535,15 +598,80 @@ async function runTreeArm(
     // D11 per-node scheduler (scheduleSummarize + drain), which preserves the
     // plan's leaves-then-root order on its promise chain.
     const failedSummaryNodes = new Set<string>();
+    // v5.4 (EVAL_SUMMARIZE_ON_CLOSE=1): event-driven summarization replaces
+    // the SUMMARIZE_MIN_NEW_EVENTS threshold. A branch is summarized exactly
+    // once, when it CLOSES (a newer branch appears after it); the newest
+    // branch is never summarized because its raw detail is Zone C. The
+    // threshold made summarizer cost a function of turn-count noise (a run
+    // ending one event shy of a crossing paid zero; its twin paid a full
+    // pass); on-close makes it a deterministic function of tree structure —
+    // one leaf call per closed branch, one root update per phase close, and
+    // Zone B changes once per transition, which is the §17 cache model.
+    const summarizeOnClose = process.env.EVAL_SUMMARIZE_ON_CLOSE === '1';
+    let summarizedBranchCount = 1; // the newest branch never summarizes
     const maybeResummarize = async (): Promise<void> => {
-      if (newEventsSinceSummary < SUMMARIZE_MIN_NEW_EVENTS) return;
       const rootId = handle.store.root()?.id;
-      const plan = rootId === undefined ? [] : summarizer.stalePlan(rootId);
-      const { pending, skipped } = splitSummarizePlan(plan, failedSummaryNodes);
+      let latestBranchIdForPlan: string | undefined;
+      if (summarizeOnClose) {
+        const branches =
+          rootId === undefined
+            ? []
+            : handle.store.nodesInCreationOrder().filter((node) => node.parent_id === rootId);
+        if (branches.length <= summarizedBranchCount) return;
+        summarizedBranchCount = branches.length;
+        latestBranchIdForPlan = branches.at(-1)?.id;
+      } else if (newEventsSinceSummary < SUMMARIZE_MIN_NEW_EVENTS) {
+        return;
+      }
+      const plan =
+        rootId === undefined
+          ? []
+          : summarizer.stalePlan(rootId).filter((nodeId) => nodeId !== latestBranchIdForPlan);
+      let { pending, skipped } = splitSummarizePlan(plan, failedSummaryNodes);
       if (skipped > 0) {
         process.stderr.write(
           `[eval] summary circuit breaker: skipping ${skipped} node(s) that already failed the §8 contract once\n`,
         );
+      }
+      if (process.env.EVAL_SUMMARY_DEDUP === '1' && rootId !== undefined && pending.length > 0) {
+        const contentOf = (id: string): string | undefined => {
+          const node = handle.store.nodesInCreationOrder().find((candidate) => candidate.id === id);
+          if (node === undefined) return undefined;
+          return branchContentText(
+            renderBranchDetail(handle.store, node, branchFacts(handle.store, node), {
+              trace: handle.trace,
+              blobs: handle.blobs,
+            }),
+          );
+        };
+        const pendingLeaves = pending
+          .filter((id) => id !== rootId)
+          .flatMap((id) => {
+            const text = contentOf(id);
+            return text === undefined ? [] : [{ id, text }];
+          });
+        const summarizedSiblings = handle.store
+          .nodesInCreationOrder()
+          .filter(
+            (node) =>
+              node.parent_id === rootId &&
+              !pending.includes(node.id) &&
+              handle.store.currentSummary(node.id) !== undefined,
+          )
+          .flatMap((node) => {
+            const text = contentOf(node.id);
+            return text === undefined ? [] : [{ id: node.id as string, text }];
+          });
+        const { kept, deduped } = dedupSummarizePlan(pendingLeaves, summarizedSiblings);
+        for (const skip of deduped) {
+          process.stderr.write(
+            `[eval] summary dedup: skipping ${skip.id} (cosine ${skip.cosine.toFixed(3)} to ${skip.against})\n`,
+          );
+        }
+        if (deduped.length > 0) {
+          const keptSet = new Set(kept);
+          pending = pending.filter((id) => id === rootId || keptSet.has(id));
+        }
       }
       if (pending.length === 0) {
         newEventsSinceSummary = 0;
@@ -571,7 +699,23 @@ async function runTreeArm(
     let completionConfirmed = false;
     for (let turnIndex = 0; turnIndex < args.options.maxTurns; turnIndex += 1) {
       if (Date.now() >= args.deadlineMs) return { status: 'time_cap', finalText };
-      const activeNodeId = handle.store.openPhase()?.id ?? handle.store.root()?.id;
+      // v5.3 (EVAL_ZONEC_LATEST=1): expand the LATEST branch instead of the
+      // root. Expanding the root makes Zone C the entire raw trace — the tree
+      // arm then pays summaries AND full detail, which is native with extra
+      // steps (iter4: tree fresh input grew monotonically to 14.5k/turn).
+      // The latest branch always holds the newest events (the segmenter
+      // assigns trailing events to the last phase), so the model still sees
+      // its own last tool results; older detail is summaries + context_fetch,
+      // which is the actual design promise.
+      const rootIdForZoneC = handle.store.root()?.id;
+      const latestBranchId =
+        process.env.EVAL_ZONEC_LATEST === '1'
+          ? handle.store
+              .nodesInCreationOrder()
+              .filter((node) => node.parent_id === rootIdForZoneC)
+              .at(-1)?.id
+          : undefined;
+      const activeNodeId = handle.store.openPhase()?.id ?? latestBranchId ?? rootIdForZoneC;
       const keepBranches = args.selectBranches?.(handle, activeNodeId);
       if (args.selectBranches !== undefined) {
         // Telemetry: whether branch sampling fired this turn, and how much it kept.
