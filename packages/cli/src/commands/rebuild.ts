@@ -69,5 +69,16 @@ function humanLines(payload: RebuildReport): string[] {
   if (payload.stats.degradedFiles > 0) {
     lines.push(`${payload.stats.degradedFiles} file node(s) got no grammar-backed spans`);
   }
+  if (payload.stats.unresolvedAnnotations > 0) {
+    // A rebuild is a replay of L0 (D8), and §9 notes are the only conclusions
+    // that outlive the transcript — so a note or edge the replay could not
+    // place is data this run dropped. Silently dropping annotations is the
+    // defect the replay exists to fix; not reporting the residue is that same
+    // defect, quieter.
+    lines.push(
+      `${payload.stats.unresolvedAnnotations} annotation(s) could not be replayed onto a node ` +
+        '(unknown node_id, missing L2 body, or unknown link target) — those notes/edges are not in the tree',
+    );
+  }
   return lines;
 }

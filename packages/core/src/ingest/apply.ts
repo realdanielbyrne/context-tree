@@ -1,7 +1,8 @@
 /**
  * §7 tree ops -> L1 rows. This is where the segmenter's deterministic
- * `NodeKey`s become `n_<ULID>` node ids: `segment()` stays pure (D1) precisely
- * because id minting and every write live here instead.
+ * `NodeKey`s become node ids (`node-ids.ts` mints them from the key, so they
+ * are a function of L0 like every other L1 column — D8): `segment()` stays pure
+ * (D1) precisely because id minting and every write live here instead.
  *
  * Two properties this file owes its callers:
  *  - **Atomicity.** The whole op list applies in ONE transaction. §6's forest
@@ -22,10 +23,12 @@ import type {
   TreeStore,
 } from '../contracts/index.js';
 import { TASK_KEY, fileKey, phaseKey } from '../segment/index.js';
+import type { NodeIdMinter } from './node-ids.js';
 
 export function applySegmentation(
   segmentation: Segmentation,
   store: TreeStore,
+  mintId: NodeIdMinter,
 ): Map<NodeKey, NodeId> {
   return store.transaction(() => {
     const keyMap = resolveExistingKeys(store);
@@ -43,6 +46,10 @@ export function applySegmentation(
           // from the moment it exists, not after span extraction.
           const meta: NodeMeta = op.path === undefined ? {} : { path: op.path };
           const node = store.insertNode({
+            // Minted from the key, not from a clock (D8): L0's
+            // `manual_annotation` names its subject by node id, so an id that
+            // changed on every derivation made `rebuild()` a data loss.
+            id: mintId(op.key, op.kind),
             parent_id: parentId,
             kind: op.kind,
             title: op.title,

@@ -234,6 +234,15 @@ function humanLines(result: ImportResult): string[] {
     `tree: ${result.stats.nodes} node(s), ${result.stats.phases} phase(s), ` +
       `${result.stats.fileNodes} file node(s), ${result.stats.spans} span(s)`,
   );
+  if (result.stats.unresolvedAnnotations > 0) {
+    // Same reason as `rebuild`: an imported §9 note the replay could not place
+    // on a node is lost, and L1 is only ever derived from L0 (D8), so nothing
+    // else will surface it later.
+    lines.push(
+      `${result.stats.unresolvedAnnotations} annotation(s) could not be replayed onto a node ` +
+        '(unknown node_id, missing L2 body, or unknown link target) — those notes/edges are not in the tree',
+    );
+  }
   if (result.stats.unmappedTools.length > 0) {
     // §18: tool-name drift degrades to `other`. Naming the tools is what makes
     // it fixable via `toolPhase` in the config.

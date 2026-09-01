@@ -72,6 +72,32 @@ export function segment(
   let open: OpenPhase | null = null;
   /** Seq of the previous event — where a phase's span ends when the next one opens. */
   let prevSeq: Seq = first.seq;
+  /**
+   * The trace's own start, held until the first phase opens so that phase can
+   * adopt it, then null forever.
+   *
+   * WHY (§8). A phase node used to open on the first `tool_call`, which left
+   * every event before it — the opening user message, the task statement —
+   * inside the task root and inside no phase. §8 builds the root summary from
+   * its *child summaries*, never from raw events (raw events at the root is
+   * §15's arm C baseline), so those events reached no summary at all: a resumed
+   * agent could read every branch summary in Zone B and still not know what it
+   * had been asked to do, which is exactly §9's unknown-unknowns failure and
+   * the fact §15's benchmark turns on.
+   *
+   * The fix is the smallest one §7 allows. §7 types a phase from tool activity
+   * and says messages attach to the open phase; it says nothing about where the
+   * FIRST phase begins, because there is no earlier phase to own those events.
+   * Starting it at the trace's first event makes phase spans partition L0 — no
+   * event outside a phase, so no event outside a summary — while keeping the
+   * phase sequence, count, types, keys and node ids (D16) byte-identical for
+   * every trace, including one that opens with a tool call, where this is the
+   * opening event's own seq. Inventing an extra leading phase would instead
+   * type a phase from no tool signal and renumber every node downstream.
+   */
+  let pendingStart: Seq | null = first.seq;
+  /** Seqs of that leading run, replayed onto the first phase when it opens. */
+  const pendingExtends: Seq[] = [];
 
   const openPhase = (phaseType: PhaseType, startSeq: Seq): OpenPhase => {
     const index = phases;
@@ -79,6 +105,7 @@ export function segment(
     const ordinal = (typeOrdinals.get(phaseType) ?? 0) + 1;
     typeOrdinals.set(phaseType, ordinal);
     const key = phaseKey(index);
+    const adopted = pendingStart;
     ops.push({
       op: 'open',
       key,
@@ -86,9 +113,17 @@ export function segment(
       kind: 'phase',
       title: phaseTitle(phaseType, ordinal),
       phase_type: phaseType,
-      start_seq: startSeq,
+      start_seq: adopted ?? startSeq,
     });
     nodeOrder.push(key);
+    if (adopted !== null) {
+      pendingStart = null;
+      // The span convention holds for the adopted run too: `open` covers
+      // `start_seq`, every later event under the node emits one `extend`.
+      for (const seq of pendingExtends) ops.push({ op: 'extend', key, seq });
+      pendingExtends.length = 0;
+      if (startSeq !== adopted) ops.push({ op: 'extend', key, seq: startSeq });
+    }
     return { key, index, phaseType, files: new Map() };
   };
 
@@ -190,8 +225,11 @@ export function segment(
 
       default: {
         // §7: messages, results and annotations attach to the open phase. They
-        // never open one — a phase is a *tool-activity* interval.
+        // never open one — a phase is a *tool-activity* interval. Before the
+        // first phase exists they are held, not dropped, and the first phase to
+        // open adopts them (see `pendingStart`).
         if (open !== null) ops.push({ op: 'extend', key: open.key, seq: event.seq });
+        else if (i > 0) pendingExtends.push(event.seq);
         break;
       }
     }

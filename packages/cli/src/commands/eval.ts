@@ -1,7 +1,8 @@
 /**
  * §15 evaluation harness entry point — deliberately a shell.
  *
- * The harness itself lives in `eval/` (fixtures, arms A–D, checkers, judge) and
+ * The harness itself lives in `eval-resumption/` (fixtures, arms A–D, checkers,
+ * judge) and
  * is not part of the published packages, so this command's whole job is to find
  * it, hand it the arguments, and say something useful when it is not there.
  * Anything more would duplicate the harness's own contract here.
@@ -21,8 +22,8 @@ export interface EvalReport {
 }
 
 /** The built entry point, then the source, so the error can say which case it is. */
-const HARNESS_JS = join('eval', 'harness', 'index.js');
-const HARNESS_TS = join('eval', 'harness', 'index.ts');
+const HARNESS_JS = join('eval-resumption', 'harness', 'index.js');
+const HARNESS_TS = join('eval-resumption', 'harness', 'index.ts');
 
 interface HarnessModule {
   runEval?: (args: readonly string[]) => unknown;

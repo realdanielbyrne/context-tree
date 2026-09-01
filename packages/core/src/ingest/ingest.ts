@@ -13,8 +13,10 @@
 import { rmSync } from 'node:fs';
 import type { ContextTreeConfig } from '../config.js';
 import type {
+  Annotation,
   BlobStore,
   DiffHunker,
+  LinkKind,
   NodeId,
   NodeKey,
   Seq,
@@ -27,7 +29,9 @@ import type {
 import { DERIVED_LAYERS, storePaths, type StorePaths } from '../paths.js';
 import { segment } from '../segment/index.js';
 import { LineDiffHunker, TreeSitterSpanExtractor } from '../spans/index.js';
+import { isManualAnnotation } from '../trace/index.js';
 import { applySegmentation } from './apply.js';
+import { nodeIdMinter } from './node-ids.js';
 import { extractSpansForFileNodes } from './spans.js';
 import { openTaskStore, type TaskStore } from './task-store.js';
 
@@ -57,6 +61,16 @@ export interface IngestStats {
   /** Tool names with no phase mapping; routed to `other` (§18). */
   unmappedTools: string[];
   usedTextFallback: boolean;
+  /** §9 `annotate` notes replayed from L0 onto their subject node. */
+  annotations: number;
+  /** D10 lateral edges replayed from L0. */
+  annotationLinks: number;
+  /**
+   * `manual_annotation` events that did not replay in full — an unknown
+   * subject, a missing L2 body, or an unknown link target. Counted rather than
+   * dropped: silent loss is exactly the defect this replay exists to fix.
+   */
+  unresolvedAnnotations: number;
 }
 
 export interface IngestResult {
@@ -77,7 +91,7 @@ export function ingest(options: IngestOptions): IngestResult {
     textOf: textResolver(blobs),
   });
 
-  const keyMap = applySegmentation(segmentation, store);
+  const keyMap = applySegmentation(segmentation, store, nodeIdMinter(events));
   const spans = extractSpansForFileNodes({
     events,
     blobs,
@@ -86,6 +100,7 @@ export function ingest(options: IngestOptions): IngestResult {
     extractor: options.extractor ?? new TreeSitterSpanExtractor(config.languages),
     hunker: options.hunker ?? new LineDiffHunker(),
   });
+  const notes = replayAnnotations(events, blobs, store);
   markStaleForSummarizer(store, events.at(-1)?.seq ?? null);
 
   return {
@@ -100,6 +115,9 @@ export function ingest(options: IngestOptions): IngestResult {
       parseErrorFiles: spans.parseErrorFiles,
       unmappedTools: segmentation.stats.unmappedTools,
       usedTextFallback: segmentation.stats.usedTextFallback,
+      annotations: notes.annotations,
+      annotationLinks: notes.annotationLinks,
+      unresolvedAnnotations: notes.unresolved,
     },
   };
 }
@@ -166,6 +184,124 @@ function deleteDerivedLayers(paths: StorePaths): void {
       rmSync(`${target}-shm`, { force: true });
     }
   }
+}
+
+interface AnnotationReplay {
+  annotations: number;
+  annotationLinks: number;
+  unresolved: number;
+}
+
+/** §9 makes `link_kind` optional; the neutral "these are related" edge is the kind it means. */
+const DEFAULT_LINK_KIND: LinkKind = 'relates_to';
+
+/**
+ * Replays every `manual_annotation` (§6's sixth L0 type, written by §9's
+ * `annotate`) into L1: the note onto `meta_json.annotations[]`, the edge into
+ * `node_links` (D10).
+ *
+ * This is what makes D8 true of the write-side tool. Ingestion used to see the
+ * event only as an "extend the open phase" tick, so the notes and edges in L1
+ * were there purely because `annotate` had written them at runtime — and
+ * `rebuild()`, which derives L1 from scratch, dropped every one of them. The
+ * plan instructs users to rebuild after a segmenter or summary-prompt change,
+ * so the documented workflow was the thing destroying the data.
+ *
+ * Three properties, each a requirement rather than a nicety:
+ *  - **Replay, not re-creation.** `created_at` is the event's own `ts` and the
+ *    note's identity is its own `seq`. A fresh clock here would make two
+ *    derivations of one log differ, which is the invariant this fixes.
+ *  - **Idempotent.** Notes merge by seq and land in seq order, so ingesting a
+ *    log twice yields one note; `putLink` upserts on (from, to, kind), so the
+ *    edge is written once however often the pass runs.
+ *  - **Loud.** A subject id that is absent or resolves to nothing (a foreign
+ *    trace, a note on a node a later segmentation no longer produces), a body
+ *    missing from L2, or an unknown link target is counted in the stats. Silent
+ *    loss is the defect being fixed, so it must not reappear as a silent skip.
+ *
+ * Hermetic like the rest of the pass (D15): L0 for the coordinates, L2 for the
+ * text, nothing else.
+ */
+function replayAnnotations(
+  events: readonly TraceEvent[],
+  blobs: BlobStore,
+  store: TreeStore,
+): AnnotationReplay {
+  const notes = new Map<NodeId, Annotation[]>();
+  const links: Array<{ from_id: NodeId; to_id: NodeId; kind: LinkKind; created_at: string }> = [];
+  let unresolved = 0;
+  let annotations = 0;
+
+  for (const event of events) {
+    if (!isManualAnnotation(event)) continue;
+    // The id L0 carries was minted by `node-ids.ts` from the segmentation key,
+    // so the same trace mints it again here — that is why a plain lookup is a
+    // sound resolution and why the raw id in L0 survives a rebuild at all.
+    const subject = event.node_id === undefined ? null : store.getNode(event.node_id);
+    if (subject === null || !blobs.has(event.blob)) {
+      unresolved += 1;
+      continue;
+    }
+    const list = notes.get(subject.id) ?? [];
+    list.push({ seq: event.seq, text: blobs.getText(event.blob), created_at: event.ts });
+    notes.set(subject.id, list);
+    annotations += 1;
+
+    if (event.link_to === undefined) continue;
+    const target = store.getNode(event.link_to);
+    if (target === null) {
+      // The note still landed; the edge did not. Counted either way — a partial
+      // replay a caller cannot see is the same failure in a smaller box.
+      unresolved += 1;
+      continue;
+    }
+    links.push({
+      from_id: subject.id,
+      to_id: target.id,
+      kind: event.link_kind ?? DEFAULT_LINK_KIND,
+      created_at: event.ts,
+    });
+  }
+
+  store.transaction(() => {
+    for (const [id, derived] of notes) {
+      const current = store.getNode(id)?.meta_json.annotations ?? [];
+      const merged = mergeAnnotations(current, derived);
+      if (merged !== null) store.mergeNodeMeta(id, { annotations: merged });
+    }
+    for (const link of links) store.putLink(link);
+  });
+
+  return { annotations, annotationLinks: links.length, unresolved };
+}
+
+/**
+ * Canonical annotation list: one entry per L0 seq, ascending. Returns null when
+ * the stored list already is that list, so a re-ingestion writes nothing.
+ *
+ * Seq is the merge key because it is the note's identity (§9). Where L0 speaks
+ * it wins, since L1 is the derived layer (D8); an entry L0 says nothing about
+ * is kept rather than deleted, because `annotate` also writes L1 directly today
+ * and dropping what this pass cannot see would be the same silent loss in the
+ * other direction.
+ */
+function mergeAnnotations(current: readonly Annotation[], derived: readonly Annotation[]): Annotation[] | null {
+  const bySeq = new Map<Seq, Annotation>();
+  for (const annotation of current) bySeq.set(annotation.seq, annotation);
+  for (const annotation of derived) bySeq.set(annotation.seq, annotation);
+  const merged = [...bySeq.values()].sort((a, b) => a.seq - b.seq);
+  const unchanged =
+    merged.length === current.length &&
+    merged.every((annotation, index) => {
+      const existing = current[index];
+      return (
+        existing !== undefined &&
+        existing.seq === annotation.seq &&
+        existing.text === annotation.text &&
+        existing.created_at === annotation.created_at
+      );
+    });
+  return unchanged ? null : merged;
 }
 
 /**

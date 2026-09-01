@@ -12,9 +12,13 @@ import { fileURLToPath } from 'node:url';
 import { resolveConfig, type ContextTreeConfig } from '../src/config.js';
 import { StoreInvariantError } from '../src/contracts/index.js';
 import type {
+  Annotation,
   AssistantMessageEvent,
   BlobStore,
   Candidate,
+  ManualAnnotationEvent,
+  NodeId,
+  NodeLink,
   NodeMeta,
   RetrievalProvider,
   SummaryMeta,
@@ -65,6 +69,14 @@ const assistantMessage = (blob: string): TraceEventInput<AssistantMessageEvent> 
 const toolCall = (
   overrides: Partial<TraceEventInput<ToolCallEvent>> & { tool: string },
 ): TraceEventInput<ToolCallEvent> => ({ type: 'tool_call', ts: TS, ...overrides });
+
+/** Deliberately later than `TS`: a replayed note must carry the event's clock, not the pass's. */
+const ANNOTATED_AT = '2026-02-02T09:30:00.000Z';
+const NOTE = 'superseded: the rounding moved into the tax helper';
+
+const manualAnnotation = (
+  overrides: Partial<TraceEventInput<ManualAnnotationEvent>> & { blob: string },
+): TraceEventInput<ManualAnnotationEvent> => ({ type: 'manual_annotation', ts: ANNOTATED_AT, ...overrides });
 
 /**
  * The canonical fixture session: a question, a read, two edits of one file, a
@@ -161,6 +173,17 @@ function blobInventory(dir: string): string[] {
   return readdirSync(join(dir, 'blobs'), { recursive: true })
     .map((entry) => String(entry))
     .sort();
+}
+
+function annotationsOf(store: TreeStore, id: NodeId): Annotation[] {
+  return store.getNode(id)?.meta_json.annotations ?? [];
+}
+
+/** The two §7 phases every annotation test links: implementation superseded by verification. */
+function phasePair(store: TreeStore): [TreeNode, TreeNode] {
+  const [, implementation, verification] = store.byKind('phase');
+  if (implementation === undefined || verification === undefined) throw new Error('fixture has no phase pair');
+  return [implementation, verification];
 }
 
 function fileNode(store: TreeStore, path: string): TreeNode {
@@ -306,9 +329,12 @@ describe('determinism (D8)', () => {
       ingest({ handle: b.handle });
       expect(project(b.handle.store)).toEqual(project(a.handle.store));
       expect(staleProfile(b.handle.store)).toEqual(staleProfile(a.handle.store));
-      // Different stores really did mint different ids — the projection is not
-      // passing because it compares nothing.
-      expect(b.handle.store.root()?.id).not.toBe(a.handle.store.root()?.id);
+      // Same L0 => same ids, deliberately (D8). L0 *names* L1 nodes — a
+      // `manual_annotation` carries the `node_id` its note belongs to — so an id
+      // minted from a clock made that reference unresolvable after a rebuild.
+      // The projection is still comparing something: it has a row per node.
+      expect(project(a.handle.store)).toHaveLength(6);
+      expect(b.handle.store.root()?.id).toBe(a.handle.store.root()?.id);
     } finally {
       a.handle.close();
       b.handle.close();
@@ -373,13 +399,14 @@ describe('appendEvent', () => {
       );
 
       // Staleness converges exactly, marker for marker — `project` already
-      // compares it, and this spells out the case that used to differ: §7's text
-      // fallback opened `diagnosis` at seq 1, the tool state machine moved it to
-      // seq 2, and reconciliation via `setStale` follows the span instead of
+      // compares it, and this spells out the case that used to differ: §7's
+      // text fallback opened a phase at seq 1, and re-segmentation adopts the
+      // trace start too (§7's `pendingStart`), so `diagnosis` stays at seq 1
+      // and reconciliation via `setStale` follows the span rather than
       // stranding the superseded lower bound `markStale` would have kept.
       const incrementalStale = staleProfile(incremental.handle.store);
       expect(incrementalStale).toEqual(staleProfile(replayed.handle.store));
-      expect(incrementalStale.find(([title]) => title === 'diagnosis')).toEqual(['diagnosis', 2]);
+      expect(incrementalStale.find(([title]) => title === 'diagnosis')).toEqual(['diagnosis', 1]);
     } finally {
       incremental.handle.close();
       replayed.handle.close();
@@ -408,6 +435,144 @@ describe('appendEvent', () => {
       expect(stale).toEqual(['fix pricing', 'verification']);
     } finally {
       handle.close();
+    }
+  });
+});
+
+describe('annotation replay (§9, D8, D10)', () => {
+  it('carries a note and its lateral link through rebuild() with the same seq and created_at, because a rebuild that loses annotate’s output is data loss dressed as a replay', () => {
+    const { config, handle } = openFixture();
+    seed(handle);
+    ingest({ handle });
+    const [implementation, verification] = phasePair(handle.store);
+
+    // Exactly what §9's `annotate` records: the L0 event is the conclusion,
+    // L1 is derived from it.
+    const { event } = appendEvent(
+      handle,
+      manualAnnotation({
+        node_id: implementation.id,
+        blob: handle.blobs.put(NOTE),
+        link_to: verification.id,
+        link_kind: 'superseded_by',
+      }),
+    );
+    const note: Annotation = { seq: event.seq, text: NOTE, created_at: ANNOTATED_AT };
+    const link: NodeLink = {
+      from_id: implementation.id,
+      to_id: verification.id,
+      kind: 'superseded_by',
+      created_at: ANNOTATED_AT,
+    };
+    expect(annotationsOf(handle.store, implementation.id)).toEqual([note]);
+    expect(handle.store.linksFrom(implementation.id)).toEqual([link]);
+    handle.close();
+
+    const rebuilt = rebuild(config);
+    try {
+      // The subject id survives because it is minted from the segmentation key
+      // rather than from a clock. That is what makes L1 a function of L0 for
+      // the write-side tool too: the plan tells users to rebuild after a
+      // segmenter or prompt change, so anything a rebuild drops is destroyed by
+      // the documented workflow.
+      expect(rebuilt.handle.store.byKind('phase')[1]?.id).toBe(implementation.id);
+      expect(annotationsOf(rebuilt.handle.store, implementation.id)).toEqual([note]);
+      expect(rebuilt.handle.store.linksFrom(implementation.id)).toEqual([link]);
+      expect(rebuilt.handle.store.linksTo(verification.id)).toEqual([link]);
+      expect(rebuilt.stats).toMatchObject({ annotations: 1, annotationLinks: 1, unresolvedAnnotations: 0 });
+    } finally {
+      rebuilt.handle.close();
+    }
+  });
+
+  it('lands on one note and one edge however often the same log is ingested, because a re-derivation converges on the tree instead of accumulating it', () => {
+    const { handle } = openFixture();
+    try {
+      seed(handle);
+      ingest({ handle });
+      const [implementation, verification] = phasePair(handle.store);
+      // L0 only — no L1 write — so the derivation is the only thing under test.
+      handle.trace.append(
+        manualAnnotation({
+          node_id: implementation.id,
+          blob: handle.blobs.put(NOTE),
+          link_to: verification.id,
+          link_kind: 'superseded_by',
+        }),
+      );
+
+      const first = ingest({ handle }).stats;
+      const second = ingest({ handle }).stats;
+      expect(annotationsOf(handle.store, implementation.id)).toHaveLength(1);
+      expect(handle.store.linksFrom(implementation.id)).toHaveLength(1);
+      // The counts describe L0, not what this particular pass wrote, so they do
+      // not decay to zero once the rows are already there.
+      expect([first.annotations, second.annotations]).toEqual([1, 1]);
+      expect([first.annotationLinks, second.annotationLinks]).toEqual([1, 1]);
+
+      // A runtime writer that appends the note to L1 as well as to L0 (what
+      // `annotate` does today) converges here rather than doubling for good:
+      // the merge key is the note's L0 seq, which is its identity (§9).
+      const stored = annotationsOf(handle.store, implementation.id);
+      handle.store.mergeNodeMeta(implementation.id, { annotations: [...stored, ...stored] });
+      ingest({ handle });
+      expect(annotationsOf(handle.store, implementation.id)).toEqual(stored);
+    } finally {
+      handle.close();
+    }
+  });
+
+  it('counts an annotation it cannot place instead of dropping it in silence or failing the pass, because silent loss is the defect being fixed', () => {
+    const { handle } = openFixture();
+    try {
+      seed(handle);
+      ingest({ handle });
+      const root = handle.store.root() as TreeNode;
+      // A note on a node this trace does not produce (a foreign trace, or a
+      // node a later segmentation dropped)...
+      handle.trace.append(manualAnnotation({ node_id: 'n_ghost', blob: handle.blobs.put('note from another tree') }));
+      // ...and a note whose body never reached L2.
+      handle.trace.append(manualAnnotation({ node_id: root.id, blob: 'f'.repeat(64) }));
+
+      const stats = ingest({ handle }).stats;
+      expect(stats).toMatchObject({ annotations: 0, annotationLinks: 0, unresolvedAnnotations: 2 });
+      // The rest of the pass is untouched: an unplaceable note is a reported
+      // gap, not a broken ingestion (§18).
+      expect(stats.nodes).toBe(6);
+      expect(handle.store.nodesInCreationOrder().every((node) => node.meta_json.annotations === undefined)).toBe(true);
+    } finally {
+      handle.close();
+    }
+  });
+
+  it('derives the identical L1 twice from an L0 that carries an annotation, which is the D8 claim with the write-side tool included', () => {
+    const a = openFixture();
+    const b = openFixture();
+    try {
+      seed(a.handle);
+      ingest({ handle: a.handle });
+      const [implementation, verification] = phasePair(a.handle.store);
+      const annotation = manualAnnotation({
+        node_id: implementation.id,
+        blob: a.handle.blobs.put(NOTE),
+        link_to: verification.id,
+        link_kind: 'superseded_by',
+      });
+      a.handle.trace.append(annotation);
+      ingest({ handle: a.handle });
+
+      // The same L0, derived once instead of twice: the annotation names its
+      // subject by an id the second store has to mint identically.
+      b.handle.blobs.put(NOTE);
+      seed(b.handle, [...fixtureEvents(b.handle.blobs), annotation]);
+      ingest({ handle: b.handle });
+
+      expect(project(b.handle.store)).toEqual(project(a.handle.store));
+      expect(b.handle.store.linksFrom(implementation.id)).toEqual(a.handle.store.linksFrom(implementation.id));
+      expect(annotationsOf(b.handle.store, implementation.id)).toHaveLength(1);
+    } finally {
+      a.handle.close();
+      b.handle.close();
     }
   });
 });

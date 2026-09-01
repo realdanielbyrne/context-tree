@@ -38,7 +38,7 @@ The second one fails when D4 breaks. The first one passes forever.
 
 ### 2. Golden fixtures
 
-Recorded traces under `eval/fixtures/`, with the derived tree snapshotted. A
+Recorded traces under `eval-resumption/fixtures/`, with the derived tree snapshotted. A
 segmenter change shows up as a fixture diff you have to look at and approve —
 which is the whole reason L1 is rebuilt rather than migrated.
 

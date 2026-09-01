@@ -36,7 +36,12 @@ local.settings.json
 # Eval runs write results + recorded completions; fixtures ARE committed.
 eval/results/
 eval/.cache/
+eval-resumption/results/
+eval-resumption/.cache/
+# Downloaded benchmark datasets are local-only; the fixtures under eval/test/fixtures ARE committed.
+eval/scenarios/
 !eval/fixtures/
+!eval-resumption/fixtures/
 
 # ── agent scratch ───────────────────────────────────────────────────────────
 # subagent-driven-development workspace: ledger, briefs, review packages.
@@ -48,6 +53,13 @@ eval/.cache/
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 # `.ignore` re-admits this tree to ripgrep so the cards stay greppable.
 graft/
+
+# ── python (analysis/) ──────────────────────────────────────────────────────
+# Data-analysis venv for the scripts under analysis/. Recreate with:
+#   python3 -m venv .venv && .venv/bin/pip install -r analysis/requirements.txt
+.venv/
+__pycache__/
+*.pyc
 
 # ── editor / OS ─────────────────────────────────────────────────────────────
 .DS_Store

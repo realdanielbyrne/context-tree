@@ -12,15 +12,19 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { SummaryContractError, SummaryInputError } from '../src/contracts/index.js';
 import type {
+  BlobStore,
   CompletionRequest,
   CompletionResult,
   ModelProvider,
   NodeId,
   SummaryMeta,
   SymbolSpan,
+  TraceLog,
 } from '../src/contracts/index.js';
 import { FsBlobStore } from '../src/blobs/index.js';
 import { JsonlTraceLog } from '../src/trace/index.js';
+import { resolveConfig } from '../src/config.js';
+import { ingest, openTaskStore } from '../src/ingest/index.js';
 import { openInMemoryStore, type SqliteTreeStore } from '../src/store/index.js';
 import { Summarizer } from '../src/summarize/index.js';
 
@@ -97,6 +101,13 @@ async function compliant(call: RecordedCall): Promise<string> {
   return replyBody(echoedNodeIds(call.content));
 }
 
+/** A runner's own output — the only place a §8 `tests[]` entry can come from. */
+const FAILING_RUN = [
+  'FAIL test/pricing.test.ts > rounds half up on discounted totals',
+  '  expected 108 to be 109',
+  '1 failing, 11 passing',
+].join('\n');
+
 const A_SPAN: SymbolSpan = {
   path: 'src/a.ts',
   start_line: 10,
@@ -160,7 +171,7 @@ function fixture(): Fixture {
 function summarizerFor(
   fx: Fixture,
   provider: StubProvider,
-  options: { concurrency?: number } = {},
+  options: { concurrency?: number; trace?: TraceLog; blobs?: BlobStore } = {},
 ): Summarizer {
   return new Summarizer({
     store: fx.store,
@@ -283,6 +294,73 @@ describe('leaf summaries', () => {
     expect(prompt).toContain('export function parseThing() { return 1; }');
     expect(prompt).toContain('src/a.ts:10-42 parseThing');
     expect(prompt).not.toContain('now run the tests');
+  });
+
+  /**
+   * §8's `tests: [{name, status, detail}]` pointer can only be written from the
+   * runner's own output, and "which test failed" is the fact a resumed agent
+   * needs most (§9: the structured metadata is the ONLY mitigation for the
+   * model not knowing what it does not know). A tool_result that reached the
+   * model as its `error` string alone made that pointer unwritable.
+   */
+  it('renders a failed run\'s output alongside its error, or §8\'s tests[] pointer has nothing to name', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ct-summarize-failrun-'));
+    const blobs = new FsBlobStore(join(dir, 'blobs'));
+    const trace = new JsonlTraceLog(join(dir, 'trace.jsonl'));
+    trace.appendAll([
+      { type: 'user_message', ts: NOW, blob: blobs.put('the suite went red') },
+      { type: 'assistant_message', ts: NOW, blob: blobs.put('running it') },
+      { type: 'tool_call', ts: NOW, tool: 'run_tests', args_blob: blobs.put('{"suite":"pricing"}') },
+      // A runner that exited non-zero: the reason is in `error`, the failure
+      // text is in `output_blob`. Both, or the summary can only say "it failed".
+      {
+        type: 'tool_result',
+        ts: NOW,
+        call_seq: 3,
+        error: 'exit code 1',
+        output_blob: blobs.put(FAILING_RUN),
+      },
+    ]);
+
+    const fx = fixture();
+    const provider = new StubProvider(compliant);
+    await summarizerFor(fx, provider, { trace, blobs }).summarizeLeaf(fx.p1);
+
+    const prompt = provider.calls[0]?.content ?? '';
+    expect(prompt).toContain('error: exit code 1');
+    expect(prompt).toContain('rounds half up on discounted totals');
+    expect(prompt).toContain('expected 108 to be 109');
+    // The arguments say *what was asked* — the suite name a tests[] entry is
+    // written from, which no other event carries.
+    expect(prompt).toContain('{"suite":"pricing"}');
+  });
+
+  it('marks a truncated payload, so the head of a long run is never read as the whole run', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ct-summarize-truncate-'));
+    const blobs = new FsBlobStore(join(dir, 'blobs'));
+    const trace = new JsonlTraceLog(join(dir, 'trace.jsonl'));
+    const tail = 'FAIL past the cap';
+    trace.appendAll([
+      { type: 'user_message', ts: NOW, blob: blobs.put('run everything') },
+      { type: 'assistant_message', ts: NOW, blob: blobs.put('running') },
+      { type: 'tool_call', ts: NOW, tool: 'run_tests' },
+      {
+        type: 'tool_result',
+        ts: NOW,
+        call_seq: 3,
+        output_blob: blobs.put(`${'PASS ok\n'.repeat(600)}${tail}`),
+      },
+    ]);
+
+    const fx = fixture();
+    const provider = new StubProvider(compliant);
+    await summarizerFor(fx, provider, { trace, blobs }).summarizeLeaf(fx.p1);
+
+    const prompt = provider.calls[0]?.content ?? '';
+    expect(prompt).not.toContain(tail);
+    // Visible, not silent: a model that cannot see the rest must be told so it
+    // reports what it saw rather than what it assumes.
+    expect(prompt).toMatch(/truncated: first 4096 of \d+ bytes/);
   });
 });
 
@@ -500,7 +578,7 @@ describe('the §8 content contract', () => {
     expect(summary.version).toBe(1);
   });
 
-  it('throws SummaryContractError instead of storing a summary whose spans point outside the branch', async () => {
+  it('drops reply-owned file spans and stores tree-derived coordinates instead (D9)', async () => {
     const fx = fixture();
     const provider = new StubProvider(async (call) =>
       replyBody(echoedNodeIds(call.content), {
@@ -509,12 +587,97 @@ describe('the §8 content contract', () => {
     );
     const summarizer = summarizerFor(fx, provider);
 
-    await expect(summarizer.summarizeLeaf(fx.p1)).rejects.toBeInstanceOf(SummaryContractError);
+    const summary = await summarizer.summarizeLeaf(fx.p1);
+
+    // A hallucinated path is NOT a rejection: `summaryMetaFrom` overwrites
+    // files/symbols from the tree, so validating them failed whole branches
+    // over values the system discards (observed live: claude-haiku-4.5 broke
+    // this sub-contract on 3/3 runs, and the retry did not recover it).
+    expect(provider.calls).toHaveLength(1);
+    expect(summary.version).toBe(1);
+    const stored = fx.store.currentSummary(fx.p1);
+    expect(stored?.meta.files.map((file) => file.path)).toEqual(['src/a.ts']);
+    expect(stored?.meta.files.some((file) => file.path === 'src/never-touched.ts')).toBe(false);
+  });
+
+  /**
+   * The three sub-field defects `claude-haiku-4.5` produced live, in one reply:
+   * a missing `end_line`, an empty `symbol`, and a path this branch never
+   * touched. All of them are inside fields `summaryMetaFrom` overwrites from
+   * the tree (D9), so rejecting them cost a whole branch summary — and §9 says
+   * an unsummarized branch is one the next session cannot ask about — while
+   * changing nothing that gets stored.
+   */
+  it('accepts a reply whose file spans are malformed sub-field by sub-field, because the tree overwrites them (D9)', async () => {
+    const fx = fixture();
+    const provider = new StubProvider(async (call) =>
+      JSON.stringify({
+        text: 'the branch did work',
+        meta: {
+          files: [
+            { path: 'src/a.ts', start_line: 900 },
+            { path: 'src/never-touched.ts', start_line: 1, end_line: 2, symbol: '' },
+          ],
+          symbols: [''],
+          tests: [],
+          artifacts: [],
+          open_questions: [],
+          decisions: [],
+          node_ids: echoedNodeIds(call.content),
+        },
+      }),
+    );
+
+    const summary = await summarizerFor(fx, provider).summarizeLeaf(fx.p1);
+
+    // Not even a retry: none of that was ever a violation.
+    expect(provider.calls).toHaveLength(1);
+    expect(summary.meta.files).toEqual([A_SPAN]);
+    expect(summary.meta.symbols).toEqual(['parseThing']);
+  });
+
+  it('still refuses a reply missing a model-owned field, since §8\'s metadata is §9\'s only unknown-unknowns mitigation', async () => {
+    const fx = fixture();
+    // `decisions` is the model's alone: the tree cannot recover it, so storing
+    // a reply without it stores a summary with a hole nothing would report.
+    const provider = new StubProvider(async (call) => {
+      const reply = JSON.parse(replyBody(echoedNodeIds(call.content))) as {
+        meta: Record<string, unknown>;
+      };
+      delete reply.meta.decisions;
+      return JSON.stringify(reply);
+    });
+
+    await expect(summarizerFor(fx, provider).summarizeLeaf(fx.p1)).rejects.toBeInstanceOf(
+      SummaryContractError,
+    );
     expect(provider.calls).toHaveLength(2);
-    expect(provider.calls[1]?.content).toContain('src/never-touched.ts');
-    // Nothing was written: a contract-violating summary is worse than none.
+    expect(provider.calls[1]?.content).toContain('meta.decisions');
     expect(fx.store.currentSummary(fx.p1)).toBeNull();
     expect(fx.store.summaryVersions(fx.p1)).toEqual([]);
+  });
+
+  it('still refuses a `files` that is not an array: its presence is the model\'s job even when its contents are not', async () => {
+    const fx = fixture();
+    const provider = new StubProvider(async (call) =>
+      JSON.stringify({
+        text: 'the branch did work',
+        meta: {
+          files: 'src/a.ts',
+          symbols: [],
+          tests: [],
+          artifacts: [],
+          open_questions: [],
+          decisions: [],
+          node_ids: echoedNodeIds(call.content),
+        },
+      }),
+    );
+
+    await expect(summarizerFor(fx, provider).summarizeLeaf(fx.p1)).rejects.toBeInstanceOf(
+      SummaryContractError,
+    );
+    expect(provider.calls[1]?.content).toContain('meta.files');
   });
 
   it('retries an unparseable reply once too, since a summary that cannot be read is the same failure', async () => {
@@ -582,5 +745,76 @@ describe('D11 background summarization', () => {
     await drained;
 
     expect(summarizer.backgroundOutcomes().map((outcome) => outcome.nodeId)).toEqual([fx.p1, fx.p2]);
+  });
+});
+
+
+/**
+ * The one fact a resumed session cannot do without. §8 builds the root summary
+ * from child summaries and never from raw events, so an event under no phase
+ * reaches no summary — and until the segmenter adopted the leading pre-tool
+ * run, the opening user message was exactly such an event.
+ */
+describe('the opening task statement (§8, §9, §15)', () => {
+  it('reaches a leaf summary and the root prompt, so Zone B alone says what the session was asked to do', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ct-summarize-task-'));
+    const handle = openTaskStore(
+      resolveConfig({
+        root: dir,
+        taskTitle: 'fix the cursor',
+        provider: 'mock',
+        leafModel: LEAF_MODEL,
+        rootModel: ROOT_MODEL,
+      }),
+    );
+    const TASK = 'paging past page 1 drops the status filter (ACME-412)';
+    handle.trace.appendAll([
+      { type: 'user_message', ts: NOW, blob: handle.blobs.put(TASK) },
+      { type: 'assistant_message', ts: NOW, blob: handle.blobs.put('reading the cursor') },
+      { type: 'tool_call', ts: NOW, tool: 'Read', path: 'src/cursor.ts' },
+      {
+        type: 'tool_call',
+        ts: NOW,
+        tool: 'Edit',
+        path: 'src/cursor.ts',
+        blob: handle.blobs.put('export const cursor = 2;\n'),
+      },
+    ]);
+    ingest({ handle });
+
+    // The stub reports only what its prompt showed it, so this fails when the
+    // statement never reaches the model instead of passing on invented text.
+    const provider = new StubProvider(async (call) =>
+      replyBody(
+        echoedNodeIds(call.content),
+        {},
+        call.content.includes(TASK) ? `the user asked about ${TASK}` : 'the branch did work',
+      ),
+    );
+    const root = handle.store.root();
+    expect(root).not.toBeNull();
+    const summarizer = new Summarizer({
+      store: handle.store,
+      provider,
+      leafModel: LEAF_MODEL,
+      rootModel: ROOT_MODEL,
+      trace: handle.trace,
+      blobs: handle.blobs,
+      now: () => NOW,
+    });
+
+    const outcomes = await summarizer.summarizeTree(root?.id ?? '');
+    expect(outcomes.every((outcome) => outcome.status === 'summarized')).toBe(true);
+
+    const leafTexts = handle.store
+      .children(root?.id ?? '')
+      .map((child) => handle.store.currentSummary(child.id)?.text ?? '');
+    expect(leafTexts.some((text) => text.includes(TASK))).toBe(true);
+    // The root call reads child summaries only (§8), which is the whole path
+    // the statement has to travel to reach Zone B of a resumed session.
+    const rootPrompt = provider.calls.find((call) => call.model === ROOT_MODEL)?.content ?? '';
+    expect(rootPrompt).toContain(TASK);
+
+    handle.close();
   });
 });

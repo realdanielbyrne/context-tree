@@ -66,18 +66,29 @@ function writeBlob(blobsDir: string, content: string): string {
  * edit phase, which is the smallest trace whose tree can tell the §7 tool->phase
  * transition apart from "one phase for everything".
  */
-function writeL0Fixture(dir: string, options: { badLineAt?: number } = {}): string {
+function writeL0Fixture(
+  dir: string,
+  options: { badLineAt?: number; orphanAnnotation?: boolean } = {},
+): string {
   const blobsDir = join(dir, 'blobs');
   const userRef = writeBlob(blobsDir, 'fix the parser');
   const outputRef = writeBlob(blobsDir, 'export function parse() {}\n');
   const fileRef = writeBlob(blobsDir, FILE_AFTER);
-  const lines = [
+  const events: Record<string, unknown>[] = [
     { seq: 1, type: 'user_message', ts: TS, blob: userRef },
     { seq: 2, type: 'tool_call', ts: TS, tool: 'Read', path: 'src/a.ts' },
     { seq: 3, type: 'tool_result', ts: TS, call_seq: 2, output_blob: outputRef },
     { seq: 4, type: 'tool_call', ts: TS, tool: 'Edit', path: 'src/a.ts', blob: fileRef },
     { seq: 5, type: 'tool_result', ts: TS, call_seq: 4 },
-  ].map((event) => JSON.stringify(event));
+  ];
+  if (options.orphanAnnotation === true) {
+    // A §9 note whose subject this trace's segmentation does not produce — the
+    // shape a note imported from a foreign store has. Its body IS in L2, so the
+    // only thing the replay cannot resolve is the node id.
+    const noteRef = writeBlob(blobsDir, 'the parser rewrite supersedes this');
+    events.push({ seq: 6, type: 'manual_annotation', ts: TS, node_id: 'n_missing', blob: noteRef });
+  }
+  const lines = events.map((event) => JSON.stringify(event));
   if (options.badLineAt !== undefined) lines.splice(options.badLineAt - 1, 0, '{ not json at all');
   const path = join(dir, 'trace.jsonl');
   writeFileSync(path, `${lines.join('\n')}\n`, 'utf8');
@@ -90,7 +101,7 @@ interface Workspace {
   trace: string;
 }
 
-function imported(options: { badLineAt?: number } = {}): Workspace {
+function imported(options: { badLineAt?: number; orphanAnnotation?: boolean } = {}): Workspace {
   const cwd = tempDir();
   const root = join(cwd, 'store');
   const trace = writeL0Fixture(cwd, options);
@@ -219,6 +230,30 @@ describe('import', () => {
     expect(io.stdout.join('\n')).toContain('line 3:');
   });
 
+  it('says how many annotations the replay could not place, and says nothing when none were lost', () => {
+    const cwd = tempDir();
+    const root = join(cwd, 'store');
+    const io = capture();
+
+    const result = importCommand(writeL0Fixture(cwd, { orphanAnnotation: true }), { cwd, root }, io);
+
+    // Dropping a §9 note silently is the failure D8's replay exists to prevent;
+    // an unreported residual count is the same loss, one level quieter.
+    expect(result.stats.unresolvedAnnotations).toBe(1);
+    expect(io.stdout.join('\n')).toContain('1 annotation(s) could not be replayed');
+
+    const clean = tempDir();
+    const cleanIo = capture();
+    const cleanResult = importCommand(
+      writeL0Fixture(clean),
+      { cwd: clean, root: join(clean, 'store') },
+      cleanIo,
+    );
+
+    expect(cleanResult.stats.unresolvedAnnotations).toBe(0);
+    expect(cleanIo.stdout.join('\n')).not.toContain('annotation');
+  });
+
   it('--strict fails on that line and leaves L0 empty — a partial import is opt-out', () => {
     const cwd = tempDir();
     const root = join(cwd, 'store');
@@ -321,6 +356,23 @@ describe('rebuild', () => {
     const shape = (rows: typeof before): unknown[] =>
       rows.map((row) => [row.kind, row.phase, row.title, row.spanStart, row.spanEnd]);
     expect(shape(after)).toEqual(shape(before));
+  });
+
+  it('reports the annotations a replay dropped — the rebuild is where that loss happens', () => {
+    const workspace = imported({ orphanAnnotation: true });
+    const io = capture();
+
+    const result = rebuildCommand({ ...workspace, yes: true }, io);
+
+    expect(result.stats.unresolvedAnnotations).toBe(1);
+    expect(io.stdout.join('\n')).toContain('1 annotation(s) could not be replayed');
+
+    const clean = imported();
+    const cleanIo = capture();
+    const cleanResult = rebuildCommand({ ...clean, yes: true }, cleanIo);
+
+    expect(cleanResult.stats.unresolvedAnnotations).toBe(0);
+    expect(cleanIo.stdout.join('\n')).not.toContain('annotation');
   });
 });
 

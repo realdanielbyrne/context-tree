@@ -13,4 +13,9 @@ export {
   type SummarizerOptions,
 } from './summarizer.js';
 export { branchFacts, renderBranchDetail, type BranchFacts, type DetailSources } from './detail.js';
-export { contractViolation, summaryMetaFrom, type ContractExpectation } from './contract.js';
+export {
+  contractViolation,
+  parseSummaryReply,
+  summaryMetaFrom,
+  type ContractExpectation,
+} from './contract.js';

@@ -43,6 +43,14 @@ export interface DetailSources {
  */
 const BLOB_PREFIX_BYTES = 4_096;
 
+/**
+ * The smaller cap for a call's arguments. Arguments say *what was asked* (which
+ * suite, which pattern, which path) in a line or two, so they are cheap and
+ * worth having; §10's Zone C budget is finite, and the facts §8 wants pointers
+ * to live in the output, not the request.
+ */
+const ARGS_PREFIX_BYTES = 1_024;
+
 export function branchFacts(store: TreeStore, node: TreeNode): BranchFacts {
   const spans: SymbolSpan[] = [];
   const seenSpans = new Set<string>();
@@ -128,22 +136,44 @@ function renderEvent(event: TraceEvent, blobs: BlobStore | undefined): string {
       return `${head}\n${payload(blobs, event.blob)}`;
     case 'tool_call': {
       const path = event.path === undefined ? '' : ` path=${event.path}`;
-      const line = `${head} ${event.tool}${path}`;
-      return event.blob === undefined ? line : `${line}\n${payload(blobs, event.blob)}`;
+      const lines = [`${head} ${event.tool}${path}`];
+      // The arguments are the only record of what was *asked for* — the suite
+      // name a `tests[]` pointer is written from (§8), the pattern a later
+      // search would have to guess at. Rendering the tool name alone throws
+      // that away while still paying for the event.
+      if (event.args_blob !== undefined) {
+        lines.push(`args: ${payload(blobs, event.args_blob, ARGS_PREFIX_BYTES)}`);
+      }
+      if (event.blob !== undefined) lines.push(payload(blobs, event.blob));
+      return lines.join('\n');
     }
     case 'tool_result': {
-      const line = `${head} call=${event.call_seq}${event.truncated === true ? ' (truncated)' : ''}`;
-      if (event.error !== undefined) return `${line}\nerror: ${event.error}`;
-      return event.output_blob === undefined ? line : `${line}\n${payload(blobs, event.output_blob)}`;
+      const lines = [`${head} call=${event.call_seq}${event.truncated === true ? ' (truncated)' : ''}`];
+      // Error AND output, never one instead of the other. A failing test run
+      // carries its reason in `output_blob`; returning the `error` string alone
+      // reaches the model as a result with no failure text in it, and §8's
+      // `tests: [{name, status, detail}]` pointer cannot be written from
+      // nothing — "which test failed" is the fact a resumed agent needs most
+      // (§9's unknown-unknowns mitigation is the metadata, so a fact that never
+      // reaches the summarizer can never be asked for).
+      if (event.error !== undefined) lines.push(`error: ${event.error}`);
+      if (event.output_blob !== undefined) lines.push(payload(blobs, event.output_blob));
+      return lines.join('\n');
     }
     case 'segment_boundary':
       return `${head} ${event.from ?? 'none'} -> ${event.to}`;
   }
 }
 
-function payload(blobs: BlobStore | undefined, ref: BlobRef): string {
+function payload(blobs: BlobStore | undefined, ref: BlobRef, maxBytes = BLOB_PREFIX_BYTES): string {
   // A missing blob is not degradable (D8: L1 is a function of L0 + L2), so the
   // store's throw is left to propagate — it surfaces as a failed outcome.
   if (blobs === undefined) return `(payload ${ref.slice(0, 12)}; no blob store supplied)`;
-  return blobs.getTextPrefix(ref, BLOB_PREFIX_BYTES);
+  const text = blobs.getTextPrefix(ref, maxBytes);
+  const total = blobs.size(ref);
+  if (total <= maxBytes) return text;
+  // Marked, never silent: a truncated payload the model reads as a whole one is
+  // how a summary comes to report "the suite passed" from the head of a run
+  // whose failures were past the cap.
+  return `${text}\n… [truncated: first ${maxBytes} of ${total} bytes; fetch the branch for the rest]`;
 }

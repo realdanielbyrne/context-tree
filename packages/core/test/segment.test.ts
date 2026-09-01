@@ -46,6 +46,15 @@ const phaseTypes = (s: Segmentation): (PhaseType | null)[] =>
 const phaseTitles = (s: Segmentation): string[] =>
   opens(s).filter((op) => op.kind === 'phase').map((op) => op.title);
 
+/** `[start, end]` per phase, in open order — `close` carries the end (§7). */
+const phaseSpans = (s: Segmentation): [number, number][] =>
+  opens(s)
+    .filter((op) => op.kind === 'phase')
+    .map((op) => {
+      const closed = s.ops.find((other) => other.op === 'close' && other.key === op.key);
+      return [op.start_seq, closed?.op === 'close' ? closed.end_seq : op.start_seq];
+    });
+
 /**
  * One realistic Claude Code turn: read around, edit twice, shell out, run tests.
  * 10 events -> phases diagnosis, implementation, verification (Bash is neutral).
@@ -255,11 +264,45 @@ describe('segment — messages (§7)', () => {
     }
   });
 
-  it('leaves pre-tool messages under the root only, rather than inventing a phase for them', () => {
+  /**
+   * §8 writes the root summary from its child summaries, never from raw events,
+   * so an event under no phase reaches no summary — and the events before the
+   * first tool call are the user's task statement. A resumed agent could read
+   * every branch summary in Zone B and still not know what it was asked to do
+   * (§9's unknown-unknowns failure; §15's benchmark turns on exactly this).
+   */
+  it('gives the pre-tool opening messages to the first phase, because an event in no phase reaches no summary (§8)', () => {
     const s = segment(build([user(), assistant(), call('Edit', 'a.ts')]), options());
     const phaseOpen = opens(s).find((op) => op.kind === 'phase');
-    expect(phaseOpen?.start_seq).toBe(3);
-    expect(s.ops).toContainEqual({ op: 'extend', key: TASK_KEY, seq: 2 });
+
+    expect(phaseOpen?.start_seq).toBe(1);
+    // Adopted, not re-typed: the phase is still typed by the tool that opened
+    // it, and no extra phase was invented from a run with no tool signal.
+    expect(phaseTypes(s)).toEqual(['implementation']);
+    expect(s.stats.phases).toBe(1);
+    // The span convention holds for the adopted run: `open` covers seq 1, every
+    // later event under the node emits one `extend`.
+    expect(s.ops).toContainEqual({ op: 'extend', key: phaseKey(0), seq: 2 });
+    expect(s.ops).toContainEqual({ op: 'extend', key: phaseKey(0), seq: 3 });
+  });
+
+  it('leaves a tool-first trace exactly where it was, so adopting the leading run never renumbers a phase (D16)', () => {
+    const s = segment(build([call('Edit', 'a.ts'), user(), call('run_tests')]), options());
+    expect(opens(s).filter((op) => op.kind === 'phase').map((op) => op.start_seq)).toEqual([1, 3]);
+    // The opening event still emits no `extend` of its own.
+    expect(s.ops).not.toContainEqual({ op: 'extend', key: phaseKey(0), seq: 1 });
+  });
+
+  it('covers every event with exactly one phase span — the property that makes "no event misses a summary" checkable', () => {
+    for (const events of [build([user(), assistant(), call('Edit', 'a.ts'), result(), call('run_tests')]), FIXTURE_400]) {
+      const s = segment(events, options());
+      const spans = phaseSpans(s);
+      expect(spans[0]?.[0]).toBe(events[0]?.seq);
+      expect(spans.at(-1)?.[1]).toBe(events.at(-1)?.seq);
+      // Contiguous and non-overlapping: phase i ends on the event before phase
+      // i+1 opens, so the union is the whole log with no gap to fall into.
+      for (let i = 1; i < spans.length; i += 1) expect(spans[i]?.[0]).toBe((spans[i - 1]?.[1] ?? 0) + 1);
+    }
   });
 });
 

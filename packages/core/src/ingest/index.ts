@@ -5,6 +5,7 @@
  */
 export { openTaskStore, type TaskStore } from './task-store.js';
 export { applySegmentation } from './apply.js';
+export { nodeIdMinter, type NodeIdMinter } from './node-ids.js';
 export {
   extractSpansForFileNodes,
   type FileSpanInput,

@@ -33,13 +33,13 @@ import {
   type TreeNode,
   type TreeStore,
 } from '../contracts/index.js';
+import { leafSummaryPrompt, rootSummaryPrompt, type ChildSummary } from '../prompts/index.js';
 import {
-  leafSummaryPrompt,
-  parseSummaryResponse,
-  rootSummaryPrompt,
-  type ChildSummary,
-} from '../prompts/index.js';
-import { contractViolation, summaryMetaFrom, type ContractExpectation } from './contract.js';
+  contractViolation,
+  parseSummaryReply,
+  summaryMetaFrom,
+  type ContractExpectation,
+} from './contract.js';
 import { branchFacts, renderBranchDetail } from './detail.js';
 
 export interface SummarizerOptions {
@@ -127,7 +127,7 @@ export class Summarizer {
       nodeIds,
       detail: renderBranchDetail(this.store, node, facts, { trace: this.trace, blobs: this.blobs }),
     });
-    const reply = await this.complete(this.leafModel, prompt, { childIds, paths: facts.paths });
+    const reply = await this.complete(this.leafModel, prompt, { childIds });
     return this.store.transaction(() => {
       const summary = this.store.putSummary({
         node_id: nodeId,
@@ -170,7 +170,7 @@ export class Summarizer {
     const childIds = covered.map((child) => child.nodeId);
     const nodeIds = [rootId, ...childIds];
     const prompt = rootSummaryPrompt({ taskTitle: root.title, children: covered });
-    const reply = await this.complete(this.rootModel, prompt, { childIds, paths: facts.paths });
+    const reply = await this.complete(this.rootModel, prompt, { childIds });
     return this.store.putSummary({
       node_id: rootId,
       model: reply.model,
@@ -280,7 +280,7 @@ export class Summarizer {
       let parsed: { text: string; meta: SummaryMeta } | null = null;
       let problem: string | null = null;
       try {
-        parsed = parseSummaryResponse(result.text);
+        parsed = parseSummaryReply(result.text);
         problem = contractViolation(parsed.meta, expected);
       } catch (error) {
         if (!(error instanceof SummaryContractError)) throw error;

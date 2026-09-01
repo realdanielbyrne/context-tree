@@ -1,0 +1,255 @@
+{
+  "_generated": "Generated from eval/tasks/definitions.ts; every trace is synthetic. Do not hand-edit — see eval/tasks/generate.ts.",
+  "tasks": [
+    {
+      "id": "resumed-01-ledger-epoch",
+      "kind": "resumed",
+      "title": "clamp pre-migration postings to the ledger epoch",
+      "trace": {
+        "fixture": "../fixtures/traces/resumed-01-ledger-epoch.jsonl"
+      },
+      "golden": [
+        {
+          "path": "src/ledger/posting.ts",
+          "content": "import { LEDGER_EPOCH_2019 } from \"./epoch.js\";\n\nexport function postingDate(raw: Date): Date {\n  return raw < LEDGER_EPOCH_2019 ? LEDGER_EPOCH_2019 : raw;\n}"
+        }
+      ],
+      "prompt": "You are resuming this task. The last test run says postingDate clamps to the wrong date. Say exactly what the code has to use, why that is the right value, and what is left to do.",
+      "expect": {
+        "answerContains": [
+          "LEDGER_EPOCH_2019"
+        ]
+      },
+      "checker": {
+        "module": "./checkers/resumed.js",
+        "export": "resumed01LedgerEpoch"
+      },
+      "notes": "The cutover constant was settled in the diagnosis branch and never reached the edit. The active verification branch reports the symptom and not the decision."
+    },
+    {
+      "id": "resumed-02-rate-window-header",
+      "kind": "resumed",
+      "title": "read the rate window from the vendor response header",
+      "trace": {
+        "fixture": "../fixtures/traces/resumed-02-rate-window-header.jsonl"
+      },
+      "golden": [
+        {
+          "path": "src/net/rate.ts",
+          "content": "export function rateWindow(headers: Headers): number {\n  const raw = headers.get(\"X-Rate-Window\");\n  return raw === null ? 60 : Number.parseInt(raw, 10);\n}"
+        }
+      ],
+      "prompt": "You are resuming this task. The last test run says rateWindow returns the fallback instead of the sampled value. Say exactly what the code has to use, why that is the right value, and what is left to do.",
+      "expect": {
+        "answerContains": [
+          "X-Rate-Window"
+        ]
+      },
+      "checker": {
+        "module": "./checkers/resumed.js",
+        "export": "resumed02RateWindowHeader"
+      },
+      "notes": "The header name appears only in the diagnosis branch (a captured curl response). The edit reached for Retry-After, which is a plausible wrong answer."
+    },
+    {
+      "id": "resumed-03-payout-table",
+      "kind": "resumed",
+      "title": "point payout inserts at the migrated table",
+      "trace": {
+        "fixture": "../fixtures/traces/resumed-03-payout-table.jsonl"
+      },
+      "golden": [
+        {
+          "path": "src/pay/insert.ts",
+          "content": "export const PAYOUT_TABLE = \"payouts_v3\";\n\nexport function payoutInsert(): string {\n  return `INSERT INTO ${PAYOUT_TABLE} (job_id, cents) VALUES (@jobId, @cents)`;\n}"
+        }
+      ],
+      "prompt": "You are resuming this task. Two edits have been tried and the insert still fails. Say exactly what the code has to use, why that is the right value, and what is left to do.",
+      "expect": {
+        "answerContains": [
+          "payouts_v3"
+        ]
+      },
+      "checker": {
+        "module": "./checkers/resumed.js",
+        "export": "resumed03PayoutTable"
+      },
+      "notes": "Five phases, and the right table name is in the first one. Both later attempts are wrong in different ways, so guessing from the active branch cannot land it."
+    },
+    {
+      "id": "resumed-04-legacy-tz-flag",
+      "kind": "resumed",
+      "title": "pass the importer the flag old exports need",
+      "trace": {
+        "fixture": "../fixtures/traces/resumed-04-legacy-tz-flag.jsonl"
+      },
+      "golden": [
+        {
+          "path": "src/import/args.ts",
+          "content": "export function importArgs(legacy: boolean): string[] {\n  return legacy ? [\"--legacy-tz\"] : [];\n}"
+        }
+      ],
+      "prompt": "You are resuming this task. The last run still shows legacy exports shifted by an hour. Say exactly what the code has to use, why that is the right value, and what is left to do.",
+      "expect": {
+        "answerContains": [
+          "--legacy-tz"
+        ]
+      },
+      "checker": {
+        "module": "./checkers/resumed.js",
+        "export": "resumed04LegacyTzFlag"
+      },
+      "notes": "The CLI help text with both flags is in the diagnosis branch; the edit picked the other flag. Distinguishing them requires that branch."
+    },
+    {
+      "id": "resumed-05-driver-pin",
+      "kind": "resumed",
+      "title": "pin the SQL driver the deployed host has",
+      "trace": {
+        "fixture": "../fixtures/traces/resumed-05-driver-pin.jsonl"
+      },
+      "golden": [
+        {
+          "path": "src/db/driver.ts",
+          "content": "export const DRIVER_VERSION = \"0.5.12\";\n\nexport function assertDriver(found: string): void {\n  if (found !== DRIVER_VERSION) throw new Error(`driver ${found} != ${DRIVER_VERSION}`);\n}"
+        }
+      ],
+      "prompt": "You are resuming this task. The assertion in the last run fails with a version mismatch. Say exactly what the code has to use, why that is the right value, and what is left to do.",
+      "expect": {
+        "answerContains": [
+          "0.5.12"
+        ]
+      },
+      "checker": {
+        "module": "./checkers/resumed.js",
+        "export": "resumed05DriverPin"
+      },
+      "notes": "The host version exists only in the diagnosis branch. package.json advertises the range the edit used, so the repo itself argues for the wrong answer."
+    },
+    {
+      "id": "resumed-06-rounding-flag",
+      "kind": "resumed",
+      "title": "gate rounding behind the registered flag",
+      "trace": {
+        "fixture": "../fixtures/traces/resumed-06-rounding-flag.jsonl"
+      },
+      "golden": [
+        {
+          "path": "src/billing/flag.ts",
+          "content": "export const ROUNDING_FLAG = \"billing.rounding.v2\";\n\nexport function roundingEnabled(flags: Set<string>): boolean {\n  return flags.has(ROUNDING_FLAG);\n}"
+        }
+      ],
+      "prompt": "You are resuming this task. The active branch is a half-finished edit to a different flag file. Say exactly what the code has to use, why that is the right value, and what is left to do.",
+      "expect": {
+        "answerContains": [
+          "billing.rounding.v2"
+        ]
+      },
+      "checker": {
+        "module": "./checkers/resumed.js",
+        "export": "resumed06RoundingFlag"
+      },
+      "notes": "The active branch is an implementation phase about an unrelated flag — the strongest form of the trap, because the last thing that happened is a distraction."
+    },
+    {
+      "id": "resumed-07-invoice-dlq",
+      "kind": "resumed",
+      "title": "route poisoned invoices to the provisioned queue",
+      "trace": {
+        "fixture": "../fixtures/traces/resumed-07-invoice-dlq.jsonl"
+      },
+      "golden": [
+        {
+          "path": "src/queue/dead-letter.ts",
+          "content": "export const DEAD_LETTER_QUEUE = \"invoice-retry-dlq\";\n\nexport function deadLetter(id: string): { queue: string; id: string } {\n  return { queue: DEAD_LETTER_QUEUE, id };\n}"
+        }
+      ],
+      "prompt": "You are resuming this task. The queue suite still fails on a queue that does not exist. Say exactly what the code has to use, why that is the right value, and what is left to do.",
+      "expect": {
+        "answerContains": [
+          "invoice-retry-dlq"
+        ]
+      },
+      "checker": {
+        "module": "./checkers/resumed.js",
+        "export": "resumed07InvoiceDlq"
+      },
+      "notes": "The provisioned queue name is in the infra read at the start. Inventing a plausible name is exactly the failure this measures."
+    },
+    {
+      "id": "resumed-08-fixture-seed",
+      "kind": "resumed",
+      "title": "make the snapshot test reproducible",
+      "trace": {
+        "fixture": "../fixtures/traces/resumed-08-fixture-seed.jsonl"
+      },
+      "golden": [
+        {
+          "path": "test/support/seed.ts",
+          "content": "export const FIXTURE_SEED = 20240117;\n\nexport function seededRows(count: number): number[] {\n  let state = FIXTURE_SEED;\n  return Array.from({ length: count }, () => (state = (state * 1103515245 + 12345) % 2147483648));\n}"
+        }
+      ],
+      "prompt": "You are resuming this task. The snapshot still mismatches on every run. Say exactly what the code has to use, why that is the right value, and what is left to do.",
+      "expect": {
+        "answerContains": [
+          "20240117"
+        ]
+      },
+      "checker": {
+        "module": "./checkers/resumed.js",
+        "export": "resumed08FixtureSeed"
+      },
+      "notes": "A bare number is the least summarizable kind of fact, which is the point: a flattened summary keeps the shape of the decision and drops the value."
+    },
+    {
+      "id": "resumed-09-timecard-index",
+      "kind": "resumed",
+      "title": "hint the timecard query at the new index",
+      "trace": {
+        "fixture": "../fixtures/traces/resumed-09-timecard-index.jsonl"
+      },
+      "golden": [
+        {
+          "path": "src/timecards/query.ts",
+          "content": "export const TIMECARD_INDEX = \"ix_timecard_job_date\";\n\nexport function timecardHint(): string {\n  return `WITH (INDEX(${TIMECARD_INDEX}))`;\n}"
+        }
+      ],
+      "prompt": "You are resuming this task. The active branch is a review comment saying the index name is wrong. Say exactly what the code has to use, why that is the right value, and what is left to do.",
+      "expect": {
+        "answerContains": [
+          "ix_timecard_job_date"
+        ]
+      },
+      "checker": {
+        "module": "./checkers/resumed.js",
+        "export": "resumed09TimecardIndex"
+      },
+      "notes": "Uses an explicit segment_boundary into a review phase, so the set covers that §7 path. The reviewer names the problem and not the answer."
+    },
+    {
+      "id": "resumed-10-read-replica-env",
+      "kind": "resumed",
+      "title": "send report reads to the replica connection",
+      "trace": {
+        "fixture": "../fixtures/traces/resumed-10-read-replica-env.jsonl"
+      },
+      "golden": [
+        {
+          "path": "src/db/pool.ts",
+          "content": "export function readPool(env: NodeJS.ProcessEnv): string {\n  return env.db_read_replica ?? env.db_server ?? \"\";\n}"
+        }
+      ],
+      "prompt": "You are resuming this task. The last run says the pool still returns the primary host. Say exactly what the code has to use, why that is the right value, and what is left to do.",
+      "expect": {
+        "answerContains": [
+          "db_read_replica"
+        ]
+      },
+      "checker": {
+        "module": "./checkers/resumed.js",
+        "export": "resumed10ReadReplicaEnv"
+      },
+      "notes": "Case matters and the wrong case is the conventional-looking one, so an agent reconstructing from habit rather than from the branch gets it wrong."
+    }
+  ]
+}

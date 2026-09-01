@@ -1,0 +1,223 @@
+{
+  "_generated": "Generated from eval/tasks/definitions.ts; every trace is synthetic. Do not hand-edit — see eval/tasks/generate.ts.",
+  "tasks": [
+    {
+      "id": "fresh-01-invoice-rounding",
+      "kind": "fresh",
+      "title": "invoice line totals drift by a cent",
+      "trace": {
+        "fixture": "../fixtures/traces/fresh-01-invoice-rounding.jsonl"
+      },
+      "golden": [
+        {
+          "path": "src/pricing/invoice.ts",
+          "content": "export function lineTotal(cents: number, taxRate: number): number {\n  const base = Math.round(cents);\n  return base + Math.round(base * taxRate);\n}"
+        }
+      ],
+      "prompt": "Pick this up from the start. Invoice lines with tax come out a cent low. Name the file and the function that is wrong, and say what the corrected implementation has to do.",
+      "expect": {},
+      "checker": {
+        "module": "./checkers/fresh.js",
+        "export": "fresh01InvoiceRounding"
+      },
+      "notes": "Baseline: one short diagnosis branch, nothing to retrieve. A tree that costs anything here costs it for nothing."
+    },
+    {
+      "id": "fresh-02-csv-quotes",
+      "kind": "fresh",
+      "title": "CSV importer splits inside quoted fields",
+      "trace": {
+        "fixture": "../fixtures/traces/fresh-02-csv-quotes.jsonl"
+      },
+      "golden": [
+        {
+          "path": "src/import/csv.ts",
+          "content": "export function parseRow(line: string): string[] {\n  return (line.match(/(\"([^\"]|\"\")*\"|[^,]*)(,|$)/g) ?? []).map((cell) =>\n    cell.replace(/,$/, \"\").replace(/^\"|\"$/g, \"\").replace(/\"\"/g, '\"'),\n  );\n}"
+        }
+      ],
+      "prompt": "Pick this up from the start. Vendor names lose everything after the first comma on import. Name the file and the function that is wrong, and say what the corrected implementation has to do.",
+      "expect": {
+        "maxToolCalls": 3
+      },
+      "checker": {
+        "module": "./checkers/fresh.js",
+        "export": "fresh02CsvQuotes"
+      },
+      "notes": "Tool-capped: the whole session is one branch, so more than a look or two is spend with no answer behind it."
+    },
+    {
+      "id": "fresh-03-retry-jitter",
+      "kind": "fresh",
+      "title": "clients retry in lockstep",
+      "trace": {
+        "fixture": "../fixtures/traces/fresh-03-retry-jitter.jsonl"
+      },
+      "golden": [
+        {
+          "path": "src/net/retry.ts",
+          "content": "export function nextDelayMs(attempt: number, rand = Math.random): number {\n  const ceiling = Math.min(2 ** attempt * 250, 30_000);\n  return Math.round(ceiling * (0.5 + rand() * 0.5));\n}"
+        }
+      ],
+      "prompt": "Pick this up from the start. The vendor API rate-limits us in synchronized waves. Name the file and the function that is wrong, and say what the corrected implementation has to do.",
+      "expect": {},
+      "checker": {
+        "module": "./checkers/fresh.js",
+        "export": "fresh03RetryJitter"
+      },
+      "notes": "Includes a neutral Bash turn, so the fresh set also covers Ruling C6 rather than only clean diagnosis runs."
+    },
+    {
+      "id": "fresh-04-timezone-shift",
+      "kind": "fresh",
+      "title": "shift end times land an hour early across DST",
+      "trace": {
+        "fixture": "../fixtures/traces/fresh-04-timezone-shift.jsonl"
+      },
+      "golden": [
+        {
+          "path": "src/time/shift.ts",
+          "content": "export function shiftEnd(startUtc: Date, hours: number, zone: string): Date {\n  const local = new Date(startUtc.toLocaleString(\"en-US\", { timeZone: zone }));\n  local.setHours(local.getHours() + hours);\n  return new Date(local.toISOString());\n}"
+        }
+      ],
+      "prompt": "Pick this up from the start. Crew shifts that cross a DST boundary end an hour early. Name the file and the function that is wrong, and say what the corrected implementation has to do.",
+      "expect": {},
+      "checker": {
+        "module": "./checkers/fresh.js",
+        "export": "fresh04TimezoneShift"
+      },
+      "notes": "Domain reasoning with no recorded state to recover — pure \"does the tree hurt\" measurement."
+    },
+    {
+      "id": "fresh-05-pagination-offset",
+      "kind": "fresh",
+      "title": "every page repeats the previous page tail",
+      "trace": {
+        "fixture": "../fixtures/traces/fresh-05-pagination-offset.jsonl"
+      },
+      "golden": [
+        {
+          "path": "src/api/paginate.ts",
+          "content": "export function pageSlice<T>(rows: T[], page: number, size: number): T[] {\n  const start = (page - 1) * size;\n  return rows.slice(start, start + size);\n}"
+        }
+      ],
+      "prompt": "Pick this up from the start. Paginated equipment lists repeat one row at each page boundary. Name the file and the function that is wrong, and say what the corrected implementation has to do.",
+      "expect": {
+        "maxToolCalls": 3
+      },
+      "checker": {
+        "module": "./checkers/fresh.js",
+        "export": "fresh05PaginationOffset"
+      },
+      "notes": "Tool-capped for the same reason as fresh-02; the answer is in the read output the agent already has."
+    },
+    {
+      "id": "fresh-06-cache-key-collision",
+      "kind": "fresh",
+      "title": "two queries share one cache entry",
+      "trace": {
+        "fixture": "../fixtures/traces/fresh-06-cache-key-collision.jsonl"
+      },
+      "golden": [
+        {
+          "path": "src/cache/key.ts",
+          "content": "export function cacheKey(parts: Record<string, string>): string {\n  return Object.keys(parts)\n    .sort()\n    .map((name) => `${encodeURIComponent(name)}=${encodeURIComponent(parts[name] ?? \"\")}`)\n    .join(\"&\");\n}"
+        }
+      ],
+      "prompt": "Pick this up from the start. The report cache occasionally serves another tenant’s result. Name the file and the function that is wrong, and say what the corrected implementation has to do.",
+      "expect": {},
+      "checker": {
+        "module": "./checkers/fresh.js",
+        "export": "fresh06CacheKeyCollision"
+      },
+      "notes": "The bug is visible only by reading the key builder, which is in the one branch the agent is handed."
+    },
+    {
+      "id": "fresh-07-zero-coerced-null",
+      "kind": "fresh",
+      "title": "a zero meter reading arrives as null",
+      "trace": {
+        "fixture": "../fixtures/traces/fresh-07-zero-coerced-null.jsonl"
+      },
+      "golden": [
+        {
+          "path": "src/db/rows.ts",
+          "content": "export function toCamel(row: Record<string, unknown>): Record<string, unknown> {\n  const out: Record<string, unknown> = {};\n  for (const [key, value] of Object.entries(row)) out[camel(key)] = value ?? null;\n  return out;\n}"
+        }
+      ],
+      "prompt": "Pick this up from the start. Meter readings of exactly 0 come back from the API as null. Name the file and the function that is wrong, and say what the corrected implementation has to do.",
+      "expect": {
+        "maxToolCalls": 3
+      },
+      "checker": {
+        "module": "./checkers/fresh.js",
+        "export": "fresh07ZeroCoercedNull"
+      },
+      "notes": "Tool-capped. Also the falsy-coercion case, which a summary is likely to paraphrase away — a useful contrast with arm C."
+    },
+    {
+      "id": "fresh-08-slug-unicode",
+      "kind": "fresh",
+      "title": "accented job names slug to an empty string",
+      "trace": {
+        "fixture": "../fixtures/traces/fresh-08-slug-unicode.jsonl"
+      },
+      "golden": [
+        {
+          "path": "src/text/slug.ts",
+          "content": "export function slugify(name: string): string {\n  const folded = name.normalize(\"NFKD\").replace(/\\p{Diacritic}/gu, \"\").toLowerCase();\n  const slug = folded.replace(/[^a-z0-9]+/g, \"-\").replace(/^-|-$/g, \"\");\n  return slug === \"\" ? \"job\" : slug;\n}"
+        }
+      ],
+      "prompt": "Pick this up from the start. Jobs whose names are entirely accented characters all get the same empty slug. Name the file and the function that is wrong, and say what the corrected implementation has to do.",
+      "expect": {},
+      "checker": {
+        "module": "./checkers/fresh.js",
+        "export": "fresh08SlugUnicode"
+      },
+      "notes": "Fresh diagnosis where the fix has two parts (fold, then fall back); the checker grades the file and symbol, the rubric grades completeness."
+    },
+    {
+      "id": "fresh-09-concurrency-cap",
+      "kind": "fresh",
+      "title": "a worker pool ignores its own cap",
+      "trace": {
+        "fixture": "../fixtures/traces/fresh-09-concurrency-cap.jsonl"
+      },
+      "golden": [
+        {
+          "path": "src/queue/pool.ts",
+          "content": "export async function runPool<T>(jobs: Array<() => Promise<T>>, cap = 8): Promise<T[]> {\n  const out: T[] = new Array<T>(jobs.length);\n  let next = 0;\n  const worker = async (): Promise<void> => {\n    while (next < jobs.length) {\n      const index = next++;\n      out[index] = await (jobs[index] as () => Promise<T>)();\n    }\n  };\n  await Promise.all(Array.from({ length: Math.min(cap, jobs.length) }, worker));\n  return out;\n}"
+        }
+      ],
+      "prompt": "Pick this up from the start. The vendor pull opens hundreds of sockets even though the pool takes a cap of 8. Name the file and the function that is wrong, and say what the corrected implementation has to do.",
+      "expect": {},
+      "checker": {
+        "module": "./checkers/fresh.js",
+        "export": "fresh09ConcurrencyCap"
+      },
+      "notes": "The defect is an unused parameter, which is exactly the kind of detail a flattened summary drops."
+    },
+    {
+      "id": "fresh-10-log-redaction",
+      "kind": "fresh",
+      "title": "a bearer token reaches the logs",
+      "trace": {
+        "fixture": "../fixtures/traces/fresh-10-log-redaction.jsonl"
+      },
+      "golden": [
+        {
+          "path": "src/log/redact.ts",
+          "content": "export function redact(line: string): string {\n  return line\n    .replace(/password=\\S+/gi, \"password=***\")\n    .replace(/authorization:\\s*\\S+/gi, \"authorization: ***\")\n    .replace(/\\b(sk|pk)-[A-Za-z0-9]{8,}\\b/g, \"***\");\n}"
+        }
+      ],
+      "prompt": "Pick this up from the start. A support ticket contains a log line with a live API token in it. Name the file and the function that is wrong, and say what the corrected implementation has to do.",
+      "expect": {
+        "maxToolCalls": 3
+      },
+      "checker": {
+        "module": "./checkers/fresh.js",
+        "export": "fresh10LogRedaction"
+      },
+      "notes": "Tool-capped. Fourth and last of the frugality-instrumented fresh tasks."
+    }
+  ]
+}

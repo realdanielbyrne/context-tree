@@ -1,0 +1,98 @@
+{
+  "6aa368785f38a5fe56305bc82fdef056bdfd8393052f34a3182267b0de212dd2": {
+    "text": "{\n  \"text\": \"This phase re-ran the pagination suite against the new cursor encoding. The original defect is fixed — `keeps the status filter across pages` now passes — but the run surfaced a second failure: `rejects a cursor minted under a different filter set` expected a 400 and got a 200, because decodeCursor reads the filters out of the cursor without comparing them to the filters the request asked for. The phase ended red, with 1 failed and 12 passed, and no files were edited.\",\n  \"meta\": {\n    \"files\": [],\n    \"symbols\": [],\n    \"tests\": [\n      {\n        \"name\": \"keeps the status filter across pages\",\n        \"status\": \"passed\"\n      },\n      {\n        \"name\": \"rejects a cursor minted under a different filter set\",\n        \"status\": \"failed\",\n        \"detail\": \"expected 400, got 200 — the cursor filters are trusted without comparison\"\n      }\n    ],\n    \"artifacts\": [],\n    \"open_questions\": [\n      \"Should a cursor whose filters disagree with the request be a 400, or should the cursor simply win?\"\n    ],\n    \"decisions\": [\n      \"The suite is the gate: the phase was left red rather than reporting the original defect as fixed.\"\n    ],\n    \"node_ids\": [\n      \"n_gold_b3\"\n    ]\n  }\n}\n",
+    "model": "claude-haiku-4-5-20251001",
+    "usage": {
+      "input": 2140,
+      "output": 372,
+      "cacheRead": 0,
+      "cacheWrite": 0
+    },
+    "toolCalls": [],
+    "stopReason": "end_turn"
+  },
+  "93277d01897c310d6e2b4b3b24c89cf098fe72d7987400b455bf5ceadf1f6058": {
+    "text": "{\n  \"text\": \"This phase carried the active filter set inside the cursor instead of leaving it to the query string. encodeCursor now writes a versioned payload (`v: 2`) containing the sort key, the offset and the filter map, and decodeCursor reads that payload back, defaulting a missing filter map to the empty set. The edit is confined to src/api/cursor.ts. No tests were run in this phase, so the fix is unverified as it stands.\",\n  \"meta\": {\n    \"files\": [\n      {\n        \"path\": \"src/api/cursor.ts\",\n        \"start_line\": 14,\n        \"end_line\": 41,\n        \"symbol\": \"encodeCursor\"\n      },\n      {\n        \"path\": \"src/api/cursor.ts\",\n        \"start_line\": 43,\n        \"end_line\": 78,\n        \"symbol\": \"decodeCursor\"\n      }\n    ],\n    \"symbols\": [\n      \"encodeCursor\",\n      \"decodeCursor\"\n    ],\n    \"tests\": [],\n    \"artifacts\": [\n      {\n        \"kind\": \"ticket\",\n        \"ref\": \"ACME-412\"\n      }\n    ],\n    \"open_questions\": [\n      \"decodeCursor currently treats a v1 cursor (no filter field) as an empty filter set rather than rejecting it — is silently widening the result set acceptable?\"\n    ],\n    \"decisions\": [\n      \"Filters travel inside the opaque cursor payload rather than being re-sent as query parameters, so a page request can never disagree with the cursor that produced it.\",\n      \"The cursor payload is versioned (`v: 2`) so a later decoder can tell a v1 cursor from a corrupt one.\"\n    ],\n    \"node_ids\": [\n      \"n_gold_b2\",\n      \"n_gold_b2_f_cursor\"\n    ]\n  }\n}\n",
+    "model": "claude-haiku-4-5-20251001",
+    "usage": {
+      "input": 2140,
+      "output": 372,
+      "cacheRead": 0,
+      "cacheWrite": 0
+    },
+    "toolCalls": [],
+    "stopReason": "end_turn"
+  },
+  "96edec7d5d18346fd73bf89fe3c7412e95377b6cd2a2dc5f0864740a0a3a1f8d": {
+    "text": "{\n  \"text\": \"This phase set out to reproduce the report that a filtered note list loses its filter after page 1. Reading src/api/cursor.ts and running the pagination suite reproduced it: `keeps the status filter across pages` fails because page 2 comes back with archived notes. The cause is that encodeCursor serializes only the sort key and the offset, so the filter set never crosses the page boundary and the next request falls back to the unfiltered default. Nothing was changed here; the phase ended with the failing test as the acceptance signal for the fix.\",\n  \"meta\": {\n    \"files\": [],\n    \"symbols\": [\n      \"encodeCursor\",\n      \"decodeCursor\"\n    ],\n    \"tests\": [\n      {\n        \"name\": \"keeps the status filter across pages\",\n        \"status\": \"failed\",\n        \"detail\": \"page 2 returned notes with status=archived\"\n      }\n    ],\n    \"artifacts\": [\n      {\n        \"kind\": \"ticket\",\n        \"ref\": \"ACME-412\",\n        \"title\": \"Filtered note lists lose the filter after page 1\"\n      }\n    ],\n    \"open_questions\": [\n      \"Are there cursors already in flight that were minted by the old encoder, and do those have to keep working?\"\n    ],\n    \"decisions\": [\n      \"Reproduce before editing: the failing pagination test is the acceptance signal for the rest of the task.\"\n    ],\n    \"node_ids\": [\n      \"n_gold_b1\"\n    ]\n  }\n}\n",
+    "model": "claude-haiku-4-5-20251001",
+    "usage": {
+      "input": 2140,
+      "output": 372,
+      "cacheRead": 0,
+      "cacheWrite": 0
+    },
+    "toolCalls": [],
+    "stopReason": "end_turn"
+  },
+  "_malformed_leaf_missing_end_line": {
+    "text": "Here is the summary of that branch:\n\n```json\n{\n  \"text\": \"This phase moved the filter set inside the cursor payload and left the decoder tolerant of older cursors.\",\n  \"meta\": {\n    \"files\": [\n      { \"path\": \"src/api/cursor.ts\", \"start_line\": 14, \"end_line\": 41, \"symbol\": \"encodeCursor\" },\n      { \"path\": \"src/api/cursor.ts\", \"start_line\": 43, \"symbol\": \"decodeCursor\" }\n    ],\n    \"symbols\": [\"encodeCursor\", \"decodeCursor\"],\n    \"tests\": [],\n    \"artifacts\": [{ \"kind\": \"ticket\", \"ref\": \"ACME-412\" }],\n    \"open_questions\": [\"Do v1 cursors have to keep working?\"],\n    \"decisions\": [\"Filters travel inside the cursor payload.\"],\n    \"node_ids\": [\"n_gold_b2\", \"n_gold_b2_f_cursor\"]\n  }\n}\n```\n\nLet me know if you want more detail on any phase.\n",
+    "model": "claude-haiku-4-5-20251001",
+    "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0
+    },
+    "toolCalls": [],
+    "stopReason": "end_turn"
+  },
+  "_provenance": {
+    "text": "hand-authored, not a real recording — written by hand because no API key was available; see eval/recorded/README.md. The _malformed_leaf_missing_end_line entry below is hand-authored in every mode — it is a fixture for the §8 contract-violation path, not a model reply.",
+    "model": "none",
+    "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0
+    },
+    "toolCalls": [],
+    "stopReason": null
+  },
+  "_regenerate": {
+    "text": "VN=$(node -e \"process.stdout.write(require.resolve('vite-node/vite-node.mjs',{paths:[require.resolve('vitest/package.json')]}))\")\n# hand-authored replies, no key needed:\nnode \"$VN\" --config vitest.config.ts packages/core/test/live/record.ts -- --authored\n# real completions:\nLIVE=1 ANTHROPIC_API_KEY=sk-... node \"$VN\" --config vitest.config.ts packages/core/test/live/record.ts -- --live",
+    "model": "none",
+    "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0
+    },
+    "toolCalls": [],
+    "stopReason": null
+  },
+  "cfd2b74cd626c033acf86ebfebf0c71e9e54ce72f0101fb15459fc81cb718ef1": {
+    "text": "{\n  \"text\": \"This phase closed the hole the verification run found. decodeCursor now takes the filter set the request asked for, compares it against the filters carried in the cursor, and throws BadCursorError (surfaced as a 400) when they disagree. Cursors minted before the change have no version field, so readLegacyCursor in the new src/api/legacy-cursor.ts recognizes them and returns them with an empty filter set instead of failing the comparison. The suite ended green at 13 passed, 0 failed.\",\n  \"meta\": {\n    \"files\": [\n      {\n        \"path\": \"src/api/cursor.ts\",\n        \"start_line\": 43,\n        \"end_line\": 96,\n        \"symbol\": \"decodeCursor\"\n      },\n      {\n        \"path\": \"src/api/legacy-cursor.ts\",\n        \"start_line\": 1,\n        \"end_line\": 34,\n        \"symbol\": \"readLegacyCursor\"\n      }\n    ],\n    \"symbols\": [\n      \"decodeCursor\",\n      \"readLegacyCursor\"\n    ],\n    \"tests\": [\n      {\n        \"name\": \"rejects a cursor minted under a different filter set\",\n        \"status\": \"passed\"\n      },\n      {\n        \"name\": \"pagination suite\",\n        \"status\": \"passed\",\n        \"detail\": \"13 passed, 0 failed\"\n      }\n    ],\n    \"artifacts\": [\n      {\n        \"kind\": \"ticket\",\n        \"ref\": \"ACME-412\"\n      }\n    ],\n    \"open_questions\": [\n      \"A v1 cursor is accepted with an empty filter set, which still widens the result set for an old client — how long should that grace period last?\"\n    ],\n    \"decisions\": [\n      \"A cursor whose filters disagree with the request is a 400, not a silent override: the client asked two different questions and only it can say which it meant.\",\n      \"v1 cursors are read by a separate reader rather than by making the filter field optional in the v2 parser, so the legacy path can be deleted in one commit.\"\n    ],\n    \"node_ids\": [\n      \"n_gold_b4\",\n      \"n_gold_b4_f_cursor\",\n      \"n_gold_b4_f_legacy\"\n    ]\n  }\n}\n",
+    "model": "claude-haiku-4-5-20251001",
+    "usage": {
+      "input": 2140,
+      "output": 372,
+      "cacheRead": 0,
+      "cacheWrite": 0
+    },
+    "toolCalls": [],
+    "stopReason": "end_turn"
+  },
+  "e5712c0ce5c86dd16f483bac1d6b20ef7da9fbcd6f4c2794dcbc59d2da78c0c8": {
+    "text": "{\n  \"text\": \"This phase shipped the work. PR #318 was opened against ACME-412 with the cursor encoding change, the mismatch guard and the legacy reader, and CI came back green. Nothing in the working tree changed during this phase; it is the delivery record for the four phases before it.\",\n  \"meta\": {\n    \"files\": [],\n    \"symbols\": [],\n    \"tests\": [\n      {\n        \"name\": \"pagination suite (CI)\",\n        \"status\": \"passed\"\n      }\n    ],\n    \"artifacts\": [\n      {\n        \"kind\": \"ticket\",\n        \"ref\": \"ACME-412\",\n        \"title\": \"Filtered note lists lose the filter after page 1\"\n      },\n      {\n        \"kind\": \"pr\",\n        \"ref\": \"acme/notes-api#318\",\n        \"title\": \"Carry the filter set inside the pagination cursor\"\n      },\n      {\n        \"kind\": \"url\",\n        \"ref\": \"https://github.com/acme/notes-api/pull/318\"\n      }\n    ],\n    \"open_questions\": [\n      \"The v1-cursor grace period is open-ended; nobody has decided when readLegacyCursor gets deleted.\"\n    ],\n    \"decisions\": [\n      \"The change ships behind no flag: a cursor is opaque to clients, so the encoding can change in place.\"\n    ],\n    \"node_ids\": [\n      \"n_gold_b5\"\n    ]\n  }\n}\n",
+    "model": "claude-haiku-4-5-20251001",
+    "usage": {
+      "input": 2140,
+      "output": 372,
+      "cacheRead": 0,
+      "cacheWrite": 0
+    },
+    "toolCalls": [],
+    "stopReason": "end_turn"
+  }
+}

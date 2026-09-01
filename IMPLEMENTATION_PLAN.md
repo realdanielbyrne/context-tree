@@ -65,6 +65,7 @@ segmentation algorithm can change without data migration.
 | D13 | Pluggable retrieval backends: `context_search` fans out to graft / Serena / Augment Context Engine / local vectors / ripgrep; structural (graph) hits rank above fuzzy (semantic) hits | Graph = ground truth, similarity = recall assistant (design review); graft's ask-vs-grep split maps directly to ranked-vs-exhaustive |
 | D14 | Optional **middleware mode**: context-tree can be the agent's *only* code-semantics tool surface, proxying/fanning out provider calls and owning assembly + eviction | One stable tool set in Zone A instead of a dozen host tools → larger frozen cache prefix; centralized eviction; every retrieval event is an L0 `tool_call` row, so D1 indexes it into the tree unchanged |
 | D15 | Ingestion stays **hermetic**: the mandatory pipeline (segmenter, spans, store) uses only L0 + L2 + tree-sitter — no graft-like semantic search. Cross-file semantic enrichment is an optional post-pass: provenance-stamped, non-blocking, discardable | Rebuild determinism (D8): tree must not depend on external index state (graft graph drifts, APIs change). Latency: ingestion is ms-scale inline; `graft ask` is seconds-scale query-shaped. Symbol spans within edited files (the semantic work ingestion needs) are covered locally by tree-sitter (D9) |
+| D16 | Node ids are a **deterministic function of the segmentation NodeKey**, not random ULIDs (added in implementation, 2026-08-31) | D8 requires L1 to be a function of L0+L2. With random ids, `rebuild()` mints new ones, so any L0 event referencing a node id (`manual_annotation`, §6) cannot be resolved after a rebuild — annotations and `node_links` were silently dropped. Deterministic ids make rebuild a genuine replay. Id keeps the `n_` + 26-char shape and encodes kind rank first so creation order (D5 / Zone B) still sorts a phase ahead of the file node sharing its start seq |
 
 ## 4. Prior art and reference implementations
 
@@ -156,7 +157,8 @@ bodies. Structural sharing = same content stored once, referenced many times
 
 ```sql
 CREATE TABLE nodes (
-  id TEXT PRIMARY KEY,              -- 'n_<ulid>'
+  id TEXT PRIMARY KEY,              -- 'n_' + 26 chars, derived from the
+                                    -- segmentation NodeKey (D16), not random
   parent_id TEXT REFERENCES nodes(id),
   kind TEXT NOT NULL,               -- task|phase|file|turn
   title TEXT NOT NULL,              -- short human label (pre-LLM or LLM)
@@ -165,7 +167,9 @@ CREATE TABLE nodes (
   span_end_seq INTEGER,
   status TEXT DEFAULT 'open',       -- open|closed|superseded
   current_summary_version INTEGER DEFAULT 0,
-  stale_since_seq INTEGER           -- set when content changed after last summary
+  stale_since_seq INTEGER,          -- set when content changed after last summary
+  meta_json TEXT NOT NULL DEFAULT '{}'  -- spans/symbols (§12), annotations (§9),
+                                        -- enrichment[] (§7.1)
 );
 
 CREATE TABLE node_summaries (       -- D3: versioned, never overwritten

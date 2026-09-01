@@ -7,11 +7,14 @@
  * not perturb the host's trace (ruling C9); `annotate` is an explicit write, so
  * its L0 record is not a side effect anyone needs protecting from.
  *
- * Write order is L0 first, then L1: the annotation's identity IS its L0 seq
- * (`Annotation.seq`), and L1 is derived from L0 + L2 (D8).
+ * It writes L0 and nothing else. The annotation's identity IS its L0 seq
+ * (`Annotation.seq`), and ingestion replays every `manual_annotation` into the
+ * note list and `node_links` because L1 is derived from L0 + L2 (D8) — so this
+ * tool appends the event and then *reports* what the store holds. Writing L1
+ * here as well made two writers for one event, which stored every note twice.
  */
 import { z } from 'zod';
-import type { Annotation, LinkKind, NodeId, TreeNode } from '@context-tree/core';
+import type { LinkKind, NodeId, TreeNode } from '@context-tree/core';
 import { fail, failFrom, ok, parseArgs, requireNode } from '../result.js';
 import { recordAnnotation } from '../observe.js';
 import type { ToolContext, ToolOutcome } from '../types.js';
@@ -95,19 +98,12 @@ export async function annotate(ctx: ToolContext, input: unknown): Promise<ToolOu
       linkKind,
     });
 
-    const store = ctx.handle.store;
-    const annotations = store.transaction((): Annotation[] => {
-      if (target !== null && linkKind !== undefined) {
-        store.putLink({ from_id: args.node_id, to_id: target.id, kind: linkKind, created_at: ts });
-      }
-      // Re-read: `recordAnnotation` re-ingested, and `mergeNodeMeta` replaces
-      // arrays rather than concatenating them, so the read-modify-write has to
-      // start from the node as it is now.
-      const current = store.getNode(args.node_id)?.meta_json.annotations ?? [];
-      const next: Annotation[] = [...current, { seq: event.seq, text: args.text, created_at: ts }];
-      store.mergeNodeMeta(args.node_id, { annotations: next });
-      return next;
-    });
+    // `recordAnnotation` re-ingested, and ingestion is the single writer of L1
+    // from an L0 event (D8): it has already appended this note to
+    // `meta_json.annotations` and upserted the edge into `node_links`. So read
+    // the result back rather than composing it — a second writer here is what
+    // duplicated every note.
+    const annotations = ctx.handle.store.getNode(args.node_id)?.meta_json.annotations ?? [];
 
     return ok({
       node_id: args.node_id,
