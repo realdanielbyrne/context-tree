@@ -10,7 +10,7 @@
   "scripts": {
     "build": "tsc --build packages/core packages/mcp packages/cli",
     "clean": "tsc --build --clean packages/core packages/mcp packages/cli",
-    "typecheck": "tsc -p packages/core --noEmit && tsc -p packages/mcp --noEmit && tsc -p packages/cli --noEmit && tsc -p tsconfig.test.json --noEmit",
+    "typecheck": "tsc --build packages/core packages/mcp packages/cli && tsc -p tsconfig.test.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "pnpm run typecheck && pnpm run test"
