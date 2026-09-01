@@ -101,14 +101,14 @@ export interface RunArgs {
 }
 
 export const DEFAULT_RUN_ARGS: Omit<RunArgs, 'cwd'> = {
-  tasksPath: join('eval', 'tasks'),
+  tasksPath: join('eval-resumption', 'tasks'),
   arms: [...ARM_IDS],
   seeds: 5,
-  outRoot: join('eval', 'results'),
+  outRoot: join('eval-resumption', 'results'),
   maxSteps: 6,
   windowTokens: 8_000,
   capUsd: 5,
-  rubricPath: join('eval', 'rubric.md'),
+  rubricPath: join('eval-resumption', 'rubric.md'),
   model: null,
   provider: null,
   dryRun: false,
