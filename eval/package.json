@@ -1,0 +1,21 @@
+{
+  "name": "@context-tree/eval",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "§15 benchmark harness: native vs context-tree arms over terminal-bench, DeepSWE AgentsLastExam, Automation Bench, HLE w/ Tools and GDPval-AA v2, with Langfuse A/B export",
+  "license": "MIT",
+  "engines": { "node": ">=22" },
+  "main": "./dist/run.js",
+  "types": "./dist/run.d.ts",
+  "bin": { "context-tree-eval": "./dist/run.js" },
+  "files": ["dist"],
+  "scripts": { "build": "tsc --build", "clean": "tsc --build --clean" },
+  "dependencies": {
+    "@context-tree/core": "workspace:*",
+    "@context-tree/mcp": "workspace:*",
+    "commander": "^15.0.0",
+    "langfuse": "^3.38.20",
+    "yaml": "^2.6.0"
+  },
+  "devDependencies": { "@types/node": "^22.13.0", "typescript": "^5.7.3" }
+}
