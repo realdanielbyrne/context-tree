@@ -193,6 +193,17 @@ export class SqliteTreeStore implements TreeStore {
     }
   }
 
+  resetDerived(): void {
+    // Order matters only for readability; foreign keys are declared but every
+    // row goes, so there is no dangling reference at any point.
+    this.transaction(() => {
+      this.db.exec('DELETE FROM node_links');
+      this.db.exec('DELETE FROM node_summaries');
+      this.db.exec('DELETE FROM nodes');
+      this.dropEmbeddings();
+    });
+  }
+
   migrate(): void {
     // §19 Q4: WAL is the working assumption for two agents on one tree.
     this.db.pragma('journal_mode = WAL');

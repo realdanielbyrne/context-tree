@@ -30,7 +30,7 @@ import { DERIVED_LAYERS, storePaths, type StorePaths } from '../paths.js';
 import { segment } from '../segment/index.js';
 import { LineDiffHunker, TreeSitterSpanExtractor } from '../spans/index.js';
 import { isManualAnnotation } from '../trace/index.js';
-import { applySegmentation } from './apply.js';
+import { applySegmentation, SegmentationShrankError } from './apply.js';
 import { nodeIdMinter } from './node-ids.js';
 import { extractSpansForFileNodes } from './spans.js';
 import { openTaskStore, type TaskStore } from './task-store.js';
@@ -61,6 +61,12 @@ export interface IngestStats {
   /** Tool names with no phase mapping; routed to `other` (§18). */
   unmappedTools: string[];
   usedTextFallback: boolean;
+  /**
+   * True when this pass re-derived L1 from scratch because the segmentation
+   * shrank. Reported, never silent: a re-derivation discards the summaries on
+   * the affected tree, and those cost real tokens to regenerate.
+   */
+  rederived: boolean;
   /** §9 `annotate` notes replayed from L0 onto their subject node. */
   annotations: number;
   /** D10 lateral edges replayed from L0. */
@@ -91,7 +97,22 @@ export function ingest(options: IngestOptions): IngestResult {
     textOf: textResolver(blobs),
   });
 
-  const keyMap = applySegmentation(segmentation, store, nodeIdMinter(events));
+  // A re-segmentation that produces FEWER nodes than L1 holds invalidates the
+  // positional key mapping, so reconciling in place would bind ids to the wrong
+  // branches. L1 is derived (D8), so the answer is to re-derive it here rather
+  // than to hand the caller a wedged store: without this, one shrink leaves
+  // every later ingest on that store throwing until someone runs `rebuild`,
+  // and the MCP server re-ingests after every annotate and every Mode-B fetch.
+  let rederived = false;
+  let keyMap: Map<string, string>;
+  try {
+    keyMap = applySegmentation(segmentation, store, nodeIdMinter(events));
+  } catch (error) {
+    if (!(error instanceof SegmentationShrankError)) throw error;
+    store.resetDerived();
+    keyMap = applySegmentation(segmentation, store, nodeIdMinter(events));
+    rederived = true;
+  }
   const spans = extractSpansForFileNodes({
     events,
     blobs,
@@ -115,6 +136,7 @@ export function ingest(options: IngestOptions): IngestResult {
       parseErrorFiles: spans.parseErrorFiles,
       unmappedTools: segmentation.stats.unmappedTools,
       usedTextFallback: segmentation.stats.usedTextFallback,
+      rederived,
       annotations: notes.annotations,
       annotationLinks: notes.annotationLinks,
       unresolvedAnnotations: notes.unresolved,

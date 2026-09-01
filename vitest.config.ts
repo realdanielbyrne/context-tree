@@ -12,7 +12,7 @@ export default defineConfig({
   },
   test: {
     globals: true,
-    include: ['packages/*/test/**/*.test.ts', 'eval-resumption/**/*.test.ts'],
+    include: ['packages/*/test/**/*.test.ts', 'eval/test/**/*.test.ts', 'eval-resumption/**/*.test.ts'],
     exclude: ['**/node_modules/**', '**/dist/**'],
     testTimeout: 20_000,
     // Native better-sqlite3 + tree-sitter are happiest in forks, not threads.

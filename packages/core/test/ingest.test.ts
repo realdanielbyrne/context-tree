@@ -10,7 +10,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { resolveConfig, type ContextTreeConfig } from '../src/config.js';
-import { StoreInvariantError } from '../src/contracts/index.js';
+import { } from '../src/contracts/index.js';
 import type {
   Annotation,
   AssistantMessageEvent,
@@ -297,11 +297,16 @@ describe('ingest', () => {
     }
   });
 
-  it('refuses to reconcile an L1 node the segmentation does not produce and says rebuild, because L1 is derived and TreeStore has no delete', () => {
+  it('re-derives L1 instead of wedging when the segmentation no longer produces a node it holds', () => {
+    // Found by review: refusing here left the store permanently unusable. The
+    // MCP server re-ingests after every annotate and every Mode-B fetch, so one
+    // shrink made every later call fail until someone ran `rebuild --yes` --
+    // and the L0 event had already been written when the throw fired.
     const { handle } = openFixture();
     try {
       seed(handle);
       ingest({ handle });
+      const before = project(handle.store);
       const root = handle.store.root();
       handle.store.insertNode({
         parent_id: root?.id ?? null,
@@ -310,8 +315,73 @@ describe('ingest', () => {
         phase_type: 'other',
         span_start_seq: 99,
       });
-      expect(() => ingest({ handle })).toThrow(StoreInvariantError);
-      expect(() => ingest({ handle })).toThrow(/rebuild/);
+
+      const result = ingest({ handle });
+      expect(result.stats.rederived).toBe(true);
+      // The re-derivation is reported, not silent: it discards summaries that
+      // cost real tokens to produce.
+      expect(project(handle.store)).toEqual(before);
+      // And the store is usable afterwards -- the property that was broken.
+      expect(() => ingest({ handle })).not.toThrow();
+      expect(ingest({ handle }).stats.rederived).toBe(false);
+    } finally {
+      handle.close();
+    }
+  });
+
+  it('survives a text-fallback trace whose phase count shrinks on append, and still matches rebuild', () => {
+    // §7's fallback scores boundaries against a relative cutoff (mean - sd/2),
+    // so appending a message can delete a boundary an earlier pass found.
+    // Reviewers reproduced a phase-count drop on 4 of 12 seeded traces.
+    const { handle, dir } = openFixture();
+    try {
+      const words = ['alpha beta gamma', 'delta epsilon', 'zeta eta theta iota', 'kappa'];
+      for (let n = 0; n < 16; n += 1) {
+        const body = `${words[n % words.length]} ${'lorem '.repeat((n % 5) + 1)}`;
+        appendEvent(handle, { type: 'user_message', ts: TS, blob: handle.blobs.put(body) });
+      }
+      const incremental = project(handle.store);
+      const replayed = rebuild(handle.config, {});
+      try {
+        expect(incremental).toEqual(project(replayed.handle.store));
+      } finally {
+        replayed.handle.close();
+      }
+      expect(dir).toBeTruthy();
+    } finally {
+      handle.close();
+    }
+  });
+
+  it('survives the handover from a message-only trace to its first tool call', () => {
+    // The other reviewer repro: leading user messages segment through the text
+    // fallback into several phases, then the first tool_call switches state
+    // machines entirely and the tool pass produces one. This wedged the store.
+    const { handle } = openFixture();
+    try {
+      for (let n = 0; n < 8; n += 1) {
+        appendEvent(handle, {
+          type: 'user_message',
+          ts: TS,
+          blob: handle.blobs.put(`message ${n} ${'context '.repeat(n + 1)}`),
+        });
+      }
+      expect(() =>
+        appendEvent(handle, {
+          type: 'tool_call',
+          ts: TS,
+          tool: 'Edit',
+          path: 'src/a.ts',
+          blob: handle.blobs.put('export const a = 1;\n'),
+        }),
+      ).not.toThrow();
+
+      const replayed = rebuild(handle.config, {});
+      try {
+        expect(project(handle.store)).toEqual(project(replayed.handle.store));
+      } finally {
+        replayed.handle.close();
+      }
     } finally {
       handle.close();
     }

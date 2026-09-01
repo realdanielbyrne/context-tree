@@ -25,6 +25,18 @@ export interface TreeStore {
   /** Runs `fn` inside one SQLite transaction; rolls back on throw. */
   transaction<T>(fn: () => T): T;
 
+  /**
+   * Deletes every derived L1/L3 row — nodes, summaries, links, embeddings —
+   * leaving the schema and the `meta` table intact.
+   *
+   * This is a replay primitive, not a migration (D8): when a re-segmentation no
+   * longer produces a node L1 holds, the positional key scheme (`phase:<i>`)
+   * means the whole key -> id mapping is invalid, so the only correct answer is
+   * to re-derive L1 from L0 + L2. Reconciling a shrunk tree in place would
+   * leave ids bound to the wrong branches.
+   */
+  resetDerived(): void;
+
   // ── nodes ────────────────────────────────────────────────────────────────
   insertNode(node: NewNode): TreeNode;
   getNode(id: NodeId): TreeNode | null;

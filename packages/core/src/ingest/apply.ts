@@ -133,12 +133,28 @@ function assertNoOrphans(
     .nodesInCreationOrder()
     .filter((node) => node.kind !== 'turn' && !mapped.has(node.id));
   if (orphans.length === 0) return;
-  throw new StoreInvariantError(
+  throw new SegmentationShrankError(
     `L1 holds ${orphans.length} node(s) this segmentation does not produce (${orphans
       .map((node) => `${node.kind}:${node.title}`)
-      .join(', ')}); L1 is derived (D8) — rebuild() instead of reconciling`,
+      .join(', ')}); L1 is derived (D8) — re-deriving instead of reconciling`,
   );
 }
+
+/**
+ * Raised when a re-segmentation no longer produces a node L1 already holds.
+ *
+ * This is recoverable, and the caller is expected to recover: the key scheme is
+ * positional (`phase:<i>`), so a shrink invalidates every mapping after it and
+ * the only correct response is to re-derive L1 from L0 + L2 (D8). It is its own
+ * type precisely so `ingest` can act on it rather than treating a routine
+ * re-derivation as a corrupt store.
+ *
+ * A shrink is rare but reachable: §7's text fallback scores boundaries against
+ * a relative cutoff, so appending a message can remove a boundary an earlier
+ * pass found, and a message-only trace that later gets its first tool call
+ * switches state machines entirely.
+ */
+export class SegmentationShrankError extends StoreInvariantError {}
 
 /**
  * Rebuilds the key -> id map for a tree that already exists, which is what
