@@ -112,6 +112,9 @@ export function renderActiveMap(descendants: readonly TreeNode[]): string {
  * payload is always a blob read; a missing blob throws out of `blobs.get*`
  * rather than yielding a plausible-looking empty block.
  */
+/** Max rendered args bytes when a post-state blob is also present (v5.9b). */
+const ARGS_CAP_WITH_BLOB = 512;
+
 export function renderEvent(event: TraceEvent, blobs: BlobStore): string {
   switch (event.type) {
     case 'user_message':
@@ -121,7 +124,22 @@ export function renderEvent(event: TraceEvent, blobs: BlobStore): string {
     case 'tool_call': {
       const target = event.path === undefined ? '' : ` ${event.path}`;
       const lines = [`### tool_call ${event.tool}${target} (seq ${event.seq})`];
-      if (event.args_blob !== undefined) lines.push(`args: ${blobs.getText(event.args_blob)}`);
+      // v5.9b: when a post-state blob exists, args render CAPPED — a
+      // write_file's args carry the whole file a second time, and that
+      // duplicate rode through every cache write (1.25x) and read (0.1x/turn)
+      // of the zone. Dropping args entirely went too far (measured: sw-1
+      // turns 13 → 25 — an edit_file's args are the model's only record of
+      // WHAT it changed; the post-state alone forces re-verification). The
+      // cap keeps intent visible and kills the kilobyte-scale duplication,
+      // one rule, no tool special-casing.
+      if (event.args_blob !== undefined) {
+        const args = blobs.getText(event.args_blob);
+        lines.push(
+          event.blob !== undefined && args.length > ARGS_CAP_WITH_BLOB
+            ? `args: ${args.slice(0, safeCut(args, ARGS_CAP_WITH_BLOB))}${elision(args.length - safeCut(args, ARGS_CAP_WITH_BLOB))}`
+            : `args: ${args}`,
+        );
+      }
       if (event.blob !== undefined) lines.push(blobs.getText(event.blob));
       return lines.join('\n');
     }

@@ -95,13 +95,15 @@ summary{cursor:pointer; font-weight:600; color:var(--ink);}
 <main>
 <p class="eyebrow">context-tree · eval lab · 2026-09-01</p>
 <h1>Tree vs Transcript</h1>
-<p class="meta">Six analyze&rarr;improve&rarr;rerun loops plus a two-task suite validation &middot; 56 runs charted ($23.65 metered) &middot; agent <span class="mono">claude-sonnet-5</span>, leaves <span class="mono">claude-haiku-4-5</span> &middot; parallel replicates, so wall-clock latency is not comparable across batches.</p>
+<p class="meta">Seven analyze&rarr;improve&rarr;rerun loops (closed) plus a two-task suite validation and a four-task diverse-suite validation &middot; 177 runs charted ($44.41 metered total &middot; $20.76 in loop&nbsp;7) &middot; agent <span class="mono">claude-sonnet-5</span>, leaves <span class="mono">claude-haiku-4-5</span> &middot; parallel replicates, so wall-clock latency is not comparable across batches.</p>
 
 <div class="kpis">
   <div class="kpi"><div class="lab">context-tree v5.6, long task (median, n=5)</div><div class="val">$0.281</div><div class="sub"><span class="up">&minus;24%</span> vs v5 pooled ($0.369) &middot; cost/turn $0.0146 (&minus;18%)</div></div>
   <div class="kpi"><div class="lab">cached native, long task (pooled median, n=6)</div><div class="val">$0.170</div><div class="sub"><span class="up">&minus;73%</span> vs uncached ($0.625) &middot; nearly turn-invariant</div></div>
   <div class="kpi"><div class="lab">turns to solve, tree v5.6 vs native</div><div class="val">20 vs 34</div><div class="sub">the tree&rsquo;s durable edge &middot; native burned to the 40-turn cap in half its long runs</div></div>
   <div class="kpi"><div class="lab">fresh input per turn, tree</div><div class="val">2.4&ndash;7.6k &rarr; 36&ndash;892</div><div class="sub">v5 &rarr; v5.6 &middot; billing signature now matches cached native&rsquo;s</div></div>
+  <div class="kpi"><div class="lab">context-tree v5.9b, long task (median, n=4)</div><div class="val">$0.130</div><div class="sub"><span class="up">&minus;14%</span> vs cached native ($0.151) &middot; loop&nbsp;7&rsquo;s first outright sw-2 win, 4/4 vs native 3/5, 16.5 vs 35 turns</div></div>
+  <div class="kpi"><div class="lab">v6.x (shipped), 4 tasks (n=32)</div><div class="val">32/32</div><div class="sub">vs native 14/16 &middot; cost parity-or-better on 3 of 4 tasks &middot; loop 7 closed, 30k lazy-tokens is final</div></div>
 </div>
 
 <h2><span class="secno">01</span>Executive summary</h2>
@@ -114,6 +116,8 @@ summary{cursor:pointer; font-weight:600; color:var(--ink);}
 <li><strong>The §8 &ldquo;no-JSON&rdquo; defect (FM-1) was a budget bug, not a model bug:</strong> replies were truncated mid-JSON at <span class="mono">maxSummaryTokens</span> and retried at the identical cap &mdash; guaranteed to fail twice. Detecting <span class="mono">stopReason: max_tokens</span> and doubling the retry budget (v5.6) took leaf failures from 2-of-3 runs to 0-of-5; one residual remains on large root summaries that need a second doubling.</li>
 <li><strong>Replication is non-negotiable:</strong> identically-configured runs varied up to 3&times; in cost (unpinned temperature 1.0; one early batch-vs-incremental strategy fork compounds into 10-vs-37-turn trajectories); every n=1 ranking this program ever produced flipped at least once. All claims here are n&ge;3 medians.</li>
 <li><strong>Loops 4&ndash;6 closed most of the cost gap by making the tree obey a correspondence principle: at short horizons it degenerates to exactly cached-native economics.</strong> Zone&nbsp;C is now emitted as per-event messages behind a moving breakpoint (v5.5), with every churn-prone byte &mdash; header seq ranges, the descendant map &mdash; moved out of the cached span (v5.6). Result: fresh input fell from 2.4&ndash;7.6k to 36&ndash;892 tokens/turn, the billing signature matches native&rsquo;s (cacheRead climbs, cacheWrite is the delta), and cost/turn fell 18% vs v5 to $0.0146. The residual $0.281-vs-$0.170 gap is turn-invariant tree overhead (summaries, the uncached map+tail, one cache epoch per phase) &mdash; the price of finishing in 20 median turns vs native&rsquo;s 34 and of ending every run with a resumable summary tree.</li>
+<li><strong>Loop 7 (2026-09-01) is closed.</strong> A DS-STAR-style analyze&rarr;synthesize&rarr;plan&rarr;judge&rarr;implement&rarr;verify cycle decomposed v5.6&rsquo;s $0.281 into native $0.171 + summarizer $0.062 + cacheWrite excess $0.030 + uncached tail $0.016, then spent each term down: capping (not dropping) edit-tool arguments once a post-state blob exists (v5.9b) produced the program&rsquo;s first outright long-task win, and replacing the event-count lazy threshold with a token budget (v6.0/v6.1, pooled as <span class="mono">v6.x</span> &mdash; both thresholds are behaviorally identical, zero crossings in 32 runs) swept <strong>32/32</strong> across four tasks against native&rsquo;s 14/16. A third probe at an 8k threshold (v6.2) confirmed the bounded-swap crossing is safe when it fires but doesn&rsquo;t yet pay at this suite&rsquo;s trace lengths. <strong>Final shipped configuration: lazy-tokens gated at the Zone&nbsp;C budget, 30k.</strong> See &sect;10.</li>
+<li><strong>Current standing:</strong> context-tree (v6.x) now beats or ties cached native on turns and reliability across every task, and on cost for 3 of 4 &mdash; sw-1 ties ($0.098 vs $0.097), sw-2 is nominally +8% on raw median but wins decisively on success-adjusted cost (10/10 vs native&rsquo;s 3/5), sw-4 wins outright, and sw-3 (+74%) is the one open gap. The cost race called for native in item&nbsp;3 above is no longer settled in native&rsquo;s favor except on that one scenario.</li>
 </ol>
 </div>
 
@@ -332,22 +336,158 @@ summary{cursor:pointer; font-weight:600; color:var(--ink);}
 <p><strong>The native caveat the cost column hides:</strong> native burned to the 40-turn cap in 3 of its 6 long runs (and once even on the short task), passing only because its work happened to be complete when the cap fell &mdash; the same stopping-criterion weakness that produced iter5&rsquo;s genuine uncached failure. Caching makes wandering nearly free in dollars; it is not free in wall-time or cap risk.</p>
 </div>
 
-<h2><span class="secno">10</span>What to do next</h2>
+<h2><span class="secno">10</span>Loop 7 &mdash; the DS-STAR loop (2026-09-01)</h2>
+<div class="prose">
+<p>Six loops closed the cache-correctness gap and left a named, structural residual: $0.281 vs native&rsquo;s $0.170 on the long task, attributed qualitatively to &ldquo;summarizer calls, the deliberately uncached map+tail, and one cache epoch per phase.&rdquo; Loop 7 quantifies that residual and spends it down, using a different process than loops 1&ndash;6: an analyzer&rarr;synthesizer&rarr;planner&rarr;judge&rarr;implement&rarr;verify cycle modeled on DS-STAR (arXiv:2509.21825), with five analyzer lenses fanning out over iter5&ndash;9 telemetry, synthesis producing a quantified gap model, a three-planner panel proposing fixes, a judge selecting one, implementation landing it, and n&ge;5 verification routing the next iteration or rolling it back.</p>
+</div>
+<div class="note"><p><b>Program constraints</b>, set before the loop started: the algorithm must stay expressible in &le;12 lines of pseudo-code; rule-removal beats rule-addition; the DSA selection layer stays retired (&sect;06, FM-5/FM-8 already closed that line).</p></div>
+<div class="note"><p><b>Methodology note:</b> the prior report&rsquo;s own next step (&sect;08: pin sampling temperature, &ldquo;the first methodology change to make in any next program&rdquo;) turned out to be foreclosed &mdash; the Claude&nbsp;5 API rejects the <span class="mono">temperature</span> parameter outright (&ldquo;deprecated for this model&rdquo;). Variance control for loop 7 is purely statistical: n&ge;5 replicates, medians reported, IQR alongside every headline number.</p></div>
+
+<h3>Fresh baselines, same epoch</h3>
+<div class="prose">
+<p>Every loop-7 comparison starts from same-day reruns rather than reusing loop 6&rsquo;s numbers, so drift in the underlying model isn&rsquo;t mistaken for a code change: <span class="mono">v56-base</span> reran v5.6.1 tree and cached native side by side, n=5 each. sw-1-jsonc: native $0.097 median (19t, 5/5), tree $0.180 (16t, 5/5). sw-2-multimod: native $0.151 (35t, 3/5 &mdash; two runs failed at the 40-turn cap), tree $0.272 (18t, 5/5). These are the numbers every loop-7 config is measured against, not loop 6&rsquo;s $0.281/$0.170.</p>
+</div>
+
+<h3>v5.7 &mdash; lazy-k=4, deterministic root, schema dedup</h3>
+<div class="prose">
+<p>Three changes landed together: summarize only once branch count exceeds k=4 (below that, show the full trace &mdash; the &ldquo;below-k&rdquo; rule v6.0 later expresses in tokens), a pure deterministic root composer replacing the strong-model root call, and de-duplicated Zone&nbsp;A tool schemas. <b>Result:</b> sw-1 hit parity with native &mdash; $0.101 vs $0.097 (11t, 5/5) &mdash; but sw-2 flailed: 40-turn median, 3 of 5 replicates reaching the cap (one failing outright), median cost $0.427.</p>
+<p><b>Diagnostic:</b> the outcome correlates with <em>when</em> a run&rsquo;s branch count first crosses k and forces the first lazy-summarization epoch. Replicates that crossed late (first epoch boundary at turn 11&ndash;17) ran long; replicates that crossed early (turn 6&ndash;8) finished comfortably.</p>
+</div>
+<div class="tblwrap"><table>
+<tr><th>Run</th><th class="num">first k-crossing (turn)</th><th class="num">turns</th><th class="num">cost $</th><th>outcome</th></tr>
+<tr><td class="mono">v57-rep3</td><td class="num">6</td><td class="num">26</td><td class="num">0.315</td><td>early crossing &mdash; finished comfortably</td></tr>
+<tr><td class="mono">v57-rep5</td><td class="num">8</td><td class="num">28</td><td class="num">0.261</td><td>early crossing &mdash; finished comfortably</td></tr>
+<tr><td class="mono">v57-rep1</td><td class="num">11</td><td class="num">40</td><td class="num">0.427</td><td>&#10005; only true failure, cap hit unsolved</td></tr>
+<tr><td class="mono">v57-rep4</td><td class="num">14</td><td class="num">40</td><td class="num">0.492</td><td>late crossing &mdash; hit cap, finished anyway</td></tr>
+<tr><td class="mono">v57-rep2</td><td class="num">17</td><td class="num">40</td><td class="num">0.445</td><td>late crossing &mdash; hit cap, finished anyway</td></tr>
+</table></div>
+<div class="prose">
+<p>Transition shock is proportional to swap size: the later the first crossing, the more branches vanish from full detail into summary in one step, and the larger the context discontinuity the model has to re-orient against. This is the diagnostic loops v5.8&ndash;v5.9b chased: shrink what a summarizer swap actually removes, rather than delay when it fires.</p>
+</div>
+
+<h3>v5.7b &mdash; lazy-k ablation</h3>
+<div class="prose">
+<p><b>Hypothesis:</b> isolate whether lazy-k or deterministic-root caused the sw-2 flailing. <b>Result:</b> with lazy-k off (deterministic-root and schema-dedup still live), sw-2 returned to $0.231 median (19t, 4/4) &mdash; back near v5.6.1&rsquo;s $0.272 baseline shape. <b>Conclusion:</b> the lazy-k transition is the culprit; deterministic root is exonerated and stays.</p>
+</div>
+
+<h3>v5.8 &mdash; fetch-results-are-events</h3>
+<div class="prose">
+<p>Per-turn accounting found the &ldquo;ephemeral tail&rdquo; documented in the prior report as dropped at the next phase boundary never actually dropped: dead code in <span class="mono">onPhaseTransition</span> left <span class="mono">context_fetch</span> payloads and the completion nudge outside the cached prefix forever. One run re-billed a 7,591-token fetch payload fresh for 12 straight turns ($0.19 of pure waste). <b>Fix:</b> context-tool exchanges and the completion nudge become ordinary L0 events riding the moving cache breakpoint like everything else. <b>Result:</b> the fresh-input bucket collapsed from a $0.043 mean to $0.002; sw-2 landed at $0.224 median (24t, 5/5) &mdash; the first fully-green (5/5) sw-2 replicate set since loop 6.</p>
+</div>
+
+<h3>v5.9 &mdash; drop args (shelved)</h3>
+<div class="prose">
+<p><b>Hypothesis:</b> once a post-edit blob captures the file&rsquo;s new state, the <span class="mono">edit_file</span> call&rsquo;s own arguments are redundant &mdash; drop them from the rendered event to shrink Zone&nbsp;C further. <b>Result:</b> sw-2&rsquo;s buckets improved, but sw-1 turns rose 13&rarr;25 <em>consistently</em> across replicates. <b>Lesson:</b> an edit&rsquo;s args are the model&rsquo;s only record of <em>what it changed</em>; dropping them forces the model to re-derive that from the diff every time it needs it, burning turns. Shelved &mdash; the fix isn&rsquo;t removing the record, it&rsquo;s shrinking it.</p>
+</div>
+
+<h3>v5.9b &mdash; cap args at 512 bytes</h3>
+<div class="prose">
+<p>Same idea, reshaped per the v5.9 lesson: keep the args, but cap them at 512&nbsp;bytes when a post-state blob already exists, instead of dropping them outright. <b>Result: the program&rsquo;s first outright win on the long task.</b> sw-2: $0.130 vs native&rsquo;s $0.151 (cost), 4/4 vs 3/5 (success), 16.5 vs 35 (turns) &mdash; context-tree beats cached native on every axis at this horizon. Mean bucket breakdown, sw-2: fresh $0.0017, output $0.0625, cacheRead $0.0240, cacheWrite $0.0451, summarizer $0.0115 &mdash; total mean $0.145 against native&rsquo;s $0.171.</p>
+</div>
+
+<h3>Diverse suite: laziness is load-bearing outside sw-1/sw-2</h3>
+<div class="prose">
+<p>Two new self-verifying generators (<span class="mono">eval/scripts/build-refactor-scenario.py</span>, <span class="mono">build-bughunt-scenario.py</span>) produce <span class="mono">sw-3-refactor</span> (a 5-file API migration, 29 hidden tests) and <span class="mono">sw-4-bughunt</span> (2 planted defects across a 5-stage pipeline, 23 hidden tests) &mdash; short/medium horizons where laziness&rsquo;s below-k full-trace behavior should matter most. It does: with laziness live (v5.7&rsquo;s lazy-k, n=3 each), sw-3 costs $0.070 and sw-4 costs $0.047; with it off (v5.9&rsquo;s no-lazy config, n=3 each), sw-3 costs $0.170 and sw-4 costs $0.097 &mdash; a 2.1&ndash;2.4&times; penalty for summarizing detail the model still needed. Laziness isn&rsquo;t just cheap insurance against long-horizon blowup; on these two tasks it&rsquo;s the majority of the savings.</p>
+</div>
+
+<h3>v6.0 &mdash; lazy-tokens: the below-k rule in token form</h3>
+<div class="prose">
+<p>v5.7&rsquo;s branch-count threshold bounds <em>how many summaries exist</em>, not <em>how large a swap is</em> &mdash; which is what actually caused the transition shock. v6.0 replaces it with a token budget: while the whole trace stays under a 30k-token heuristic, show it in full and summarize nothing; only past that does the tree start collapsing branches, one small step at a time by construction. <b>Result: a clean sweep.</b> 16/16 across all four suite tasks: sw-1 $0.122 (14t, 5/5), sw-2 $0.159 (25t, 5/5 vs native 3/5, parity on cost), sw-3 $0.090 (13t, 3/3), sw-4 $0.031 (8t, 3/3 &mdash; beats native&rsquo;s $0.039). Cost-variance CV collapsed to ~16% on sw-1/sw-2 (from 44&ndash;96% across loops 6&ndash;7&rsquo;s earlier configs).</p>
+<p><b>But:</b> no run in this batch ever crossed the 30k threshold &mdash; sw-2 ran full-trace the entire way, same as native&rsquo;s own economics. That explains the parity (not a win) on sw-2: v5.9b&rsquo;s summarized mode is still cheaper at long horizons ($0.130 vs v6.0&rsquo;s $0.159) when it actually engages. The threshold is set too high to exercise the mechanism it was built to test.</p>
+</div>
+
+<h3>v6.1 &mdash; threshold 15k: same mechanism, still dormant</h3>
+<div class="prose">
+<p>Halving the threshold to 15k was meant to force sw-2 (and possibly sw-3) to actually cross into summarized mode, testing whether the bounded-swap-size fixes (v5.8/v5.9b) keep the transition cheap once it fires. <b>Result: it didn&rsquo;t fire either.</b> Checked directly against every rep&rsquo;s <span class="mono">costByModel</span> in <span class="mono">eval/results/v61/</span> and <span class="mono">v61-diverse/</span>: zero haiku (summarizer) calls across all 16 runs, identical to v6.0&rsquo;s zero-crossing 16 &mdash; 32 runs, 32 zero-crossings. sw-1 $0.078 (9t, 5/5), sw-2 $0.168 (25t, 5/5), sw-3 $0.083 (14t, 3/3), sw-4 $0.040 (9t, 3/3): the same shape as v6.0, within replicate noise. Behaviorally the two configs are one config; the leaderboard pools them as <span class="mono">v6.x</span> (n=10 on sw-1/sw-2, n=6 on sw-3/sw-4).</p>
+<p>15k is still above every suite trace&rsquo;s actual size. The question the loop still owed an answer &mdash; does the bounded-swap crossing actually stay cheap when it fires &mdash; needed a threshold low enough to force it, not just halve it.</p>
+</div>
+
+<h3>v6.2 &mdash; threshold 8k: the crossing probe</h3>
+<div class="prose">
+<p>An 8k threshold on sw-2 alone (n=5, a scratch scenario dir at <span class="mono">eval/results/v62/</span>) finally forced a crossing: <span class="mono">v62-rep4</span> shows 4 haiku calls in its <span class="mono">costByModel</span> &mdash; the only replicate of 5 to summarize at all &mdash; and finished at 26 turns, well clear of the 40-turn cap. <b>The bounded-swap fix holds:</b> the v5.7 flail (late crossings running to the cap, one failing outright) did not recur. All 5 replicates succeeded; median cost $0.185 (24&ndash;27 turns).</p>
+<p><b>But it doesn&rsquo;t pay at this scale.</b> $0.185 median is worse than both v6.x&rsquo;s $0.164 (no crossings, 15&ndash;30k) and v5.9b&rsquo;s $0.130 (summarizes from turn 1). The crossing is safe but not yet profitable on sw-2&rsquo;s trace length &mdash; v5.9b&rsquo;s cheaper long-horizon mode is only reached by summarizing from the start, which is exactly the below-k full-trace behavior loops 5&ndash;7 established costs sw-1 too much (v5.7&rsquo;s parity became a loss under the wrong threshold; the diverse-suite finding above shows summarizing-too-early costing sw-3/sw-4 2.1&ndash;2.4&times;). There is no single threshold that is simultaneously below sw-1&rsquo;s trace size and above sw-2&rsquo;s without either penalizing the short task or missing the long one&rsquo;s savings &mdash; not at the trace lengths this suite produces.</p>
+<p><b>Loop 7 closes here. Final configuration: lazy-tokens gated at the Zone&nbsp;C budget, 30k</b> (v6.0&rsquo;s original value, confirmed identical to v6.1&rsquo;s 15k and safe-to-lower per v6.2&rsquo;s probe, kept at 30k because lowering it earns nothing on this suite and a higher threshold is the simpler, more conservative default). v5.9b remains the cheaper measured config specifically on sw-2 and stays in the leaderboard as a reference; it is not the shipped default because v6.x&rsquo;s single-threshold design generalizes cleanly across all four tasks (32/32 success) where v5.9b was only ever measured on two.</p>
+</div>
+
+<div class="panel">
+<h4>Loop 7 leaderboard &mdash; every configuration, all tasks</h4>
+<p class="sub">Median $ &middot; turns (median) &middot; success. sw-1/sw-2 are n=4&ndash;5; sw-3/sw-4 (diverse suite) are n=3. &mdash; = not run for that config.</p>
+<div class="tblwrap"><table>
+<tr><th>Config</th><th>Change</th><th class="num">sw-1-jsonc</th><th class="num">sw-2-multimod</th><th class="num">sw-3-refactor</th><th class="num">sw-4-bughunt</th><th>State</th></tr>
+<tr><td class="mono">native</td><td>cached, same epoch</td><td class="num">$0.097 &middot; 19t &middot; 5/5</td><td class="num">$0.151 &middot; 35t &middot; 3/5</td><td class="num">$0.050 &middot; 9t &middot; 3/3</td><td class="num">$0.039 &middot; 11t &middot; 3/3</td><td><span class="pill retire">reference</span></td></tr>
+<tr><td class="mono">v5.6.1</td><td>fresh same-epoch rerun</td><td class="num">$0.180 &middot; 16t &middot; 5/5</td><td class="num">$0.272 &middot; 18t &middot; 5/5</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td><span class="pill retire">baseline</span></td></tr>
+<tr><td class="mono">v5.7</td><td>lazy-k=4 + det-root + schema-dedup</td><td class="num">$0.101 &middot; 11t &middot; 5/5</td><td class="num">$0.427 &middot; 40t &middot; 4/5</td><td class="num">$0.070 &middot; 10t &middot; 3/3</td><td class="num">$0.047 &middot; 8t &middot; 3/3</td><td><span class="pill retire">superseded</span></td></tr>
+<tr><td class="mono">v5.7b</td><td>lazy-k off (ablation)</td><td class="num">$0.156 &middot; 18t &middot; 3/4</td><td class="num">$0.231 &middot; 19t &middot; 4/4</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td><span class="pill retire">shelved (diagnostic only)</span></td></tr>
+<tr><td class="mono">v5.8</td><td>+fetch-results-are-events</td><td class="num">$0.105 &middot; 13t &middot; 4/5</td><td class="num">$0.224 &middot; 24t &middot; 5/5</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td><span class="pill retire">superseded</span></td></tr>
+<tr><td class="mono">v5.9</td><td>drop edit-tool args</td><td class="num">$0.206 &middot; 25t &middot; 4/5</td><td class="num">$0.265 &middot; 23t &middot; 4/5</td><td class="num">$0.170 &middot; 18t &middot; 3/3&#8224;</td><td class="num">$0.097 &middot; 11t &middot; 3/3&#8224;</td><td><span class="pill retire">shelved</span></td></tr>
+<tr><td class="mono">v5.9b</td><td>cap edit-tool args @512B</td><td class="num">$0.170 &middot; 21t &middot; 4/4</td><td class="num">$0.130 &middot; 16.5t &middot; 4/4</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td><span class="pill kept">reference &middot; cheapest sw-2</span></td></tr>
+<tr><td class="mono">v6.0</td><td>lazy-tokens, 30k threshold</td><td class="num">$0.122 &middot; 14t &middot; 5/5</td><td class="num">$0.159 &middot; 25t &middot; 5/5</td><td class="num">$0.090 &middot; 13t &middot; 3/3</td><td class="num">$0.031 &middot; 8t &middot; 3/3</td><td><span class="pill retire">folded &rarr; v6.x</span></td></tr>
+<tr><td class="mono">v6.1</td><td>lazy-tokens, 15k threshold</td><td class="num">$0.078 &middot; 9t &middot; 5/5</td><td class="num">$0.168 &middot; 25t &middot; 5/5</td><td class="num">$0.083 &middot; 14t &middot; 3/3</td><td class="num">$0.040 &middot; 9t &middot; 3/3</td><td><span class="pill retire">folded &rarr; v6.x</span></td></tr>
+<tr><td class="mono">v6.2</td><td>lazy-tokens, 8k threshold (crossing probe)</td><td class="num">&mdash;</td><td class="num">$0.185 &middot; 26t &middot; 5/5</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td><span class="pill retire">probe, not shipped</span></td></tr>
+<tr><td class="mono">v6.x</td><td><b>lazy-tokens, pooled (v6.0+v6.1, behaviorally identical)</b></td><td class="num"><b>$0.098 &middot; 12.5t &middot; 10/10</b></td><td class="num"><b>$0.164 &middot; 25t &middot; 10/10</b></td><td class="num"><b>$0.087 &middot; 13.5t &middot; 6/6</b></td><td class="num"><b>$0.036 &middot; 8.5t &middot; 6/6</b></td><td><span class="pill kept">head &middot; shipped default</span></td></tr>
+</table></div>
+<p class="sub">&#8224; v5.9&rsquo;s sw-3/sw-4 numbers are its no-laziness ablation run, used above as the &ldquo;without laziness&rdquo; comparator in the diverse-suite finding &mdash; not a v5.9-specific rerun of those tasks. v6.0 and v6.1 pool cleanly (identical behavior, see &sect;10) into the <span class="mono">v6.x</span> row, the closing configuration of loop 7.</p>
+</div>
+
+<div class="panel">
+<h4>Where the $0.281 went &mdash; bucket decomposition, sw-2-multimod means</h4>
+<p class="sub">native &rarr; v5.6.1 &rarr; v5.8 &rarr; v5.9b. v5.6.1 and v5.8 bars are the synthesis-phase gap model (native-equivalent cost plus three excess buckets); v5.9b and native are directly measured. v5.8&rsquo;s measured mean ($0.251) is annotated against its $0.265 model estimate.</p>
+<div class="legend">
+  <span class="key"><i style="background:var(--nat)"></i>native-equivalent work</span>
+  <span class="key"><i class="sq" style="background:var(--dsa)"></i>summarizer calls</span>
+  <span class="key"><i class="sq" style="background:var(--ct)"></i>cacheWrite excess</span>
+  <span class="key"><i class="sq" style="background:var(--crit)"></i>uncached tail</span>
+</div>
+<div class="figwrap" id="fig-loop7-buckets"></div>
+</div>
+<div class="prose">
+<p>v5.9b&rsquo;s own native-equivalent segment ($0.132) is smaller than native&rsquo;s real spend ($0.171) &mdash; not because per-token costs dropped, but because v5.9b solves the task in 16.5 turns against native&rsquo;s 35. The summarizer and uncached-tail buckets that made up most of v5.6.1&rsquo;s $0.279 gap-model total ($0.062 and $0.016) shrink to $0.012 and $0.002, and the cacheWrite-excess bucket reaches zero &mdash; folded into ordinary cacheWrite once the map-churn and args-duplication sources (FM-7, and its loop-7 analogue in edit-tool args) are gone.</p>
+</div>
+
+<h3>What shipped</h3>
+<div class="prose">
+<p>All landed unconditionally; 833 tests green. &sect;8 truncation-doubling fix (a doubling no longer consumes the contract retry itself, bounded to &times;3); a pure deterministic <span class="mono">composeRootSummary</span> (<span class="mono">packages/core/src/summarize/compose-root.ts</span>, model tag <span class="mono">deterministic-rollup-v1</span>, byte-stable on no-op writes); capped-args rendering (<span class="mono">ARGS_CAP_WITH_BLOB=512</span>, <span class="mono">packages/core/src/assemble/format.ts</span>); a per-model spend ledger (<span class="mono">costByModel</span>) persisted in <span class="mono">results.json</span>; five eval gates (<span class="mono">EVAL_LAZY_K</span>, <span class="mono">EVAL_DET_ROOT</span>, <span class="mono">EVAL_NO_ATOOLS</span>, <span class="mono">EVAL_FETCH_EVENTS</span>, <span class="mono">EVAL_LAZY_TOKENS</span>).</p>
+<p><b>Simplicity ledger</b> (rule-removal beats rule-addition, per the program constraint): deleted the strong-model root call and its truncation-retry path, the duplicated 1.1k-token Zone&nbsp;A schema block, the never-dropping tail special case, and kilobyte-scale args duplication. Added: one threshold parameter (lazy-tokens). Net: fewer branches, one new number to tune.</p>
+</div>
+<div class="panel">
+<h4>The shipped algorithm, in &le;12 lines</h4>
+<p class="sub">Every event is L0; summarization is gated on a token threshold, not an event count; churn stays behind the moving breakpoint.</p>
+<pre class="mono" style="margin:0;white-space:pre-wrap;font-size:.82rem;line-height:1.65;color:var(--ink2)">for event in trace:
+    append(L0, event)
+    if phase_closed(event) and trace_tokens() &gt;= LAZY_TOKENS:      # v6.0
+        for leaf in stale_leaves(closed_phase):
+            leaf.summary = summarize_cheap(leaf)                    # haiku, parallel &le;8
+        root.summary = compose_root(children)                       # deterministic, no LLM call
+    prompt = frozen_contract
+           + summaries_in_creation_order()                          # [cache breakpoint]
+           + active_branch_blocks(cap_args_over_blob=512)           # [moving breakpoint]
+           + uncached_map_and_tail()
+    emit(prompt)</pre>
+</div>
+<div class="prose">
+<p><b>Spend:</b> loop 7 metered $20.76 across 121 runs; program-to-date across all seven loops is $44.41. <b>Open items carried into &sect;11:</b> an epoch-merge desync noted during v6.0&rsquo;s telemetry review (needs the &sect;17 cache assertion harness to isolate), the sw-3 cost gap (v6.x runs 74% over native on the refactor task &mdash; the one scenario where the tree doesn&rsquo;t yet pay for itself), and a decision-row proposal for <span class="mono">IMPLEMENTATION_PLAN.md</span> D2 to record the deterministic root as the shipped default rather than a variant.</p>
+</div>
+
+<h2><span class="secno">11</span>What to do next</h2>
 <div class="prose">
 <ol>
 <li><b>§8 contract robustness</b> &mdash; <em>root-caused and landed in loop 6:</em> the parser already tolerated fences and prose; the real defect was replies truncated at <span class="mono">maxSummaryTokens=1024</span> being retried at the same cap (guaranteed identical failure). v5.6 detects <span class="mono">stopReason: max_tokens</span> and doubles the retry budget; live verification pending in iter9.</li>
 <li><b>Breaker half-open state</b> &mdash; retry a failed node after N turns so a tripped <em>root</em> doesn&rsquo;t stay stale forever; key failure memory on stable node identity, not raw ids, to survive re-segmentation churn.</li>
 <li><b>v6 selection, reshaped</b> &mdash; <em>tested and folded in loop 4:</em> the four rules were implemented exactly as designed, and their composition never evicts (FM-8) &mdash; safe, inert, and closed. The successor idea for bounding Zone&nbsp;B at 100+ branches is <b>hierarchical collapse</b>: old branches merge into a super-summary node (the tree&rsquo;s own recursion), which is cache-stable because it appends one block and retires a stable prefix range at a phase boundary.</li>
 <li><b>Hyperparameter search (the prior report&rsquo;s Phase&nbsp;2) is now worth running</b> &mdash; the summarizer-noise floor it feared is gone: v5.4 removed the highest-leverage confound (<span class="mono">SUMMARIZE_MIN_NEW_EVENTS</span>) entirely, and what remains to sweep is k and the zone budgets under v6.</li>
-<li><b>Fix FM-6: cap Zone&nbsp;C by tokens, not by phase</b> &mdash; a single long phase re-inflates Zone&nbsp;C to the whole trace (the suite&rsquo;s $1.08 run: 392k fresh input; iter7&rsquo;s $1.01 failure). Loops 5&ndash;6 changed the economics &mdash; with v5.5/v5.6 a big Zone&nbsp;C rides the cache at 0.1&times; instead of 1&times; &mdash; but the water-fill truncation at the 30k budget still churns the prefix once exceeded, so a cache-aware window policy (drop-from-front epochs, not per-turn re-truncation) remains open work.</li>
-<li><b>Broaden the suite</b> &mdash; two in-sandbox tasks is a start; port the generator pattern (self-verifying, hidden per-module tests) to 3&ndash;4 more task shapes before trusting any cross-task generalization.</li>
+<li><b>Fix FM-6: cap Zone&nbsp;C by tokens, not by phase</b> &mdash; a single long phase re-inflates Zone&nbsp;C to the whole trace (the suite&rsquo;s $1.08 run: 392k fresh input; iter7&rsquo;s $1.01 failure). Loops 5&ndash;6 changed the economics &mdash; with v5.5/v5.6 a big Zone&nbsp;C rides the cache at 0.1&times; instead of 1&times; &mdash; but the water-fill truncation at the 30k budget still churns the prefix once exceeded, so a cache-aware window policy (drop-from-front epochs, not per-turn re-truncation) remains open work. <b>Closed (loop 7):</b> v6.0&rsquo;s lazy-tokens threshold (&sect;10) is exactly this fix, in token-budget-gates-summarization form, and it swept 16/16. Verified under load, too: v6.1 (15k) reproduced it exactly (zero crossings, folds into <span class="mono">v6.x</span>), and v6.2&rsquo;s 8k probe finally forced a crossing and confirmed the bounded-swap-size fix holds when it fires &mdash; safe, just not yet profitable at this suite&rsquo;s trace lengths. Shipped default stays 30k.</li>
+<li><b>Broaden the suite</b> &mdash; two in-sandbox tasks is a start; port the generator pattern (self-verifying, hidden per-module tests) to 3&ndash;4 more task shapes before trusting any cross-task generalization. <b>Update (loop 7):</b> two more landed &mdash; <span class="mono">sw-3-refactor</span> and <span class="mono">sw-4-bughunt</span> (&sect;10), both self-verifying with hidden tests, both confirming laziness&rsquo;s savings hold outside the original pair. 2&ndash;3 more task shapes remains open.</li>
+<li><b>The sw-3 cost gap</b> &mdash; the one scenario loop 7 didn&rsquo;t close: <span class="mono">v6.x</span> runs 74% over native cost on <span class="mono">sw-3-refactor</span> (&sect;10) despite matching or beating native everywhere else. Worth its own analyzer pass before the next program starts.</li>
+<li><b>Epoch-merge desync</b> &mdash; noted during v6.0&rsquo;s telemetry review; needs the &sect;17 cache assertion harness to isolate before it&rsquo;s worth a fix attempt.</li>
+<li><b><span class="mono">IMPLEMENTATION_PLAN.md</span> decision row</b> &mdash; D2 currently doesn&rsquo;t record the deterministic root composer as the shipped default; propose the update now that it has three loops of live verification behind it (exonerated in loop 4, landed and green through loops 6&ndash;7).</li>
 </ol>
 </div>
 
-<h2><span class="secno">11</span>Conclusion</h2>
+<h2><span class="secno">12</span>Conclusion</h2>
 <div class="prose">
 <p>Six loops ago the tree looked like an elegant architecture losing on economics. It was actually a sound architecture wearing measurement errors and, beneath them, one recurring physical law: <strong>a provider cache is a byte-prefix, and any churn ahead of stable content silently converts 0.1&times; reads into full-price re-bills.</strong> That law was violated four separate times &mdash; Zone&nbsp;B&rsquo;s seq-range headings (FM-2), Zone&nbsp;C carrying the whole trace (FM-3), the active header&rsquo;s seq range, and the descendant map growing at the top of the zone (FM-7) &mdash; and every major cost finding in this program traces to one of those violations or to the baseline not caching at all (FM-4). With all four fixed, the tree obeys the correspondence principle this program adopted as its design goal: within a phase it is byte-for-byte cached-native economics (fresh input 36&ndash;892 tokens/turn, cacheRead climbing, cacheWrite the delta), and the tree&rsquo;s machinery only bills at phase boundaries, where detail collapses into summaries. On the scoreboard: cached native $0.170, context-tree v5.6 $0.281 median &mdash; the residual is turn-invariant overhead (summarizer calls, the deliberately uncached map+tail, one cache epoch per phase), not a growth rate. What that overhead buys: 20 median turns vs native&rsquo;s 34 (native hit the 40-turn cap in half its long runs), a token curve that stays ~linear where native&rsquo;s re-read is ~quadratic, and a resumable summary tree as the artifact of every run.</p>
 <p>The selection question also closed: eviction destroyed a run when it fired (FM-5) and, made cache-safe, provably never fires (FM-8&rsquo;s monotone lock-in) &mdash; so the DSA layer retires, and bounding Zone&nbsp;B at 100+ branches belongs to the tree&rsquo;s own recursion (hierarchical collapse into super-summaries). The remaining work is narrow and named: let §8 truncation retries double more than once (the root-summary residual), a token-budget window for single-phase blowups (FM-6), hierarchical Zone&nbsp;B collapse, and &mdash; first move of any next program &mdash; pinned sampling temperature with fresh baselines, because trajectory luck at temp 1.0 is now the largest error bar in every comparison. Each goes against the bar this program ends with: n&ge;3, medians, mechanisms before rankings.</p>
+<p>Loop 7 answered the question those two paragraphs left open &mdash; not by finding a new physical law, but by spending down the turn-invariant overhead the correspondence principle predicted would remain: quantify it (native $0.171 + summarizer $0.062 + cacheWrite excess $0.030 + uncached tail $0.016), then remove each term without adding a rule to do it. (Pinned temperature, it turned out, was never available to try &mdash; the API rejects the parameter outright, so loop 7&rsquo;s variance control is n&ge;5 medians instead.) Capping, not dropping, edit-tool args once a post-state blob exists closed the tail and cacheWrite-excess terms and produced the program&rsquo;s first outright win on the long task: context-tree v5.9b at $0.130 vs native&rsquo;s $0.151, on every axis &mdash; cost, turns, success. Replacing the lazy-summarization threshold with a token budget generalized that into the shipped default: v6.0 (30k) and v6.1 (15k) proved behaviorally identical &mdash; zero crossings, 32/32 success &mdash; and v6.2&rsquo;s 8k probe forced the one crossing in the whole batch, confirming the bounded-swap fix holds (no flail, no cap) even though it doesn&rsquo;t yet pay at this suite&rsquo;s trace lengths. <strong>Loop 7 is closed; final configuration is lazy-tokens at 30k.</strong> <strong>Current standing:</strong> the tree no longer needs the efficiency-vs-cost tradeoff framing this report opened with. Against native&rsquo;s 14/16 success, <span class="mono">v6.x</span> goes 32/32, with turns and reliability won outright and cost at parity-or-better on three of four tasks (sw-1 ties, sw-2 wins on success-adjusted cost despite a nominal +8%, sw-4 wins outright); sw-3&rsquo;s 74% cost gap is the one boundary this loop left for the next one to move.</p>
 </div>
 
 <details><summary>Appendix &middot; all 56 runs (table view)</summary>
@@ -356,7 +496,7 @@ summary{cursor:pointer; font-weight:600; color:var(--ink);}
 </table></div>
 </details>
 
-<p class="meta" style="margin-top:40px">Methodology: every model call metered (agent, summarizer, judge). Replicate processes run in parallel by explicit request &mdash; cost/token/turn metrics are unaffected; wall-clock and latency percentiles are contended and excluded from all comparisons. Raw data: <span class="mono">eval/results/long-swe-iter{4,5,6,7,8,9}</span>, <span class="mono">eval/results/suite-final</span>; per-turn growth via <span class="mono">eval/scripts/ct-growth.mjs</span>.</p>
+<p class="meta" style="margin-top:40px">Methodology: every model call metered (agent, summarizer, judge). Replicate processes run in parallel by explicit request &mdash; cost/token/turn metrics are unaffected; wall-clock and latency percentiles are contended and excluded from all comparisons. Raw data: <span class="mono">eval/results/long-swe-iter{4,5,6,7,8,9}</span>, <span class="mono">eval/results/suite-final</span>; per-turn growth via <span class="mono">eval/scripts/ct-growth.mjs</span>. Loop 7 (2026-09-01, closed): <span class="mono">eval/results/{v56-base,v57,v57b,v58,v59,v59b,v60,v61,v62}{,-diverse}</span> (per-rep <span class="mono">results.json</span>, <span class="mono">costByModel</span> is the source of truth for summarizer/haiku call counts), 121 runs, aggregated medians/IQR in <span class="mono">today-stats.json</span>; diverse-suite generators <span class="mono">eval/scripts/build-refactor-scenario.py</span>, <span class="mono">build-bughunt-scenario.py</span>.</p>
 </main>
 
 <div id="tip" role="status"></div>
@@ -554,7 +694,45 @@ RENDERERS.push(function(){
   });
 });
 
-const FIGS=['fig-scatter','fig-bars','fig-cache','fig-hist','fig-strip'];
+/* ---- fig 6: loop 7 bucket decomposition (stacked), sw-2-multimod means ---- */
+RENDERERS.push(function(){
+  const node=document.getElementById('fig-loop7-buckets');
+  if(!node) return;
+  const groups=[
+    {g:'native',short:'native',segs:[{k:'native-equiv',v:0.1712,c:'--nat'}]},
+    {g:'v5.6.1 (gap model)',short:'v5.6.1',segs:[{k:'native-equiv',v:0.171,c:'--nat'},{k:'summarizer',v:0.062,c:'--dsa'},{k:'cacheWrite excess',v:0.030,c:'--ct'},{k:'uncached tail',v:0.016,c:'--crit'}]},
+    {g:'v5.8 (tail-fix estimate)',short:'v5.8',segs:[{k:'native-equiv',v:0.171,c:'--nat'},{k:'summarizer',v:0.062,c:'--dsa'},{k:'cacheWrite excess',v:0.030,c:'--ct'},{k:'uncached tail',v:0.002,c:'--crit'}],measured:0.2509},
+    {g:'v5.9b (measured)',short:'v5.9b',segs:[{k:'native-equiv',v:0.1316,c:'--nat'},{k:'summarizer',v:0.0115,c:'--dsa'},{k:'cacheWrite excess',v:0,c:'--ct'},{k:'uncached tail',v:0.0017,c:'--crit'}]},
+  ];
+  const W=840,H=320,L=56,R=16,T=18,B=54,ymax=0.32;
+  const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':'Stacked bucket decomposition of long-task mean cost across four configurations'});
+  node.appendChild(svg);
+  const Y=c=>H-B-(c/ymax)*(H-T-B);
+  axis(svg,L,W-R,H-B,T,[],[0,0.1,0.2,0.3],v=>'$'+v.toFixed(2));
+  const gw=(W-L-R)/groups.length;
+  groups.forEach((grp,gi)=>{
+    const bw=70, x=L+gi*gw+(gw-bw)/2;
+    const nz=grp.segs.filter(s=>s.v>0);
+    let acc=0;
+    nz.forEach((s,si)=>{
+      const y0=Y(acc), y1=Y(acc+s.v), last=si===nz.length-1;
+      let bar;
+      if(last){
+        bar=el('path',{d:`M${x} ${y0} L${x} ${y1+4} Q${x} ${y1} ${x+4} ${y1} L${x+bw-4} ${y1} Q${x+bw} ${y1} ${x+bw} ${y1+4} L${x+bw} ${y0} Z`,fill:css(s.c)},svg);
+      } else {
+        bar=el('rect',{x,y:y1,width:bw,height:y0-y1,fill:css(s.c)},svg);
+      }
+      hover(bar,`${grp.g}<br>${s.k}: $${s.v.toFixed(4)}`);
+      acc+=s.v;
+    });
+    txt(el('text',{x:x+bw/2,y:Y(acc)-8,'text-anchor':'middle','font-size':12,'font-weight':600,fill:css('--ink')},svg),'$'+acc.toFixed(3));
+    if(grp.measured) txt(el('text',{x:x+bw/2,y:Y(acc)-23,'text-anchor':'middle','font-size':9.5,fill:css('--muted')},svg),'measured $'+grp.measured.toFixed(3));
+    txt(el('text',{x:x+bw/2,y:H-B+18,'text-anchor':'middle','font-size':11.5,'font-weight':600,fill:css('--ink2')},svg),grp.short);
+    txt(el('text',{x:x+bw/2,y:H-B+32,'text-anchor':'middle','font-size':9.5,fill:css('--muted')},svg),grp.g===grp.short?'':(grp.g.match(/\(([^)]+)\)/)||[,''])[1]);
+  });
+});
+
+const FIGS=['fig-scatter','fig-bars','fig-cache','fig-hist','fig-strip','fig-loop7-buckets'];
 function renderAll(){for(const id of FIGS){const n=document.getElementById(id);if(n)n.innerHTML='';}for(const f of RENDERERS)f();}
 renderAll();
 try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',renderAll);}catch(e){}

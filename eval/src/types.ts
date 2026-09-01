@@ -77,6 +77,14 @@ export interface RunResult {
   scenarioId: string;
   arm: Arm;
   model: string;
+  /** Present when sampling temperature was pinned for this run. */
+  temperature?: number;
+  /**
+   * Per-model spend ledger (agent + summarizer + judge), from the cost meter.
+   * This is what makes summarizer overhead attributable per run instead of a
+   * stderr-only residual.
+   */
+  costByModel?: { model: string; calls: number; usage: TokenUsage; usd: number }[];
   status: RunStatus;
   success: boolean | null;
   judge: JudgeResult | null;
@@ -100,4 +108,12 @@ export interface HarnessOptions {
   costCapUsd: number | null;
   budgets: { zoneB: number; zoneC: number };
   keepSandbox: boolean;
+  /**
+   * Pinned sampling temperature for every agent-loop and summarizer call, or
+   * null for the provider default. Unpinned sampling is the program's largest
+   * error bar (10-vs-37-turn forks on identical binaries) — but the Claude 5
+   * API rejects the param ("deprecated for this model"), so on that family
+   * variance is controlled with replicates + medians and this stays unset.
+   */
+  temperature?: number | null;
 }

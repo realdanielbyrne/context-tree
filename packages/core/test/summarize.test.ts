@@ -858,4 +858,68 @@ describe('§8 truncation retry (FM-1)', () => {
     expect(provider.budgets).toEqual([256, 512]);
     expect(summary.text).toBe('the branch did work');
   });
+
+  /** Scripted provider: one canned behavior per call, records each call's maxTokens. */
+  class ScriptedProvider implements ModelProvider {
+    readonly id = 'scripted-stub';
+    readonly budgets: (number | undefined)[] = [];
+
+    constructor(private readonly script: readonly ('truncate' | 'violate' | 'comply')[]) {}
+
+    async complete(request: CompletionRequest): Promise<CompletionResult> {
+      this.budgets.push(request.maxTokens);
+      const step = this.script[Math.min(this.budgets.length, this.script.length) - 1];
+      const content = request.messages.map((m) => m.content).join('\n');
+      const body = replyBody(echoedNodeIds(content));
+      return {
+        text: step === 'truncate' ? body.slice(0, Math.floor(body.length / 2)) : step === 'violate' ? 'not json at all' : body,
+        model: request.model,
+        usage: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0 },
+        toolCalls: [],
+        stopReason: step === 'truncate' ? 'max_tokens' : 'end_turn',
+      };
+    }
+  }
+
+  const scriptedSummarizer = (fx: ReturnType<typeof fixture>, provider: ModelProvider) =>
+    new Summarizer({
+      store: fx.store,
+      provider,
+      leafModel: LEAF_MODEL,
+      rootModel: ROOT_MODEL,
+      now: () => NOW,
+      maxSummaryTokens: 256,
+    });
+
+  it('does not spend the single contract retry on a truncation: truncate → violate → comply still succeeds', async () => {
+    // A truncation is OUR budget failure; the contract retry exists for the
+    // MODEL's violations. Observed live (iter7): a root summary truncated at
+    // 1024, doubled to 2048, then died because the doubling had consumed the
+    // one contract retry.
+    const fx = fixture();
+    const provider = new ScriptedProvider(['truncate', 'violate', 'comply']);
+
+    const summary = await scriptedSummarizer(fx, provider).summarizeLeaf(fx.p1);
+
+    expect(provider.budgets).toEqual([256, 512, 512]);
+    expect(summary.text).toBe('the branch did work');
+  });
+
+  it('keeps doubling across consecutive truncations rather than failing on the second', async () => {
+    const fx = fixture();
+    const provider = new ScriptedProvider(['truncate', 'truncate', 'truncate', 'comply']);
+
+    const summary = await scriptedSummarizer(fx, provider).summarizeLeaf(fx.p1);
+
+    expect(provider.budgets).toEqual([256, 512, 1024, 2048]);
+    expect(summary.text).toBe('the branch did work');
+  });
+
+  it('gives up loudly after three doublings — unbounded doubling would hide a systemic failure behind exploding spend', async () => {
+    const fx = fixture();
+    const provider = new ScriptedProvider(['truncate']);
+
+    await expect(scriptedSummarizer(fx, provider).summarizeLeaf(fx.p1)).rejects.toThrow(/truncated/);
+    expect(provider.budgets).toEqual([256, 512, 1024, 2048]);
+  });
 });

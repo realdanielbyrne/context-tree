@@ -63,6 +63,8 @@ export interface SummarizerOptions {
   /** Injected so `created_at` is deterministic in tests. */
   now?: () => string;
   maxSummaryTokens?: number;
+  /** Pinned sampling temperature for every summary call (unset = provider default). */
+  temperature?: number;
 }
 
 export type SummarizeRole = 'leaf' | 'root';
@@ -84,6 +86,9 @@ export interface SummarizeOutcome {
 const RETRY_PREAMBLE =
   'Your previous reply broke the output contract. Correct exactly this and reply again with the whole JSON object:';
 
+/** Truncation budget doublings before giving up: 1024 → 8192 at the default cap. */
+const MAX_TRUNCATION_DOUBLINGS = 3;
+
 export class Summarizer {
   private readonly store: TreeStore;
   private readonly provider: ModelProvider;
@@ -95,6 +100,7 @@ export class Summarizer {
   private readonly costMeter: CostMeter | undefined;
   private readonly now: () => string;
   private readonly maxSummaryTokens: number;
+  private readonly temperature: number | undefined;
 
   /** D11's queue: one promise chain, so background work never overlaps a caller's turn. */
   private queue: Promise<void> = Promise.resolve();
@@ -111,6 +117,7 @@ export class Summarizer {
     this.costMeter = options.costMeter;
     this.now = options.now ?? (() => new Date().toISOString());
     this.maxSummaryTokens = options.maxSummaryTokens ?? DEFAULT_CONFIG.summarize.maxSummaryTokens;
+    this.temperature = options.temperature;
     if (this.concurrency <= 0) throw new ConfigError(`summarize concurrency must be > 0, got ${this.concurrency}`);
   }
 
@@ -264,7 +271,9 @@ export class Summarizer {
   ): Promise<{ text: string; meta: SummaryMeta; model: string }> {
     let violation: string | null = null;
     let maxTokens = this.maxSummaryTokens;
-    for (let attempt = 0; ; attempt += 1) {
+    let contractRetries = 0;
+    let doublings = 0;
+    for (;;) {
       const content = violation === null ? prompt : `${prompt}\n\n${RETRY_PREAMBLE}\n${violation}`;
       // §16: refuse to spend past the cap *before* the call. In a batch this
       // makes every remaining leaf fail fast and be reported, rather than
@@ -275,33 +284,46 @@ export class Summarizer {
         messages: [{ role: 'user', content }],
         json: true,
         maxTokens,
+        ...(this.temperature !== undefined ? { temperature: this.temperature } : {}),
       });
       this.costMeter?.record(result.model || model, result.usage);
 
-      let parsed: { text: string; meta: SummaryMeta } | null = null;
-      let problem: string | null = null;
       if (result.stopReason === 'max_tokens') {
         // A reply cut off mid-JSON is not a contract violation by the model —
         // it is a budget failure by us, and retrying at the SAME cap fails
         // byte-identically (the retry preamble even lengthens the prompt).
-        // Double the budget for the retry instead of lecturing the model.
-        maxTokens *= 2;
-        problem = `reply truncated at ${maxTokens / 2} output tokens; answer completely`;
-      } else {
-        try {
-          parsed = parseSummaryReply(result.text);
-          problem = contractViolation(parsed.meta, expected);
-        } catch (error) {
-          if (!(error instanceof SummaryContractError)) throw error;
-          problem = error.message;
+        // Double the budget instead of lecturing the model, and do NOT spend
+        // the single contract retry on it (observed live: a root summary
+        // truncated at 1024, doubled once, then died because the doubling had
+        // consumed the retry). Bounded: unbounded doubling would hide a
+        // systemic failure behind exploding spend.
+        doublings += 1;
+        if (doublings > MAX_TRUNCATION_DOUBLINGS) {
+          throw new SummaryContractError(
+            `${model} reply still truncated after ${MAX_TRUNCATION_DOUBLINGS} budget doublings (final cap ${maxTokens} output tokens)`,
+          );
         }
+        maxTokens *= 2;
+        violation = `reply truncated at ${maxTokens / 2} output tokens; answer completely`;
+        continue;
+      }
+
+      let parsed: { text: string; meta: SummaryMeta } | null = null;
+      let problem: string | null = null;
+      try {
+        parsed = parseSummaryReply(result.text);
+        problem = contractViolation(parsed.meta, expected);
+      } catch (error) {
+        if (!(error instanceof SummaryContractError)) throw error;
+        problem = error.message;
       }
       if (parsed !== null && problem === null) {
         return { text: parsed.text, meta: parsed.meta, model: result.model || model };
       }
-      if (attempt >= 1) {
+      if (contractRetries >= 1) {
         throw new SummaryContractError(`${model} broke the §8 summary contract after one retry: ${problem}`);
       }
+      contractRetries += 1;
       violation = problem;
     }
   }

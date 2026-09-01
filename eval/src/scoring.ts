@@ -72,6 +72,9 @@ export async function rubricJudge(args: RubricJudgeArgs): Promise<JudgeResult> {
     '# Agent final answer',
     args.finalText.slice(0, JUDGE_MAX_CHARS) || '(the agent produced no final text)',
   ].join('\n');
+  // No temperature pin: the Claude 5 API rejects the param outright
+  // ("`temperature` is deprecated for this model"), so judge variance is
+  // controlled statistically (replicates + medians), not by sampling args.
   const request: CompletionRequest = {
     model: args.model,
     messages: [{ role: 'user', content: prompt }],

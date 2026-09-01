@@ -26,6 +26,7 @@ import {
   ZoneAssembler,
   appendEvent,
   branchFacts,
+  composeRootSummary,
   openTaskStore,
   priceFor,
   renderBranchDetail,
@@ -273,6 +274,7 @@ async function runDsaArm(args: ArmArgs): Promise<ArmOutput> {
       tools: HARNESS_TOOL_SCHEMAS,
       maxTokens: AGENT_MAX_TOKENS,
     };
+    if (args.options.temperature != null) request.temperature = args.options.temperature;
     const { result, record } = await callModel({
       provider: args.provider,
       request,
@@ -321,6 +323,7 @@ async function runNativeArm(args: ArmArgs): Promise<ArmOutput> {
       tools: HARNESS_TOOL_SCHEMAS,
       maxTokens: AGENT_MAX_TOKENS,
     };
+    if (args.options.temperature != null) request.temperature = args.options.temperature;
     if (nativeCache) request.systemCacheBreakpoint = true;
     const { result, record } = await callModel({
       provider: args.provider,
@@ -589,7 +592,7 @@ export function mergeKeepSets(
 export function toZoneCCachedRequest(
   prompt: AssembledPrompt,
   model: string,
-  options: { tools?: CompletionRequest['tools']; maxTokens?: number },
+  options: { tools?: CompletionRequest['tools']; maxTokens?: number; temperature?: number },
 ): CompletionRequest {
   const byZone = (zone: string) => prompt.blocks.filter((block) => block.zone === zone);
   const messages: ChatMessage[] = [];
@@ -624,6 +627,7 @@ export function toZoneCCachedRequest(
   if (prompt.system !== '') request.systemCacheBreakpoint = true;
   if (options.tools !== undefined) request.tools = options.tools;
   if (options.maxTokens !== undefined) request.maxTokens = options.maxTokens;
+  if (options.temperature !== undefined) request.temperature = options.temperature;
   return request;
 }
 
@@ -702,6 +706,7 @@ async function runTreeArm(
       trace: handle.trace,
       blobs: handle.blobs,
       maxSummaryTokens: 1024,
+      ...(args.options.temperature != null ? { temperature: args.options.temperature } : {}),
     });
     const retriever = new TreeRetriever({ store: handle.store, blobs: handle.blobs, trace: handle.trace });
     const toolCtx: ToolContext = { config: args.config, handle, retriever };
@@ -738,6 +743,38 @@ async function runTreeArm(
     // one leaf call per closed branch, one root update per phase close, and
     // Zone B changes once per transition, which is the §17 cache model.
     const summarizeOnClose = process.env.EVAL_SUMMARIZE_ON_CLOSE === '1';
+    // v5.7 (EVAL_LAZY_K=<k>): below k branches the tree devolves to baseline
+    // behavior by design — Zone C is the whole (cached) trace and Zone B is
+    // empty — so summaries buy nothing and we spend nothing building them.
+    // Staleness accumulates anyway (the D4 cascade runs on append), so the
+    // first pass at the k-th branch catches up on every skipped branch in one
+    // parallel leaf batch: one cache epoch instead of k-1 boundary resets.
+    const lazyK = Number.parseInt(process.env.EVAL_LAZY_K ?? '0', 10) || 0;
+    // v6.0 (EVAL_LAZY_TOKENS=<n>): the below-k rule in token form. While the
+    // WHOLE trace fits where the active branch's detail would go, showing it
+    // all IS the optimal context — summaries buy nothing, so build none.
+    // Branch-count k was the first cut and its failure mode was the LATE
+    // crossing (v5.7: runs crossing at turn 11-17 flailed to the 40-turn cap;
+    // crossings at 6-8 were fine) — the shock scales with how much raw trace
+    // the swap replaces. A token threshold bounds that swap by construction:
+    // short tasks never transition, long tasks transition early.
+    const lazyTokens = Number.parseInt(process.env.EVAL_LAZY_TOKENS ?? '0', 10) || 0;
+    // Upper-bound proxy for the rendered trace size; 4 chars/token heuristic.
+    let traceChars = args.scenario.task.length;
+    const belowLazyBudget = (): boolean => lazyTokens > 0 && traceChars / 4 < lazyTokens;
+    // v5.7 (EVAL_DET_ROOT=1): the Zone B root is composed from leaf headlines
+    // by a pure function — no strong-model call, no truncation-retry path.
+    const detRoot = process.env.EVAL_DET_ROOT === '1';
+    // v5.8 (EVAL_FETCH_EVENTS=1): context-tool results and the completion
+    // nudge are appended to L0 like every other exchange, replacing the
+    // never-actually-dropped ephemeral tail (see the isContextTool branch).
+    const fetchEvents = process.env.EVAL_FETCH_EVENTS === '1';
+    const branchCount = (): number => {
+      const rootId = handle.store.root()?.id;
+      return rootId === undefined
+        ? 0
+        : handle.store.nodesInCreationOrder().filter((node) => node.parent_id === rootId).length;
+    };
     let summarizedBranchCount = 1; // the newest branch never summarizes
     const maybeResummarize = async (): Promise<void> => {
       const rootId = handle.store.root()?.id;
@@ -748,6 +785,8 @@ async function runTreeArm(
             ? []
             : handle.store.nodesInCreationOrder().filter((node) => node.parent_id === rootId);
         if (branches.length <= summarizedBranchCount) return;
+        if (lazyK > 0 && branches.length < lazyK) return;
+        if (belowLazyBudget()) return;
         summarizedBranchCount = branches.length;
         latestBranchIdForPlan = branches.at(-1)?.id;
       } else if (newEventsSinceSummary < SUMMARIZE_MIN_NEW_EVENTS) {
@@ -756,7 +795,10 @@ async function runTreeArm(
       const plan =
         rootId === undefined
           ? []
-          : summarizer.stalePlan(rootId).filter((nodeId) => nodeId !== latestBranchIdForPlan);
+          : summarizer
+              .stalePlan(rootId)
+              .filter((nodeId) => nodeId !== latestBranchIdForPlan)
+              .filter((nodeId) => !(detRoot && nodeId === rootId));
       let { pending, skipped } = splitSummarizePlan(plan, failedSummaryNodes);
       if (skipped > 0) {
         process.stderr.write(
@@ -804,6 +846,7 @@ async function runTreeArm(
         }
       }
       if (pending.length === 0) {
+        if (detRoot && rootId !== undefined) composeRootSummary(handle.store, rootId);
         newEventsSinceSummary = 0;
         return;
       }
@@ -818,6 +861,9 @@ async function runTreeArm(
           );
         }
       }
+      // After the leaves land: the root is a pure compose over them, and a
+      // byte-identical composition writes no new version (Zone B stability).
+      if (detRoot && rootId !== undefined) composeRootSummary(handle.store, rootId);
       newEventsSinceSummary = 0;
     };
 
@@ -845,7 +891,14 @@ async function runTreeArm(
               .filter((node) => node.parent_id === rootIdForZoneC)
               .at(-1)?.id
           : undefined;
-      const activeNodeId = handle.store.openPhase()?.id ?? latestBranchId ?? rootIdForZoneC;
+      // v5.7 below-k: nothing is summarized yet, so hiding closed branches
+      // behind (nonexistent) Zone B summaries would blind the model. Expand
+      // the root — Zone C is the whole trace, cached per-block, and the prompt
+      // is economically native until the k-th branch closes.
+      const belowLazyK = (lazyK > 0 && branchCount() < lazyK) || belowLazyBudget();
+      const activeNodeId = belowLazyK
+        ? rootIdForZoneC
+        : (handle.store.openPhase()?.id ?? latestBranchId ?? rootIdForZoneC);
       const keepBranches = args.selectBranches?.(handle, activeNodeId);
       if (args.selectBranches !== undefined) {
         // Telemetry: whether branch sampling fired this turn, and how much it kept.
@@ -855,7 +908,10 @@ async function runTreeArm(
         );
       }
       const prompt = assembler.assemble({
-        toolSchemasText: TREE_ZONE_A_TOOL_SCHEMAS_TEXT,
+        // v5.7 (EVAL_NO_ATOOLS=1): the schemas already ship as the API `tools`
+        // param on every request — the Zone A text copy is a 1.1k-token/turn
+        // duplicate (analyzer-verified). Deleting it is pure prefix diet.
+        ...(process.env.EVAL_NO_ATOOLS === '1' ? {} : { toolSchemasText: TREE_ZONE_A_TOOL_SCHEMAS_TEXT }),
         // appendEvent re-ingests the whole log each turn, and the segmenter ends
         // every trace by closing all phases and the task node — so openPhase()
         // is ALWAYS null here and the assembler would emit an empty Zone C (the
@@ -870,10 +926,12 @@ async function runTreeArm(
           ? toZoneCCachedRequest(prompt, args.options.model, {
               tools: treeTools,
               maxTokens: AGENT_MAX_TOKENS,
+              ...(args.options.temperature != null ? { temperature: args.options.temperature } : {}),
             })
           : toCompletionRequest(prompt, args.options.model, {
               tools: treeTools,
               maxTokens: AGENT_MAX_TOKENS,
+              ...(args.options.temperature != null ? { temperature: args.options.temperature } : {}),
             });
       const { result, record } = await callModel({
         provider: args.provider,
@@ -891,6 +949,7 @@ async function runTreeArm(
         ts: ts(),
         blob: handle.blobs.put(result.text),
       });
+      traceChars += result.text.length;
       if (result.toolCalls.length === 0) {
         // Completion gate (iter 3): a bare-text reply right after tool work can
         // be premature completion — the thin early tree prompt lacks the "look
@@ -900,12 +959,17 @@ async function runTreeArm(
         // turn exactly when the failure mode would otherwise fire.
         if (toolWorkDone && !completionConfirmed) {
           completionConfirmed = true;
-          tailCounter += 1;
-          assembler.appendTail({
-            id: `completion-check-${tailCounter}`,
-            text: 'system: you stopped calling tools. If every step of the task is verifiably done, reply with your final answer again; otherwise continue working.',
-            ephemeral: true,
-          });
+          const nudge =
+            'system: you stopped calling tools. If every step of the task is verifiably done, reply with your final answer again; otherwise continue working.';
+          if (fetchEvents) {
+            // v5.8: the nudge is an L0 event like everything else — it rides
+            // behind the moving breakpoint instead of re-billing fresh forever.
+            appendTo(handle, { type: 'user_message', ts: ts(), blob: handle.blobs.put(nudge) });
+            traceChars += nudge.length;
+          } else {
+            tailCounter += 1;
+            assembler.appendTail({ id: `completion-check-${tailCounter}`, text: nudge, ephemeral: true });
+          }
           newEventsSinceSummary += 1;
           await maybeResummarize();
           continue;
@@ -939,14 +1003,42 @@ async function runTreeArm(
             output_blob: handle.blobs.put(outcome.output),
             error: outcome.isError ? outcome.output.slice(0, 500) : undefined,
           });
+          traceChars += (outcome.postContent?.length ?? 0) + outcome.output.length + JSON.stringify(call.input).length;
           newEventsSinceSummary += 2;
         } else if (isContextTool(call.name)) {
           const outcome = await HANDLERS[call.name as ToolName](toolCtx, call.input);
           const text = outcome.ok
             ? JSON.stringify(outcome.data)
             : `error ${outcome.error.code}: ${outcome.error.message}`;
-          tailCounter += 1;
-          assembler.appendTail({ id: `${call.name}-${tailCounter}`, text, ephemeral: true });
+          if (fetchEvents) {
+            // v5.8 (EVAL_FETCH_EVENTS=1): context-tool exchanges are L0 events,
+            // identical to harness tools — one rule applied everywhere. The
+            // "ephemeral tail" they used to land in never actually dropped
+            // (openPhase() is always null here, so onPhaseTransition() is dead
+            // code) while claiming it would: a fetched payload re-billed FRESH
+            // at 1x every remaining turn (measured: 7.6k tokens pinned for 12
+            // turns, $0.19 of one run). As events they ride behind the moving
+            // breakpoint at 0.1x and collapse into the branch summary at close.
+            const callEvent = appendTo(handle, {
+              type: 'tool_call',
+              ts: ts(),
+              tool: call.name,
+              args_blob: handle.blobs.put(JSON.stringify(call.input)),
+              parent_seq: assistantEvent.event.seq,
+            });
+            appendTo(handle, {
+              type: 'tool_result',
+              ts: ts(),
+              call_seq: callEvent.event.seq,
+              output_blob: handle.blobs.put(text),
+              error: outcome.ok ? undefined : text.slice(0, 500),
+            });
+            traceChars += text.length + JSON.stringify(call.input).length;
+            newEventsSinceSummary += 2;
+          } else {
+            tailCounter += 1;
+            assembler.appendTail({ id: `${call.name}-${tailCounter}`, text, ephemeral: true });
+          }
         } else {
           tailCounter += 1;
           assembler.appendTail({
@@ -1074,6 +1166,13 @@ export async function runScenario(loop: LoopOptions): Promise<LoopOutput> {
     scenarioId: scenario.id,
     arm,
     model: options.model,
+    ...(options.temperature != null ? { temperature: options.temperature } : {}),
+    costByModel: costMeter.snapshot().entries.map((entry) => ({
+      model: entry.model,
+      calls: entry.calls,
+      usage: entry.usage,
+      usd: entry.usd,
+    })),
     status,
     success,
     judge: { success, detail: judgeDetail },

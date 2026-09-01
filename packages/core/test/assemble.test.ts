@@ -28,6 +28,7 @@ import { openInMemoryStore, type SqliteTreeStore } from '../src/store/index.js';
 import { HeuristicTokenizer } from '../src/tokens/index.js';
 import {
   ZoneAssembler,
+  renderEvent,
   toCompletionRequest,
   toMessages,
   truncateToTokens,
@@ -757,5 +758,47 @@ describe('Zone C header carries no volatile bits (D5)', () => {
     const after = h.assembler.assemble({ activeNodeId: node.id });
     const headAfter = after.blocks.find((b) => b.id === `C:head:${node.id}`);
     expect(headAfter?.text).toBe(headBefore?.text);
+  });
+});
+
+describe('renderEvent — tool_call payload dedup (v5.9b)', () => {
+  it('caps args when a post-state blob is present — a write_file must not carry the file twice', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ct-render-event-'));
+    try {
+      const blobs = new FsBlobStore(join(dir, 'blobs'));
+      const content = 'the whole file body, potentially kilobytes '.repeat(40);
+      const args = blobs.put(JSON.stringify({ path: 'a.txt', content }));
+      const post = blobs.put(content);
+      const withBlob = renderEvent(
+        { seq: 3, ts: 'T', type: 'tool_call', tool: 'write_file', path: 'a.txt', args_blob: args, blob: post },
+        blobs,
+      );
+      // The post-state renders in full, exactly once; the args are capped so
+      // the duplicate never rides the cache at kilobyte scale.
+      expect(withBlob.split(content).length - 1).toBe(1);
+      expect(withBlob).toContain('args: ');
+      expect(withBlob).toContain('chars elided');
+
+      // Small args stay whole even beside a blob: an edit_file's old/new
+      // strings are the model's only record of WHAT it changed (v5.9 dropped
+      // them entirely and sw-1 turns went 13 -> 25).
+      const smallArgs = blobs.put('{"path":"a.txt","old_string":"x","new_string":"y"}');
+      const edit = renderEvent(
+        { seq: 4, ts: 'T', type: 'tool_call', tool: 'edit_file', path: 'a.txt', args_blob: smallArgs, blob: post },
+        blobs,
+      );
+      expect(edit).toContain('args: {"path":"a.txt","old_string":"x","new_string":"y"}');
+      expect(edit).toContain(content);
+
+      // Without a content blob the args ARE the information — never capped.
+      const big = JSON.stringify({ command: 'x'.repeat(2000) });
+      const withoutBlob = renderEvent(
+        { seq: 5, ts: 'T', type: 'tool_call', tool: 'run_command', args_blob: blobs.put(big), blob: undefined },
+        blobs,
+      );
+      expect(withoutBlob).toContain(`args: ${big}`);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

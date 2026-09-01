@@ -6,7 +6,7 @@
  */
 import { existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { CompletionRequest, CompletionResult, ModelProvider } from '@context-tree/core';
 import { MockProvider } from '@context-tree/core';
 import { CONTEXT_SEARCH } from '@context-tree/mcp';
@@ -482,3 +482,174 @@ describe('runScenario — caps', () => {
   });
 });
 
+
+describe('v5.7 gates (EVAL_LAZY_K / EVAL_DET_ROOT)', () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  /** Alternating implementation/diagnosis tools force multiple phase branches. */
+  const phaseCrossingReplies = (): CompletionResult[] => [
+    ...['write_file', 'read_file', 'write_file', 'read_file'].map((name, i) => ({
+      text: '',
+      model: 'test-model',
+      usage: { input: 100, output: 10, cacheRead: 0, cacheWrite: 0 },
+      toolCalls: [
+        name === 'write_file'
+          ? { id: `t${i}`, name, input: { path: `f${i}.txt`, content: 'x' } }
+          : { id: `t${i}`, name, input: { path: `f${i - 1}.txt` } },
+      ],
+      stopReason: 'tool_use' as const,
+    })),
+    {
+      text: 'done',
+      model: 'test-model',
+      usage: { input: 200, output: 5, cacheRead: 0, cacheWrite: 0 },
+      toolCalls: [],
+      stopReason: 'end_turn' as const,
+    },
+    {
+      text: 'done',
+      model: 'test-model',
+      usage: { input: 200, output: 5, cacheRead: 0, cacheWrite: 0 },
+      toolCalls: [],
+      stopReason: 'end_turn' as const,
+    },
+  ];
+
+  const runTree = async (summarizer: MockProvider) => {
+    const { result } = await runScenario({
+      runId: 'r1',
+      scenario,
+      arm: 'context-tree',
+      agentProvider: new ScriptedProvider(phaseCrossingReplies()),
+      summarizerProvider: summarizer,
+      options: { ...options, maxTurns: 8, rootModel: 'root-model' },
+      sink: disabledSink(),
+    });
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe('completed');
+    return result;
+  };
+
+  it('without lazy-k, summarize-on-close pays summarizer calls (the contrast that keeps the gate test honest)', async () => {
+    vi.stubEnv('EVAL_SUMMARIZE_ON_CLOSE', '1');
+    const summarizer = new MockProvider({ responder: summaryResponder });
+    await runTree(summarizer);
+    expect(summarizer.requests.length).toBeGreaterThan(0);
+  });
+
+  it('below k branches the tree spends ZERO summarizer calls — the architecture devolves to baseline, so it must also cost baseline', async () => {
+    vi.stubEnv('EVAL_SUMMARIZE_ON_CLOSE', '1');
+    vi.stubEnv('EVAL_LAZY_K', '99');
+    const summarizer = new MockProvider({ responder: summaryResponder });
+    await runTree(summarizer);
+    expect(summarizer.requests).toHaveLength(0);
+  });
+
+  it('with det-root the strong model is never called — the root is composed, leaves still summarize on the cheap model', async () => {
+    vi.stubEnv('EVAL_SUMMARIZE_ON_CLOSE', '1');
+    vi.stubEnv('EVAL_DET_ROOT', '1');
+    const summarizer = new MockProvider({ responder: summaryResponder });
+    await runTree(summarizer);
+    expect(summarizer.requests.length).toBeGreaterThan(0);
+    expect(summarizer.requests.every((request) => request.model !== 'root-model')).toBe(true);
+  });
+});
+
+describe('v5.8 gate (EVAL_FETCH_EVENTS)', () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('routes context-tool exchanges into L0 as tool_call/tool_result events instead of the never-dropped tail', async () => {
+    vi.stubEnv('EVAL_FETCH_EVENTS', '1');
+    const searchReply: CompletionResult = {
+      text: '',
+      model: 'test-model',
+      usage: { input: 50, output: 5, cacheRead: 0, cacheWrite: 0 },
+      toolCalls: [{ id: 't0', name: CONTEXT_SEARCH, input: { query: 'hello' } }],
+      stopReason: 'tool_use',
+    };
+    const confirm: CompletionResult = {
+      text: 'done',
+      model: 'test-model',
+      usage: { input: 100, output: 5, cacheRead: 0, cacheWrite: 0 },
+      toolCalls: [],
+      stopReason: 'end_turn',
+    };
+    const { result } = await runScenario({
+      runId: 'r1',
+      scenario,
+      arm: 'context-tree',
+      agentProvider: new ScriptedProvider([searchReply, ...agentReplies, confirm]),
+      summarizerProvider: new MockProvider({ responder: summaryResponder }),
+      options: { ...options, keepSandbox: true },
+      sink: disabledSink(),
+    });
+    const sandboxPath = result.sandboxPath;
+    try {
+      expect(result.error).toBeUndefined();
+      expect(result.status).toBe('completed');
+      // L0 is the audit trail: the context tool call must be IN it.
+      const { readFileSync } = await import('node:fs');
+      const trace = readFileSync(join(sandboxPath!, '.context-tree', 'trace.jsonl'), 'utf8');
+      const events = trace.trim().split('\n').map((line) => JSON.parse(line));
+      const call = events.find((e) => e.type === 'tool_call' && e.tool === CONTEXT_SEARCH);
+      expect(call).toBeDefined();
+      expect(events.some((e) => e.type === 'tool_result' && e.call_seq === call.seq)).toBe(true);
+      // And the completion nudge is an event too, not a tail block.
+      expect(
+        events.some((e) => e.type === 'user_message' && e.seq > call.seq),
+      ).toBe(true);
+    } finally {
+      if (sandboxPath !== undefined) rmSync(sandboxPath, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('v6.0 gate (EVAL_LAZY_TOKENS)', () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  const phaseCrossing = (): CompletionResult[] => [
+    ...['write_file', 'read_file', 'write_file', 'read_file'].map((name, i) => ({
+      text: '',
+      model: 'test-model',
+      usage: { input: 100, output: 10, cacheRead: 0, cacheWrite: 0 },
+      toolCalls: [
+        name === 'write_file'
+          ? { id: `t${i}`, name, input: { path: `f${i}.txt`, content: 'x' } }
+          : { id: `t${i}`, name, input: { path: `f${i - 1}.txt` } },
+      ],
+      stopReason: 'tool_use' as const,
+    })),
+    { text: 'done', model: 'test-model', usage: { input: 200, output: 5, cacheRead: 0, cacheWrite: 0 }, toolCalls: [], stopReason: 'end_turn' as const },
+    { text: 'done', model: 'test-model', usage: { input: 200, output: 5, cacheRead: 0, cacheWrite: 0 }, toolCalls: [], stopReason: 'end_turn' as const },
+  ];
+
+  const run = async (summarizer: MockProvider) => {
+    const { result } = await runScenario({
+      runId: 'r1',
+      scenario,
+      arm: 'context-tree',
+      agentProvider: new ScriptedProvider(phaseCrossing()),
+      summarizerProvider: summarizer,
+      options: { ...options, maxTurns: 8 },
+      sink: disabledSink(),
+    });
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe('completed');
+  };
+
+  it('while the trace fits the budget, ZERO summarizer calls — the tree devolves to baseline and costs baseline', async () => {
+    vi.stubEnv('EVAL_SUMMARIZE_ON_CLOSE', '1');
+    vi.stubEnv('EVAL_LAZY_TOKENS', '999999');
+    const summarizer = new MockProvider({ responder: summaryResponder });
+    await run(summarizer);
+    expect(summarizer.requests).toHaveLength(0);
+  });
+
+  it('once the trace exceeds the budget, summarization resumes (a 1-token budget crosses immediately)', async () => {
+    vi.stubEnv('EVAL_SUMMARIZE_ON_CLOSE', '1');
+    vi.stubEnv('EVAL_LAZY_TOKENS', '1');
+    const summarizer = new MockProvider({ responder: summaryResponder });
+    await run(summarizer);
+    expect(summarizer.requests.length).toBeGreaterThan(0);
+  });
+});

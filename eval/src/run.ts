@@ -52,6 +52,11 @@ program
   .option('--judge-model <id>', 'LLM judge model', 'claude-opus-5')
   .option('--provider <name>', 'model provider: anthropic | openrouter', 'anthropic')
   .option('--max-turns <n>', 'per-run turn cap', '40')
+  .option(
+    '--temperature <t>',
+    'pinned sampling temperature for agent + summarizer calls (unset = provider default). ' +
+      'NOTE: the Claude 5 API rejects this param ("deprecated for this model") — usable only with models/providers that still accept it',
+  )
   .option('--time-cap-ms <n>', 'per-run wall-clock cap in ms', '900000')
   .option('--cost-cap-usd <n>', 'per-run spend cap in USD')
   .option('--out <dir>', 'results output directory', join(evalRoot, 'results'))
@@ -97,7 +102,11 @@ program
       costCapUsd: opts.costCapUsd === undefined ? null : Number(opts.costCapUsd),
       budgets: { zoneB: 8000, zoneC: 30000 },
       keepSandbox: opts.keepSandbox === true,
+      temperature: opts.temperature === undefined ? null : Number(opts.temperature),
     };
+    if (options.temperature != null && !(options.temperature >= 0 && options.temperature <= 1)) {
+      throw new Error(`--temperature must be in [0, 1], got "${opts.temperature}"`);
+    }
 
     const runId = opts.runId ?? `run-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}`;
     const results: RunResult[] = [];

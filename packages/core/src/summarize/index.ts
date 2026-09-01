@@ -13,6 +13,7 @@ export {
   type SummarizerOptions,
 } from './summarizer.js';
 export { branchFacts, renderBranchDetail, type BranchFacts, type DetailSources } from './detail.js';
+export { composeRootSummary, DETERMINISTIC_ROOT_MODEL } from './compose-root.js';
 export {
   contractViolation,
   parseSummaryReply,
