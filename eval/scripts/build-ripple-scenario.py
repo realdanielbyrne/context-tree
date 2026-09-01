@@ -399,6 +399,12 @@ Notes:
 %s
 - This module never imports from any of the other dependent modules in
   this project; it only depends on record.py.
+- Any key in `data` that isn't part of this module's schema is silently
+  ignored by build_%s — it never ends up in the built record and never
+  appears in summarize_%s's output.
+- A required field present in `data` with a falsy value (0, "", False)
+  still counts as present; only an outright MISSING key triggers the
+  missing-required-field behavior documented in record.py.
 """
 
 from record import define_schema, get_field, make_record
@@ -431,6 +437,8 @@ def summarize_%s(record):
         partial_out,
         _DEP_RATIONALE[key],
         optional_notes,
+        key,
+        key,
         key,
         required_list,
         optional_list,
