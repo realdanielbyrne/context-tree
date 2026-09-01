@@ -60,6 +60,17 @@ export const DEFAULT_PRICES: PriceTable = Object.freeze({
   'claude-sonnet-5': tier(2, 10),
   'claude-sonnet': tier(3, 15),
   'claude-haiku': tier(1, 5),
+  // OpenRouter catalog rates (2026-09-01). Cache-read on these providers is
+  // published at 0.2x input, not Anthropic's 0.1x; cache-write is unpublished
+  // except qwen3.7-flash, so the Anthropic 1.25x multiple stands in — the
+  // OpenRouter provider reports cacheWrite as 0, so the rate only guards a
+  // future provider that starts reporting it (never free, per the §16 rule).
+  // qwen3.7-flash has tiered overrides above 32k prompt tokens; base tier here.
+  'z-ai/glm-5.3-flash': { input: 0.075, output: 0.25, cacheRead: 0.015, cacheWrite: 0.09375 },
+  'deepseek/deepseek-v4-flash': { input: 0.07168, output: 0.14336, cacheRead: 0.014336, cacheWrite: 0.0896 },
+  'qwen/qwen3.7-flash': { input: 0.03, output: 0.13, cacheRead: 0.006, cacheWrite: 0.038 },
+  'qwen/qwen-2.5-72b-instruct': { input: 0.36, output: 0.4, cacheRead: 0.036, cacheWrite: 0.45 },
+  'openai/gpt-3.5-turbo': { input: 0.5, output: 1.5, cacheRead: 0.05, cacheWrite: 0.625 },
 });
 
 /**

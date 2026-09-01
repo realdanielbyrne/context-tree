@@ -554,6 +554,20 @@ describe('InMemoryCostMeter', () => {
     expect(priceFor('claude-sonnet-4-6').price).toEqual(DEFAULT_PRICES['claude-sonnet']);
   });
 
+  it('prices the OpenRouter eval-matrix models from the table, not the fallback, because a $0.07/M model billed at the $10/M fallback makes every cross-model cost verdict fiction', () => {
+    for (const id of [
+      'z-ai/glm-5.3-flash',
+      'deepseek/deepseek-v4-flash',
+      'qwen/qwen3.7-flash',
+      'qwen/qwen-2.5-72b-instruct',
+      'openai/gpt-3.5-turbo',
+    ]) {
+      const match = priceFor(id);
+      expect(match.matched).toBe(id);
+      expect(match.price).toEqual(DEFAULT_PRICES[id]);
+    }
+  });
+
   it('charges an unknown model the fallback rate and lists it, because a silently-free model defeats the §16 cap entirely', () => {
     const meter = new InMemoryCostMeter();
 

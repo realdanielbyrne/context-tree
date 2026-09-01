@@ -58,6 +58,8 @@ program
       'NOTE: the Claude 5 API rejects this param ("deprecated for this model") — usable only with models/providers that still accept it',
   )
   .option('--time-cap-ms <n>', 'per-run wall-clock cap in ms', '900000')
+  .option('--zone-b-budget <n>', 'context-tree Zone B token budget (shrink for small-window models)', '8000')
+  .option('--zone-c-budget <n>', 'context-tree Zone C token budget (shrink for small-window models)', '30000')
   .option('--cost-cap-usd <n>', 'per-run spend cap in USD')
   .option('--out <dir>', 'results output directory', join(evalRoot, 'results'))
   .option('--run-id <id>', 'run identifier (defaults to a timestamp)')
@@ -100,7 +102,7 @@ program
       maxTurns: parsePositiveInt(opts.maxTurns),
       timeCapMs: parsePositiveInt(opts.timeCapMs),
       costCapUsd: opts.costCapUsd === undefined ? null : Number(opts.costCapUsd),
-      budgets: { zoneB: 8000, zoneC: 30000 },
+      budgets: { zoneB: parsePositiveInt(opts.zoneBBudget), zoneC: parsePositiveInt(opts.zoneCBudget) },
       keepSandbox: opts.keepSandbox === true,
       temperature: opts.temperature === undefined ? null : Number(opts.temperature),
     };
