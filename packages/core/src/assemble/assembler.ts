@@ -78,6 +78,19 @@ interface ZoneBEntry {
   tokens: number;
 }
 
+export interface ZoneBSelection {
+  /**
+   * Branch ids to keep in Zone B, chosen by the caller (e.g. a DSA-style
+   * top-k selector in the eval harness). `undefined` keeps every branch —
+   * so k >= branch count and no selection at all are the same code path and
+   * neither perturbs the prefix. The task root and the active branch are not
+   * selectable: the root is the anchor and the active branch never appears in
+   * Zone B anyway. Selected branches keep creation order (rule 1) — selection
+   * changes membership, never position.
+   */
+  keepBranches?: ReadonlySet<NodeId>;
+}
+
 export class ZoneAssembler implements PromptAssembler {
   private readonly deps: ZoneAssemblerDeps;
   private readonly budgets: { zoneB: number; zoneC: number };
@@ -121,7 +134,7 @@ export class ZoneAssembler implements PromptAssembler {
     const zoneA = this.zoneA(options.toolSchemasText);
 
     const zoneBBudget = options.zoneBBudget ?? this.budgets.zoneB;
-    const zoneB = this.zoneB(root, this.activeBranchId(active, root), zoneBBudget);
+    const zoneB = this.zoneB(root, this.activeBranchId(active, root), zoneBBudget, options.selection);
 
     const zoneCBudget = options.zoneCBudget ?? this.budgets.zoneC;
     const zoneC = this.zoneC(active, zoneCBudget);
@@ -187,6 +200,7 @@ export class ZoneAssembler implements PromptAssembler {
     root: TreeNode | null,
     activeBranchId: NodeId | null,
     budget: number,
+    selection?: ZoneBSelection,
   ): { blocks: PromptBlock[]; tokens: number; dropped: NodeId[] } {
     if (root === null) return { blocks: [], tokens: 0, dropped: [] };
     const { store } = this.deps;
@@ -199,6 +213,10 @@ export class ZoneAssembler implements PromptAssembler {
       // Every other block keeps its position, so promoting or demoting a branch
       // never reorders its neighbours.
       if (!isRoot && node.id === activeBranchId) continue;
+      // Caller-side top-k selection (ZoneBSelection): a branch outside the
+      // keep-set is excluded before budget accounting — selection is a
+      // relevance decision, rule-4 budget dropping remains the overflow valve.
+      if (!isRoot && selection?.keepBranches !== undefined && !selection.keepBranches.has(node.id)) continue;
 
       const summary = store.currentSummary(node.id);
       if (summary === null) continue;

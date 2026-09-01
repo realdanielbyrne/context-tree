@@ -49,9 +49,14 @@ export function fieldOf(row: Record<string, unknown>, keys: readonly string[]): 
  * answer (exact match), then a rubric — and plain tasks get a generic rubric
  * judged by the judge model rather than being silently ungraded.
  */
-export function judgeFromRow(row: Record<string, unknown>): ScenarioJudge {
+export function judgeFromRow(row: Record<string, unknown>, where = ''): ScenarioJudge {
   const command = fieldOf(row, ['judge_command', 'test_command']);
-  if (command !== undefined) return { kind: 'command', command };
+  if (command !== undefined) {
+    // `judge_files` carries hidden tests / fixtures written into the sandbox
+    // only at scoring time (the terminal-bench hidden-tests contract).
+    const files = judgeFilesFromRow(row, where);
+    return files === undefined ? { kind: 'command', command } : { kind: 'command', command, files };
+  }
   const answer = fieldOf(row, ['answer', 'expected', 'reference_answer']);
   if (answer !== undefined) return { kind: 'exact_match', answer };
   const rubric = fieldOf(row, ['rubric', 'grading_rubric']);
@@ -61,6 +66,27 @@ export function judgeFromRow(row: Record<string, unknown>): ScenarioJudge {
       rubric ??
       'Did the agent complete the task correctly and completely? Grade the final answer against the task requirements.',
   };
+}
+
+/**
+ * Hidden files attached to a `command` judge under `judge_files`. A malformed
+ * map (a task-author bug) raises a plain Error rather than an AdapterLoadError
+ * because there is no benchmark id in scope here.
+ */
+function judgeFilesFromRow(row: Record<string, unknown>, where: string): Record<string, string> | undefined {
+  const files = row['judge_files'];
+  if (files === undefined) return undefined;
+  if (typeof files !== 'object' || files === null || Array.isArray(files)) {
+    throw new Error(`${where}: "judge_files" must be an object of path -> content`);
+  }
+  const out: Record<string, string> = {};
+  for (const [path, content] of Object.entries(files)) {
+    if (typeof content !== 'string') {
+      throw new Error(`${where}: judge file "${path}" content must be a string`);
+    }
+    out[path] = content;
+  }
+  return out;
 }
 
 /** Optional per-scenario input files under a `files` object of path -> content. */

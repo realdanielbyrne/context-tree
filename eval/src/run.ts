@@ -28,7 +28,7 @@ import { isArm, type Arm, type HarnessOptions, type RunResult, type Scenario } f
 loadWorkspaceEnv(dirname(fileURLToPath(import.meta.url)));
 
 const evalRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const ARMS_LIST = ['native', 'context-tree'];
+const ARMS_LIST = ['native', 'context-tree', 'dsa', 'tree-dsa'];
 
 function parsePositiveInt(value: string): number {
   const parsed = Number.parseInt(value, 10);

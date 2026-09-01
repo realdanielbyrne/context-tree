@@ -8,10 +8,10 @@
  */
 import type { TokenUsage } from '@context-tree/core';
 
-/** §15's two arms that matter for the A/B: raw transcript vs the tree. */
-export type Arm = 'native' | 'context-tree';
+/** §15's arms: raw transcript vs the tree, plus the top-k filtered variants. */
+export type Arm = 'native' | 'context-tree' | 'dsa' | 'tree-dsa';
 
-export const ARMS: readonly Arm[] = ['native', 'context-tree'] as const;
+export const ARMS: readonly Arm[] = ['native', 'context-tree', 'dsa', 'tree-dsa'] as const;
 
 export function isArm(value: string): value is Arm {
   return (ARMS as readonly string[]).includes(value);

@@ -48,6 +48,12 @@ export interface AssembleOptions {
   tail?: readonly TailEntry[];
   /** Tool schemas belong to Zone A and must be byte-stable across turns. */
   toolSchemasText?: string;
+  /**
+   * Optional caller-side Zone B branch selection (top-k). Typed structurally
+   * (`{ keepBranches?: ReadonlySet<NodeId> }`) to avoid an import cycle with
+   * the assembler; see `ZoneBSelection` there. `undefined` keeps all branches.
+   */
+  selection?: { keepBranches?: ReadonlySet<NodeId> };
 }
 
 export interface AssembledPrompt {
