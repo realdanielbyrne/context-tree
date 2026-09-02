@@ -1,0 +1,363 @@
+diff --git a/eval/test/transplant.test.ts b/eval/test/transplant.test.ts
+index bf73672..dd53546 100644
+--- a/eval/test/transplant.test.ts
++++ b/eval/test/transplant.test.ts
+@@ -16,7 +16,9 @@
+  *      it was introduced to stop hand-tuning.
+  */
+ import { describe, expect, it } from 'vitest';
++import { CONTEXT_FETCH, CONTEXT_SEARCH, HANDLERS } from '@context-tree/mcp';
+ import {
++  ARM_IDS,
+   FRACTIONS,
+   answerRegexesFor,
+   binomialN,
+@@ -25,6 +27,7 @@ import {
+   requestTokens,
+   runOneReplicate,
+   contextGrowthSeries,
++  contractVersionFor,
+   countOccurrences,
+   deriveBudgets,
+   deriveRootKeep,
+@@ -36,6 +39,11 @@ import {
+   looksLikeAnswerKey,
+   pickDeterministic,
+   ratioVerdict,
++  checkG0NoLiteralInSummaries,
++  checkG7ToolCallLogging,
++  checkG8FreezeHolds,
++  checkG9VisibilityTable,
++  handlersForArm,
+   // @ts-expect-error — the harness is plain .mjs; vitest resolves it, tsc never sees it.
+ } from '../scripts/transplant.mjs';
+ 
+@@ -454,3 +462,328 @@ describe('verdict-side arithmetic', () => {
+     expect(cell.medianByTurn[1]).toMatchObject({ turn: 2, n: 1, promptTokens: 300 });
+   });
+ });
++
++/**
++ * Loop-9b item 2, Step 1: `01-run-forensics.md` §1 named the harness's missing
++ * `call.input` log as the highest-leverage free fix — without it, "the tool
++ * handed back a summary" and "the model had the literal and still missed it"
++ * are indistinguishable. These tests are the WHY: they assert the log can
++ * actually tell the two apart, and that everything derived from it (fetched
++ * branches, search queries, whether the literal was ever in front of the
++ * model) matches a hand-verified replay of the same fixture.
++ */
++describe('per-call tool logging (Step 1)', () => {
++  const NODE = 'n_step1';
++  const LITERAL = 'sentinel_step1_4471';
++  const budgets = { window: 32_768, maxReplyTokens: 800, zoneC: 5_555 };
++
++  function built(overrides: Record<string, unknown> = {}) {
++    return {
++      system: 'sys',
++      messages: [{ role: 'user', content: 'context' }],
++      tools: [{ name: CONTEXT_SEARCH }, { name: CONTEXT_FETCH }],
++      handlers: {
++        [CONTEXT_SEARCH]: async () => ({ ok: true, data: { hits: [{ node_id: NODE }, { node_id: 'n_other' }] } }),
++        [CONTEXT_FETCH]: async (_ctx: unknown, input: { depth?: string }) => ({
++          ok: true,
++          data: { text: input.depth === 'full' ? `raw detail with ${LITERAL} inside` : 'a lossy summary paraphrase' },
++        }),
++      },
++      toolCtx: {},
++      ...overrides,
++    };
++  }
++
++  it('logs turn, name, verbatim input, ok, resultChars, headroom and droppedChars for every tool call', async () => {
++    let turn = 0;
++    const provider = {
++      id: 'step1-stub',
++      async complete(request: { model: string }) {
++        turn += 1;
++        const usage = { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 };
++        if (turn === 1) {
++          return {
++            text: '',
++            model: request.model,
++            usage,
++            toolCalls: [{ id: 'c1', name: CONTEXT_SEARCH, input: { query: 'step1 probe', kind: 'phase' } }],
++            stopReason: 'tool_use',
++          };
++        }
++        return { text: 'done', model: request.model, usage, toolCalls: [], stopReason: 'end_turn' };
++      },
++    };
++
++    const r = await runOneReplicate(null, built(), 'q', 'm', provider, budgets, [LITERAL]);
++
++    expect(r.toolCalls).toHaveLength(1);
++    const call = r.toolCalls[0];
++    expect(call.turn).toBe(1);
++    expect(call.name).toBe(CONTEXT_SEARCH);
++    expect(call.input).toEqual({ query: 'step1 probe', kind: 'phase' });
++    expect(call.ok).toBe(true);
++    expect(call.resultChars).toBeGreaterThan(0);
++    expect(typeof call.headroom).toBe('number');
++    expect(call.droppedChars).toBe(0);
++    expect(call.hitIds).toEqual([NODE, 'n_other']);
++  });
++
++  it('mutating the input object after the call does not retroactively change the logged record (structuredClone)', async () => {
++    const capturedInputs: Record<string, unknown>[] = [];
++    let turn = 0;
++    const provider = {
++      id: 'clone-stub',
++      async complete(request: { model: string }) {
++        turn += 1;
++        const usage = { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 };
++        if (turn === 1) {
++          const input = { branch_id: NODE, depth: 'full' };
++          capturedInputs.push(input);
++          return {
++            text: '',
++            model: request.model,
++            usage,
++            toolCalls: [{ id: 'c1', name: CONTEXT_FETCH, input }],
++            stopReason: 'tool_use',
++          };
++        }
++        return { text: 'done', model: request.model, usage, toolCalls: [], stopReason: 'end_turn' };
++      },
++    };
++
++    const r = await runOneReplicate(null, built(), 'q', 'm', provider, budgets, [LITERAL]);
++    // Mutate the original object the provider handed back — a shared reference
++    // would let this bleed into the row already returned.
++    capturedInputs[0].depth = 'MUTATED';
++
++    expect(r.toolCalls[0].input.depth).toBe('full');
++  });
++
++  it('derives searchQueries/fetchedIds from toolCalls, matching a hand-replayed fixture', async () => {
++    let turn = 0;
++    const provider = {
++      id: 'derive-stub',
++      async complete(request: { model: string }) {
++        turn += 1;
++        const usage = { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 };
++        if (turn === 1) {
++          return {
++            text: '',
++            model: request.model,
++            usage,
++            toolCalls: [{ id: 'c1', name: CONTEXT_SEARCH, input: { query: 'q one' } }],
++            stopReason: 'tool_use',
++          };
++        }
++        if (turn === 2) {
++          return {
++            text: '',
++            model: request.model,
++            usage,
++            toolCalls: [{ id: 'c2', name: CONTEXT_FETCH, input: { branch_id: NODE } }],
++            stopReason: 'tool_use',
++          };
++        }
++        return { text: 'done', model: request.model, usage, toolCalls: [], stopReason: 'end_turn' };
++      },
++    };
++
++    const r = await runOneReplicate(null, built(), 'q', 'm', provider, budgets, [LITERAL]);
++
++    expect(r.searchQueries).toEqual(['q one']);
++    expect(r.fetchedIds).toEqual([NODE]);
++    expect(r.searched).toBe(true);
++    expect(r.fetched).toBe(true);
++  });
++
++  it('literalInToolResult is true only once the literal actually appears in a returned tool result', async () => {
++    let turn = 0;
++    const summaryOnlyProvider = {
++      id: 'summary-only',
++      async complete(request: { model: string }) {
++        turn += 1;
++        const usage = { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 };
++        if (turn === 1) {
++          return {
++            text: '',
++            model: request.model,
++            usage,
++            toolCalls: [{ id: 'c1', name: CONTEXT_FETCH, input: { branch_id: NODE, depth: 'summary' } }],
++            stopReason: 'tool_use',
++          };
++        }
++        return { text: 'done', model: request.model, usage, toolCalls: [], stopReason: 'end_turn' };
++      },
++    };
++    const summaryOnly = await runOneReplicate(null, built(), 'q', 'm', summaryOnlyProvider, budgets, [LITERAL]);
++    expect(summaryOnly.literalInToolResult).toBe(false);
++
++    let turn2 = 0;
++    const fullProvider = {
++      id: 'full-depth',
++      async complete(request: { model: string }) {
++        turn2 += 1;
++        const usage = { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 };
++        if (turn2 === 1) {
++          return {
++            text: '',
++            model: request.model,
++            usage,
++            toolCalls: [{ id: 'c1', name: CONTEXT_FETCH, input: { branch_id: NODE, depth: 'full' } }],
++            stopReason: 'tool_use',
++          };
++        }
++        return { text: 'done', model: request.model, usage, toolCalls: [], stopReason: 'end_turn' };
++      },
++    };
++    const full = await runOneReplicate(null, built(), 'q', 'm', fullProvider, budgets, [LITERAL]);
++    expect(full.literalInToolResult).toBe(true);
++  });
++
++  it('carries deriveBudgets\' zoneC onto the row as zoneCTokens, so the context-size series can read it per run', async () => {
++    const provider = {
++      id: 'no-tools',
++      async complete(request: { model: string }) {
++        const usage = { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 };
++        return { text: 'done', model: request.model, usage, toolCalls: [], stopReason: 'end_turn' };
++      },
++    };
++    const r = await runOneReplicate(null, built({ tools: [] }), 'q', 'm', provider, budgets, [LITERAL]);
++    expect(r.zoneCTokens).toBe(budgets.zoneC);
++  });
++});
++
++/**
++ * Loop-9b item 2, Step 6: each arm must isolate exactly ONE variable against
++ * `tree`. Since `HANDLERS[CONTEXT_FETCH]`/`[CONTEXT_SEARCH]` now default to
++ * the Step 2/3 product behavior for every caller (a real, permanent change —
++ * R9/R8), the harness reproduces the PRE-change surface for `tree` and
++ * `tree-verbatim` via `handlersForArm`, so `tree-slice`/`tree-thin` are each
++ * measured against a control that has not silently absorbed their own variable.
++ */
++describe('arm registration and per-arm surface wiring (Step 6)', () => {
++  it('registers tree, tree-slice, tree-thin, tree-verbatim and tree-semantic', () => {
++    for (const id of ['tree', 'tree-slice', 'tree-thin', 'tree-verbatim', 'tree-semantic']) {
++      expect(ARM_IDS).toContain(id);
++    }
++  });
++
++  it('only tree-verbatim selects contract v3; every other arm defaults to v1', () => {
++    expect(contractVersionFor('tree-verbatim')).toBe('v3');
++    for (const arm of ['tree', 'tree-slice', 'tree-thin', 'tree-static']) {
++      expect(contractVersionFor(arm)).toBe('v1');
++    }
++  });
++
++  it('EVAL_CONTRACT_VERSION overrides the default for every arm except tree-verbatim', () => {
++    const prior = process.env.EVAL_CONTRACT_VERSION;
++    process.env.EVAL_CONTRACT_VERSION = 'v3';
++    try {
++      expect(contractVersionFor('tree')).toBe('v3');
++      // tree-verbatim's whole point is being pinned to v3 regardless of the env var.
++      expect(contractVersionFor('tree-verbatim')).toBe('v3');
++    } finally {
++      if (prior === undefined) delete process.env.EVAL_CONTRACT_VERSION;
++      else process.env.EVAL_CONTRACT_VERSION = prior;
++    }
++  });
++
++  it("tree and tree-verbatim wrap CONTEXT_FETCH/CONTEXT_SEARCH (their own function, not the shared HANDLERS reference)", () => {
++    for (const arm of ['tree', 'tree-verbatim', 'tree-static']) {
++      const wrapped = handlersForArm(arm);
++      expect(wrapped[CONTEXT_FETCH]).not.toBe(HANDLERS[CONTEXT_FETCH]);
++      expect(wrapped[CONTEXT_SEARCH]).not.toBe(HANDLERS[CONTEXT_SEARCH]);
++    }
++  });
++
++  it('tree-slice and tree-thin get the shared HANDLERS reference untouched — their variable IS the real default', () => {
++    // Reference equality, not just "a function exists": wrapping either of
++    // these would silently combine the arm's one variable with the control's
++    // reproduced legacy surface, which the spec forbids ("do not combine").
++    for (const arm of ['tree-slice', 'tree-thin']) {
++      expect(handlersForArm(arm)).toBe(HANDLERS);
++    }
++  });
++});
++
++/**
++ * Loop-9b item 2, Step 7: the gates that do not need the frozen `s1` store
++ * (which this worktree's gitignored `store/`/`trace.src.jsonl` make
++ * unavailable here — see the JUDGE-VERDICT.md implementation note). G0, G7,
++ * G8 and G9 operate on synthetic fixtures or already-computed gate results,
++ * so they are exercised directly rather than only through `--phase gates`.
++ */
++describe('gates G0, G7, G8, G9 (Step 7 — the store-independent gates)', () => {
++  it('G0 fails loud when a literal DOES leak into a summary version, and passes when none do', () => {
++    const questions = [{ id: 'q1', answer_literals: ['unique_literal_998'], answer_regexes: [] }];
++    const cleanStore = {
++      nodesInCreationOrder: () => [{ id: 'n1' }],
++      summaryVersions: () => [{ version: 1, text: 'a clean paraphrase', meta: { files: [] } }],
++    };
++    expect(checkG0NoLiteralInSummaries(cleanStore, questions, true).status).toBe('PASS');
++
++    const leakyStore = {
++      nodesInCreationOrder: () => [{ id: 'n1' }],
++      summaryVersions: () => [{ version: 1, text: 'contains unique_literal_998 verbatim', meta: { files: [] } }],
++    };
++    const leaky = checkG0NoLiteralInSummaries(leakyStore, questions, true);
++    expect(leaky.status).toBe('FAIL');
++    expect(leaky.detail).toContain('unique_literal_998');
++  });
++
++  it('G0 checks EVERY summary version, not only the current one — a literal in an old version still leaks', () => {
++    const questions = [{ id: 'q1', answer_literals: ['old_version_literal'], answer_regexes: [] }];
++    const store = {
++      nodesInCreationOrder: () => [{ id: 'n1' }],
++      summaryVersions: () => [
++        { version: 1, text: 'first draft mentions old_version_literal', meta: { files: [] } },
++        { version: 2, text: 'rewritten, no literal here', meta: { files: [] } },
++      ],
++    };
++    expect(checkG0NoLiteralInSummaries(store, questions, true).status).toBe('FAIL');
++  });
++
++  it('G0 defers rather than vacuously passing when there is nothing to check yet', () => {
++    expect(checkG0NoLiteralInSummaries({ nodesInCreationOrder: () => [] }, null, true).status).toBe('DEFER');
++    expect(checkG0NoLiteralInSummaries({ nodesInCreationOrder: () => [] }, [], false).status).toBe('DEFER');
++  });
++
++  it('G7 passes: it is the mocked six-turn loop with a scripted tool-caller asserting the whole Step 1 mechanism', async () => {
++    const g7 = await checkG7ToolCallLogging();
++    expect(g7.status).toBe('PASS');
++    expect(g7.id).toBe('G7-tool-call-logging');
++  });
++
++  it('G8 defers rather than passing when the freeze gates it depends on did not pass', () => {
++    const allPass = [
++      { id: 'g1-trace-sha', status: 'PASS' },
++      { id: 'g5-rebuild-determinism', status: 'PASS' },
++      { id: 'g13-manifest-hashed', status: 'PASS' },
++    ];
++    expect(checkG8FreezeHolds(allPass).status).toBe('PASS');
++
++    const oneMissing = [
++      { id: 'g1-trace-sha', status: 'PASS' },
++      { id: 'g5-rebuild-determinism', status: 'FAIL' },
++      { id: 'g13-manifest-hashed', status: 'PASS' },
++    ];
++    const result = checkG8FreezeHolds(oneMissing);
++    expect(result.status).toBe('DEFER');
++    expect(result.detail).toContain('g5-rebuild-determinism=FAIL');
++  });
++
++  it('G9 reports a visibility table, not a pass/fail, and correctly reads the branchSeqRange it is given', () => {
++    const questions = [
++      { id: 'q1', stratum: 'head', seq: 10 },
++      { id: 'q2', stratum: 'tail', seq: 900 },
++      { id: 'q3', stratum: 'spanning', seq: 5 }, // not primary — excluded
++    ];
++    const table = { 16384: { branchSeqRange: { from: 800, to: 1000 } }, 32768: { branchSeqRange: { from: 1, to: 1000 } } };
++    const g9 = checkG9VisibilityTable({}, table, questions);
++    expect(g9.status).toBe('INFO');
++    expect(g9.rows).toHaveLength(2);
++    const q1 = g9.rows.find((r: { id: string }) => r.id === 'q1');
++    expect(q1.visible[16384]).toBe(false);
++    expect(q1.visible[32768]).toBe(true);
++  });
++});

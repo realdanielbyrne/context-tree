@@ -175,3 +175,126 @@ forbids conversational output, and compactionSummaryValid (≥600 chars, no trai
 question) gates every chunk with one corrective retry, then a loud build failure. The
 discarded artifact's $0.3826 build cost is recorded as spent-and-discarded, not silently
 absorbed. Smoke runs that consumed the broken artifact were unscored by design.
+
+---
+
+## Router deviation log, loop-9b item 2 (2026-09-02, `eval/plans/loop9b-item2-judge-verdict.md`)
+
+Panel A's implementation spec (`loop9b-item2-judge-verdict.md` §4) was written against a
+harness generation this worktree does not have (an already-running `tree-wide` arm, a
+`gates.json`/`g15-self-retrieval` artifact, and `transplant.mjs` line numbers past this
+file's actual 2,253 lines) — evidently the state of a live, uncommitted batch running
+elsewhere. Implementing against the file that actually exists here required the same
+kind of router adjudication R1-R7 record, so it continues that log rather than starting a
+new one.
+
+**R8 — `context_search` hits carry pointers, not summary bodies.** §9's table describes
+`context_search` as returning "ranked summaries + node IDs" (`docs/IMPLEMENTATION_PLAN.md:306`).
+After this pass it returns ranked node ids, paths, a 240-character `snippet`, and pointer
+metadata (`files`, `symbols`, `node_ids`) — the prose fields (`tests`, `artifacts`,
+`open_questions`, `decisions`) are dropped from the hit and stay reachable only via
+`context_fetch`, because they are already rendered in Zone B for every branch a prompt
+shows. Justification: J4 measures the shipped payload at 45,470 chars / 9,673 cl100k
+tokens for a 20-hit search, 70% of it `meta_json` rather than prose; after this change the
+same call measures well under the design's 5,000-token bound (exact figure recorded by
+gate G1 against the live store, which this worktree cannot open — see the implementation
+note below). J1 (gate G0, ported below) makes the bodies scoreless on this question set
+regardless, so thinning removes no scoring path that existed.
+
+**R9 — `context_fetch`'s `depth` defaults to `'full'`, not `'summary'`.** §9's table states
+the signature but not the default; `'summary'` was a code and contract choice
+(`packages/mcp/src/tools/context-fetch.ts` — both the zod default and the line that applies
+it — `packages/core/src/retrieve/retriever.ts`'s `fetchBranch`, and
+`system-contract.v1.md`'s tool line). Justification: gate G0 asserts zero of the twelve
+answer literals occur in any summary, in any version, so the previous default returned a
+response that could not score by construction. The `meta: null` special case at
+`depth: 'full'` is also removed (applies to every depth and every arm alike, including the
+`tree` control's reproduced legacy surface — it is substrate, and cannot change a score
+without a second tool call).
+
+**R10 — `depth` gains a third value, `'index'`, and `context_fetch` gains `from`/`to`.**
+§9 states `depth?: "summary"|"full"` verbatim, so widening the enum is a signature
+deviation, not merely a parameter addition. `depth: 'index'` emits one row per L0 event
+(`seq`, `type`, `tool`, `path`, `bytes`) from L0 plus an L2 *stat* only — never blob text
+— capped at 120 rows plus one elision line, reusing the existing D18 "no rendered list
+grows unboundedly" idiom rather than inventing a second cap rule. `from`/`to` are inclusive
+L0 `seq` bounds, clamped to the target node's own span: an over-wide range is a no-op and a
+disjoint range yields an empty result rather than a throw, and the concatenation of a
+partition of ranges is byte-identical to `depth: 'full'` (gate G3). Justification: on the
+one real fixture this repo's own `01-run-forensics.md` analyzed, `file` narrows nothing in
+11 of 21 phases and is byte-identical to its parent in every parented phase checked, so a
+sequence range is the only sub-branch unit that exists; and the largest measured branch
+span exceeds even a 32k window whole, so a caller needs to see a branch's shape before
+committing to a full replay of it. The four-tool surface is unchanged; no fifth tool is
+proposed.
+
+**R11 — the contract ships a `v3` variant for one arm only.** New
+`packages/core/src/prompts/system-contract.v3.md`, registered in the new
+`SYSTEM_CONTRACT_VERSIONS` export (`packages/core/src/prompts/index.ts`) alongside `v1`.
+`v2` (the loop9-item3 Zone-A trim candidate) does not exist in this worktree at all —
+neither the file nor `SYSTEM_CONTRACT_VERSIONS` was touched to make room for it, so that
+lineage is unaffected either way. `v1` remains the default (`systemContract()` with no
+argument still resolves to `v1`) and is what every arm except `tree-verbatim` uses; `v1`'s
+own "Tools" bullet is updated to state the new `context_fetch` signature and default
+(R9/R10) — a Zone A byte change gate G5 measures the cost of, on every arm, not only
+`tree-verbatim` — but its three numbered rules are untouched. `v3` replaces rule 2 (what a
+summary can and cannot carry) and removes the "prefer `file` … and `context_peek` over
+`context_fetch`" narrow-fetch instruction that J2-equivalent reasoning shows is the one
+sentence in Zone A arguing against the owner's "go get what you need" principle; nothing
+else differs from `v1`, and the rule count stays three.
+
+**Implementation note, not a router ruling: gates G0-G9 cannot be exercised against the
+real `s1` store in this worktree.** `eval/fixtures/transplant/*/trace.src.jsonl` and
+`.../store/` are deliberately gitignored, private, rebuildable artifacts (`.gitignore`
+comment: "raw session transcripts + derived stores are private/rebuildable"), and a git
+worktree does not inherit a repo's untracked/ignored files — only `manifest.json`,
+`questions.json`, `literals.json` and this file are committed. `node
+eval/scripts/transplant.mjs --phase gates` therefore fails at `openScenario` with "no store
+at .../store" in this worktree, exactly as it would in any other fresh clone or worktree —
+this is a pre-existing property of the harness's own design (the g1-g14 gates share the
+same precondition), not something this pass introduced. G0-G9's logic is instead verified
+by dedicated unit tests over synthetic fixtures in `eval/test/transplant.test.ts`, in the
+same style the existing offline tests already use for `extractLiterals`/`leakageGate`; the
+gates will run for real once a store exists (e.g. in the main tree, where Step 1's
+summarize pass has already produced one). `SELF_RETRIEVAL_TOP_K` also does not exist
+anywhere in this worktree (no `g15-self-retrieval` gate, no `gates.json` writer) — it
+belongs to the same not-yet-merged harness generation the line-number mismatches above come
+from, so there is no `20 → 5` edit to make; noted here rather than fabricating the
+constant.
+
+**R12 — `system-contract.v1.md` stays byte-identical; the widened fetch signature
+reaches the model through the tool schema, not through Zone A.** The item-2
+implementation had rewritten v1's `context_fetch` bullet to describe the new
+default, ranges and index mode. Reverted: v1 is the control arm's Zone A, and
+editing it changes the control. Every arm's tools carry their own schema
+descriptions, which is where a per-arm surface difference belongs. For the same
+reason `system-contract.v3.md` carries v1's tool bullet verbatim — the arm that
+selects v3 runs on the pre-change surface, so its Zone A must not advertise
+parameters it cannot use.
+
+**R13 — the question self-retrieval threshold is derived from `retrieval.limit`,
+not set to a constant.** Graft 4 of the item-2 verdict proposed tightening it
+from 20 to 5 to stop the gate passing vacuously. Run against the frozen store,
+5 fails nine of twelve questions whose sources the model would in fact have
+received, so the constant was doing the failing rather than the question set.
+The threshold now reads `config.retrieval.limit` — the length of the list the
+model actually gets — so a pass means the source was reachable. The vacuity the
+graft was aimed at is real but is a reporting problem: the gate now prints the
+ranked-pool size, marks itself vacuous when the pool is no larger than the
+limit, and reports strict top-3 and top-5 counts as diagnostics that never pass
+or fail anything. Both 5 and 20 are magic numbers; the derivation is what
+survives a port to a host with a different limit.
+
+**R14 — a run stopped at the per-question tool-call ceiling is not graded.**
+`runOneReplicate` returns `status: 'turn_cap'` with an empty final answer when
+the model is still calling tools at the ceiling, and the grader was scoring that
+empty string as a wrong answer: 9 rows across the committed W=32768 fixtures,
+every one of them a fabricated zero, including one on the tail stratum that
+feeds the pre-registered regression check. Such rows now score `null`. Effect on
+the published figures: the wide-tree arm's head-stratum mean rises from 0.273 to
+0.333 once its two fabricated zeros come out, which strengthens rather than
+weakens the R6 contrast. This is the same correction `eval/src/loop.ts` took the
+same day, with one difference: the live suite grades by running hidden tests
+against a sandbox, so a stopped run there can still demonstrably have done the
+work and a passing grade is kept; here the grader matches the model's final
+text, so a stopped run cannot have passed and `null` is the only honest value.

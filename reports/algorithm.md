@@ -48,47 +48,76 @@ along the dimensions where a real tradeoff exists, and to establish the settings
 that win. Four are open. Each is named with what the evidence in this repository
 already says, so a pass starts from measurement rather than from intuition.
 
-**How many branch summaries the model should see.** The first attempt asked the
-question backwards, as how few it could get away with. Limiting what the model
-saw made it reason more: the event-level top-k arm came out cost-neutral against
-the baseline because the input tokens it saved were spent, in its own report's
-words, on "extra output reasoning over a gappy history" — output up 36% — plus
-cache invalidation from moving the selection boundary every turn. The
-branch-level version never fired at all: the segmenter merges consecutive
-same-type tool calls, so real tasks produced about three branches against a
-cutoff of three. Meanwhile this loop's transplant experiment measured the
-opposite direction and found width helps, with eleven visible summaries scoring
-0.333 on early-session questions against two summaries at 0.091 and both
-baselines at zero. So pruning is measured to hurt at the event level, untested at
-the branch level, and width is measured to help. The question is which number of
-visible summaries wins, not how far the count can be cut.
+**How many branch summaries the model should see.** *Analysed 2026-09-02; full
+report at `reports/metrics/tuning-branch-count.md`.* This pass corrected the
+framing this document previously used, in two ways worth stating plainly.
 
-*Should the count be dynamic?* Three policies are on the table and they are not
-alternatives to each other. **Fit-derived** is what the portability harness
-already does: take the largest fold level whose assembled Zone B actually fits
-its budget. That is already dynamic per window and per store, and it needs no
-notion of difficulty. **Demand-driven** would widen when the model reveals it
-needs breadth, by searching or fetching, rather than from any estimate made
-before the run — the same argument that removed the turn ceiling applies, since
-nobody can read difficulty off a task in advance. **User-selected**, in the
-shape of an effort dial, is a reasonable escape hatch but must not be the
-mechanism: a default that only works once the user tunes it is a guess with
-extra steps.
+First, two different counts had been conflated. The fold level names how many
+recent branches get an individual headline in the root index before older ones
+fold to one line each. The number of branches whose *full* summary body renders
+separately is a different count, and it moves in the opposite direction: a
+higher fold level spends the Zone B budget on headlines and leaves less room for
+bodies. So "how many summaries the model sees" has two answers, and the two
+arms that were compared differ in which of them they maximise.
 
-What makes this a real tradeoff rather than a free choice is that width is paid
-for on every turn. More visible summaries buy retrieval — measured — while
-enlarging the cached prefix that is re-read each turn, and cache reads are 93.5%
-of the remaining token gap on the refactor scenario. So width helps exactly when
-the task needs old facts and costs when it does not, which is why the fit-derived
-maximum is the honest starting point and demand-driven adjustment is the
-candidate to measure against it.
+Second, "width helps" was too broad. The measured effect is
+stratum-conditional. On questions about the early session, wider was better —
+two visible bodies scored 0.091 against eleven at 0.333, with both baselines at
+zero. On the other three question types both widths sat flat at zero, and on
+recent-fact questions the baselines beat both. With only two points on the width
+axis and one stratum above the floor, the data cannot locate a turning point:
+there is no evidence width hurts as it grows from two to eleven, and none that
+it keeps helping past eleven, because nothing above eleven has been run.
 
-**How deep a branch goes before it is summarized.** A branch is currently
-whatever the segmenter's tool-name mapping produced, and its depth follows from
-the model's own batching. Nothing has measured whether a shallower or deeper
-unit retrieves better. The transplant work made the stakes concrete: one branch
-in the frozen session is larger than the whole window it was being read into, so
-depth is not a free parameter.
+The load-bearing finding is that the ladder direction is a human choice hiding
+inside a mechanism that looks derived. Fit-derived correctly makes the *ceiling*
+a function of the window and the store with no guessed constant, but more than
+one allocation of the same budget satisfies "fits", and which one gets used is
+decided by the direction someone wrote into the ladder rather than by
+measurement. That is the open parameter, and it is a fit-derived-shaped fix:
+replace "walk this hand-picked direction" with "walk toward maximising the
+number of rendered bodies subject to the same fits predicate", then measure.
+
+Both alternative policies come out unnecessary on present evidence, for
+specific reasons rather than by preference. Demand-driven fails because whether
+the model searches does not track where the bottleneck actually is. An effort
+dial fails because no single width serves a whole session. Neither fills the
+allocation gap, so the recommendation is to keep fit-derived as the ceiling,
+treat the headline-versus-body split as its one remaining parameter, and
+replicate the cheap experiment on a second scenario before changing the shipped
+default.
+
+*Is the count already dynamic?* Yes, in the portability harness: the fold level
+is the largest rung whose assembled Zone B fits, which is dynamic per window and
+per store and needs no notion of difficulty. The live suite still uses a
+constant. What remains open is not whether to adapt but which allocation to
+adapt toward, which is the parameter named above.
+
+**How deep a branch goes before it is summarized.** *Analysed 2026-09-02; full
+report at `reports/metrics/tuning-branch-depth.md`.* Depth is not a decision
+anyone made. It is whatever the tool-name map and the neutral-merge rule produce
+from a trace, and on the one frozen store that has been measured, that is a
+77-fold spread: 21 branches over 754 events, from 2,214 to 170,031 characters.
+The largest spans 207 events and is bigger on its own than the entire window it
+was being retrieved into, because the 64 shell calls and 2 skill calls inside it
+map to the neutral phase and never close it, while every other call inside it
+maps to the same type. Three of the twelve test questions source from that one
+branch.
+
+The fix is a config change already supported by the code rather than a new rule:
+emptying the neutral-phase list, which the segmenter's own contract calls the
+literal reading of its specification, re-segments the same events into 99
+branches with a median of 3 events, and the over-window branch disappears — every
+question then sources from a branch that fits every tested window. It is not
+free: 4.7 times the branches is comparable growth in leaf-summarizer calls, and
+two earlier reports both found those passes to be the dominant remaining cost
+line against the baseline.
+
+The honest qualifier is that granularity explains almost none of the *measured*
+retrieval failures. The oversized branch is a confirmed structural risk that
+never actually manifested as a truncated fetch, because models essentially never
+fetched it at full depth at all. So this is a boundary condition to close, not a
+scoring problem to chase.
 
 **When summaries are written, and under what policy.** *Analysed 2026-09-02;
 full report at `reports/metrics/tuning-summary-policy.md`.* Both earlier reports
@@ -121,12 +150,27 @@ a candidate policy can be re-sequenced arithmetically over data already in hand.
 One new parameter — when a branch's summary is inserted relative to a candidate
 switch fraction — turns today's single curve into a comparable family.
 
-**How caching is handled.** The prompt layout exists to keep a stable cached
-prefix, and cache reads are where the token gap actually lives: on the refactor
-scenario they are 93.5% of the difference from the baseline. The measured cause
-was not the layout but re-reads across extra turns. This dimension holds the
-largest measured share of the remaining gap and has had the least direct
-experimentation.
+**How caching is handled.** *Analysed 2026-09-02; full report at
+`reports/metrics/tuning-caching.md`.* The rate ratio settles the central
+question without a model call: a cache write costs 12.5 times a cache read per
+token. So a stable prefix read every turn beats the same content rewritten every
+turn unless the rewrite happens less than about once in every twelve turns, and
+prefix *size* is not what decides it.
+
+That trade has already fired the wrong way in a real run. On one long scenario a
+33,000-token prefix was being rewritten roughly five times over the run, and the
+cache-write line alone accounted for most of the total; writing it once and
+reading it thereafter brought the same work on the same trace and the same model
+down by a factor of 2.4.
+
+Two facts change what to do next. The shipped request builder emits two of the
+four breakpoints the provider allows and marks nothing on the active-branch
+detail, so that section is fresh input on every turn by construction — a third
+breakpoint is available and unused. And the cache assertion harness the plan
+called for already exists and runs offline, 612 lines of simulator with 575
+lines of tests, including one that specifically catches a dropped breakpoint.
+The instrument to test this dimension is therefore already in the repository and
+was not being used.
 
 Terms. **L0** is the append-only event log. **L2** is the payload store, keyed by
 content hash. **L1** is the tree: nodes that point into L0 by sequence range and
@@ -195,7 +239,7 @@ a number fitted somewhere else and never re-checked, which rule 2 calls a defect
 | Zone C budget | 30,000, absolute (live); unbounded before the switch | a fraction of W | **unvalidated** live; derived in the portability harness |
 | zone fractions | reply .05, A .10, B .20, C .20, switch .35, slack .10 | measurement against tokens, turns and score — rule 4 | **unvalidated as values**, never swept. The switch/Zone C inconsistency is **resolved in favour of .20**: they are the same quantity by the rule's own wording, and the growth report reached the same conclusion from measurement. The remaining fractions are still a design allocation summing to 1, and dimension 3 names the zero-spend sweep that would test .15/.20/.25/.30 |
 | heuristic-to-tokenizer ratio | 0.851 on this corpus | measured per corpus, refuses above 1.6 | **derived.** The shape rule 3 asks for: procedure ships, re-runs per host |
-| root keep (visible summaries) | 40 (live); per-window ladder (portability) | measurement — this is DS-STAR dimension 1 | **derived** in the portability harness (largest fold level whose assembled Zone B fits); **unvalidated** constant in the live suite. Which value *wins* is unmeasured either way |
+| root keep (fold level) | 40 (live); per-window ladder (portability) | measurement — DS-STAR dimension 1 | **derived** in the portability harness as the largest rung whose assembled Zone B fits; **unvalidated** constant in the live suite. Note this is the *fold level*, not the number of summary bodies rendered — the two move in opposite directions, and which allocation wins is decided today by a hand-picked ladder direction rather than by measurement |
 | search result limit | 20 | W and the per-hit payload size | **unvalidated.** At a 16k window the search payload alone overflowed the remaining room in 8 of 15 runs |
 | peek / snippet / hydrate sizes | five different literals: 800, 2,000, 2,000, 240, 65,536 chars | one shared value sized to the room available | **unvalidated and mutually inconsistent.** The 65,536 default alone exceeds the entire default Zone C budget |
 | rendered list cap | 40 values | the Zone B budget it is protecting | **unvalidated** |
@@ -280,7 +324,7 @@ counting its steps. Each row is a condition, how it is checked, and what is know
 | Condition | Check | State |
 | --- | --- | --- |
 | window too small to hold Zone A plus one branch summary | assemble at 8k, 16k, 32k, 64k, 200k and assert each Zone B is a subset of the next larger | tested offline, passes |
-| a leaf larger than the whole window | fetch a branch whose raw span exceeds W | **found**: one branch is 36k tokens against a 32k window; the listing-then-range path exists but is untested live |
+| a leaf larger than the whole window | fetch a branch whose raw span exceeds W | **found, and a fix is measured offline**: one branch is 36k tokens against a 32k window because neutral-phase merging never closes it. Emptying the neutral-phase list re-segments to 99 branches and no question's source exceeds any tested window. Costs 4.7× the summarizer calls; the listing-then-range path also exists and is still untested live |
 | host model cannot drive tools | one throwaway search-and-answer call before any scored run | rule adopted after a model scored zero everywhere |
 | unknown tool name | segmenter maps it to "other" | tested |
 | tokenizer heuristic drifts from the real count | measure the ratio, refuse above 1.6 | tested in the transplant harness only |
@@ -330,6 +374,21 @@ that already have a derivation in the other harness.
 
 ## Change log
 
+- **2026-09-02 11:45** — dimension 1 (visible branch count) analysed, and it
+  corrected this document twice: the fold level and the count of rendered summary
+  bodies are different numbers that move in opposite directions, and "width
+  helps" holds on one question type out of four rather than generally. The
+  load-bearing finding is that the fold ladder's direction is a human choice
+  inside a mechanism that looks derived. Both dynamic-k alternatives come out
+  unnecessary on present evidence, for stated reasons.
+- **2026-09-02 11:40** — dimensions 2 (branch depth) and 4 (caching) analysed and
+  folded in. Depth: a 77-fold size spread on the measured store, one branch larger
+  than the window, and a config-only re-segmentation that removes it at 4.7× the
+  summarizer calls — while granularity explains almost none of the measured
+  failures. Caching: a write costs 12.5× a read, one scenario was rewriting its
+  prefix five times per run at 2.4× the cost of reading it, a third provider
+  breakpoint is available and unused, and the cache assertion harness the plan
+  asked for already exists and was not being used.
 - **2026-09-02 11:35** — dimension 3 (summary timing) analysed; its findings folded
   into the switch-point and zone-fraction rows and into its own section. The
   switch/Zone C contradiction is resolved in favour of the Zone C fraction. Two
