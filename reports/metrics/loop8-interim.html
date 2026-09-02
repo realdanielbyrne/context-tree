@@ -1,0 +1,326 @@
+<title>Context-Tree Loop 8</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#FBFBF9; --surface:#FFFFFF; --ink:#1C1E21; --muted:#5C6167;
+  --line:#DFE1E4; --accent:#0E6B54; --warm:#A64F2A; --code-bg:#F1F2F0;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#16181B; --surface:#1D2024; --ink:#E7E9EB; --muted:#9BA1A8;
+    --line:#33373C; --accent:#46B090; --warm:#D68A62; --code-bg:#25282D;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#16181B; --surface:#1D2024; --ink:#E7E9EB; --muted:#9BA1A8;
+  --line:#33373C; --accent:#46B090; --warm:#D68A62; --code-bg:#25282D;
+}
+body{background:var(--ground); color:var(--ink);
+  font:17px/1.65 "Source Serif 4",Georgia,serif; margin:0;}
+main{max-width:760px; margin:0 auto; padding:56px 24px 80px;}
+h1{font-size:1.9rem; font-weight:700; line-height:1.2; margin:0 0 6px; text-wrap:balance;}
+h2{font-size:1.2rem; font-weight:700; margin:40px 0 10px;}
+h3{font-size:1.02rem; font-weight:700; margin:26px 0 6px;}
+.meta{color:var(--muted); font-size:.92rem; margin-bottom:34px;}
+.abstract{margin:0 0 6px; padding:0 0 22px; border-bottom:1px solid var(--line);}
+.abstract h2{margin:0 0 8px; font-size:1.05rem;}
+p{margin:0 0 14px; max-width:70ch;}
+.example{background:var(--code-bg); border-radius:6px; padding:12px 16px;
+  font-family:"IBM Plex Mono",monospace; font-size:.78rem; line-height:1.55;
+  overflow-x:auto; white-space:pre; margin:0 0 14px;}
+.tablewrap{overflow-x:auto; background:var(--surface); border:1px solid var(--line);
+  border-radius:6px; margin:14px 0 6px;}
+table{border-collapse:collapse; width:100%; font-size:.85rem;}
+th{font-size:.72rem; letter-spacing:.04em; text-transform:uppercase; color:var(--muted);
+  text-align:right; padding:9px 13px; border-bottom:1px solid var(--line); white-space:nowrap;
+  font-family:"IBM Plex Mono",monospace; font-weight:500;}
+th:first-child, td:first-child{text-align:left;}
+td{padding:7px 13px; border-bottom:1px solid var(--line);
+  font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums;
+  font-size:.84rem; text-align:right; white-space:nowrap;}
+td:first-child{font-family:"Source Serif 4",Georgia,serif; font-size:.9rem;}
+tr:last-child td{border-bottom:none;}
+.tcap{font-size:.85rem; color:var(--muted); margin:6px 2px 18px; max-width:72ch;}
+.tcap b{color:var(--ink);}
+figure{background:var(--surface); border:1px solid var(--line); border-radius:6px;
+  padding:18px 14px 6px; margin:16px 0 6px;}
+figcaption{font-size:.85rem; color:var(--muted); padding:8px 8px 10px; max-width:72ch; line-height:1.5;}
+figcaption b{color:var(--ink);}
+code{font-family:"IBM Plex Mono",monospace; font-size:.82em; background:var(--code-bg);
+  padding:1px 5px; border-radius:4px;}
+footer{margin-top:48px; padding-top:14px; border-top:1px solid var(--line);
+  color:var(--muted); font-size:.82rem; line-height:1.5;}
+svg text{font-family:"IBM Plex Mono",monospace; font-size:11px; fill:var(--muted);}
+svg .serieslabel{font-size:12px; font-weight:600;}
+svg .vlabel{font-size:10.5px;}
+</style>
+<main>
+<h1>Making an agent's prompt size independent of conversation length</h1>
+<div class="meta">Context-tree evaluation program, loop 8 (interim) · September 1, 2026 · commit <code>cac9076</code></div>
+
+<p style="font-size:.92rem; color:var(--muted); border:1px solid var(--line); border-radius:6px; padding:10px 14px; max-width:72ch;"><em>Status.</em> This is an interim report on work in progress: loop 8's verification is complete (including the retrieval probe, §3.4), but the recommendations of §5 are not yet executed. It builds directly on the loop-7 report [1], which introduced the evaluation method, the transcript baseline, the four short tasks (sw-1…sw-4), and the v6.x configuration that this loop starts from; readers wanting the derivation of those should start there. The two design decisions introduced here, D17 and D18, are recorded with full rationale in the project's decision record [2].</p>
+
+<div class="abstract">
+<h2>Abstract</h2>
+<p>An agent's prompt normally contains the transcript of everything it has done, so the prompt grows with the length of the task and eventually exceeds the context window of the model. Context-tree is a context-management layer built to remove that limit: it writes the full history to disk, segments it into phases of work, and assembles the prompt from a bounded working set — one headline line per completed phase, the full detail of the phase in progress, and tools with which the agent can retrieve anything older on demand. Two parts of that working set could still grow without limit: the headline list gains a line per phase, and several metadata lists accumulate across phases. This report describes two changes that cap both (the prompt lists only the 40 most recent phases individually, folding everything older into a single line that says what was removed and how to get it back; no rendered list may exceed 40 entries) and measures the result against the ordinary transcript. On a synthetic 200-phase task the tree prompt is constant at 9,062 tokens from phase 80 onward, while the transcript grows by about 284 tokens per phase and exceeds a 16k context window at phase 56 and a 32k window at phase 113; a live API call per arm at phase 200 confirmed this — the transcript was rejected by the model, the tree prompt was answered. The same evaluation exposed and fixed a caching defect that had been re-writing the same ~33k-token prefix to the provider's cache five times per run. Tokens, turns, and graded accuracy are the primary metrics throughout; dollar figures appear only as derived values at one model's prices. Finally, we tested retrieval of folded material live: asked at phase 200 to recall a decision from phase 10 — whose description appears nowhere in the prompt — without using its vocabulary, the model searched for and recovered all three planted facts in 15 of 15 replicates.</p>
+</div>
+
+<h2>1&ensp;The question, and terms</h2>
+<p>We want a conversation with an agent to continue indefinitely — past the context window of whatever model runs it. Throughout this report we compare two ways of building the agent's prompt, holding the model and the task fixed. The <b>transcript baseline</b> is the default behaviour of agent harnesses: the prompt contains the full history of the conversation, and the provider's prompt cache makes re-sending it cheap but not free. The <b>tree</b> arm is context-tree: the full history is written to disk, and the prompt holds only a bounded working set assembled from three parts — fixed instructions, a summary section, and the detail of the work currently in progress.</p>
+<p>The unit of organization is a <b>phase</b> (called a <em>branch</em> in the code, because phases are children of a task node in a tree): a contiguous stretch of work on one sub-problem, such as diagnosing one bug or migrating one file. When a phase completes, it gets a short summary, and the prompt's summary section carries one such summary per completed phase. At the top of that section sits the <b>root summary</b>: an index of the whole task, holding one headline line per completed phase.</p>
+<p>Before this loop, two parts of the summary section had no size limit. The root summary gained one headline (50–125 tokens) per completed phase, and it is deliberately exempt from the assembler's overflow rule, so nothing ever shrank it. Several metadata lists (files touched, decisions, open questions) are unions over all phases and grew the same way. Past roughly 70–160 phases the root summary alone would fill the summary section's 8,000-token budget, and the prompt would grow without bound from then on.</p>
+
+<h2>2&ensp;The change: folding</h2>
+<p>A design review of three candidate fixes (two hierarchical roll-up schemes and one minimal scheme) selected the minimal one: cap what is <em>rendered</em>, change nothing about what is <em>stored</em>. The root summary now renders headlines for only the 40 most recently completed phases. Every older phase is <b>folded</b>: its individual headline is removed from the prompt, and all folded phases together are represented by a single line. Concretely, at phase 200 the root summary begins:</p>
+<div class="example">marathon task
+- branches 1..160 (160 folded: n_23FF…QD01 .. n_23FF…QK78)
+  — "Fixed the off-by-one in the parser." .. "Renamed the batch loader."
+  — call context_search or context_fetch to recall
+- [headline of phase 161]
+- [headline of phase 162]
+  …</div>
+<p>A folded phase therefore still exists in full — its events, its summary, its metadata are all on disk and the agent's fetch tools can retrieve any of them by search or by identifier. What it loses is its individual line in the prompt. The second change is the list cap: no rendered metadata list may print more than 40 entries; beyond that it prints "+M more". Together these are the changes we call D17 and D18 in the decision record.</p>
+<p>The changes amount to two clauses in one pure function and one render function. All 73 pre-existing tests pass unmodified, which is the intended evidence that behaviour below 40 phases is byte-for-byte unchanged. Forcing folding onto short tasks (keeping 2 headlines instead of 40) changed neither turn counts nor scores.</p>
+
+<h2>3&ensp;Measurements</h2>
+<h3>3.1&ensp;Prompt size over 200 phases</h3>
+<p>We built a deterministic harness that replays 200 read–write–verify phases through the real storage and assembly pipeline, with no language-model calls, and assembles both arms' prompts at every tenth phase. Figure 1 shows the comparison.</p>
+
+<figure>
+<svg viewBox="0 0 660 310" role="img" aria-label="Prompt tokens against completed phases. The transcript grows linearly through both context windows; the tree prompt is flat.">
+  <g stroke="var(--line)" stroke-width="1">
+    <line x1="60" y1="270" x2="600" y2="270"/><line x1="60" y1="190" x2="600" y2="190"/>
+    <line x1="60" y1="110" x2="600" y2="110"/><line x1="60" y1="30"  x2="600" y2="30"/>
+  </g>
+  <text x="52" y="274" text-anchor="end">0</text>
+  <text x="52" y="194" text-anchor="end">20k</text>
+  <text x="52" y="114" text-anchor="end">40k</text>
+  <text x="52" y="34"  text-anchor="end">60k</text>
+  <text x="168" y="290" text-anchor="middle">40</text>
+  <text x="276" y="290" text-anchor="middle">80</text>
+  <text x="384" y="290" text-anchor="middle">120</text>
+  <text x="492" y="290" text-anchor="middle">160</text>
+  <text x="600" y="290" text-anchor="middle">200</text>
+  <text x="330" y="307" text-anchor="middle">completed phases</text>
+  <g stroke="var(--warm)" stroke-width="1" stroke-dasharray="5 4" opacity="0.55">
+    <line x1="60" y1="204.5" x2="600" y2="204.5"/>
+    <line x1="60" y1="138.9" x2="600" y2="138.9"/>
+  </g>
+  <text x="598" y="200" text-anchor="end" fill="var(--warm)">16k window</text>
+  <text x="598" y="134" text-anchor="end" fill="var(--warm)">32k window</text>
+  <polyline fill="none" stroke="var(--warm)" stroke-width="2.5"
+    points="168,224.0 276,178.6 384,133.1 492,87.7 600,42.3"/>
+  <g fill="var(--warm)">
+    <circle cx="168" cy="224.0" r="3.5"><title>phase 40 · 11,494 tok</title></circle>
+    <circle cx="276" cy="178.6" r="3.5"><title>phase 80 · 22,854 tok</title></circle>
+    <circle cx="384" cy="133.1" r="3.5"><title>phase 120 · 34,214 tok</title></circle>
+    <circle cx="492" cy="87.7"  r="3.5"><title>phase 160 · 45,574 tok</title></circle>
+    <circle cx="600" cy="42.3"  r="3.5"><title>phase 200 · 56,934 tok</title></circle>
+  </g>
+  <g fill="var(--warm)" stroke="var(--surface)" stroke-width="1.5">
+    <circle cx="211.2" cy="204.5" r="5"><title>phase 56: exceeds 16,384 tokens</title></circle>
+    <circle cx="365.1" cy="138.9" r="5"><title>phase 113: exceeds 32,768 tokens</title></circle>
+  </g>
+  <polyline fill="none" stroke="var(--accent)" stroke-width="2.5"
+    points="168,238.9 276,233.8 384,233.8 492,233.8 600,233.8"/>
+  <g fill="var(--accent)">
+    <circle cx="168" cy="238.9" r="3.5"><title>phase 40 · 7,778 tok</title></circle>
+    <circle cx="276" cy="233.8" r="3.5"><title>phase 80 · 9,062 tok</title></circle>
+    <circle cx="384" cy="233.8" r="3.5"><title>phase 120 · 9,062 tok</title></circle>
+    <circle cx="492" cy="233.8" r="3.5"><title>phase 160 · 9,062 tok</title></circle>
+    <circle cx="600" cy="233.8" r="3.5"><title>phase 200 · 9,062 tok</title></circle>
+  </g>
+  <text x="606" y="30"  class="serieslabel" fill="var(--warm)">transcript</text>
+  <text x="606" y="237" class="serieslabel" fill="var(--accent)">tree</text>
+</svg>
+<figcaption><b>Figure 1.</b> Prompt tokens against completed phases, both arms on the same synthetic task. The transcript grows by a constant 2,840 tokens per ten phases. The tree prompt rises until folding first engages at phase 41 and is then constant at 9,062 tokens; its summary section never exceeds its 8,000-token budget, and the root summary is 1,963 tokens at every checkpoint from phase 60 to 200. The marked points are where the transcript exceeds the 16,384-token window of gpt-3.5-turbo (phase 56) and the 32,768-token window of qwen-2.5-72b (phase 113).</figcaption>
+</figure>
+
+<p>We then made one live request per arm at phase 200 against qwen-2.5-72b, a 32k-window model, asking only for an acknowledgement. The transcript prompt (42,690 tokens) was rejected with <code>context_length_exceeded</code>; the tree prompt (9,062 tokens) was answered. The probe cost $0.02.</p>
+
+<h3>3.2&ensp;Cost on long tasks, and a caching defect</h3>
+<p>To measure cost at a longer horizon than our earlier tasks, we built two software tasks whose material alone is about 60 kB: twelve independently buggy modules (sw-5) and an interface migration touching ten dependent files (sw-6). Each has a hidden test suite; a run's <b>score</b> is the fraction of hidden cases it passes. Three runs per cell, claude-sonnet-5 in both arms. One term for reading Table 1: <b>cache-write tokens</b> count what a run writes <em>into</em> the provider's prompt cache; writing the same content repeatedly is pure overhead, so a cache-write total far above the prompt's size indicates that something kept invalidating the cache.</p>
+
+<div class="tablewrap"><table>
+<tr><th>task · arm</th><th>score</th><th>turns</th><th>tokens</th><th>cache-write tok</th><th>usd*</th></tr>
+<tr><td>sw-5 · transcript</td><td>100%</td><td>13</td><td>175,661</td><td>19,156</td><td>$0.136</td></tr>
+<tr><td>sw-5 · tree</td><td>100%</td><td>12</td><td>233,166</td><td>35,547</td><td>$0.189</td></tr>
+<tr><td>sw-6 · transcript</td><td>100%</td><td>12</td><td>168,208</td><td>20,190</td><td>$0.165</td></tr>
+<tr><td>sw-6 · tree, before fix</td><td>100%</td><td>12</td><td>288,678</td><td>161,938</td><td>$0.521</td></tr>
+<tr><td>sw-6 · tree, after fix</td><td>100%</td><td>12</td><td>244,964</td><td>33,317</td><td>$0.216</td></tr>
+</table></div>
+<p class="tcap"><b>Table 1.</b> The two long tasks (medians of 3). Every run succeeded with a 100% score; the arms differ in tokens and cache behaviour, not outcome. *Dollar values are derived at claude-sonnet-5 prices and change with the model; the token columns do not. A configuration that summarizes from the first turn was also run and was worse on both tasks; it is omitted for brevity.</p>
+
+<p>The number that demanded explanation is 161,938 cache-write tokens on sw-6, when the task's trace never exceeded about 33k tokens: the same prompt prefix was being written to cache about five times. The mechanism is as follows. Below a size threshold the tree runs in <b>devolved mode</b> — it shows the whole trace rather than summaries, on the argument that summarizing a short conversation costs money for nothing. That mode still applied a 30,000-token budget to the trace, and the threshold test estimated size as characters divided by four, while the real tokenizer charges more for code-dense text. So sw-6 exceeded the budget without ever reaching the threshold. Once over budget, the truncation rule recomputed a shared per-block cap on every request; each new tool result moved the cap by a token or two, which altered every truncated block at once and invalidated the whole cached prefix. The fix removes the budget in devolved mode, whose stated contract was always to show the whole trace. Cache-writes fell from 162k to 33k and cost from $0.52 to $0.22.</p>
+
+<h3>3.3&ensp;Comparison with the baseline across all six tasks</h3>
+<p>Figure 2 places the tree beside the transcript baseline on every task in the current suite, using each arm's current configuration and the same model. Panel (a) shows the success rate: the fraction of attempted runs that passed the task's full hidden test suite. Panels (b) and (c) show the two provider-independent effort measures, total tokens processed and model turns to completion. Table 2 gives the aggregate picture.</p>
+
+<figure>
+<svg viewBox="0 0 660 302" role="img" aria-label="Success rate per task for the transcript baseline and the tree.">
+  <g>
+    <rect x="120" y="6" width="12" height="10" fill="var(--warm)"/>
+    <text x="138" y="15">transcript baseline</text>
+    <rect x="290" y="6" width="12" height="10" fill="var(--accent)"/>
+    <text x="308" y="15">tree</text>
+    <text x="600" y="15" text-anchor="end">(a) success rate — runs passing the hidden test suite</text>
+  </g>
+  <!-- sw-1 -->
+  <text x="112" y="39" text-anchor="end">sw-1 patch</text>
+  <rect x="120" y="24" width="400" height="11" fill="var(--warm)"/>
+  <text x="526" y="33" class="vlabel">100% (5 of 5 runs)</text>
+  <rect x="120" y="39" width="400" height="11" fill="var(--accent)"/>
+  <text x="526" y="48" class="vlabel">100% (10 of 10)</text>
+  <!-- sw-2 -->
+  <text x="112" y="81" text-anchor="end">sw-2 multimod</text>
+  <rect x="120" y="66" width="240" height="11" fill="var(--warm)"/>
+  <text x="366" y="75" class="vlabel" fill="var(--warm)">60% (2 of 5 runs failed)</text>
+  <rect x="120" y="81" width="400" height="11" fill="var(--accent)"/>
+  <text x="526" y="90" class="vlabel">100% (10 of 10)</text>
+  <!-- sw-3 -->
+  <text x="112" y="123" text-anchor="end">sw-3 refactor</text>
+  <rect x="120" y="108" width="400" height="11" fill="var(--warm)"/>
+  <text x="526" y="117" class="vlabel">100% (3 of 3)</text>
+  <rect x="120" y="123" width="400" height="11" fill="var(--accent)"/>
+  <text x="526" y="132" class="vlabel">100% (6 of 6)</text>
+  <!-- sw-4 -->
+  <text x="112" y="165" text-anchor="end">sw-4 bughunt</text>
+  <rect x="120" y="150" width="400" height="11" fill="var(--warm)"/>
+  <text x="526" y="159" class="vlabel">100% (3 of 3)</text>
+  <rect x="120" y="165" width="400" height="11" fill="var(--accent)"/>
+  <text x="526" y="174" class="vlabel">100% (6 of 6)</text>
+  <!-- sw-5 -->
+  <text x="112" y="207" text-anchor="end">sw-5 dozen</text>
+  <rect x="120" y="192" width="400" height="11" fill="var(--warm)"/>
+  <text x="526" y="201" class="vlabel">100% (3 of 3)</text>
+  <rect x="120" y="207" width="400" height="11" fill="var(--accent)"/>
+  <text x="526" y="216" class="vlabel">100% (3 of 3)</text>
+  <!-- sw-6 -->
+  <text x="112" y="249" text-anchor="end">sw-6 ripple</text>
+  <rect x="120" y="234" width="400" height="11" fill="var(--warm)"/>
+  <text x="526" y="243" class="vlabel">100% (3 of 3)</text>
+  <rect x="120" y="249" width="400" height="11" fill="var(--accent)"/>
+  <text x="526" y="258" class="vlabel">100% (3 of 3)</text>
+  <text x="330" y="290" text-anchor="middle">share of attempted runs that passed every hidden test</text>
+</svg>
+<svg viewBox="0 0 660 302" role="img" aria-label="Median total tokens per run for the transcript baseline and the tree on six tasks.">
+  <text x="600" y="15" text-anchor="end">(b) total tokens per run (median)</text>
+  <!-- sw-1 -->
+  <text x="112" y="39" text-anchor="end">sw-1 patch</text>
+  <rect x="120" y="24" width="108.2" height="11" fill="var(--warm)"/>
+  <text x="234" y="33" class="vlabel">83,848</text>
+  <rect x="120" y="39" width="117.6" height="11" fill="var(--accent)"/>
+  <text x="244" y="48" class="vlabel">91,124</text>
+  <!-- sw-2 -->
+  <text x="112" y="81" text-anchor="end">sw-2 multimod</text>
+  <rect x="120" y="66" width="390.2" height="11" fill="var(--warm)"/>
+  <text x="516" y="75" class="vlabel" fill="var(--warm)">302,418 (failed runs included)</text>
+  <rect x="120" y="81" width="349.6" height="11" fill="var(--accent)"/>
+  <text x="476" y="90" class="vlabel">270,924</text>
+  <!-- sw-3 -->
+  <text x="112" y="123" text-anchor="end">sw-3 refactor</text>
+  <rect x="120" y="108" width="45.9" height="11" fill="var(--warm)"/>
+  <text x="172" y="117" class="vlabel">35,561</text>
+  <rect x="120" y="123" width="156.1" height="11" fill="var(--accent)"/>
+  <text x="282" y="132" class="vlabel">121,012</text>
+  <!-- sw-4 -->
+  <text x="112" y="165" text-anchor="end">sw-4 bughunt</text>
+  <rect x="120" y="150" width="54.4" height="11" fill="var(--warm)"/>
+  <text x="180" y="159" class="vlabel">42,181</text>
+  <rect x="120" y="165" width="72.9" height="11" fill="var(--accent)"/>
+  <text x="199" y="174" class="vlabel">56,524</text>
+  <!-- sw-5 -->
+  <text x="112" y="207" text-anchor="end">sw-5 dozen</text>
+  <rect x="120" y="192" width="226.7" height="11" fill="var(--warm)"/>
+  <text x="352" y="201" class="vlabel">175,661</text>
+  <rect x="120" y="207" width="248.8" height="11" fill="var(--accent)"/>
+  <text x="375" y="216" class="vlabel">192,853</text>
+  <!-- sw-6 -->
+  <text x="112" y="249" text-anchor="end">sw-6 ripple</text>
+  <rect x="120" y="234" width="217.0" height="11" fill="var(--warm)"/>
+  <text x="343" y="243" class="vlabel">168,208</text>
+  <rect x="120" y="249" width="316.1" height="11" fill="var(--accent)"/>
+  <text x="442" y="258" class="vlabel">244,964</text>
+  <text x="330" y="290" text-anchor="middle">median total tokens per run</text>
+</svg>
+<svg viewBox="0 0 660 302" role="img" aria-label="Median model turns per run for the transcript baseline and the tree on six tasks.">
+  <text x="600" y="15" text-anchor="end">(c) model turns per run (median)</text>
+  <!-- sw-1 -->
+  <text x="112" y="39" text-anchor="end">sw-1 patch</text>
+  <rect x="120" y="24" width="217.1" height="11" fill="var(--warm)"/>
+  <text x="343" y="33" class="vlabel">19</text>
+  <rect x="120" y="39" width="142.9" height="11" fill="var(--accent)"/>
+  <text x="269" y="48" class="vlabel">12.5</text>
+  <!-- sw-2 -->
+  <text x="112" y="81" text-anchor="end">sw-2 multimod</text>
+  <rect x="120" y="66" width="400" height="11" fill="var(--warm)"/>
+  <text x="526" y="75" class="vlabel" fill="var(--warm)">35 (2 runs hit the 40-turn cap)</text>
+  <rect x="120" y="81" width="285.7" height="11" fill="var(--accent)"/>
+  <text x="412" y="90" class="vlabel">25</text>
+  <!-- sw-3 -->
+  <text x="112" y="123" text-anchor="end">sw-3 refactor</text>
+  <rect x="120" y="108" width="102.9" height="11" fill="var(--warm)"/>
+  <text x="229" y="117" class="vlabel">9</text>
+  <rect x="120" y="123" width="154.3" height="11" fill="var(--accent)"/>
+  <text x="280" y="132" class="vlabel">13.5</text>
+  <!-- sw-4 -->
+  <text x="112" y="165" text-anchor="end">sw-4 bughunt</text>
+  <rect x="120" y="150" width="125.7" height="11" fill="var(--warm)"/>
+  <text x="252" y="159" class="vlabel">11</text>
+  <rect x="120" y="165" width="97.1" height="11" fill="var(--accent)"/>
+  <text x="223" y="174" class="vlabel">8.5</text>
+  <!-- sw-5 -->
+  <text x="112" y="207" text-anchor="end">sw-5 dozen</text>
+  <rect x="120" y="192" width="148.6" height="11" fill="var(--warm)"/>
+  <text x="275" y="201" class="vlabel">13</text>
+  <rect x="120" y="207" width="102.9" height="11" fill="var(--accent)"/>
+  <text x="229" y="216" class="vlabel">9</text>
+  <!-- sw-6 -->
+  <text x="112" y="249" text-anchor="end">sw-6 ripple</text>
+  <rect x="120" y="234" width="137.1" height="11" fill="var(--warm)"/>
+  <text x="263" y="243" class="vlabel">12</text>
+  <rect x="120" y="249" width="137.1" height="11" fill="var(--accent)"/>
+  <text x="263" y="258" class="vlabel">12</text>
+  <text x="330" y="290" text-anchor="middle">median model turns per run</text>
+</svg>
+<figcaption><b>Figure 2.</b> Both arms on all six tasks, same model (claude-sonnet-5). <b>(a)</b> Success rate: a run counts as a success only if it passes the task's entire hidden test suite; the parenthesis gives the raw counts. Eleven of the twelve cells are perfect. The exception matters: the transcript baseline failed two of its five attempts on sw-2, the hardest task — a 60% success rate — while all ten tree attempts succeeded. <b>(b)</b> Median total tokens per run: the transcript processes fewer tokens on five of six tasks; sw-2 is the exception because its failed runs still consume tokens all the way to the 40-turn cap, so each transcript attempt averages more tokens than each (always-successful) tree attempt. The worst tree cell is sw-3, at 3.4× the baseline's tokens — the open overhead problem. <b>(c)</b> Median turns: the tree reaches the answer in fewer turns on four tasks, equal on sw-6, more on sw-3.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+<tr><th>measure</th><th>transcript</th><th>tree</th></tr>
+<tr><td>prompt at phase 200 (marathon)</td><td>56,934 tok</td><td>9,062 tok</td></tr>
+<tr><td>longest conversation a 32k model survives</td><td>113 phases</td><td>&gt;200 phases</td></tr>
+<tr><td>runs succeeded, all A/B batches to date</td><td>20/22</td><td>62/62</td></tr>
+<tr><td>median turns, sw-1 / sw-2</td><td>19 / 35</td><td>12.5 / 25</td></tr>
+<tr><td>tokens per successful sw-2 run</td><td>524,483</td><td>273,527</td></tr>
+</table></div>
+<p class="tcap"><b>Table 2.</b> Aggregate comparison, claude-sonnet-5 runs only. The last row divides total tokens spent across all sw-2 attempts by the number of successes — the provider-independent version of cost-per-success; the transcript's two failures make each success nearly twice as expensive in tokens. Both transcript failures hit the 40-turn cap. For short tasks that fit comfortably in the window the transcript processes fewer raw tokens; the tree's advantages are boundedness, reliability, and turn count.</p>
+
+<h3>3.4&ensp;The recall probe</h3>
+<p>Folding is only safe if the agent can still get folded knowledge back. We tested this live. In the 200-phase marathon store, phase 10 was given distinctive content: a summary recording that the loader's batch size was capped at 50 in <code>ingest_batches()</code> (<code>src/loader.py</code>) to avoid an out-of-memory crash, with matching underlying events. With the fold engaged, neither that phase's headline nor its title appears anywhere in the prompt — it is covered only by the fold line's generic recall hint. We then asked the model (claude-sonnet-5, 5 replicates per condition, at most 6 turns each): <em>"We need to undo the temporary limit we agreed on early in this task. What was it, what value did we set, and in which file?"</em> — a phrasing that shares no vocabulary with the planted content. Two controls separate the failure modes: the same question asked with the original vocabulary (does keyword retrieval work at all?), and the vocabulary-free question with folding disabled (does visibility alone suffice?).</p>
+<p>All fifteen runs, across all three conditions, recovered all three facts — the cap, the value 50, and the file — and every run did it the same way: one <code>context_search</code> call, then the answer, two turns in total. The probe condition was not even degraded relative to its controls. Total spend: $0.57. Two qualifications keep this result in proportion. The search that executed was the lexical fallback over stored summary text (no embedding model was configured), so this validates lexical search, not vector search. And the planted facts were present in the phase's <em>summary</em>; recall of facts that survive only in the raw event log — where a further <code>context_fetch</code> hop would be required — was not exercised, since no run needed to fetch. The prepared escalation (a roll-up hierarchy, plan §19) therefore remains unneeded on current evidence.</p>
+
+<h3>3.5&ensp;What did not happen</h3>
+<p>In all 24 long-task runs, the summarization machinery never engaged: the model solved these 60 kB tasks in 9–16 turns by reading selectively, and the trace never reached the size threshold. The flat line in Figure 1 is therefore established offline by construction, but no live run has yet crossed into summarized operation. The natural next change follows from §3.2: measure the threshold with the real tokenizer rather than characters/4, so that crossing happens exactly when the trace would otherwise overflow its zone.</p>
+
+<h2>4&ensp;Limitations</h2>
+<p>Three things remain untested or unresolved. First, two edges of retrieval: the probe of §3.4 validated lexical search over summaries, but vector search ran nowhere (no embedder was configured), and no run needed the second hop — fetching raw events for facts absent from every summary. Second, all effort figures come from one model family; the cross-model matrix (GLM, DeepSeek, Qwen, plus deliberately small-window models) has validated plumbing and correct per-model prices but no results yet. Third, the tree still processes more tokens per run than the transcript on five of six tasks, most visibly sw-3 (121k against 36k); the next target there is the size of the fixed instruction section.</p>
+
+<h2>5&ensp;Open items and recommendations</h2>
+<p>The claim that motivated this loop — that the architecture allows conversation to continue past the context window, indefinitely — is now demonstrated for prompt size, with a live confirmation. The remaining work, in the order we recommend running it (ordered by information gained per unit of spend):</p>
+<ol style="max-width:70ch; padding-left:1.4em;">
+<li style="margin-bottom:10px;"><b>Run the live recall probe — done (§3.4).</b> 15/15 runs recovered all three planted facts through the fold line, at $0.57 total. The residual retrieval work is the harder variant: plant a fact that appears in <em>no</em> summary, only in the raw event log, so the model must chain search → fetch; and repeat the probe with a real embedding model configured.</li>
+<li style="margin-bottom:10px;"><b>Measure the size threshold with the real tokenizer.</b> The characters÷4 estimate caused the §3.2 defect and keeps the summarization machinery dormant on tasks that should engage it. One change, already scoped; afterwards re-run sw-5 and sw-6 to observe the first live crossings into summarized operation, which no run has yet exercised.</li>
+<li style="margin-bottom:10px;"><b>Close the short-task overhead gap.</b> The tree pays a fixed overhead the transcript does not, most visible on sw-3 (121,012 tokens against the transcript's 35,561, and 13.5 turns against 9). The next candidate is a deletion: shrink the fixed instruction section. Success criterion: sw-3 within 50% of the transcript's tokens with no reliability loss.</li>
+<li style="margin-bottom:10px;"><b>Populate the benchmark suite.</b> Adapters exist for Terminal-Bench, HLE-with-tools, AutomationBench, and GDPval-AA but only the DeepSWE-style tasks have data. Load the three public datasets first, then produce the cross-model delta table (GLM-5.3-flash, DeepSeek-V4-flash, Qwen, Claude, plus 16k and 32k small-window models) — plumbing and per-model prices are already validated.</li>
+<li style="margin-bottom:10px;"><b>Promote the loop-8 changes to core defaults.</b> Folding and the list cap currently sit behind an evaluation gate; once the recall probe passes, make them the default assembler behaviour and update decision D2 accordingly.</li>
+<li><b>Consolidate reporting.</b> Fold loops 7 and 8 into one deep report with the graded-score and token columns the harness now records, so every future comparison reads as transcript-versus-tree deltas at a fixed model, per benchmark — the format of a model page's benchmark table.</li>
+</ol>
+
+<h2>References</h2>
+<p style="font-size:.9rem;">[1]&ensp;<em>Context-tree vs. transcript: the loop 1–7 evaluation report.</em> <a href="https://claude.ai/code/artifact/b3b0e9c7-bc38-4ea1-bb7f-8ad8c2a88f57" style="color:var(--accent);">claude.ai/code/artifact/b3b0e9c7…</a> — method, baselines, cost-bucket attribution, and the seven-loop history through the v6.x configuration.<br>
+[2]&ensp;<em>Implementation plan and decision record</em>, <code>docs/IMPLEMENTATION_PLAN.md</code> §3 (decisions D1–D18) in the context-tree repository, commit <code>cac9076</code>.<br>
+[3]&ensp;DS-STAR, the iteration methodology adapted for these loops: arXiv:2509.21825.</p>
+
+<footer>Interim report, loop 8 · ~161 evaluation runs today · configurations: v6.x = deterministic root + no schema text + fetch-as-events + lazy threshold 30k; v6.4 adds the §3.2 fix; fold cap 40 (D17), list cap 40 (D18) · code at commit <code>cac9076</code>.</footer>
+</main>

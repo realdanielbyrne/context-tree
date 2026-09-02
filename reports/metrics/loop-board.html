@@ -1,0 +1,294 @@
+<title>Context-Tree Loop Board</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ground:#F6F5F1; --surface:#FCFCFA; --ink:#20261F; --ink2:#5A6357; --ink3:#8B937F;
+  --line:#E1E0D6; --line2:#EEEDE5;
+  --accent:#1F7A55; --accent-ink:#175E42; --baseline:#5F6B77;
+  --good-bg:#E3F0E8; --good-fg:#1D5E41; --warn-bg:#F5EAD6; --warn-fg:#8A5B13; --crit-bg:#F6E2E0; --crit-fg:#8F312C;
+  --chip-bg:#ECEBE2;
+  --b1:#1F7A55; --b2:#C07A1B; --b3:#3E6FB0; --b4:#C2486B; --b5:#6F58C9;
+  --tip-bg:#20261F; --tip-fg:#F6F5F1;
+}
+:root:not([data-theme="light"]){}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#131613; --surface:#1B1F1B; --ink:#E7EBE4; --ink2:#9AA595; --ink3:#6E7767;
+    --line:#2C322B; --line2:#232823;
+    --accent:#35A874; --accent-ink:#5FC393; --baseline:#93A0AC;
+    --good-bg:#1C3327; --good-fg:#7CCBA0; --warn-bg:#39301B; --warn-fg:#D9A857; --crit-bg:#3B2422; --crit-fg:#E08B84;
+    --chip-bg:#262B25;
+    --b1:#35A874; --b2:#C0872A; --b3:#4E86DB; --b4:#D45F88; --b5:#8E6FE8;
+    --tip-bg:#E7EBE4; --tip-fg:#131613;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#131613; --surface:#1B1F1B; --ink:#E7EBE4; --ink2:#9AA595; --ink3:#6E7767;
+  --line:#2C322B; --line2:#232823;
+  --accent:#35A874; --accent-ink:#5FC393; --baseline:#93A0AC;
+  --good-bg:#1C3327; --good-fg:#7CCBA0; --warn-bg:#39301B; --warn-fg:#D9A857; --crit-bg:#3B2422; --crit-fg:#E08B84;
+  --chip-bg:#262B25;
+  --b1:#35A874; --b2:#C0872A; --b3:#4E86DB; --b4:#D45F88; --b5:#8E6FE8;
+  --tip-bg:#E7EBE4; --tip-fg:#131613;
+}
+*{box-sizing:border-box}
+body{background:var(--ground); color:var(--ink); font:15px/1.55 "IBM Plex Sans",system-ui,sans-serif; margin:0; padding:0 20px 72px;}
+main{max-width:1060px; margin:0 auto;}
+h1,h2,h3{font-family:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif; text-wrap:balance; margin:0;}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;}
+.num{font-family:"IBM Plex Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums;}
+.eyebrow{font-family:"IBM Plex Sans Condensed",sans-serif; font-weight:600; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink3);}
+
+header{display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:8px 24px; padding:34px 0 18px; border-bottom:2px solid var(--ink);}
+header h1{font-size:30px; font-weight:600; letter-spacing:-.01em;}
+header .stamp{font-size:13px; color:var(--ink2);}
+header .stamp .live{color:var(--good-fg); font-weight:600;}
+.live-dot{display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--accent); margin-right:6px; animation:pulse 1.6s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@media (prefers-reduced-motion: reduce){.live-dot{animation:none}}
+
+.tiles{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin:20px 0 8px;}
+.tile{background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:12px 14px;}
+.tile .v{font-size:26px; font-weight:600; line-height:1.15;}
+.tile .k{font-size:12px; color:var(--ink2); margin-top:2px;}
+.tile .s{font-size:12px; color:var(--ink3);}
+
+section{margin-top:40px;}
+section>h2{font-size:20px; font-weight:600; margin-bottom:4px;}
+section>.sub{color:var(--ink2); font-size:13.5px; max-width:68ch; margin:0 0 14px;}
+
+.tablewrap{overflow-x:auto; background:var(--surface); border:1px solid var(--line); border-radius:6px;}
+table{border-collapse:collapse; width:100%; min-width:720px; font-size:13.5px;}
+th{font-family:"IBM Plex Sans Condensed",sans-serif; font-size:11.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink3); text-align:left; font-weight:600; padding:10px 12px; border-bottom:1px solid var(--line);}
+th.r, td.r{text-align:right;}
+td{padding:9px 12px; border-bottom:1px solid var(--line2); vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr.head-row{background:color-mix(in srgb, var(--accent) 7%, var(--surface));}
+td .cfg{font-weight:600;}
+td .gates{font-size:11.5px; color:var(--ink3); display:block; margin-top:1px;}
+.pill{display:inline-block; font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:600; border-radius:999px; padding:2px 9px; white-space:nowrap;}
+.pill.good{background:var(--good-bg); color:var(--good-fg);}
+.pill.warn{background:var(--warn-bg); color:var(--warn-fg);}
+.pill.crit{background:var(--crit-bg); color:var(--crit-fg);}
+.pill.flat{background:var(--chip-bg); color:var(--ink2);}
+.state{font-family:"IBM Plex Sans Condensed",sans-serif; font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; display:inline-block; padding:2px 8px; border-radius:3px;}
+.state.head{background:var(--accent); color:var(--surface);}
+.state.base{background:var(--chip-bg); color:var(--ink2);}
+.state.shelved{background:var(--warn-bg); color:var(--warn-fg);}
+.state.super{background:var(--chip-bg); color:var(--ink2); border:1px dashed var(--ink3);}
+.state.flight{background:var(--good-bg); color:var(--good-fg);}
+.delta-win{color:var(--good-fg); font-weight:600;}
+.delta-loss{color:var(--crit-fg);}
+
+.chart{background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:18px 18px 14px;}
+.row{display:grid; grid-template-columns:118px 1fr 74px; align-items:center; gap:12px; margin:14px 0;}
+.row .lbl{font-size:13px; font-weight:600; text-align:right; line-height:1.25;}
+.row .lbl small{display:block; font-weight:400; color:var(--ink3); font-size:11px;}
+.bar{display:flex; height:26px;}
+.seg{height:100%; border-radius:4px; margin-right:2px; position:relative; min-width:2px; cursor:default;}
+.seg:last-child{margin-right:0;}
+.seg .inlbl{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:"IBM Plex Mono",monospace; font-size:10.5px; font-weight:600; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.45); pointer-events:none;}
+.row .tot{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; font-size:13px; font-weight:600;}
+.legend{display:flex; flex-wrap:wrap; gap:6px 18px; margin-top:14px; padding-top:12px; border-top:1px solid var(--line2); font-size:12px; color:var(--ink2);}
+.legend .sw{display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:6px; vertical-align:-1px;}
+#tip{position:fixed; z-index:10; background:var(--tip-bg); color:var(--tip-fg); font-family:"IBM Plex Mono",monospace; font-size:11.5px; padding:5px 9px; border-radius:4px; pointer-events:none; white-space:nowrap; box-shadow:0 2px 8px rgba(0,0,0,.25);}
+[hidden]{display:none!important}
+
+.cols{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+@media (max-width:760px){.cols{grid-template-columns:1fr}}
+.card{background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:16px 18px;}
+.card h3{font-size:15px; margin-bottom:10px;}
+.card ul{margin:0; padding-left:18px; display:flex; flex-direction:column; gap:8px; font-size:13.5px;}
+.card li::marker{color:var(--ink3);}
+.card .why{color:var(--ink2);}
+.kbd{font-family:"IBM Plex Mono",monospace; font-size:12px; background:var(--chip-bg); border-radius:3px; padding:1px 5px;}
+
+pre.algo{background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:6px; padding:16px 18px; overflow-x:auto; font-family:"IBM Plex Mono",monospace; font-size:12.5px; line-height:1.65; color:var(--ink); margin:0;}
+pre.algo .c{color:var(--ink3);}
+pre.algo .k{color:var(--accent-ink); font-weight:600;}
+
+.flight{display:flex; gap:14px; align-items:flex-start; background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:16px 18px; margin-top:14px;}
+.flight .what{font-size:13.5px;}
+footer{margin-top:44px; padding-top:14px; border-top:1px solid var(--line); color:var(--ink3); font-size:12px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px;}
+</style>
+<main>
+<header>
+  <h1>Context-Tree Loop Board</h1>
+  <div class="stamp num">loop 7 · complete (7 iterations) &nbsp;·&nbsp; <span class="live">v6.x final</span> &nbsp;·&nbsp; snapshot 2026-09-01 15:05 CDT</div>
+</header>
+
+<div class="tiles">
+  <div class="tile"><div class="v num">v6.x</div><div class="k">final config</div><div class="s">+ lazy-tokens at the Zone C budget</div></div>
+  <div class="tile"><div class="v num">121</div><div class="k">runs today</div><div class="s">all landed · 7 experiment batches</div></div>
+  <div class="tile"><div class="v num">$20.76</div><div class="k">API spend today</div><div class="s">program total ≈ $44</div></div>
+  <div class="tile"><div class="v num">833</div><div class="k">tests green</div><div class="s">9 skipped (live-only)</div></div>
+  <div class="tile"><div class="v num">2 of 4</div><div class="k">scenarios at parity+</div><div class="s">sw-1 & sw-4; sw-2/sw-3 gap open</div></div>
+</div>
+
+<section>
+  <h2>Leaderboard — long-horizon pair (n=5 medians)</h2>
+  <p class="sub">Cost median · turns median · success, tree configs vs the cached-native baseline every arm must beat. Same-epoch runs, same model (sonnet-5), judged by hidden test suites. Sampling temperature cannot be pinned on Claude 5 — the API rejects the parameter — so every verdict is a median over replicates.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>config</th><th>state</th><th class="r">sw-1-jsonc</th><th class="r">turns</th><th class="r">ok</th><th class="r">sw-2-multimod</th><th class="r">turns</th><th class="r">ok</th></tr></thead>
+    <tbody>
+      <tr><td><span class="cfg">native</span><span class="gates">full transcript, incremental cache — the baseline</span></td><td><span class="state base">baseline</span></td>
+        <td class="r num">$0.097</td><td class="r num">19</td><td class="r"><span class="pill good">5/5</span></td>
+        <td class="r num">$0.151</td><td class="r num">35</td><td class="r"><span class="pill crit">3/5</span></td></tr>
+      <tr><td><span class="cfg">v5.6.1</span><span class="gates">prior head: zone cache + summarize-on-close + FM-1 fix</span></td><td><span class="state super">superseded</span></td>
+        <td class="r num">$0.180</td><td class="r num">16</td><td class="r"><span class="pill good">5/5</span></td>
+        <td class="r num">$0.272</td><td class="r num">18</td><td class="r"><span class="pill good">5/5</span></td></tr>
+      <tr><td><span class="cfg">v5.7</span><span class="gates">+ lazy-k(4) + det-root + no-atools</span></td><td><span class="state shelved">shelved</span></td>
+        <td class="r num delta-win">$0.101</td><td class="r num">11</td><td class="r"><span class="pill good">5/5</span></td>
+        <td class="r num delta-loss">$0.427</td><td class="r num delta-loss">40</td><td class="r"><span class="pill warn">4/5</span></td></tr>
+      <tr><td><span class="cfg">v5.7b</span><span class="gates">det-root + no-atools (ablation: lazy-k off)</span></td><td><span class="state super">superseded</span></td>
+        <td class="r num">$0.156</td><td class="r num">18</td><td class="r"><span class="pill warn">3/4</span></td>
+        <td class="r num">$0.231</td><td class="r num">19</td><td class="r"><span class="pill good">4/4</span></td></tr>
+      <tr><td><span class="cfg">v5.8</span><span class="gates">+ fetch-results-are-events (stuck-tail bug fix)</span></td><td><span class="state super">superseded</span></td>
+        <td class="r num">$0.105</td><td class="r num">13</td><td class="r"><span class="pill warn">4/5</span></td>
+        <td class="r num">$0.224</td><td class="r num">24</td><td class="r"><span class="pill good">5/5</span></td></tr>
+      <tr><td><span class="cfg">v5.9</span><span class="gates">+ args dropped when post-state present — too aggressive</span></td><td><span class="state shelved">shelved</span></td>
+        <td class="r num delta-loss">$0.206</td><td class="r num delta-loss">25</td><td class="r"><span class="pill warn">4/5</span></td>
+        <td class="r num">$0.265</td><td class="r num">23</td><td class="r"><span class="pill warn">4/5</span></td></tr>
+      <tr><td><span class="cfg">v5.9b</span><span class="gates">+ args capped at 512B when post-state present</span></td><td><span class="state super">superseded</span></td>
+        <td class="r num">$0.170</td><td class="r num">21</td><td class="r"><span class="pill good">4/4</span></td>
+        <td class="r num delta-win">$0.130</td><td class="r num delta-win">16.5</td><td class="r"><span class="pill good">4/4</span></td></tr>
+      <tr class="head-row"><td><span class="cfg">v6.x</span><span class="gates">+ lazy-tokens: full trace while it fits the Zone C budget (v6.0+v6.1 pooled — identical config, no run crossed)</span></td><td><span class="state head">final</span></td>
+        <td class="r num delta-win">$0.098</td><td class="r num delta-win">11</td><td class="r"><span class="pill good">10/10</span></td>
+        <td class="r num">$0.163</td><td class="r num delta-win">25</td><td class="r"><span class="pill good">10/10</span></td></tr>
+      <tr><td><span class="cfg">v6.2</span><span class="gates">crossing probe at 8k: bounded swap is SAFE (no flail) but does not pay at this scale — machinery correctly dormant</span></td><td><span class="state shelved">probe</span></td>
+        <td class="r num">—</td><td class="r num">—</td><td class="r"><span class="pill flat">—</span></td>
+        <td class="r num">$0.185</td><td class="r num">26</td><td class="r"><span class="pill good">5/5</span></td></tr>
+    </tbody>
+  </table></div>
+  <p class="sub" style="margin-top:10px">Final read: <strong>v6.x is the consistent config</strong> — sw-1 at exact cost parity ($0.098 vs $0.097) with 10/10 vs 5/5 and half the turns; sw-2 at +8% cost with 10/10 vs 3/5 (cost-per-success $0.17 vs $0.29); sw-4 beaten outright; sw-3 the one open cost gap (+$0.037). v5.9b’s cheaper summarized mode on sw-2 ($0.130) shows what the machinery earns at long horizons; v6.x engages it only when the trace outgrows the context budget — which, on tasks this size, is correctly never.</p>
+</section>
+
+<section>
+  <h2>Gap anatomy — where each dollar goes (sw-2, per-run means)</h2>
+  <p class="sub">The five-bucket decomposition the verdict runs on. Two buckets are solved: summarizer overhead fell $0.089 → $0.020 (deterministic root, no strong-model call) and fresh input fell $0.043 → $0.002 (the never-dropping fetch tail was a bug — payloads now ride the cache). The remaining gap is almost entirely <strong>cache writes</strong>, which v5.9's payload dedup targets.</p>
+  <div class="chart" id="bucketChart">
+    <div class="row"><div class="lbl">v5.6.1 tree<small>prior head</small></div><div class="bar" data-cfg="v5.6.1"></div><div class="tot num">$0.408</div></div>
+    <div class="row"><div class="lbl">v5.9b tree<small>current head</small></div><div class="bar" data-cfg="v5.9b"></div><div class="tot num">$0.145</div></div>
+    <div class="row"><div class="lbl">native<small>baseline</small></div><div class="bar" data-cfg="native"></div><div class="tot num">$0.171</div></div>
+    <div class="legend" id="legend"></div>
+  </div>
+</section>
+
+<section>
+  <h2>Diverse suite — the generalization check</h2>
+  <p class="sub">Two new self-verifying scenarios built today so candidates aren't tuned to one task shape: <strong>sw-3-refactor</strong> (API migration across 5 files, 29 hidden tests) and <strong>sw-4-bughunt</strong> (two planted defects in a 5-stage pipeline, 23 hidden tests). Both turned out short-horizon (6–11 turns) — they test that the tree devolves gracefully. All 12 runs succeeded.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>scenario</th><th class="r">tree (v5.7 gates, n=3)</th><th class="r">native (n=3)</th><th class="r">Δ cost</th><th>note</th></tr></thead>
+    <tbody>
+      <tr><td class="cfg">sw-3-refactor</td><td class="r num">$0.070 · 10t</td><td class="r num">$0.050 · 9t</td><td class="r num delta-loss">+40%</td><td>residue = Zone A size + uncached map/tail</td></tr>
+      <tr><td class="cfg">sw-4-bughunt</td><td class="r num">$0.047 · 8t</td><td class="r num">$0.039 · 11t</td><td class="r num">≈ parity</td><td>within noise; tree wins turns</td></tr>
+    </tbody>
+  </table></div>
+  <p class="sub" style="margin-top:10px">v5.9 gate-set reruns on both are in flight (n=3).</p>
+</section>
+
+<section>
+  <h2>Findings ledger</h2>
+  <div class="cols">
+    <div class="card">
+      <h3>Landed today</h3>
+      <ul>
+        <li><strong>Deterministic root</strong> — the strong-model Zone B root call is a pure headline compose now; its truncation-retry failure mode is gone. Summarizer bucket $0.089 → $0.020. <span class="why">Never regressed success across n=9.</span></li>
+        <li><strong>Stuck-tail bug fixed</strong> — "ephemeral" fetch results never actually dropped (dead code) while the prompt claimed they would; one run re-billed a 7.6k-token payload fresh for 12 turns ($0.19). Context-tool exchanges are L0 events now.</li>
+        <li><strong>Schema dedup</strong> — tool schemas shipped twice (API param + 1.1k-token Zone A text block). Text block deleted.</li>
+        <li><strong>§8 retry fix</strong> — truncation doublings no longer consume the contract retry; bounded ×3, loud failure after.</li>
+        <li><strong>Payload dedup, capped</strong> — a written file rendered twice per event (args + post-state). v5.9 dropped args entirely and sw-1 turns went 13 → 25: an edit’s args are the model’s only record of <em>what it changed</em>. v5.9b caps args at 512B instead — sw-2 fell to $0.130. <span class="why">Lesson: dedup the bytes, keep the intent.</span></li>
+        <li><strong>Attribution telemetry</strong> — per-model spend ledger persisted in every results.json.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Shelved / ruled out</h3>
+      <ul>
+        <li><strong>lazy-k (below-k skip)</strong> — works exactly as designed below k (6/6 diverse runs, zero summarizer spend) and won sw-1 outright, but the mid-task crossing swap makes agents flail: runs crossing late (t11–17) hit the 40-turn cap; early crossers (t6–8) were fine. <span class="why">Shelved pending a transition fix that doesn't add a rule.</span></li>
+        <li><strong>Temperature pinning</strong> — Claude 5 API rejects the parameter outright. Variance control is statistical: n≥5, medians, IQR.</li>
+        <li><strong>DSA / eviction line</strong> — remains retired: destructive when it fires, dead weight when cache-safe.</li>
+        <li><strong>Epoch-merge (B-bump/C-swap desync)</strong> — real ~$0.02 mechanism, but needs the §17 cache harness to attack safely. Backlog.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>The whole algorithm, as shipped (v5.8)</h2>
+  <p class="sub">The program's standing constraint: if it stops fitting in a dozen lines of pseudo-code, it's wrong. Today's iterations <em>removed</em> three rules and added none.</p>
+  <pre class="algo"><span class="k">every event</span> (message, any tool exchange) → append to L0        <span class="c"># one rule, no tail special case</span>
+<span class="k">on phase close</span>:
+    summarize closed leaves on the cheap model                 <span class="c"># haiku, parallel</span>
+    root summary = title + one headline per leaf               <span class="c"># pure function, no LLM call</span>
+<span class="k">every turn</span>, prompt =
+    A: contract + tool schemas (frozen)                        <span class="c"># cached, never changes</span>
+  | B: branch summaries, creation order          [breakpoint]  <span class="c"># bumps only when a leaf changes</span>
+  | C: active-branch events, one block each      [moving bp]   <span class="c"># prior blocks read at 0.1×</span>
+  | C:map + volatile tail                                      <span class="c"># the only uncached bytes</span></pre>
+</section>
+
+<section>
+  <h2>In flight now</h2>
+  <div class="flight">
+    <span class="state head" style="margin-top:2px">closed</span>
+    <div class="what"><strong>v5.9 — write_file payload dedup</strong> (n=5 on sw-1/sw-2, n=3 on sw-3/sw-4). A written file's content rendered <em>twice</em> per event — once in <span class="kbd">args:</span>, once as the post-state blob — and the duplicate rode through every cache write (1.25×) and read (0.1×/turn). Now the post-state renders once. Predicted: $0.02–0.03 off the sw-2 cacheWrite bucket, plus smaller summary prompts. Verdict criteria: beat v5.8 medians with success ≥ 5/5 held.</div>
+  </div>
+</section>
+
+<footer>
+  <span>DS-STAR loop: analyze (5 lenses) → synthesize → plan (3 angles) → judge → implement → verify n≥5 → route</span>
+  <span class="num">context-tree eval · deepswe-agents-last-exam · claude-sonnet-5</span>
+</footer>
+</main>
+
+<script>
+const BUCKETS = [
+  {key:'fresh input', color:'b1'},
+  {key:'output', color:'b2'},
+  {key:'cache read', color:'b3'},
+  {key:'cache write', color:'b4'},
+  {key:'summarizer', color:'b5'},
+];
+const DATA = {
+  'v5.6.1': [0.0428, 0.1412, 0.0598, 0.0754, 0.0886],
+  'v5.9b':  [0.0017, 0.0625, 0.0240, 0.0451, 0.0115],
+  'native': [0.0001, 0.0802, 0.0588, 0.0321, 0.0000],
+};
+const MAX = 0.4078; // v5.6.1 total — all bars share one scale
+const css = (name) => getComputedStyle(document.documentElement).getPropertyValue('--'+name).trim();
+
+const tip = document.createElement('div');
+tip.id = 'tip'; tip.hidden = true; document.body.appendChild(tip);
+
+document.querySelectorAll('.bar').forEach(bar => {
+  const vals = DATA[bar.dataset.cfg];
+  const total = vals.reduce((a,b)=>a+b,0);
+  vals.forEach((v,i) => {
+    if (v < 0.0005) return;
+    const seg = document.createElement('div');
+    seg.className = 'seg';
+    seg.style.width = (v/MAX*100) + '%';
+    seg.style.background = css(BUCKETS[i].color);
+    if (v/MAX > 0.09) {
+      const l = document.createElement('span');
+      l.className = 'inlbl';
+      l.textContent = '$' + v.toFixed(2).slice(1);
+      seg.appendChild(l);
+    }
+    seg.addEventListener('mousemove', e => {
+      tip.textContent = `${bar.dataset.cfg} · ${BUCKETS[i].key}: $${v.toFixed(4)} (${(v/total*100).toFixed(0)}%)`;
+      tip.hidden = false;
+      tip.style.left = Math.min(e.clientX + 12, innerWidth - tip.offsetWidth - 8) + 'px';
+      tip.style.top = (e.clientY - 30) + 'px';
+    });
+    seg.addEventListener('mouseleave', () => { tip.hidden = true; });
+    bar.appendChild(seg);
+  });
+});
+const legend = document.getElementById('legend');
+BUCKETS.forEach(b => {
+  const s = document.createElement('span');
+  s.innerHTML = `<span class="sw" style="background:${css(b.color)}"></span>${b.key}`;
+  legend.appendChild(s);
+});
+</script>
