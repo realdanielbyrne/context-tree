@@ -165,3 +165,13 @@ interpretation (agent's honesty line): at 16k visibility ends at seq 732 (1 bran
 L0) and the truncation boundary is seq 720, so the 16k tree cell scores context_search→
 context_fetch retrieval almost exclusively — it is a test of the recall claim, not of
 summaries-in-prompt.
+
+**R7 — the first W=16384 compaction artifact was discarded and rebuilt.** Its rolling
+summary was a 169-character conversational fragment ("…Shall I open an issue…?") — the
+build loop accepted the model's raw reply as the running summary, so one conversational
+turn replaced the whole document and every later chunk compounded it. Scoring against it
+would hand the tree a trivial win and void the null hypothesis. Fix: the build prompt now
+forbids conversational output, and compactionSummaryValid (≥600 chars, no trailing
+question) gates every chunk with one corrective retry, then a loud build failure. The
+discarded artifact's $0.3826 build cost is recorded as spent-and-discarded, not silently
+absorbed. Smoke runs that consumed the broken artifact were unscored by design.

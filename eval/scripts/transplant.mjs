@@ -75,7 +75,7 @@ import {
 // `renderSummaryBlock` is not on core's public surface (it is an assembler
 // internal); the root-keep derivation has to size the block the assembler
 // will actually emit, so it is imported from the built module directly.
-import { renderSummaryBlock } from '../../packages/core/dist/assemble/format.js';
+import { renderSummaryBlock, truncateToTokens } from '../../packages/core/dist/assemble/format.js';
 import { ANNOTATE, CONTEXT_FETCH, CONTEXT_PEEK, CONTEXT_SEARCH, HANDLERS, toCallToolResult } from '@context-tree/mcp';
 import { countTokens } from 'gpt-tokenizer/encoding/cl100k_base';
 import { CONTEXT_TOOL_SCHEMAS } from '../dist/tools.js';
@@ -110,7 +110,20 @@ const SPANNING_REPS = 3;
 const MAX_TURNS = 6;
 const MAX_REPLY_TOKENS = 800;
 const CAP_USD_PER_MODEL = 3.0;
+/** The step-4 compaction build is a THIRD bucket, not part of an answerer's cell. */
+const CAP_USD_COMPACTION = 1.0;
 const CAP_USD_TOTAL = 6.0;
+/**
+ * Per-message chat-format overhead the raw text count cannot see (role tags and
+ * separators) plus the reply priming, and a flat margin on top. Deliberately
+ * generous: the cost of over-reserving is a slightly shorter tool result, and
+ * the cost of under-reserving is an HTTP 400 that voids the run.
+ */
+const MESSAGE_OVERHEAD_TOKENS = 4;
+const REQUEST_PRIMING_TOKENS = 8;
+const REQUEST_MARGIN_TOKENS = 64;
+/** Safe upper bound on chars-per-token for the pre-cut; see `capToolResult`. */
+const CHARS_PER_TOKEN_CEILING = 8;
 const SMOKE_N = 3;
 
 const PRIMARY_STRATA = Object.freeze(['head', 'tail', 'deep']);
@@ -169,6 +182,75 @@ export function countOccurrences(haystack, needle) {
     at = haystack.indexOf(needle, at + needle.length);
   }
   return n;
+}
+
+/**
+ * Everything the provider will bill as prompt for one request, in cl100k.
+ *
+ * `tools` is counted separately and on purpose: the native tool list is NOT in
+ * `system`, so a count over system+messages alone understates the request by
+ * the whole schema payload. (On this harness the schemas are billed twice —
+ * once as Zone A text via `toolSchemasText`, once as the native list — which is
+ * the house pattern `recall-probe.mjs` and `eval/src/loop.ts` both use. Left
+ * alone here because changing Zone A's bytes is a D5 decision, not a bug fix,
+ * but it is real and it is why the 16k tree arm had so little headroom.)
+ */
+export function requestTokens({ system, messages, tools = [] }, tokenizer = exact) {
+  let total = tokenizer.count(system ?? '') + REQUEST_PRIMING_TOKENS;
+  for (const message of messages) total += tokenizer.count(message.content) + MESSAGE_OVERHEAD_TOKENS;
+  if (tools.length > 0) total += tokenizer.count(JSON.stringify(tools));
+  return total;
+}
+
+/**
+ * Caps one appended tool result to the real headroom left in the window.
+ *
+ * Zones are budgeted; the DYNAMIC append was not, and that is what produced a
+ * 400 on gpt-3.5 (`maximum context length is 16385, requested about 17209`) —
+ * a `context_search` result rode on top of a prompt already sized to the
+ * window. This budgets it against what is actually left:
+ *
+ *   headroom = W − tokens(request so far) − maxReplyTokens − margin − prefix
+ *
+ * Arm-neutral by construction: it lives on the shared append path, so any arm
+ * that ever appends a result is covered, not just `tree`. It never touches a
+ * zone or a budget — a truncated result is visibly marked (core's elision), so
+ * a model that lost detail can see that it did and search again.
+ */
+export function capToolResult({ text, prefix, system, messages, tools, window, maxReplyTokens }, tokenizer = exact) {
+  const spent = requestTokens({ system, messages, tools }, tokenizer);
+  const headroom =
+    window - spent - maxReplyTokens - REQUEST_MARGIN_TOKENS - tokenizer.count(prefix) - MESSAGE_OVERHEAD_TOKENS;
+  if (headroom <= 0) {
+    return { text: '', before: null, after: 0, truncated: null, beforeExact: false, droppedChars: text.length, headroom };
+  }
+  // Pre-cut by CHARACTERS before any BPE counting. cl100k's merge loop is
+  // superlinear in the length of an unbroken run, so counting a payload with
+  // one is pathologically slow — measured: 500 KB of varied text counts in
+  // 10 ms, 500 KB of a single repeated character takes 84 s. Real tool output
+  // is varied, but a `context_fetch` over a minified bundle or a base64 line
+  // is not, so this is a live-path guard and not just a fast test.
+  //
+  // Safe because no token spans fewer than one character: a prefix of
+  // `headroom * CHARS_PER_TOKEN_CEILING` chars still holds at least `headroom`
+  // tokens, so cutting there first cannot change the answer, only the work.
+  const preCut =
+    text.length > headroom * CHARS_PER_TOKEN_CEILING ? text.slice(0, headroom * CHARS_PER_TOKEN_CEILING) : text;
+  // When a pre-cut happened the original was never counted, so the token figure
+  // is a lower bound and says so; the CHARACTER figure is always exact.
+  const beforeExact = preCut.length === text.length;
+  const before = tokenizer.count(preCut);
+  const capped = truncateToTokens(preCut, headroom, tokenizer);
+  const after = tokenizer.count(capped);
+  return {
+    text: capped,
+    before,
+    after,
+    beforeExact,
+    truncated: beforeExact ? before - after : null,
+    droppedChars: text.length - capped.length,
+    headroom,
+  };
 }
 
 // ── window derivation (D19) ──────────────────────────────────────────────
@@ -1523,12 +1605,44 @@ async function runPrep(scenario, options) {
 }
 
 // ── run (Steps 4-6) ──────────────────────────────────────────────────────
-function providerFor(model, meters) {
-  if (!meters.has(model)) meters.set(model, new InMemoryCostMeter({ capUsd: CAP_USD_PER_MODEL }));
+function providerFor(bucket, meters, capUsd = CAP_USD_PER_MODEL) {
+  if (!meters.has(bucket)) meters.set(bucket, new InMemoryCostMeter({ capUsd }));
+  // TRANSPLANT_MOCK=1 drives the whole run loop offline against a deterministic
+  // provider — the seam the window-cap fix is verified through, and the only
+  // way to exercise the append path without spending anything.
+  if (process.env.TRANSPLANT_MOCK === '1') {
+    return new MeteredProvider(mockProvider(), meters.get(bucket));
+  }
   loadDotEnv();
   const apiKey = process.env.OPENROUTER_API_KEY ?? process.env.OPENROUTER_KEY;
   if (!apiKey) throw new Error('OPENROUTER_API_KEY is not set');
-  return new MeteredProvider(new OpenRouterProvider({ apiKey }), meters.get(model));
+  return new MeteredProvider(new OpenRouterProvider({ apiKey }), meters.get(bucket));
+}
+
+/**
+ * Offline stand-in: one `context_search` call, then a plain answer. `tool_calls`
+ * is what `MockProvider` cannot express, and the tool turn is exactly the path
+ * under test, so this is a local stub rather than a core mock.
+ */
+function mockProvider() {
+  let turn = 0;
+  return {
+    id: 'transplant-mock',
+    async complete(request) {
+      turn += 1;
+      const usage = { input: 10, output: 5, cacheRead: 0, cacheWrite: 0 };
+      if (turn === 1 && (request.tools ?? []).length > 0) {
+        return {
+          text: '',
+          model: request.model,
+          usage,
+          toolCalls: [{ id: 'call_1', name: CONTEXT_SEARCH, input: { query: 'mock probe' } }],
+          stopReason: 'tool_use',
+        };
+      }
+      return { text: 'mock answer', model: request.model, usage, toolCalls: [], stopReason: 'end_turn' };
+    },
+  };
 }
 
 /**
@@ -1537,9 +1651,24 @@ function providerFor(model, meters) {
  * compaction baseline that is allowed a bigger prompt or a stronger summarizer
  * is measuring the budget, not the organization.
  */
-async function buildCompactionArtifact(scenario, budgets, provider) {
+/**
+ * A valid rolling summary is a document, not a turn of conversation: it has
+ * real length (a 196k-token session cannot honestly compress below this) and
+ * does not end by asking the user something.
+ */
+export function compactionSummaryValid(text) {
+  return text.length >= 600 && !text.endsWith('?');
+}
+
+async function buildCompactionArtifact(scenario, budgets, meters) {
   const path = join(scenario.artifacts, `compact-${budgets.window}.json`);
   if (existsSync(path)) return JSON.parse(readFileSync(path, 'utf8'));
+  // Its OWN ledger. Billing the build to whichever answering model happened to
+  // trigger the lazy build made a $0.38 one-off look like per-question spend on
+  // qwen; a baseline's construction cost is a real number and belongs in a
+  // bucket of its own, not smeared across the arm it serves.
+  const bucket = `compaction:W${budgets.window}`;
+  const provider = providerFor(bucket, meters, CAP_USD_COMPACTION);
   const events = scenario.trace.all();
   const chunkBudget = Math.floor((0.5 * budgets.window) / budgets.ratio);
   const chunks = [];
@@ -1569,6 +1698,9 @@ async function buildCompactionArtifact(scenario, budgets, provider) {
             'You are maintaining a rolling summary of a long engineering session so it can be resumed later.',
             'Rewrite the running summary so it also covers the new chunk. Keep concrete coordinates —',
             'file paths, symbol names, numbers, decisions, open questions. Prose only.',
+            'Output ONLY the complete updated summary. Do not address the user, ask questions, or offer',
+            'options — you are writing a document, not holding a conversation. Begin directly with the',
+            'summary content.',
             '',
             '# Running summary so far',
             running,
@@ -1580,10 +1712,64 @@ async function buildCompactionArtifact(scenario, budgets, provider) {
       ],
       maxTokens: MAX_SUMMARY_TOKENS,
     });
-    running = result.text.trim();
+    // A conversational reply here poisons every later chunk (the observed
+    // failure: a 169-char question fragment standing in for 196k tokens of
+    // session). Floor + no-trailing-question, one corrective retry, then loud.
+    let candidate = result.text.trim();
+    if (!compactionSummaryValid(candidate)) {
+      const retry = await provider.complete({
+        model: COMPACT_MODEL_OR,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              'Your previous output was not a summary. Output ONLY the complete updated rolling',
+              'summary document — several paragraphs of prose covering BOTH the running summary and',
+              'the new chunk, with file paths, symbol names, numbers, decisions, and open questions.',
+              'No questions to the user. No offers. No preamble.',
+              '',
+              '# Running summary so far',
+              running,
+              '',
+              '# New chunk',
+              chunk.join('\n\n'),
+            ].join('\n'),
+          },
+        ],
+        maxTokens: MAX_SUMMARY_TOKENS,
+      });
+      candidate = retry.text.trim();
+      if (!compactionSummaryValid(candidate)) {
+        throw new Error(
+          `compaction build W=${budgets.window}: invalid summary after retry at chunk ` +
+            `${chunks.indexOf(chunk) + 1}/${chunks.length} (${candidate.length} chars) — refusing to freeze a broken baseline`,
+        );
+      }
+    }
+    running = candidate;
   }
-  const artifact = { window: budgets.window, chunks: chunks.length, chunk_budget: chunkBudget, model: COMPACT_MODEL, summary: running };
+  const snapshot = meters.get(bucket).snapshot();
+  const artifact = {
+    window: budgets.window,
+    chunks: chunks.length,
+    chunk_budget: chunkBudget,
+    /** The id actually called, and the spec id it stands for on this provider. */
+    model: COMPACT_MODEL_OR,
+    model_spec: COMPACT_MODEL,
+    max_summary_tokens: MAX_SUMMARY_TOKENS,
+    build: {
+      usd: snapshot.totalUsd,
+      calls: snapshot.entries.reduce((n, e) => n + e.calls, 0),
+      entries: snapshot.entries,
+      bucket,
+    },
+    summary: running,
+  };
   writeFileSync(path, `${JSON.stringify(artifact, null, 2)}\n`);
+  console.log(
+    `built compaction artifact W=${budgets.window} $${snapshot.totalUsd.toFixed(4)} ` +
+      `(${chunks.length} chunks x ${chunkBudget} tok, ${artifact.build.calls} calls on ${COMPACT_MODEL_OR}, maxSummaryTokens=${MAX_SUMMARY_TOKENS})`,
+  );
   return artifact;
 }
 
@@ -1600,7 +1786,7 @@ function truncateToBudget(text, budget) {
   return text.slice(lo);
 }
 
-async function buildArm(scenario, arm, budgets, provider) {
+async function buildArm(scenario, arm, budgets, artifacts) {
   switch (arm) {
     case 'naive-full': {
       return { system: FLAT_SYSTEM, context: renderNativeTranscript(scenario.trace.all(), scenario.blobs), tools: [] };
@@ -1610,7 +1796,10 @@ async function buildArm(scenario, arm, budgets, provider) {
       return { system: FLAT_SYSTEM, context: tail.text, tools: [], meta: { fromSeq: tail.fromSeq, events: tail.events } };
     }
     case 'compact-rolling': {
-      const artifact = await buildCompactionArtifact(scenario, budgets, provider);
+      if (artifacts.compaction === undefined) {
+        throw new Error('compact-rolling: the step-4 artifact was not built — that is an explicit step in --phase run');
+      }
+      const artifact = artifacts.compaction;
       const tail = buildTruncatedTail(scenario, budgets);
       const context = truncateToBudget(
         `# Rolling summary of the earlier session\n${artifact.summary}\n\n# Verbatim tail\n${tail.text}`,
@@ -1645,7 +1834,7 @@ async function buildArm(scenario, arm, budgets, provider) {
 const SMOKE_QUESTION =
   'Before answering anything else, call context_search once with a query of your choice, then reply with the id of the first result.';
 
-async function runOneReplicate(scenario, built, question, model, provider, budgets) {
+export async function runOneReplicate(scenario, built, question, model, provider, budgets) {
   const messages =
     built.messages !== undefined
       ? [...built.messages, { role: 'user', content: question }]
@@ -1663,6 +1852,12 @@ async function runOneReplicate(scenario, built, question, model, provider, budge
    * already returned — it costs no extra call.
    */
   const turnRecords = [];
+  /** cl100k tokens dropped by the window cap on appended results (0 for most). */
+  let resultTokensTruncated = 0;
+  /** Always exact, even where the token figure had to be a lower bound. */
+  let resultCharsTruncated = 0;
+  let resultsTruncated = 0;
+  let resultTruncationEstimated = 0;
   let annotateRefused = 0;
   let usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
   let finalText = '';
@@ -1709,13 +1904,32 @@ async function runOneReplicate(scenario, built, question, model, provider, budge
         annotateRefused += 1;
         outcome = FROZEN_ANNOTATE_REFUSAL;
       } else {
-        const handler = HANDLERS[call.name];
+        // `built.handlers` defaults to the real MCP table; overridable so the
+        // window-cap path can be driven with a synthetic oversized result.
+        const handler = (built.handlers ?? HANDLERS)[call.name];
         outcome = handler
           ? await handler(built.toolCtx, call.input)
           : { ok: false, error: { code: 'invalid_input', message: `unknown tool: ${call.name}` } };
       }
       const text = toCallToolResult(outcome).content[0]?.text ?? '';
-      messages.push({ role: 'user', content: `[tool_result ${call.name}] ${text}` });
+      // Budget the append against what is actually left in the window.
+      const prefix = `[tool_result ${call.name}] `;
+      const capped = capToolResult({
+        text,
+        prefix,
+        system: built.system,
+        messages,
+        tools: built.tools,
+        window: budgets.window,
+        maxReplyTokens: budgets.maxReplyTokens,
+      });
+      if (capped.droppedChars > 0) {
+        resultsTruncated += 1;
+        resultCharsTruncated += capped.droppedChars;
+        if (capped.truncated === null) resultTruncationEstimated += 1;
+        else resultTokensTruncated += capped.truncated;
+      }
+      messages.push({ role: 'user', content: prefix + capped.text });
     }
   }
   return {
@@ -1727,6 +1941,12 @@ async function runOneReplicate(scenario, built, question, model, provider, budge
     searchQueries,
     fetchedIds,
     annotateRefused,
+    resultTokensTruncated,
+    resultCharsTruncated,
+    resultsTruncated,
+    resultTruncationEstimated,
+    /** What the provider was handed on the LAST turn, in cl100k — the number the 400 was about. */
+    peakRequestTokens: requestTokens({ system: built.system, messages, tools: built.tools }),
     usage,
     /** `RunResult.turns: TurnRecord[]` — same field name, same shape (§15). */
     turns: turnRecords,
@@ -1773,11 +1993,30 @@ async function runArms(scenario, options) {
     retriever,
   };
 
+  // Step 4 is an EXPLICIT step, not a side effect of the first compact-rolling
+  // call: built once, before any answering model is touched, so its cost lands
+  // in its own ledger line and its own console line.
+  const artifacts = {};
+  if (arms.includes('compact-rolling')) {
+    artifacts.compaction = await buildCompactionArtifact(scenario, budgets, meters);
+    // `build: null` is the explicit cost-unattributed marker on an artifact
+    // built before the build had its own ledger; treat it like a missing one.
+    if (artifacts.compaction.build == null) {
+      console.log(
+        `compaction artifact W=${window} loaded from disk with NO build-cost record (cost-unattributed` +
+          `${artifacts.compaction.observed_meter_delta_usd === undefined ? '' : `; observed meter delta $${artifacts.compaction.observed_meter_delta_usd}`})`,
+      );
+    } else {
+      console.log(`compaction artifact W=${window} ready; build $${artifacts.compaction.build.usd.toFixed(4)} (${artifacts.compaction.build.bucket})`);
+    }
+  }
+  const compactionBuildUsd = artifacts.compaction?.build?.usd ?? null;
+
   const rows = [];
   for (const model of models) {
     const provider = providerFor(model, meters);
     for (const arm of arms) {
-      const built = { ...(await buildArm(scenario, arm, budgets, provider)), toolCtx };
+      const built = { ...(await buildArm(scenario, arm, budgets, artifacts)), toolCtx };
       const n = smoke ? SMOKE_N : arm === 'naive-full' ? 1 : questions[0]?.exploratory === true ? SPANNING_REPS : reps;
       for (const question of questions) {
         for (let rep = 1; rep <= n; rep += 1) {
@@ -1787,7 +2026,8 @@ async function runArms(scenario, options) {
             rows.push({ scenario: scenario.id, model, arm, window, question: question.id, stratum: question.stratum, rep, ...r, ...grade });
             console.log(
               `  ${arm}/${model}/${question.id}#${rep}: ${r.status} turns=${r.modelTurns} searched=${r.searched} fetched=${r.fetched} ` +
-                `score=${grade.score ?? '-'} tok=${r.usage.input + r.usage.output} $${meters.get(model).totalUsd().toFixed(4)}`,
+                `score=${grade.score ?? '-'} tok=${r.usage.input + r.usage.output} req=${r.peakRequestTokens} ` +
+                `cut=${r.resultTokensTruncated} $${meters.get(model).totalUsd().toFixed(4)}`,
             );
           } catch (error) {
             if (error instanceof CostCapExceededError) {
@@ -1808,11 +2048,30 @@ async function runArms(scenario, options) {
     }
   }
 
-  const out = join(scenario.artifacts, 'results');
+  // A mocked run must never be mistakable for real data, so it lands in its
+  // own directory rather than beside the results a verdict is computed from.
+  const out = join(scenario.artifacts, process.env.TRANSPLANT_MOCK === '1' ? 'results-mock' : 'results');
   mkdirSync(out, { recursive: true });
   const name = `${smoke ? 'smoke' : 'run'}-W${window}-${arms.join('+')}-${models.map((m) => m.replaceAll('/', '_')).join('+')}.json`;
-  writeFileSync(join(out, name), `${JSON.stringify({ budgets, rows }, null, 2)}\n`);
-  console.log(`\nwrote ${join(out, name)}; spend ${[...meters].map(([m, meter]) => `${m}=$${meter.totalUsd().toFixed(4)}`).join(' ')}`);
+  const truncatedTotal = rows.reduce((n, r) => n + (r.resultTokensTruncated ?? 0), 0);
+  const truncatedRuns = rows.filter((r) => (r.resultsTruncated ?? 0) > 0).length;
+  writeFileSync(
+    join(out, name),
+    `${JSON.stringify({ budgets, compactionBuildUsd, compaction: artifacts.compaction?.build ?? null, rows }, null, 2)}\n`,
+  );
+  console.log(
+    `\nwrote ${join(out, name)}; answering spend ${[...meters]
+      .filter(([bucket]) => !bucket.startsWith('compaction:'))
+      .map(([m, meter]) => `${m}=$${meter.totalUsd().toFixed(4)}`)
+      .join(' ')}` + `; compaction build $${compactionBuildUsd === null ? 'unattributed' : compactionBuildUsd.toFixed(4)}`,
+  );
+  const truncatedChars = rows.reduce((n, r) => n + (r.resultCharsTruncated ?? 0), 0);
+  const estimated = rows.reduce((n, r) => n + (r.resultTruncationEstimated ?? 0), 0);
+  console.log(
+    `window cap: ${truncatedRuns}/${rows.length} run(s) had an appended result truncated, ` +
+      `${truncatedTotal} cl100k token(s) / ${truncatedChars} char(s) dropped in total` +
+      (estimated > 0 ? ` (${estimated} of them pre-cut, so the token figure is a lower bound)` : ''),
+  );
 }
 
 /** Median of a numeric array — the per-turn central line for the charts. */

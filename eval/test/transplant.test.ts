@@ -21,11 +21,15 @@ import {
   answerRegexesFor,
   binomialN,
   ROOT_KEEP_LADDER,
+  capToolResult,
+  requestTokens,
+  runOneReplicate,
   contextGrowthSeries,
   countOccurrences,
   deriveBudgets,
   deriveRootKeep,
   escalationN,
+  exact,
   extractLiterals,
   isContiguousSuffix,
   leakageGate,
@@ -264,6 +268,132 @@ describe('budget derivation (D19)', () => {
     expect(ratioVerdict(1.2).action).toBe('slack-refloored-to-0.15');
     expect(ratioVerdict(1.7).ok).toBe(false);
     expect(ratioVerdict(1.6).ok).toBe(true);
+  });
+});
+
+describe('window cap on appended tool results', () => {
+  const window = 16_384;
+  const maxReplyTokens = 800;
+
+  it('counts the native tool payload, which is not in the system text', () => {
+    const base = { system: 'sys', messages: [{ role: 'user', content: 'hi' }] };
+    const tools = [{ name: 'context_search', description: 'Search branch summaries by meaning. '.repeat(40) }];
+    // The delta is exactly the serialized tool list — the part a count over
+    // system+messages alone cannot see, and the part that made the 16k tree
+    // arm overflow on turn 2.
+    const delta = requestTokens({ ...base, tools }) - requestTokens({ ...base, tools: [] });
+    expect(delta).toBe(exact.count(JSON.stringify(tools)));
+    expect(delta).toBeGreaterThan(200);
+  });
+
+  // A prompt already sized to the window, then a search result on top — the
+  // shape that produced "requested about 17209" on gpt-3.5.
+  const loadedMessages = [{ role: 'user', content: 'x '.repeat(6_000) }];
+  const capIt = (text: string) =>
+    capToolResult({
+      text,
+      prefix: '[tool_result context_search] ',
+      system: 'system contract',
+      messages: loadedMessages,
+      tools: [],
+      window,
+      maxReplyTokens,
+    });
+
+  it('truncates an oversized result to the real headroom and marks it visibly', () => {
+    // Realistic search-result prose at ~3.4 chars/token: over the headroom in
+    // tokens, but under the pre-cut threshold in chars, so it is counted exactly.
+    const capped = capIt('search hit: node n_ABC path src/foo.ts line 42. '.repeat(1_000));
+    expect(capped.truncated).toBeGreaterThan(0);
+    expect(capped.beforeExact).toBe(true);
+    expect(capped.after).toBeLessThanOrEqual(capped.headroom);
+    // Core's elision marker: a model that lost detail can see that it did.
+    expect(capped.text).toMatch(/…|\.\.\.|elided|truncated/i);
+    // And the whole request now fits with the reply reserved.
+    const total = requestTokens({
+      system: 'system contract',
+      messages: [...loadedMessages, { role: 'user', content: `[tool_result context_search] ${capped.text}` }],
+      tools: [],
+    });
+    expect(total + maxReplyTokens).toBeLessThanOrEqual(window);
+  });
+
+  it('reports a lower bound, never a guess, when the payload was pre-cut unread', () => {
+    const capped = capIt('payload '.repeat(20_000));
+    expect(capped.beforeExact).toBe(false);
+    // The token figure would be a fabrication, so it is null...
+    expect(capped.truncated).toBeNull();
+    // ...and the character figure, which is always exact, carries the report.
+    expect(capped.droppedChars).toBeGreaterThan(80_000);
+    expect(capped.after).toBeLessThanOrEqual(capped.headroom);
+  });
+
+  it('leaves a result that already fits completely untouched', () => {
+    const capped = capToolResult({
+      text: 'a short search result',
+      prefix: '[tool_result context_search] ',
+      system: 'sys',
+      messages: [{ role: 'user', content: 'question' }],
+      tools: [],
+      window,
+      maxReplyTokens,
+    });
+    expect(capped.truncated).toBe(0);
+    expect(capped.text).toBe('a short search result');
+  });
+
+  it('drops the result entirely rather than overflowing when there is no headroom left', () => {
+    const capped = capToolResult({
+      text: 'anything',
+      prefix: '[tool_result context_search] ',
+      system: 'x '.repeat(20_000),
+      messages: [],
+      tools: [],
+      window,
+      maxReplyTokens,
+    });
+    expect(capped.headroom).toBeLessThanOrEqual(0);
+    expect(capped.text).toBe('');
+  });
+
+  it('keeps the assembled request under W end-to-end, with a synthetic oversized handler', async () => {
+    // Drives the REAL turn loop: a stub provider that issues one context_search,
+    // and a stub handler returning a payload far larger than the window.
+    const requests: { system: string; messages: { content: string }[]; tools?: unknown[] }[] = [];
+    let turn = 0;
+    const provider = {
+      id: 'stub',
+      async complete(request: { system: string; messages: { content: string }[]; tools?: unknown[]; model: string }) {
+        requests.push(request);
+        turn += 1;
+        const usage = { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 };
+        return turn === 1
+          ? { text: '', model: request.model, usage, toolCalls: [{ id: 'c1', name: 'context_search', input: { query: 'q' } }], stopReason: 'tool_use' }
+          : { text: 'final answer', model: request.model, usage, toolCalls: [], stopReason: 'end_turn' };
+      },
+    };
+    const built = {
+      system: 'system contract',
+      messages: [{ role: 'user', content: 'zone b and c' }],
+      tools: [{ name: 'context_search' }],
+      handlers: { context_search: async () => ({ ok: true, data: { hits: 'H'.repeat(500_000) } }) },
+      toolCtx: {},
+    };
+    const budgets = { window, maxReplyTokens };
+
+    const result = await runOneReplicate(null, built, 'the question', 'stub-model', provider, budgets);
+
+    expect(result.status).toBe('completed');
+    expect(result.resultsTruncated).toBe(1);
+    // 500 KB of a single repeated character: the pathological shape that made
+    // cl100k counting take 84 s before the pre-cut guard. The char figure stays
+    // exact; the token figure is a lower bound and is reported as one.
+    expect(result.resultCharsTruncated).toBeGreaterThan(400_000);
+    expect(result.resultTruncationEstimated).toBe(1);
+    // The turn-2 request — the one that 400'd in the smoke — now fits.
+    expect(requests).toHaveLength(2);
+    expect(requestTokens(requests[1]) + maxReplyTokens).toBeLessThanOrEqual(window);
+    expect(result.peakRequestTokens + maxReplyTokens).toBeLessThanOrEqual(window);
   });
 });
 
