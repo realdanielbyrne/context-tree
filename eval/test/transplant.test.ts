@@ -204,9 +204,21 @@ describe('budget derivation (D19)', () => {
     expect(b.zoneB).toBe(Math.floor((0.2 * 32_768) / 1.2));
   });
 
-  it('caps maxTokens at the design reply size but never above the window 5% share', () => {
-    expect(deriveBudgets(16_384, 0.85).maxReplyTokens).toBe(800);
-    expect(deriveBudgets(4_096, 0.85).maxReplyTokens).toBe(204);
+  it('reserves the window reply share with NO absolute clamp, so a bigger window buys a longer answer', () => {
+    // The reservation is arithmetic on W: it exists so a reply fits beside the
+    // prompt, not to limit what the model may say. A clamp (this was 800) wins
+    // at every window above ~16k and makes the derivation decorative — and on a
+    // model that reasons before answering it is worse than decorative, because
+    // the reasoning is billed as completion tokens and a small budget is spent
+    // thinking, leaving an empty reply that a grader scores as a wrong answer.
+    // So the only property to hold is proportionality to W.
+    expect(deriveBudgets(16_384, 0.85).maxReplyTokens).toBe(Math.floor(0.05 * 16_384));
+    expect(deriveBudgets(4_096, 0.85).maxReplyTokens).toBe(Math.floor(0.05 * 4_096));
+    // Ten times the window, ten times the reply reservation. Under the old
+    // clamp both of these were 800.
+    expect(deriveBudgets(200_000, 0.85).maxReplyTokens).toBe(
+      10 * deriveBudgets(20_000, 0.85).maxReplyTokens,
+    );
   });
 
   it('refuses a non-positive window or ratio rather than emitting a nonsense budget', () => {

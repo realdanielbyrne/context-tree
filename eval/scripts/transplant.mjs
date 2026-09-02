@@ -50,6 +50,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   CostCapExceededError,
+  DEFAULT_EMBED_MODEL,
   ExactTokenizer,
   FsBlobStore,
   HeuristicTokenizer,
@@ -57,16 +58,20 @@ import {
   JsonlTraceLog,
   MeteredProvider,
   ModelCallError,
+  OPENROUTER_BASE_URL,
   OpenRouterProvider,
   TreeRetriever,
   ZoneAssembler,
   addUsage,
   composeRootSummary,
+  createEmbeddingClientFromKeys,
   ingest,
+  loadApiKeys,
   loadConfig,
   loadDotEnv,
   openStore,
   openTaskStore,
+  priceFor,
   renderEvent,
   storePaths,
   systemContract,
@@ -78,6 +83,10 @@ import {
 import { renderSummaryBlock, truncateToTokens } from '../../packages/core/dist/assemble/format.js';
 import { ANNOTATE, CONTEXT_FETCH, CONTEXT_PEEK, CONTEXT_SEARCH, HANDLERS, toCallToolResult } from '@context-tree/mcp';
 import { countTokens } from 'gpt-tokenizer/encoding/cl100k_base';
+// Loop-9b item 2 Step 5: `tree-semantic`'s embedder needs a raw client to wrap
+// with a usage meter (`createEmbeddingClientFromKeys` accepts an injected
+// `client`, same seam `embed-store.mjs` uses) — never printed, never logged.
+import OpenAI from 'openai';
 import { CONTEXT_TOOL_SCHEMAS } from '../dist/tools.js';
 import { exactMatchJudge } from '../dist/scoring.js';
 
@@ -112,7 +121,14 @@ const ROOT_KEEP = 40;
 const REPS = 5;
 const SPANNING_REPS = 3;
 const MAX_TURNS = 6;
-const MAX_REPLY_TOKENS = 800;
+/**
+ * The window share reserved so a reply fits beside the prompt. This is
+ * arithmetic on W, not a limit on the model: `FRACTIONS.reply` of the window,
+ * with NO absolute clamp. The clamp used to be 800, which dominated every
+ * window above 16k and made the derivation decorative — and on a model that
+ * reasons before answering, 800 tokens of budget could be spent thinking, so
+ * the reply came back empty and was graded a wrong answer.
+ */
 const CAP_USD_PER_MODEL = 3.0;
 /** The step-4 compaction build is a THIRD bucket, not part of an answerer's cell. */
 const CAP_USD_COMPACTION = 1.0;
@@ -140,16 +156,33 @@ const POOL_DEPTH = 12;
 /** Paraphrase attempts per literal before the literal itself is discarded. */
 const PARAPHRASE_ATTEMPTS = 2;
 /**
- * How deep in `context_search`'s own ranking a question's source must appear.
- * Set to the handler's result limit (config `retrieval.limit` = 20): g15 is an
- * instrument-validity gate — "the search CAN surface the source in the list the
- * model receives" — not a difficulty dial. Whether the model attends to a
- * rank-12 hit is part of what the experiment measures; a source ABSENT from
- * the list is what makes a question unanswerable-by-retrieval. Ranks are
- * recorded per question so the verdict can correlate rank with score. (Was 3;
- * that bar rejected every real paraphrase while the model itself sees 20.)
+ * How deep in `context_search`'s own ranking a question's source must appear
+ * for the question to count as answerable-by-retrieval.
+ *
+ * DERIVED, not chosen: it is the handler's own result limit, `retrieval.limit`
+ * from the loaded config. That is the list the model actually receives, so it
+ * is the only bound at which "the search CAN surface the source" is a claim
+ * about this experiment rather than about a number someone picked. A tighter
+ * constant (Graft 4 proposed 5) fails 9 of 12 questions while the model would
+ * have seen all of them, so it does not measure answerability — it measures
+ * the constant. A looser one is unreachable.
+ *
+ * The vacuity that graft was aimed at is real but is a REPORTING problem: when
+ * the ranked candidate pool is no larger than the limit, passing proves
+ * nothing. So the gate reports the pool size, marks itself `vacuous` when the
+ * pool does not exceed the limit, and prints the strict top-3 and top-5 counts
+ * as diagnostics. Ranks are recorded per question either way, which is what
+ * the rank-versus-score correlation actually needs.
  */
-const SELF_RETRIEVAL_TOP_K = 20;
+function selfRetrievalTopK(scenario) {
+  const limit = scenario.config?.retrieval?.limit;
+  if (typeof limit !== 'number' || !Number.isFinite(limit) || limit <= 0) {
+    throw new Error(`retrieval.limit must be a positive number to derive the g15 threshold, got ${String(limit)}`);
+  }
+  return limit;
+}
+/** Reported alongside the derived threshold, never used to pass or fail. */
+const SELF_RETRIEVAL_STRICT_KS = Object.freeze([3, 5]);
 /** A literal with less surrounding prose than this cannot be paraphrased into a question. */
 const MIN_CONTEXT_CHARS = 200;
 /** Floors for a usable question — see `questionTextValid`. */
@@ -172,6 +205,13 @@ export const ARM_IDS = Object.freeze([
   'tree-wide',
   'tree-static',
   'memgpt',
+  // Loop-9b item 2 (`eval/plans/loop9b-item2-judge-verdict.md` §4 Step 6). Each
+  // isolates ONE variable against `tree`; none combine this loop. See the
+  // wiring table at `handlersForArm` below.
+  'tree-slice',
+  'tree-thin',
+  'tree-verbatim',
+  'tree-semantic',
 ]);
 
 /** Arms whose MEAN enters the primary verdict. `naive-full` is a precondition. */
@@ -326,10 +366,10 @@ export function deriveBudgets(windowTokens, ratio, options = {}) {
     K: Math.floor((K_FRACTION * windowTokens) / ratio) - reply,
     /**
      * `maxTokens` is a provider-native count, so it is NOT divided by the
-     * ratio — there is nothing to convert. It is the smaller of the design's
-     * 800-token reply and the window's 5% reply share.
+     * ratio — there is nothing to convert. Purely the window's reply share, so
+     * a bigger window buys a longer answer instead of hitting a constant.
      */
-    maxReplyTokens: Math.min(MAX_REPLY_TOKENS, Math.floor(FRACTIONS.reply * windowTokens)),
+    maxReplyTokens: Math.floor(FRACTIONS.reply * windowTokens),
   };
   // D19 extended: `rootKeep` is derived from the window too, not fixed at 40.
   // The predicate is injected and receives the budgets it must fit inside, so
@@ -359,10 +399,26 @@ export const ARM_ROOT_LADDER = Object.freeze({
   tree: ROOT_KEEP_LADDER,
   'tree-static': ROOT_KEEP_LADDER,
   'tree-wide': Object.freeze([...ROOT_KEEP_LADDER].reverse()),
+  // The loop-9b item-2 arms each change ONE thing against `tree`; Zone B
+  // composition is not that thing, so they inherit `tree`'s ladder exactly.
+  // Sharing the ladder is what makes the contrast attributable: a different
+  // rootKeep would move the visible branch set and confound the variable.
+  'tree-slice': ROOT_KEEP_LADDER,
+  'tree-thin': ROOT_KEEP_LADDER,
+  'tree-verbatim': ROOT_KEEP_LADDER,
+  'tree-semantic': ROOT_KEEP_LADDER,
 });
 
 /** Arms whose Zone B is tree-shaped and therefore need a per-arm root pin. */
-export const TREE_ARMS = Object.freeze(['tree', 'tree-wide', 'tree-static']);
+export const TREE_ARMS = Object.freeze([
+  'tree',
+  'tree-wide',
+  'tree-static',
+  'tree-slice',
+  'tree-thin',
+  'tree-verbatim',
+  'tree-semantic',
+]);
 
 export function ladderFor(arm) {
   return ARM_ROOT_LADDER[arm] ?? ROOT_KEEP_LADDER;
@@ -588,6 +644,74 @@ function toolContextFor(scenario) {
       close() {},
     },
     retriever: new TreeRetriever({ store: scenario.store, blobs: scenario.blobs, trace: scenario.trace }),
+  };
+}
+
+/**
+ * Loop-9b item 2 Step 5: `tree-semantic`'s `ToolContext`, over a COPY of the
+ * store with a real embedder wired — the frozen fixture is NEVER opened for
+ * writing (D15/G8's freeze). Mirrors `eval/scripts/embed-store.mjs`'s
+ * copy-then-embed pattern exactly, so the same offline check G6 runs is the
+ * same code path a live `tree-semantic` cell would use.
+ *
+ * Embedding calls are metered locally (calls + reported tokens) rather than
+ * through the answerer `InMemoryCostMeter`s in `meters`, because embeddings
+ * are billed on a different rate table (`priceFor(DEFAULT_EMBED_MODEL)`) and
+ * are not an answering-model spend — the caller folds the dollar figure into
+ * its own cap/report.
+ */
+async function buildSemanticToolCtx(scenario) {
+  const keys = loadApiKeys();
+  const apiKey = keys.openai ?? keys.openrouter;
+  if (apiKey === undefined) {
+    throw new Error('tree-semantic requires OPENAI_API_KEY or OPENROUTER_API_KEY to embed a store copy');
+  }
+  const viaOpenRouter = keys.openai === undefined;
+  const copyRoot = mkdtempSync(join(tmpdir(), 'ct-transplant-semantic-'));
+  const storeCopy = join(copyRoot, 'store');
+  cpSync(scenario.storeRoot, storeCopy, { recursive: true });
+  const paths = storePaths(storeCopy);
+  const trace = new JsonlTraceLog(paths.trace);
+  const blobs = new FsBlobStore(paths.blobs);
+  const store = openStore(paths.db);
+  const usage = { calls: 0, tokens: 0 };
+  const rawClient = new OpenAI({ apiKey, baseURL: viaOpenRouter ? OPENROUTER_BASE_URL : undefined });
+  const meteredClient = {
+    embeddings: {
+      create: async (params) => {
+        const response = await rawClient.embeddings.create(params);
+        usage.calls += 1;
+        usage.tokens += response.usage?.total_tokens ?? 0;
+        return response;
+      },
+    },
+  };
+  const embed = createEmbeddingClientFromKeys({
+    keys,
+    baseURL: viaOpenRouter ? OPENROUTER_BASE_URL : undefined,
+    client: meteredClient,
+  });
+  const retriever = new TreeRetriever({ store, blobs, trace, embed });
+  const embedResult = await retriever.embedSummaries();
+  const price = priceFor(DEFAULT_EMBED_MODEL);
+  const usd = (usage.tokens / 1_000_000) * price.price.input;
+  console.log(
+    `  [tree-semantic] embedded ${embedResult.embedded.length} summary(ies) into a store COPY at ${storeCopy} ` +
+      `(${usage.calls} call(s), ${usage.tokens} token(s), ~$${usd.toFixed(6)} at ${price.matched ?? '(fallback rate)'} pricing)`,
+  );
+  return {
+    toolCtx: {
+      config: scenario.config,
+      handle: { config: scenario.config, paths, trace, blobs, store, close() {} },
+      retriever,
+    },
+    usage,
+    usd,
+    cleanup() {
+      store.close();
+      trace.close();
+      rmSync(copyRoot, { recursive: true, force: true });
+    },
   };
 }
 
@@ -1086,9 +1210,92 @@ const FLAT_SYSTEM = [
   'Reply with your final answer in plain text. If the record does not contain the answer, say so.',
 ].join('\n');
 
-const TREE_SYSTEM = systemContract() + QA_ADDENDUM;
+/**
+ * Loop-9b item 2 Step 4 (Graft 1): which contract text an arm's Zone A
+ * carries. `tree-verbatim`'s ONE variable IS the contract text (v3's rule-2
+ * replacement + narrow-fetch removal); every other tree-family arm gets
+ * `v1`, overridable by `EVAL_CONTRACT_VERSION` so a re-run can pin every
+ * control arm's epoch. `v2` (loop9-item3's Zone-A trim candidate) is never
+ * selected here.
+ */
+export function contractVersionFor(arm) {
+  if (arm === 'tree-verbatim') return 'v3';
+  return process.env.EVAL_CONTRACT_VERSION ?? 'v1';
+}
+
+function treeSystemTextFor(arm) {
+  return systemContract(contractVersionFor(arm)) + QA_ADDENDUM;
+}
+
+/** Default contract text — the module-level constant every gate below assembles against. */
+const TREE_SYSTEM = treeSystemTextFor('tree');
 /** Zone A's schemas as one byte-stable string — the four §9 tools (§9, D5). */
 const TOOL_SCHEMAS_TEXT = JSON.stringify(CONTEXT_TOOL_SCHEMAS);
+
+/**
+ * Loop-9b item 2 Steps 2/3 (R8/R9) made `HANDLERS[CONTEXT_FETCH]`/
+ * `[CONTEXT_SEARCH]` default to the NEW product behavior — `depth: 'full'`,
+ * snippet + pointer-meta search hits — for EVERY caller, including a real MCP
+ * host. That is a real, permanent product change, not an eval-only toggle. So
+ * the `tree`/`tree-wide`/`tree-static` CONTROL arms and `tree-verbatim`
+ * (whose one variable is contract text, not the tool surface) must reproduce
+ * the PRE-change surface, or they would silently absorb Step 2/3's variable
+ * and no arm would isolate it. `tree-slice`/`tree-thin` get the real,
+ * upgraded handlers untouched — that reproduced-legacy surface is what makes
+ * each of them the ONE step-2-or-3 variable against `tree`. `tree-semantic`
+ * also gets the legacy surface (Step 6: "old surface, contract v1"), so its
+ * one variable is purely which retriever answers `search()` — lexical
+ * (no `embed`) for every legacy arm, vector for `tree-semantic` alone (Step 5).
+ *
+ * | Arm            | Variable vs `tree`                          | Surface | Contract |
+ * |----------------|----------------------------------------------|---------|----------|
+ * | `tree`         | control (Step 1 logging only)                 | legacy  | v1       |
+ * | `tree-wide`    | root-fold ladder order (standing R6 ablation) | legacy  | v1       |
+ * | `tree-static`  | no tools at all (Zone A sizing control)       | legacy  | v1       |
+ * | `tree-slice`   | fetch default + addressable unit (Step 2)     | REAL    | v1       |
+ * | `tree-thin`    | search hit is coordinates, not content (Step 3)| REAL   | v1       |
+ * | `tree-verbatim`| Zone A policy text only (Step 4, Graft 1)     | legacy  | v3       |
+ * | `tree-semantic`| search ranks by meaning, not lexical (Step 5) | legacy  | v1       |
+ */
+const LEGACY_SURFACE_ARMS = new Set(['tree', 'tree-wide', 'tree-static', 'tree-verbatim', 'tree-semantic']);
+
+/** The pre-Step-3 hit shape (full `text`, full `meta`), off the SAME ranked hits `contextSearch` used. */
+async function legacySearchHits(ctx, input) {
+  const limit = ctx.config.retrieval.limit;
+  const tree = await ctx.retriever.search(input.query, { kind: input.kind, limit });
+  return tree.hits.map((hit) => ({
+    node_id: hit.nodeId,
+    kind: hit.kind,
+    title: hit.title,
+    phase_type: hit.phaseType,
+    path: hit.path ?? null,
+    summary_version: hit.version,
+    score: hit.score,
+    meta: hit.meta,
+    text: hit.text,
+  }));
+}
+
+/**
+ * Per-arm handler table. `HANDLERS` is `@context-tree/mcp`'s real, shared
+ * table (Steps 2/3 behavior); a legacy-surface arm gets a wrapper that
+ * defaults an omitted `depth` back to `'summary'` and reconstructs a
+ * full-text/full-meta search hit from the SAME `ctx.retriever.search()` call
+ * the real handler already makes — so `tree-semantic`'s wrapped search still
+ * runs the vector path when `ctx.retriever` was built with an `embed`.
+ */
+export function handlersForArm(arm) {
+  if (!LEGACY_SURFACE_ARMS.has(arm)) return HANDLERS;
+  return {
+    ...HANDLERS,
+    [CONTEXT_FETCH]: (ctx, input) => HANDLERS[CONTEXT_FETCH](ctx, { depth: 'summary', ...(input ?? {}) }),
+    [CONTEXT_SEARCH]: async (ctx, input) => {
+      const outcome = await HANDLERS[CONTEXT_SEARCH](ctx, input);
+      if (!outcome.ok) return outcome;
+      return { ok: true, data: { ...outcome.data, hits: await legacySearchHits(ctx, input ?? {}) } };
+    },
+  };
+}
 
 /**
  * `annotate` is in Zone A because the design's Zone-A sizing and Step 5 smoke
@@ -1114,7 +1321,7 @@ const FROZEN_ANNOTATE_REFUSAL = Object.freeze({
  * Split out precisely so the derivation can test the real thing rather than a
  * model of it.
  */
-function assembleTreeAt(scenario, budgets, rootKeep, { withTools, expectedSha }) {
+function assembleTreeAt(scenario, budgets, rootKeep, { withTools, expectedSha, systemText = TREE_SYSTEM }) {
   // Routed through `composeRootAt` so an already-composed root is a no-op
   // rather than another appended version (D3 keeps every one of them).
   composeRootAt(scenario, rootKeep, expectedSha);
@@ -1123,14 +1330,14 @@ function assembleTreeAt(scenario, budgets, rootKeep, { withTools, expectedSha })
     blobs: scenario.blobs,
     trace: scenario.trace,
     tokenizer: heuristic,
-    systemContract: TREE_SYSTEM,
+    systemContract: systemText,
     budgets: { zoneB: budgets.zoneB, zoneC: budgets.zoneC },
   });
   const prompt = assembler.assemble({ toolSchemasText: withTools ? TOOL_SCHEMAS_TEXT : '' });
   return { assembler, prompt };
 }
 
-function buildTreePrompt(scenario, budgets, { withTools }) {
+function buildTreePrompt(scenario, budgets, { withTools, systemText }) {
   if (budgets.rootKeep === null || budgets.rootKeep === undefined) {
     throw new Error(
       `W=${budgets.window}: no rootKeep on the ladder [${ROOT_KEEP_LADDER.join(', ')}] produces a Zone B that fits ` +
@@ -1138,7 +1345,11 @@ function buildTreePrompt(scenario, budgets, { withTools }) {
         'surviving windows and record the reason (do not force the fit)',
     );
   }
-  return assembleTreeAt(scenario, budgets, budgets.rootKeep, { withTools, expectedSha: budgets.rootSummarySha });
+  return assembleTreeAt(scenario, budgets, budgets.rootKeep, {
+    withTools,
+    expectedSha: budgets.rootSummarySha,
+    ...(systemText === undefined ? {} : { systemText }),
+  });
 }
 
 /** truncate-tail: newest L0 events whose cumulative heuristic cost fits K. */
@@ -1177,6 +1388,425 @@ function rederive(scenario) {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+}
+
+// ── loop-9b item 2, Step 7: the G0-G9 gates ──────────────────────────────
+// `eval/plans/loop9b-item2-judge-verdict.md` §4 Step 7. Separate id space
+// from `GATE_IDS` (g1-g15, the standing checklist) — these gate the loop-9b
+// item-2 change set specifically and are additive to it.
+export const G_GATE_IDS = Object.freeze([
+  'G0-no-literal-in-summary',
+  'G1-search-payload-size',
+  'G2-index-read-hermetic',
+  'G3-range-clamping',
+  'G4-meta-parity',
+  'G4b-no-trace-typed-failure',
+  'G5-zone-a-stability',
+  'G6-semantic-rank-offline',
+  'G7-tool-call-logging',
+  'G8-freeze-holds',
+  'G9-visibility-table',
+]);
+
+/** G0 — J1's premise, recomputed each loop: no answer literal/regex in ANY summary version, ever. */
+export function checkG0NoLiteralInSummaries(store, questions, hasSummaries) {
+  if (!hasSummaries) return defer('G0-no-literal-in-summary', 'node_summaries is empty — run after the summarize pass');
+  if (questions === null) return defer('G0-no-literal-in-summary', 'no questions.json — run --phase prep --allow-live');
+  let checked = 0;
+  const hits = [];
+  for (const node of store.nodesInCreationOrder()) {
+    for (const summary of store.summaryVersions(node.id)) {
+      checked += 1;
+      const haystack = `${summary.text}\n${JSON.stringify(summary.meta)}`;
+      for (const q of questions) {
+        for (const literal of q.answer_literals ?? []) {
+          if (haystack.includes(literal)) hits.push(`${q.id}: literal ${JSON.stringify(literal)} in ${node.id}@v${summary.version}`);
+        }
+        for (const re of q.answer_regexes ?? []) {
+          if (new RegExp(re).test(haystack)) hits.push(`${q.id}: regex ${JSON.stringify(re)} in ${node.id}@v${summary.version}`);
+        }
+      }
+    }
+  }
+  return hits.length === 0
+    ? pass(
+        'G0-no-literal-in-summary',
+        `0 hits over ${checked} summary version row(s) x ${questions.length} question(s) — a context_fetch that ` +
+          'returns a summary cannot score on this question set, by construction',
+      )
+    : fail('G0-no-literal-in-summary', hits.slice(0, 10).join('; '));
+}
+
+/** G1 — the context_search payload arithmetic (J4), as a measurement instead of an estimate. */
+async function checkG1SearchPayloadSize(ctx, hasSummaries) {
+  if (!hasSummaries) return defer('G1-search-payload-size', 'node_summaries is empty — nothing for context_search to rank');
+  const outcome = await HANDLERS[CONTEXT_SEARCH](ctx, { query: 'implementation' });
+  if (!outcome.ok) return fail('G1-search-payload-size', `context_search failed: ${outcome.error.message}`);
+  const tokens = exact.count(JSON.stringify(outcome.data));
+  const oversizedSnippets = outcome.data.hits.filter((h) => typeof h.snippet === 'string' && h.snippet.length > 240);
+  const ok = tokens <= 5_000 && oversizedSnippets.length === 0;
+  return (ok ? pass : fail)(
+    'G1-search-payload-size',
+    `${tokens} cl100k tokens over ${outcome.data.hits.length} hit(s) at limit=${ctx.config.retrieval.limit} ` +
+      `(threshold 5000; oversized snippets: ${oversizedSnippets.length}; J4's pre-Step-3 measurement was 9673 tok)`,
+    { tokens },
+  );
+}
+
+/** G2 — `depth:'index'` is deterministic, in-span, capped, and reads zero blob text (D15 hermeticity). */
+function checkG2IndexRead(scenario, hasSummaries) {
+  if (!hasSummaries) return defer('G2-index-read-hermetic', 'node_summaries is empty — nothing summarized to index');
+  const calls = { full: 0, prefix: 0 };
+  const spiedBlobs = {
+    root: scenario.blobs.root,
+    put: (c) => scenario.blobs.put(c),
+    digest: (c) => scenario.blobs.digest(c),
+    pathFor: (r) => scenario.blobs.pathFor(r),
+    has: (r) => scenario.blobs.has(r),
+    size: (r) => scenario.blobs.size(r),
+    get: (r) => {
+      calls.full += 1;
+      return scenario.blobs.get(r);
+    },
+    getText: (r) => {
+      calls.full += 1;
+      return scenario.blobs.getText(r);
+    },
+    getTextPrefix: (r, n) => {
+      calls.prefix += 1;
+      return scenario.blobs.getTextPrefix(r, n);
+    },
+  };
+  const retriever = new TreeRetriever({ store: scenario.store, blobs: spiedBlobs, trace: scenario.trace });
+  const problems = [];
+  let checked = 0;
+  for (const node of scenario.store.nodesInCreationOrder()) {
+    if (node.span_start_seq === null) continue;
+    checked += 1;
+    const first = retriever.fetchBranch(node.id, { depth: 'index' });
+    const second = retriever.fetchBranch(node.id, { depth: 'index' });
+    if (first.text !== second.text) problems.push(`${node.id}: index text differs across two calls`);
+    const rows = first.text.length === 0 ? 0 : first.text.split('\n').length;
+    if (rows > 121) problems.push(`${node.id}: ${rows} rows exceeds the 120-row + elision cap`);
+    const nodeEnd = node.span_end_seq ?? node.span_start_seq;
+    for (const span of first.spans) {
+      if (span.start < node.span_start_seq || span.end > nodeEnd) {
+        problems.push(`${node.id}: index span [${span.start},${span.end}] outside the node's own span`);
+      }
+    }
+  }
+  if (calls.full !== 0 || calls.prefix !== 0) {
+    problems.push(`index read touched blob content: ${calls.full} full + ${calls.prefix} prefix call(s) (must be L0+stat only)`);
+  }
+  return problems.length === 0
+    ? pass('G2-index-read-hermetic', `${checked} node(s): index deterministic, in-span, capped at 120 rows, zero blob-text reads`)
+    : fail('G2-index-read-hermetic', problems.slice(0, 10).join('; '));
+}
+
+/** G3 — from/to clamping: over-wide == no range, disjoint == empty (no throw), and the partition identity. */
+function checkG3RangeClamping(scenario, hasSummaries) {
+  if (!hasSummaries) return defer('G3-range-clamping', 'node_summaries is empty — nothing to clamp a range over');
+  const retriever = new TreeRetriever({ store: scenario.store, blobs: scenario.blobs, trace: scenario.trace });
+  const node = scenario.store
+    .nodesInCreationOrder()
+    .find((n) => n.span_start_seq !== null && (n.span_end_seq ?? n.span_start_seq) > n.span_start_seq + 1);
+  if (node === undefined) return defer('G3-range-clamping', 'no node with a >=3-event span to partition');
+  const start = node.span_start_seq;
+  const end = node.span_end_seq ?? node.span_start_seq;
+  const full = retriever.fetchBranch(node.id, { depth: 'full' });
+  const overWide = retriever.fetchBranch(node.id, { depth: 'full', from: start - 1_000, to: end + 1_000 });
+  const disjointFrom = end + 1_000;
+  const disjoint = retriever.fetchBranch(node.id, { depth: 'full', from: disjointFrom, to: disjointFrom + 5 });
+  const mid = Math.floor((start + end) / 2);
+  const partA = retriever.fetchBranch(node.id, { depth: 'full', to: mid });
+  const partB = retriever.fetchBranch(node.id, { depth: 'full', from: mid + 1 });
+  const joined = [partA.text, partB.text].filter((t) => t.length > 0).join('\n\n');
+
+  const problems = [];
+  if (overWide.text !== full.text) problems.push('an over-wide range differs from no range');
+  if (disjoint.text !== '' || disjoint.spans.length !== 0) problems.push('a disjoint range did not yield empty text/spans');
+  if (joined !== full.text) problems.push('concatenating a partition of the span is not byte-identical to depth:full');
+  return problems.length === 0
+    ? pass(
+        'G3-range-clamping',
+        `node ${node.id} [${start}-${end}]: over-wide==full, disjoint==empty (no throw), ` +
+          `partition [${start}-${mid}]+[${mid + 1}-${end}] concatenates byte-identical to depth:'full'`,
+      )
+    : fail('G3-range-clamping', problems.join('; '));
+}
+
+/** G4 — meta parity across depths (2h's removal of the `meta: null` special case). */
+function checkG4MetaParity(scenario, hasSummaries) {
+  if (!hasSummaries) return defer('G4-meta-parity', 'node_summaries is empty — nothing summarized to compare');
+  const retriever = new TreeRetriever({ store: scenario.store, blobs: scenario.blobs, trace: scenario.trace });
+  const problems = [];
+  let checked = 0;
+  for (const node of scenario.store.nodesInCreationOrder()) {
+    if (scenario.store.currentSummary(node.id) === null) continue;
+    checked += 1;
+    const full = retriever.fetchBranch(node.id, { depth: 'full' });
+    const summary = retriever.fetchBranch(node.id, { depth: 'summary' });
+    if (JSON.stringify(full.meta) !== JSON.stringify(summary.meta)) {
+      problems.push(`${node.id}: fetch(full).meta != fetch(summary).meta`);
+    }
+  }
+  return problems.length === 0
+    ? pass('G4-meta-parity', `${checked} summarized node(s): fetch(depth:'full').meta deep-equals fetch(depth:'summary').meta`)
+    : fail('G4-meta-parity', problems.join('; '));
+}
+
+/** G4b — a trace-less retriever's default (now 'full') fetch is a typed tool failure, not a crash. */
+async function checkG4bNoTraceTypedFailure(ctx) {
+  const node = ctx.handle.store.root();
+  if (node === null) return defer('G4b-no-trace-typed-failure', 'no root node to fetch');
+  const noTraceCtx = { ...ctx, retriever: new TreeRetriever({ store: ctx.handle.store, blobs: ctx.handle.blobs }) };
+  const outcome = await HANDLERS[CONTEXT_FETCH](noTraceCtx, { branch_id: node.id });
+  if (outcome.ok) return fail('G4b-no-trace-typed-failure', 'expected a failure (default depth is full and needs a trace), got success');
+  return outcome.error.code === 'unavailable'
+    ? pass('G4b-no-trace-typed-failure', `typed failure, not a crash: ${outcome.error.code} — "${outcome.error.message.slice(0, 90)}"`)
+    : fail('G4b-no-trace-typed-failure', `expected error code 'unavailable', got '${outcome.error.code}'`);
+}
+
+/** G5 — Zone A refits after Steps 2-4: rootKeep unchanged vs the frozen manifest, g8/g9/g10 PASS, contract v3 has 3 rules. */
+function checkG5ZoneAStability(scenario, table, armTable, results) {
+  const manifest = readManifest(scenario);
+  if (manifest?.root_by_window === undefined) {
+    return defer('G5-zone-a-stability', 'no manifest.root_by_window to compare rootKeep against — run --phase prep first');
+  }
+  const problems = [];
+  for (const w of WINDOWS) {
+    for (const arm of ['tree', 'tree-wide']) {
+      const frozenKeep = manifest.root_by_window[String(w)]?.[arm]?.rootKeep ?? null;
+      const liveKeep = armTable[w]?.[arm]?.rootKeep ?? null;
+      if (frozenKeep !== liveKeep) problems.push(`W=${w}/${arm}: rootKeep ${frozenKeep} -> ${liveKeep} after the schema/contract edits`);
+    }
+    if ((table[w]?.overBudget ?? []).length > 0) problems.push(`W=${w}: overBudget=${table[w].overBudget.join(',')}`);
+  }
+  for (const id of ['g8-over-budget', 'g9-zone-b-nesting', 'g10-prefix-stability']) {
+    const gate = results.find((r) => r.id === id);
+    if (gate?.status !== 'PASS') problems.push(`${id}=${gate?.status ?? 'MISSING'}`);
+  }
+  const v3RuleCount = (systemContract('v3').match(/^\d+\.\s/gm) ?? []).length;
+  if (v3RuleCount !== 3) problems.push(`contract v3 has ${v3RuleCount} numbered rules, expected 3`);
+  const zoneAv1 = heuristic.count(systemContract('v1') + TOOL_SCHEMAS_TEXT);
+  const zoneAv3 = heuristic.count(systemContract('v3') + TOOL_SCHEMAS_TEXT);
+  return problems.length === 0
+    ? pass(
+        'G5-zone-a-stability',
+        `rootKeep unchanged at W=${WINDOWS.join(',')} for tree+tree-wide; g8/g9/g10 PASS; contract v3 has 3 rules; ` +
+          `Zone A heuristic tokens v1=${zoneAv1} v3=${zoneAv3} (never raised to fit the prose)`,
+      )
+    : fail('G5-zone-a-stability', problems.join('; '));
+}
+
+/**
+ * G6 — the semantic question answered offline (Graft 4): embed a COPY of the
+ * frozen store (never the fixture itself — D15/G8), recompute all self-
+ * retrieval ranks on the vector path at `topK = 5`, and compare against the
+ * lexical g15 ranks already computed over the SAME questions. Kill condition
+ * (`JUDGE-VERDICT.md` Graft 4): vector strict-top-5 < 4/12, or vector median
+ * rank >= lexical's median -> `tree-semantic` stays registered but disabled
+ * for the live batch and this offline table is published as the result.
+ * Spends real money (an embeddings call, sub-cent) — the one live call this
+ * pass is permitted to make.
+ */
+async function checkG6SemanticRankOffline(scenario, questions, lexicalRows) {
+  if (questions === null) return defer('G6-semantic-rank-offline', 'no questions.json — run --phase prep --allow-live');
+  const keys = loadApiKeys();
+  if (keys.openai === undefined && keys.openrouter === undefined) {
+    return defer('G6-semantic-rank-offline', 'no OPENAI_API_KEY/OPENROUTER_API_KEY — cannot embed a store copy');
+  }
+  let semantic;
+  try {
+    semantic = await buildSemanticToolCtx(scenario);
+  } catch (error) {
+    return defer('G6-semantic-rank-offline', `embedding a store copy failed: ${error.message}`);
+  }
+  try {
+    const rows = [];
+    for (const q of questions) {
+      const usable = questionTextValid(q.question);
+      rows.push(
+        usable.ok
+          ? { id: q.id, ...(await selfRetrieval(q, semantic.toolCtx, { topK: 999, rootId: scenario.store.root()?.id ?? null })) }
+          : { id: q.id, ok: false, rank: null, ranked: 0 },
+      );
+    }
+    const vectorRanks = rows.map((r) => r.rank).filter((r) => r !== null);
+    const lexicalRanks = (lexicalRows ?? []).map((r) => r.rank).filter((r) => r !== null);
+    const median = (xs) => {
+      if (xs.length === 0) return null;
+      const sorted = [...xs].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+    };
+    const strictTop5 = vectorRanks.filter((r) => r <= 5).length;
+    const vectorMedian = median(vectorRanks);
+    const lexicalMedian = median(lexicalRanks);
+    const killed =
+      strictTop5 < 4 || (vectorMedian !== null && lexicalMedian !== null && vectorMedian >= lexicalMedian);
+    return defer(
+      'G6-semantic-rank-offline',
+      `vector strict-top-5 ${strictTop5}/${rows.length}, vector median rank ${vectorMedian ?? 'n/a'} vs lexical ` +
+        `median rank ${lexicalMedian ?? 'n/a'} — ` +
+        (killed
+          ? 'KILLED: tree-semantic stays disabled for the live batch; this offline rank table is the semantic result'
+          : 'PASSES the kill condition: tree-semantic is eligible for the live batch, still not run here'),
+      { rows, strictTop5, vectorMedian, lexicalMedian, killed },
+    );
+  } finally {
+    semantic.cleanup();
+  }
+}
+
+/**
+ * G7 — the mocked six-turn loop: `call.input` reaches the row verbatim,
+ * `hitIds` is populated per search, `headroom` is recorded per append,
+ * derived `searchQueries`/`fetchedIds` match a replayed fixture, and
+ * `literalInToolResult` splits a `depth:'full'` fetch from a `depth:'summary'`
+ * one of the SAME branch — the assertion that makes the whole mechanism
+ * analysis falsifiable rather than a just-so story.
+ */
+export async function checkG7ToolCallLogging() {
+  const NODE = 'n_g7_probe';
+  const LITERAL = 'sentinel_g7_9182';
+  const budgets = { window: 32_768, maxReplyTokens: 800, zoneC: 4_096 };
+  const built = {
+    system: 'g7 system',
+    messages: [{ role: 'user', content: 'g7 context' }],
+    tools: [{ name: CONTEXT_SEARCH }, { name: CONTEXT_FETCH }],
+    handlers: {
+      [CONTEXT_SEARCH]: async () => ({ ok: true, data: { hits: [{ node_id: NODE }] } }),
+      [CONTEXT_FETCH]: async (_ctx, input) => ({
+        ok: true,
+        data: { text: input.depth === 'full' ? `full detail: ${LITERAL}` : 'a lossy paraphrase, no literal here' },
+      }),
+    },
+    toolCtx: {},
+  };
+
+  let turn = 0;
+  const fullProvider = {
+    id: 'g7-full',
+    async complete(request) {
+      turn += 1;
+      const usage = { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 };
+      if (turn === 1) {
+        return {
+          text: '',
+          model: request.model,
+          usage,
+          toolCalls: [{ id: 'c1', name: CONTEXT_SEARCH, input: { query: 'g7 probe' } }],
+          stopReason: 'tool_use',
+        };
+      }
+      if (turn === 2) {
+        return {
+          text: '',
+          model: request.model,
+          usage,
+          toolCalls: [{ id: 'c2', name: CONTEXT_FETCH, input: { branch_id: NODE, depth: 'full' } }],
+          stopReason: 'tool_use',
+        };
+      }
+      return { text: 'done', model: request.model, usage, toolCalls: [], stopReason: 'end_turn' };
+    },
+  };
+  const r = await runOneReplicate(null, built, 'g7 question', 'g7-model', fullProvider, budgets, [LITERAL]);
+
+  const problems = [];
+  if (r.toolCalls?.length !== 2) problems.push(`expected 2 logged tool calls, got ${r.toolCalls?.length}`);
+  const [c1, c2] = r.toolCalls ?? [];
+  if (c1?.input?.query !== 'g7 probe') problems.push('call.input was not logged verbatim for the search call');
+  if (!Array.isArray(c1?.hitIds) || c1.hitIds[0] !== NODE) problems.push('hitIds was not populated for a search call');
+  if (typeof c1?.headroom !== 'number' || typeof c2?.headroom !== 'number') problems.push('headroom was not recorded per append');
+  if (r.searchQueries.join(',') !== 'g7 probe' || r.fetchedIds.join(',') !== NODE) {
+    problems.push('derived searchQueries/fetchedIds do not match the replayed fixture');
+  }
+  if (r.literalInToolResult !== true) problems.push("literalInToolResult did not flip true on the depth:'full' fetch");
+
+  // The SAME branch, fetched at depth:'summary' only — literalInToolResult must stay false.
+  let turn2 = 0;
+  const summaryOnlyProvider = {
+    id: 'g7-summary',
+    async complete(request) {
+      turn2 += 1;
+      const usage = { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 };
+      if (turn2 === 1) {
+        return {
+          text: '',
+          model: request.model,
+          usage,
+          toolCalls: [{ id: 'c1', name: CONTEXT_FETCH, input: { branch_id: NODE, depth: 'summary' } }],
+          stopReason: 'tool_use',
+        };
+      }
+      return { text: 'done', model: request.model, usage, toolCalls: [], stopReason: 'end_turn' };
+    },
+  };
+  const r2 = await runOneReplicate(null, built, 'g7 question 2', 'g7-model', summaryOnlyProvider, budgets, [LITERAL]);
+  if (r2.literalInToolResult !== false) problems.push('literalInToolResult was true for a depth:"summary"-only fetch of the same branch');
+  if (r.zoneCTokens !== budgets.zoneC) problems.push('zoneCTokens on the row did not carry deriveBudgets\' zoneC');
+
+  return problems.length === 0
+    ? pass(
+        'G7-tool-call-logging',
+        'mocked loop: call.input verbatim, hitIds populated, headroom recorded per append, searchQueries/' +
+          'fetchedIds derived correctly, literalInToolResult splits full-depth from summary-depth fetches',
+      )
+    : fail('G7-tool-call-logging', problems.join('; '));
+}
+
+/** G8 — the freeze holds: this pass writes L3 in a copy only (never the fixture) and never touches nodes/node_summaries. */
+export function checkG8FreezeHolds(results) {
+  const ids = ['g1-trace-sha', 'g5-rebuild-determinism', 'g13-manifest-hashed'];
+  const problems = ids
+    .filter((id) => results.find((r) => r.id === id)?.status !== 'PASS')
+    .map((id) => `${id}=${results.find((r) => r.id === id)?.status ?? 'MISSING'}`);
+  return problems.length === 0
+    ? pass(
+        'G8-freeze-holds',
+        'g1 (trace sha), g5 (L1 rebuild determinism) and g13 (manifest hash) all PASS — nodes/node_summaries ' +
+          'untouched by this pass; G6 never populates L3 outside a store copy',
+      )
+    : defer('G8-freeze-holds', problems.join('; '));
+}
+
+/** G9 — Graft 3's free substitute for the head escalation: is each primary question already visible in Zone B, under tree AND tree-wide? */
+export function checkG9VisibilityTable(scenario, armTable, questions) {
+  if (questions === null) return defer('G9-visibility-table', 'no questions.json — run --phase prep --allow-live');
+  const primary = questions.filter((q) => PRIMARY_STRATA.includes(q.stratum));
+  const rows = primary.map((q) => {
+    const visible = {};
+    for (const w of WINDOWS) {
+      const arms = {};
+      for (const arm of ['tree', 'tree-wide']) {
+        const range = armTable[w]?.[arm]?.branchSeqRange;
+        arms[arm] = range !== null && range !== undefined && q.seq >= range.from && q.seq <= range.to;
+      }
+      visible[w] = arms;
+    }
+    return { id: q.id, stratum: q.stratum, seq: q.seq, visible };
+  });
+  console.log(
+    "\n=== G9 visibility table (Graft 3) — is each primary question's source already visible in Zone B? ===",
+  );
+  console.log(`| question | stratum | seq | ${WINDOWS.flatMap((w) => ['tree', 'tree-wide'].map((a) => `${a}@${w}`)).join(' | ')} |`);
+  for (const row of rows) {
+    console.log(
+      `| ${row.id} | ${row.stratum} | ${row.seq} | ` +
+        WINDOWS.flatMap((w) => ['tree', 'tree-wide'].map((a) => row.visible[w][a])).join(' | ') +
+        ' |',
+    );
+  }
+  // Reported as data, not pass/fail (the spec: "produces a table") — the free
+  // substitute for the pre-registered head escalation between tree/tree-wide.
+  return {
+    id: 'G9-visibility-table',
+    status: 'INFO',
+    detail: `${rows.length} primary question(s) checked under tree + tree-wide at W=${WINDOWS.join(',')}`,
+    rows,
+  };
 }
 
 async function runGates(scenario, options) {
@@ -1552,49 +2182,65 @@ async function runGates(scenario, options) {
   );
 
   // 15 — every question can retrieve its own source (see `selfRetrieval`).
+  // `g15Rows` is kept for G6 below: the lexical-vs-vector rank comparison
+  // reads the SAME questions' lexical ranks computed here.
+  let g15Rows = null;
   if (!existsSync(questionsPath)) {
     results.push(defer('g15-self-retrieval', `no questions.json at ${questionsPath} — run --phase prep --allow-live`));
   } else {
     const questions = JSON.parse(readFileSync(questionsPath, 'utf8')).questions;
     const toolCtx = toolContextFor(scenario);
     const rootId = scenario.store.root()?.id ?? null;
+    const topK = selfRetrievalTopK(scenario);
     const rows = [];
     for (const q of questions) {
       const usable = questionTextValid(q.question);
       rows.push(
         usable.ok
-          ? { id: q.id, ...(await selfRetrieval(q, toolCtx, { rootId })) }
+          ? { id: q.id, ...(await selfRetrieval(q, toolCtx, { rootId, topK })) }
           : { id: q.id, ok: false, rank: null, top: [], reason: `unusable question text (${usable.reason})` },
       );
     }
     const failed = rows.filter((r) => !r.ok);
-    // A threshold at or above the corpus size accepts everything the search
-    // returns, which is the vacuous-pass shape this gate exists to prevent —
-    // so the strict top-3 count is reported ALONGSIDE the configured one and
-    // the detail says plainly when the configured threshold is toothless.
+    // The threshold is the handler's own `retrieval.limit` (see
+    // `selfRetrievalTopK`), so a pass means "the model would have received the
+    // source in its result list". That is a real claim only when the search
+    // ranks MORE candidates than it returns; when it does not, passing is
+    // vacuous and the detail says so instead of implying a finding. The
+    // strict counts below are diagnostics on the same ranks, never a verdict.
     // The denominator is what the search RETURNS, not what the store holds.
     const branchCount = Math.max(0, ...rows.map((r) => r.ranked ?? 0));
-    const strict = rows.filter((r) => r.rank !== null && r.rank <= 3).length;
-    const vacuous = SELF_RETRIEVAL_TOP_K >= branchCount;
+    const strictCounts = SELF_RETRIEVAL_STRICT_KS.map(
+      (k) => `top-${k}: ${rows.filter((r) => r.rank !== null && r.rank <= k).length}/${rows.length}`,
+    );
+    const vacuous = topK >= branchCount;
     const strictNote =
-      ` | strict top-3: ${strict}/${rows.length}` +
+      ` | strict ${strictCounts.join(', ')}` +
       (vacuous
-        ? ` | WARNING: topK=${SELF_RETRIEVAL_TOP_K} >= ${branchCount} results returned, so this threshold accepts every ` +
-          'result the search returns and proves nothing about referent uniqueness'
+        ? ` | WARNING: the derived threshold ${topK} (retrieval.limit) >= ${branchCount} ranked result(s), so every ` +
+          'returned result passes; this gate proves the source is reachable, not that the referent is unique'
         : '');
+    const data = {
+      selfRetrieval: rows,
+      topK,
+      topKSource: 'config retrieval.limit',
+      strict: Object.fromEntries(SELF_RETRIEVAL_STRICT_KS.map((k) => [k, rows.filter((r) => r.rank !== null && r.rank <= k).length])),
+      branchCount,
+      vacuous,
+    };
     results.push(
       failed.length === 0
         ? pass(
             'g15-self-retrieval',
-            `all ${rows.length} question(s) retrieve their own source within top ${SELF_RETRIEVAL_TOP_K} ` +
+            `all ${rows.length} question(s) retrieve their own source within the ${topK} result(s) the model receives ` +
               `(ranks: ${rows.map((r) => r.rank).join(', ')}; task root excluded)${strictNote}`,
-            { selfRetrieval: rows, strictTop3: strict, topK: SELF_RETRIEVAL_TOP_K, branchCount, vacuous },
+            data,
           )
         : fail(
             'g15-self-retrieval',
             `${failed.length}/${rows.length} question(s) cannot retrieve their own source: ` +
               failed.map((r) => `${r.id} (${r.reason})`).join('; ') + strictNote,
-            { selfRetrieval: rows, strictTop3: strict, topK: SELF_RETRIEVAL_TOP_K, branchCount, vacuous },
+            data,
           ),
     );
   }
@@ -1716,7 +2362,7 @@ async function runGates(scenario, options) {
     const b = table[w];
     const allowance = Math.floor(FRACTIONS.zoneA * w);
     const abc = zoneAExact + Math.round((b.zoneB + b.zoneC) * ratio);
-    const spent = abc + MAX_REPLY_TOKENS;
+    const spent = abc + b.maxReplyTokens;
     // Two independent ways a cell dies, and both must be reported or the
     // headline contradicts gate 8: the window can be too small for the zones,
     // OR Zone B can be too small for a root block that is exempt from
@@ -1725,7 +2371,7 @@ async function runGates(scenario, options) {
     const rootFits = b.rootKeep !== null;
     console.log(
       `W=${w}: zoneA ${zoneAExact} <= ${FRACTIONS.zoneA}*W = ${allowance} -> ${zoneAExact <= allowance}; ` +
-        `A+B+C = ${abc} + ${MAX_REPLY_TOKENS} reply = ${spent} <= ${w} -> ${spent <= w} (headroom ${w - spent}); ` +
+        `A+B+C = ${abc} + ${b.maxReplyTokens} reply = ${spent} <= ${w} -> ${spent <= w} (headroom ${w - spent}); ` +
         `rootKeep ${b.rootKeep ?? `NONE (smallest keep leaves ${b.branchesSurviving} branches)`}` +
         `${b.rootKeep === null ? '' : ` (root ${b.rootBlockTokens} tok, ${b.branchesSurviving} branches visible, seq ${b.branchSeqRange?.from}-${b.branchSeqRange?.to})`} ` +
         `=> ${windowFits && rootFits ? 'SURVIVES' : rootFits ? 'DOES NOT FIT (window)' : 'DEAD (root block cannot fit half of Zone B)'}`,
@@ -1769,7 +2415,8 @@ export function isContiguousSuffix(small, large) {
  *
  * So this asks the harness's OWN retrieval — the same `context_search` beam the
  * tree arm calls — to find the question's source from the question text alone.
- * A question whose source is not in the top `SELF_RETRIEVAL_TOP_K` is
+ * A question whose source is not in the top `topK` (the caller derives it
+ * from `retrieval.limit`, the list length the model actually receives) is
  * unanswerable-by-retrieval BY CONSTRUCTION, and no arm result computed from it
  * means anything.
  *
@@ -1779,7 +2426,8 @@ export function isContiguousSuffix(small, large) {
  * budget on a result that cannot be the answer.
  */
 export async function selfRetrieval(question, toolCtx, options = {}) {
-  const { topK = SELF_RETRIEVAL_TOP_K, rootId = null, search = HANDLERS[CONTEXT_SEARCH] } = options;
+  const { topK, rootId = null, search = HANDLERS[CONTEXT_SEARCH] } = options;
+  if (typeof topK !== 'number') throw new Error('selfRetrieval needs an explicit topK — derive it from config retrieval.limit');
   const outcome = await search(toolCtx, { query: question.question });
   if (!outcome.ok) return { ok: false, rank: null, top: [], reason: `context_search failed: ${outcome.error?.message ?? 'unknown'}` };
   const ranked = (outcome.data.candidates ?? [])
@@ -2399,17 +3047,42 @@ async function buildArm(scenario, arm, budgets, artifacts) {
     }
     case 'tree':
     case 'tree-wide':
-    case 'tree-static': {
-      // `tree-wide` differs from `tree` only in the rootKeep already derived
-      // into `budgets` — same assembler, same tools, same everything else.
+    case 'tree-static':
+    case 'tree-slice':
+    case 'tree-thin':
+    case 'tree-verbatim':
+    case 'tree-semantic': {
+      // Every tree-shaped arm assembles the SAME prompt from the SAME store at
+      // the SAME rootKeep. What differs is exactly one of three things, and the
+      // wiring table at `handlersForArm` says which per arm:
+      //   - the tool surface behind the handlers (`handlersForArm`)
+      //   - the Zone A contract text (`treeSystemTextFor`)
+      //   - the retriever's ranking, i.e. whether L3 vectors exist (`toolCtx`)
+      // `tree-wide` still differs only in the rootKeep already derived into
+      // `budgets`; `tree-static` still differs only in withholding the tools.
       const withTools = arm !== 'tree-static';
-      const { assembler, prompt } = buildTreePrompt(scenario, budgets, { withTools });
+      const systemText = treeSystemTextFor(arm);
+      const { assembler, prompt } = buildTreePrompt(scenario, budgets, { withTools, systemText });
+      const semantic = arm === 'tree-semantic' ? await buildSemanticToolCtx(scenario) : undefined;
       return {
         system: prompt.system,
         messages: toMessages(prompt),
         tools: withTools ? CONTEXT_TOOL_SCHEMAS : [],
         assembler,
-        meta: { zoneB: prompt.budgets.zoneB, zoneC: prompt.budgets.zoneC, overBudget: prompt.budgets.overBudget },
+        handlers: handlersForArm(arm),
+        // Overrides the caller's frozen-store context for this arm only; the
+        // copy it points at carries L3, so `context_search` takes the vector
+        // path (`retriever.ts`: an embedder plus a populated index replaces the
+        // lexical beam). Every other arm keeps the lexical ranking.
+        ...(semantic === undefined ? {} : { toolCtx: semantic.toolCtx, semantic }),
+        meta: {
+          zoneB: prompt.budgets.zoneB,
+          zoneC: prompt.budgets.zoneC,
+          overBudget: prompt.budgets.overBudget,
+          contractVersion: contractVersionFor(arm),
+          legacySurface: LEGACY_SURFACE_ARMS.has(arm),
+          ...(semantic === undefined ? {} : { embedUsd: semantic.usd, embedCalls: semantic.usage.calls, embedTokens: semantic.usage.tokens }),
+        },
       };
     }
     case 'memgpt':
@@ -2649,7 +3322,9 @@ async function runArms(scenario, options) {
             `(seq ${armBudgets.branchSeqRange?.from ?? '-'}-${armBudgets.branchSeqRange?.to ?? '-'})`,
         );
       }
-      const built = { ...(await buildArm(scenario, arm, armBudgets, artifacts)), toolCtx };
+      // `toolCtx` first so an arm that builds its OWN context (tree-semantic,
+      // whose store copy carries L3) overrides it rather than being clobbered.
+      const built = { toolCtx, ...(await buildArm(scenario, arm, armBudgets, artifacts)) };
       const n = smoke ? SMOKE_N : questions[0]?.exploratory === true ? SPANNING_REPS : reps;
       // `naive-full` is a PRECONDITION, not a scored arm: it exists to log one
       // HTTP 400 per model as context-death evidence. Asking it all 12
@@ -2674,7 +3349,25 @@ async function runArms(scenario, options) {
                 console.log(`  ${arm}/${model}/${question.id}#${rep}: ${kind.status}, retrying once`);
               }
             }
-            const grade = smoke || question.answer_literals.length === 0 ? { score: null, success: null } : gradeAnswer(r.finalText, question);
+            // A run the HARNESS stopped has no answer to grade. `runOneReplicate`
+            // returns `status: 'turn_cap'` with `finalText: ''` when the model
+            // was still calling tools at MAX_TURNS, and grading '' scores it 0
+            // — a wrong answer the model never gave, which then enters the
+            // arm's MEAN. Measured in the committed W=32768 fixtures: 7 of 60
+            // tree-wide rows and 2 of 157 primary tree rows, one of them on the
+            // tail stratum that feeds the pre-registered regression check.
+            // `cost_cap` rows in this same loop already push `score: null`; this
+            // is that rule applied to the other harness-imposed stop, and it is
+            // the same correction `eval/src/loop.ts` took on 2026-09-02.
+            //
+            // Unlike the live suite there is no filesystem to inspect here: the
+            // grader matches the model's final text, so a stopped run cannot
+            // have passed. `null` is the only honest value, never `0`.
+            const gradable = r.status !== 'turn_cap' && r.status !== 'time_cap';
+            const grade =
+              smoke || question.answer_literals.length === 0 || !gradable
+                ? { score: null, success: null }
+                : gradeAnswer(r.finalText, question);
             rows.push({ scenario: scenario.id, model, arm, window, question: question.id, stratum: question.stratum, rep, ...r, ...grade });
             console.log(
               `  ${arm}/${model}/${question.id}#${rep}: ${r.status} turns=${r.modelTurns} searched=${r.searched} fetched=${r.fetched} ` +
@@ -2715,6 +3408,10 @@ async function runArms(scenario, options) {
           if (total > CAP_USD_TOTAL) throw new Error(`total spend $${total.toFixed(2)} exceeded the $${CAP_USD_TOTAL} cap`);
         }
       }
+      // The semantic arm embedded a COPY of the store into a temp directory;
+      // release it once its cell is done rather than leaving one per (model,
+      // arm) behind for the run.
+      built.semantic?.cleanup();
     }
   }
 

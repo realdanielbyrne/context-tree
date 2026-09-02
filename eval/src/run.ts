@@ -51,13 +51,18 @@ program
   .option('--root-model <id>', 'context-tree root summarizer model', 'claude-sonnet-5')
   .option('--judge-model <id>', 'LLM judge model', 'claude-opus-5')
   .option('--provider <name>', 'model provider: anthropic | openrouter', 'anthropic')
-  .option('--max-turns <n>', 'per-run turn cap', '40')
+  // No default. A duration limit cannot be set from the task: you do not know
+  // how long real work takes by looking at it, and a run stopped by a counter
+  // is recorded as a failure it did not commit. Spend is the real resource, so
+  // --cost-cap-usd is the ceiling; a stalled run ends on non-progress, not on a
+  // count. Pass --max-turns only to bound a deliberate probe.
+  .option('--max-turns <n>', 'optional turn ceiling for a deliberate probe (default: unbounded)')
   .option(
     '--temperature <t>',
     'pinned sampling temperature for agent + summarizer calls (unset = provider default). ' +
       'NOTE: the Claude 5 API rejects this param ("deprecated for this model") — usable only with models/providers that still accept it',
   )
-  .option('--time-cap-ms <n>', 'per-run wall-clock cap in ms', '900000')
+  .option('--time-cap-ms <n>', 'optional wall-clock ceiling in ms (default: unbounded)')
   .option('--zone-b-budget <n>', 'context-tree Zone B token budget (shrink for small-window models)', '8000')
   .option('--zone-c-budget <n>', 'context-tree Zone C token budget (shrink for small-window models)', '30000')
   .option('--cost-cap-usd <n>', 'per-run spend cap in USD')
@@ -99,8 +104,8 @@ program
       rootModel: opts.rootModel,
       judgeModel: opts.judgeModel,
       provider,
-      maxTurns: parsePositiveInt(opts.maxTurns),
-      timeCapMs: parsePositiveInt(opts.timeCapMs),
+      maxTurns: opts.maxTurns === undefined ? Number.POSITIVE_INFINITY : parsePositiveInt(opts.maxTurns),
+      timeCapMs: opts.timeCapMs === undefined ? Number.POSITIVE_INFINITY : parsePositiveInt(opts.timeCapMs),
       costCapUsd: opts.costCapUsd === undefined ? null : Number(opts.costCapUsd),
       budgets: { zoneB: parsePositiveInt(opts.zoneBBudget), zoneC: parsePositiveInt(opts.zoneCBudget) },
       keepSandbox: opts.keepSandbox === true,

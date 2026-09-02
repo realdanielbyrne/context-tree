@@ -1,0 +1,753 @@
+<title>Context-Tree Loop 9 Checkpoint</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#FBFBF9; --surface:#FFFFFF; --ink:#1C1E21; --muted:#5C6167;
+  --line:#DFE1E4; --accent:#0E6B54; --warm:#A64F2A; --cool:#2F4E8F; --plum:#6B3F86;
+  --code-bg:#F1F2F0;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#16181B; --surface:#1D2024; --ink:#E7E9EB; --muted:#9BA1A8;
+    --line:#33373C; --accent:#46B090; --warm:#D68A62; --cool:#8FB0E8; --plum:#B790D2;
+    --code-bg:#25282D;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#16181B; --surface:#1D2024; --ink:#E7E9EB; --muted:#9BA1A8;
+  --line:#33373C; --accent:#46B090; --warm:#D68A62; --cool:#8FB0E8; --plum:#B790D2;
+  --code-bg:#25282D;
+}
+body{background:var(--ground); color:var(--ink);
+  font:17px/1.65 "Source Serif 4",Georgia,serif; margin:0;}
+main{max-width:760px; margin:0 auto; padding:56px 24px 80px;}
+h1{font-size:1.9rem; font-weight:700; line-height:1.2; margin:0 0 6px; text-wrap:balance;}
+h2{font-size:1.2rem; font-weight:700; margin:40px 0 10px;}
+h3{font-size:1.02rem; font-weight:700; margin:26px 0 6px;}
+.meta{color:var(--muted); font-size:.92rem; margin-bottom:34px;}
+.abstract{margin:0 0 6px; padding:0 0 22px; border-bottom:1px solid var(--line);}
+.abstract h2{margin:0 0 8px; font-size:1.05rem;}
+p{margin:0 0 14px; max-width:70ch;}
+.note{font-size:.92rem; color:var(--muted); border:1px solid var(--line); border-radius:6px;
+  padding:10px 14px; max-width:72ch;}
+.pending{border:1px dashed var(--warm); border-radius:6px; padding:14px 16px; margin:16px 0;
+  background:var(--surface); max-width:72ch;}
+.pending h3{margin-top:0; color:var(--warm);}
+.example{background:var(--code-bg); border-radius:6px; padding:12px 16px;
+  font-family:"IBM Plex Mono",monospace; font-size:.78rem; line-height:1.55;
+  overflow-x:auto; white-space:pre; margin:0 0 14px;}
+.tablewrap{overflow-x:auto; background:var(--surface); border:1px solid var(--line);
+  border-radius:6px; margin:14px 0 6px;}
+table{border-collapse:collapse; width:100%; font-size:.85rem;}
+th{font-size:.72rem; letter-spacing:.04em; text-transform:uppercase; color:var(--muted);
+  text-align:right; padding:9px 13px; border-bottom:1px solid var(--line); white-space:nowrap;
+  font-family:"IBM Plex Mono",monospace; font-weight:500;}
+th:first-child, td:first-child{text-align:left;}
+td{padding:7px 13px; border-bottom:1px solid var(--line);
+  font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums;
+  font-size:.84rem; text-align:right; white-space:nowrap;}
+td:first-child{font-family:"Source Serif 4",Georgia,serif; font-size:.9rem; white-space:normal;}
+tr:last-child td{border-bottom:none;}
+.tcap{font-size:.85rem; color:var(--muted); margin:6px 2px 18px; max-width:72ch;}
+.tcap b{color:var(--ink);}
+figure{background:var(--surface); border:1px solid var(--line); border-radius:6px;
+  padding:18px 14px 6px; margin:16px 0 6px;}
+figcaption{font-size:.85rem; color:var(--muted); padding:8px 8px 10px; max-width:72ch; line-height:1.5;}
+figcaption b{color:var(--ink);}
+.chartwrap{overflow-x:auto;}
+.chartwrap > div{min-width:620px;}
+code{font-family:"IBM Plex Mono",monospace; font-size:.82em; background:var(--code-bg);
+  padding:1px 5px; border-radius:4px;}
+footer{margin-top:48px; padding-top:14px; border-top:1px solid var(--line);
+  color:var(--muted); font-size:.82rem; line-height:1.5;}
+svg{display:block; width:100%; height:auto;}
+svg text{font-family:"IBM Plex Mono",monospace; font-size:11px; fill:var(--muted);
+  font-variant-numeric:tabular-nums;}
+svg .serieslabel{font-size:12px; font-weight:600;}
+svg .vlabel{font-size:10.5px;}
+ol{max-width:70ch; padding-left:1.4em;}
+li{margin-bottom:10px;}
+</style>
+<main>
+<h1>Loop 9 checkpoint: an instrument, a corrected gate, and a corrected number</h1>
+<div class="meta">Context-tree evaluation program, loop 9 (checkpoint) · September 2, 2026 · code at commit <code>a6f85ca</code></div>
+
+<p class="note"><em>Status.</em> This is the checkpoint report for loop 9. Items 1 and 3 are complete and final. Item 2's design pass, instrument-hardening and offline gates are complete; its live scoring batch was launched after this report was written, so §5 carries one explicitly marked placeholder and nothing else in the document depends on that batch's outcome. Loop 8's interim report [1] introduced the evaluation method, the transcript baseline, the six software tasks and the v6.x configuration this loop starts from; the supplementary note [2] introduced the per-turn context charts. The algorithm as it currently runs — twelve lines of pseudo-code, a simplicity audit and a configuration-parameter register — is stated in one place, <code>reports/algorithm.md</code> [3], and reproduced verbatim in Appendix A.</p>
+
+<div class="abstract">
+<h2>Abstract</h2>
+<p>Context-tree reorganizes an agent's linear conversation into a summary-headed tree so that the prompt carries a short summary per completed phase of work instead of the raw history, with tools to fetch any detail back on demand. Loop 9 ran three items and stopped. Item 1 replaced the switch that decides when to start summarizing — it estimated trace size as characters divided by four and never fired — with the provider's own token count of the previous turn, and made the crossing one-way after an unlatched version oscillated across the threshold twice in one run; the gate now fires on 6 of 6 live runs and per-turn growth behind it falls from 2,046–4,928 to 256–915 tokens per turn, below the transcript baseline's own 812–2,094, but final-turn context stays 1.13–1.27× the baseline and total tokens rise 48–77%, because a 30,000-token absolute switch forces a transition a 200,000-token model does not need. Item 3 re-measured the published 3.4× token gap on sw-3-refactor within one epoch at n=5 and found 1.71× with equal median turns; both candidate deletions measured null, and the batching-density mechanism was refuted (p = 0.81). Item 2 built a cross-model transplant instrument — one frozen 754-event trace, 15 offline gates, five hardening rounds — and its recorded runs attribute the tree's zero on late-trace questions to a tool-use policy, not a resource limit: no fetch was ever truncated, and 53.6% of failures never issued a targeted fetch at all. The main limitation is that no arm of that instrument has yet been scored under the corrected design.</p>
+</div>
+
+<h2>1&ensp;What loop 9 set out to do</h2>
+
+<p>Loop 8 closed with six recommendations [1, §5]. Loop 9's scope, set by the owner, took three of them and stopped: <b>item 1</b>, measure the summarization threshold with real tokens instead of a character estimate; <b>item 2</b>, build the cross-model transplant test, which asks whether a tree built from a large model's conversation lets a small-window model answer questions about that conversation; <b>item 3</b>, close the short-task token gap on sw-3-refactor. Then checkpoint. This report is that checkpoint.</p>
+
+<p>Some terms first, each used throughout. An <b>arm</b> is one way of building the prompt, held against the same task and the same model. The <b>native transcript</b> baseline (<code>native</code> in the live harness) is the default behaviour of agent harnesses: the prompt holds the whole conversation, re-sent every turn. <b>Context-tree</b> is the candidate. A <b>branch</b> (a <em>phase</em> in the prose of earlier reports) is context-tree's unit of organization — a contiguous stretch of work on one sub-problem, which receives a short summary once it closes. The prompt has three fixed sections, called <b>Zone A</b> (the frozen system contract plus the tool schemas), <b>Zone B</b> (the root summary and the branch summaries, always in creation order) and <b>Zone C</b> (the active branch's raw detail); tool results append after Zone C so the cached prefix is never disturbed. Storage is layered: <b>L0</b> is the append-only event log, <b>L1</b> the SQLite tree of nodes and versioned summaries, <b>L2</b> the content-addressed blob store, <b>L3</b> the vector index. A <b>turn</b> is one model call. <b>Context size per turn</b> is what the model saw on that call — fresh input plus cache reads plus cache writes, as the provider reports them.</p>
+
+<p>Two measurement conventions hold everywhere below, and they are the reason several published numbers move in this report. Effort is reported as <b>medians</b> of tokens and turns; accuracy is reported as the <b>mean</b> of a 0/1 graded score, alongside the raw success count. And a comparison is only made <b>within one epoch</b> — one batch, one day, arms interleaved — because the alternative produced a headline that was wrong by a factor of two (§4).</p>
+
+<h2>2&ensp;The transplant test as an instrument</h2>
+
+<h3>2.1&ensp;What it measures</h3>
+
+<p>The <b>transplant test</b> takes one real, finished conversation from a large model, freezes it, reorganizes it once into a tree, and then hands that tree to a <em>different, much smaller</em> model together with a question whose answer lies somewhere in the original conversation. It is the only experiment in the program that separates the organization of context from the model that produced it. Nothing is re-ingested or re-summarized after the freeze, for any arm, at any window.</p>
+
+<p>The substrate is one Claude Code transcript of 4,663,077 bytes (<code>sha256 e1b289c3…</code>), imported to 754 L0 events, 46 L1 nodes (one task, 21 branches, 24 file nodes), 22 summaries and 697 L2 blobs. Counted with a real byte-pair tokenizer rather than a character estimate, the whole transcript is 196,385 tokens — 11.99 times a 16,384-token window and 5.99 times a 32,768-token one. That is the precondition of the whole test: the answers provably lie outside both windows.</p>
+
+<p>Five arms were scored or run. <code>naive-full</code> sends the whole transcript and is a <b>precondition, not a result</b>: it is expected to fail, and it did, on all 12 attempts per model — the qwen provider replied <code>400 … maximum context length is 32768 tokens. However, you requested about 171471 tokens</code>. <code>truncate-tail</code> keeps the newest messages that fit and summarizes nothing. <code>compact-rolling</code> is the honest competitor, and the only arm anywhere in this program pinned to the candidate on three axes at once — same summarizing model, same 1,024-token output cap, same total prompt budget; it is what production harnesses actually do. <code>tree</code> is context-tree. <code>tree-wide</code> is context-tree with the root-keep ladder walked from the smallest rung up, trading a smaller root block for more visible branch summaries.</p>
+
+<p>Questions are stratified by where the answer sits. <b>head</b> means early in the trace, <b>tail</b> means late, <b>deep</b> means the answer literal appears in <em>no</em> stored summary and so forces a search-then-fetch hop into raw L0, and <b>spanning</b> means it crosses branches. Three questions per stratum. Each answer is a literal string that occurs exactly once in L0; grading is an exact regex match with no model call, so the grader and the question-writer are never the same mechanism.</p>
+
+<p>Budgets are derived from the target window rather than hand-tuned. The fractions are response .05, Zone A .10, Zone B .20, Zone C .20, lazy .35, slack .10, each divided by the measured heuristic-to-BPE ratio of 0.850897 (itself measured as 207,395 ÷ 243,737 tokens over all 697 blobs). At W = 32,768 that gives Zone B 7,701 tokens and Zone C 7,701; at W = 16,384, 3,850 each. Fifteen offline gates (<code>g1</code>–<code>g15</code>) must pass before any answering token is bought: trace hash, hermetic import, meta-line skipping, an empty unmapped-tool list, L1 rebuild determinism, the native-exceeds-window precondition, the BPE ratio, an empty over-budget list at every window, Zone B nesting across windows, prefix stability across assemblies, literal uniqueness, the leakage gate, the manifest hash, the cost-cap plumbing, and self-retrieval.</p>
+
+<h3>2.2&ensp;The five hardening rounds</h3>
+
+<p>The instrument did not work on the first attempt, or the second. Five defects were found and fixed, each of which would have produced a publishable-looking number that meant nothing. They are the methods contribution of this loop, and they are listed here because each one is a trap any similar experiment can fall into.</p>
+
+<p><b>Empty questions.</b> The first frozen question set carried a source literal and a stratum for all twelve rows and an empty question string for all twelve. Nothing downstream noticed: the arms assembled, the model answered, the grader scored. The fix is a floor and a gate — a question must be at least 20 characters and 4 words (<code>questionTextValid</code>), and <code>g12</code> now asserts all twelve are non-trivial before any batch runs.</p>
+
+<p><b>Underdetermined referents.</b> A literal can be unique as a <em>string</em> in the log and still not identify anything. <em>"How many characters were omitted from the excerpt when it was truncated for length?"</em> has the string-unique answer <code>2650</code> and hundreds of equally valid referents in a trace full of truncations; qwen found a different truncation, reasoned correctly about it, and scored zero. Two changes followed. The paraphraser's context window was widened from 200 to 750 characters, because a 200-character window gives it no neighbouring detail to name; and a new gate, <code>g15</code>, asks the harness's <em>own</em> <code>context_search</code> to find a question's source from the question text alone, so that a question whose source is unreachable by retrieval is rejected by construction rather than scored as a model failure. A second half of <code>g11</code> was added for the same reason: one literal, one question. Without it, <code>s1-q01-head</code> and <code>s1-q07-deep</code> were asking about the same file path, because <code>deep</code> is drawn from a subset of <code>head</code>.</p>
+
+<p><b>A provider bug that ate 23% of the first scored batch.</b> <code>fromOpenRouterResponse</code> indexed <code>response.choices[0]</code> directly. An error body has no <code>choices</code> key at all, so indexing it threw before the guard below could name the real problem, and the run was recorded as an infrastructure failure of unknown cause. The one-character fix is <code>response.choices?.[0]</code>. It cost 14 of 60 runs in the first scored transplant batch. The residue is still visible in the recorded data: 21 of 135 sampled rows (15.6%) are provider failures, and one cell — <code>tree</code> on the <code>spanning</code> stratum at qwen/32k — lost 10 of its 15 replicates, which is why no conclusion is drawn from <code>spanning</code> anywhere in this report.</p>
+
+<p><b>A self-retrieval gate that could not fail.</b> <code>g15</code> was written with <code>SELF_RETRIEVAL_TOP_K = 20</code>, and the lexical beam returns 19 candidates. A threshold at or above the size of the returned list accepts every result the search can produce and proves nothing. The gate reports its own vacuity — <code>gates.json</code> carries <code>"vacuous": true</code> and the detail string says so in words — which is the only reason it was caught. The replacement, not yet in force, is a strict top-5 threshold; the diagnostic value already extracted from it is the per-question rank table of §2.4.</p>
+
+<p><b>Question paraphrase, and one discarded artifact.</b> Questions are written by a third model family that sees only the raw L0 span and never the node id, the branch id, or which tool would surface it, and they are rejected if they share a 3-gram with the source branch's stored summary after the answer literal itself is removed from the comparison — the carve-out matters, because a question that must contain its own answer token would otherwise always be rejected. Two attempts per literal, then the literal is discarded rather than the question weakened. In the same spirit, the first W = 16,384 compaction artifact was thrown away and rebuilt: its rolling summary had collapsed to a 169-character conversational fragment, because the build loop accepted the model's raw reply as the running summary and every later chunk compounded it. Scoring against that artifact would have handed the tree a free win. The discarded build is recorded as spent-and-discarded, not quietly absorbed.</p>
+
+<h3>2.3&ensp;What the recorded runs show</h3>
+
+<p>Figure 1 and Table 1 give the scored cells as they stand. They are reported here as the instrument's first output and the design's starting point, not as a verdict: the arms in flight (§5) each change one thing about the tree that these numbers implicate.</p>
+
+<figure>
+<div class="chartwrap"><div id="fig1a"></div></div>
+<div class="chartwrap"><div id="fig1b"></div></div>
+<figcaption><b>Figure 1.</b> Mean graded score per arm and stratum on the frozen transplant scenario, both cells. The score is the mean of a 0/1 exact-match grade over the valid replicates in that cell; a bar of zero length is a mean of 0.000, and the count beside each bar is the number of replicates that returned an answer at all. Brown is the two baselines, green is context-tree, purple is the context-tree variant that trades root headlines for visible branch summaries. <b>(a)</b> qwen-2.5-72b-instruct at a 32,768-token window, the anchor cell. Context-tree is the only arm that scores anything on <code>head</code> — questions whose source lies outside the range the prompt renders inline — and it is the only arm that scores nothing on <code>tail</code>, where both baselines still hold the raw text. <b>(b)</b> gpt-3.5-turbo at a 16,384-token window, where every cell is 0.000 except the two baselines on <code>tail</code>. No arm scores on <code>deep</code> at either window.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+<thead><tr><th>cell · arm</th><th>head</th><th>tail</th><th>deep</th><th>valid / attempted</th></tr></thead>
+<tbody>
+<tr><td>qwen @ 32,768 — truncate-tail (baseline)</td><td>0.000</td><td>0.200</td><td>0.000</td><td>44 / 45</td></tr>
+<tr><td>qwen @ 32,768 — compact-rolling (baseline)</td><td>0.000</td><td>0.333</td><td>0.000</td><td>45 / 45</td></tr>
+<tr><td>qwen @ 32,768 — tree</td><td>0.091</td><td>0.000</td><td>0.000</td><td>35 / 45</td></tr>
+<tr><td>qwen @ 32,768 — tree-wide</td><td>0.273</td><td>0.000</td><td>0.000</td><td>34 / 45</td></tr>
+<tr><td>gpt-3.5 @ 16,384 — truncate-tail (baseline)</td><td>0.000</td><td>0.333</td><td>0.000</td><td>45 / 45</td></tr>
+<tr><td>gpt-3.5 @ 16,384 — compact-rolling (baseline)</td><td>0.000</td><td>0.333</td><td>0.000</td><td>45 / 45</td></tr>
+<tr><td>gpt-3.5 @ 16,384 — tree</td><td>0.000</td><td>0.000</td><td>0.000</td><td>45 / 45</td></tr>
+</tbody></table></div>
+<p class="tcap"><b>Table 1.</b> Mean graded score by arm, stratum and cell, over the three primary strata (three questions each, five replicates each, so 15 attempts per cell). <b>valid / attempted</b> counts replicates that returned an answer against replicates launched; the shortfall is entirely provider failures, concentrated in the qwen tree arms. The <code>spanning</code> stratum is omitted from every row: its <code>tree</code> cell lost 10 of 15 replicates and no conclusion from it survives. <code>naive-full</code> is not shown because it is a precondition rather than a scored arm — 12 of 12 attempts per model were rejected for exceeding the window.</p>
+
+<p>Four things in these runs can be attributed to a mechanism, and are the reason the design pass of §5 exists.</p>
+
+<p><b>The model searched and then stopped.</b> Classifying all 135 sampled rows, 47 (34.8% of rows, 42.7% of the 110 non-infrastructure failures) issued a <code>context_search</code> and never followed it with a <code>context_fetch</code>; a further 12 never called a tool at all. Together that is 43.7% of rows and 53.6% of failures. It is worst exactly where the prompt already shows something plausible: 52% of <code>tail</code> failures searched and stopped, against 41% on <code>head</code> and 19% on <code>deep</code>. The structural explanation is clean. At W = 32,768 the root-keep ladder picks a keep of 16, leaving room for two branch summaries covering L0 sequence 639–754; all three <code>tail</code> sources sit inside that range and all three <code>head</code> sources sit outside it. On <code>tail</code>, a compressed one-paragraph summary of the right branch is already in the prompt, unrequested, and a model that trusts what it can see has no reason to reach for a tool — while the baselines hold the same range as raw, uncompressed text.</p>
+
+<p><b>No fetch was ever truncated.</b> In the entire 110-row failure sample there is not one case of a correctly-targeted <code>context_fetch</code> being cut off — zero. Six rows fetched the right branch, suffered no truncation, and still scored zero. This matters because it removes the most obvious resource explanation: the tool was not running out of room to answer with.</p>
+
+<p><b>The harness never logged how deep the model fetched.</b> <code>context_fetch</code> takes an optional <code>depth</code> argument that defaults to a summary, and an optional <code>file</code> argument, and the harness recorded neither — only the query text and the branch id. So for those six rows it is not mechanically decidable whether the tool handed back a paraphrase that could not contain the literal, or handed back the verbatim text and the model failed to extract it. That ambiguity is precisely what separates a surface defect from a competence limit, and the recorded dataset cannot settle it. Logging <code>call.input</code> verbatim is the single highest-leverage free fix in the instrument, and it is the first step of the design in flight.</p>
+
+<p><b>The search payload overflowed the small window.</b> A <code>context_search</code> result carries each hit's <em>entire</em> untruncated summary text, plus a duplicate 240-character snippet list. Serialized over this store at the configured limit of 20 hits, that is 45,470 characters — 9,673 tokens — for one tool call. At W = 16,384 the measured headroom for appending a tool result is about 10,251 tokens on turn 1, a mean of 5,392 on turn 2 with a floor of 86, and essentially nothing by turn 3. Eight of 15 sampled gpt-3.5 rows show the search result itself truncated by 2,700 to 16,000 characters. This never happened once at W = 32,768, where turn-1 headroom is about 22,825 tokens. Whether the correct hit was among the characters dropped could not be determined, because the raw hit list was not logged either.</p>
+
+<figure>
+<div class="chartwrap"><div id="fig2"></div></div>
+<figcaption><b>Figure 2.</b> Where the 110 non-infrastructure failures stopped, across both models and both tree arms, classified by matching the recorded fetch targets against each question's true source node. This is a decomposition of the candidate's own failures, not a comparison between arms; for the baseline it is measured against, the same cell's <code>tail</code> scores are 0.200 for truncate-tail and 0.333 for compact-rolling on the same model. The two largest categories are both upstream of the tool's capacity: the model either never issued a targeted fetch, or issued one at the wrong target. The bottom bar is the resource explanation, and it is empty.</figcaption>
+</figure>
+
+<h3>2.4&ensp;What the analysis found in the code</h3>
+
+<p>Four further findings come from reading the shipped code against the plan rather than from the runs, and each one changes what the next batch should test.</p>
+
+<p><b>The retrieval providers are dead wiring.</b> The plan specifies five retrieval providers — structural, fuzzy, and grep — merged in a fixed order, and all five exist as real implementations, 1,123 lines of them. Nothing anywhere constructs the registry that would make them reachable: not the MCP server, not the CLI, not the evaluation harness. The search tool degrades gracefully to the tree-only path, so nothing crashes and nothing announced itself. The server also wires no embedding model, so the vector path never runs either. <b>Every search measured in this program, in every loop, has been a lexical beam over generated summary prose.</b> That is a plan gap, not a design gap, but it means the retrieval claims are narrower than they read.</p>
+
+<p><b>Drill-down already exists, through node ids.</b> The mechanism of "fetch a summary, then zoom in on the sub-part you want" is already in the code: a summary-depth fetch returns the node's own id and its direct children's ids, uncapped, and <code>context_fetch</code> accepts any node id rather than only a top-level branch. On this store the tree is two levels deep, so one call already hands back every child id and a second call gets that child's raw content. What does not exist is a way to get the child list without paying for the summary body, a way to keep discovering descendants after going to full depth, a way to scope a search to one subtree, or a way to read a middle slice of a large span rather than always its prefix.</p>
+
+<p><b>Drilling to a leaf does not always reduce anything.</b> Eleven of the 21 branches have no file children at all, and in every parented branch inspected, the first child's span is byte-identical to the parent's — the "leaf" is the same bytes. Where the leaves do differ, the sizes are the constraint. The median file leaf is 17,998 characters (about 4,500 tokens), the ninetieth-percentile leaf 60,886 (about 15,222) and the largest 99,823 (about 24,956), against a combined lazy-plus-slack allowance of roughly 10,600 tokens at W = 16,384 and 17,300 at W = 32,768. So a median leaf is comfortably affordable at either window; the ninetieth-percentile leaf exceeds the entire allowance at 16,384 and consumes 88% of it at 32,768; the largest exceeds it at both. The only sub-branch unit that actually reduces anything on this fixture is a sequence range.</p>
+
+<p><b>Summaries cannot rank what they do not contain.</b> The lexical beam ranks a question's own source at a median of 10.5 out of the 19 candidates it reaches, with 2 of 12 sources in the strict top 3 — near the middle of an effectively unordered list. An embedding client was built and the store's summaries were embedded, at a total spend of two hundredths of a cent, to see whether meaning-based ranking moves it. Table 2 is the result: the median rank is 10.5 either way. The vector path does rank over a larger candidate pool (21 rather than 19, because the beam prunes and the flat nearest-neighbour search does not), and it lifts strict top-5 from 3 of 12 to 4 of 12, which is exactly the threshold that licenses a live semantic arm — a pass at the minimum margin, not a comfortable one. The reason the movement is small is structural rather than a defect in the embedder: none of the twelve answer literals occurs anywhere in any summary, in any version, over 1,339 summary rows and 45,057 characters of current summary text plus metadata. <b>A better ranking over summaries cannot surface a literal the summaries do not contain</b>, and by construction the whole <code>deep</code> stratum is defined by that absence.</p>
+
+<div class="tablewrap"><table>
+<thead><tr><th>question</th><th>stratum</th><th>lexical rank</th><th>semantic rank</th><th>Δ</th></tr></thead>
+<tbody>
+<tr><td>s1-q01</td><td>head</td><td>15 / 19</td><td>14 / 21</td><td>+1</td></tr>
+<tr><td>s1-q02</td><td>head</td><td>11 / 19</td><td>8 / 21</td><td>+3</td></tr>
+<tr><td>s1-q03</td><td>head</td><td>15 / 19</td><td>4 / 21</td><td>+11</td></tr>
+<tr><td>s1-q04</td><td>tail</td><td>10 / 19</td><td>13 / 21</td><td>−3</td></tr>
+<tr><td>s1-q05</td><td>tail</td><td>7 / 19</td><td>11 / 21</td><td>−4</td></tr>
+<tr><td>s1-q06</td><td>tail</td><td>5 / 19</td><td>5 / 21</td><td>0</td></tr>
+<tr><td>s1-q07</td><td>deep</td><td>1 / 19</td><td>1 / 21</td><td>0</td></tr>
+<tr><td>s1-q08</td><td>deep</td><td>11 / 19</td><td>13 / 21</td><td>−2</td></tr>
+<tr><td>s1-q09</td><td>deep</td><td>17 / 19</td><td>17 / 21</td><td>0</td></tr>
+<tr><td>s1-q10</td><td>spanning</td><td>6 / 19</td><td>12 / 21</td><td>−6</td></tr>
+<tr><td>s1-q11</td><td>spanning</td><td>2 / 19</td><td>5 / 21</td><td>−3</td></tr>
+<tr><td>s1-q12</td><td>spanning</td><td>11 / 19</td><td>10 / 21</td><td>+1</td></tr>
+<tr><td><b>median</b></td><td>—</td><td><b>10.5 / 19</b></td><td><b>10.5 / 21</b></td><td><b>0</b></td></tr>
+</tbody></table></div>
+<p class="tcap"><b>Table 2.</b> Self-retrieval rank of each question's own source node, lexical beam (the shipped baseline) against vector search over the same summaries in a copy of the same frozen store, same twelve questions. <b>Rank</b> is the position of the correct source in the returned ranking with the task root excluded; lower is better; Δ is lexical minus semantic, so positive means the vector path ranked it higher. The denominators differ because the beam prunes to the top candidates at each level and reaches 19 of the 21 summarized nodes, while the vector path is a flat nearest-neighbour search over all 21 — a real structural difference the two would carry into a live run, not a computation error. Strict top-5: lexical 3 of 12, semantic 4 of 12.</p>
+
+<h2>3&ensp;Item 1 — the real-token gate</h2>
+
+<p>Below a size threshold, context-tree runs in <b>devolved mode</b>: it shows the whole trace and summarizes nothing, on the argument that summarizing a short conversation costs money for nothing. The switch out of devolved mode is the <b>lazy gate</b>. Until this loop the gate compared <code>traceChars / 4</code> against a 30,000-token budget, and on code-dense traces four characters per token undercounts badly. Measured on the six loop-8 tree runs, the trace the tree was showing at the final turn was 33,951 to 39,404 tokens as the provider billed it — 13% to 31% <em>above</em> the budget — while the character estimate reported it as still under, for the whole run. The gate never fired once. That is undercounting, not a threshold set too high, and it is why every live tree run to date tracked the baseline's growth curve instead of flattening.</p>
+
+<p>The replacement is the provider's own count of the prompt it last billed — input plus cache reads plus cache writes from the previous completed turn — which every turn already returns at no extra cost, is exact for whatever model is running, and needs no tokenizer kept in step. The change is four lines.</p>
+
+<h3>3.1&ensp;The oscillation, and the latch</h3>
+
+<p>The first live replicate with the real-token gate crossed on its ninth model call with a 40,158-token prompt, summarized, and on the next call read a prompt below 30,000 — because Zone C then held only the active branch rather than the whole trace. The gate read that as "the trace fits", re-expanded everything, and crossed a second time two calls later at 43,331 tokens. That run finished in 12 turns and 223,917 tokens, about twice the loop-8 tree's cost on the same task. The batch was discarded.</p>
+
+<p>The condition is ill-posed rather than merely noisy. It asks whether the whole trace fits the budget; after the crossing the prompt no longer contains the whole trace, so the prompt's size is no longer evidence either way, while the trace itself only grows and can never fit again. The crossing is therefore one-way and the flag that records it <b>latches</b>. This is a proof, not a heuristic — L0 is append-only — which is why it is allowed to be a condition in a twelve-line algorithm. A character count could never have exposed it, because a character count only increases.</p>
+
+<h3>3.2&ensp;Result at n = 3 per scenario</h3>
+
+<p>The relaunched batch is the context-tree arm only, three replicates each on sw-5-dozen (twelve independently buggy modules) and sw-6-ripple (an interface migration across ten dependent files), claude-sonnet-5, one epoch, on the standing v6.x flags plus the latched gate. The native arm never reads this gate, so its loop-8 rows remain a same-code-path baseline; they were collected the previous day, and that date gap is the one asymmetry here — stated because it is exactly the asymmetry that item 3 turned out to punish (§4). All six new runs completed and scored 100%, as did all twelve baseline runs.</p>
+
+<figure>
+<div class="chartwrap"><div id="fig3"></div></div>
+<figcaption><b>Figure 3.</b> Context size per turn on sw-5-dozen, three arms on one pair of axes, claude-sonnet-5. Vertical axis: the tokens the model saw on that call, fresh input plus cache reads plus cache writes. Horizontal axis: turn index, counting the first model call as turn 1. Three replicates per arm are drawn thin and the across-replicate median heavy; the median is drawn only while at least two replicates are still running. Brown is the native transcript baseline, green is context-tree with the loop-8 characters÷4 gate, blue is context-tree with the real-token gate. The three ringed blue points are the gate crossings, one per replicate, at turns 10, 7 and 10. Each crossing is a spike — the prompt that tripped the gate — after which the blue curve drops and runs roughly level, while the green curve, whose gate never fired, climbs to the end of its runs. The companion chart for sw-6-ripple is Figure 5 of the supplementary note [2]; its shape is the same and its numbers are in Tables 3 and 4.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+<thead><tr><th>scenario · arm</th><th>final ctx</th><th>peak ctx</th><th>total tokens</th><th>turns</th><th>success</th></tr></thead>
+<tbody>
+<tr><td>sw-5-dozen — native transcript (baseline)</td><td>19,157</td><td>19,157</td><td>175,661</td><td>13</td><td>3/3</td></tr>
+<tr><td>sw-5-dozen — tree, loop-8 gate</td><td>37,585</td><td>37,585</td><td>192,853</td><td>9</td><td>3/3</td></tr>
+<tr><td>sw-5-dozen — tree, real-token gate</td><td>24,299</td><td>38,799</td><td>260,700</td><td>13</td><td>3/3</td></tr>
+<tr><td>sw-6-ripple — native transcript (baseline)</td><td>20,191</td><td>20,191</td><td>168,208</td><td>12</td><td>3/3</td></tr>
+<tr><td>sw-6-ripple — tree, loop-8 gate</td><td>37,615</td><td>37,615</td><td>244,964</td><td>12</td><td>3/3</td></tr>
+<tr><td>sw-6-ripple — tree, real-token gate</td><td>22,837</td><td>37,812</td><td>297,726</td><td>18</td><td>3/3</td></tr>
+</tbody></table></div>
+<p class="tcap"><b>Table 3.</b> Medians over three replicates per cell, claude-sonnet-5. <b>final ctx</b> is context size on the run's last turn; <b>peak ctx</b> the largest on any turn; <b>total tokens</b> the run's whole bill, including output, so it is not comparable to the context columns; <b>turns</b> the number of model calls; <b>success</b> the count of replicates passing the hidden test suite. Each column is the median of that column, so a row is not necessarily any one run. The two baseline arms are from 1 September 2026 and the real-token rows from 2 September.<sup>†</sup></p>
+
+<div class="tablewrap"><table>
+<thead><tr><th>run</th><th>crossing turn</th><th>prompt at crossing</th><th>over budget</th><th>slope before</th><th>slope after</th></tr></thead>
+<tbody>
+<tr><td>sw-5-dozen r1</td><td>10</td><td>45,564</td><td>+15,564</td><td>4,331</td><td>825</td></tr>
+<tr><td>sw-5-dozen r2</td><td>7</td><td>36,657</td><td>+6,657</td><td>4,928</td><td>603</td></tr>
+<tr><td>sw-5-dozen r3</td><td>10</td><td>38,799</td><td>+8,799</td><td>3,312</td><td>417</td></tr>
+<tr><td>sw-6-ripple r1</td><td>14</td><td>41,286</td><td>+11,286</td><td>2,448</td><td>256</td></tr>
+<tr><td>sw-6-ripple r2</td><td>16</td><td>30,126</td><td>+126</td><td>2,046</td><td>915</td></tr>
+<tr><td>sw-6-ripple r3</td><td>11</td><td>37,812</td><td>+7,812</td><td>3,177</td><td>579</td></tr>
+</tbody></table></div>
+<p class="tcap"><b>Table 4.</b> One row per real-token replicate, n = 6. <b>crossing turn</b> counts the first model call as turn 1. <b>prompt at crossing</b> is the context size of the turn that tripped the gate; <b>over budget</b> its excess over the 30,000-token budget. <b>slope</b> is the least-squares slope of context against turn index in tokens per turn, computed separately over turns 1 through the crossing and over the turns strictly after it. For comparison on the same two scenarios, the native transcript baseline's own per-run slopes are 812 to 2,094 tokens per turn and the loop-8 tree's are 2,264 to 5,505.</p>
+
+<p>The published criterion had two halves [2, §5 item 1]: the curve flattens at the crossing instead of tracking the trace, <em>and</em> final-turn context falls below the baseline's on at least one scenario. <b>The first half holds cleanly.</b> The gate fired on all six runs, exactly once each, and behind every crossing the growth rate falls from 2,046–4,928 tokens per turn to 256–915 — slower than the transcript it competes with. That is the behaviour the offline 200-branch simulation predicts and no live run had previously shown. <b>The second half fails on both scenarios.</b> Final-turn context is 24,299 and 22,837 tokens, which is 35% and 39% below the loop-8 tree's 37,585 and 37,615 — a large move in the right direction — but still 1.27 and 1.13 times the baseline's 19,157 and 20,191.</p>
+
+<p>Total tokens rise rather than fall: 48% above the baseline on sw-5-dozen and 77% on sw-6-ripple, 35% and 22% above the loop-8 tree. Two mechanisms account for it. The gate reads the previous completed turn, so it detects the crossing one call late, and one batched turn on these tasks is expensive — five of six crossings landed 6,657 to 15,564 tokens above the budget, and those overshoots are billed at cache-write rates because the whole prefix is rewritten when the tree reorganizes. And the transition costs turns: the median goes from 9 to 13 on sw-5-dozen and 12 to 18 on sw-6-ripple.</p>
+
+<h3>3.3&ensp;The criterion was the finding</h3>
+
+<p>The largest prompt any of these eighteen runs assembled is 45,564 tokens. The model has a 200,000-token window, so there were 154,436 tokens of headroom at the worst moment of the worst run. Nothing was in danger of overflowing anything, and a switch derived from the window rather than fixed at a constant would not have crossed at all — the transplant harness derives its lazy budget as 0.35 of the window, roughly 70,000 tokens on a 200,000-token model before the ratio correction, and under that rule the tree would have stayed devolved from the first turn to the last of both tasks. On this evidence that is the right answer.</p>
+
+<p>So the published criterion asked the harness to force a transition the model did not need, and then measured what forcing it costs. What was learned is the cost of the transition, not the value of the tree. The gate itself is now correct: it fires once, on a number the provider supplies rather than a guess, and the growth behind it is slower than the baseline's. The remaining question is not how to make the switch cheaper but where the switch belongs, and that is the <b>single-derivation candidate</b>. Two harnesses currently answer "when should the tree stop showing the raw trace?" two different ways — the live loop reads an absolute <code>EVAL_LAZY_TOKENS = 30,000</code>, which is 15% of a 200,000-token window and fires on traces that were never at risk; the transplant harness derives 0.35 of the window, which on these traces never fires. Neither number is argued for. The quantity the switch actually protects is Zone C, the zone that holds the active branch in full, so the switch belongs at the Zone C fraction (currently 0.2) of the same window-derived budget, in one derivation both harnesses import. The fractions themselves are the decision recorded as D19: response .05, Zone A .10, Zone B .20, Zone C .20, lazy .35, slack .10, each divided by the measured heuristic-to-BPE ratio. Until that lands, no comparison of the two arms is measuring the policy we would ship.</p>
+
+<h2>4&ensp;Item 3 — the sw-3 overhead gap</h2>
+
+<p>Loop 8 published a 3.4× token gap on sw-3-refactor, a five-file API migration with 29 hidden tests: the tree spent a median 121,012 tokens and 13.5 turns against the transcript baseline's 35,561 and 9. The tree numbers came from two batches on one set of days and the native numbers from a third batch on another. Loop 9 re-ran all arms in one epoch, n = 5 each, interleaved, claude-sonnet-5, after item 1 had landed so every arm shared the same gate.</p>
+
+<figure>
+<div class="chartwrap"><div id="fig4a"></div></div>
+<div class="chartwrap"><div id="fig4b"></div></div>
+<figcaption><b>Figure 4.</b> sw-3-refactor, four arms measured in one epoch, five replicates each, claude-sonnet-5. Brown is the native transcript baseline; green is context-tree in the v6.5 candidate configuration; blue and purple are the two deletion candidates, each applied on top of that configuration. <b>(a)</b> Median total tokens per run, with the ratio to the baseline printed beside each bar. <b>(b)</b> Median model turns per run. Every arm passed the hidden test suite on all five replicates. The tree's gap to the baseline is 1.71× on tokens at equal median turns — not the 3.4× the cross-day comparison reported — and both candidate deletions move the numbers upward rather than downward.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+<thead><tr><th>arm</th><th>median tokens</th><th>× native</th><th>median turns</th><th>turns per run</th><th>success</th></tr></thead>
+<tbody>
+<tr><td>A — native transcript (baseline)</td><td>40,040</td><td>1.00</td><td>9</td><td>14, 8, 8, 9, 14</td><td>5/5</td></tr>
+<tr><td>B — tree, v6.5 candidate config</td><td>68,634</td><td>1.71</td><td>9</td><td>9, 9, 10, 8, 7</td><td>5/5</td></tr>
+<tr><td>C — tree + trimmed contract</td><td>94,263</td><td>2.35</td><td>11</td><td>9, 11, 13, 6, 13</td><td>5/5</td></tr>
+<tr><td>D — tree + no completion gate</td><td>89,602</td><td>2.24</td><td>11</td><td>11, 12, 8, 11, 6</td><td>5/5</td></tr>
+</tbody></table></div>
+<p class="tcap"><b>Table 5.</b> sw-3-refactor, same epoch, n = 5 per arm, claude-sonnet-5, recomputed from each run's <code>results.json</code>. <b>median tokens</b> is the median of the run totals, including output. Per-run token totals are 64,935 / 34,009 / 33,501 / 40,040 / 65,033 for A; 76,168 / 65,463 / 102,166 / 68,634 / 54,803 for B; 67,777 / 94,263 / 110,762 / 44,388 / 119,121 for C; 92,990 / 114,024 / 61,133 / 89,602 / 42,536 for D. The lazy gate did not cross on any of the twenty runs, as item 1's own prediction required for this task, so all four arms ran devolved and the comparison is not confounded by a mid-run mode change.</p>
+
+<p><b>The 3.4× was mostly a cross-day artifact.</b> Measured in one epoch the tree runs 1.71× the baseline on tokens, with the same median turns and a <em>tighter</em> turn distribution — the tree's turn variance is 1.3 against the baseline's 9.8. The 1.5× bar published in loop 8 is still not met; the remaining gap is 28,594 tokens at the median. But the number that had been driving the roadmap was wrong by roughly a factor of two, and it was wrong for one reason: two arms compared across different days.</p>
+
+<p><b>The batching-density mechanism is refuted.</b> The leading explanation for the gap had been that the tree issues its tool calls in smaller batches and therefore takes more turns, each of which re-reads the whole prefix. Measured same-epoch, tool calls per tool-using turn are 2.15–3.38 for the baseline and 2.25–3.20 for the tree, an exact two-sided Mann–Whitney p of 0.81 on five pairs against five. The earlier "2.77 against 1.49" came from three fast baseline runs on a different day. With no separation at this sample size the pre-registered rule says stop spending on batching, and the residual is per-turn prefix size: Zone A carries 1,582 more tokens per turn under the tree than under the baseline.</p>
+
+<p><b>Both candidates are null.</b> Arm C deletes one section of the system contract, 246 of its 791 tokens — a real and free saving of about 246 tokens per turn. Arm D removes the completion gate, the rule that nudges the model once when it stops calling tools without confirming it is finished. Paired against arm B replicate by replicate, removing the gate changed turns by +2, +3, −2, +3, −1 where the pre-registered prediction was exactly −1 on every pair, and changed tokens by +16.8k, +48.6k, −41.0k, +21.0k, −12.3k. The trimmed contract changed turns by 0, +2, +3, −2, +6 — and a turn-count change in either direction was named in advance as the falsifier for "the deleted prose does no behavioural work." The flag itself works: trailing bare turns are 1 under D against 2 under B, exactly as the mechanism predicts.</p>
+
+<div class="tablewrap"><table>
+<thead><tr><th>replicate</th><th>C − B turns</th><th>C − B tokens</th><th>D − B turns</th><th>D − B tokens</th></tr></thead>
+<tbody>
+<tr><td>rep 1</td><td>0</td><td>−8,391</td><td>+2</td><td>+16,822</td></tr>
+<tr><td>rep 2</td><td>+2</td><td>+28,800</td><td>+3</td><td>+48,561</td></tr>
+<tr><td>rep 3</td><td>+3</td><td>+8,596</td><td>−2</td><td>−41,033</td></tr>
+<tr><td>rep 4</td><td>−2</td><td>−24,246</td><td>+3</td><td>+20,968</td></tr>
+<tr><td>rep 5</td><td>+6</td><td>+64,318</td><td>−1</td><td>−12,267</td></tr>
+</tbody></table></div>
+<p class="tcap"><b>Table 6.</b> Paired per-replicate deltas against arm B, the context-tree control, same epoch and same replicate index. Both candidates were pre-registered with a directional prediction — C: turns unchanged, tokens about −3,300; D: turns exactly −1, tokens about −13,400 — and neither prediction survives. The spread is the point: arm A alone spans 33,501 to 65,033 tokens across its five runs, so a deletion worth two or three thousand tokens per run cannot be resolved live at any affordable replicate count.</p>
+
+<p><b>Do not raise n.</b> That last observation is the operational conclusion. The gap instead decomposes deterministically from the recorded per-turn data with no model calls at all: Zone A carries 1,582 more tokens per turn than the baseline, which is about 14,000 over nine turns, and the completion-gate turn re-reads the prefix once, about 13,000. Both are measurable offline.</p>
+
+<p><b>Route.</b> The completion gate stays — it bought nothing measurable here, but a corpus replay shows it rescued 23 runs elsewhere, and a rule that rescues is not deleted on a null. The trimmed contract is retired as a live candidate; it remains available behind a flag. Item 3 closes with the corrected number. The lesson it leaves behind is procedural and is now a standing rule: <b>no cross-epoch comparison enters a headline again.</b></p>
+
+<h2>5&ensp;Item 2 — the design verdict, and the batch in flight</h2>
+
+<p>The findings of §2 point at three separable things, and the design pass turned each into one arm that changes exactly one variable against the same frozen store, the same nine primary questions, the same budgets, interleaved within each cell so all arms share one epoch. No two changes are combined this loop, even though the combination is what the design panel actually believes in, because running them together would confound the two links of the chain: <em>the model must issue a targeted fetch</em>, and <em>that fetch must return something a literal-matching grader can score</em>.</p>
+
+<div class="tablewrap"><table>
+<thead><tr><th>arm</th><th>the single variable it isolates</th><th>grounds</th></tr></thead>
+<tbody>
+<tr><td><code>tree</code></td><td>control, re-run so it carries the new per-call logging</td><td>the recorded epoch predates the instrumentation fix, so old and new rows can never be pooled</td></tr>
+<tr><td><code>tree-slice</code></td><td>the fetch tool's default and addressable unit is raw log content sized to fit, rather than summary prose</td><td>zero of twelve answer literals occurs in any summary, so a default-depth fetch is a guaranteed zero; three of nine sources exceed turn-1 headroom, so a sequence range is needed for a named minority</td></tr>
+<tr><td><code>tree-thin</code></td><td>a search hit is coordinates, not content</td><td>the payload falls from 9,673 to 4,898 tokens per call, below the measured turn-2 headroom at the small window</td></tr>
+<tr><td><code>tree-verbatim</code></td><td>the Zone A policy text: what a summary cannot carry, and no instruction to fetch narrowly</td><td>52% of tail failures searched and stopped; the shipped contract's advice to prefer a file-scoped fetch narrows nothing on this store</td></tr>
+<tr><td><code>tree-semantic</code></td><td>search ranks by meaning rather than lexical overlap</td><td>conditional on the offline rank check, which passed at its minimum margin (Table 2)</td></tr>
+</tbody></table></div>
+<p class="tcap"><b>Table 7.</b> The five arms in flight and the one thing each changes relative to the <code>tree</code> control. The baselines they are scored against — <code>truncate-tail</code> and <code>compact-rolling</code> — are unchanged and already on disk from the same frozen store, so every contrast in the coming batch is candidate against baseline at a fixed model and window. Nine offline gates must pass before any answering token is bought, including one that asserts a range-fetch over any partition of a span concatenates byte-identically to a whole-span fetch, which is what makes a sliced read trustworthy.</p>
+
+<div class="tablewrap"><table>
+<thead><tr><th>contrast · stratum</th><th>baseline</th><th>prediction</th><th>falsified by</th></tr></thead>
+<tbody>
+<tr><td>tree-slice − tree · head, qwen @ 32k</td><td>0.091</td><td>≥ +0.20</td><td>correct branch fetched raw, literal in the tool result, score still 0</td></tr>
+<tr><td>tree-slice − tree · tail, qwen @ 32k</td><td>0.000</td><td>≥ +0.15, conditional on ≥ 1 fetch per replicate</td><td>fetch rate on tail no higher than the control's</td></tr>
+<tr><td>tree-slice − tree · deep, qwen @ 32k</td><td>≈ 0.000</td><td>≥ +0.10</td><td>no range-aimed call ever appears in the log</td></tr>
+<tr><td>tree-slice − tree · tail, gpt-3.5 @ 16k</td><td>0.000</td><td>≥ +0.10</td><td>fetched raw, content dropped, no range call in the log</td></tr>
+<tr><td>tree-verbatim − tree · tail, qwen @ 32k</td><td>0.000</td><td>≥ +0.20, reaching parity with truncate-tail's 0.200</td><td>fetch-after-search on tail does not move</td></tr>
+<tr><td>tree-verbatim − tree · head, qwen @ 32k</td><td>0.091</td><td>small: 0.09–0.20</td><td>a large head gain</td></tr>
+<tr><td>tree-verbatim − tree · deep, qwen @ 32k</td><td>≈ 0.000</td><td>≈ 0.00, ±0.07</td><td>any deep gain above 0.15</td></tr>
+<tr><td>tree-thin − tree · truncated searches, gpt-3.5 @ 16k</td><td>8 of 15 sampled</td><td>0 of 45</td><td>any truncated search result at all</td></tr>
+<tr><td>tree-thin − tree · fetch-after-search, gpt-3.5 @ 16k</td><td>—</td><td>≥ +0.15</td><td>flat while payload size demonstrably falls</td></tr>
+<tr><td>tree-thin − tree · tail, gpt-3.5 @ 16k</td><td>0.000</td><td>0.00–0.13</td><td>—</td></tr>
+<tr><td>tree-thin − tree · head and deep, gpt-3.5 @ 16k</td><td>0.000</td><td>null, ±0.07</td><td>any gain</td></tr>
+<tr><td>tree-semantic · tail</td><td>0.000</td><td>flat</td><td>—</td></tr>
+<tr><td>tree-semantic · deep</td><td>≈ 0.000</td><td>capped: semantic search over summaries can match the episode, never the literal</td><td>—</td></tr>
+</tbody></table></div>
+<p class="tcap"><b>Table 8.</b> Pre-registered predictions, copied from the design verdict before the batch was launched, each with the baseline it is measured against and the single result that kills it. Every score is a mean of a 0/1 exact-match grade over n = 5 per arm, stratum and model, reported with a bootstrap confidence interval. A tail-stratum loss for the tree is reported as a regression, not a tradeoff. A tail result of 0.000 with no fetch on most replicates is reported as <em>the surface was adequate and unused</em>, attributed to policy, and not re-charged to the surface.</p>
+
+<h3>5.1&ensp;Results — pending</h3>
+
+<!-- ITEM2_RESULTS_PLACEHOLDER -->
+<div class="pending">
+<h3>Placeholder — item 2 live batch</h3>
+<p style="margin-bottom:0;">This section is deliberately empty. The scored batch for the five arms of Table 7 was launched after this report was written and had not returned when it was finalized. When it lands, this block is replaced by: a mean-score table per arm, stratum and model with bootstrap confidence intervals against the same frozen baselines; the mechanism series the recorded epoch could not produce — fetch rate, fetch-after-search, the share of fetches that omitted a depth, the range-call rate, whether the answer literal ever reached the model in a tool result, the truncated-fetch share, and Zone C size; and a check of each prediction in Table 8 against its named falsifier. No claim anywhere else in this report depends on that batch.</p>
+</div>
+
+<h2>6&ensp;What the algorithm looks like now</h2>
+
+<p>The algorithm as it currently runs is stated in one document, <code>reports/algorithm.md</code> [3], which is the reference description: twelve lines of pseudo-code, a table saying where each line lives in the code and what established it, a simplicity audit, a configuration-parameter register, a line-budget ledger, and the candidates that have a judge verdict but are not yet in force. Implementers change the code and that page in the same change. Appendix A reproduces the twelve lines verbatim.</p>
+
+<p>The budget was set to twelve lines before loop 1 and the count is at the limit. Loop 9 spent no new line: item 1 replaced the characters÷4 comparison inside line 3 and added the latch as line 4, absorbed by merging the old statement about Zone C and Zone B into line 3. The standing constraint is that <b>rule-removal beats rule-addition</b>, and that a candidate replacing a rule outranks one adding a trigger. Any candidate from the loop-9 design panels that adds a line must name the line it replaces.</p>
+
+<p>The audit of conditions produced one deletion candidate, and it is worth stating because it is the shape of finding this rule is meant to produce. Line 7 chooses what fills Zone C with a three-way fallback: the open phase, else the latest branch, else the root. But the segmenter closes every phase on re-ingest, so the function that finds an open phase always returns nothing in the live harness and the first branch of that chain has never fired. It is a condition carried for no observed case.</p>
+
+<div class="tablewrap"><table>
+<thead><tr><th>line</th><th>condition it carries</th><th>status</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>edit arguments capped once the post-state blob exists</td><td>one condition, evidenced — uncapped and dropped both measured worse in loop 7; keep</td></tr>
+<tr><td>3–4</td><td>the crossing, plus the latch</td><td>the latch is a proof (L0 only grows), not a heuristic; keep</td></tr>
+<tr><td>7</td><td>"open phase, else latest branch, else root"</td><td>the first branch never fires in the live harness; <b>candidate for deletion</b></td></tr>
+<tr><td>10</td><td>"lexical beam; vector once L3 exists"</td><td>a silent mode switch on the presence of embeddings; becomes a single path once an embedder is always wired</td></tr>
+</tbody></table></div>
+<p class="tcap"><b>Table 9.</b> The simplicity audit as it stands after loop 9, from the reference description [3]. The audit is re-run each time that page changes. Two of the four rows are consequences of loop 9: line 3–4's latch is item 1's finding, and line 10's mode switch became visible only once §2.4 established that no shipped configuration has ever taken the vector path.</p>
+
+<p>The second half of that page is the <b>configuration-parameter register</b>: every value that might need to be set differently for a different model, window or host harness, recorded with where it is set and what it depends on, so that a port starts from a table rather than from the code. It exists because the same question — what should this number be? — kept arriving as a surprise. Table 10 gives the entries loop 9 touched or exposed.</p>
+
+<div class="tablewrap"><table>
+<thead><tr><th>parameter</th><th>current value</th><th>depends on</th><th>note</th></tr></thead>
+<tbody>
+<tr><td>lazy budget T</td><td>30,000 (live); 0.35·W ÷ ratio (transplant)</td><td>window, tokenizer</td><td>the live value is absolute and should become the window-derived form</td></tr>
+<tr><td>rootKeep</td><td>40</td><td>trace length, Zone B budget</td><td>the transplant derives it per window instead, choosing the largest rung whose assembled Zone B fits</td></tr>
+<tr><td>Zone B / Zone C budget</td><td>8,000 / 30,000 (live); fractions of W (transplant)</td><td>window</td><td>Zone C is unbounded while devolved</td></tr>
+<tr><td>heuristic→BPE ratio</td><td>0.851, measured on this scenario</td><td>tokenizer family, corpus</td><td>re-measure per model family: the assembler counts with a heuristic, the provider bills BPE</td></tr>
+<tr><td>retrieval limit</td><td>20 hits, each carrying its full summary</td><td>window</td><td>at a 16k window the search payload alone overflowed headroom</td></tr>
+<tr><td>retrieval providers</td><td>five configured</td><td>host</td><td>none is wired in the shipped server or the harness</td></tr>
+<tr><td>tool→phase map</td><td>8 entries in config</td><td><b>host harness</b></td><td>tool names differ per harness; an unknown tool maps to <code>other</code>, never a crash</td></tr>
+<tr><td>agent model</td><td>claude-sonnet-5 (live); qwen-2.5-72b, gpt-3.5 (transplant)</td><td>—</td><td>a model must pass a one-call tool-use probe before entering a scored grid</td></tr>
+<tr><td>shipping gate set (v6.x)</td><td>seven environment flags, all on</td><td>—</td><td>these are the algorithm; promoting them to defaults is the decision this report gates</td></tr>
+</tbody></table></div>
+<p class="tcap"><b>Table 10.</b> The configuration parameters loop 9 touched or exposed, abridged from the register in the reference description [3], which carries the full list with the file and line each is set at. The register's purpose is that every one of these is a value a port to a new model or harness has to decide, and none of them should have to be rediscovered by reading the code.</p>
+
+<h2>7&ensp;Limitations, and what this loop did not test</h2>
+
+<p><b>The instrument has not yet scored the design it was hardened for.</b> Every transplant number in §2.3 comes from an epoch that predates the per-call logging fix, the search-payload change and the contract variant, and by the epoch rule those rows can never be pooled with the coming batch. The scored cells are therefore a starting point, not a result about the corrected design.</p>
+
+<p><b>One fixture.</b> Every structural claim in §2.4 — that file leaves are byte-identical to their parents, that the only sub-branch unit that reduces anything is a sequence range, the leaf-size distribution — is measured on one store. Whether any of it generalizes is untested; two further scenarios are identified but not built.</p>
+
+<p><b>The failure this loop's design cannot fix.</b> All three tail sources sit inside the range the prompt renders inline, and half of tail failures searched and then stopped. Every change in flight lives <em>behind</em> a tool call and is unreachable by a model that never makes one. If both winning arms reproduce a tail score of zero with no fetch on most replicates, the right reading is neither that the surface is inadequate nor that the policy is, but that the prompt is too convincing — the branch summary reads like an answer, and the grader then scores it zero because no summary contains any literal. The remedies for that are content changes not attempted here: a summarizer that carries verbatim identifiers into the summary's own metadata, or a Zone B render that marks summarized branches as non-quotable.</p>
+
+<p><b>Query formation.</b> The question with the best self-retrieval rank in the whole suite — rank 1 of 19 — was never once fetched correctly, in fifteen replicates, because the model queried for a test file when the answer was an import line. Nothing in this loop makes a model ask about a thing it has no reason to suspect exists, and semantic search reorders a candidate list rather than forming the query.</p>
+
+<p><b>Item 1's remaining asymmetry.</b> Its baseline rows were collected the day before its candidate rows. That is same-code-path — the native arm has no lazy gate to regress — but it is not same-epoch, and it is the very asymmetry that item 3 proved can cost a factor of two. The n = 3 result should be read with that discount until the single-derivation change forces a rerun anyway.</p>
+
+<p><b>Small samples, stated.</b> Item 1 is n = 3 per scenario. Item 3 is n = 5 per arm, and its own conclusion is that a live batch cannot resolve a two-to-three-thousand-token effect at any affordable size. The transplant cells are n = 15 attempts per arm and stratum, of which up to 5 were lost to provider failures.</p>
+
+<p><b>Not touched at all.</b> The public benchmark matrix (adapters exist for four suites; only the internal software tasks have data). Real session resumption. Provider-side cache-prefix survival under a widened Zone A — the gates measure Zone A's size, not whether a provider's cache actually holds across the change. The <code>spanning</code> stratum. And the whole provider fan-out described in the plan, which remains unconstructed.</p>
+
+<h2>8&ensp;Open items and recommendations</h2>
+
+<p>Ordered by expected information gained per unit of effort, where effort is counted in tokens and runs. The first three cost no runs at all and two of them are the direct lessons of this loop; the last two are the largest purchases on the list.</p>
+
+<ol>
+<li><b>Derive the lazy budget once, from the window, and share the derivation between both harnesses.</b> Zero runs, zero live tokens: delete the live harness's absolute 30,000-token switch, derive it from the window as the transplant already does, and put the switch at the Zone C fraction — the zone it actually protects — so line 9 of the algorithm becomes true of both harnesses. Until this lands, no arm comparison is measuring the policy we would ship, which makes it a precondition for almost everything below rather than a task among them. Verified offline by re-running the existing budget assertions at several window sizes.</li>
+<li><b>Adopt the no-cross-epoch-headline rule.</b> Zero cost, and it is the highest-value thing loop 9 learned. A comparison enters a headline only if its arms ran in one batch, interleaved, on one day. The published 3.4× gap that shaped two loops of roadmap was 1.71× when measured this way. Where a same-epoch rerun is not affordable, the cross-day figure may appear in the body, labelled, and never in an abstract or a recommendation.</li>
+<li><b>Adopt the model pre-screen rule.</b> One tool-use probe call per model before it enters a scored grid, and route a model that cannot emit parseable tool arguments to a no-tools variant with the affected strata reported as untestable rather than as zeros. This costs three calls and it is the cheapest available insurance against the failure that cost 14 of 60 runs in the first scored transplant batch and still leaves 15.6% of the recorded sample unusable.</li>
+<li><b>Promote the v6.5 candidate configuration to core defaults — the decision this report gates.</b> Seven environment flags currently sit in front of what is, on the evidence of loops 7 through 9, simply the algorithm: deterministic root composition, no schema text in Zone A, fetch-as-events, the cache flags, and a 40-headline root keep, plus item 1's real-token gate and its latch. Every one has a measured justification and none has a measured cost. Promoting them buys no new information, but it removes an entire class of configuration error from every future run, and it retires three dead flags in the same change. It is gated on this report because the evidence for the last of them is item 1 (§3), and that evidence is now in.</li>
+<li><b>Land item 2's batch and read it against Table 8.</b> Already designed, gated and budgeted: 276 committed runs across five arms and two cells, arms interleaved within each cell. The instrument work that makes it worth running — verbatim per-call logging, and the boolean recording whether the answer literal ever reached the model in a tool result — is what converts a null into an attribution, which is why this ranks above the benchmark matrix despite costing a comparable number of runs.</li>
+<li><b>Populate the public-benchmark matrix.</b> The largest purchase and the largest external value. Adapters exist for four public suites and only the internal software tasks have data; loading them, then producing the cross-model table at fixed models and window sizes, is what turns this program's claims into something a reader can check against a benchmark they already trust. It is last because every run it buys is spent on generality rather than on resolving a mechanism, and three of the mechanisms above are still open.</li>
+</ol>
+
+<h2>References</h2>
+<p style="font-size:.9rem;">[1]&ensp;<em>Making an agent's prompt size independent of conversation length</em> — the loop-8 interim report, <code>reports/metrics/loop8-interim.html</code>. Folding and the list cap, the 200-branch marathon harness, the live context-window probe, the recall probe, and the cache-churn fix.<br>
+[2]&ensp;<em>Context size per turn in long conversations</em> — the supplementary note, <code>reports/metrics/context-growth.html</code>. §4 is item 1's full result set, including Figures 4 to 7 and the cumulative tokens-saved curves; this report's §3 reuses its numbers.<br>
+[3]&ensp;<em>The context-tree algorithm — reference description</em>, <code>reports/algorithm.md</code>. The twelve lines, where each lives in the code, the simplicity audit, the configuration-parameter register, the line-budget ledger, and the candidates carrying a judge verdict.<br>
+[4]&ensp;<code>eval/plans/loop9-item1-lazy-gate.md</code> and <code>eval/plans/loop9b-analysis/04-lazy-gate.md</code> — item 1's runbook, evidence and latch finding. Results in <code>eval/results/long-v65-gate/</code>; the discarded unlatched batch in <code>eval/results/long-v65-gate-oscillating.log</code>.<br>
+[5]&ensp;<code>eval/plans/loop9-item3-sw3-overhead.md</code>, <code>eval/plans/loop9b-analysis/05-sw3-overhead.md</code> and <code>eval/plans/loop9b-item3-judge-verdict.md</code> — item 3's runbook, gap decomposition, pre-registered predictions and verdict. Results in <code>eval/results/sw3-loop9b/</code>, twenty runs, epoch recorded in <code>epoch.txt</code>.<br>
+[6]&ensp;<code>eval/fixtures/transplant/JUDGE-VERDICT.md</code> — the transplant design contract and its router deviation log (R1–R7); <code>eval/plans/loop9b-item2-judge-verdict.md</code> — the item-2 design verdict, arms, gates and pre-registered predictions; <code>eval/plans/loop9b-analysis/{01-run-forensics,02-retrieval-surface,03-embeddings}.md</code> — the three analysis lenses; <code>eval/plans/loop9b-embeddings-implementation.md</code> — the embeddings client and the lexical-versus-semantic rank table.<br>
+[7]&ensp;DS-STAR, the iteration methodology adapted for these loops: arXiv:2509.21825.</p>
+
+<h2>Appendix A&ensp;The twelve lines, verbatim</h2>
+
+<p>Reproduced exactly as they stand in the reference description [3]. Judges count these lines against the program's simplicity budget, set at twelve before loop 1.</p>
+
+<div class="example"> 1  on each event: append to L0; payload → L2; the edit-tool's args are capped at 512 B once the post-state blob exists
+ 2  segment L0 in one deterministic pass: tool name → phase (config-remappable; unknown → other); a closed phase is a leaf with span coordinates only
+ 3  DEVOLVED while last prompt's real tokens &lt; T and not yet crossed:  Zone C := whole trace, Zone B := ∅, summarize nothing
+ 4  the crossing is one-way: once real tokens ≥ T, latch (L0 only grows, so the whole trace never fits again)
+ 5  after the crossing: summarize closed leaves in parallel on the cheap model (cap 8), versioned, with rehydration pointers; staleness cascades up the ancestor path only
+ 6  root := deterministic composition of leaf headlines; keep the newest rootKeep headlines, fold older ones to one line each
+ 7  assemble prompt = Zone A (frozen; schemas travel as the API tools param, not as text) → Zone B (root + branch summaries, creation order, capped) → Zone C (open phase, else latest branch, else root)
+ 8  never reorder Zone B; tool results and the completion nudge are appended as L0 events after Zone C, so the cached prefix survives
+ 9  budgets derive from W: zoneB, zoneC, T are fractions of W divided by the measured heuristic→BPE ratio
+10  context_search(query) ranks over summary text (lexical beam; vector once L3 exists) and returns node ids with snippets
+11  context_fetch(id, depth=summary|full, file?) returns a branch's summary or its raw events; context_peek(id) returns a raw prefix; annotate records a note
+12  the contract in Zone A states the trigger for those tools, not the mechanics; there is no learned policy anywhere</div>
+
+<footer><sup>†</sup> In United States dollars, at the harness's claude-sonnet-5 rates of $2.00 per million input tokens, $10.00 per million output, $0.20 per million cache read and $2.50 per million cache write, the median run in Table 3 costs $0.136 on sw-5-dozen and $0.165 on sw-6-ripple under the native transcript baseline, $0.207 and $0.216 under the tree with the loop-8 gate, and $0.334 and $0.336 under the tree with the real-token gate. For Table 5, at the same rates, the median run costs $0.052 under the native transcript baseline, $0.057 under the tree, $0.077 with the trimmed contract and $0.066 without the completion gate. For §2, at qwen-2.5-72b-instruct's $0.36 / $0.40 and gpt-3.5-turbo's $0.50 / $1.50 per million input / output tokens, the one summarization pass over the frozen store cost $0.689 on claude-haiku-4-5, the discarded and rebuilt compaction artifact $0.383, the whole embedding step $0.000194 across both hosts, and the batch of §5 is committed at about $4.14 against per-model and total caps of $3.00 and $6.00. Dollars appear here once, beside the baselines they are relative to; every claim in this report is made in tokens, turns, graded score and success counts.<br><br>
+Checkpoint report, loop 9 · items 1 and 3 final, item 2's design and instrument final and its scoring batch in flight · Figure 1, Table 1 and Figure 2 from the recorded transplant epoch on the frozen <code>s1</code> store; Table 2 from an embedding run against a copy of that store · Figure 3 and Tables 3 and 4 from the <code>long-v6x</code>, <code>long-v64</code> and <code>long-v65-gate</code> batches, tree arms re-run 2 September 2026 against 1 September baselines · Figure 4 and Tables 5 and 6 from <code>eval/results/sw3-loop9b/</code>, twenty runs in one epoch, 2 September 2026 · algorithm and parameter register at <code>reports/algorithm.md</code> · September 2, 2026.</footer>
+</main>
+<script>
+const nf = n => n.toLocaleString('en-US');
+
+/* ── line chart ─────────────────────────────────────────────────────────── */
+function chart(id, cfg){
+  const W = 680, H = cfg.h, L = 66, R = 108, TP = 34, BT = 50;
+  const ax0 = L, ax1 = W - R, ay0 = H - BT, ay1 = TP;
+  const ymin = cfg.ymin == null ? 0 : cfg.ymin;
+  const X = v => ax0 + (v - cfg.xmin) / (cfg.xmax - cfg.xmin) * (ax1 - ax0);
+  const Y = v => ay0 - (v - ymin) / (cfg.ymax - ymin) * (ay0 - ay1);
+  let g = '';
+
+  cfg.yticks.forEach(t => {
+    g += '<line x1="' + ax0 + '" y1="' + Y(t) + '" x2="' + ax1 + '" y2="' + Y(t) +
+         '" stroke="var(--line)" stroke-width="1"/>' +
+         '<text x="' + (ax0 - 10) + '" y="' + (Y(t) + 4) + '" text-anchor="end">' +
+         (t ? (t / 1000) + 'k' : '0') + '</text>';
+  });
+  g += '<text x="' + (ax0 - 10) + '" y="' + (ay1 - 14) + '" text-anchor="end">tokens</text>';
+  cfg.xticks.forEach(t => {
+    g += '<text x="' + X(t) + '" y="' + (ay0 + 20) + '" text-anchor="middle">' + t + '</text>';
+  });
+  g += '<text x="' + ((ax0 + ax1) / 2) + '" y="' + (ay0 + 42) + '" text-anchor="middle">' + cfg.xtitle + '</text>';
+
+  (cfg.hlines || []).forEach(h => {
+    g += '<line x1="' + ax0 + '" y1="' + Y(h.y) + '" x2="' + ax1 + '" y2="' + Y(h.y) +
+         '" stroke="var(--muted)" stroke-width="1" stroke-dasharray="5 4" opacity=".65"/>' +
+         '<text x="' + (ax1 - 4) + '" y="' + (Y(h.y) + 15) + '" text-anchor="end">' + h.label + '</text>';
+  });
+
+  cfg.series.forEach(s => {
+    const op = s.op == null ? 1 : s.op;
+    g += '<polyline fill="none" stroke="' + s.color + '" stroke-width="' + (s.w == null ? 2 : s.w) + '" opacity="' + op +
+         '" stroke-linejoin="round" points="' +
+         s.pts.map(p => X(p[0]).toFixed(1) + ',' + Y(p[1]).toFixed(1)).join(' ') + '"/>';
+    if (s.dot) s.pts.forEach(p => {
+      g += '<circle cx="' + X(p[0]).toFixed(1) + '" cy="' + Y(p[1]).toFixed(1) + '" r="' + s.dot +
+           '" fill="' + s.color + '" opacity="' + op + '"/>';
+    });
+  });
+
+  (cfg.marks || []).forEach(m => {
+    g += '<circle cx="' + X(m.x).toFixed(1) + '" cy="' + Y(m.y).toFixed(1) + '" r="5" fill="' + m.color +
+         '" stroke="var(--surface)" stroke-width="1.5"/>' +
+         '<text x="' + (X(m.x) - 9).toFixed(1) + '" y="' + (Y(m.y) - 9).toFixed(1) +
+         '" text-anchor="end">' + m.label + '</text>';
+  });
+  (cfg.ends || []).forEach(e => {
+    g += '<text x="' + (X(e.x) + 8).toFixed(1) + '" y="' + (Y(e.y) + 4).toFixed(1) +
+         '" class="serieslabel" fill="' + e.color + '">' + e.label + '</text>';
+  });
+
+  let lx = ax0;
+  cfg.legend.forEach(l => {
+    g += '<rect x="' + lx + '" y="' + (ay1 - 26) + '" width="13" height="3" fill="' + l.color + '"/>' +
+         '<text x="' + (lx + 19) + '" y="' + (ay1 - 20) + '">' + l.label + '</text>';
+    lx += 38 + l.label.length * 6.7;
+  });
+
+  g += '<g data-c="1" style="display:none"><line y1="' + (ay1 - 10) + '" y2="' + ay0 +
+       '" stroke="var(--muted)" stroke-width="1" opacity=".8"/></g>';
+  g += '<g data-t="1" style="display:none"></g>';
+  g += '<rect data-o="1" x="' + ax0 + '" y="' + (ay1 - 10) + '" width="' + (ax1 - ax0) +
+       '" height="' + (ay0 - ay1 + 10) + '" fill="transparent"/>';
+
+  const host = document.getElementById(id);
+  host.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + cfg.alt + '">' + g + '</svg>';
+
+  const svg = host.firstChild;
+  const ov = svg.querySelector('[data-o]');
+  const cr = svg.querySelector('[data-c]');
+  const tp = svg.querySelector('[data-t]');
+  const cl = cr.firstChild;
+  const maps = cfg.series.filter(s => s.tip).map(s => ({ name: s.tip, color: s.color, m: new Map(s.pts) }));
+
+  function show(xv){
+    cl.setAttribute('x1', X(xv)); cl.setAttribute('x2', X(xv));
+    cr.style.display = '';
+    const rows = maps.map(r => ({ name: r.name, color: r.color, v: r.m.get(xv) }))
+                     .filter(r => r.v != null);
+    if (!rows.length){ tp.style.display = 'none'; return; }
+    const head = cfg.tipHead + ' ' + xv;
+    const wide = Math.max(head.length, ...rows.map(r => r.name.length + 8)) * 6.3 + 26;
+    const high = 22 + rows.length * 15 + 6;
+    let tx = X(xv) + 12;
+    if (tx + wide > W - 4) tx = X(xv) - 12 - wide;
+    let s = '<rect x="' + tx + '" y="' + (ay1 - 6) + '" width="' + wide + '" height="' + high +
+            '" rx="4" fill="var(--surface)" stroke="var(--line)" stroke-width="1"/>' +
+            '<text x="' + (tx + 11) + '" y="' + (ay1 + 11) + '" fill="var(--ink)">' + head + '</text>';
+    rows.forEach((r, i) => {
+      const yy = ay1 + 29 + i * 15;
+      s += '<rect x="' + (tx + 11) + '" y="' + (yy - 7) + '" width="10" height="3" fill="' + r.color + '"/>' +
+           '<text x="' + (tx + 26) + '" y="' + yy + '" fill="var(--ink)">' + r.name + ' ' + nf(r.v) + '</text>';
+    });
+    tp.innerHTML = s; tp.style.display = '';
+  }
+
+  ov.addEventListener('mousemove', e => {
+    const b = svg.getBoundingClientRect();
+    const raw = cfg.xmin + (((e.clientX - b.left) / b.width * W) - ax0) / (ax1 - ax0) * (cfg.xmax - cfg.xmin);
+    let best = cfg.xdomain[0];
+    cfg.xdomain.forEach(d => { if (Math.abs(d - raw) < Math.abs(best - raw)) best = d; });
+    show(best);
+  });
+  ov.addEventListener('mouseleave', () => { cr.style.display = 'none'; tp.style.display = 'none'; });
+}
+
+/* ── grouped horizontal bars, same idiom: build the markup, then mount ──── */
+function bars(id, cfg){
+  const W = 680, L = cfg.left == null ? 196 : cfg.left, R = cfg.right == null ? 118 : cfg.right;
+  const TP = 40, BT = 44, barH = 11, barGap = 4, groupGap = 15;
+  const ax0 = L, ax1 = W - R;
+  const X = v => ax0 + (v / cfg.xmax) * (ax1 - ax0);
+  let g = '', y = TP;
+
+  let lx = ax0 - 130;
+  (cfg.legend || []).forEach(l => {
+    g += '<rect x="' + lx + '" y="' + (TP - 30) + '" width="12" height="9" fill="' + l.color + '"/>' +
+         '<text x="' + (lx + 18) + '" y="' + (TP - 22) + '">' + l.label + '</text>';
+    lx += 32 + l.label.length * 6.6;
+  });
+  if (cfg.title) g += '<text x="' + (W - 4) + '" y="' + (TP - 22) + '" text-anchor="end">' + cfg.title + '</text>';
+
+  cfg.groups.forEach(grp => {
+    const top = y;
+    grp.bars.forEach(b => {
+      const w = Math.max(0, X(b.v) - ax0);
+      g += '<rect x="' + ax0 + '" y="' + y + '" width="' + w.toFixed(1) + '" height="' + barH +
+           '" fill="' + b.color + '"/>' +
+           '<text x="' + (ax0 - 8) + '" y="' + (y + barH - 1.5) + '" text-anchor="end">' + b.label + '</text>' +
+           '<text x="' + (ax0 + w + 6).toFixed(1) + '" y="' + (y + barH - 1.5) + '" class="vlabel">' + b.text + '</text>';
+      y += barH + barGap;
+    });
+    if (grp.label) {
+      g += '<text x="4" y="' + (top + barH - 1.5) + '" class="serieslabel" fill="var(--ink)">' + grp.label + '</text>';
+    }
+    y += groupGap;
+  });
+
+  const ay0 = y - groupGap + 8;
+  cfg.xticks.forEach(t => {
+    g += '<line x1="' + X(t).toFixed(1) + '" y1="' + (TP - 6) + '" x2="' + X(t).toFixed(1) + '" y2="' + ay0 +
+         '" stroke="var(--line)" stroke-width="1"/>' +
+         '<text x="' + X(t).toFixed(1) + '" y="' + (ay0 + 16) + '" text-anchor="middle">' + cfg.tick(t) + '</text>';
+  });
+  g += '<text x="' + ((ax0 + ax1) / 2) + '" y="' + (ay0 + 34) + '" text-anchor="middle">' + cfg.xtitle + '</text>';
+
+  const H = ay0 + BT;
+  document.getElementById(id).innerHTML =
+    '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + cfg.alt + '">' + g + '</svg>';
+}
+
+const WARM = 'var(--warm)', ACC = 'var(--accent)', COOL = 'var(--cool)', PLUM = 'var(--plum)';
+const s3 = v => v.toFixed(3);
+
+/* ── Figure 1 — transplant mean graded score ────────────────────────────── */
+bars('fig1a', {
+  xmax: 0.5, xticks: [0, 0.1, 0.2, 0.3, 0.4, 0.5], tick: t => t.toFixed(1),
+  xtitle: 'mean graded score over valid replicates',
+  title: '(a) qwen-2.5-72b-instruct, W = 32,768',
+  alt: 'Mean graded score per arm and stratum at a 32,768-token window. Context-tree scores only on the head stratum; both baselines score only on tail.',
+  legend: [
+    { color: WARM, label: 'baselines' },
+    { color: ACC, label: 'context-tree' },
+    { color: PLUM, label: 'context-tree, wide root' }
+  ],
+  groups: [
+    { label: 'head', bars: [
+      { label: 'truncate-tail', v: 0.000, text: '0.000 (n=14)', color: WARM },
+      { label: 'compact-rolling', v: 0.000, text: '0.000 (n=15)', color: WARM },
+      { label: 'tree', v: 0.091, text: '0.091 (n=11)', color: ACC },
+      { label: 'tree-wide', v: 0.273, text: '0.273 (n=11)', color: PLUM }
+    ]},
+    { label: 'tail', bars: [
+      { label: 'truncate-tail', v: 0.200, text: '0.200 (n=15)', color: WARM },
+      { label: 'compact-rolling', v: 0.333, text: '0.333 (n=15)', color: WARM },
+      { label: 'tree', v: 0.000, text: '0.000 (n=12)', color: ACC },
+      { label: 'tree-wide', v: 0.000, text: '0.000 (n=13)', color: PLUM }
+    ]},
+    { label: 'deep', bars: [
+      { label: 'truncate-tail', v: 0.000, text: '0.000 (n=15)', color: WARM },
+      { label: 'compact-rolling', v: 0.000, text: '0.000 (n=15)', color: WARM },
+      { label: 'tree', v: 0.000, text: '0.000 (n=12)', color: ACC },
+      { label: 'tree-wide', v: 0.000, text: '0.000 (n=10)', color: PLUM }
+    ]}
+  ]
+});
+
+bars('fig1b', {
+  xmax: 0.5, xticks: [0, 0.1, 0.2, 0.3, 0.4, 0.5], tick: t => t.toFixed(1),
+  xtitle: 'mean graded score over valid replicates',
+  title: '(b) gpt-3.5-turbo, W = 16,384',
+  alt: 'Mean graded score per arm and stratum at a 16,384-token window. Every cell is zero except the two baselines on the tail stratum.',
+  legend: [
+    { color: WARM, label: 'baselines' },
+    { color: ACC, label: 'context-tree' }
+  ],
+  groups: [
+    { label: 'head', bars: [
+      { label: 'truncate-tail', v: 0.000, text: '0.000 (n=15)', color: WARM },
+      { label: 'compact-rolling', v: 0.000, text: '0.000 (n=15)', color: WARM },
+      { label: 'tree', v: 0.000, text: '0.000 (n=15)', color: ACC }
+    ]},
+    { label: 'tail', bars: [
+      { label: 'truncate-tail', v: 0.333, text: '0.333 (n=15)', color: WARM },
+      { label: 'compact-rolling', v: 0.333, text: '0.333 (n=15)', color: WARM },
+      { label: 'tree', v: 0.000, text: '0.000 (n=15)', color: ACC }
+    ]},
+    { label: 'deep', bars: [
+      { label: 'truncate-tail', v: 0.000, text: '0.000 (n=15)', color: WARM },
+      { label: 'compact-rolling', v: 0.000, text: '0.000 (n=15)', color: WARM },
+      { label: 'tree', v: 0.000, text: '0.000 (n=15)', color: ACC }
+    ]}
+  ]
+});
+
+/* ── Figure 2 — failure mechanisms ──────────────────────────────────────── */
+bars('fig2', {
+  left: 260, right: 96,
+  xmax: 50, xticks: [0, 10, 20, 30, 40, 50], tick: t => t + '%',
+  xtitle: 'share of the 110 non-infrastructure failures',
+  title: 'context-tree arms, both models, 135 sampled rows',
+  alt: 'Failure mechanism breakdown. The two largest categories are never fetching and fetching the wrong branch; truncation of a correct fetch is zero.',
+  legend: [{ color: ACC, label: 'context-tree failures, classified' }],
+  groups: [
+    { label: '', bars: [
+      { label: 'searched, never fetched', v: 42.7, text: '42.7%  (47 rows)', color: ACC },
+      { label: 'fetched a wrong branch', v: 40.0, text: '40.0%  (44 rows)', color: ACC },
+      { label: 'never searched, never fetched', v: 10.9, text: '10.9%  (12 rows)', color: ACC },
+      { label: 'fetched right, no truncation, wrong', v: 5.5, text: '5.5%  (6 rows)', color: ACC },
+      { label: 'fetched right, then hit the turn cap', v: 0.9, text: '0.9%  (1 row)', color: ACC },
+      { label: 'fetched right, but it was truncated', v: 0.0, text: '0.0%  (0 rows)', color: ACC }
+    ]}
+  ]
+});
+
+/* ── Figure 3 — per-turn context, sw-5-dozen, three arms ────────────────── */
+const GATE5 = {
+  native: {
+    reps: [[1571,1682,2052,9299,9940,10143,10256,10325,10418,10487,10534,10650,10719,10987,18126,18767,18880,18949,19157],
+           [1571,1941,9188,9421,9534,11938,11975,16796,16875,16916,21275,21390,21617],
+           [1571,1941,9188,9301,9410,9545,9880,16996,17109,17244]],
+    med: [1571,1941,9188,9301,9534,10143,10256,16796,16875,16916,15905,16020,16168]
+  },
+  tree64: {
+    reps: [[4013,4162,5011,5505,20440,36973,37243,37519,37585],
+           [4013,4193,4467,4608,4769,5617,6110,21045,37485,37752,38031,38097],
+           [4013,4178,4306,4550,4970,19905,36197,36430,36496]],
+    med: [4013,4178,4467,4608,4970,19905,36197,36430,37485]
+  },
+  tree65: {
+    reps: [[4013,4493,4647,4788,5636,6129,21064,28687,28936,45564,30916,32224,32566],
+           [4013,4206,4682,5106,12771,20188,36657,22151,22358,23356],
+           [4013,4245,4619,4760,5941,6434,13255,20895,22245,38799,22016,22208,22659,22901,23183,24299]],
+    med: [4013,4245,4647,4788,5941,6434,21064,22151,22358,38799,26466,27216,27613]
+  }
+};
+
+(function gateChart(){
+  const arms = [
+    { k: 'native', color: WARM, name: 'native' },
+    { k: 'tree64', color: ACC,  name: 'loop-8' },
+    { k: 'tree65', color: COOL, name: 'real-token' }
+  ];
+  const series = [], ends = [];
+  arms.forEach(a => {
+    GATE5[a.k].reps.forEach(vals => {
+      series.push({ color: a.color, op: 0.3, w: 1.1, pts: vals.map((v, j) => [j + 1, v]) });
+    });
+    series.push({ tip: a.name, color: a.color, op: 1, w: 2.4, dot: 2.4,
+                  pts: GATE5[a.k].med.map((v, j) => [j + 1, v]) });
+    let best = null;
+    GATE5[a.k].reps.forEach(vals => { if (!best || vals.length > best.n) best = { n: vals.length, v: vals[vals.length - 1] }; });
+    ends.push({ x: best.n, y: best.v, color: a.color, label: a.name });
+  });
+  chart('fig3', {
+    h: 360, xmin: 1, xmax: 20, xticks: [1, 5, 10, 15, 20],
+    ymax: 46000, yticks: [0, 10000, 20000, 30000, 40000],
+    xtitle: 'turn (one model call)', tipHead: 'turn',
+    xdomain: Array.from({ length: 20 }, (_, i) => i + 1),
+    alt: 'Context size per turn on sw-5-dozen for three arms. The real-token gate spikes at its crossing and then runs roughly level, while the loop-8 gate keeps climbing.',
+    series: series, ends: ends,
+    marks: [
+      { x: 10, y: 45564, color: COOL, label: 'turn 10' },
+      { x: 7,  y: 36657, color: COOL, label: 'turn 7' },
+      { x: 10, y: 38799, color: COOL, label: 'turn 10' }
+    ],
+    legend: [
+      { color: WARM, label: 'native transcript' },
+      { color: ACC,  label: 'tree, loop-8 gate' },
+      { color: COOL, label: 'tree, real-token gate' }
+    ]
+  });
+})();
+
+/* ── Figure 4 — sw-3-refactor, four arms, one epoch ─────────────────────── */
+bars('fig4a', {
+  left: 230, right: 140,
+  xmax: 100000, xticks: [0, 25000, 50000, 75000, 100000], tick: t => t ? (t / 1000) + 'k' : '0',
+  xtitle: 'median total tokens per run (n = 5)',
+  title: '(a) tokens',
+  alt: 'Median total tokens per run on sw-3-refactor for four arms measured in one epoch.',
+  legend: [
+    { color: WARM, label: 'native transcript (baseline)' },
+    { color: ACC, label: 'context-tree' }
+  ],
+  groups: [
+    { label: '', bars: [
+      { label: 'A  native transcript', v: 40040, text: '40,040   1.00x', color: WARM },
+      { label: 'B  tree, v6.5 candidate', v: 68634, text: '68,634   1.71x', color: ACC },
+      { label: 'C  tree + trimmed contract', v: 94263, text: '94,263   2.35x', color: COOL },
+      { label: 'D  tree + no completion gate', v: 89602, text: '89,602   2.24x', color: PLUM }
+    ]}
+  ]
+});
+
+bars('fig4b', {
+  left: 230, right: 140,
+  xmax: 14, xticks: [0, 4, 8, 12], tick: t => String(t),
+  xtitle: 'median model turns per run (n = 5)',
+  title: '(b) turns',
+  alt: 'Median model turns per run on sw-3-refactor for four arms measured in one epoch.',
+  legend: [
+    { color: WARM, label: 'native transcript (baseline)' },
+    { color: ACC, label: 'context-tree' }
+  ],
+  groups: [
+    { label: '', bars: [
+      { label: 'A  native transcript', v: 9, text: '9', color: WARM },
+      { label: 'B  tree, v6.5 candidate', v: 9, text: '9', color: ACC },
+      { label: 'C  tree + trimmed contract', v: 11, text: '11', color: COOL },
+      { label: 'D  tree + no completion gate', v: 11, text: '11', color: PLUM }
+    ]}
+  ]
+});
+</script>

@@ -206,6 +206,71 @@ describe('AnthropicProvider', () => {
 });
 
 describe('OpenRouterProvider', () => {
+  it('a reply with no content and no tool calls FAILS LOUDLY, naming the reasoning tokens that ate the budget', async () => {
+    // Returning '' hands the caller a blank answer indistinguishable from a
+    // real one: a batch of 180 scored runs once graded that empty string as a
+    // wrong answer and had to be thrown away. The guard exists so that never
+    // reaches a grader silently. It reports where the completion went, since
+    // an empty reply with reasoning tokens spent means something different
+    // from an empty reply with none.
+    const stub = new OpenRouterStub({
+      model: 'nvidia/nemotron-3-ultra-550b-a55b',
+      choices: [
+        {
+          message: { content: '', reasoning: 'thinking about the question at length', tool_calls: [] },
+          finish_reason: 'length',
+        },
+      ],
+      usage: {
+        prompt_tokens: 21,
+        completion_tokens: 49,
+        completion_tokens_details: { reasoning_tokens: 47 },
+      },
+    });
+
+    await expect(new OpenRouterProvider({ client: stub }).complete(request())).rejects.toThrow(
+      /no content and no tool calls.*finish_reason=length.*reasoning_tokens=47/s,
+    );
+  });
+
+  it('empty content WITH tool calls stays valid — a tool-only turn is how the loop advances', async () => {
+    // The guard above must not fire on the normal case. A model that answers
+    // with a tool call and no prose is doing exactly what the contract asks.
+    const stub = new OpenRouterStub({
+      model: 'z-ai/glm-5.3-flash',
+      choices: [
+        {
+          message: {
+            content: null,
+            tool_calls: [{ id: 't1', function: { name: 'context_search', arguments: '{"query":"x"}' } }],
+          },
+          finish_reason: 'tool_calls',
+        },
+      ],
+      usage: { prompt_tokens: 10, completion_tokens: 5 },
+    });
+
+    const result = await new OpenRouterProvider({ client: stub }).complete(request());
+    expect(result.text).toBe('');
+    expect(result.toolCalls).toEqual([{ id: 't1', name: 'context_search', input: { query: 'x' } }]);
+  });
+
+  it('reasoning text is never returned as the answer — the caller asked for an answer', async () => {
+    // Reading `reasoning` to EXPLAIN an empty answer is diagnosis; returning it
+    // as the answer would silently substitute the model's scratchpad for its
+    // conclusion, which grades as nonsense and reads as a model failure.
+    const stub = new OpenRouterStub({
+      model: 'nvidia/nemotron-3-super-120b-a12b',
+      choices: [
+        { message: { content: 'the answer is 42', reasoning: 'let me think... maybe 41? no, 42' }, finish_reason: 'stop' },
+      ],
+      usage: { prompt_tokens: 10, completion_tokens: 20, completion_tokens_details: { reasoning_tokens: 12 } },
+    });
+
+    const result = await new OpenRouterProvider({ client: stub }).complete(request());
+    expect(result.text).toBe('the answer is 42');
+  });
+
   it('passes cache_control through on the marked message, because §10 rule 5 requires provider-native caching wherever the field exists', async () => {
     const stub = new OpenRouterStub({
       model: 'anthropic/claude-haiku-4-5',

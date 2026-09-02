@@ -273,7 +273,7 @@
     {
       "id": "g10-prefix-stability",
       "status": "PASS",
-      "detail": "Zone A+B prefix byte-identical across 3 assemblies at W=16384 (a843904d0c77); tail appends after Zone C"
+      "detail": "Zone A+B prefix byte-identical across 3 assemblies at W=16384 (b463c69e2a19); tail appends after Zone C"
     },
     {
       "id": "g11-literal-uniqueness",
@@ -298,7 +298,7 @@
     {
       "id": "g15-self-retrieval",
       "status": "PASS",
-      "detail": "all 12 question(s) retrieve their own source within top 20 (ranks: 15, 11, 15, 10, 7, 5, 1, 11, 17, 6, 2, 11; task root excluded) | strict top-3: 2/12 | WARNING: topK=20 >= 19 results returned, so this threshold accepts every result the search returns and proves nothing about referent uniqueness",
+      "detail": "all 12 question(s) retrieve their own source within the 20 result(s) the model receives (ranks: 15, 11, 15, 10, 7, 5, 1, 11, 17, 6, 2, 11; task root excluded) | strict top-3: 2/12, top-5: 3/12 | WARNING: the derived threshold 20 (retrieval.limit) >= 19 ranked result(s), so every returned result passes; this gate proves the source is reachable, not that the referent is unique",
       "selfRetrieval": [
         {
           "id": "s1-q01-head",
@@ -636,8 +636,12 @@
           "reason": null
         }
       ],
-      "strictTop3": 2,
       "topK": 20,
+      "topKSource": "config retrieval.limit",
+      "strict": {
+        "3": 2,
+        "5": 3
+      },
       "branchCount": 19,
       "vacuous": true
     }

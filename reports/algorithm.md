@@ -1,132 +1,347 @@
-# The context-tree algorithm — reference description
+# The context-tree algorithm
 
-This is the one document that states the algorithm as it currently runs. Judges
-count the pseudo-code lines here against the program's simplicity budget
-(twelve lines, set before loop 1); implementers change the code and then this
-page in the same change; every new finding that alters a line is recorded in the
-change log at the end. The file is `reports/algorithm.md`; the markdown is the
-canonical form.
+This page states the algorithm as it currently runs, and it is the reference the
+DS-STAR passes score against. It exists so that a change to the algorithm and a
+change to this page happen together, and so that porting the algorithm to a new
+model or harness starts here rather than in the code.
 
-Terms used below. **L0** is the append-only event log (`trace.jsonl`). **L1** is
-the SQLite tree of nodes that reference L0 by sequence-number spans and hold
-versioned summaries. **L2** is the content-addressed blob store for payloads.
-**Zone A / B / C** are the three fixed sections of every prompt: the frozen
-contract and tool schemas, the summaries in creation order, and the active
-branch's raw detail. A **phase** is a run of events classified by the tool that
-produced them; a closed phase becomes a **leaf**; the leaves' parent is the
-**root**. The **window** W is the model's context size. The **lazy budget** T is
-the prompt size below which the tree summarizes nothing.
+The goal is an algorithm that is simple, repeatable, and translatable: the same
+steps should work on a model and a harness it has never seen. Four rules follow
+from that, and they are what a DS-STAR judge scores. There is no size budget —
+a line count is itself a number picked in advance, and an algorithm can sit
+under one while still failing to travel.
 
-## Pseudo-code (12 lines, all in force)
+**1. No budgets or caps.** Not on turns, not on wall-clock time, not on reply
+length. Each is a guess about work nobody has measured yet, and each has already
+corrupted a measurement here: the turn ceiling fabricated 16 failures the models
+never committed, and the reply clamp produced empty answers that were then
+graded wrong. Where a real resource must be bounded, bound the resource itself.
+Spend is bounded by a spend cap. A run that will not finish is ended by
+non-progress, which is a property of the run rather than of the harness.
+
+**2. A hardcoded value is a defect unless that value is predictably helpful
+across models and harnesses.** The test is not whether something is a constant.
+Some constants genuinely hold everywhere, and those are fine and should say so
+with their evidence. The test is whether anyone has shown this number holds off
+the host it was fitted on. A value fitted to one window, one tokenizer, or one
+task length and never re-checked will be wrong on the next host, silently.
+
+**3. Setting a parameter from a model's limits is fine. Guessing it is not.**
+Nothing is wrong with a value that differs per model. What matters is that a
+documented procedure produces it, so a new host runs that procedure instead of
+inheriting a number from a machine it never saw. The measured
+heuristic-to-tokenizer ratio is the shape to copy: it ships with the code, it is
+re-measured per corpus, and it refuses to proceed past a threshold.
+
+**4. Prefer finding the sweet spot to picking a bound.** Where a value trades
+off against the metrics, the answer is not a ceiling but the setting that wins.
+A fraction of the model's context window is usually the right form, because the
+window is the one quantity every host reports about itself. But a fraction is
+only half an answer: which fraction has to be established by measurement against
+tokens, turns and graded score, not chosen because it reads as reasonable. That
+measurement is the work.
+
+## What the DS-STAR loop is for
+
+Its job is not to guard a constant. It is to improve the algorithm iteratively
+along the dimensions where a real tradeoff exists, and to establish the settings
+that win. Four are open. Each is named with what the evidence in this repository
+already says, so a pass starts from measurement rather than from intuition.
+
+**How many branch summaries the model should see.** The first attempt asked the
+question backwards, as how few it could get away with. Limiting what the model
+saw made it reason more: the event-level top-k arm came out cost-neutral against
+the baseline because the input tokens it saved were spent, in its own report's
+words, on "extra output reasoning over a gappy history" — output up 36% — plus
+cache invalidation from moving the selection boundary every turn. The
+branch-level version never fired at all: the segmenter merges consecutive
+same-type tool calls, so real tasks produced about three branches against a
+cutoff of three. Meanwhile this loop's transplant experiment measured the
+opposite direction and found width helps, with eleven visible summaries scoring
+0.333 on early-session questions against two summaries at 0.091 and both
+baselines at zero. So pruning is measured to hurt at the event level, untested at
+the branch level, and width is measured to help. The question is which number of
+visible summaries wins, not how far the count can be cut.
+
+*Should the count be dynamic?* Three policies are on the table and they are not
+alternatives to each other. **Fit-derived** is what the portability harness
+already does: take the largest fold level whose assembled Zone B actually fits
+its budget. That is already dynamic per window and per store, and it needs no
+notion of difficulty. **Demand-driven** would widen when the model reveals it
+needs breadth, by searching or fetching, rather than from any estimate made
+before the run — the same argument that removed the turn ceiling applies, since
+nobody can read difficulty off a task in advance. **User-selected**, in the
+shape of an effort dial, is a reasonable escape hatch but must not be the
+mechanism: a default that only works once the user tunes it is a guess with
+extra steps.
+
+What makes this a real tradeoff rather than a free choice is that width is paid
+for on every turn. More visible summaries buy retrieval — measured — while
+enlarging the cached prefix that is re-read each turn, and cache reads are 93.5%
+of the remaining token gap on the refactor scenario. So width helps exactly when
+the task needs old facts and costs when it does not, which is why the fit-derived
+maximum is the honest starting point and demand-driven adjustment is the
+candidate to measure against it.
+
+**How deep a branch goes before it is summarized.** A branch is currently
+whatever the segmenter's tool-name mapping produced, and its depth follows from
+the model's own batching. Nothing has measured whether a shallower or deeper
+unit retrieves better. The transplant work made the stakes concrete: one branch
+in the frozen session is larger than the whole window it was being read into, so
+depth is not a free parameter.
+
+**When summaries are written, and under what policy.** Both earlier reports
+reached the same conclusion independently, that the leverage is here rather than
+in selection. This loop measured one instance. The switch from showing the whole
+trace to summarizing it now fires, and the per-turn curve flattens after it, but
+every measured crossing cost more than it saved — because the switch point is an
+absolute number instead of a fraction of the window, and because it reads the
+previous turn and therefore lands well past where it aimed.
+
+**How caching is handled.** The prompt layout exists to keep a stable cached
+prefix, and cache reads are where the token gap actually lives: on the refactor
+scenario they are 93.5% of the difference from the baseline. The measured cause
+was not the layout but re-reads across extra turns. This dimension holds the
+largest measured share of the remaining gap and has had the least direct
+experimentation.
+
+Terms. **L0** is the append-only event log. **L2** is the payload store, keyed by
+content hash. **L1** is the tree: nodes that point into L0 by sequence range and
+carry versioned summaries. **L3** is the embedding index. A **phase** is a run of
+events grouped by the tool that produced them; a closed phase becomes a **leaf**;
+the leaves hang off a **root**. **Zone A, B and C** are the three sections of
+every prompt. **W** is the model's context window. The **switch point** is the
+prompt size at which the tree stops showing the whole trace and starts
+summarizing.
+
+## Tier 0 — invariants
+
+These hold on every model and every harness. If one of them is false, the thing
+running is not this algorithm.
+
+1. L0 is append-only and is the only source of truth. L1, L3 and any rendered
+   view are derived and rebuildable.
+2. L1 stores coordinates, not content. A node names a sequence range; the text
+   lives in L2.
+3. Summaries are versioned, never overwritten.
+4. The prompt is Zone A then Zone B then Zone C, in that order, with Zone B in
+   creation order. Retrieved results are appended after Zone C. Nothing reorders
+   a prefix that has already been cached.
+5. Ingestion is hermetic: it reads L0, L2 and a parser, and calls nothing over a
+   network.
+
+## Tier 1 — the loop
 
 ```
- 1  on each event: append to L0; payload → L2; the edit-tool's args are capped at 512 B once the post-state blob exists
- 2  segment L0 in one deterministic pass: tool name → phase (config-remappable; unknown → other); a closed phase is a leaf with span coordinates only
- 3  DEVOLVED while last prompt's real tokens < T and not yet crossed:  Zone C := whole trace, Zone B := ∅, summarize nothing
- 4  the crossing is one-way: once real tokens ≥ T, latch (L0 only grows, so the whole trace never fits again)
- 5  after the crossing: summarize closed leaves in parallel on the cheap model (cap 8), versioned, with rehydration pointers; staleness cascades up the ancestor path only
- 6  root := deterministic composition of leaf headlines; keep the newest rootKeep headlines, fold older ones to one line each
- 7  assemble prompt = Zone A (frozen; schemas travel as the API tools param, not as text) → Zone B (root + branch summaries, creation order, capped) → Zone C (open phase, else latest branch, else root)
- 8  never reorder Zone B; tool results and the completion nudge are appended as L0 events after Zone C, so the cached prefix survives
- 9  budgets derive from W: zoneB, zoneC, T are fractions of W divided by the measured heuristic→BPE ratio
-10  context_search(query) ranks over summary text (lexical beam; vector once L3 exists) and returns node ids with snippets
-11  context_fetch(id, depth=summary|full, file?) returns a branch's summary or its raw events; context_peek(id) returns a raw prefix; annotate records a note
-12  the contract in Zone A states the trigger for those tools, not the mechanics; there is no learned policy anywhere
+ingest
+  append each event to L0; store its payload in L2; cap edit-tool arguments once the post-state blob exists
+  segment L0 in one deterministic pass: tool name maps to a phase, unknown tool maps to "other"
+  a closed phase becomes a leaf holding a sequence range
+
+decide how much to summarize
+  while the last prompt was smaller than the switch point, show the whole trace and summarize nothing
+  once it is larger, latch: L0 only grows, so the whole trace will not fit again
+  after latching, summarize each closed leaf on the cheap model, versioned, with pointers back to files and symbols
+  a later edit marks its leaf stale and the mark travels to ancestors only
+  compose the root from leaf headlines: the newest are kept whole, older ones fold to one line each
+
+assemble
+  Zone A: the contract, frozen; tool schemas travel as the API parameter, not as prompt text
+  Zone B: root plus branch summaries, creation order, to its budget
+  Zone C: the active branch's raw detail, to its budget
+
+retrieve on demand
+  search ranks summaries and returns coordinates
+  fetch returns a branch's raw events, a listing of them, or its summary
+  peek returns a raw excerpt; annotate records a note
 ```
 
-## Where each line lives
+## Tier 2 — what must be re-derived per model or harness
 
-| Line | Code | Decision / gate | Established by |
-|---|---|---|---|
-| 1 | `packages/core/src/trace/`, `blobs/`; `packages/core/src/assemble/format.ts:128` (`ARGS_CAP_WITH_BLOB = 512`) | D-storage layering; v5.9b | loop 7: capped args beat dropped args (dropping forced re-verification, sw-1 turns 13→25) |
-| 2 | `packages/core/src/ingest/` segmenter; `context-tree.config.json` `toolPhase` | §7, D15 (hermetic ingestion) | M0–M2; loop 9 added 8 tool→phase entries so `unmappedTools` is empty |
-| 3 | `eval/src/loop.ts` ~761–775 (`EVAL_LAZY_TOKENS`, `lastPromptTokens`, `belowLazyBudget`) | v6.0 token gate; **item 1 (2026-09-02): real tokens replace chars÷4** | loop 7 (v6.0/6.1 identical, zero crossings); loop 9b: chars÷4 undercounted 13–31% on sw-5/sw-6 and never fired; with real tokens it fires on 6/6 runs and the curve flattens 35–39% below the loop-8 tree, but total tokens rise 22–35% because a 30k absolute switch forces a transition a 200k model does not need — see the single-derivation candidate |
-| 4 | `eval/src/loop.ts` (`lazyCrossed`) | **item 1 latch (2026-09-02)** | first live crossing oscillated (40k → <30k → 43k, 2× cost); test "the crossing is one-way" |
-| 5 | `packages/core/src/summarize/summarizer.ts` (concurrency, versioned `node_summaries`) | §8, D3, D4 | M3; loop 6–7 truncation-retry bounding |
-| 6 | `packages/core/src/summarize/compose-root.ts:72–88` (`composeRootSummary`, `rootKeep`) | v5.7 det-root; D17 fold; `EVAL_ROOT_KEEP=40` (v6.5 candidate) | loop 7: root model call deleted; loop 8: fold fires without flail |
-| 7 | `packages/core/src/assemble/assembler.ts:135–140`; `eval/src/loop.ts` ~909–935 (`activeNodeId`, `EVAL_NO_ATOOLS`) | D5, §10, D18 caps | loop 7: schema text was a 1.1k-token/turn duplicate |
-| 8 | `eval/src/loop.ts` ~792 (`EVAL_FETCH_EVENTS`) | D5; v5.8 | loop 7: the "ephemeral tail" was never dropped and one fetch was re-billed for 12 turns |
-| 9 | `eval/scripts/transplant.mjs` `deriveBudgets` — **transplant harness only**; the live harness still takes absolute values (`--zone-b-budget`, `--zone-c-budget`, `EVAL_LAZY_TOKENS`) | D19 | loop 9 transplant judge: the hand-tuned constant removed as a rule there; reconciling the live harness to the same derivation is an open item |
-| 10 | `packages/mcp/src/tools/context-search.ts`; `packages/core/src/retrieve/retriever.ts` (`search`, `beamSearch`, `embedSummaries`) | §9, §9.1 | loop 8 probe validated lexical search; **loop 9b: no embedder or provider registry is wired in the shipped server or the harness — every measured search was lexical** |
-| 11 | `packages/mcp/src/tools/context-fetch.ts`, `context-peek.ts`, `annotate.ts`; `retriever.ts:188–269` | §9 (exactly four tools) | loop 9b: drill-down exists through `meta.node_ids`; no children listing, no sub-range, peek is prefix-only |
-| 12 | `packages/core/src/prompts/system-contract.v1.md`, `packages/core/src/prompts/index.ts` | §14, D7 | loop 9b item 3: contract v2 (one section deleted) runs as a flagged arm, v1 stays default |
+Every value that affects behaviour, each with its state under rule 2.
+**Derived** means the host tells us and we compute it. **Validated** means a
+constant shown to hold across models or harnesses, with the evidence named.
+**Host** means it is meant to be supplied per deployment. **Unvalidated** means
+a number fitted somewhere else and never re-checked, which rule 2 calls a defect
+— those rows are the work queue. Hardcoded values are generally bad unless they prove to be a general pupose default that can be applied across models and harnesses.
 
-## Simplicity rule
+| Value | Now | Where it should come from | State |
+| --- | --- | --- | --- |
+| switch point | 30,000, absolute (live suite) | a fraction of W; the portability harness already computes 0.35·W ÷ ratio | **unvalidated** — and measured wrong: on a 200k-window model the derived form is ≈70k, so these traces would never cross, while the absolute 30,000 forced a crossing that cost more than it saved on every replicate |
+| Zone B budget | 8,000, absolute (live) | a fraction of W | **unvalidated** live; derived in the portability harness |
+| Zone C budget | 30,000, absolute (live); unbounded before the switch | a fraction of W | **unvalidated** live; derived in the portability harness |
+| zone fractions | reply .05, A .10, B .20, C .20, switch .35, slack .10 | measurement against tokens, turns and score — rule 4 | **unvalidated as values.** They are a design allocation summing to 1, never swept. Two are also inconsistent: the switch fraction is .35 while Zone C is .20, though the rule says the switch is "the whole trace fits where the active branch's detail would go", which makes them the same quantity |
+| heuristic-to-tokenizer ratio | 0.851 on this corpus | measured per corpus, refuses above 1.6 | **derived.** The shape rule 3 asks for: procedure ships, re-runs per host |
+| root keep (visible summaries) | 40 (live); per-window ladder (portability) | measurement — this is DS-STAR dimension 1 | **derived** in the portability harness (largest fold level whose assembled Zone B fits); **unvalidated** constant in the live suite. Which value *wins* is unmeasured either way |
+| search result limit | 20 | W and the per-hit payload size | **unvalidated.** At a 16k window the search payload alone overflowed the remaining room in 8 of 15 runs |
+| peek / snippet / hydrate sizes | five different literals: 800, 2,000, 2,000, 240, 65,536 chars | one shared value sized to the room available | **unvalidated and mutually inconsistent.** The 65,536 default alone exceeds the entire default Zone C budget |
+| rendered list cap | 40 values | the Zone B budget it is protecting | **unvalidated** |
+| edit-argument cap | 512 bytes when a post-state blob exists | measurement against re-verification cost | **validated.** Both alternatives were run: dropping the arguments cost turns (a scenario went 13 → 25) and capping did not. The number itself has not been swept, but the choice between drop, cap and keep has |
+| summary size, retry doublings | 1,024 tokens, up to 3 doublings | the summary model's own limit | **host** |
+| leaf summarizer concurrency | 8 | the provider's rate limit | **host** |
+| tool-to-phase map | 8 entries | **the harness** — tool names differ per host | **host**, and the one row every port must edit. Unknown tool maps to "other" rather than failing |
+| contract version | v1 default, v2 and v3 registered | the model, if a smaller one needs different instruction | **host** |
+| leaf summarizer model | haiku today, a cheap flash model next | cost tiering | **host**; never changed inside a scenario, which would re-freeze the epoch |
+| reply budget | none | — | **removed** 2026-09-02. The live harness sends no `maxTokens`; the portability harness reserves the window's reply fraction with no ceiling |
+| turn ceiling, wall-clock ceiling | none | — | **removed** 2026-09-02, see below |
+| gate set | seven environment flags, all on | — | not a parameter: these seven *are* the algorithm. Promote to defaults and delete the flags |
 
-The program's standing constraint, set by the owner before loop 1 and restated on
-2026-09-02: the algorithm stays simple, with no special conditions that are
-fragile and can break. Rule-removal beats rule-addition; a candidate that replaces
-a rule outranks one that adds a trigger. The lines below are audited for
-conditions each time this page changes:
+### Not part of the algorithm
 
-| Line | Condition it carries | Status |
-|---|---|---|
-| 1 | "capped once the post-state blob exists" | one condition, evidenced (uncapped and dropped both measured worse in loop 7); keep |
-| 3–4 | the crossing itself, plus the latch | the latch is a proof (L0 only grows), not a heuristic; keep |
-| 7 | "open phase, else latest branch, else root" | a three-way fallback: the segmenter closes every phase on re-ingest so `openPhase()` is always null in the live harness and the first branch of the chain never fires; **candidate for deletion** |
-| 10 | "lexical beam; vector once L3 exists" | a silent mode switch on the presence of embeddings; becomes a single path once an embedder is always wired |
+These belong to the measurement harness. Verified by grep: `maxTurns` and
+`timeCapMs` appear only in `eval/src/loop.ts` and nowhere in `packages/core` or
+`packages/mcp`, which is what would ship. The algorithm has no turn limit and no
+notion of a run ending; it assembles a prompt for whatever turn it is handed.
 
-## Configuration parameters
+**The turn and wall-clock ceilings were removed on 2026-09-02.** They defaulted
+to 40 turns and 900 seconds. Two things were wrong with them, and the second is
+the one that matters.
 
-Values that may need to be set differently for a model, a window size, or a host
-harness. Every one is listed with where it is set and what it depends on, so a
-port to a new model or harness starts from this table rather than from the code.
+A duration limit cannot be derived. You cannot tell how long real work will take
+by looking at the task: a single feature can run for hours and hundreds of
+turns, and the sessions that produced this repository run longer than that. Any
+number chosen in advance is a guess about the work, which makes it the same
+category of defect as the hardcoded budgets in the table above, with no
+measurable quantity to derive it from.
 
-| Parameter | Current value | Set where | Depends on | Notes |
-|---|---|---|---|---|
-| T, lazy budget | 30,000 tokens (live); `0.35·W ÷ ratio` (transplant) | `EVAL_LAZY_TOKENS`; `deriveBudgets` | window W, tokenizer | live value is absolute and should become the W-derived form (line 9) |
-| rootKeep | 40 | `EVAL_ROOT_KEEP`; `compose-root.ts:32` | trace length, Zone B budget | v6.5 candidate; the transplant chooses the largest rung whose assembled Zone B fits (R5) |
-| Zone B budget | 8,000 tokens (live); fraction of W (transplant) | `--zone-b-budget`; `deriveBudgets` | window W | |
-| Zone C budget | 30,000 tokens (live; unbounded while devolved); fraction of W (transplant) | `--zone-c-budget`; `deriveBudgets` | window W | v6.4: devolved mode passes `Infinity` |
-| heuristic→BPE ratio | 0.851 (measured on s1, cl100k) | `measureRatio` in transplant | tokenizer family, corpus | re-measure per model family; the assembler counts with a heuristic, the provider bills BPE |
-| summarize.concurrency | 8 | `context-tree.config.json` | provider rate limits | |
-| summarize.maxSummaryTokens | 1,024; up to 3 doublings on truncation | config; `summarizer.ts:90` | summary model | |
-| leaf summarizer model | claude-haiku-4-5 (anthropic) / anthropic/claude-haiku-4.5 (openrouter) | config `leafModel` | cost tiering | plan: move to a flash model from scenario s2 onward; never switch mid-scenario |
-| root summarizer model | none (deterministic composition) | config `rootModel` is dead since v5.7 | | delete the knob (open item 3 from loop 7) |
-| embed model / dim | `voyage-3-lite` / 512 (dead defaults; nothing wired) | config `embedModel`, `embedDim` | provider | to be replaced by an OpenAI-compatible client; sqlite-vec takes the dimension from the first vector |
-| retrieval.limit | 20 | config | window W (each hit carries its full summary text today) | at W=16k the search payload alone overflowed headroom; snippet-only results are a pending candidate |
-| retrieval.providers | graft, serena, augment, vector, grep | config | host | none of them is wired in the shipped server or the harness |
-| peek size | 2,000 chars (tool default) / 800 (retriever default) | `context-peek.ts:15`, `retriever.ts:49` | | two defaults for one thing; reconcile |
-| list caps (D18) | 40 values per rendered list | `format.ts:38` | Zone B budget | |
-| edit-args cap | 512 B when a post-state blob exists | `format.ts:128` | | |
-| tool→phase map | 8 entries in `context-tree.config.json` | config `toolPhase` | **host harness** (tool names differ per harness) | unknown tool → `other`, never a crash |
-| contract version | v1 default; v2 = v1 minus one section | `EVAL_CONTRACT_VERSION` | model (how much instruction it needs) | item 3 arm |
-| agent model | claude-sonnet-5 (live suites); qwen-2.5-72b, gpt-3.5 (transplant) | `--model` | | models must pass a one-call tool-use probe before entering a scored grid |
-| max turns / time cap | 40 / 900 s (short suites); 80 / 1,800 s (long); 6 turns (transplant) | `--max-turns`, `--time-cap-ms`; `MAX_TURNS` | task length | the transplant's 6 is a gathering cap under review |
-| reply cap (transplant) | 800 tokens | `MAX_REPLY_TOKENS` | window W | |
-| shipping gate set (v6.x) | `EVAL_NATIVE_CACHE EVAL_ZONEC_LATEST EVAL_SUMMARIZE_ON_CLOSE EVAL_ZONEC_CACHE EVAL_DET_ROOT EVAL_NO_ATOOLS EVAL_FETCH_EVENTS` all =1 | env | | these are the algorithm; promoting them to defaults is roadmap item 4 (gated on the checkpoint report) |
-| retired gates | `EVAL_LAZY_K`, `EVAL_DSA_V6`, `EVAL_SUMMARY_DEDUP` | env | | delete from code when item 4 lands |
+Worse, a ceiling fabricated data, and it fabricated it in both directions. Of
+the 26 runs in this repository stopped by a ceiling, 16 were graded as failures
+and 10 as successes. The successes are legitimate: those scenarios are graded by
+running hidden tests against the sandbox, so a passing run did the work and only
+kept talking past the ceiling. The 16 failures are not. Nothing about a stopping
+point the harness picked says the model could not have finished.
 
-## Line budget ledger
+One of those 16 sits under a published headline. The `v56-base` baseline, which
+every configuration from v5.7 through v6.x was measured against, reported the
+long scenario as five successes of five for the tree against three of five for
+the transcript, and that reliability gap is the reason the tree was described as
+winning where the baseline fails. Two of the baseline's five runs hit the
+ceiling and were graded as failures. Measured only on the runs that produced an
+outcome, the baseline is three of three with two runs unmeasured, and there is
+no measured reliability difference between the arms on that scenario at all.
 
-| When | Change | Lines |
-|---|---|---|
-| Loop 1 start | budget set: the algorithm must fit in twelve lines | 12 |
-| Loops 5–7 | branch-count k → token budget (replacement); root model call → deterministic composition (replacement); Zone A schema text deleted; ephemeral tail deleted | 12 |
-| Loop 9 kickoff (transplant judge) | budgets derived from W (line 9) replaces the hand-tuned constant | 12 |
-| 2026-09-02 item 1 | chars÷4 → real tokens (line 3, replacement); latch added (line 4, **+1**, absorbed by merging the old "Zone C is the whole trace / Zone B empty" statement into line 3) | 12 |
+What replaced them:
 
-The count is at the limit. Any candidate from the loop-9b design panels that adds
-a line must name the line it replaces.
+| Concern | Instrument | Why it is the right one |
+| --- | --- | --- |
+| unbounded spend | `--cost-cap-usd`, already present, enforced by the cost meter | money is the actual finite resource, and it is measured directly rather than through a proxy |
+| a run that will not finish | stall detection: three consecutive turns in which every tool call repeats one already made (`STALL_TURNS` in `eval/src/loop.ts`) | non-progress is a property of the run. A model that is still issuing new calls is still working, however long it takes |
+| honest accounting | a run stopped by the harness is still graded, but only a PASS counts: a failing grade becomes `success: null`, not measured (`HARNESS_STOPPED` in `eval/src/types.ts`) | these scenarios are graded by running hidden tests against the sandbox, so a pass is a fact about the filesystem and means the work was done even though the ceiling cut off the talking. A failure at a stopping point the harness chose is not evidence the model could not have finished. A stall keeps both directions, because ending in a loop is a real task failure |
 
-## Candidates with a judge verdict (not yet in force; each runs as its own arm)
+**The reply budget went the same day, for the same reason.** The live harness
+sent a fixed 8,192-token `maxTokens` on every call and the portability harness
+clamped its reply reservation to 800. Both are guesses about how much a model
+needs to say. The clamp was worse than a guess: it won at every window above
+about 16,000 tokens, so the reservation looked derived from the window while
+being a constant, and on a model that reasons before it answers the budget could
+be spent thinking, leaving an empty reply that a grader scores as a wrong
+answer. That is the actual cause of a batch previously written off as a provider
+quirk.
 
-- **Raw by default** (item 2, judge A, arm `tree-slice`): `context_fetch` returns raw events by default, aimed by an inclusive sequence range, with `depth:'index'` listing events; summaries stay reachable by asking. Replaces line 11's "summary or raw" with "raw, sized to fit". Grounds: none of the twelve answer literals occurs in any summary text or metadata, so the current default is a guaranteed zero on verbatim questions.
-- **Search hits are coordinates** (item 2, arm `tree-thin`): a hit carries a 240-character snippet and pointer metadata, not the full summary. Changes line 10's return value only. Grounds: at a 16k window the search payload alone overflowed headroom in 8 of 15 runs.
-- **Contract v3** (item 2, arm `tree-verbatim`): rule 2 replaced by "a summary can never tell you what it said; fetch at full depth before stating a number, identifier or quote", and the sentence preferring `file`/`peek` over a branch fetch deleted. Line 12, one rule replaced, one removed.
-- **Semantic ranking** (item 2, arm `tree-semantic`, conditional on an offline rank check): an embeddings client so line 10's vector path runs. No line change.
-- **Completion-gate removal** (item 3, arm `no-gate`) — **measured null and retired** (2026-09-02, n=5 same-epoch: paired turn deltas +2, +3, −2, +3, −1; the gate stays because it rescued 23 runs elsewhere). The same batch corrected the sw-3 headline: the tree runs 1.71× native on tokens same-day, not the 3.4× of the cross-day comparison, with equal median turns.
-- **Contract v2 trim** (item 3, arm `tree+v2`) — **measured null and retired** as a live candidate; it moved turn counts (0, +2, +3, −2, +6), so the deleted section was not behaviourally inert.
-- **One budget derivation** (from the 2026-09-02 runs): delete the live harness's absolute 30,000-token switch and derive it from W as the transplant does; set the switch equal to the Zone C fraction as line 3 already states. Line 9 becomes true of both harnesses.
-- **Dropped:** `tree-active` (pre-filling Zone C with the newest branch) — headroom was not the constraint, and it hands the tail stratum its answer by construction.
+The live harness now sends no `maxTokens` at all, so each provider applies its
+own maximum, which is the only number that knows the model. The portability
+harness keeps a reservation, because prompt plus reply has to fit the window it
+simulates, but it is purely the window's reply fraction with no ceiling: ten
+times the window reserves ten times the reply. A host that genuinely needs a
+bound passes one; nothing imposes it.
+
+`--max-turns` and `--time-cap-ms` still exist with no default, for a probe that
+deliberately wants a bound. The three tests in `eval/test/loop.test.ts` under
+"a run the harness stopped is not a task failure" encode all of this.
+
+## Boundary conditions
+
+Portability is tested by finding where the algorithm stops working, not by
+counting its steps. Each row is a condition, how it is checked, and what is known.
+
+| Condition | Check | State |
+| --- | --- | --- |
+| window too small to hold Zone A plus one branch summary | assemble at 8k, 16k, 32k, 64k, 200k and assert each Zone B is a subset of the next larger | tested offline, passes |
+| a leaf larger than the whole window | fetch a branch whose raw span exceeds W | **found**: one branch is 36k tokens against a 32k window; the listing-then-range path exists but is untested live |
+| host model cannot drive tools | one throwaway search-and-answer call before any scored run | rule adopted after a model scored zero everywhere |
+| unknown tool name | segmenter maps it to "other" | tested |
+| tokenizer heuristic drifts from the real count | measure the ratio, refuse above 1.6 | tested in the transplant harness only |
+| a trace with one branch, or none | fold and assembly must be no-ops | tested |
+| the switch point is reached late in a long run | measured on two scenarios | **found**: a late switch costs more than it saves, and before the latch it oscillated |
+| summaries do not contain the answer | search and fetch must still reach it | **found**: none of twelve answer literals appears in any summary, which is what raw fetch is for |
+| no embedder configured | search falls back to keyword ranking | supported, and until this week it was the only path anyone ran |
+
+## Simplification ledger
+
+The signal to watch is rules going away and hardcoded values becoming derived,
+not any particular count.
+
+| When | Rules removed | Rules added | Hardcoded values retired |
+| --- | --- | --- | --- |
+| Loops 5–7 | branch-count threshold replaced by a size threshold; root model call replaced by deterministic composition; Zone A schema text deleted; ephemeral tail deleted | none | none |
+| Loop 9 kickoff | the transplant harness derives its budgets from W | none | the harness's own switch constant |
+| 2026-09-02, item 1 | character estimate replaced by the model's own reported count | the latch, which replaced a property the character estimate had by accident | none |
+| 2026-09-02, item 3 | none: both candidates measured null and were retired | none | none |
+
+Open defects: seven hardcoded values in the table above, four of them budgets
+that already have a derivation in the other harness.
+
+## Candidates with a verdict, not yet in force
+
+- **Raw by default**: fetch returns raw events by default, aimed by a sequence
+  range, with a listing mode. Replaces "summary or raw" with "raw, sized to fit".
+  None of the twelve answer literals is in any summary, so the current default
+  cannot answer a verbatim question.
+- **Search hits are coordinates**: a hit carries a short excerpt and pointers
+  instead of the whole summary. Measured payload falls from 9,673 to 4,898
+  tokens.
+- **Contract v3**: the rule about stale summaries is replaced by one about what a
+  summary cannot carry, and the sentence preferring a narrow fetch is deleted.
+  One rule replaced, one removed.
+- **Semantic ranking**: an embeddings client so the vector path runs. Offline it
+  moved the median rank from 10.5 to 10.5 and gained one question in the top
+  five, which says summaries cannot rank what they do not contain.
+- **One budget derivation**: delete the live suite's absolute switch point and
+  derive it from W, with the switch equal to the Zone C fraction as the rule
+  already says.
+- **Delete the Zone C fallback chain**: "open phase, else newest branch, else
+  root" has three branches and the first never fires, because the segmenter
+  closes every phase when it re-ingests.
+- **Retired after measurement**: pre-filling Zone C with the newest branch;
+  removing the harness's completion nudge; trimming a section from the contract.
 
 ## Change log
 
-- **2026-09-02 10:20** — item 3 measured same-epoch at n=5: sw-3 gap corrected to 1.71× native; completion-gate removal and the contract trim both null and retired; batching-density hypothesis refuted (p = 0.81). No line changes.
-- **2026-09-02 09:35** — item 1 measured at n=3 (long-v65-gate): gate fires, curve flattens, final context not below native, total tokens up; evidence row for line 3 updated.
-- **2026-09-02 09:30** — judge verdicts for items 2 and 3 folded into the candidates section; `tree-active` recorded as dropped; the single-derivation candidate for the budget switch added after the first live crossings cost more than they saved on a 200k model.
-- **2026-09-02 09:20** — simplicity audit and configuration-parameter register added at the owner's request ("simple algorithm without special conditions that are fragile"; "configuration parameters that might need to be tweaked to fit a particular model or harness should be tracked"). Line 7's fallback chain flagged as a deletion candidate.
-- **2026-09-02 09:15** — document created. Lines 3 and 4 reflect item 1 (real-token
-  gate + latch) landed this morning; first live crossing observed on sw-5-dozen at
-  turn 8. Loop-9b analysis (`eval/plans/loop9b-analysis/`) recorded against lines
-  10–12.
+- **2026-09-02 11:30** — added the three candidate policies for the visible-branch count (fit-derived, demand-driven, user-selected) and the reason it is a real tradeoff: width buys retrieval but is re-read every turn.
+- **2026-09-02 11:25** — rewritten around the four rules the owner stated: no
+  budgets or caps; a hardcoded value is a defect unless that value is
+  predictably helpful across models and harnesses; setting a parameter from a
+  model's limits is fine but guessing is not; prefer finding the sweet spot to
+  picking a bound. The parameter table now classifies every value as derived,
+  validated, host, unvalidated or removed, and a new section names the four
+  dimensions the DS-STAR loop is meant to improve — visible branch count, branch
+  depth, summary timing, and caching — each with what the evidence already says.
+  Only two rows come out validated; one of them, the edit-argument cap, only
+  because both alternatives were actually run.
+- **2026-09-02 11:15** — the reply budgets went too, after the owner asked why a
+  general-purpose harness sets one at all. Related: an empty completion with no
+  tool call now fails loudly in the OpenRouter client instead of returning an
+  empty string that grades as a wrong answer, which corrected a root cause
+  previously misattributed to reasoning models putting text in another field.
+  694 tests pass.
+- **2026-09-02 10:55** — the turn and wall-clock ceilings were REMOVED, not
+  re-derived, after the owner rejected the idea of sizing them from the task:
+  "There shouldn't be caps. You dont know how long something will take just by
+  looking at the task." Spend is now the only ceiling, non-progress ends a run
+  that will not finish, and a run the harness stopped is no longer graded. Three
+  tests encode it; 143 eval tests pass. A follow-up the same hour corrected the
+  rule itself: a capped run whose hidden tests PASS keeps its success, because
+  the grade is a filesystem fact; only a failing grade becomes unmeasured. That
+  distinction recovers 10 legitimate successes and still removes the 16
+  fabricated failures, one of which carried a published reliability claim.
+- **2026-09-02 10:30** — reorganised into tiers after the owner rejected the
+  fixed line count: "I just asked for simple, repeatable, translatable across
+  models and harnesses. Setting an arbitrary cap is restrictive." The line budget
+  is gone. In its place: the tier-2 table now says what each value derives from,
+  seven values are marked hardcoded, boundary conditions are listed with their
+  test status, and the ledger tracks rules removed and constants retired.
+- **2026-09-02 10:20** — item 3 measured: the sw-3 gap is 1.71× the baseline
+  same-day, not 3.4×; both candidates null and retired.
+- **2026-09-02 09:35** — item 1 measured: the switch fires and the curve
+  flattens; final context does not fall below the baseline; total tokens rise.
+- **2026-09-02 09:15** — page created.

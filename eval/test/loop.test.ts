@@ -509,15 +509,21 @@ describe('loop9b-item3 gate (EVAL_NO_COMPLETION_GATE)', () => {
   });
 });
 
-describe('runScenario — caps', () => {
-  it('stops at the turn cap and still grades whatever was produced', async () => {
-    // Every turn issues a tool call, so only the cap can end the loop.
+describe('runScenario — a run the harness stopped is not a task failure', () => {
+  it('a turn ceiling, when a probe sets one, records turn_cap and leaves success NULL', async () => {
+    // The task never finishes here because the scripted model never stops
+    // calling tools. Grading that would write down a failure the model never
+    // committed, and the zero would then enter the arm's mean — which is how a
+    // capped baseline came to look more expensive per run than the candidate.
+    // A ceiling is a fact about the harness, so the outcome is "not measured".
     const neverDone = new ScriptedProvider(
       Array.from({ length: 10 }, (_, i) => ({
         text: `still working ${i}`,
         model: 'test-model',
         usage: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0 },
-        toolCalls: [{ id: `t${i}`, name: 'run_command', input: { command: 'true' } }],
+        // A DIFFERENT command each turn, so this is real progress being cut
+        // short by the ceiling rather than the stall detector firing.
+        toolCalls: [{ id: `t${i}`, name: 'run_command', input: { command: `true ${i}` } }],
         stopReason: 'tool_use',
       })),
     );
@@ -531,7 +537,74 @@ describe('runScenario — caps', () => {
     });
     expect(result.status).toBe('turn_cap');
     expect(result.metrics.turns.modelTurns).toBe(3);
-    expect(result.metrics.turns.toolCalls).toBe(3);
+    // This fixture's judge matches the model's FINAL answer, and a run stopped
+    // mid-flight never produced one (`finalText` is only assigned when the
+    // model stops calling tools), so there is nothing to grade. Recording
+    // `false` would invent a failure and feed a zero into this arm's mean —
+    // which already happened: two capped baseline runs graded false are the
+    // whole of one published reliability gap. Contrast the command-judge case
+    // below, where the filesystem can still show the work was done.
+    expect(result.success).toBeNull();
+  });
+
+  it('a capped run whose hidden tests PASS keeps its success — the ceiling cut off the talking, not the work', async () => {
+    // These scenarios are graded by running hidden tests against the sandbox
+    // (`kind: 'command'`, exit 0 = success), so the grade is a fact about the
+    // FILESYSTEM and does not depend on the model announcing it had finished.
+    // A model that does the work and then keeps calling tools until the ceiling
+    // did the task; nulling that would discard a real success. This asymmetry
+    // is the whole rule: passing is positive evidence, failing at a stopping
+    // point the harness chose is not. Ten runs in the existing corpus are of
+    // exactly this shape.
+    const doesWorkThenLoops = new ScriptedProvider(
+      Array.from({ length: 10 }, (_, i) => ({
+        text: '',
+        model: 'test-model',
+        usage: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0 },
+        toolCalls: [
+          i === 0
+            ? { id: 't0', name: 'write_file', input: { path: 'answer.txt', content: 'done' } }
+            : { id: `t${i}`, name: 'run_command', input: { command: `true ${i}` } },
+        ],
+        stopReason: 'tool_use' as const,
+      })),
+    );
+    const { result } = await runScenario({
+      runId: 'r1',
+      scenario: { ...scenario, judge: { kind: 'command', command: 'test -f answer.txt' } },
+      arm: 'native',
+      agentProvider: doesWorkThenLoops,
+      options: { ...options, maxTurns: 4 },
+      sink: disabledSink(),
+    });
+    expect(result.status).toBe('turn_cap');
+    expect(result.success).toBe(true);
+  });
+
+  it('ends a run that stops making progress, and grades it — a stall IS a task failure', async () => {
+    // The same call, byte for byte, every turn. Three consecutive no-progress
+    // turns (STALL_TURNS) end it. Nothing external stopped this run, so unlike
+    // a ceiling it has a real outcome and must be graded.
+    const looping = new ScriptedProvider(
+      Array.from({ length: 20 }, (_, i) => ({
+        text: 'checking again',
+        model: 'test-model',
+        usage: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0 },
+        toolCalls: [{ id: `t${i}`, name: 'run_command', input: { command: 'true' } }],
+        stopReason: 'tool_use' as const,
+      })),
+    );
+    const { result } = await runScenario({
+      runId: 'r1',
+      scenario,
+      arm: 'native',
+      agentProvider: looping,
+      options: { ...options, maxTurns: Number.POSITIVE_INFINITY },
+      sink: disabledSink(),
+    });
+    expect(result.status).toBe('stalled');
+    // First turn's call is fresh; the next three repeat it and end the run.
+    expect(result.metrics.turns.modelTurns).toBe(4);
     expect(result.success).toBe(false);
   });
 });

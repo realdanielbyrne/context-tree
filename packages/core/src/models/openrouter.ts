@@ -27,6 +27,8 @@ export interface OpenRouterUsageLike {
   prompt_tokens: number;
   completion_tokens: number;
   prompt_tokens_details?: { cached_tokens?: number | null } | null;
+  /** Reasoning tokens are billed as completion tokens; read to explain an empty answer. */
+  completion_tokens_details?: { reasoning_tokens?: number | null } | null;
 }
 
 export interface OpenRouterToolCallLike {
@@ -37,6 +39,11 @@ export interface OpenRouterToolCallLike {
 export interface OpenRouterChoiceLike {
   message: {
     content?: string | null;
+    /**
+     * Where a reasoning model puts its thinking. Read only to explain an empty
+     * `content`, never returned as the answer — the caller asked for an answer.
+     */
+    reasoning?: string | null;
     tool_calls?: readonly OpenRouterToolCallLike[] | null;
   };
   finish_reason?: string | null;
@@ -159,8 +166,40 @@ function fromOpenRouterResponse(response: OpenRouterCompletionLike): CompletionR
   }
   const cacheRead = response.usage?.prompt_tokens_details?.cached_tokens ?? 0;
   const promptTokens = response.usage?.prompt_tokens ?? 0;
+  const text = choice.message.content ?? '';
+  const toolCalls = choice.message.tool_calls ?? [];
+  // An empty answer with no tool call is a FAILED call, not an empty answer.
+  //
+  // Returning '' hands the caller a blank answer indistinguishable from a real
+  // one: a batch of 180 scored runs once graded that empty string as a wrong
+  // answer and had to be thrown away. So this fails loudly and reports what the
+  // completion was actually spent on.
+  //
+  // The usual cause was a reply budget the caller imposed — models reason
+  // before answering and the reasoning is billed as completion tokens, so a
+  // small `maxTokens` is spent thinking. Both harnesses in this repo have since
+  // stopped setting one (see `reports/algorithm.md`), which is the real fix; a
+  // caller that still passes one gets told, because it is the only party that
+  // can raise it.
+  //
+  // `content` is legitimately empty when the model returned only tool calls, so
+  // that case is excluded rather than special-cased later.
+  if (text.length === 0 && toolCalls.length === 0) {
+    const reasoningTokens = response.usage?.completion_tokens_details?.reasoning_tokens ?? 0;
+    const reasoned = (choice.message.reasoning ?? '').length;
+    throw new ModelCallError(
+      `openrouter returned no content and no tool calls (finish_reason=${choice.finish_reason ?? 'null'}` +
+        `, completion_tokens=${response.usage?.completion_tokens ?? 0}` +
+        `, reasoning_tokens=${reasoningTokens}, reasoning_chars=${reasoned})` +
+        (choice.finish_reason === 'length'
+          ? ' — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it'
+          : reasoningTokens > 0
+            ? ' — the completion was spent entirely on reasoning tokens'
+            : ''),
+    );
+  }
   return {
-    text: choice.message.content ?? '',
+    text,
     model: response.model,
     usage: {
       input: Math.max(0, promptTokens - cacheRead),
@@ -168,7 +207,7 @@ function fromOpenRouterResponse(response: OpenRouterCompletionLike): CompletionR
       cacheRead,
       cacheWrite: 0,
     },
-    toolCalls: (choice.message.tool_calls ?? []).map(toToolCall),
+    toolCalls: toolCalls.map(toToolCall),
     stopReason: choice.finish_reason ?? null,
   };
 }

@@ -1,0 +1,931 @@
+{
+  "budgets": {
+    "window": 32768,
+    "ratio": 0.850896663206653,
+    "slackFraction": 0.1,
+    "zoneCFraction": 0.2,
+    "reply": 1925,
+    "zoneA": 3850,
+    "zoneB": 7701,
+    "zoneC": 7701,
+    "lazy": 13478,
+    "slack": 3850,
+    "K": 30808,
+    "maxReplyTokens": 800,
+    "rootKeep": 16,
+    "rootLadder": [
+      {
+        "keep": 40,
+        "ok": false,
+        "rootBlockTokens": 6917,
+        "branchesSurviving": 0,
+        "branchSeqRange": null,
+        "overBudget": [],
+        "zoneB": 6917
+      },
+      {
+        "keep": 16,
+        "ok": true,
+        "rootBlockTokens": 6095,
+        "branchesSurviving": 2,
+        "branchSeqRange": {
+          "from": 639,
+          "to": 754
+        },
+        "overBudget": [],
+        "zoneB": 7633
+      }
+    ],
+    "rootKeepOk": true,
+    "rootBlockTokens": 6095,
+    "branchesSurviving": 2,
+    "branchSeqRange": {
+      "from": 639,
+      "to": 754
+    },
+    "overBudget": [],
+    "arm": "tree",
+    "rootSummarySha": "2c7fbe668193766cdd17e3de4b816cdcd0be5e4fcda3d881c2f7a73e76cc8596"
+  },
+  "compactionBuildUsd": null,
+  "compactionSkippedChunks": [],
+  "compaction": null,
+  "rows": [
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree",
+      "window": 32768,
+      "question": "smoke",
+      "stratum": "smoke",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "n_1PPHC64K0QTM0N8JD3RPST4GZ8",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "implementation of v5.6"
+      ],
+      "fetchedIds": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 20219,
+      "usage": {
+        "input": 31270,
+        "output": 53,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 2781,
+          "usage": {
+            "input": 9348,
+            "output": 31,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9348,
+          "input": 9348,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 31,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 3638,
+          "usage": {
+            "input": 21922,
+            "output": 22,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21922,
+          "input": 21922,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 22,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 6442,
+      "score": null,
+      "success": null
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree",
+      "window": 32768,
+      "question": "smoke",
+      "stratum": "smoke",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "n_1PPHC64K0QTM0N8JD3RPST4GZ8",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "v5.6 implementation details"
+      ],
+      "fetchedIds": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 20066,
+      "usage": {
+        "input": 31078,
+        "output": 53,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1222,
+          "usage": {
+            "input": 9348,
+            "output": 31,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9348,
+          "input": 9348,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 31,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 4084,
+          "usage": {
+            "input": 21730,
+            "output": 22,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21730,
+          "input": 21730,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 22,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 5321,
+      "score": null,
+      "success": null
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree",
+      "window": 32768,
+      "question": "smoke",
+      "stratum": "smoke",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "n_0NRDWBV3GE8JVNCNR0RG0ZNXTC",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "v5.6 gate set"
+      ],
+      "fetchedIds": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 23555,
+      "usage": {
+        "input": 34643,
+        "output": 44,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 4646,
+          "usage": {
+            "input": 9348,
+            "output": 25,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9348,
+          "input": 9348,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 25,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 5961,
+          "usage": {
+            "input": 25295,
+            "output": 19,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 25295,
+          "input": 25295,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 19,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 10627,
+      "score": null,
+      "success": null
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-slice",
+      "window": 32768,
+      "question": "smoke",
+      "stratum": "smoke",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "n_0NRDWBV3GE8JVNCNR0RG0ZNXTC",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "eviction noise on multimod"
+      ],
+      "fetchedIds": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 15919,
+      "usage": {
+        "input": 26773,
+        "output": 44,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 957,
+          "usage": {
+            "input": 9348,
+            "output": 25,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9348,
+          "input": 9348,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 25,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 2320,
+          "usage": {
+            "input": 17425,
+            "output": 19,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 17425,
+          "input": 17425,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 19,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 3289,
+      "score": null,
+      "success": null
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-slice",
+      "window": 32768,
+      "question": "smoke",
+      "stratum": "smoke",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "n_0NRDWBV3GE8JVNCNR0RG0ZNXTC",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "iter9 stats"
+      ],
+      "fetchedIds": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 15582,
+      "usage": {
+        "input": 26264,
+        "output": 41,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 892,
+          "usage": {
+            "input": 9348,
+            "output": 22,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9348,
+          "input": 9348,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 22,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 6578,
+          "usage": {
+            "input": 16916,
+            "output": 19,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 16916,
+          "input": 16916,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 19,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 7482,
+      "score": null,
+      "success": null
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-slice",
+      "window": 32768,
+      "question": "smoke",
+      "stratum": "smoke",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "n_0NRDWBV3GE8JVNCNR0RG0ZNXTC",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "What is the full content and intent of commit 5fdbf6b"
+      ],
+      "fetchedIds": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 16573,
+      "usage": {
+        "input": 27610,
+        "output": 53,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1718,
+          "usage": {
+            "input": 9348,
+            "output": 34,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9348,
+          "input": 9348,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 34,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 2928,
+          "usage": {
+            "input": 18262,
+            "output": 19,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 18262,
+          "input": 18262,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 19,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 4657,
+      "score": null,
+      "success": null
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-thin",
+      "window": 32768,
+      "question": "smoke",
+      "stratum": "smoke",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "The first result from the context_search query \"v5.6 implementation\" is `n_1PPHC64K0QTM0N8JD3RPST4GZ8`.",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "v5.6 implementation"
+      ],
+      "fetchedIds": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 16834,
+      "usage": {
+        "input": 27849,
+        "output": 64,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 2721,
+          "usage": {
+            "input": 9348,
+            "output": 24,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9348,
+          "input": 9348,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 24,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 3277,
+          "usage": {
+            "input": 18501,
+            "output": 40,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 18501,
+          "input": 18501,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 40,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 6008,
+      "score": null,
+      "success": null
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-thin",
+      "window": 32768,
+      "question": "smoke",
+      "stratum": "smoke",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "n_0NRDWBV3GE8JVNCNR0RG0ZNXTC",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "v5.6 gate set (EVAL_NATIVE_CACHE, EVAL_ZONEC_LATEST, EVAL_SUMMARIZE_ON_CLOSE, EVAL_ZONEC_CACHE) is the canonical configuration for all future arms."
+      ],
+      "fetchedIds": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 17048,
+      "usage": {
+        "input": 28122,
+        "output": 77,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 2235,
+          "usage": {
+            "input": 9348,
+            "output": 58,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9348,
+          "input": 9348,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 58,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 2700,
+          "usage": {
+            "input": 18774,
+            "output": 19,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 18774,
+          "input": 18774,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 19,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 4951,
+      "score": null,
+      "success": null
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-thin",
+      "window": 32768,
+      "question": "smoke",
+      "stratum": "smoke",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "n_1PPHC64K0QTM0N8JD3RPST4GZ8",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "v5.6 implementation and results"
+      ],
+      "fetchedIds": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 16814,
+      "usage": {
+        "input": 27847,
+        "output": 48,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1865,
+          "usage": {
+            "input": 9348,
+            "output": 26,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9348,
+          "input": 9348,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 26,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 2899,
+          "usage": {
+            "input": 18499,
+            "output": 22,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 18499,
+          "input": 18499,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 22,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 4774,
+      "score": null,
+      "success": null
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-verbatim",
+      "window": 32768,
+      "question": "smoke",
+      "stratum": "smoke",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "n_1PPHC64K0QTM0N8JD3RPST4GZ8",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "v5.6 gate set"
+      ],
+      "fetchedIds": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 19836,
+      "usage": {
+        "input": 30747,
+        "output": 53,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 2926,
+          "usage": {
+            "input": 9390,
+            "output": 31,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9390,
+          "input": 9390,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 31,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 5160,
+          "usage": {
+            "input": 21357,
+            "output": 22,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21357,
+          "input": 21357,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 22,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 8102,
+      "score": null,
+      "success": null
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-verbatim",
+      "window": 32768,
+      "question": "smoke",
+      "stratum": "smoke",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "n_1PPHC64K0QTM0N8JD3RPST4GZ8",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "v5.6 implementation and results"
+      ],
+      "fetchedIds": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 20155,
+      "usage": {
+        "input": 31253,
+        "output": 54,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1720,
+          "usage": {
+            "input": 9390,
+            "output": 32,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9390,
+          "input": 9390,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 32,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 3925,
+          "usage": {
+            "input": 21863,
+            "output": 22,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21863,
+          "input": 21863,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 22,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 5663,
+      "score": null,
+      "success": null
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-verbatim",
+      "window": 32768,
+      "question": "smoke",
+      "stratum": "smoke",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "The first result from the `context_search` has the node ID: `n_0NRDWBV3GE8JVNCNR0RG0ZNXTC`.",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "v5.6 gate set"
+      ],
+      "fetchedIds": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 23613,
+      "usage": {
+        "input": 34727,
+        "output": 60,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 3430,
+          "usage": {
+            "input": 9390,
+            "output": 25,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9390,
+          "input": 9390,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 25,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 5037,
+          "usage": {
+            "input": 25337,
+            "output": 35,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 25337,
+          "input": 25337,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 35,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 8485,
+      "score": null,
+      "success": null
+    }
+  ]
+}

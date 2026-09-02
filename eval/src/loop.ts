@@ -62,6 +62,7 @@ import { addTotals, summarizeMetrics, ZERO_TOTALS } from './metrics.js';
 import { judgeScenario } from './scoring.js';
 import { createSandbox, type Sandbox } from './sandbox.js';
 import type { LangfuseRunHandle, LangfuseSink } from './langfuse.js';
+import { HARNESS_STOPPED } from './types.js';
 import type { Arm, HarnessOptions, RunResult, RunStatus, Scenario, TokenTotals, TurnRecord } from './types.js';
 import { join } from 'node:path';
 
@@ -73,7 +74,17 @@ const NATIVE_SYSTEM_PROMPT = [
   'a reply without tool calls ends the task, so make that reply the deliverable the task asks for.',
 ].join('\n');
 
-const AGENT_MAX_TOKENS = 8192;
+/**
+ * No reply budget. A number here is a guess about how much the model needs to
+ * say, and it is wrong in both directions: too small truncates the deliverable
+ * (and on a model that reasons before answering, the budget can be spent
+ * thinking, leaving an empty reply that grades as a wrong answer), too large
+ * reserves window that could have held context. Omitting `maxTokens` lets each
+ * provider apply its own maximum, which is the only number that knows the
+ * model. A host that genuinely needs a bound passes one; nothing here imposes
+ * it. See `reports/algorithm.md`, "Not part of the algorithm".
+ */
+const AGENT_MAX_TOKENS: number | undefined = undefined;
 
 export interface LoopOptions {
   runId: string;
@@ -163,9 +174,18 @@ function toolResultMessage(call: ToolCallRequest, outcome: ToolCallOutcome): str
  */
 export function makeRepeatGuard() {
   const seen = new Set<string>();
-  return (call: ToolCallRequest, execute: () => Promise<ToolCallOutcome>): Promise<ToolCallOutcome> => {
+  /**
+   * Consecutive turns in which every call was one the model had already made.
+   * This is the non-progress signal that replaced the turn counter: a run ends
+   * because it stopped making progress, which is a fact about the run, not
+   * because it passed a number, which is a fact about the harness. Reset by any
+   * call that had not been seen before.
+   */
+  let stalledTurns = 0;
+  const guard = (call: ToolCallRequest, execute: () => Promise<ToolCallOutcome>): Promise<ToolCallOutcome> => {
     const signature = `${call.name}:${JSON.stringify(call.input)}`;
     if (seen.has(signature)) {
+      guard.repeatsThisTurn += 1;
       return Promise.resolve({
         output:
           'error: you already ran this exact call and its result is recorded above. ' +
@@ -173,10 +193,29 @@ export function makeRepeatGuard() {
         isError: true,
       });
     }
+    guard.freshThisTurn += 1;
     seen.add(signature);
     return execute();
   };
+  guard.repeatsThisTurn = 0;
+  guard.freshThisTurn = 0;
+  /** Call once per turn, after its tool calls have run. Returns true if stalled. */
+  guard.endTurn = (): boolean => {
+    const repeated = guard.repeatsThisTurn > 0 && guard.freshThisTurn === 0;
+    stalledTurns = repeated ? stalledTurns + 1 : 0;
+    guard.repeatsThisTurn = 0;
+    guard.freshThisTurn = 0;
+    return stalledTurns >= STALL_TURNS;
+  };
+  return guard;
 }
+
+/**
+ * How many consecutive no-progress turns end a run. Three, because one repeated
+ * call can be a model re-reading before it edits and two can be a retry, while
+ * three in a row has never been anything but a loop in this corpus.
+ */
+export const STALL_TURNS = 3;
 
 /**
  * DSA arm — DeepSeek-Sparse-Attention-style top-k selection, lifted from token
@@ -296,6 +335,8 @@ async function runDsaArm(args: ArmArgs): Promise<ArmOutput> {
       const outcome = await guard(call, () => executeHarnessTool(args.sandbox, call.name, call.input));
       messages.push({ role: 'user', content: toolResultMessage(call, outcome) });
     }
+    // Non-progress, not a counter, is what ends a run that will not finish.
+    if (guard.endTurn()) return { status: 'stalled', finalText };
   }
   return { status: 'turn_cap', finalText };
 }
@@ -346,6 +387,8 @@ async function runNativeArm(args: ArmArgs): Promise<ArmOutput> {
       const outcome = await guard(call, () => executeHarnessTool(args.sandbox, call.name, call.input));
       messages.push({ role: 'user', content: toolResultMessage(call, outcome) });
     }
+    // Non-progress, not a counter, is what ends a run that will not finish.
+    if (guard.endTurn()) return { status: 'stalled', finalText };
   }
   return { status: 'turn_cap', finalText };
 }
@@ -1112,6 +1155,8 @@ async function runTreeArm(
       await maybeResummarize();
       const openAfter = handle.store.openPhase()?.id ?? null;
       if (openAfter !== openBefore) assembler.onPhaseTransition();
+      // Non-progress, not a counter, is what ends a run that will not finish.
+      if (guard.endTurn()) return { status: 'stalled', finalText, lazyCrossed };
     }
     return { status: 'turn_cap', finalText, lazyCrossed };
   } finally {
@@ -1196,7 +1241,24 @@ export async function runScenario(loop: LoopOptions): Promise<LoopOutput> {
     }
   }
 
-  if (errorText === undefined && (status === 'completed' || status === 'turn_cap' || status === 'time_cap')) {
+  // Grade every run that produced a state to grade, then apply one asymmetry.
+  //
+  // These scenarios are judged by running their hidden tests against the
+  // sandbox, so the grade is a fact about the FILESYSTEM, not about whether the
+  // model announced it was finished. That makes the two directions mean
+  // different things for a run the harness stopped:
+  //
+  //   passing  -> the work was done. The ceiling only cut off the talking, so
+  //               this is a real success and is kept.
+  //   failing  -> unknown. The tests did not pass at an arbitrary stopping
+  //               point chosen by the harness, which is not evidence the model
+  //               could not have finished. Recording it as a failure invents a
+  //               failure the model never committed, and that zero then enters
+  //               the arm's mean. It becomes `null`: not measured.
+  //
+  // `completed` and `stalled` are the run's own outcomes and keep both
+  // directions — ending in a repeat loop is a genuine failure.
+  if (errorText === undefined && status !== 'error') {
     try {
       const judge = await judgeScenario({
         scenario,
@@ -1205,9 +1267,10 @@ export async function runScenario(loop: LoopOptions): Promise<LoopOutput> {
         provider: meteredAgent,
         judgeModel: options.judgeModel,
       });
-      success = judge.success;
+      const stoppedByHarness = (HARNESS_STOPPED as readonly RunStatus[]).includes(status);
+      success = stoppedByHarness && judge.success === false ? null : judge.success;
       judgeDetail = judge.detail;
-      judgeScore = judge.score;
+      judgeScore = stoppedByHarness && judge.success === false ? null : judge.score;
     } catch (error) {
       if (error instanceof CostCapExceededError) {
         status = 'cost_cap';

@@ -47,7 +47,18 @@ export interface Adapter {
   load(dir: string): Scenario[];
 }
 
-export type RunStatus = 'completed' | 'turn_cap' | 'time_cap' | 'cost_cap' | 'error';
+/**
+ * `stalled` is a fact about the run: three consecutive turns in which the model
+ * only repeated calls it had already made. `turn_cap`, `time_cap` and
+ * `cost_cap` are facts about the HARNESS — a run carrying one of them was
+ * stopped before it could finish, so it is not evidence of task failure and
+ * `success` stays null rather than false. Turn and wall-clock ceilings are
+ * unbounded unless a probe deliberately sets one.
+ */
+export type RunStatus = 'completed' | 'stalled' | 'turn_cap' | 'time_cap' | 'cost_cap' | 'error';
+
+/** Statuses that mean the harness stopped the run, not that the task failed. */
+export const HARNESS_STOPPED: readonly RunStatus[] = ['turn_cap', 'time_cap', 'cost_cap'];
 
 export interface TurnRecord {
   index: number;

@@ -66,10 +66,22 @@ export const DEFAULT_PRICES: PriceTable = Object.freeze({
   // OpenRouter provider reports cacheWrite as 0, so the rate only guards a
   // future provider that starts reporting it (never free, per the §16 rule).
   // qwen3.7-flash has tiered overrides above 32k prompt tokens; base tier here.
-  'z-ai/glm-5.3-flash': { input: 0.075, output: 0.25, cacheRead: 0.015, cacheWrite: 0.09375 },
-  'deepseek/deepseek-v4-flash': { input: 0.07168, output: 0.14336, cacheRead: 0.014336, cacheWrite: 0.0896 },
+  // Verified against OpenRouter's own /api/v1/models on 2026-09-02, not
+  // transcribed from a catalog page. Three rows had drifted: deepseek's input
+  // was 16% low, glm's cache-write was invented (the provider publishes 0), and
+  // qwen-2.5-72b's cache-read was 0.036 against a published 0. The meter
+  // enforces the §16 spend cap, so a wrong rate here is a wrong cap.
+  //
+  // A `cacheWrite` of 0 is what the provider publishes, not an unknown: these
+  // endpoints do not bill a cache write. `qwen/qwen-2.5-72b-instruct` is the
+  // only row with a real 32,768-token window — every flash model below has a
+  // million-token window, so for them W is a budget the harness imposes rather
+  // than a wall the provider enforces.
+  'z-ai/glm-5.3-flash': { input: 0.075, output: 0.25, cacheRead: 0.015, cacheWrite: 0 },
+  'deepseek/deepseek-v4-flash': { input: 0.0855, output: 0.1711, cacheRead: 0.0171, cacheWrite: 0 },
   'qwen/qwen3.7-flash': { input: 0.03, output: 0.13, cacheRead: 0.006, cacheWrite: 0.038 },
-  'qwen/qwen-2.5-72b-instruct': { input: 0.36, output: 0.4, cacheRead: 0.036, cacheWrite: 0.45 },
+  'qwen/qwen-2.5-72b-instruct': { input: 0.36, output: 0.4, cacheRead: 0, cacheWrite: 0 },
+  'google/gemini-3.7-flash': { input: 0.75, output: 3.75, cacheRead: 0.075, cacheWrite: 0.0417 },
   'openai/gpt-3.5-turbo': { input: 0.5, output: 1.5, cacheRead: 0.05, cacheWrite: 0.625 },
   // Embeddings have no output/cache tokens; an embedding call reports only
   // `input`, so those three rates are irrelevant but must still be present —
