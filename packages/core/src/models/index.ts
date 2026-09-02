@@ -22,6 +22,14 @@ export {
   type PriceMatch,
   type PriceTable,
 } from './cost.js';
+export {
+  DEFAULT_EMBED_MODEL,
+  createEmbeddingClient,
+  createEmbeddingClientFromKeys,
+  type EmbeddingClientFromKeysOptions,
+  type EmbeddingClientLike,
+  type EmbeddingClientOptions,
+} from './embeddings.js';
 export { CASSETTE_FILENAME, createProvider } from './factory.js';
 export { MockProvider, type MockProviderOptions } from './mock.js';
 export {

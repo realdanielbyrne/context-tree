@@ -41,6 +41,7 @@ import {
   type CompletionResult,
   type ContextTreeConfig,
   type ModelProvider,
+  type SystemContractVersion,
   type TaskStore,
   type ToolCallRequest,
   type TraceEventInput,
@@ -109,6 +110,8 @@ interface ArmArgs {
 interface ArmOutput {
   status: RunStatus;
   finalText: string;
+  /** Tree arm only — item 1's one-way latch; undefined for native/dsa arms. */
+  lazyCrossed?: boolean;
 }
 
 async function callModel(args: {
@@ -711,12 +714,19 @@ async function runTreeArm(
     const retriever = new TreeRetriever({ store: handle.store, blobs: handle.blobs, trace: handle.trace });
     const toolCtx: ToolContext = { config: args.config, handle, retriever };
     const guard = makeRepeatGuard();
+    // loop9-item3 step 1 (EVAL_CONTRACT_VERSION=v2): selects the Zone A trim
+    // candidate — system-contract.v2.md, v1 minus its "Two ways this goes
+    // wrong" section (§7, loop9-item3-sw3-overhead.md). Unset stays v1
+    // (systemContract()'s own default), so the transplant experiment's frozen
+    // epoch is untouched; an unrecognized value throws (systemContract itself
+    // validates it) rather than silently falling back.
+    const contractVersion = process.env.EVAL_CONTRACT_VERSION as SystemContractVersion | undefined;
     const assembler = new ZoneAssembler({
       store: handle.store,
       blobs: handle.blobs,
       trace: handle.trace,
       tokenizer: new HeuristicTokenizer(),
-      systemContract: systemContract() + TREE_COMPLETION_ADDENDUM,
+      systemContract: systemContract(contractVersion) + TREE_COMPLETION_ADDENDUM,
       budgets: { ...args.options.budgets },
     });
 
@@ -761,7 +771,19 @@ async function runTreeArm(
     const lazyTokens = Number.parseInt(process.env.EVAL_LAZY_TOKENS ?? '0', 10) || 0;
     // Upper-bound proxy for the rendered trace size; 4 chars/token heuristic.
     let traceChars = args.scenario.task.length;
-    const belowLazyBudget = (): boolean => lazyTokens > 0 && traceChars / 4 < lazyTokens;
+    // Real tokens from the last completed turn — free (already returned by the
+    // API), exact for whatever model is running, no chars/4 approximation.
+    // 0 at turn 0: a fresh trace is always small enough to stay devolved.
+    let lastPromptTokens = 0;
+    // One-way. The rule asks whether the WHOLE trace still fits; after the
+    // crossing the prompt no longer contains the whole trace (Zone C is the
+    // active branch), so its size says nothing about that question — and L0 is
+    // append-only, so a trace that once exceeded the budget never fits again.
+    // Without the latch the first live crossing oscillated: 40k at turn 8,
+    // summarized prompt under 30k at turn 9, whole trace re-expanded and 43k
+    // at turn 10 (long-v65-gate-oscillating, 2x the loop-8 cost).
+    let lazyCrossed = false;
+    const belowLazyBudget = (): boolean => lazyTokens > 0 && !lazyCrossed && lastPromptTokens < lazyTokens;
     // v5.7 (EVAL_DET_ROOT=1): the Zone B root is composed from leaf headlines
     // by a pure function — no strong-model call, no truncation-retry path.
     const detRoot = process.env.EVAL_DET_ROOT === '1';
@@ -891,7 +913,7 @@ async function runTreeArm(
     let toolWorkDone = false;
     let completionConfirmed = false;
     for (let turnIndex = 0; turnIndex < args.options.maxTurns; turnIndex += 1) {
-      if (Date.now() >= args.deadlineMs) return { status: 'time_cap', finalText };
+      if (Date.now() >= args.deadlineMs) return { status: 'time_cap', finalText, lazyCrossed };
       // v5.3 (EVAL_ZONEC_LATEST=1): expand the LATEST branch instead of the
       // root. Expanding the root makes Zone C the entire raw trace — the tree
       // arm then pays summaries AND full detail, which is native with extra
@@ -967,6 +989,11 @@ async function runTreeArm(
       });
       args.turns.push(record);
       Object.assign(args.usage, addTotals(args.usage, result.usage));
+      lastPromptTokens = result.usage.input + result.usage.cacheRead + result.usage.cacheWrite;
+      if (belowLazyK && !belowLazyBudget()) {
+        lazyCrossed = true;
+        process.stderr.write(`[eval] lazy gate crossed at turn ${turnIndex}: ${lastPromptTokens} >= ${lazyTokens}\n`);
+      }
 
       const openBefore = handle.store.openPhase()?.id ?? null;
       const assistantEvent = appendTo(handle, {
@@ -982,7 +1009,15 @@ async function runTreeArm(
         // The first such reply gets one ephemeral nudge; only a SECOND
         // consecutive bare-text reply ends the run. Costs one cheap cached
         // turn exactly when the failure mode would otherwise fire.
-        if (toolWorkDone && !completionConfirmed) {
+        // loop9b-item3 (EVAL_NO_COMPLETION_GATE=1): the gate is a tree-only
+        // stopping rule the native arm never had (native returns on the first
+        // bare-text reply, loop.ts:339-342), so while it stands every tree
+        // turn-count number is `the arm's effect + 1`. Corpus replay over
+        // eval/results: 204 tree runs, 185 fires, 23 rescues; on sw-3-refactor
+        // 14 fires and 0 rescues, at a mean 13,793 tokens — the run's most
+        // expensive turn, because cacheRead bills the whole prefix and that
+        // turn carries the largest prefix the run ever has.
+        if (toolWorkDone && !completionConfirmed && process.env.EVAL_NO_COMPLETION_GATE !== '1') {
           completionConfirmed = true;
           const nudge =
             'system: you stopped calling tools. If every step of the task is verifiably done, reply with your final answer again; otherwise continue working.';
@@ -1004,7 +1039,7 @@ async function runTreeArm(
         // next resumer is D11 sleep-time compute (`scheduleSummarize`), not
         // part of this run's critical path — and this sandbox is discarded
         // anyway. Charging it to the run would bill maintenance as task work.
-        return { status: 'completed', finalText };
+        return { status: 'completed', finalText, lazyCrossed };
       }
       toolWorkDone = true;
       for (const call of result.toolCalls) {
@@ -1078,7 +1113,7 @@ async function runTreeArm(
       const openAfter = handle.store.openPhase()?.id ?? null;
       if (openAfter !== openBefore) assembler.onPhaseTransition();
     }
-    return { status: 'turn_cap', finalText };
+    return { status: 'turn_cap', finalText, lazyCrossed };
   } finally {
     handle.close();
   }
@@ -1109,6 +1144,7 @@ export async function runScenario(loop: LoopOptions): Promise<LoopOutput> {
   let status: RunStatus = 'error';
   let errorText: string | undefined;
   let finalText = '';
+  let lazyCrossed = false;
   let success: boolean | null = null;
   let judgeDetail = '';
   let judgeScore: number | null = null;
@@ -1151,6 +1187,7 @@ export async function runScenario(loop: LoopOptions): Promise<LoopOutput> {
             : await runTreeArm({ ...armArgs, summarizerProvider: meteredSummarizer });
     status = output.status;
     finalText = output.finalText;
+    lazyCrossed = output.lazyCrossed ?? false;
   } catch (error) {
     if (error instanceof CostCapExceededError) {
       status = 'cost_cap';
@@ -1182,7 +1219,14 @@ export async function runScenario(loop: LoopOptions): Promise<LoopOutput> {
 
   const finishedAt = new Date();
   const wallMs = finishedAt.getTime() - startedAt.getTime();
-  const metrics = summarizeMetrics({ turns, wallMs, usage, costUsd: costMeter.totalUsd() });
+  const metrics = summarizeMetrics({
+    turns,
+    wallMs,
+    usage,
+    costUsd: costMeter.totalUsd(),
+    lazyCrossed,
+    finalTextChars: finalText.length,
+  });
   runHandle.finish(status, metrics, success, judgeDetail);
   if (options.keepSandbox) sandbox.writeFile('.final-answer.txt', finalText);
   else sandbox.cleanup();

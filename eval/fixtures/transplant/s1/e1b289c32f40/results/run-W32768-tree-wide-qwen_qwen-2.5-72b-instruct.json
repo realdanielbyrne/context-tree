@@ -1,0 +1,5577 @@
+{
+  "budgets": {
+    "window": 32768,
+    "ratio": 0.850896663206653,
+    "slackFraction": 0.1,
+    "zoneCFraction": 0.2,
+    "reply": 1925,
+    "zoneA": 3850,
+    "zoneB": 7701,
+    "zoneC": 7701,
+    "lazy": 13478,
+    "slack": 3850,
+    "K": 30808,
+    "maxReplyTokens": 800,
+    "rootKeep": 16,
+    "rootLadder": [
+      {
+        "keep": 40,
+        "ok": false,
+        "rootBlockTokens": 6917,
+        "branchesSurviving": 0,
+        "branchSeqRange": null,
+        "overBudget": [],
+        "zoneB": 6917
+      },
+      {
+        "keep": 16,
+        "ok": true,
+        "rootBlockTokens": 6095,
+        "branchesSurviving": 2,
+        "branchSeqRange": {
+          "from": 639,
+          "to": 754
+        },
+        "overBudget": [],
+        "zoneB": 7633
+      }
+    ],
+    "rootKeepOk": true,
+    "rootBlockTokens": 6095,
+    "branchesSurviving": 2,
+    "branchSeqRange": {
+      "from": 639,
+      "to": 754
+    },
+    "overBudget": [],
+    "arm": "tree",
+    "rootSummarySha": "2c7fbe668193766cdd17e3de4b816cdcd0be5e4fcda3d881c2f7a73e76cc8596"
+  },
+  "compactionBuildUsd": null,
+  "compactionSkippedChunks": [],
+  "compaction": null,
+  "rows": [
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q01-head",
+      "stratum": "head",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 3,
+      "finalText": "The file that imports something from a path containing \"trace\" is `packages/core/src/summarize/contract.ts`.\n\nIn the context provided, the import from a path containing \"trace\" is found in the file `packages/core/src/summarize/contract.ts`. Specifically, the function `parseSummaryReply` is defined in this file, and it is used to parse the summarizer reply, which is relevant to the issue of handling truncated JSON responses.\n\nHere is the relevant excerpt from `contract.ts`:\n\n```typescript\n52\\texport function parseSummaryReply(raw: string): { text: string; meta: SummaryMeta } {\n53\\t  return parseSummaryResponse(dropTreeOwnedContents(raw));\n54\\t}\n```\n\nThis function is part of the process that handles the summarizer's response and is responsible for parsing the JSON from the raw response.",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "import from trace"
+      ],
+      "fetchedIds": [
+        "n_1WAD2VDY2YPXVF79V20K82TEXK"
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 28149,
+      "usage": {
+        "input": 60780,
+        "output": 366,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 4537,
+          "usage": {
+            "input": 9411,
+            "output": 60,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9411,
+          "input": 9411,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 60,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 10654,
+          "usage": {
+            "input": 20915,
+            "output": 129,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 20915,
+          "input": 20915,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 129,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 11974,
+          "usage": {
+            "input": 30454,
+            "output": 177,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 30454,
+          "input": 30454,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 177,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 27207,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "../src/trace/index.js",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q01-head",
+      "stratum": "head",
+      "rep": 2,
+      "status": "model_call_error",
+      "error": "openrouter returned no choices",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no choices\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:96:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q01-head",
+      "stratum": "head",
+      "rep": 3,
+      "status": "turn_cap",
+      "modelTurns": 6,
+      "finalText": "",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "import from path containing trace"
+      ],
+      "fetchedIds": [
+        "n_215QXCQ191X86G5R9T3S1XN61P",
+        "n_2RJJA09PETFFHGPPV1DGVYKQSQ",
+        "n_2ZHYVNH3BJQNA0HACYJ0C9J4K5",
+        "n_21Z93XQ3K3N29EM4XK644TRKXV",
+        "n_2A2A06HX46R66G6RQHREFHY8GY"
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 11650,
+      "usage": {
+        "input": 70863,
+        "output": 734,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 12222,
+          "usage": {
+            "input": 9411,
+            "output": 96,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9411,
+          "input": 9411,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 96,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 10408,
+          "usage": {
+            "input": 12023,
+            "output": 150,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12023,
+          "input": 12023,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 150,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 4289,
+          "usage": {
+            "input": 12180,
+            "output": 102,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12180,
+          "input": 12180,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 102,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 4529,
+          "usage": {
+            "input": 12289,
+            "output": 114,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12289,
+          "input": 12289,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 114,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 5,
+          "turn": 5,
+          "latencyMs": 8577,
+          "usage": {
+            "input": 12410,
+            "output": 133,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12410,
+          "input": 12410,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 133,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 6,
+          "turn": 6,
+          "latencyMs": 7563,
+          "usage": {
+            "input": 12550,
+            "output": 139,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12550,
+          "input": 12550,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 139,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        }
+      ],
+      "durationMs": 47619,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "../src/trace/index.js",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q01-head",
+      "stratum": "head",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 3,
+      "finalText": "The context search and fetch operations did not directly reveal the specific file imported from a path containing \"trace\". However, the excerpt from the `diagnosis (2)` phase indicates that the input token growth patterns were analyzed, and the term \"trace\" was mentioned in the context of input growth patterns.\n\nGiven the context, the most relevant file that might contain the import of a path with \"trace\" is likely related to the data analysis and visualization. One of the most relevant files mentioned in the context is `chart-data.txt`.\n\nHowever, since the exact file path containing \"trace\" is not explicitly mentioned, I will make an educated guess based on the context:\n\nThe file that is imported from a path containing \"trace\" is likely `chart-data.txt`, which is located at:\n```\n/private/tmp/claude-501/-Users-danielbyrne-GitHub-rpm-context-tree/4bf1e198-8af4-47e0-ae99-fa2ca13f1400/scratchpad/chart-data.txt\n```\n\nIf this is not the correct file, please provide more specific details or context to help identify the exact file.",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "trace"
+      ],
+      "fetchedIds": [
+        "n_1F6E3RF111CVYDQ7MA643CRGBC"
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 22518,
+      "usage": {
+        "input": 53739,
+        "output": 559,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 3894,
+          "usage": {
+            "input": 9411,
+            "output": 89,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9411,
+          "input": 9411,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 89,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 12959,
+          "usage": {
+            "input": 19567,
+            "output": 226,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 19567,
+          "input": 19567,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 226,
+          "toolCalls": [
+            "context_fetch",
+            "context_peek"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 11835,
+          "usage": {
+            "input": 24761,
+            "output": 244,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 24761,
+          "input": 24761,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 244,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 28723,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "../src/trace/index.js",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q01-head",
+      "stratum": "head",
+      "rep": 5,
+      "status": "model_call_error",
+      "error": "openrouter returned no choices",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no choices\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:96:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q02-head",
+      "stratum": "head",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 3,
+      "finalText": "It seems that the file `packages/core/test/summarize.test.ts` is not directly referenced in the branches where the summarizer was modified (FM-1 fix in v5.6). Let me try a more general search for the file across all branches to see if it appears in any of them.\n\nI will use `context_search` again to look for the file `packages/core/test/summarize.test.ts` across the entire context tree.\n",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "packages/core/test/summarize.test.ts"
+      ],
+      "fetchedIds": [
+        "n_1C6D33C0FMZ129RA2R0GXXCRM6",
+        "n_1C0BDXFHPYAX7N4B5AGK8KB4Q5"
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 11376,
+      "usage": {
+        "input": 34294,
+        "output": 429,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 5515,
+          "usage": {
+            "input": 9423,
+            "output": 115,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9423,
+          "input": 9423,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 115,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 10501,
+          "usage": {
+            "input": 12329,
+            "output": 221,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12329,
+          "input": 12329,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 221,
+          "toolCalls": [
+            "context_fetch",
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 4519,
+          "usage": {
+            "input": 12542,
+            "output": 93,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12542,
+          "input": 12542,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 93,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 20552,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Read StubProvider and retry test examples",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q02-head",
+      "stratum": "head",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 3,
+      "finalText": "The `context_peek` call revealed that the node `n_2RJJA09PETFFHGPPV1DGVYKQSQ` does not directly contain the specific lines 36-80 and 205-260 of `packages/core/test/summarize.test.ts`. However, the excerpt from the `summarize.test.ts` file shows that these lines are part of test cases and the `StubProvider` class, which is used to simulate the behavior of a model provider for testing purposes.\n\nThe description of the command that read lines 36-80 and 205-260 of `packages/core/test/summarize.test.ts` is:\n\n```\n{\"command\":\"sed -n '36,80p' packages/core/test/summarize.test.ts; sed -n '205,260p' packages/core/test/summarize.test.ts\",\"description\":\"Read StubProvider and retry test examples\"}\n```\n\nThis command was used to read specific parts of the `summarize.test.ts` file, focusing on the `StubProvider` class and retry test examples. The `StubProvider` is a mock implementation of a model provider used in the tests, and the `retry test examples` likely refer to test cases that simulate and test the truncation retry logic.",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "packages/core/test/summarize.test.ts 36-80 205-260"
+      ],
+      "fetchedIds": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 13811,
+      "usage": {
+        "input": 36625,
+        "output": 613,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 4956,
+          "usage": {
+            "input": 9423,
+            "output": 108,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9423,
+          "input": 9423,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 108,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 11504,
+          "usage": {
+            "input": 12338,
+            "output": 222,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12338,
+          "input": 12338,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 222,
+          "toolCalls": [
+            "context_peek"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 18403,
+          "usage": {
+            "input": 14864,
+            "output": 283,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 14864,
+          "input": 14864,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 283,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 34884,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "Read StubProvider and retry test examples",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q02-head",
+      "stratum": "head",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 6,
+      "finalText": "The tool call that read lines 36-80 and 205-260 of `packages/core/test/summarize.test.ts` is found in the phase \"implementation (8)\". Specifically, the tool call is:\n\n```json\n{\n  \"tool_call\": {\n    \"Bash\": {\n      \"command\": \"sed -n '36,80p' packages/core/test/summarize.test.ts; sed -n '205,260p' packages/core/test/summarize.test.ts\",\n      \"description\": \"Read StubProvider and retry test examples\"\n    }\n  }\n}\n```\n\nThis tool call was made to read the specified lines from the `summarize.test.ts` file to inspect the `StubProvider` and retry test examples. The result of this tool call is shown in the subsequent tool result, which includes the content of the specified lines.",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "packages/core/test/summarize.test.ts 36-80 205-260",
+        "packages/core/test/summarize.test.ts 36-80 205-260",
+        "packages/core/src/summarize/summarizer.ts 36-80 205-260"
+      ],
+      "fetchedIds": [
+        "n_1C0BDXFHPYAX7N4B5AGK8KB4Q5",
+        "n_1C0BDXFHPYAX7N4B5AGK8KB4Q5",
+        "n_1C0BDXFHPYAX7N4B5AGK8KB4Q5",
+        "n_1C0BDXFHPYAX7N4B5AGK8KB4Q5"
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 25548,
+      "usage": {
+        "input": 116832,
+        "output": 1127,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 5730,
+          "usage": {
+            "input": 9423,
+            "output": 118,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9423,
+          "input": 9423,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 118,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 15139,
+          "usage": {
+            "input": 16797,
+            "output": 250,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 16797,
+          "input": 16797,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 250,
+          "toolCalls": [
+            "context_fetch",
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 9441,
+          "usage": {
+            "input": 17039,
+            "output": 209,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 17039,
+          "input": 17039,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 209,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 11109,
+          "usage": {
+            "input": 22847,
+            "output": 152,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 22847,
+          "input": 22847,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 152,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 5,
+          "turn": 5,
+          "latencyMs": 11519,
+          "usage": {
+            "input": 23006,
+            "output": 208,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 23006,
+          "input": 23006,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 208,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 6,
+          "turn": 6,
+          "latencyMs": 10052,
+          "usage": {
+            "input": 27720,
+            "output": 190,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 27720,
+          "input": 27720,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 190,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 63051,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "Read StubProvider and retry test examples",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q02-head",
+      "stratum": "head",
+      "rep": 4,
+      "status": "turn_cap",
+      "modelTurns": 6,
+      "finalText": "",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "summarize.test.ts",
+        "summarize.test.ts lines 36-80 205-260",
+        "summarize.test.ts",
+        "summarize.test.ts",
+        "summarize.test.ts",
+        "lines 36-80 205-260"
+      ],
+      "fetchedIds": [
+        "n_2EPMM1V52CJ98NJ5S4AND0CREZ",
+        "n_2RJJA09PETFFHGPPV1DGVYKQSQ"
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 3635,
+      "resultCharsTruncated": 14149,
+      "resultsTruncated": 1,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 31903,
+      "usage": {
+        "input": 86743,
+        "output": 1138,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 4526,
+          "usage": {
+            "input": 9423,
+            "output": 99,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9423,
+          "input": 9423,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 99,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 7458,
+          "usage": {
+            "input": 12305,
+            "output": 164,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12305,
+          "input": 12305,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 164,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 6644,
+          "usage": {
+            "input": 12470,
+            "output": 121,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12470,
+          "input": 12470,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 121,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 9959,
+          "usage": {
+            "input": 15410,
+            "output": 203,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 15410,
+          "input": 15410,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 203,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 5,
+          "turn": 5,
+          "latencyMs": 15975,
+          "usage": {
+            "input": 15620,
+            "output": 338,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 15620,
+          "input": 15620,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 338,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 6,
+          "turn": 6,
+          "latencyMs": 10556,
+          "usage": {
+            "input": 21515,
+            "output": 213,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21515,
+          "input": 21515,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 213,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        }
+      ],
+      "durationMs": 55209,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Read StubProvider and retry test examples",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q02-head",
+      "stratum": "head",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 4,
+      "finalText": "The tool call that read lines 36-80 and 205-260 of `packages/core/test/summarize.test.ts` was part of the following sequence of events in the branch `n_2RJJA09PETFFHGPPV1DGVYKQSQ`:\n\n1. The agent first fetched the specific lines of the `summarize.test.ts` file using a Bash command:\n   ```bash\n   sed -n '36,80p' packages/core/test/summarize.test.ts; sed -n '205,260p' packages/core/test/summarize.test.ts\n   ```\n\n2. The description of this command was:\n   ```\n   Read StubProvider and retry test examples\n   ```\n\nThis command was part of the broader effort to read and understand the test harness and retry logic for the summarizer. The full context of the tool call and its results are as follows:\n\n- **Tool Call**:\n  ```json\n  {\n    \"command\": \"sed -n '36,80p' packages/core/test/summarize.test.ts; sed -n '205,260p' packages/core/test/summarize.test.ts\",\n    \"description\": \"Read StubProvider and retry test examples\"\n  }\n  ```\n\n- **Tool Result**:\n  ```json\n  {\n    \"text\": \"  model: string;\\n  content: string;\\n}\\n\\n/** A model that records what it was asked and how many calls overlapped. */\\nclass StubProvider implements ModelProvider {\\n  readonly id = 'stub';\\n  readonly calls: RecordedCall[] = [];\\n  inFlight = 0;\\n  maxInFlight = 0;\\n\\n  constructor(private readonly reply: (call: RecordedCall, index: number) => Promise<string>) {}\\n\\n  async complete(request: CompletionRequest): Promise<CompletionResult> {\\n    const call: RecordedCall = {\\n      model: request.model,\\n      content: request.messages.map((message) => message.content).join('\\\\n'),\\n    };\\n    const index = this.calls.length;\\n    this.calls.push(call);\\n    this.inFlight += 1;\\n    this.maxInFlight = Math.max(this.maxInFlight, this.inFlight);\\n    try {\\n      return {\\n        text: await this.reply(call, index),\\n        model: request.model,\\n        usage: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0 },\\n        toolCalls: [],\\n        stopReason: 'end_turn',\\n      };\\n    } finally {\\n      this.inFlight -= 1;\\n    }\\n  }\\n}\\n\\n/**\\n * Pulls the node ids out of whichever prompt it was given — `NODE IDS:` in the\\n * leaf template, `(node_id: ...)` per child in the root template. This is what\\n * a model obeying the §8 contract does, so the fixture reply below is honest.\\n */\\nfunction echoedNodeIds(content: string): string[] {\\n  const leaf = /NODE IDS: (.*)/.exec(content);\\n  if (leaf?.[1] !== undefined) {\\n    return leaf[1].split(',').map((id) => id.trim()).filter((id) => id.length > 0);\\n\\n    expect(provider.calls.map((call) => call.model)).toEqual([LEAF_MODEL, ROOT_MODEL]);\\n  });\\n\\n  it('keeps version 1 readable after writing version 2, because D3 makes \\\"what did the model see\\\" auditable', async () => {\\n   ",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "packages/core/test/summarize.test.ts 36-80 205-260"
+      ],
+      "fetchedIds": [
+        "n_2RJJA09PETFFHGPPV1DGVYKQSQ",
+        "n_2RJJA09PETFFHGPPV1DGVYKQSQ"
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 16529,
+      "usage": {
+        "input": 51373,
+        "output": 1186,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 4719,
+          "usage": {
+            "input": 9423,
+            "output": 107,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9423,
+          "input": 9423,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 107,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 6222,
+          "usage": {
+            "input": 12337,
+            "output": 130,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12337,
+          "input": 12337,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 130,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 6893,
+          "usage": {
+            "input": 12468,
+            "output": 149,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12468,
+          "input": 12468,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 149,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 37755,
+          "usage": {
+            "input": 17145,
+            "output": 800,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 17145,
+          "input": 17145,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 800,
+          "toolCalls": [],
+          "stopReason": "length"
+        }
+      ],
+      "durationMs": 55615,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "Read StubProvider and retry test examples",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q03-head",
+      "stratum": "head",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "Based on the task context provided, there is no explicit mention of a contract file referenced in the description of a §15 harness agent loop. The context discusses various implementation and diagnosis branches related to a context-tree evaluation system, but does not specifically reference a §15 harness agent loop or any associated contract file.\n\nTo properly answer this question, I would need more specific information about which branch or phase contained details about a §15 harness agent loop. Without that, I cannot pinpoint the exact contract file that may have been referenced. \n\nIf you can provide more details about the relevant branch or context where the §15 harness agent loop was discussed, I can try to locate the information you're looking for. Otherwise, based on the current context, I do not have enough information to determine the name of any specific contract file related to a §15 harness agent loop.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 8669,
+      "usage": {
+        "input": 9402,
+        "output": 176,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 8417,
+          "usage": {
+            "input": 9402,
+            "output": 176,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9402,
+          "input": 9402,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 176,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 8422,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "implements its own minimal tool-use loop",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q03-head",
+      "stratum": "head",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "Based on the search results, the contract file referenced in the description of the §15 harness agent loop does not seem to be explicitly named or referenced in any of the task summaries or phase descriptions. The query did not yield any specific mention of a contract file associated with the §15 harness agent loop.\n\nThe highest-scoring hits relate to various phases and files but do not directly mention the contract file you are looking for. Given the context provided, it seems the contract file is not mentioned explicitly in the task history.\n\nIf you have more specific details or a different query that might help pinpoint the file, feel free to provide them, and I can perform another search. Otherwise, it appears the contract file is not recorded in the available summaries or phases.",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "§15 harness agent loop contract file"
+      ],
+      "fetchedIds": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 18866,
+      "usage": {
+        "input": 29873,
+        "output": 203,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 3200,
+          "usage": {
+            "input": 9402,
+            "output": 51,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9402,
+          "input": 9402,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 51,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 12231,
+          "usage": {
+            "input": 20471,
+            "output": 152,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 20471,
+          "input": 20471,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 152,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 15451,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "implements its own minimal tool-use loop",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q03-head",
+      "stratum": "head",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 3,
+      "finalText": "The refined search still did not provide a direct reference to a \"§15 harness agent loop\" or a specific contract file related to it. The search results are primarily related to other aspects of the task and do not mention the term \"§15 harness agent loop\" or any specific contract file.\n\nGiven the lack of direct hits, it is possible that the term \"§15 harness agent loop\" or the specific contract file you are looking for is not explicitly mentioned in the available task history. If you have more context or a different term that might be used to describe this, please provide it, and I can perform another search.\n\nHowever, based on the current information, it appears that the term \"§15 harness agent loop\" and the associated contract file might not be part of the recorded history for this task. If you have any additional details or another way to describe what you are looking for, I can try another approach. \n\nIf you confirm that the term is indeed not part of the history, I can conclude that the specific contract file you are asking about is not referenced in the task's history. What would you like to do next?",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "§15 harness agent loop contract file",
+        "harness agent loop contract file"
+      ],
+      "fetchedIds": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 22262,
+      "usage": {
+        "input": 53943,
+        "output": 558,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 6350,
+          "usage": {
+            "input": 9402,
+            "output": 136,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9402,
+          "input": 9402,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 136,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 12118,
+          "usage": {
+            "input": 20555,
+            "output": 188,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 20555,
+          "input": 20555,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 188,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 10948,
+          "usage": {
+            "input": 23986,
+            "output": 234,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 23986,
+          "input": 23986,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 234,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 29448,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "implements its own minimal tool-use loop",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q03-head",
+      "stratum": "head",
+      "rep": 4,
+      "status": "model_call_error",
+      "error": "openrouter returned no choices",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no choices\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:96:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q03-head",
+      "stratum": "head",
+      "rep": 5,
+      "status": "model_call_error",
+      "error": "openrouter chat.completions.create failed after 1 attempt(s): 400 Provider returned error",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter chat.completions.create failed after 1 attempt(s): 400 Provider returned error\n    at withRetry (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/retry.js:72:23)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:28:26)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q04-tail",
+      "stratum": "tail",
+      "rep": 1,
+      "status": "model_call_error",
+      "error": "openrouter chat.completions.create failed after 1 attempt(s): 400 Provider returned error",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter chat.completions.create failed after 1 attempt(s): 400 Provider returned error\n    at withRetry (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/retry.js:72:23)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:28:26)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q04-tail",
+      "stratum": "tail",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "The message that was echoed to confirm the file transfer of `tree-vs-transcript.html` to the scratchpad is found in the branch `implementation (2)`:\n\n\"This phase created an interactive HTML visualization (tree-vs-transcript.html) comparing tree and transcript approaches with styled charts, KPI panels, and responsive theme support. The agent wrote the complete HTML file with embedded CSS styling for light and dark modes, then refactored five chart functions into a RENDERERS array to enable theme reactivity—charts will now re-render when the color scheme changes. The phase ended with the file complete and validation tests running in parallel.\"\n\nThe specific message confirming the file transfer is not explicitly stated, but the phase summary clearly indicates that the file was created and completed, which implies it was successfully transferred to the scratchpad.",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "tree-vs-transcript.html copied to scratchpad"
+      ],
+      "fetchedIds": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 20435,
+      "usage": {
+        "input": 31477,
+        "output": 267,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 107075,
+          "usage": {
+            "input": 9418,
+            "output": 105,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9418,
+          "input": 9418,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 105,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 39534,
+          "usage": {
+            "input": 22059,
+            "output": 162,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 22059,
+          "input": 22059,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 162,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 146633,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Sync report to artifact publish path",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q04-tail",
+      "stratum": "tail",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 3,
+      "finalText": "The context_peek did not return a clear message confirming the file transfer of `tree-vs-transcript.html`. However, it did include some relevant details about copying files to the scratchpad:\n\n```\n\"SCRATCH=/private/tmp/claude-501/-Users-danielbyrne-GitHub-rpm-context-tree/4bf1e198-8af4-47e0-ae99-fa2ca13f1400/scratchpad\\ntail -1 \\\"$SCRATCH/iter7-rep1.log\\\"; tail -1 \\\"$SCRATCH/iter7-rep3.log\\\"\"\n```\n\nThis shows that the agent was running commands to check the progress of iter7 replicates by tailing log files in the scratchpad directory. \n\nWhile there isn't an explicit message confirming the transfer of `tree-vs-transcript.html`, the scratchpad being referenced suggests that files were indeed being copied there as part of the diagnosis work.\n\nThe most likely explanation is that the transfer occurred as part of the background monitoring commands, but was not explicitly logged as a separate message. The agent's focus was on checking the replicate progress rather than confirming individual file operations.\n\nWithout a more definitive record, I cannot conclusively identify a message echoing the file transfer. But the evidence suggests it did occur as part of the work in this branch, even if not explicitly called out.",
+      "searched": false,
+      "fetched": true,
+      "searchQueries": [],
+      "fetchedIds": [
+        "n_1WAD2VDY2YPXVF79V20K82TEXK"
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 11610,
+      "usage": {
+        "input": 31464,
+        "output": 558,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 40803,
+          "usage": {
+            "input": 9418,
+            "output": 178,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9418,
+          "input": 9418,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 178,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 6223,
+          "usage": {
+            "input": 9591,
+            "output": 93,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9591,
+          "input": 9591,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 93,
+          "toolCalls": [
+            "context_peek"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 15675,
+          "usage": {
+            "input": 12455,
+            "output": 287,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12455,
+          "input": 12455,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 287,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 62719,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Sync report to artifact publish path",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q04-tail",
+      "stratum": "tail",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "The context_search results indicate that the `tree-vs-transcript.html` file was created and edited in a few different phases:\n\n1. **Phase `implementation (2)` (node_id: `n_1BGBV85XX4QTHMYPGFB7YAF1HT`)**: \n   - This phase created an interactive HTML visualization (`tree-vs-transcript.html`) comparing tree and transcript approaches. The agent wrote the complete HTML file with embedded CSS styling for light and dark modes and refactored chart functions to enable theme reactivity.\n   - **Relevant excerpt**: \"This phase created an interactive HTML visualization (tree-vs-transcript.html) comparing tree and transcript approaches with styled charts, KPI panels, and responsive theme support. The agent wrote the complete HTML file with embedded CSS styling for light and dark modes, then refactored five chart functions into a RENDERERS array to enable theme reactivity—charts will now re-render when the color scheme changes.\"\n\n2. **Phase `delivery (3)` (node_id: `n_1ZDHE4823CEZMPPMH8M8H452BP`)**:\n   - This phase published the final v3 suite validation report as an HTML artifact (`tree-vs-transcript.html`), integrating pooled benchmarks and revised KPIs. The report was synced to the repository.\n   - **Relevant excerpt**: \"This delivery phase published the final v3 suite validation report as an HTML artifact (tree-vs-transcript.html) with pooled benchmarks folded in, including native vs. context-tree performance metrics and revised KPIs. The report was synced to the repo at reports/metrics/tree-vs-transcript.html.\"\n\n3. **Phase `implementation (10)` (node_id: `n_1PPHC64K0QTM0N8JD3RPST4GZ8`)**:\n   - This phase documented the completed loops 4-6 evaluation results and confirmed test passage. The report was republished to `reports/metrics/` and included an artifact.\n   - **Relevant excerpt**: \"This phase documented the completed loops 4–6 evaluation results into a project state file (eval-v5-lineage-state.md) and confirmed test passage. The work synthesized three iterations of refinement: loop 4 (iter7) retired the DSA v6 selector after proving it never evicts; loop 5 (iter8) identified FM-7 churn in Zone C's descendant map; loop 6 (iter9) fixed both by relocating the map and adding truncation retries, achieving v5.6 as the program's final winner at $0.281 median cost across n=5 replicates. The phase closed with full test passage (542 tests), report republished to reports/metrics/ and artifact, and one outstanding commit capturing the new ct-growth.mjs analyzer script.\"\n\nGiven these details, the message confirming the file transfer was likely part of the report publication process. The most relevant confirmation message appears in the `delivery (3)` phase:\n\n- **Confirmation message**: \"The report was synced to the repo at reports/metrics/tree-vs-transcript.html.\"\n\nThis suggests that the file `tree-vs-transcript.html` was successfully copied to the scratchpad and the report was updated to include this change.",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "tree-vs-transcript.html"
+      ],
+      "fetchedIds": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 22406,
+      "usage": {
+        "input": 33035,
+        "output": 733,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 2098,
+          "usage": {
+            "input": 9405,
+            "output": 50,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9405,
+          "input": 9405,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 50,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 30202,
+          "usage": {
+            "input": 23630,
+            "output": 683,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 23630,
+          "input": 23630,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 683,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 32322,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Sync report to artifact publish path",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q04-tail",
+      "stratum": "tail",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 4,
+      "finalText": "The message echoed to confirm the file transfer of `tree-vs-transcript.html` was:\n\n```\nThe file /Users/danielbyrne/.claude/projects/-Users-danielbyrne-GitHub-rpm-context-tree/reports/metrics/tree-vs-transcript.html has been updated successfully.\n```\n\nThis message appears in the full event log at event 735, confirming that the file was successfully copied to the scratchpad.",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "tree-vs-transcript.html transferred"
+      ],
+      "fetchedIds": [
+        "n_1PPHC64K0QTM0N8JD3RPST4GZ8",
+        "n_1PPHC64K0QTM0N8JD3RPST4GZ8"
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 20095,
+      "usage": {
+        "input": 50913,
+        "output": 393,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 2525,
+          "usage": {
+            "input": 9405,
+            "output": 81,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9405,
+          "input": 9405,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 81,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 3468,
+          "usage": {
+            "input": 9525,
+            "output": 106,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9525,
+          "input": 9525,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 106,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 7474,
+          "usage": {
+            "input": 10619,
+            "output": 118,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 10619,
+          "input": 10619,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 118,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 7501,
+          "usage": {
+            "input": 21364,
+            "output": 88,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21364,
+          "input": 21364,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 88,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 21002,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Sync report to artifact publish path",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q05-tail",
+      "stratum": "tail",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "The team identified the only cache-free point for token-level selection as the **volatile-bit behavior of the Zone C header**. This was edited in the `format.ts` file during the phase `implementation (6)`, where the agent added clarifying comments about how the Zone C header rewrites the whole zone on append, defeating caching of Zone C's append-only event stream. Specifically, the header is volatile and rewrites itself when new events are appended, which means it is not cached and is re-generated each time.\n\nThus, the token-level selection is viable at this point because the Zone C header is not part of the cached content and is always re-computed.",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "cache-free point token-level selection"
+      ],
+      "fetchedIds": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 19506,
+      "usage": {
+        "input": 30333,
+        "output": 166,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1270,
+          "usage": {
+            "input": 9405,
+            "output": 31,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9405,
+          "input": 9405,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 31,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 7602,
+          "usage": {
+            "input": 20928,
+            "output": 135,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 20928,
+          "input": 20928,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 135,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 8893,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "DSA on context tokens",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q05-tail",
+      "stratum": "tail",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 3,
+      "finalText": "The team identified the cache breakpoint in Zone C as the only cache-free point where token-level selection is viable. Specifically, the descendant map (C:map) was moved to trail all C:event blocks, and the cache breakpoint was repositioned to the last stable C block. This layout prevents the descendant map's per-edit churn from invalidating the append-only cached stream, ensuring that only the C:map and tail following the breakpoint are uncached.\n\nHere is the relevant excerpt from the results:\n\n> \"C:map block must trail all C:event blocks to prevent its per-edit churn from sitting ahead of the append-only cached stream, Cache breakpoint positioned at last stable C block (last C:event), with C:map and tail following uncached\"",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "cache-free point"
+      ],
+      "fetchedIds": [
+        "n_1C6D33C0FMZ129RA2R0GXXCRM6"
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 20044,
+      "usage": {
+        "input": 51517,
+        "output": 222,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1380,
+          "usage": {
+            "input": 9405,
+            "output": 28,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9405,
+          "input": 9405,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 28,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 4799,
+          "usage": {
+            "input": 20743,
+            "output": 43,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 20743,
+          "input": 20743,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 43,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 5847,
+          "usage": {
+            "input": 21369,
+            "output": 151,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21369,
+          "input": 21369,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 151,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 12055,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "DSA on context tokens",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q05-tail",
+      "stratum": "tail",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "Based on the provided information, the only cache-free point identified for token-level selection was at the **last stable Zone C block (last C:event)**. This means that beyond this point, the C:map and any trailing blocks would not be cached, allowing for token-level selection without cache invalidation.\n\nSpecifically, the phase \"implementation (9)\" outlines:\n- **C:map block must trail all C:event blocks to prevent its per-edit churn from sitting ahead of the append-only cached stream.**\n- **Cache breakpoint positioned at last stable C block (last C:event), with C:map and tail following uncached.**\n\nThis arrangement ensures that the C:map and any subsequent blocks are not cached, providing a cache-free point for token-level selection.",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "cache-free point token-level selection"
+      ],
+      "fetchedIds": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 19525,
+      "usage": {
+        "input": 30333,
+        "output": 185,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1761,
+          "usage": {
+            "input": 9405,
+            "output": 31,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9405,
+          "input": 9405,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 31,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 5207,
+          "usage": {
+            "input": 20928,
+            "output": 154,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 20928,
+          "input": 20928,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 154,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 6992,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "DSA on context tokens",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q05-tail",
+      "stratum": "tail",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 3,
+      "finalText": "The only cache-free point identified for token-level selection was the **root of the active branch**. This was discussed in the context of ensuring that token-level operations could be applied without invalidating the cache. Specifically, the root of the active branch was recognized as a stable point where token-level selection could occur without affecting the cached prefix.\n\nThe phase summary from `n_10MK5T7JRRKENQ275F460TS827` confirms that the v6 selection strategy was refined to use the active branch content for scoring, which aligns with the idea of performing token-level operations at the root of the active branch to ensure cache stability.",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "token-level selection cache-free"
+      ],
+      "fetchedIds": [
+        "n_10MK5T7JRRKENQ275F460TS827"
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 20012,
+      "usage": {
+        "input": 51831,
+        "output": 338,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 4320,
+          "usage": {
+            "input": 9405,
+            "output": 70,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9405,
+          "input": 9405,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 70,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 8299,
+          "usage": {
+            "input": 20961,
+            "output": 131,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 20961,
+          "input": 20961,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 131,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 5117,
+          "usage": {
+            "input": 21465,
+            "output": 137,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21465,
+          "input": 21465,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 137,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 17766,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "DSA on context tokens",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q05-tail",
+      "stratum": "tail",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "The only cache-free point identified for token-level selection was the active branch detail (Zone C) when it is not yet cached. This was discussed in the context of ensuring that the volatile parts of the prompt, such as the active branch detail, could be managed without cache interference, especially during the initial stages of a task where the active branch is still being formed and not yet cached.\n\nHowever, the specific cache-free point is mentioned in the phase where the team implemented cache-aware block reordering in Zone C to prevent the churning descendant map from invalidating the append-only event stream's Anthropic cache. The relevant decision from this phase was:\n\n**\"C:map block must trail all C:event blocks to prevent its per-edit churn from sitting ahead of the append-only cached stream.\"**\n\nThis means that the `C:map` block, which contains the descendant map, is placed after all `C:event` blocks, ensuring that the active branch detail (Zone C) can be managed without cache invalidation until it is explicitly cached. Therefore, the active branch detail (Zone C) is the only part that can be manipulated token-by-token without cache interference before it is cached.",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "cache-free point for token-level selection"
+      ],
+      "fetchedIds": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 19637,
+      "usage": {
+        "input": 30400,
+        "output": 269,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1315,
+          "usage": {
+            "input": 9405,
+            "output": 32,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9405,
+          "input": 9405,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 32,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 15380,
+          "usage": {
+            "input": 20995,
+            "output": 237,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 20995,
+          "input": 20995,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 237,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 16716,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "DSA on context tokens",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q06-tail",
+      "stratum": "tail",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 3,
+      "finalText": "Based on the context provided, it appears that the file `eval/scripts/loop.ts` is not directly available in the specified branch. However, we can infer the required comment from the decisions and file changes made in the relevant branches.\n\nFrom the `implementation (9)` branch, we have the following decisions:\n- **C:map block must trail all C:event blocks to prevent its per-edit churn from sitting ahead of the append-only cached stream.**\n- **Cache breakpoint positioned at last stable C block (last C:event), with C:map and tail following uncached.**\n\nThis suggests that the comment in the `zoneC()` function where the `C:map:${active.id}` block is appended should explain that the `C:map` block must be placed after all `C:event` blocks to avoid invalidating the cache. Here is a plausible comment that would explain this requirement:\n\n```typescript\n// Append the C:map block as the last element to ensure it does not invalidate the cache.\n// The C:map block is highly volatile and frequently updated, so placing it after all\n// C:event blocks ensures that the cache remains valid and the append-only nature of\n// the event stream is maintained.\n```\n\nThis comment explains why the `C:map` block is positioned at the end of the Zone C content and how this placement helps to maintain the efficiency of the cache.",
+      "searched": false,
+      "fetched": true,
+      "searchQueries": [],
+      "fetchedIds": [
+        "n_1C6D33C0FMZ129RA2R0GXXCRM6",
+        "n_1C6D33C0FMZ129RA2R0GXXCRM6"
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 8916,
+      "usage": {
+        "input": 28449,
+        "output": 394,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 2087,
+          "usage": {
+            "input": 9419,
+            "output": 59,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9419,
+          "input": 9419,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 59,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 1851,
+          "usage": {
+            "input": 9483,
+            "output": 53,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9483,
+          "input": 9483,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 53,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 7648,
+          "usage": {
+            "input": 9547,
+            "output": 282,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9547,
+          "input": 9547,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 282,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 11599,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Callers that cache Zone C must keep it after their moving breakpoint.",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q06-tail",
+      "stratum": "tail",
+      "rep": 2,
+      "status": "model_call_error",
+      "error": "openrouter returned no choices",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no choices\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:96:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q06-tail",
+      "stratum": "tail",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 6,
+      "finalText": "It seems that the `loop.ts` file is not available under the branch `n_215PQZFB1K0NKWCG4A5HPPJFR0` as well. Let's try one more branch from the search results, such as `n_215QXCQ191X86G5R9T3S1XN61P`.\n\nSince this branch was already tried and failed, let's try `n_2EPMM1V52CJ98NJ5S4AND0CREZ` which is another relevant branch.\n\nI will fetch the content of `loop.ts` from the branch `n_2EPMM1V52CJ98NJ5S4AND0CREZ`.\n\n",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "loop.ts"
+      ],
+      "fetchedIds": [
+        "n_1C6D33C0FMZ129RA2R0GXXCRM6",
+        "n_215QXCQ191X86G5R9T3S1XN61P",
+        "n_28MCBQS63EP9YRFHHBFRTX92DZ",
+        "n_215PQZFB1K0NKWCG4A5HPPJFR0"
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 11782,
+      "usage": {
+        "input": 69649,
+        "output": 854,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 5100,
+          "usage": {
+            "input": 9419,
+            "output": 122,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9419,
+          "input": 9419,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 122,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 4764,
+          "usage": {
+            "input": 9549,
+            "output": 101,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9549,
+          "input": 9549,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 101,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 5675,
+          "usage": {
+            "input": 12432,
+            "output": 138,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12432,
+          "input": 12432,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 138,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 6740,
+          "usage": {
+            "input": 12577,
+            "output": 166,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12577,
+          "input": 12577,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 166,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 5,
+          "turn": 5,
+          "latencyMs": 6981,
+          "usage": {
+            "input": 12750,
+            "output": 165,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12750,
+          "input": 12750,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 165,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 6,
+          "turn": 6,
+          "latencyMs": 8609,
+          "usage": {
+            "input": 12922,
+            "output": 162,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12922,
+          "input": 12922,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 162,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 37899,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Callers that cache Zone C must keep it after their moving breakpoint.",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q06-tail",
+      "stratum": "tail",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 5,
+      "finalText": "It seems that we are still having trouble locating the specific implementation of `zoneC()` and the `C:map` block in the `loop.ts` file. Let's try a different approach by fetching the `loop.ts` file from the most recent branch that we have available and then checking the code manually for the required comments.\n\nI will fetch the `loop.ts` file from the branch `n_215QXCQ191X86G5R9T3S1XN61P` and then check the contents.\n",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "zoneC() implementation",
+        "zoneC() C:map"
+      ],
+      "fetchedIds": [
+        "n_1C6D33C0FMZ129RA2R0GXXCRM6",
+        "n_215QXCQ191X86G5R9T3S1XN61P",
+        "n_28MCBQS63EP9YRFHHBFRTX92DZ",
+        "n_28MCBQS63EP9YRFHHBFRTX92DZ"
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 14027,
+      "usage": {
+        "input": 61148,
+        "output": 734,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 4538,
+          "usage": {
+            "input": 9419,
+            "output": 150,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9419,
+          "input": 9419,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 150,
+          "toolCalls": [
+            "context_search",
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 3971,
+          "usage": {
+            "input": 12077,
+            "output": 116,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12077,
+          "input": 12077,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 116,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 6108,
+          "usage": {
+            "input": 12200,
+            "output": 170,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12200,
+          "input": 12200,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 170,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 7695,
+          "usage": {
+            "input": 12377,
+            "output": 184,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12377,
+          "input": 12377,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 184,
+          "toolCalls": [
+            "context_search",
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 5,
+          "turn": 5,
+          "latencyMs": 5148,
+          "usage": {
+            "input": 15075,
+            "output": 114,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 15075,
+          "input": 15075,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 114,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 27494,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Callers that cache Zone C must keep it after their moving breakpoint.",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q06-tail",
+      "stratum": "tail",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 3,
+      "finalText": "Based on the summary of the `implementation (9)` branch, the key decision and changes related to the `zoneC()` logic are as follows:\n\n1. **Reordering of Zone C Blocks**:\n   - The `C:map` block must trail all `C:event` blocks to prevent its per-edit churn from sitting ahead of the append-only cached stream.\n   - The cache breakpoint is positioned at the last stable `C:event` block, with the `C:map` block and any trailing content following uncached.\n\n2. **Render Active Header**:\n   - The signature of `renderActiveHeader` was changed to drop the `descendants` parameter since the map was moved out of the header.\n\nTo directly address the requirement for callers that cache Zone C, the key point is:\n\n**Requirement for Callers that Cache Zone C**:\n- **Cache Breakpoint**: The cache breakpoint must be positioned at the last stable `C:event` block. This ensures that the `C:map` block, which frequently changes, does not sit ahead of the cached stream, thus preventing cache invalidation.\n- **Block Order**: Callers must ensure that the `C:map` block is appended as the last element to prevent it from causing unnecessary cache invalidations.\n\nThis requirement is crucial to maintain the efficiency of the caching mechanism and reduce the overhead of frequent cache invalidations due to changes in the descendant map.",
+      "searched": false,
+      "fetched": true,
+      "searchQueries": [],
+      "fetchedIds": [
+        "n_1C6D33C0FMZ129RA2R0GXXCRM6",
+        "n_1C6D33C0FMZ129RA2R0GXXCRM6"
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 9575,
+      "usage": {
+        "input": 29178,
+        "output": 521,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 5281,
+          "usage": {
+            "input": 9419,
+            "output": 112,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9419,
+          "input": 9419,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 112,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 9474,
+          "usage": {
+            "input": 9532,
+            "output": 122,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9532,
+          "input": 9532,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 122,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 13032,
+          "usage": {
+            "input": 10227,
+            "output": 287,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 10227,
+          "input": 10227,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 287,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 27800,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Callers that cache Zone C must keep it after their moving breakpoint.",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q07-deep",
+      "stratum": "deep",
+      "rep": 1,
+      "status": "turn_cap",
+      "modelTurns": 6,
+      "finalText": "",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "packages/core/test eval/test"
+      ],
+      "fetchedIds": [
+        "n_1PPHC64K0QTM0N8JD3RPST4GZ8",
+        "n_1PPHC64K0QTM0N8JD3RPST4GZ8",
+        "n_1PPHC64K0QTM0N8JD3RPST4GZ8",
+        "n_2EPMM1V52CJ98NJ5S4AND0CREZ",
+        "n_2FR05HT5ABQ061NAG0DVSDF6ZH"
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 22093,
+      "usage": {
+        "input": 106840,
+        "output": 888,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 7036,
+          "usage": {
+            "input": 9411,
+            "output": 105,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9411,
+          "input": 9411,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 105,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 9730,
+          "usage": {
+            "input": 9523,
+            "output": 163,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9523,
+          "input": 9523,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 163,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 12319,
+          "usage": {
+            "input": 20313,
+            "output": 151,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 20313,
+          "input": 20313,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 151,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 7735,
+          "usage": {
+            "input": 20471,
+            "output": 139,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 20471,
+          "input": 20471,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 139,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 5,
+          "turn": 5,
+          "latencyMs": 13405,
+          "usage": {
+            "input": 23474,
+            "output": 167,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 23474,
+          "input": 23474,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 167,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 6,
+          "turn": 6,
+          "latencyMs": 13473,
+          "usage": {
+            "input": 23648,
+            "output": 163,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 23648,
+          "input": 23648,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 163,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        }
+      ],
+      "durationMs": 63754,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "from dedent import dedent_text",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q07-deep",
+      "stratum": "deep",
+      "rep": 2,
+      "status": "model_call_error",
+      "error": "openrouter returned no choices",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no choices\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:96:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q07-deep",
+      "stratum": "deep",
+      "rep": 3,
+      "status": "model_call_error",
+      "error": "openrouter returned no choices",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no choices\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:96:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q07-deep",
+      "stratum": "deep",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 4,
+      "finalText": "It appears that `assemble.test.ts` also does not exist under the node `n_2FR05HT5ABQ061NAG0DVSDF6ZH`. Let's try another file from the search results. The next most relevant file is `e2e.test.ts`.\n\nI will fetch the content of `e2e.test.ts` to check for the import statement.\n",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "numparse test cases"
+      ],
+      "fetchedIds": [
+        "n_2EPMM1V52CJ98NJ5S4AND0CREZ",
+        "n_2FR05HT5ABQ061NAG0DVSDF6ZH"
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 12076,
+      "usage": {
+        "input": 48449,
+        "output": 475,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 7106,
+          "usage": {
+            "input": 9411,
+            "output": 120,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9411,
+          "input": 9411,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 120,
+          "toolCalls": [
+            "context_search",
+            "context_peek"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 6794,
+          "usage": {
+            "input": 12872,
+            "output": 127,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12872,
+          "input": 12872,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 127,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 4970,
+          "usage": {
+            "input": 13006,
+            "output": 147,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 13006,
+          "input": 13006,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 147,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 2841,
+          "usage": {
+            "input": 13160,
+            "output": 81,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 13160,
+          "input": 13160,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 81,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 21737,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "from dedent import dedent_text",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q07-deep",
+      "stratum": "deep",
+      "rep": 5,
+      "status": "model_call_error",
+      "error": "openrouter returned no choices",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no choices\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:96:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q08-deep",
+      "stratum": "deep",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 3,
+      "finalText": "It appears there was a misunderstanding in the previous search attempts. Let's clarify the search to focus on the task's history and find any mention of a test involving a path inside a branch and the symbol `'ghost'`.\n\nI will perform a more general search to find any relevant branches or tests.\n\n```json\n{\n  \"call\": \"context_search\",\n  \"arguments\": {\n    \"query\": \"test path inside branch ghost\"\n  }\n}\n```\n\nThis should help us locate the relevant information.",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "test path inside branch ghost",
+        "test path inside branch ghost"
+      ],
+      "fetchedIds": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 8861,
+      "usage": {
+        "input": 28640,
+        "output": 317,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 4340,
+          "usage": {
+            "input": 9415,
+            "output": 125,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9415,
+          "input": 9415,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 125,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 4189,
+          "usage": {
+            "input": 9558,
+            "output": 91,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9558,
+          "input": 9558,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 91,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 3668,
+          "usage": {
+            "input": 9667,
+            "output": 101,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9667,
+          "input": 9667,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 101,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 12211,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "parseThing",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q08-deep",
+      "stratum": "deep",
+      "rep": 2,
+      "status": "turn_cap",
+      "modelTurns": 6,
+      "finalText": "",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "test ghost symbol",
+        "test ghost symbol",
+        "test ghost symbol"
+      ],
+      "fetchedIds": [
+        "n_1A84WKF26NWA90DDR9ENP8BMSD",
+        "n_2EPMM1V52CJ98NJ5S4AND0CREZ",
+        "n_215PQZFB1K0NKWCG4A5HPPJFR0"
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 12036,
+      "usage": {
+        "input": 64590,
+        "output": 985,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 3950,
+          "usage": {
+            "input": 9415,
+            "output": 142,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9415,
+          "input": 9415,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 142,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 6533,
+          "usage": {
+            "input": 9596,
+            "output": 225,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9596,
+          "input": 9596,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 225,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 4918,
+          "usage": {
+            "input": 9828,
+            "output": 132,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9828,
+          "input": 9828,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 132,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 5985,
+          "usage": {
+            "input": 9980,
+            "output": 115,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9980,
+          "input": 9980,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 115,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 5,
+          "turn": 5,
+          "latencyMs": 7347,
+          "usage": {
+            "input": 12796,
+            "output": 172,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12796,
+          "input": 12796,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 172,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 6,
+          "turn": 6,
+          "latencyMs": 6654,
+          "usage": {
+            "input": 12975,
+            "output": 199,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12975,
+          "input": 12975,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 199,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        }
+      ],
+      "durationMs": 35418,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "parseThing",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q08-deep",
+      "stratum": "deep",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 4,
+      "finalText": "The `loop.test.ts` file excerpt does not contain the specific test that verifies \"a path inside the branch\" with the symbol `'ghost'`. However, based on the context, it seems that the test might be located in a different file or might have been omitted from this excerpt.\n\nGiven the available information, the `summary.meta.symbols` for the test in question is not directly provided in the fetched content. However, we can infer that the test likely involves a symbol `'ghost'` and verifies some aspect of the branch structure.\n\nSince the test is not explicitly mentioned, I will make an educated guess based on the typical structure of such tests:\n\n### Expected Value of `summary.meta.symbols`\nGiven that the test is verifying \"a path inside the branch\" with the symbol `'ghost'`, the expected value of `summary.meta.symbols` would be:\n\n```json\n{\n  \"symbols\": [\"ghost\"]\n}\n```\n\nThis indicates that the test is specifically checking for the presence of the symbol `'ghost'` in the branch's metadata.\n\nIf you need further verification or details, please let me know!",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "test verifying path inside branch with ghost symbol",
+        "test path inside branch ghost"
+      ],
+      "fetchedIds": [
+        "n_1PPHC64K0QTM0N8JD3RPST4GZ8",
+        "n_2EPMM1V52CJ98NJ5S4AND0CREZ"
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 23216,
+      "usage": {
+        "input": 65733,
+        "output": 636,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 3819,
+          "usage": {
+            "input": 9415,
+            "output": 108,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9415,
+          "input": 9415,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 108,
+          "toolCalls": [
+            "context_search",
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 3574,
+          "usage": {
+            "input": 9529,
+            "output": 121,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9529,
+          "input": 9529,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 121,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 7691,
+          "usage": {
+            "input": 21953,
+            "output": 181,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21953,
+          "input": 21953,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 181,
+          "toolCalls": [
+            "context_fetch",
+            "context_peek"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 7252,
+          "usage": {
+            "input": 24836,
+            "output": 226,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 24836,
+          "input": 24836,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 226,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 22381,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "parseThing",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q08-deep",
+      "stratum": "deep",
+      "rep": 4,
+      "status": "model_call_error",
+      "error": "openrouter returned no choices",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no choices\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:96:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q08-deep",
+      "stratum": "deep",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "To answer this question, I need to clarify a few points:\n\n1. **Context of the Test**: The test you are referring to is one that verifies \"a path inside the branch\" and uses an invented symbol called `'ghost'`. This test is likely part of a broader suite of tests that validate the structure and behavior of the context tree.\n\n2. **Expected Value of `summary.meta.symbols`**: The `summary.meta.symbols` field typically contains a list of symbols (e.g., function names, variable names) that are relevant to the branch being summarized. In the context of a test, the `summary.meta.symbols` should reflect the symbols that are either defined or used within the branch.\n\nGiven the information provided, I need to determine the expected value of `summary.meta.symbols` for the test that includes the symbol `'ghost'`.\n\n### Steps to Determine the Expected Value\n\n1. **Locate the Test**: Identify the specific test case that verifies \"a path inside the branch\" and uses the symbol `'ghost'`.\n\n2. **Examine the Test Code**: Review the test code to understand how the symbol `'ghost'` is used and what other symbols are defined or used in the same branch.\n\n3. **Determine the Expected Symbols**: Based on the test code, list the symbols that should be present in `summary.meta.symbols`.\n\n### Example Analysis\n\nAssuming the test case is something like this:\n\n```javascript\ntest('a path inside the branch', () => {\n  const branch = createBranch('example-branch', { symbols: ['ghost', 'example'] });\n  const summary = summarizeBranch(branch);\n  expect(summary.meta.symbols).toEqual(['ghost', 'example']);\n});\n```\n\nIn this example, the branch is created with the symbols `'ghost'` and `'example'`. Therefore, the expected value of `summary.meta.symbols` would be `['ghost', 'example']`.\n\n### Conclusion\n\nBased on the test case and the symbols defined within it, the expected value of `summary.meta.symbols` for the test that verifies \"a path inside the branch\" with the invented symbol `'ghost'` is:\n\n```json\n[\"ghost\", \"example\"]\n```\n\nIf there are additional symbols used in the test, they should also be included in this list.\n\nTo ensure accuracy, I would need to see the actual test code or more context. If you can provide the specific test code or more details, I can refine the answer further.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 9019,
+      "usage": {
+        "input": 9415,
+        "output": 507,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 48598,
+          "usage": {
+            "input": 9415,
+            "output": 507,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9415,
+          "input": 9415,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 507,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 48603,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "parseThing",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q09-deep",
+      "stratum": "deep",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 5,
+      "finalText": "It seems that the file `format.ts` is also not found under the specified node. Let's try fetching the file `/Users/danielbyrne/GitHub/rpm/context-tree/eval/src/loop.ts` to see if it contains the relevant import statement.\n",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "DEFAULT_TOOL_PHASE"
+      ],
+      "fetchedIds": [
+        "n_2A2A06HX46R66G6RQHREFHY8GY",
+        "n_2A2A06HX46R66G6RQHREFHY8GY",
+        "n_2ZHYVNH3BJQNA0HACYJ0C9J4K5"
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 11391,
+      "usage": {
+        "input": 58197,
+        "output": 456,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 4081,
+          "usage": {
+            "input": 9428,
+            "output": 62,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9428,
+          "input": 9428,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 62,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 9190,
+          "usage": {
+            "input": 12006,
+            "output": 128,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12006,
+          "input": 12006,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 128,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 9397,
+          "usage": {
+            "input": 12141,
+            "output": 107,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12141,
+          "input": 12141,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 107,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 5366,
+          "usage": {
+            "input": 12255,
+            "output": 105,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12255,
+          "input": 12255,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 105,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 5,
+          "turn": 5,
+          "latencyMs": 2791,
+          "usage": {
+            "input": 12367,
+            "output": 54,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12367,
+          "input": 12367,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 54,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 30852,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "PHASE_TYPES",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q09-deep",
+      "stratum": "deep",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 3,
+      "finalText": "Based on the context fetched from the file `/Users/danielbyrne/.claude/projects/-Users-danielbyrne-GitHub-rpm-context-tree/memory/eval-v5-lineage-state.md`, the type imported alongside `PhaseType` from `'./contracts/tree.js'` in the configuration module that starts with `§11 configuration` is `PhaseConfig`.\n\nHere's the relevant excerpt from the file:\n\n```markdown\n## Configuration\n\nThe configuration module (`§11 configuration`) imports `PhaseType` and `PhaseConfig` from `'./contracts/tree.js'` and defines the default tool phase as follows:\n\n```typescript\nimport { PhaseType, PhaseConfig } from './contracts/tree.js';\n\nexport const DEFAULT_TOOL_PHASE: PhaseConfig = {\n  // Configuration details\n};\n```\n```\n\nThis indicates that the type imported alongside `PhaseType` is `PhaseConfig`.",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "DEFAULT_TOOL_PHASE configuration module"
+      ],
+      "fetchedIds": [
+        "n_2HAGFANVAQTE91MPR50SBC97DT"
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 11276,
+      "usage": {
+        "input": 33531,
+        "output": 280,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1716,
+          "usage": {
+            "input": 9428,
+            "output": 30,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9428,
+          "input": 9428,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 30,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 4510,
+          "usage": {
+            "input": 11978,
+            "output": 71,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 11978,
+          "input": 11978,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 71,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 8979,
+          "usage": {
+            "input": 12125,
+            "output": 179,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12125,
+          "input": 12125,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 179,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 15219,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "PHASE_TYPES",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q09-deep",
+      "stratum": "deep",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 3,
+      "finalText": "The search and fetch requests for the `DEFAULT_TOOL_PHASE` did not yield the specific type name imported alongside `PhaseType` from `'./contracts/tree.js'`. To find the exact type, I will search in the `loop.ts` file, as it is more likely to contain the import statement for configuration-related types.\n\n(invoking tool)",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "DEFAULT_TOOL_PHASE"
+      ],
+      "fetchedIds": [
+        "n_21Z93XQ3K3N29EM4XK644TRKXV"
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 11163,
+      "usage": {
+        "input": 33528,
+        "output": 168,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1880,
+          "usage": {
+            "input": 9428,
+            "output": 28,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9428,
+          "input": 9428,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 28,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 4475,
+          "usage": {
+            "input": 11976,
+            "output": 71,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 11976,
+          "input": 11976,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 71,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 4208,
+          "usage": {
+            "input": 12124,
+            "output": 69,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12124,
+          "input": 12124,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 69,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 10580,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "PHASE_TYPES",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q09-deep",
+      "stratum": "deep",
+      "rep": 4,
+      "status": "model_call_error",
+      "error": "openrouter returned no choices",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no choices\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:96:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q09-deep",
+      "stratum": "deep",
+      "rep": 5,
+      "status": "turn_cap",
+      "modelTurns": 6,
+      "finalText": "",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "§11 configuration"
+      ],
+      "fetchedIds": [
+        "n_24MCBH4474MPYPTDN6P1N3P14K",
+        "n_2ZHYVNH3BJQNA0HACYJ0C9J4K5",
+        "n_24MCBH4474MPYPTDN6P1N3P14K",
+        "n_215QXCQ191X86G5R9T3S1XN61P",
+        "n_215QXCQ191X86G5R9T3S1XN61P",
+        "n_2HAGFANVAQTE91MPR50SBC97DT",
+        "n_2HAGFANVAQTE91MPR50SBC97DT",
+        "n_2HAGFANVAQTE91MPR50SBC97DT"
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21594,
+      "usage": {
+        "input": 72257,
+        "output": 1244,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 6477,
+          "usage": {
+            "input": 9428,
+            "output": 159,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9428,
+          "input": 9428,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 159,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 5763,
+          "usage": {
+            "input": 12103,
+            "output": 156,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12103,
+          "input": 12103,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 156,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 6651,
+          "usage": {
+            "input": 12266,
+            "output": 206,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12266,
+          "input": 12266,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 206,
+          "toolCalls": [
+            "context_fetch",
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 10128,
+          "usage": {
+            "input": 12476,
+            "output": 279,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12476,
+          "input": 12476,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 279,
+          "toolCalls": [
+            "context_fetch",
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 5,
+          "turn": 5,
+          "latencyMs": 10101,
+          "usage": {
+            "input": 12759,
+            "output": 284,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12759,
+          "input": 12759,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 284,
+          "toolCalls": [
+            "context_fetch",
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 6,
+          "turn": 6,
+          "latencyMs": 5845,
+          "usage": {
+            "input": 13225,
+            "output": 160,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 13225,
+          "input": 13225,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 160,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        }
+      ],
+      "durationMs": 45019,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "PHASE_TYPES",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q10-spanning",
+      "stratum": "spanning",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 3,
+      "finalText": "The fetched content of `loop.test.ts` does not provide the specific details we are looking for, such as a test verifying that tree-sitter spans are stored instead of the model's or the presence of the symbol 'ghost'. \n\nGiven this, I will perform another search to find the specific file and test that might contain the symbol 'ghost'. Let's try a more focused search:\n\n```json\n{\n  \"call\": \"context_search\",\n  \"arguments\": {\n    \"query\": \"tree-sitter spans model ghost test\"\n  }\n}\n```\n\nThis search will help us locate the exact file and test that might contain the symbol 'ghost'. Let's proceed with this search.\n",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "tree-sitter spans model ghost test"
+      ],
+      "fetchedIds": [
+        "n_215PQZFB1K0NKWCG4A5HPPJFR0"
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 20385,
+      "usage": {
+        "input": 53192,
+        "output": 503,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 3347,
+          "usage": {
+            "input": 9417,
+            "output": 91,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9417,
+          "input": 9417,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 91,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 11647,
+          "usage": {
+            "input": 21719,
+            "output": 273,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21719,
+          "input": 21719,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 273,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 5876,
+          "usage": {
+            "input": 22056,
+            "output": 139,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 22056,
+          "input": 22056,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 139,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 20899,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "../src/render/index.js",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "src/a.ts",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q10-spanning",
+      "stratum": "spanning",
+      "rep": 2,
+      "status": "model_call_error",
+      "error": "openrouter returned no choices",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no choices\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:96:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q10-spanning",
+      "stratum": "spanning",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 3,
+      "finalText": "The fetched content of the file `/Users/danielbyrne/GitHub/rpm/context-tree/eval/scripts/build-multimod-scenario.py` does not contain any information about the invented symbol 'ghost' in the `replyBody` related to tree-sitter spans.\n\nGiven that the search and fetch operations did not yield the desired information, it appears that the symbol 'ghost' and the context you are looking for may not be present in the provided task history. If you have additional details or a different query, please provide them so I can assist you more effectively. \n\nIf you are sure that the symbol 'ghost' should be present in the task history, could you please clarify which specific file or phase it is associated with? This will help me narrow down the search and provide a more accurate answer.",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "tree-sitter spans"
+      ],
+      "fetchedIds": [
+        "n_1E48X9HAFPEYNQHHSF609KHMEE"
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 20893,
+      "usage": {
+        "input": 54350,
+        "output": 485,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 3986,
+          "usage": {
+            "input": 9417,
+            "output": 108,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9417,
+          "input": 9417,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 108,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 49389,
+          "usage": {
+            "input": 22327,
+            "output": 214,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 22327,
+          "input": 22327,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 214,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 7996,
+          "usage": {
+            "input": 22606,
+            "output": 163,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 22606,
+          "input": 22606,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 163,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 61402,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "../src/render/index.js",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "src/a.ts",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q10-spanning",
+      "stratum": "spanning",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 3,
+      "finalText": "The code snippets and logs provided do not directly mention the symbol 'ghost' or any specific file path related to the test verifying that tree-sitter spans are stored instead of the model's. However, the code in `summarizer.ts` and `contract.ts` suggests that the issue revolves around the parsing of the summarizer's JSON response and the handling of truncated replies.\n\n### Key Points:\n1. **Parsing the Summary Reply**:\n   - The function `parseSummaryReply` in `summarize/contract.ts` is responsible for parsing the JSON response from the summarizer.\n   - It uses `dropTreeOwnedContents` to clean up the JSON response, ensuring that certain fields are dropped if they are not valid.\n\n2. **Handling Truncated Replies**:\n   - The function `complete` in `summarize/summarizer.ts` retries the summarization with a retry preamble if the initial response violates the summary contract.\n   - The retry uses the same `maxSummaryTokens` setting, which is set to 1024 by default and can be configured.\n\n### Relevant Code Snippets:\n- **`summarize/contract.ts`**:\n  ```ts\n  export function parseSummaryReply(raw: string): { text: string; meta: SummaryMeta } {\n    return parseSummaryResponse(dropTreeOwnedContents(raw));\n  }\n  ```\n\n- **`summarize/summarizer.ts`**:\n  ```ts\n  private async complete(\n    model: string,\n    prompt: string,\n    expected: ContractExpectation,\n  ): Promise<{ text: string; meta: SummaryMeta; model: string }> {\n    let violation: string | null = null;\n    for (let attempt = 0; ; attempt += 1) {\n      const content = violation === null ? prompt : `${prompt}\\n\\n${RETRY_PREAMBLE}\\n${violation}`;\n      this.costMeter?.assertUnderCap();\n      const result = await this.provider.complete({\n        model,\n        messages: [{ role: 'user', content }],\n        json: true,\n        maxTokens: this.maxSummaryTokens,\n      });\n      this.costMeter?.record(result.model || model, result.usage);\n\n      let parsed: { text: string; meta: SummaryMeta } | null = null;\n      let problem: string | null = null;\n      try {\n        parsed = parseSummaryReply(result.text);\n        problem = contractViolation(parsed.meta, expected);\n      } catch (error) {\n        if (!(error instanceof SummaryContractError)) throw error;\n        problem = error.message;\n      }\n      if (parsed !== null && problem === null) {\n        return { text: parsed.text, meta: parsed.meta, model: result.model || model };\n      }\n      if (attempt >= 1) {\n        throw new SummaryContractError(`${model} broke the §8 summary contract after one retry: ${problem}`);\n      }\n      violation = problem;\n    }\n  }\n  ```\n\n### Conclusion:\nThe test that verifies tree-sitter spans are stored instead of the model's likely involves ensuring that the parsed JSON response from the summarizer contains the correct spans. The symbol 'ghost' is not mentioned in the provided code, and it is not clear from the context where it might appear.\n\nIf you need to find the specific file path in the reply body that contains the symbol 'ghost', you may need to search for it explicitly in the relevant files. However, based on the provided information, it seems that the symbol 'ghost' is not directly related to the tree-sitter span handling logic in the summarizer.\n\nIf you have more specific information or a different file path to check, please provide that, and I can help you further.",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "tree-sitter spans ghost"
+      ],
+      "fetchedIds": [
+        "n_1WAD2VDY2YPXVF79V20K82TEXK"
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 29829,
+      "usage": {
+        "input": 63622,
+        "output": 994,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 7018,
+          "usage": {
+            "input": 9417,
+            "output": 66,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9417,
+          "input": 9417,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 66,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 9726,
+          "usage": {
+            "input": 22315,
+            "output": 165,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 22315,
+          "input": 22315,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 165,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 55655,
+          "usage": {
+            "input": 31890,
+            "output": 763,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31890,
+          "input": 31890,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 763,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 72440,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "../src/render/index.js",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "src/a.ts",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q10-spanning",
+      "stratum": "spanning",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 4,
+      "finalText": "The fetched summary for the diagnosis phase does not contain the specific information about tree-sitter spans or the symbol 'ghost'. It seems the information I'm looking for might be in a different branch or file.\n\nI will try another search with a more specific query to find the relevant file and symbol. Specifically, I will search for \"ghost\" and \"tree-sitter spans\" together to narrow down the results.\n\nLet me perform another search.\n",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "test verifies tree-sitter spans stored instead of model's",
+        "tree-sitter spans"
+      ],
+      "fetchedIds": [
+        "n_1JNW5D8CNYSATE4X6NV3Z39R81"
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 9445,
+      "usage": {
+        "input": 38912,
+        "output": 438,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 4458,
+          "usage": {
+            "input": 9417,
+            "output": 114,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9417,
+          "input": 9417,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 114,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 3451,
+          "usage": {
+            "input": 9543,
+            "output": 92,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9543,
+          "input": 9543,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 92,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 4771,
+          "usage": {
+            "input": 9674,
+            "output": 144,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9674,
+          "input": 9674,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 144,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 5220,
+          "usage": {
+            "input": 10278,
+            "output": 88,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 10278,
+          "input": 10278,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 88,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 17918,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "../src/render/index.js",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "src/a.ts",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q11-spanning",
+      "stratum": "spanning",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 3,
+      "finalText": "Based on the output from the command that printed the per-turn cache profile of `iter8-rep1`, the \"cr\" (cache read) value at the end of turn 16 is 6568.\n\nHere is the relevant excerpt from the output:\n\n```\nturn  in    cr     cw\n...\n  15     2   6568  15460\n  16     1   6568  16283\n  17    78   6568  16331\n...\n```\n\nSo, the \"cr\" value at the end of turn 16 is **6568**.",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "cr turn 16"
+      ],
+      "fetchedIds": [
+        "n_1NH76HCY6DZ25G5YBTJMBT3BXJ"
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21956,
+      "usage": {
+        "input": 54049,
+        "output": 466,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 5748,
+          "usage": {
+            "input": 9410,
+            "output": 113,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9410,
+          "input": 9410,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 113,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 10124,
+          "usage": {
+            "input": 20930,
+            "output": 197,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 20930,
+          "input": 20930,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 197,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 7242,
+          "usage": {
+            "input": 23709,
+            "output": 156,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 23709,
+          "input": 23709,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 156,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 23148,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "packages/core/package.json",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "16283",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q11-spanning",
+      "stratum": "spanning",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "It appears that the search did not return any relevant hits. The command output you're looking for is not present in the summaries provided. To proceed, I will need to fetch the detailed content of the relevant branch or node to find the specific information.\n\nCould you please provide the branch ID or node ID where the command was executed, or any additional context that might help me locate the right branch or node? If you're not sure, I can try fetching the content of a few branches that seem relevant based on the summaries.",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "turn 16 core resolves via dist"
+      ],
+      "fetchedIds": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 8740,
+      "usage": {
+        "input": 18953,
+        "output": 199,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 3494,
+          "usage": {
+            "input": 9410,
+            "output": 94,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9410,
+          "input": 9410,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 94,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 5015,
+          "usage": {
+            "input": 9543,
+            "output": 105,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9543,
+          "input": 9543,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 105,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 8518,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "packages/core/package.json",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "16283",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q11-spanning",
+      "stratum": "spanning",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 5,
+      "finalText": "The search did not yield any results for the \"cr\" value at the end of turn 16. Given that the specific log files are not available and the search did not return any relevant hits, it seems that the \"cr\" value for turn 16 is not directly recorded in the available context.\n\nHowever, we can make an educated guess based on the available data. The closest match in the extracted chart data is the entry for iter7 with 10 turns:\n\n```json\n{\n  \"it\": \"iter7\", \n  \"arm\": \"context-tree\", \n  \"task\": \"sw-2-multimod\", \n  \"cost\": 0.2161, \n  \"turns\": 10, \n  \"ok\": true, \n  \"cw\": 6996, \n  \"cr\": 52158, \n  \"inp\": 59821, \n  \"tot\": 123270\n}\n```\n\nSince turn 16 is later in the sequence, and the \"cr\" value (cache read) is cumulative, we can infer that the \"cr\" value at turn 16 would be higher than 52158. However, without the specific log files or more detailed data, we cannot provide an exact value.\n\nIf you have access to the log files or more detailed data, I would recommend checking those to find the exact \"cr\" value at the end of turn 16. If you can provide the path to the specific log file, I can fetch and parse it to find the value.\n\nFor now, based on the available data, the closest \"cr\" value we have is 52158 at turn 10. The actual \"cr\" value at turn 16 would be higher than this.\n\nIf you have any additional information or paths to the log files, please let me know.",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "turn 16 cr value",
+        "cr value turn 16"
+      ],
+      "fetchedIds": [
+        "n_1C6D33C0FMZ129RA2R0GXXCRM6",
+        "n_1C6D33C0FMZ129RA2R0GXXCRM6",
+        "n_1C6D33C0FMZ129RA2R0GXXCRM6",
+        "n_1C6D33C0FMZ129RA2R0GXXCRM6"
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 18445,
+      "usage": {
+        "input": 76465,
+        "output": 1515,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 4133,
+          "usage": {
+            "input": 9410,
+            "output": 91,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9410,
+          "input": 9410,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 91,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 6301,
+          "usage": {
+            "input": 9540,
+            "output": 170,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9540,
+          "input": 9540,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 170,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 29934,
+          "usage": {
+            "input": 18654,
+            "output": 697,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 18654,
+          "input": 18654,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 697,
+          "toolCalls": [
+            "context_fetch",
+            "context_fetch",
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 5665,
+          "usage": {
+            "input": 19334,
+            "output": 154,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 19334,
+          "input": 19334,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 154,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 5,
+          "turn": 5,
+          "latencyMs": 16186,
+          "usage": {
+            "input": 19527,
+            "output": 403,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 19527,
+          "input": 19527,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 403,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 62266,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "packages/core/package.json",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "16283",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q11-spanning",
+      "stratum": "spanning",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 4,
+      "finalText": "The detailed output from the `context_fetch` for the diagnosis phase (7) includes a per-turn cache profile for iter8-rep1. Here is the relevant excerpt:\n\n```\nturn  in    cr     cw\n   0     1   4788    362\n   1     1   5150    563\n   2     1   5713   1176\n   3     1   4788   2040\n   4     1   5588   1791\n   5     1   4788   2491\n   6     1   7279    459\n   7     2   4788   2192\n   8     1   6568    685\n   9     2   6568  10809\n  10     1   6568  11365\n  11     1   6568  11637\n  12     1   6568  12809\n  13     1   6568  14474\n  14     1   6568  14644\n  15     2   6568  15460\n  16     1   6568  16283\n  17    78   6568  16331\n  18   153   6568  16343\n  19   230   4788   2456\n  20   229   7244    521\n  21   229   7765    174\n  22   229   7939    375\n  23   229   4788   3174\n  24   229   7335   1479\n  25   229   7335   1686\n  26   229   7335   2831\n  27   229   7335   3436\n  28   229   7335   3858\n  29   229   7335   4193\n  30   229   7335   5088\n  31   230   7335   5378\n  32   229   7335   5663\n  33   230   7335   7822\n  34   229   7335   8049\n  35   229   7335   8330\n  36  ",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "core resolves via dist",
+        "turn 16 cr value"
+      ],
+      "fetchedIds": [
+        "n_1NH76HCY6DZ25G5YBTJMBT3BXJ"
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 25058,
+      "usage": {
+        "input": 72150,
+        "output": 1259,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 4451,
+          "usage": {
+            "input": 9410,
+            "output": 122,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9410,
+          "input": 9410,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 122,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 9289,
+          "usage": {
+            "input": 12286,
+            "output": 153,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12286,
+          "input": 12286,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 153,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 12375,
+          "usage": {
+            "input": 23844,
+            "output": 184,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 23844,
+          "input": 23844,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 184,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 34007,
+          "usage": {
+            "input": 26610,
+            "output": 800,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 26610,
+          "input": 26610,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 800,
+          "toolCalls": [],
+          "stopReason": "length"
+        }
+      ],
+      "durationMs": 60160,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "packages/core/package.json",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "16283",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q11-spanning",
+      "stratum": "spanning",
+      "rep": 5,
+      "status": "model_call_error",
+      "error": "openrouter returned no choices",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no choices\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:96:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q12-spanning",
+      "stratum": "spanning",
+      "rep": 1,
+      "status": "turn_cap",
+      "modelTurns": 6,
+      "finalText": "",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "tool_result seq 690",
+        "seq 690 turn data"
+      ],
+      "fetchedIds": [
+        "n_1PPHC64K0QTM0N8JD3RPST4GZ8",
+        "n_2HAGFANVAQTE91MPR50SBC97DT",
+        "n_2HAGFANVAQTE91MPR50SBC97DT",
+        "n_2HAGFANVAQTE91MPR50SBC97DT",
+        "n_2HAGFANVAQTE91MPR50SBC97DT",
+        "n_2124NT9RX9KE9ET35SG5VCPQST",
+        "n_21Z93XQ3K3N29EM4XK644TRKXV"
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 14460,
+      "usage": {
+        "input": 76584,
+        "output": 1064,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 7728,
+          "usage": {
+            "input": 9415,
+            "output": 151,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9415,
+          "input": 9415,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 151,
+          "toolCalls": [
+            "context_search",
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 7328,
+          "usage": {
+            "input": 12080,
+            "output": 156,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12080,
+          "input": 12080,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 156,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 10450,
+          "usage": {
+            "input": 12243,
+            "output": 221,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12243,
+          "input": 12243,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 221,
+          "toolCalls": [
+            "context_fetch",
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 4469,
+          "usage": {
+            "input": 12468,
+            "output": 127,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12468,
+          "input": 12468,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 127,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 5,
+          "turn": 5,
+          "latencyMs": 5543,
+          "usage": {
+            "input": 15111,
+            "output": 155,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 15111,
+          "input": 15111,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 155,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 6,
+          "turn": 6,
+          "latencyMs": 9017,
+          "usage": {
+            "input": 15267,
+            "output": 254,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 15267,
+          "input": 15267,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 254,
+          "toolCalls": [
+            "context_fetch",
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        }
+      ],
+      "durationMs": 44580,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "12529",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "systemChars",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q12-spanning",
+      "stratum": "spanning",
+      "rep": 2,
+      "status": "turn_cap",
+      "modelTurns": 6,
+      "finalText": "",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "tool_result for seq 690",
+        "cw 568"
+      ],
+      "fetchedIds": [
+        "n_1PPHC64K0QTM0N8JD3RPST4GZ8",
+        "n_1PPHC64K0QTM0N8JD3RPST4GZ8",
+        "n_1PPHC64K0QTM0N8JD3RPST4GZ8",
+        "n_1C6D33C0FMZ129RA2R0GXXCRM6"
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 20549,
+      "usage": {
+        "input": 82859,
+        "output": 835,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 4295,
+          "usage": {
+            "input": 9415,
+            "output": 123,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9415,
+          "input": 9415,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 123,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 4813,
+          "usage": {
+            "input": 9577,
+            "output": 85,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9577,
+          "input": 9577,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 85,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 6110,
+          "usage": {
+            "input": 9701,
+            "output": 131,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9701,
+          "input": 9701,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 131,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 4897,
+          "usage": {
+            "input": 10820,
+            "output": 131,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 10820,
+          "input": 10820,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 131,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 5,
+          "turn": 5,
+          "latencyMs": 8932,
+          "usage": {
+            "input": 21578,
+            "output": 189,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21578,
+          "input": 21578,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 189,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 6,
+          "turn": 6,
+          "latencyMs": 6310,
+          "usage": {
+            "input": 21768,
+            "output": 176,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21768,
+          "input": 21768,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 176,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        }
+      ],
+      "durationMs": 35407,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "12529",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "systemChars",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q12-spanning",
+      "stratum": "spanning",
+      "rep": 3,
+      "status": "model_call_error",
+      "error": "openrouter returned no choices",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no choices\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:96:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q12-spanning",
+      "stratum": "spanning",
+      "rep": 4,
+      "status": "model_call_error",
+      "error": "openrouter returned no choices",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no choices\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:96:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen-2.5-72b-instruct",
+      "arm": "tree-wide",
+      "window": 32768,
+      "question": "s1-q12-spanning",
+      "stratum": "spanning",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 5,
+      "finalText": "To directly answer the question about the value of `cr` when `cw` was 568, we need to find the specific tool result data for `seq 690`. The provided context fetch did not contain this information. \n\nHowever, based on the context provided, it seems that the specific `tool_result` data for `seq 690` is not immediately available. Let's try to fetch the detailed events for the `implementation (10)` phase again, focusing specifically on the `tool_result` entries.\n\nI will attempt to fetch the detailed events for `seq 690` to find the value of `cr` when `cw` was 568.\n(invoking tool)",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "seq 690 tool_result cr cw"
+      ],
+      "fetchedIds": [
+        "n_1PPHC64K0QTM0N8JD3RPST4GZ8",
+        "n_1PPHC64K0QTM0N8JD3RPST4GZ8",
+        "n_1PPHC64K0QTM0N8JD3RPST4GZ8"
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 20149,
+      "usage": {
+        "input": 61449,
+        "output": 472,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1841,
+          "usage": {
+            "input": 9415,
+            "output": 34,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9415,
+          "input": 9415,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 34,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 1625,
+          "usage": {
+            "input": 9492,
+            "output": 42,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9492,
+          "input": 9492,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 42,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 4115,
+          "usage": {
+            "input": 10526,
+            "output": 125,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 10526,
+          "input": 10526,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 125,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 3964,
+          "usage": {
+            "input": 10633,
+            "output": 123,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 10633,
+          "input": 10633,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 123,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls"
+        },
+        {
+          "index": 5,
+          "turn": 5,
+          "latencyMs": 7141,
+          "usage": {
+            "input": 21383,
+            "output": 148,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21383,
+          "input": 21383,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 148,
+          "toolCalls": [],
+          "stopReason": "stop"
+        }
+      ],
+      "durationMs": 18724,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "12529",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "systemChars",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    }
+  ]
+}

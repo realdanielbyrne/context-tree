@@ -5,7 +5,8 @@
  * the A/B comparison the report prints.
  */
 import type { TokenUsage } from '@context-tree/core';
-import type { Arm, RunMetrics, RunResult, TokenTotals, TurnRecord } from './types.js';
+import { READ_FILE, RUN_COMMAND, WRITE_FILE } from './tools.js';
+import type { Arm, BatchingMetrics, RunMetrics, RunResult, TokenTotals, TurnRecord } from './types.js';
 
 export const ZERO_TOTALS: TokenTotals = Object.freeze({
   input: 0,
@@ -42,11 +43,62 @@ export function avgOf(values: readonly number[]): number {
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
+/**
+ * loop9b-item3 §3: pure function of `turns[].toolCalls` (names only — no new
+ * capture). The completion gate is a one-shot latch (`eval/src/loop.ts:1010`):
+ * once tripped it never re-fires, so the FIRST zero-call turn that follows any
+ * turn with a tool call is the only turn the nudge can ever have been emitted
+ * on, regardless of where it falls in the run.
+ */
+export function deriveBatchingMetrics(turns: readonly TurnRecord[]): BatchingMetrics {
+  const n = turns.length;
+
+  let trailingBareTurns = 0;
+  for (let i = n - 1; i >= 0; i -= 1) {
+    if (turns[i]!.toolCalls.length !== 0) break;
+    trailingBareTurns += 1;
+  }
+
+  let toolWorkSeen = false;
+  let firstBareAfterWork = -1;
+  for (let i = 0; i < n; i += 1) {
+    if (turns[i]!.toolCalls.length === 0) {
+      if (toolWorkSeen && firstBareAfterWork === -1) firstBareAfterWork = i;
+    } else {
+      toolWorkSeen = true;
+    }
+  }
+  const gateFired = firstBareAfterWork !== -1;
+  const gateRescued = gateFired && firstBareAfterWork < n - 1 && turns[firstBareAfterWork + 1]!.toolCalls.length > 0;
+
+  const toolUsingTurns = turns.filter((turn) => turn.toolCalls.length > 0);
+  const totalCalls = turns.reduce((sum, turn) => sum + turn.toolCalls.length, 0);
+  const countOf = (turn: TurnRecord, name: string) => turn.toolCalls.filter((call) => call === name).length;
+  const writeBearingTurns = turns.filter((turn) => countOf(turn, WRITE_FILE) > 0);
+  const totalWrites = turns.reduce((sum, turn) => sum + countOf(turn, WRITE_FILE), 0);
+
+  return {
+    trailingBareTurns,
+    gateFired,
+    gateRescued,
+    callsPerToolUsingTurn: toolUsingTurns.length > 0 ? totalCalls / toolUsingTurns.length : 0,
+    callsPerTurn: n > 0 ? totalCalls / n : 0,
+    writesPerWriteBearingTurn: writeBearingTurns.length > 0 ? totalWrites / writeBearingTurns.length : 0,
+    maxReadBatch: Math.max(0, ...turns.map((turn) => countOf(turn, READ_FILE))),
+    maxWriteBatch: Math.max(0, ...turns.map((turn) => countOf(turn, WRITE_FILE))),
+    runCommandOnlyTurns: turns.filter((turn) => turn.toolCalls.length > 0 && turn.toolCalls.every((call) => call === RUN_COMMAND))
+      .length,
+  };
+}
+
 export function summarizeMetrics(args: {
   turns: readonly TurnRecord[];
   wallMs: number;
   usage: TokenTotals;
   costUsd: number;
+  /** item 1's one-way latch; omit (or false) for arms that have no lazy gate. */
+  lazyCrossed?: boolean;
+  finalTextChars?: number;
 }): RunMetrics {
   const latencies = args.turns.map((turn) => turn.latencyMs);
   const toolCalls = args.turns.reduce((sum, turn) => sum + turn.toolCalls.length, 0);
@@ -61,6 +113,9 @@ export function summarizeMetrics(args: {
       outputTokensPerSec: wallSec > 0 ? args.usage.output / wallSec : 0,
     },
     costUsd: args.costUsd,
+    batching: deriveBatchingMetrics(args.turns),
+    lazyCrossed: args.lazyCrossed ?? false,
+    finalTextChars: args.finalTextChars ?? 0,
   };
 }
 

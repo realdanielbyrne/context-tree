@@ -100,8 +100,14 @@ export const CONTEXT_TOOL_SCHEMAS: readonly ToolSchema[] = [
       type: 'object',
       properties: {
         branch_id: { type: 'string', description: 'Node id of the branch to read, as returned by context_search.' },
-        depth: { type: 'string', enum: ['summary', 'full'], description: "'summary' (default) or 'full' replay." },
+        depth: {
+          type: 'string',
+          enum: ['summary', 'index', 'full'],
+          description: "'full' (default), 'index' (event list, no content) or 'summary' replay.",
+        },
         file: { type: 'string', description: 'Repo-relative path: narrow the fetch to one file node.' },
+        from: { type: 'number', description: "Inclusive L0 event number to start at (depth 'full'/'index' only)." },
+        to: { type: 'number', description: "Inclusive L0 event number to end at (depth 'full'/'index' only)." },
       },
       required: ['branch_id'],
       additionalProperties: false,

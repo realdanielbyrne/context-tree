@@ -97,12 +97,43 @@ export function renderTemplate(
 }
 
 /**
+ * Contract variants selectable independently of `SYSTEM_CONTRACT_VERSION`
+ * (which names the file `loadPrompt('system-contract')` reads by default).
+ * `v2` is the loop9-item3 §7 deletion candidate: `v1` minus the "Two ways
+ * this goes wrong" section. It exists only to be A/B'd behind
+ * `EVAL_CONTRACT_VERSION` (`eval/src/loop.ts`) — v1 stays the default so the
+ * transplant experiment's frozen epoch is untouched.
+ */
+export const SYSTEM_CONTRACT_VERSIONS = ['v1', 'v2', 'v3'] as const;
+export type SystemContractVersion = (typeof SYSTEM_CONTRACT_VERSIONS)[number];
+
+const systemContractCache = new Map<SystemContractVersion, string>();
+
+function loadSystemContract(version: SystemContractVersion): string {
+  const hit = systemContractCache.get(version);
+  if (hit !== undefined) return hit;
+  const text = readFileSync(promptPath(`system-contract.${version}.md`), 'utf8');
+  systemContractCache.set(version, text);
+  return text;
+}
+
+/**
  * The §9 agent-facing contract — Zone A content (D5), so it is frozen and takes
  * no interpolation. Rendered anyway so a placeholder accidentally added to the
  * markdown fails loudly rather than reaching a model.
+ *
+ * Defaults to `v1`; an unknown version throws rather than silently falling
+ * back, since a silent fallback here is a silent epoch shift in the cached
+ * Zone A prefix (D5).
  */
-export function systemContract(): string {
-  return renderTemplate(loadPrompt('system-contract'), {});
+export function systemContract(version: SystemContractVersion = 'v1'): string {
+  if (!SYSTEM_CONTRACT_VERSIONS.includes(version)) {
+    throw new ContextTreeError(
+      `unknown system contract version: ${String(version)} (expected one of ${SYSTEM_CONTRACT_VERSIONS.join(', ')})`,
+      'E_PROMPT_TEMPLATE',
+    );
+  }
+  return renderTemplate(loadSystemContract(version), {});
 }
 
 export interface LeafSummaryInput {

@@ -173,10 +173,24 @@ function expectError<T>(outcome: ToolOutcome<T>): { code: string; message: strin
 // ── context_fetch ──────────────────────────────────────────────────────────
 
 describe('context_fetch', () => {
-  it("depth 'summary' answers from L1 alone — it reads no L0 span, which is why it is the default", async () => {
+  it("defaults to depth 'full' (R9) — a summary cannot carry a literal the paraphrase dropped", async () => {
     const fixture = seed();
     const data = unwrap(
       (await contextFetch(contextFor(fixture), { branch_id: fixture.implementation.id })) as ToolOutcome<ContextFetchData>,
+    );
+
+    expect(data.depth).toBe('full');
+    expect(data.text).toContain('Math.round');
+    expect(data.events).toBeGreaterThan(0);
+  });
+
+  it("depth 'summary' answers from L1 alone — it reads no L0 span", async () => {
+    const fixture = seed();
+    const data = unwrap(
+      (await contextFetch(contextFor(fixture), {
+        branch_id: fixture.implementation.id,
+        depth: 'summary',
+      })) as ToolOutcome<ContextFetchData>,
     );
 
     expect(data.depth).toBe('summary');
@@ -185,6 +199,60 @@ describe('context_fetch', () => {
     expect(data.meta?.files[0]?.path).toBe('src/pricing.ts');
     expect(data.spans).toEqual([]);
     expect(data.events).toBe(0);
+  });
+
+  it("depth 'full' carries the same meta a depth 'summary' fetch would, not the old hard-coded null (2h)", async () => {
+    const fixture = seed();
+    const ctx = contextFor(fixture);
+    const full = unwrap(
+      (await contextFetch(ctx, { branch_id: fixture.implementation.id, depth: 'full' })) as ToolOutcome<ContextFetchData>,
+    );
+    const summary = unwrap(
+      (await contextFetch(ctx, { branch_id: fixture.implementation.id, depth: 'summary' })) as ToolOutcome<ContextFetchData>,
+    );
+
+    expect(full.meta).toEqual(summary.meta);
+  });
+
+  it("depth 'index' lists events without their content, so a big branch can be sized before it is read", async () => {
+    const fixture = seed();
+    const data = unwrap(
+      (await contextFetch(contextFor(fixture), {
+        branch_id: fixture.implementation.id,
+        depth: 'index',
+      })) as ToolOutcome<ContextFetchData>,
+    );
+
+    expect(data.depth).toBe('index');
+    expect(data.text).toMatch(/tool_call Edit path=src\/pricing\.ts bytes=\d+/);
+    expect(data.text).not.toContain('Math.round');
+  });
+
+  it('from/to narrows a full fetch to an inclusive L0 range, clamped to the branch span (R10)', async () => {
+    const fixture = seed();
+    const ctx = contextFor(fixture);
+    const full = unwrap(
+      (await contextFetch(ctx, { branch_id: fixture.implementation.id, depth: 'full' })) as ToolOutcome<ContextFetchData>,
+    );
+    const overWide = unwrap(
+      (await contextFetch(ctx, {
+        branch_id: fixture.implementation.id,
+        depth: 'full',
+        from: 0,
+        to: 1_000_000,
+      })) as ToolOutcome<ContextFetchData>,
+    );
+    expect(overWide.text).toBe(full.text);
+
+    const narrowed = unwrap(
+      (await contextFetch(ctx, {
+        branch_id: fixture.implementation.id,
+        depth: 'full',
+        from: full.spans[0]?.start,
+        to: full.spans[0]?.start,
+      })) as ToolOutcome<ContextFetchData>,
+    );
+    expect(narrowed.events).toBeLessThan(full.events);
   });
 
   it("depth 'full' replays the branch's L0 span through L2, so raw tool payloads reappear", async () => {
@@ -367,6 +435,40 @@ describe('context_search', () => {
     expect(data.candidates[0]?.provider).toBe('graftish');
     expect(data.provenance.find((entry) => entry.provider === 'graftish')?.kept).toBe(1);
     expect(data.unavailable).toEqual([]);
+  });
+
+  it('a hit carries a 240-char snippet and pointer-only meta, not the full summary body (R8)', async () => {
+    const fixture = seed();
+    const longSummary = 'x'.repeat(500);
+    fixture.handle.store.putSummary({
+      node_id: fixture.implementation.id,
+      model: 'test',
+      text: longSummary,
+      meta: emptyMeta({
+        files: [{ path: 'src/pricing.ts', start_line: 1, end_line: 3, symbol: 'price' }],
+        symbols: ['price'],
+        tests: [{ name: 'rounds correctly', status: 'passed' }],
+        open_questions: ['is this rounding correct for negative cents?'],
+        decisions: ['round half up'],
+      }),
+    });
+
+    const data = unwrap(
+      (await contextSearch(contextFor(fixture), { query: 'pricing rounding' })) as ToolOutcome<ContextSearchData>,
+    );
+    const hit = data.hits.find((h) => h.node_id === fixture.implementation.id);
+    expect(hit).toBeDefined();
+    expect(hit).not.toHaveProperty('text');
+    expect(hit?.snippet.length).toBeLessThanOrEqual(240);
+    expect(hit?.snippet).toBe(longSummary.slice(0, 240));
+    // Pointer fields survive (files is what packages/mcp/test asserts against elsewhere)...
+    expect(hit?.meta?.files[0]?.path).toBe('src/pricing.ts');
+    expect(hit?.meta?.symbols).toEqual(['price']);
+    // ...prose fields do not, because Zone B already renders them for every branch shown.
+    expect(hit?.meta).not.toHaveProperty('tests');
+    expect(hit?.meta).not.toHaveProperty('open_questions');
+    expect(hit?.meta).not.toHaveProperty('decisions');
+    expect(hit?.meta).not.toHaveProperty('artifacts');
   });
 
   it('a provider that fails its capability probe is dropped and named, never fatal (§18)', async () => {

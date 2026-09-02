@@ -4,11 +4,11 @@
  * with contract-abiding replies that echo the node ids the prompt shows it.
  * Both arms must complete, meter honest usage, and grade through the judge.
  */
-import { existsSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { CompletionRequest, CompletionResult, ModelProvider } from '@context-tree/core';
-import { MockProvider } from '@context-tree/core';
+import { FsBlobStore, MockProvider } from '@context-tree/core';
 import { CONTEXT_SEARCH } from '@context-tree/mcp';
 import { disabledSink } from '../src/langfuse.js';
 import {
@@ -455,6 +455,60 @@ describe('runScenario — context-tree arm', () => {
   });
 });
 
+describe('loop9b-item3 gate (EVAL_NO_COMPLETION_GATE)', () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('skips the nudge and completes on the first bare-text reply after tool work, modelTurns===2', async () => {
+    vi.stubEnv('EVAL_NO_COMPLETION_GATE', '1');
+    // No confirmReply: with the gate flagged off, a bare-text reply right
+    // after tool work must end the run exactly like native's :339-342. If the
+    // flag failed to wire through, the loop asks the script for a third reply
+    // that was never scripted, and ScriptedProvider throws 'script exhausted'
+    // — a fail-loud gate rather than a silently-passing count mismatch.
+    const { result } = await runScenario({
+      runId: 'r1',
+      scenario,
+      arm: 'context-tree',
+      agentProvider: new ScriptedProvider(agentReplies),
+      summarizerProvider: new MockProvider({ responder: summaryResponder }),
+      options,
+      sink: disabledSink(),
+    });
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe('completed');
+    expect(result.metrics.turns.modelTurns).toBe(2);
+  });
+
+  it('never writes the nudge into L0 when flagged off', async () => {
+    vi.stubEnv('EVAL_FETCH_EVENTS', '1');
+    vi.stubEnv('EVAL_NO_COMPLETION_GATE', '1');
+    const { result } = await runScenario({
+      runId: 'r1',
+      scenario,
+      arm: 'context-tree',
+      agentProvider: new ScriptedProvider(agentReplies),
+      summarizerProvider: new MockProvider({ responder: summaryResponder }),
+      options: { ...options, keepSandbox: true },
+      sink: disabledSink(),
+    });
+    const sandboxPath = result.sandboxPath;
+    try {
+      expect(result.error).toBeUndefined();
+      expect(result.status).toBe('completed');
+      const storeRoot = join(sandboxPath!, '.context-tree');
+      const trace = readFileSync(join(storeRoot, 'trace.jsonl'), 'utf8');
+      const events = trace.trim().split('\n').map((line) => JSON.parse(line));
+      const blobs = new FsBlobStore(join(storeRoot, 'blobs'));
+      const nudged = events.some(
+        (e) => e.type === 'user_message' && blobs.getText(e.blob).includes('you stopped calling tools'),
+      );
+      expect(nudged).toBe(false);
+    } finally {
+      if (sandboxPath !== undefined) rmSync(sandboxPath, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('runScenario — caps', () => {
   it('stops at the turn cap and still grades whatever was produced', async () => {
     // Every turn issues a tool call, so only the cap can end the loop.
@@ -651,5 +705,144 @@ describe('v6.0 gate (EVAL_LAZY_TOKENS)', () => {
     const summarizer = new MockProvider({ responder: summaryResponder });
     await run(summarizer);
     expect(summarizer.requests.length).toBeGreaterThan(0);
+  });
+
+  it('gates on the REAL reported prompt tokens, not chars/4 — cheap-looking text with expensive real tokens still crosses', async () => {
+    vi.stubEnv('EVAL_SUMMARIZE_ON_CLOSE', '1');
+    vi.stubEnv('EVAL_LAZY_TOKENS', '150');
+    // Every turn's appended trace text is a handful of characters (`content: 'x'`)
+    // — chars/4 of that never approaches 150 no matter how many turns run, so
+    // a reverted (chars/4) gate would report ZERO summarizer calls here. The
+    // mocked usage says the model was actually billed 500 tokens/turn, which
+    // crosses a 150-token budget on turn 1. Only a real-token gate can tell
+    // these two traces apart; that's the whole point of the fix.
+    const replies: CompletionResult[] = [
+      ...['write_file', 'read_file', 'write_file', 'read_file'].map((name, i) => ({
+        text: '',
+        model: 'test-model',
+        usage: { input: 500, output: 10, cacheRead: 0, cacheWrite: 0 },
+        toolCalls: [
+          name === 'write_file'
+            ? { id: `t${i}`, name, input: { path: `f${i}.txt`, content: 'x' } }
+            : { id: `t${i}`, name, input: { path: `f${i - 1}.txt` } },
+        ],
+        stopReason: 'tool_use' as const,
+      })),
+      // Two consecutive bare-text replies: the first is consumed by the
+      // completion gate's one-time nudge (matches `phaseCrossing()` above).
+      { text: 'done', model: 'test-model', usage: { input: 200, output: 5, cacheRead: 0, cacheWrite: 0 }, toolCalls: [], stopReason: 'end_turn' as const },
+      { text: 'done', model: 'test-model', usage: { input: 200, output: 5, cacheRead: 0, cacheWrite: 0 }, toolCalls: [], stopReason: 'end_turn' as const },
+    ];
+    const summarizer = new MockProvider({ responder: summaryResponder });
+    const { result } = await runScenario({
+      runId: 'r1',
+      scenario,
+      arm: 'context-tree',
+      agentProvider: new ScriptedProvider(replies),
+      summarizerProvider: summarizer,
+      options: { ...options, maxTurns: 8 },
+      sink: disabledSink(),
+    });
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe('completed');
+    expect(summarizer.requests.length).toBeGreaterThan(0); // 0 under chars/4; >0 under real-usage gating
+  });
+
+  it('the crossing is one-way — a prompt that SHRINKS below the budget after summarizing must not re-expand the trace', async () => {
+    vi.stubEnv('EVAL_SUMMARIZE_ON_CLOSE', '1');
+    vi.stubEnv('EVAL_LAZY_TOKENS', '150');
+    // The rule asks whether the WHOLE trace fits the budget. After the crossing
+    // the prompt no longer contains the whole trace, so a small prompt is not
+    // evidence that it fits again — and L0 only grows. The first live run
+    // without a latch alternated modes every turn (40k → <30k → 43k) at twice
+    // the cost of either mode. Usage here goes 500 (cross), 100, 100 (shrunk
+    // prompt), 500: an unlatched gate reports a second crossing; a latched one
+    // reports exactly one.
+    const usages = [500, 100, 100, 500];
+    const replies: CompletionResult[] = [
+      ...['write_file', 'read_file', 'write_file', 'read_file'].map((name, i) => ({
+        text: '',
+        model: 'test-model',
+        usage: { input: usages[i]!, output: 10, cacheRead: 0, cacheWrite: 0 },
+        toolCalls: [
+          name === 'write_file'
+            ? { id: `t${i}`, name, input: { path: `f${i}.txt`, content: 'x' } }
+            : { id: `t${i}`, name, input: { path: `f${i - 1}.txt` } },
+        ],
+        stopReason: 'tool_use' as const,
+      })),
+      { text: 'done', model: 'test-model', usage: { input: 100, output: 5, cacheRead: 0, cacheWrite: 0 }, toolCalls: [], stopReason: 'end_turn' as const },
+      { text: 'done', model: 'test-model', usage: { input: 100, output: 5, cacheRead: 0, cacheWrite: 0 }, toolCalls: [], stopReason: 'end_turn' as const },
+    ];
+    const stderrLines: string[] = [];
+    const spy = vi.spyOn(process.stderr, 'write').mockImplementation(((chunk: string | Uint8Array) => {
+      stderrLines.push(String(chunk));
+      return true;
+    }) as typeof process.stderr.write);
+    try {
+      const { result } = await runScenario({
+        runId: 'r1',
+        scenario,
+        arm: 'context-tree',
+        agentProvider: new ScriptedProvider(replies),
+        summarizerProvider: new MockProvider({ responder: summaryResponder }),
+        options: { ...options, maxTurns: 8 },
+        sink: disabledSink(),
+      });
+      expect(result.error).toBeUndefined();
+      expect(result.status).toBe('completed');
+    } finally {
+      spy.mockRestore();
+    }
+    const crossings = stderrLines.filter((line) => line.includes('lazy gate crossed'));
+    expect(crossings).toHaveLength(1);
+  });
+});
+
+describe('loop9-item3 step 1 gate (EVAL_CONTRACT_VERSION) — the Zone A trim arm', () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  const runTreeWithAgent = (agent: MockProvider) =>
+    runScenario({
+      runId: 'r1',
+      scenario,
+      arm: 'context-tree',
+      agentProvider: agent,
+      summarizerProvider: new MockProvider({ responder: summaryResponder }),
+      options,
+      sink: disabledSink(),
+    });
+
+  it('unset EVAL_CONTRACT_VERSION assembles Zone A from v1 — byte-identical to the frozen-epoch default', async () => {
+    const agent = new MockProvider({ reply: 'done' });
+    const { result } = await runTreeWithAgent(agent);
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe('completed');
+    expect(agent.requests[0]?.system).toContain('Two ways this goes wrong');
+  });
+
+  it('EVAL_CONTRACT_VERSION=v2 assembles Zone A from the trimmed contract, dropping the "Two ways this goes wrong" section', async () => {
+    vi.stubEnv('EVAL_CONTRACT_VERSION', 'v2');
+    const agent = new MockProvider({ reply: 'done' });
+    const { result } = await runTreeWithAgent(agent);
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe('completed');
+    const system = agent.requests[0]?.system ?? '';
+    expect(system).not.toContain('Two ways this goes wrong');
+    // The surviving Rules/Tools sections must still reach the model — this is a
+    // deletion of one section, not a broken Zone A.
+    expect(system).toContain('context_fetch');
+    expect(system).toContain('Before editing any file');
+  });
+
+  it('an unrecognized EVAL_CONTRACT_VERSION throws rather than silently falling back to v1', async () => {
+    vi.stubEnv('EVAL_CONTRACT_VERSION', 'v3');
+    const agent = new MockProvider({ reply: 'done' });
+    const { result } = await runTreeWithAgent(agent);
+    expect(result.status).toBe('error');
+    expect(result.error).toMatch(/unknown system contract version: v3/);
+    // The whole point of failing loudly: no request was ever sent with a
+    // silently-substituted contract.
+    expect(agent.requests).toHaveLength(0);
   });
 });

@@ -3,17 +3,17 @@
 <style>
 :root{
   --ground:#FBFBF9; --surface:#FFFFFF; --ink:#1C1E21; --muted:#5C6167;
-  --line:#DFE1E4; --accent:#0E6B54; --warm:#A64F2A; --code-bg:#F1F2F0;
+  --line:#DFE1E4; --accent:#0E6B54; --warm:#A64F2A; --cool:#2F4E8F; --code-bg:#F1F2F0;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --ground:#16181B; --surface:#1D2024; --ink:#E7E9EB; --muted:#9BA1A8;
-    --line:#33373C; --accent:#46B090; --warm:#D68A62; --code-bg:#25282D;
+    --line:#33373C; --accent:#46B090; --warm:#D68A62; --cool:#8FB0E8; --code-bg:#25282D;
   }
 }
 :root[data-theme="dark"]{
   --ground:#16181B; --surface:#1D2024; --ink:#E7E9EB; --muted:#9BA1A8;
-  --line:#33373C; --accent:#46B090; --warm:#D68A62; --code-bg:#25282D;
+  --line:#33373C; --accent:#46B090; --warm:#D68A62; --cool:#8FB0E8; --code-bg:#25282D;
 }
 body{background:var(--ground); color:var(--ink);
   font:17px/1.65 "Source Serif 4",Georgia,serif; margin:0;}
@@ -57,13 +57,13 @@ li{margin-bottom:10px;}
 </style>
 <main>
 <h1>Context size per turn in long conversations</h1>
-<div class="meta">Context-tree evaluation program · supplementary note to the loop-8 interim report · September 1, 2026</div>
+<div class="meta">Context-tree evaluation program · supplementary note to the loop-8 interim report · September 1, 2026, revised September 2, 2026</div>
 
-<p style="font-size:.92rem; color:var(--muted); border:1px solid var(--line); border-radius:6px; padding:10px 14px; max-width:72ch;"><em>Status.</em> This is an interim supplementary note, not a new experiment. It plots data already on disk from the runs described in the loop-8 interim report [1], because a reader asked to see context size against turn with both arms on one chart. Loop-8's conclusions are unchanged by it; one of them is sharpened.</p>
+<p style="font-size:.92rem; color:var(--muted); border:1px solid var(--line); border-radius:6px; padding:10px 14px; max-width:72ch;"><em>Status.</em> Sections 1&ndash;3 are the original interim note of 1 September 2026: not a new experiment, but a plot of data already on disk from the runs described in the loop-8 interim report [1], because a reader asked to see context size against turn with both arms on one chart. Loop-8's conclusions are unchanged by it; one of them is sharpened. Section 4, added 2 September 2026, reports a new experiment &mdash; the six live runs of the loop-9 real-token lazy gate, which §3 argued for and §5 item 1 specified.</p>
 
 <div class="abstract">
 <h2>Abstract</h2>
-<p>An agent's prompt normally carries the transcript of everything the agent has done, so the prompt grows with the length of the conversation and eventually exceeds the model's context window. Context-tree is a context-management layer that reorganizes that linear conversation into a summary-headed tree: the full history is written to disk, the work is segmented into branches, and the prompt carries a short summary per completed branch instead of the raw events, together with tools the agent calls to fetch any detail back on demand. This note plots context size per turn for context-tree and for the ordinary transcript on the same axes, in the two regimes we have data for. Above context-tree's size threshold, measured offline on a deterministic 200-branch task, the transcript grows by 284 tokens per branch and crosses a 16,384-token window at branch 57 and a 32,768-token window at branch 115, while the tree prompt is constant at 9,062 tokens from branch 70 through branch 200. Below the threshold, measured live on two 60&nbsp;kB software tasks, the result runs the other way: the tree carries roughly twice the baseline's context per turn — final-turn medians of 39,201 tokens against 19,157 on sw-5-dozen and 36,601 against 20,191 on sw-6-ripple — because the threshold never fired, so the tree showed the whole trace and paid for its own fixed contract on top. The threshold is currently estimated as characters divided by four, which under-counts code-dense text. Replacing that estimate with a real token count is the first item of loop 9; these charts are its motivating evidence, and we expect the live curves to bend flat once it lands.</p>
+<p>An agent's prompt normally carries the transcript of everything the agent has done, so the prompt grows with the length of the conversation and eventually exceeds the model's context window. Context-tree is a context-management layer that reorganizes that linear conversation into a summary-headed tree: the full history is written to disk, the work is segmented into branches, and the prompt carries a short summary per completed branch instead of the raw events, together with tools the agent calls to fetch any detail back on demand. This note plots context size per turn for context-tree and for the ordinary transcript on the same axes, in the two regimes we have data for. Above context-tree's size threshold, measured offline on a deterministic 200-branch task, the transcript grows by 284 tokens per branch and crosses a 16,384-token window at branch 57 and a 32,768-token window at branch 115, while the tree prompt is constant at 9,062 tokens from branch 70 through branch 200. Below the threshold, measured live on two 60&nbsp;kB software tasks, the result runs the other way: the tree carries roughly twice the baseline's context per turn — final-turn medians of 39,201 tokens against 19,157 on sw-5-dozen and 36,601 against 20,191 on sw-6-ripple — because the threshold never fired, so the tree showed the whole trace and paid for its own fixed contract on top. The threshold was estimated as characters divided by four, which under-counts code-dense text. Section 4 reports what happened when that estimate was replaced by the provider's own token count of the previous turn. The gate now fires on every run, once, at the ninth to sixteenth call, and the curve behind it flattens: per-turn growth falls from 2,046&ndash;4,928 tokens per turn before the crossing to 256&ndash;915 after it, below the baseline's own 812&ndash;2,094. Final-turn context falls by 35&ndash;39% against the loop-8 tree, to medians of 24,299 tokens on sw-5-dozen and 22,837 on sw-6-ripple, but it does not fall below the baseline's 19,157 and 20,191, so half of the published criterion is met and half is not. Total tokens rise rather than fall, by 48% and 77% over the baseline, because the gate reads the previous completed turn and a single batched turn overshoots the 30,000-token budget by 6,657&ndash;15,564 tokens, and because the transition itself costs turns. The larger finding is that the criterion was wrong: on a 200,000-token window the largest prompt any of these runs assembled is 45,564 tokens, so a budget derived from the window rather than fixed at a constant would never have crossed at all, and the tree would have stayed devolved &mdash; correctly. The mechanism is validated; the criterion is the finding.</p>
 </div>
 
 <h2>1&ensp;Terms, and where the data comes from</h2>
@@ -100,11 +100,71 @@ li{margin-bottom:10px;}
 <p>The cause is the one loop 8 identified and did not yet fix. The lazy threshold that would have switched the tree out of devolved mode never fired, because it estimates trace size as characters divided by four and the real tokenizer charges more than that for code-dense text. So on these tasks the tree never summarized anything: it showed the entire trace, in its own richer event rendering, and added its fixed contract on top. The summary-headed tree that Figure 1 measures was, in these runs, dormant machinery being paid for and not used.</p>
 <p>One control rules out the other candidate explanation. Loop 8 also fixed a cache-churn defect, and the tree arm was re-run on the same two scenarios afterwards (the v6.4 batch [3]); final-turn context in those six runs lands between 32,870 and 39,208 tokens, the same band as Figures 2 and 3. That fix changed how often the prefix was re-written to the provider's cache, not how large the prompt was.</p>
 <p>Turn counts do not offset the difference, and they do not aggravate it either. On sw-6 the tree finished in 15, 12 and 9 turns against the baseline's 20, 10 and 12; on sw-5 in 12, 9 and 16 against 19, 13 and 10. The medians are 12 against 12 on sw-6 and 12 against 13 on sw-5. So the tree is not buying its larger prompts with extra turns — it simply has larger prompts.</p>
-<p>These two figures are the motivating evidence for the first item of loop 9: measure the threshold with the real tokenizer, so that the switch out of devolved mode happens exactly when the trace would otherwise overflow its zone. When it lands, we expect these curves to stop climbing at the crossing point and run flat, in the manner of Figure 1's green line, and we will re-chart both scenarios to check that they do.</p>
+<p>These two figures are the motivating evidence for the first item of loop 9: measure the threshold with the real tokenizer, so that the switch out of devolved mode happens exactly when the trace would otherwise overflow its zone. When it lands, we expect these curves to stop climbing at the crossing point and run flat, in the manner of Figure 1's green line, and we will re-chart both scenarios to check that they do. Section 4 is that re-chart. The expectation about the shape of the curve was right; the expectation that it would settle below the baseline was not.</p>
 
-<h2>4&ensp;Open items and recommendations</h2>
+<h2>4&ensp;The real-token gate: what happened when it landed</h2>
+<p>The change §3 asked for landed on 2 September 2026 [4]. The <b>lazy gate</b> is the name of the switch that takes context-tree out of devolved mode: the environment variable <code>EVAL_LAZY_TOKENS</code> names a token budget, 30,000 for every run here, and while the raw trace fits inside that budget the tree stays devolved. The old comparison was <code>traceChars / 4 &lt; 30000</code>. The new one is the provider's own count of the prompt it last billed — <code>usage.input + usage.cacheRead + usage.cacheWrite</code> from the previous completed turn, the same three numbers Figures 2 and 3 plot, which every turn already returns at no extra cost. There is no estimate left in the comparison, and no tokenizer to keep in step with whichever model is running.</p>
+
+<p><em>Methods note: the gate has to latch.</em> The first live replicate with the real-token gate crossed on its ninth call with a 40,158-token prompt, summarized, and on the next call read a prompt below 30,000 — because Zone C then held only the active branch. The gate took that as "the trace fits", re-expanded the whole trace, and crossed a second time two calls later at 43,331 tokens; that run finished in 12 turns and 223,917 tokens [5]. The condition is ill-posed rather than merely noisy. It asks whether the whole trace fits the budget, but after the crossing the prompt no longer contains the whole trace, so the prompt's size is no longer evidence either way, while the trace itself only grows and can never fit again. The crossing is therefore one-way, and the flag that records it latches. A character count could never have exposed this, because a character count only increases. That batch was discarded; everything below is the relaunched, latched batch.</p>
+
+<p>That batch is the context-tree arm only — three replicates on each of sw-5-dozen and sw-6-ripple, claude-sonnet-5, one epoch, on loop-8's standing v6.x flags plus <code>EVAL_ROOT_KEEP=40</code> and the latched real-token gate [4]. The native arm never reads this gate, so the <code>long-v6x</code> native rows remain a same-code-path baseline; they and the <code>long-v64</code> tree rows were run on 1 September 2026, a day before the gate runs, and that date gap is the one asymmetry in the comparison. All six new runs completed and scored 100%, as did all twelve baseline runs.</p>
+
+<figure>
+<div class="chartwrap"><div id="fig4"></div></div>
+<figcaption><b>Figure 4.</b> Context size per turn on sw-5-dozen, three arms on one pair of axes. Vertical axis: tokens the model saw on that call, fresh input plus cache reads plus cache writes. Horizontal axis: turn index within the run, counting the first model call as turn 1. Three replicates per arm are drawn as thin lines and the across-replicate median as the heavy line; the median is drawn only while at least two replicates are still running, because a "median" of one run is just that run. Brown is the native transcript baseline (<code>long-v6x</code>, 1 September); green is context-tree with the loop-8 characters÷4 gate (<code>long-v64</code>, 1 September); blue is context-tree with the real-token gate (<code>long-v65-gate</code>, 2 September). The three ringed blue points are the gate crossings, one per replicate, at turns 7, 10 and 10. Each crossing is a spike — the prompt that tripped the gate — after which the blue curve drops and stays roughly level, while the green curve, whose gate never fired, keeps climbing to the end of its runs.</figcaption>
+</figure>
+
+<figure>
+<div class="chartwrap"><div id="fig5"></div></div>
+<figcaption><b>Figure 5.</b> Context size per turn on sw-6-ripple, three arms on one pair of axes. Axes, colours, replicate structure and median rule are as in Figure 4; the horizontal axis runs to 33 turns rather than 20 because one real-token replicate took that long, so the scales are not shared with Figure 4. Ringed blue points mark the gate crossings at turns 11, 14 and 16. The long blue replicate is the one discussed below: after its crossing its per-turn context oscillates between 8,357 and 25,471 tokens for another seventeen calls.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+<thead><tr><th>Scenario / arm</th><th>final ctx</th><th>peak ctx</th><th>total tokens</th><th>turns</th><th>success</th></tr></thead>
+<tbody>
+<tr><td>sw-5-dozen — native transcript</td><td>19,157</td><td>19,157</td><td>175,661</td><td>13</td><td>3/3</td></tr>
+<tr><td>sw-5-dozen — tree, loop-8 gate</td><td>37,585</td><td>37,585</td><td>192,853</td><td>9</td><td>3/3</td></tr>
+<tr><td>sw-5-dozen — tree, real-token gate</td><td>24,299</td><td>38,799</td><td>260,700</td><td>13</td><td>3/3</td></tr>
+<tr><td>sw-6-ripple — native transcript</td><td>20,191</td><td>20,191</td><td>168,208</td><td>12</td><td>3/3</td></tr>
+<tr><td>sw-6-ripple — tree, loop-8 gate</td><td>37,615</td><td>37,615</td><td>244,964</td><td>12</td><td>3/3</td></tr>
+<tr><td>sw-6-ripple — tree, real-token gate</td><td>22,837</td><td>37,812</td><td>297,726</td><td>18</td><td>3/3</td></tr>
+</tbody></table></div>
+<p class="tcap"><b>Table 1.</b> Medians over three replicates per cell, claude-sonnet-5. <b>final ctx</b> is context size on the run's last turn; <b>peak ctx</b> the largest on any turn; <b>total tokens</b> the run's whole token bill, input plus output plus cache reads plus cache writes, so unlike the other context columns it includes output; <b>turns</b> the number of model calls; <b>success</b> the count of replicates that passed the hidden test suite. Each column is the median of that column, so a row is not necessarily any one run. The two baseline arms are from 1 September 2026, the real-token rows from 2 September.<sup>†</sup></p>
+
+<p>The first half of the published criterion is met, and cleanly. The gate fired on every one of the six runs, exactly once, and behind each crossing the curve flattens. Table 2 gives the least-squares slope of context against turn, the same statistic <code>eval/scripts/ct-growth.mjs</code> reports, measured separately over the turns up to and including the crossing and over the turns after it. Before the crossing the tree grows at 2,046 to 4,928 tokens per turn; after it, at 256 to 915. For scale, the native baseline's own per-run slopes are 812 to 2,094 tokens per turn on these two scenarios, and the loop-8 tree's are 2,264 to 5,505. So after the crossing the tree is not merely flatter than it was — it grows more slowly than the transcript it is competing with. That is the behaviour Figure 1 predicts and no live run had previously shown.</p>
+
+<div class="tablewrap"><table>
+<thead><tr><th>Run</th><th>crossing turn</th><th>logged index</th><th>prompt at crossing</th><th>over budget</th><th>slope before</th><th>slope after</th></tr></thead>
+<tbody>
+<tr><td>sw-5-dozen r1</td><td>10</td><td>9</td><td>45,564</td><td>+15,564</td><td>4,331</td><td>825</td></tr>
+<tr><td>sw-5-dozen r2</td><td>7</td><td>6</td><td>36,657</td><td>+6,657</td><td>4,928</td><td>603</td></tr>
+<tr><td>sw-5-dozen r3</td><td>10</td><td>9</td><td>38,799</td><td>+8,799</td><td>3,312</td><td>417</td></tr>
+<tr><td>sw-6-ripple r1</td><td>14</td><td>13</td><td>41,286</td><td>+11,286</td><td>2,448</td><td>256</td></tr>
+<tr><td>sw-6-ripple r2</td><td>16</td><td>15</td><td>30,126</td><td>+126</td><td>2,046</td><td>915</td></tr>
+<tr><td>sw-6-ripple r3</td><td>11</td><td>10</td><td>37,812</td><td>+7,812</td><td>3,177</td><td>579</td></tr>
+</tbody></table></div>
+<p class="tcap"><b>Table 2.</b> One row per real-token replicate. <b>crossing turn</b> counts the first model call as turn 1, the convention used by every chart in this note; <b>logged index</b> is the number the harness prints in <code>[eval] lazy gate crossed at turn N</code>, which is zero-based, so it is always one less. Both are given because the log is the artefact of record and the charts are not. <b>prompt at crossing</b> is the context size of the turn that tripped the gate and <b>over budget</b> its excess over the 30,000-token budget. <b>slope</b> is least squares on context against turn index, in tokens per turn, over turns 1 through the crossing and over the turns strictly after it.</p>
+
+<p>The second half of the criterion is not met, on either scenario. Final-turn context under the real-token gate is a median 24,299 tokens on sw-5-dozen and 22,837 on sw-6-ripple. Those are 35% and 39% below the loop-8 tree's 37,585 and 37,615, which is a large move in the right direction, but they are still 1.27 and 1.13 times the native baseline's 19,157 and 20,191. The criterion asked for the tree to end below the baseline on at least one scenario, and it ends above on both. Peak context barely moves — 38,799 and 37,812 against loop-8's 37,585 and 37,615 — but its meaning changes: under the loop-8 gate the peak was the last turn, because the curve was still rising when the run ended, and under the real-token gate the peak is the crossing spike in the middle.</p>
+
+<figure>
+<div class="chartwrap"><div id="fig6"></div></div>
+<figcaption><b>Figure 6.</b> Cumulative context tokens saved against the native baseline on sw-5-dozen. At each turn the series is the running sum, over all turns so far, of the baseline's median per-turn context minus the tree's; the zero line is therefore the native transcript, and a series below zero means the tree has processed more context than the baseline up to that point. The sign is negative for most of both runs and at the end of both: the loop-8 gate closes 18,014 tokens behind the baseline and the real-token gate 79,226 behind. Both series rise above zero for a few early turns, where the tree's compact opening beats the transcript, and turn down for good once the trace is large. Each arm's cumulative curve is the median across its three replicates, and a replicate that has finished contributes no further tokens, which is why both series level off on the right.</figcaption>
+</figure>
+
+<figure>
+<div class="chartwrap"><div id="fig7"></div></div>
+<figcaption><b>Figure 7.</b> Cumulative context tokens saved against the native baseline on sw-6-ripple, constructed exactly as Figure 6 and on the same vertical scale. The horizontal axis runs to 33 turns. Final values: 76,074 tokens behind the baseline under the loop-8 gate, 127,864 behind under the real-token gate. The real-token series is the worse of the two here despite its smaller final-turn prompts, because the extra turns it takes are each paid for.</figcaption>
+</figure>
+
+<p>Total tokens rise rather than fall, and Figures 6 and 7 are where that shows up honestly. Against the native baseline the real-token gate spends 48% more on sw-5-dozen (260,700 against 175,661) and 77% more on sw-6-ripple (297,726 against 168,208); against the loop-8 tree it spends 35% and 22% more. Two mechanisms account for it. The first is overshoot. The gate reads the previous completed turn, so it detects the crossing one call late, and one batched turn on these tasks is expensive: five of the six crossings landed 6,657 to 15,564 tokens above the 30,000-token budget, and only sw-6-ripple's second replicate crossed close to it, 126 tokens above. Those overshoots are the peaks in Table 1, and they are billed at cache-write rates because the whole prefix is rewritten when the tree reorganizes. The second is that the transition costs turns: median turns go from 9 to 13 on sw-5-dozen and from 12 to 18 on sw-6-ripple. The extreme case is sw-6-ripple's second replicate, the long blue line in Figure 5, which ran 33 turns and spent the seventeen calls after its crossing with context oscillating between 8,357 and 25,471 tokens as the agent re-fetched detail it had just had in front of it.</p>
+
+<p>The verdict is that the mechanism works and the criterion was wrong. On a 200,000-token context window the largest prompt any of these eighteen runs ever assembled is 45,564 tokens, leaving 154,436 tokens of headroom. The loop-9 transplant harness already derives its lazy budget from the target window instead of fixing it at a constant — <code>FRACTIONS.lazy</code> is 0.35, so 35% of the window, roughly 70,000 tokens on a 200,000-token model before its heuristic-to-BPE correction — and under that derivation not one of these traces would have crossed. The tree would have stayed devolved from the first turn to the last of both tasks, which on this evidence is the right answer: nothing was in danger of overflowing anything. The criterion published in §5 item 1 therefore asked the harness to force a transition the model does not need, and then measured what forcing it costs. What we learned is the cost of the transition, not the value of the tree. The gate itself is now correct — it fires once, on a number the provider supplies rather than a guess, and the growth behind it is slower than the baseline's — and the next question is not how to make the switch cheaper but where the switch belongs.</p>
+
+<h2>5&ensp;Open items and recommendations</h2>
 <ol>
-<li><b>Replace the characters÷4 lazy gate with a real token count, then re-run and re-chart sw-5 and sw-6.</b> This is the change Figures 2 and 3 argue for. The success criterion is visible on the chart: the tree's curve flattens at the crossing instead of tracking the trace, and its final-turn context falls below the baseline's on at least one of the two scenarios. Until it lands, no live run has ever crossed into summarized operation, so the flat line in Figure 1 remains established offline by construction only.</li>
+<li><b>Replace the characters÷4 lazy gate with a real token count, then re-run and re-chart sw-5 and sw-6.</b> Done, 2 September 2026; reported in §4. The stated criterion was that the tree's curve flattens at the crossing instead of tracking the trace, <em>and</em> that its final-turn context falls below the baseline's on at least one of the two scenarios. The first half holds — the gate fires once on every run and per-turn growth behind it drops to 256&ndash;915 tokens per turn, below the baseline's own. The second does not, on either scenario. The gate also had to be made one-way; the un-latched version crossed twice in one run (§4, methods note). Live runs now do cross into summarized operation, so Figure 1's flat line is no longer established offline only, but it has not yet been shown to pay on a task this size.</li>
+<li><b>Derive the lazy budget once, from the context window, and put the switch at the Zone C fraction.</b> The finding of §4. Two harnesses currently answer "when should the tree stop showing the raw trace?" two different ways: the evaluation loop reads a constant, <code>EVAL_LAZY_TOKENS=30000</code>, which on a 200,000-token model is 15% of the window and fires on traces that were never at risk; the transplant harness derives it as <code>FRACTIONS.lazy = 0.35</code> of the window, about 70,000 tokens on the same model, which on these traces never fires at all. Neither number is argued for. The quantity the switch actually protects is Zone C, the zone that holds the active branch in full, so the switch belongs at the Zone C fraction — <code>FRACTIONS.zoneC</code>, currently 0.2 — of the same window-derived budget, in one derivation both harnesses import. Until that lands, no comparison of the two arms is measuring the policy we would ship.</li>
 <li><b>Record the same per-turn series for every arm of the loop-9 transplant harness, plain compaction included.</b> In flight. Compaction is the honest competitor to context-tree in the below-threshold regime — it is what production harnesses actually do — and it belongs on these axes rather than being argued about.</li>
 <li><b>Make these charts a standing section of every checkpoint report.</b> The data has always been in <code>results.json</code>; the omission was in the reporting, not the instrumentation. Per-turn context against turn, both arms, one pair of axes, in every checkpoint from here on.</li>
 </ol>
@@ -112,9 +172,12 @@ li{margin-bottom:10px;}
 <h2>References</h2>
 <p style="font-size:.9rem;">[1]&ensp;<em>Making an agent's prompt size independent of conversation length</em> — the loop-8 interim report. <a href="https://claude.ai/code/artifact/d6875957-086a-4408-9de5-798b31aba6e6" style="color:var(--accent);">claude.ai/code/artifact/d6875957…</a> — folding and the list cap (decisions D17 and D18), the marathon harness, the live context-window probe, the recall probe, and the cache-churn fix.<br>
 [2]&ensp;<code>eval/scripts/marathon.mjs</code> in the context-tree repository — the deterministic 200-branch harness that produced Figure 1: no language-model calls, <code>HeuristicTokenizer</code> for token counts, a checkpoint every ten branches.<br>
-[3]&ensp;The <code>long-v6x</code> results batch (Figures 2 and 3: two scenarios × two arms × three replicates, claude-sonnet-5, one epoch) and the <code>long-v64</code> batch (tree arm only, after the cache fix), read from each run's <code>results.json</code> via <code>turns: TurnRecord[]</code>.</p>
+[3]&ensp;The <code>long-v6x</code> results batch (Figures 2 and 3: two scenarios × two arms × three replicates, claude-sonnet-5, one epoch) and the <code>long-v64</code> batch (tree arm only, after the cache fix), read from each run's <code>results.json</code> via <code>turns: TurnRecord[]</code>.<br>
+[4]&ensp;<code>eval/plans/loop9-item1-lazy-gate.md</code> — the runbook for the real-token gate: the code change in <code>eval/src/loop.ts</code>, its regression test, the latch, and the exact run command. Results in <code>eval/results/long-v65-gate/long-v65-gate-rep{1,2,3}/results.json</code>; crossings in <code>eval/results/long-v65-gate.log</code>.<br>
+[5]&ensp;<code>eval/results/long-v65-gate-oscillating.log</code> — the discarded first batch, whose un-latched gate crossed twice on one run.</p>
 
-<footer>Supplementary note to loop 8 · Figure 1 from <code>eval/scripts/marathon.mjs</code>, offline and deterministic · Figures 2 and 3 from the <code>long-v6x</code> live batch, claude-sonnet-5, three replicates per cell, same epoch · September 1, 2026.</footer>
+<footer><sup>†</sup> In United States dollars, at the harness's claude-sonnet-5 rates of $2.00 per million input tokens, $10.00 per million output, $0.20 per million cache read and $2.50 per million cache write (<code>packages/core/src/models/cost.ts</code>), the median run costs $0.136 on sw-5-dozen and $0.165 on sw-6-ripple under the native transcript baseline, $0.207 and $0.216 under the tree with the loop-8 gate, and $0.334 and $0.336 under the tree with the real-token gate. Dollars appear here once, beside the baseline they are relative to; every claim in this note is made in tokens, turns and graded score.<br><br>
+Supplementary note to loop 8 · Figure 1 from <code>eval/scripts/marathon.mjs</code>, offline and deterministic · Figures 2 and 3 from the <code>long-v6x</code> live batch, claude-sonnet-5, three replicates per cell, same epoch · Figures 4 to 7 from <code>long-v6x</code>, <code>long-v64</code> and <code>long-v65-gate</code>, tree arms re-run 2 September 2026 against 1 September baselines · September 1, 2026, revised September 2, 2026.</footer>
 </main>
 <script>
 const DATA = {"marathon":[[10,2974,2887],[20,5814,4517],[30,8654,6147],[40,11494,7778],[50,14334,8975],[60,17174,9092],[70,20014,9062],[80,22854,9062],[90,25694,9062],[100,28534,9062],[110,31374,9062],[120,34214,9062],[130,37054,9062],[140,39894,9062],[150,42734,9062],[160,45574,9062],[170,48414,9062],[180,51254,9062],[190,54094,9062],[200,56934,9062]],"live":{"sw-5-dozen":{"native":[[1571,1682,2052,9299,9940,10143,10256,10325,10418,10487,10534,10650,10719,10987,18126,18767,18880,18949,19157],[1571,1941,9188,9421,9534,11938,11975,16796,16875,16916,21275,21390,21617],[1571,1941,9188,9301,9410,9545,9880,16996,17109,17244]],"tree":[[4013,4173,4314,5502,5996,13544,14206,21604,37987,38230,38509,39201],[4013,4443,4584,4939,6205,21140,37569,37856,37958],[4013,4193,4373,4988,5263,6285,13173,13940,20537,24412,40897,41065,41356,41602,41866,41846]]},"sw-6-ripple":{"native":[[1550,2307,4961,17646,17701,17770,17954,18011,18131,18873,18900,18969,19944,20048,20117,20186,21368,21411,21567,21678],[1550,6942,7011,7052,7795,17705,17755,18876,19069,19252],[1550,1619,2302,4956,17571,17616,17685,17867,18988,19186,20050,20191]],"tree":[[3992,4658,4878,5709,11264,17021,22336,23650,24884,33664,33906,36522,36512,36575,36601],[3992,4460,9613,10826,16381,26694,27993,29238,37573,37604,37650,37648],[3992,4721,5555,11110,21423,22712,35791,36061,36393]]}}};
@@ -123,8 +186,9 @@ const nf = n => n.toLocaleString('en-US');
 function chart(id, cfg){
   const W = 680, H = cfg.h, L = 66, R = 108, TP = 34, BT = 50;
   const ax0 = L, ax1 = W - R, ay0 = H - BT, ay1 = TP;
+  const ymin = cfg.ymin == null ? 0 : cfg.ymin;
   const X = v => ax0 + (v - cfg.xmin) / (cfg.xmax - cfg.xmin) * (ax1 - ax0);
-  const Y = v => ay0 - v / cfg.ymax * (ay0 - ay1);
+  const Y = v => ay0 - (v - ymin) / (cfg.ymax - ymin) * (ay0 - ay1);
   let g = '';
 
   cfg.yticks.forEach(t => {
@@ -147,7 +211,7 @@ function chart(id, cfg){
 
   cfg.series.forEach(s => {
     const op = s.op == null ? 1 : s.op;
-    g += '<polyline fill="none" stroke="' + s.color + '" stroke-width="2" opacity="' + op +
+    g += '<polyline fill="none" stroke="' + s.color + '" stroke-width="' + (s.w == null ? 2 : s.w) + '" opacity="' + op +
          '" stroke-linejoin="round" points="' +
          s.pts.map(p => X(p[0]).toFixed(1) + ',' + Y(p[1]).toFixed(1)).join(' ') + '"/>';
     if (s.dot) s.pts.forEach(p => {
@@ -188,7 +252,7 @@ function chart(id, cfg){
   const cr = svg.querySelector('[data-c]');
   const tp = svg.querySelector('[data-t]');
   const cl = cr.firstChild;
-  const maps = cfg.series.map(s => ({ name: s.tip, color: s.color, m: new Map(s.pts) }));
+  const maps = cfg.series.filter(s => s.tip).map(s => ({ name: s.tip, color: s.color, m: new Map(s.pts) }));
 
   function show(xv){
     cl.setAttribute('x1', X(xv)); cl.setAttribute('x2', X(xv));
@@ -294,4 +358,79 @@ liveChart('fig2', 'sw-5-dozen',
   'Context size per turn on sw-5-dozen, three replicates per arm. The context-tree runs carry roughly twice the baseline context by the final turn.');
 liveChart('fig3', 'sw-6-ripple',
   'Context size per turn on sw-6-ripple, three replicates per arm. The context-tree runs carry roughly 1.8 times the baseline context by the final turn.');
+const GATE = {"sw-5-dozen":{"native":{"reps":[[1571,1682,2052,9299,9940,10143,10256,10325,10418,10487,10534,10650,10719,10987,18126,18767,18880,18949,19157],[1571,1941,9188,9421,9534,11938,11975,16796,16875,16916,21275,21390,21617],[1571,1941,9188,9301,9410,9545,9880,16996,17109,17244]],"med":[1571,1941,9188,9301,9534,10143,10256,16796,16875,16916,15905,16020,16168]},"tree64":{"reps":[[4013,4162,5011,5505,20440,36973,37243,37519,37585],[4013,4193,4467,4608,4769,5617,6110,21045,37485,37752,38031,38097],[4013,4178,4306,4550,4970,19905,36197,36430,36496]],"med":[4013,4178,4467,4608,4970,19905,36197,36430,37485]},"tree65":{"reps":[[4013,4493,4647,4788,5636,6129,21064,28687,28936,45564,30916,32224,32566],[4013,4206,4682,5106,12771,20188,36657,22151,22358,23356],[4013,4245,4619,4760,5941,6434,13255,20895,22245,38799,22016,22208,22659,22901,23183,24299]],"med":[4013,4245,4647,4788,5941,6434,21064,22151,22358,38799,26466,27216,27613]},"saved64":[-2442,-4679,27,4720,9361,-966,-27283,-46717,-66104,-48860,-65905,-86266,-80375,-69388,-51262,-32495,-18014,-18014,-18014],"saved65":[-2442,-4746,-201,4060,7833,10944,66,-11625,-23452,-51772,-53303,-67245,-84013,-95927,-100984,-93707,-79226,-79226,-79226]},"sw-6-ripple":{"native":{"reps":[[1550,2307,4961,17646,17701,17770,17954,18011,18131,18873,18900,18969,19944,20048,20117,20186,21368,21411,21567,21678],[1550,6942,7011,7052,7795,17705,17755,18876,19069,19252],[1550,1619,2302,4956,17571,17616,17685,17867,18988,19186,20050,20191]],"med":[1550,2307,4961,7052,17571,17705,17755,18011,18988,19186,19475,19580]},"tree64":{"reps":[[3992,4172,4954,6004,8956,17620,22954,24167,25731,38810,39087,39208],[3992,8850,8991,9211,9567,10520,13292,21946,22602,23884,25891,31187,32307,32542,32870],[3992,4168,5001,5493,11048,12309,13543,23878,36977,37252,37493,37615]],"med":[3992,4172,5001,6004,9567,12309,13543,23878,25731,37252,37493,37615]},"tree65":{"reps":[[3992,4224,4718,6549,6706,6988,7823,13378,14578,20282,21710,22850,28187,41286,20716,20886,21061,21511],[3992,4262,4585,5422,8378,17046,22274,23881,25265,25672,25934,27401,28610,28965,29878,30126,9310,13667,19430,8357,10044,11310,18579,20412,20607,21262,24162,24424,25471,21983,22244,22893,23155],[3992,4484,4660,5494,8266,11996,17850,22166,23488,24733,37812,21680,21957,22837]],"med":[3992,4262,4660,5494,8266,11996,17850,22166,23488,24733,25934,22850,28187,28965,25297,25506,15186,17589]},"saved64":[-2442,-4307,-4343,3433,648,2357,1387,-1683,-12654,-30654,-51764,-69188,-69188,-76074,-76074,-76074,-76074,-76074,-76074,-76074,-76074,-76074,-76074,-76074,-76074,-76074,-76074,-76074,-76074,-76074,-76074,-76074,-76074],"saved65":[-2442,-4397,-4116,3925,3711,9163,9068,5778,1359,-4122,-25551,-27040,-48997,-71834,-71834,-85292,-106353,-127864,-127864,-127864,-127864,-127864,-127864,-127864,-127864,-127864,-127864,-127864,-127864,-127864,-127864,-127864,-127864]}};
+
+const COOL = 'var(--cool)';
+const GATE_CROSS = {
+  'sw-5-dozen': [[10, 45564, 'turn 10'], [7, 36657, 'turn 7'], [10, 38799, 'turn 10']],
+  'sw-6-ripple': [[14, 41286, 'turn 14'], [16, 30126, 'turn 16'], [11, 37812, 'turn 11']]
+};
+
+function gateChart(id, key, xmax, xticks, alt){
+  const d = GATE[key];
+  const arms = [
+    { k: 'native', color: WARM, name: 'native' },
+    { k: 'tree64', color: ACC,  name: 'loop-8' },
+    { k: 'tree65', color: COOL, name: 'real-token' }
+  ];
+  const series = [], ends = [];
+  arms.forEach(a => {
+    d[a.k].reps.forEach(vals => {
+      series.push({ color: a.color, op: 0.3, w: 1.1, pts: vals.map((v, j) => [j + 1, v]) });
+    });
+    series.push({ tip: a.name, color: a.color, op: 1, w: 2.4, dot: 2.4,
+                  pts: d[a.k].med.map((v, j) => [j + 1, v]) });
+    let best = null;
+    d[a.k].reps.forEach(vals => { if (!best || vals.length > best.n) best = { n: vals.length, v: vals[vals.length - 1] }; });
+    ends.push({ x: best.n, y: best.v, color: a.color, label: a.name });
+  });
+  chart(id, {
+    h: 360, xmin: 1, xmax: xmax, xticks: xticks,
+    ymax: 46000, yticks: [0, 10000, 20000, 30000, 40000],
+    xtitle: 'turn (one model call)', tipHead: 'turn',
+    xdomain: Array.from({ length: xmax }, (_, i) => i + 1),
+    alt: alt, series: series, ends: ends,
+    marks: GATE_CROSS[key].map(c => ({ x: c[0], y: c[1], color: COOL, label: c[2] })),
+    legend: [
+      { color: WARM, label: 'native transcript' },
+      { color: ACC,  label: 'tree, loop-8 gate' },
+      { color: COOL, label: 'tree, real-token gate' }
+    ]
+  });
+}
+
+gateChart('fig4', 'sw-5-dozen', 20, [1, 5, 10, 15, 20],
+  'Context size per turn on sw-5-dozen for three arms. The real-token gate spikes at its crossing and then runs roughly level, while the loop-8 gate keeps climbing.');
+gateChart('fig5', 'sw-6-ripple', 33, [1, 5, 10, 15, 20, 25, 30],
+  'Context size per turn on sw-6-ripple for three arms. The real-token gate spikes at its crossing and then runs level or oscillates, while the loop-8 gate keeps climbing.');
+
+function savedChart(id, key, xmax, xticks, alt){
+  const d = GATE[key];
+  chart(id, {
+    h: 300, xmin: 1, xmax: xmax, xticks: xticks,
+    ymin: -140000, ymax: 20000, yticks: [-120000, -90000, -60000, -30000, 0],
+    xtitle: 'turn (one model call)', tipHead: 'turn',
+    xdomain: Array.from({ length: xmax }, (_, i) => i + 1),
+    alt: alt,
+    hlines: [{ y: 0, label: 'native baseline' }],
+    series: [
+      { tip: 'loop-8',     color: ACC,  w: 2.4, pts: d.saved64.map((v, j) => [j + 1, v]) },
+      { tip: 'real-token', color: COOL, w: 2.4, pts: d.saved65.map((v, j) => [j + 1, v]) }
+    ],
+    ends: [
+      { x: d.saved64.length, y: d.saved64[d.saved64.length - 1], color: ACC,  label: 'loop-8' },
+      { x: d.saved65.length, y: d.saved65[d.saved65.length - 1], color: COOL, label: 'real-token' }
+    ],
+    legend: [
+      { color: ACC,  label: 'tree, loop-8 gate' },
+      { color: COOL, label: 'tree, real-token gate' }
+    ]
+  });
+}
+
+savedChart('fig6', 'sw-5-dozen', 20, [1, 5, 10, 15, 20],
+  'Cumulative context tokens saved against the native baseline on sw-5-dozen. Both tree arms end below zero, the real-token gate by 79,226 tokens.');
+savedChart('fig7', 'sw-6-ripple', 34, [1, 10, 20, 30],
+  'Cumulative context tokens saved against the native baseline on sw-6-ripple. Both tree arms end below zero, the real-token gate by 127,864 tokens.');
+
 </script>

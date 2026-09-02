@@ -100,7 +100,11 @@ const RATIO_KILL = 1.6;
 const K_FRACTION = 0.85;
 
 const MODELS = Object.freeze(['qwen/qwen-2.5-72b-instruct', 'openai/gpt-3.5-turbo']);
-const PARAPHRASE_MODEL = 'z-ai/glm-5.3-flash';
+// glm-5.3-flash is a reasoning model and returned its text outside
+// `message.content`, which core maps to '' (openrouter.ts:158) — the empty-
+// question incident. DeepSeek's chat flash answers in `content`; still a third
+// family relative to the claude summaries and the qwen/openai answerers.
+const PARAPHRASE_MODEL = 'deepseek/deepseek-v4-flash';
 const COMPACT_MODEL = 'claude-haiku-4-5-20251001';
 const COMPACT_MODEL_OR = 'anthropic/claude-haiku-4.5';
 const MAX_SUMMARY_TOKENS = 1_024;
@@ -112,6 +116,8 @@ const MAX_REPLY_TOKENS = 800;
 const CAP_USD_PER_MODEL = 3.0;
 /** The step-4 compaction build is a THIRD bucket, not part of an answerer's cell. */
 const CAP_USD_COMPACTION = 1.0;
+/** Above this share of skipped chunks the baseline is degraded, and says so. */
+const MAX_SKIPPED_CHUNK_FRACTION = 0.25;
 const CAP_USD_TOTAL = 6.0;
 /**
  * Per-message chat-format overhead the raw text count cannot see (role tags and
@@ -129,18 +135,45 @@ const SMOKE_N = 3;
 const PRIMARY_STRATA = Object.freeze(['head', 'tail', 'deep']);
 const EXPLORATORY_STRATA = Object.freeze(['spanning']);
 const Q_PER_STRATUM = 3;
+/** Candidates drawn per stratum, so a rejected literal has a replacement. */
+const POOL_DEPTH = 12;
+/** Paraphrase attempts per literal before the literal itself is discarded. */
+const PARAPHRASE_ATTEMPTS = 2;
+/**
+ * How deep in `context_search`'s own ranking a question's source must appear.
+ * Set to the handler's result limit (config `retrieval.limit` = 20): g15 is an
+ * instrument-validity gate — "the search CAN surface the source in the list the
+ * model receives" — not a difficulty dial. Whether the model attends to a
+ * rank-12 hit is part of what the experiment measures; a source ABSENT from
+ * the list is what makes a question unanswerable-by-retrieval. Ranks are
+ * recorded per question so the verdict can correlate rank with score. (Was 3;
+ * that bar rejected every real paraphrase while the model itself sees 20.)
+ */
+const SELF_RETRIEVAL_TOP_K = 20;
 /** A literal with less surrounding prose than this cannot be paraphrased into a question. */
 const MIN_CONTEXT_CHARS = 200;
+/** Floors for a usable question — see `questionTextValid`. */
+const MIN_QUESTION_CHARS = 20;
+const MIN_QUESTION_WORDS = 4;
 const CONTEXT_WINDOW_CHARS = 600;
+/**
+ * What the PARAPHRASER sees — the containing event rendered whole, capped.
+ * A 200-char window gives it nothing to anchor on, which is how "how many
+ * characters were omitted when it was truncated" got written about a trace
+ * holding hundreds of truncations. An anchor needs neighbours to name.
+ */
+const WIDE_CONTEXT_CHARS = 750;
 
 export const ARM_IDS = Object.freeze([
   'naive-full',
   'truncate-tail',
   'compact-rolling',
   'tree',
+  'tree-wide',
   'tree-static',
   'memgpt',
 ]);
+
 /** Arms whose MEAN enters the primary verdict. `naive-full` is a precondition. */
 const SCORED_ARMS = Object.freeze(['truncate-tail', 'compact-rolling', 'tree']);
 
@@ -160,6 +193,7 @@ export const GATE_IDS = Object.freeze([
   'g12-leakage-gate',
   'g13-manifest-hashed',
   'g14-cost-cap',
+  'g15-self-retrieval',
 ]);
 
 const heuristic = new HeuristicTokenizer();
@@ -302,13 +336,37 @@ export function deriveBudgets(windowTokens, ratio, options = {}) {
   // the ladder walk stays a pure function of "does this rung pass" while the
   // decision of what passing MEANS lives with the thing that can assemble.
   if (options.fitsRoot !== undefined) {
-    Object.assign(budgets, deriveRootKeep((keep) => options.fitsRoot(keep, budgets)));
+    Object.assign(budgets, deriveRootKeep((keep) => options.fitsRoot(keep, budgets), options.ladder));
   }
   return budgets;
 }
 
 /** D17's keep ladder, largest first — the derivation walks it downward. */
 export const ROOT_KEEP_LADDER = Object.freeze([40, 16, 12, 8, 6, 4, 2]);
+
+/**
+ * R6 ablation. `tree` walks the keep ladder LARGEST-first, which maximises
+ * root headline coverage; `tree-wide` walks it SMALLEST-first, which maximises
+ * visible branch summaries. Measured at W=32768: largest-passing stops at
+ * keep16 (2 branches visible) while keep2 leaves room for 11 — so the two arms
+ * differ in exactly one variable, Zone B composition, over the same frozen
+ * store, the same questions, and the same epoch.
+ *
+ * A separate arm rather than a flag on `tree`, so a verdict can put both in one
+ * table from one results directory without re-running any baseline.
+ */
+export const ARM_ROOT_LADDER = Object.freeze({
+  tree: ROOT_KEEP_LADDER,
+  'tree-static': ROOT_KEEP_LADDER,
+  'tree-wide': Object.freeze([...ROOT_KEEP_LADDER].reverse()),
+});
+
+/** Arms whose Zone B is tree-shaped and therefore need a per-arm root pin. */
+export const TREE_ARMS = Object.freeze(['tree', 'tree-wide', 'tree-static']);
+
+export function ladderFor(arm) {
+  return ARM_ROOT_LADDER[arm] ?? ROOT_KEEP_LADDER;
+}
 
 /**
  * `rootKeep` derived per window (D19 extended to D17's cap): the LARGEST rung
@@ -442,7 +500,7 @@ function composeRootAt(scenario, rootKeep, expectedSha) {
  * composed at that keep — every caller downstream (assembly, gates, arms) then
  * reads a root that matches the budget it was sized against.
  */
-function budgetsFor(scenario, windowTokens, ratio, slackFraction) {
+function budgetsFor(scenario, windowTokens, ratio, slackFraction, arm = 'tree') {
   const rungs = rootLadderFor(scenario);
   // The predicate IS gate 8, run against the real assembly. Nothing is
   // modelled: the prompt is built at this keep and asked whether it fits and
@@ -460,10 +518,51 @@ function budgetsFor(scenario, windowTokens, ratio, slackFraction) {
       zoneB: prompt.budgets.zoneB,
     };
   };
-  const budgets = deriveBudgets(windowTokens, ratio, { slackFraction, fitsRoot });
-  const chosen = rungs[budgets.rootKeep ?? ROOT_KEEP_LADDER.at(-1)];
+  // The ONLY thing the ablation varies: which end of the ladder is walked.
+  // `tree` takes the largest passing keep (most root headlines); `tree-wide`
+  // takes the smallest (most visible branch summaries).
+  const ladder = ladderFor(arm);
+  const budgets = deriveBudgets(windowTokens, ratio, { slackFraction, fitsRoot, ladder });
+  const chosen = rungs[budgets.rootKeep ?? ladder.at(-1)];
   const { sha256: rootSummarySha } = composeRootAt(scenario, budgets.rootKeep, chosen?.sha256);
-  return { ...budgets, rootSummarySha };
+  return { ...budgets, arm, rootSummarySha };
+}
+
+/**
+ * The branch nodes Zone B actually shows for one (window, arm), with their L0
+ * spans. Visibility is the whole question the R6 ablation asks: a `tail` fact
+ * at seq 720-731 is answerable from Zone B only if a VISIBLE branch's span
+ * contains it, and the newest branch alone starts at 732.
+ */
+function visibleBranchesAt(scenario, budgets, arm) {
+  if (budgets.rootKeep === null) return { arm, branches: [], covers: () => false };
+  const { prompt } = assembleTreeAt(scenario, budgets, budgets.rootKeep, {
+    withTools: arm !== 'tree-static',
+    expectedSha: budgets.rootSummarySha,
+  });
+  const ids = [
+    ...new Set(
+      prompt.blocks
+        .filter((b) => b.zone === 'B' && !b.id.startsWith('B:root'))
+        .map((b) => b.nodeId)
+        .filter((id) => id !== undefined),
+    ),
+  ];
+  const branches = ids
+    .map((id) => scenario.store.getNode(id))
+    .filter((n) => n !== null)
+    .map((n) => ({ id: n.id, from: n.span_start_seq, to: n.span_end_seq }));
+  return {
+    arm,
+    branches,
+    /** True only if EVERY seq in [from, to] sits inside some visible branch. */
+    covers: (from, to) => {
+      for (let seq = from; seq <= to; seq += 1) {
+        if (!branches.some((b) => b.from <= seq && seq <= b.to)) return false;
+      }
+      return true;
+    },
+  };
 }
 
 /** L0 span covered by a set of branch nodes — where visibility actually ends. */
@@ -473,6 +572,22 @@ function seqRangeOf(store, nodeIds) {
   return {
     from: Math.min(...nodes.map((n) => n.span_start_seq)),
     to: Math.max(...nodes.map((n) => n.span_end_seq)),
+  };
+}
+
+/** The read-only ToolContext the §9 handlers expect, over the frozen store. */
+function toolContextFor(scenario) {
+  return {
+    config: scenario.config,
+    handle: {
+      config: scenario.config,
+      paths: scenario.paths,
+      trace: scenario.trace,
+      blobs: scenario.blobs,
+      store: scenario.store,
+      close() {},
+    },
+    retriever: new TreeRetriever({ store: scenario.store, blobs: scenario.blobs, trace: scenario.trace }),
   };
 }
 
@@ -608,15 +723,20 @@ export function buildManifest(scenario, extra = {}) {
 function rootByWindow(scenario, ratio, slackFraction, windows = WINDOWS) {
   const out = {};
   for (const w of windows) {
-    const budgets = budgetsFor(scenario, w, ratio, slackFraction);
-    out[String(w)] = {
-      rootKeep: budgets.rootKeep,
-      rootBlockTokens: budgets.rootBlockTokens,
-      branchesSurviving: budgets.branchesSurviving,
-      branchSeqRange: budgets.branchSeqRange,
-      rootSummarySha: budgets.rootSummarySha,
-      zoneB: budgets.zoneB,
-    };
+    // Keyed window -> arm. `tree-static` shares `tree`'s ladder and therefore
+    // its pin, so only the two distinct ladders are recorded.
+    out[String(w)] = {};
+    for (const arm of ['tree', 'tree-wide']) {
+      const budgets = budgetsFor(scenario, w, ratio, slackFraction, arm);
+      out[String(w)][arm] = {
+        rootKeep: budgets.rootKeep,
+        rootBlockTokens: budgets.rootBlockTokens,
+        branchesSurviving: budgets.branchesSurviving,
+        branchSeqRange: budgets.branchSeqRange,
+        rootSummarySha: budgets.rootSummarySha,
+        zoneB: budgets.zoneB,
+      };
+    }
   }
   return out;
 }
@@ -654,16 +774,28 @@ function assertFrozen(scenario, options = {}) {
   // the recorded keep must reproduce the recorded bytes. That keeps the freeze
   // meaningful for the one summary the derivation is allowed to re-mint.
   if (options.window !== undefined) {
-    const recorded = manifest.root_by_window?.[String(options.window)];
-    if (recorded === undefined) {
+    const perArm = manifest.root_by_window?.[String(options.window)];
+    if (perArm === undefined) {
       throw new Error(`no root_by_window entry for W=${options.window} in the manifest — re-run --phase prep`);
     }
-    const { sha256: actual } = composeRootAt(scenario, recorded.rootKeep, recorded.rootSummarySha);
-    if (actual !== recorded.rootSummarySha) {
+    // EVERY arm's pin is verified, not just the one about to run: the pins are
+    // all functions of the same leaf summaries, so if one has drifted they all
+    // have, and a run that checked only its own would report a clean epoch
+    // while its sibling arm silently ran off one.
+    if (perArm.rootKeep !== undefined) {
       throw new Error(
-        `FREEZE VIOLATION: root at W=${options.window} (rootKeep=${recorded.rootKeep}) composes to ${actual} ` +
-          `but the manifest says ${recorded.rootSummarySha} — the leaf summaries changed under it`,
+        `manifest root_by_window[${options.window}] is the pre-ablation flat shape (one pin, no arm dimension). ` +
+          'Re-run `--phase prep` (offline is enough) to record per-arm pins for tree and tree-wide.',
       );
+    }
+    for (const [arm, recorded] of Object.entries(perArm)) {
+      const { sha256: actual } = composeRootAt(scenario, recorded.rootKeep, recorded.rootSummarySha);
+      if (actual !== recorded.rootSummarySha) {
+        throw new Error(
+          `FREEZE VIOLATION: ${arm} root at W=${options.window} (rootKeep=${recorded.rootKeep}) composes to ${actual} ` +
+            `but the manifest says ${recorded.rootSummarySha} — the leaf summaries changed under it`,
+        );
+      }
     }
   }
   return manifest;
@@ -740,6 +872,7 @@ export function extractLiterals(events, blobs, store) {
         if (literal.length >= 4 && !seen.has(literal)) {
           const at = match.index;
           const context = text.slice(Math.max(0, at - CONTEXT_WINDOW_CHARS), at + literal.length + CONTEXT_WINDOW_CHARS);
+          const wideContext = text.slice(Math.max(0, at - WIDE_CONTEXT_CHARS), at + literal.length + WIDE_CONTEXT_CHARS);
           const phase = phaseOf(events[i].seq);
           seen.set(literal, {
             literal,
@@ -748,6 +881,7 @@ export function extractLiterals(events, blobs, store) {
             node_id: phase?.id ?? null,
             phase_type: phase?.phase_type ?? null,
             context,
+            wide_context: wideContext,
             occurrences: 0,
           });
         }
@@ -859,6 +993,30 @@ export function gradeAnswer(finalText, question) {
   }));
   const matched = perLiteral.every((r) => r.regex || r.exact_match);
   return { score: matched ? 1 : 0, success: matched, perLiteral };
+}
+
+/**
+ * One candidate -> one question record. Shared by the offline cut (which fills
+ * `literals.json`) and the live redraw loop (which may reach deeper into the
+ * pool when a literal is discarded), so the two can never drift.
+ */
+export function buildSelectedItem(item, stratum) {
+  const spanning = stratum === 'spanning';
+  const literals = spanning ? [item.literal, item.pair.literal] : [item.literal];
+  return {
+    stratum,
+    exploratory: EXPLORATORY_STRATA.includes(stratum),
+    node_id: item.node_id,
+    node_ids: spanning ? [item.node_id, item.pair.node_id] : [item.node_id],
+    seq: item.seq,
+    kind: item.kind,
+    answer_literals: literals,
+    answer_regexes: answerRegexesFor(literals),
+    source_context: spanning ? `${item.context}\n---\n${item.pair.context}` : item.context,
+    // What the paraphraser reads: wider, so it can name a disambiguating
+    // anchor from the surrounding L0 rather than describing the fact alone.
+    wide_context: spanning ? `${item.wide_context}\n---\n${item.pair.wide_context}` : item.wide_context,
+  };
 }
 
 // ── statistics, pre-registered (Graft 4) ─────────────────────────────────
@@ -1136,7 +1294,12 @@ async function runGates(scenario, options) {
   // left composed at the LAST window's keep, so every consumer below composes
   // its own before assembling.
   const table = {};
-  for (const w of WINDOWS) table[w] = budgetsFor(scenario, w, ratio, verdict.slackFraction);
+  const armTable = {};
+  for (const w of WINDOWS) {
+    armTable[w] = {};
+    for (const arm of ['tree', 'tree-wide']) armTable[w][arm] = budgetsFor(scenario, w, ratio, verdict.slackFraction, arm);
+    table[w] = armTable[w].tree;
+  }
 
   // 8 — overBudget == [] at both W with the derived budgets, AND at least one
   // branch summary survives. The second half is not decoration: the root is
@@ -1149,28 +1312,29 @@ async function runGates(scenario, options) {
     results.push(defer('g8-over-budget', 'node_summaries is empty — Zone B has no content to size; run after the summarize pass'));
   } else {
     const problems = [];
+    const parts = [];
     for (const w of WINDOWS) {
-      if (table[w].rootKeep === null) {
-        problems.push(
-          `W=${w}: no rootKeep on the ladder produces a Zone B fitting ${table[w].zoneB} tokens with a branch summary ` +
-            `surviving (smallest keep: root ${table[w].rootBlockTokens} tok, ${table[w].branchesSurviving} branch(es)) — cell is dead`,
-        );
-        continue;
+      for (const arm of ['tree', 'tree-wide']) {
+        const budgets = armTable[w][arm];
+        if (budgets.rootKeep === null) {
+          problems.push(
+            `W=${w}/${arm}: no rootKeep produces a Zone B fitting ${budgets.zoneB} tokens with a branch summary ` +
+              `surviving (root ${budgets.rootBlockTokens} tok, ${budgets.branchesSurviving} branch(es)) — cell is dead`,
+          );
+          continue;
+        }
+        const { prompt } = buildTreePrompt(scenario, budgets, { withTools: true });
+        const branchBlocks = prompt.blocks.filter((b) => b.zone === 'B' && !b.id.startsWith('B:root'));
+        const count = new Set(branchBlocks.map((b) => b.nodeId ?? b.id)).size;
+        survivors[`${w}/${arm}`] = count;
+        if (prompt.budgets.overBudget.length > 0) problems.push(`W=${w}/${arm}: overBudget=${prompt.budgets.overBudget.join(',')}`);
+        if (count < 1) problems.push(`W=${w}/${arm}: Zone B is root-only — 0 branch summaries survived`);
+        parts.push(`W=${w}/${arm} -> ${count}/${summaries.size - 1} (keep${budgets.rootKeep}, root ${budgets.rootBlockTokens} tok)`);
       }
-      const { prompt } = buildTreePrompt(scenario, table[w], { withTools: true });
-      const branchBlocks = prompt.blocks.filter((b) => b.zone === 'B' && !b.id.startsWith('B:root'));
-      survivors[w] = new Set(branchBlocks.map((b) => b.nodeId ?? b.id)).size;
-      if (prompt.budgets.overBudget.length > 0) problems.push(`W=${w}: overBudget=${prompt.budgets.overBudget.join(',')}`);
-      if (survivors[w] < 1) problems.push(`W=${w}: Zone B is root-only — 0 branch summaries survived`);
     }
     results.push(
       problems.length === 0
-        ? pass(
-            'g8-over-budget',
-            `overBudget == [] at W = ${WINDOWS.join(' and ')}; branch summaries surviving in Zone B: ` +
-              WINDOWS.map((w) => `W=${w} -> ${survivors[w]}/${summaries.size - 1} (rootKeep=${table[w].rootKeep}, root ${table[w].rootBlockTokens} tok)`).join(', '),
-            { survivors: { ...survivors } },
-          )
+        ? pass('g8-over-budget', `overBudget == [] for every (W, arm); branch summaries surviving: ${parts.join(', ')}`, { survivors: { ...survivors } })
         : fail('g8-over-budget', problems.join('; '), { survivors: { ...survivors } }),
     );
   }
@@ -1192,17 +1356,19 @@ async function runGates(scenario, options) {
     results.push(defer('g9-zone-b-nesting', 'node_summaries is empty — the nesting sweep would be vacuously true'));
   } else {
     const problems = [];
+    for (const arm of ['tree', 'tree-wide']) {
     for (const w of NESTING_WINDOWS) {
-      const budgets = budgetsFor(scenario, w, ratio, verdict.slackFraction);
+      const budgets = budgetsFor(scenario, w, ratio, verdict.slackFraction, arm);
       if (budgets.rootKeep === null) {
         // A dead window renders no Zone B at all, so it is not a nesting
         // counter-example — it is a missing row. Named here, adjudicated by
         // gate 8 for the primary windows.
-        dead.push(`W=${w} (zoneB ${budgets.zoneB}; smallest keep=${ROOT_KEEP_LADDER.at(-1)} root ${budgets.rootBlockTokens} tok leaves no branch)`);
+        dead.push(`${arm}@W=${w} (zoneB ${budgets.zoneB}; no keep leaves a branch; root ${budgets.rootBlockTokens} tok)`);
         continue;
       }
       const { prompt } = buildTreePrompt(scenario, budgets, { withTools: true });
       nesting.push({
+        arm,
         w,
         rootKeep: budgets.rootKeep,
         rootBlockTokens: budgets.rootBlockTokens,
@@ -1210,25 +1376,29 @@ async function runGates(scenario, options) {
         overBudget: prompt.budgets.overBudget,
       });
     }
-    for (let i = 0; i < nesting.length - 1; i += 1) {
-      const small = nesting[i];
-      const large = nesting[i + 1];
-      if (!isContiguousSuffix(small.branchIds, large.branchIds)) {
-        problems.push(`W=${small.w} branch list is not a contiguous suffix of W=${large.w}`);
+    }
+    // Nesting is asserted WITHIN an arm: the two arms walk opposite ends of
+    // the ladder, so their Zone Bs are not expected to nest into each other.
+    for (const arm of ['tree', 'tree-wide']) {
+      const rows = nesting.filter((r) => r.arm === arm);
+      for (let i = 0; i < rows.length - 1; i += 1) {
+        if (!isContiguousSuffix(rows[i].branchIds, rows[i + 1].branchIds)) {
+          problems.push(`${arm}: W=${rows[i].w} branch list is not a contiguous suffix of W=${rows[i + 1].w}`);
+        }
       }
     }
     for (const row of nesting) {
-      if (row.overBudget.length > 0) problems.push(`W=${row.w} overBudget=${row.overBudget.join(',')}`);
+      if (row.overBudget.length > 0) problems.push(`${row.arm} W=${row.w} overBudget=${row.overBudget.join(',')}`);
     }
     results.push(
       problems.length === 0
         ? pass(
             'g9-zone-b-nesting',
             'Zone B branch lists nest newest-aligned across W ∈ ' +
-              `{${nesting.map((r) => `${r.w}:${r.branchIds.length}b/keep${r.rootKeep}/root${r.rootBlockTokens}`).join(', ')}}; ` +
+              `{${nesting.map((r) => `${r.arm}@${r.w}:${r.branchIds.length}b/keep${r.rootKeep}`).join(', ')}}; ` +
               'creation order intact, root excluded (derived per window)' +
               (dead.length === 0 ? '' : ` — DEAD, no Zone B renders: ${dead.join(', ')}`),
-            { nesting: nesting.map(({ w, rootKeep, rootBlockTokens, branchIds }) => ({ w, rootKeep, rootBlockTokens, branches: branchIds.length })) },
+            { nesting: nesting.map(({ arm, w, rootKeep, rootBlockTokens, branchIds }) => ({ arm, w, rootKeep, rootBlockTokens, branches: branchIds.length })) },
           )
         : fail('g9-zone-b-nesting', problems.join('; ')),
     );
@@ -1272,16 +1442,37 @@ async function runGates(scenario, options) {
     results.push(defer('g11-literal-uniqueness', `no literals.json at ${literalsPath} — run --phase prep`));
   } else {
     const bad = [];
-    for (const item of literalsFile.selected ?? []) {
-      for (const literal of item.answer_literals) {
+    // Uniqueness has two halves and only one of them was checked. String
+    // uniqueness in L0 (below) says the answer key is unambiguous; ONE
+    // LITERAL, ONE QUESTION (further below) says two strata are not quietly
+    // asking about the same fact — `deep` is a subset of `head`, so without
+    // this s1-q01-head and s1-q07-deep both asked about the same file path.
+    const owner = new Map();
+    // questions.json supersedes literals.json's pre-paraphrase selection: the
+    // paraphrase loop discards and redraws literals, renumbering ids, so
+    // unioning the two lists reports phantom sharing between a stale id and
+    // its shifted successor. The cross-strata check only needs the FINAL set.
+    const items = existsSync(questionsPath)
+      ? JSON.parse(readFileSync(questionsPath, 'utf8')).questions
+      : (literalsFile.selected ?? []);
+    for (const item of items) {
+      for (const literal of item.answer_literals ?? []) {
         const n = countOccurrences(native, literal);
-        if (n !== 1) bad.push(`${JSON.stringify(literal)} x${n}`);
+        if (n !== 1) bad.push(`${JSON.stringify(literal)} occurs x${n} in L0`);
+        const previous = owner.get(literal);
+        if (previous !== undefined && previous !== item.id) {
+          bad.push(`${JSON.stringify(literal)} is shared by ${previous} and ${item.id}`);
+        }
+        owner.set(literal, item.id);
       }
     }
     results.push(
       bad.length === 0
-        ? pass('g11-literal-uniqueness', `all ${(literalsFile.selected ?? []).length} selected item(s) have literals occurring exactly once in L0`)
-        : fail('g11-literal-uniqueness', `not once-only: ${bad.join(', ')}`),
+        ? pass(
+            'g11-literal-uniqueness',
+            `${items.length} item(s): every answer literal occurs exactly once in L0 and belongs to exactly one question`,
+          )
+        : fail('g11-literal-uniqueness', [...new Set(bad)].join('; ')),
     );
   }
 
@@ -1293,7 +1484,17 @@ async function runGates(scenario, options) {
   } else {
     const questions = JSON.parse(readFileSync(questionsPath, 'utf8'));
     const problems = [];
+    if (questions.questions.length === 0) problems.push('questions.json holds no questions at all');
     for (const q of questions.questions) {
+      // The gate is only meaningful if it had something to gate. An empty
+      // question shares no 3-gram with anything, so the leakage check passed
+      // all 12 empty records and the batch that followed was void. Assert the
+      // INPUT first: a vacuous pass is a failure, not a pass.
+      const usable = questionTextValid(q.question);
+      if (!usable.ok) {
+        problems.push(`${q.id}: leakage gate input is trivial — ${usable.reason}`);
+        continue;
+      }
       const summary = summaries.get(q.node_id) ?? '';
       const gate = leakageGate({ question: q.question, summaryText: summary, answerLiterals: q.answer_literals });
       if (!gate.ok) problems.push(`${q.id}: shares ${JSON.stringify(gate.shared[0])}`);
@@ -1307,7 +1508,11 @@ async function runGates(scenario, options) {
     }
     results.push(
       problems.length === 0
-        ? pass('g12-leakage-gate', `${questions.questions.length} question(s): zero 3-gram overlap (answer literal excluded); deep literals absent from every summary`)
+        ? pass(
+            'g12-leakage-gate',
+            `${questions.questions.length} question(s), all non-trivial (>= ${MIN_QUESTION_CHARS} chars, >= ${MIN_QUESTION_WORDS} words): ` +
+              'zero 3-gram overlap (answer literal excluded); deep literals absent from every summary',
+          )
         : fail('g12-leakage-gate', problems.join('; ')),
     );
   }
@@ -1346,6 +1551,54 @@ async function runGates(scenario, options) {
       : fail('g14-cost-cap', 'a synthetic overspend did NOT raise CostCapExceededError — the per-model cap is not wired'),
   );
 
+  // 15 — every question can retrieve its own source (see `selfRetrieval`).
+  if (!existsSync(questionsPath)) {
+    results.push(defer('g15-self-retrieval', `no questions.json at ${questionsPath} — run --phase prep --allow-live`));
+  } else {
+    const questions = JSON.parse(readFileSync(questionsPath, 'utf8')).questions;
+    const toolCtx = toolContextFor(scenario);
+    const rootId = scenario.store.root()?.id ?? null;
+    const rows = [];
+    for (const q of questions) {
+      const usable = questionTextValid(q.question);
+      rows.push(
+        usable.ok
+          ? { id: q.id, ...(await selfRetrieval(q, toolCtx, { rootId })) }
+          : { id: q.id, ok: false, rank: null, top: [], reason: `unusable question text (${usable.reason})` },
+      );
+    }
+    const failed = rows.filter((r) => !r.ok);
+    // A threshold at or above the corpus size accepts everything the search
+    // returns, which is the vacuous-pass shape this gate exists to prevent —
+    // so the strict top-3 count is reported ALONGSIDE the configured one and
+    // the detail says plainly when the configured threshold is toothless.
+    // The denominator is what the search RETURNS, not what the store holds.
+    const branchCount = Math.max(0, ...rows.map((r) => r.ranked ?? 0));
+    const strict = rows.filter((r) => r.rank !== null && r.rank <= 3).length;
+    const vacuous = SELF_RETRIEVAL_TOP_K >= branchCount;
+    const strictNote =
+      ` | strict top-3: ${strict}/${rows.length}` +
+      (vacuous
+        ? ` | WARNING: topK=${SELF_RETRIEVAL_TOP_K} >= ${branchCount} results returned, so this threshold accepts every ` +
+          'result the search returns and proves nothing about referent uniqueness'
+        : '');
+    results.push(
+      failed.length === 0
+        ? pass(
+            'g15-self-retrieval',
+            `all ${rows.length} question(s) retrieve their own source within top ${SELF_RETRIEVAL_TOP_K} ` +
+              `(ranks: ${rows.map((r) => r.rank).join(', ')}; task root excluded)${strictNote}`,
+            { selfRetrieval: rows, strictTop3: strict, topK: SELF_RETRIEVAL_TOP_K, branchCount, vacuous },
+          )
+        : fail(
+            'g15-self-retrieval',
+            `${failed.length}/${rows.length} question(s) cannot retrieve their own source: ` +
+              failed.map((r) => `${r.id} (${r.reason})`).join('; ') + strictNote,
+            { selfRetrieval: rows, strictTop3: strict, topK: SELF_RETRIEVAL_TOP_K, branchCount, vacuous },
+          ),
+    );
+  }
+
   // ── report ─────────────────────────────────────────────────────────────
   const wanted = options.gates === undefined ? null : new Set(options.gates.split(',').map((s) => s.trim()));
   const shown = results.filter((r) => wanted === null || wanted.has(r.id));
@@ -1372,6 +1625,61 @@ async function runGates(scenario, options) {
           .map((r) => `keep${r.keep}=${r.rootBlockTokens}tok/${r.branchesSurviving}b${r.overBudget?.length ? `/over:${r.overBudget.join('+')}` : ''}${r.ok ? ' <-' : ''}`)
           .join(' '),
     );
+  }
+
+  // ── R6: visible-branch coverage per (W, arm) ─────────────────────────
+  // The ablation's whole question. A `tail` fact lives at seq >= the
+  // truncation boundary; the NEWEST branch alone does not reach back that far,
+  // so whether an arm can answer from Zone B at all is a question about which
+  // branches are visible, not about how the root is folded.
+  const boundarySeq = truncationBoundarySeq(events, scenario.blobs, table[Math.min(...WINDOWS)].K);
+  const phases = scenario.store.nodesInCreationOrder().filter((n) => n.kind === 'phase');
+  const newest = phases.at(-1);
+  const tailGap = { from: boundarySeq, to: (newest?.span_start_seq ?? boundarySeq) - 1 };
+  console.log('\n=== R6 VISIBLE-BRANCH COVERAGE (tree vs tree-wide) ===');
+  console.log(
+    `truncation boundary: seq >= ${boundarySeq} is the tail stratum; the newest branch starts at ` +
+      `${newest?.span_start_seq}, so seq ${tailGap.from}-${tailGap.to} is tail content OUTSIDE the newest branch`,
+  );
+  console.log('| W | arm | rootKeep | root tok | branches | visible seq range | covers tail gap ' + `${tailGap.from}-${tailGap.to}` + ' |');
+  console.log('| --: | --- | --: | --: | --: | --- | --- |');
+  const coverage = [];
+  for (const w of WINDOWS) {
+    for (const arm of ['tree', 'tree-wide']) {
+      const budgets = armTable[w][arm];
+      const view = visibleBranchesAt(scenario, budgets, arm);
+      const spans = view.branches.map((b) => `${b.from}-${b.to}`);
+      const covers = tailGap.to >= tailGap.from ? view.covers(tailGap.from, tailGap.to) : true;
+      coverage.push({ w, arm, rootKeep: budgets.rootKeep, branches: view.branches.length, spans, coversTailGap: covers });
+      console.log(
+        `| ${w} | ${arm} | ${budgets.rootKeep ?? 'DEAD'} | ${budgets.rootBlockTokens} | ${view.branches.length} | ` +
+          `${budgets.branchSeqRange?.from ?? '-'}-${budgets.branchSeqRange?.to ?? '-'} | ${covers ? 'YES' : 'NO'} |`,
+      );
+    }
+  }
+  for (const w of WINDOWS) {
+    const t = coverage.find((c) => c.w === w && c.arm === 'tree');
+    const tw = coverage.find((c) => c.w === w && c.arm === 'tree-wide');
+    if (t.rootKeep === tw.rootKeep) {
+      console.log(
+        `W=${w}: tree and tree-wide derive the SAME keep (${t.rootKeep}) — the ablation is a NO-OP at this window. ` +
+          `Neither covers seq ${tailGap.from}-${tailGap.to}, so a tail loss here is about branch GRANULARITY ` +
+          '(the newest branch simply starts too late), not fold order, and no ladder direction can fix it.',
+      );
+    } else if (t.coversTailGap && tw.coversTailGap) {
+      console.log(
+        `W=${w}: BOTH arms already cover seq ${tailGap.from}-${tailGap.to} (tree ${t.branches} branches, ` +
+          `tree-wide ${tw.branches}). Visibility is therefore NOT the tail constraint at this window — a tail loss ` +
+          'here cannot be explained by the fact being absent from Zone B, and widening will not repair it.',
+      );
+    } else if (tw.coversTailGap) {
+      console.log(`W=${w}: tree-wide covers the tail gap (${t.branches} -> ${tw.branches} branches) where tree does not`);
+    } else {
+      console.log(
+        `W=${w}: tree-wide widens ${t.branches} -> ${tw.branches} branches but STILL does not cover seq ` +
+          `${tailGap.from}-${tailGap.to} — the ablation cannot fix the tail stratum at this window`,
+      );
+    }
   }
 
   // Diagnostic, not a rule: the derivation stops at the LARGEST passing rung,
@@ -1447,7 +1755,95 @@ export function isContiguousSuffix(small, large) {
   return true;
 }
 
+/**
+ * g15 — question self-retrieval. Zero tokens.
+ *
+ * `g11` proves an answer literal is unique as a STRING in L0. That is not the
+ * property a question needs: it needs its REFERENT to be unique in the world
+ * the model is searching. The two came apart badly — "How many characters were
+ * omitted from the excerpt when it was truncated for length?" has a
+ * string-unique answer (`2650`) and hundreds of equally valid referents, and
+ * qwen duly found a different truncation, reasoned correctly, and scored 0.
+ * The recall probe never hit this because its planted fact was unique in KIND;
+ * a real trace is repetitive by nature.
+ *
+ * So this asks the harness's OWN retrieval — the same `context_search` beam the
+ * tree arm calls — to find the question's source from the question text alone.
+ * A question whose source is not in the top `SELF_RETRIEVAL_TOP_K` is
+ * unanswerable-by-retrieval BY CONSTRUCTION, and no arm result computed from it
+ * means anything.
+ *
+ * The task root is excluded from the ranking: it is every question's ancestor,
+ * it ranks first for essentially any query (measured: rank 1 for all 12), and
+ * it is never a source node. Leaving it in would silently spend a third of the
+ * budget on a result that cannot be the answer.
+ */
+export async function selfRetrieval(question, toolCtx, options = {}) {
+  const { topK = SELF_RETRIEVAL_TOP_K, rootId = null, search = HANDLERS[CONTEXT_SEARCH] } = options;
+  const outcome = await search(toolCtx, { query: question.question });
+  if (!outcome.ok) return { ok: false, rank: null, top: [], reason: `context_search failed: ${outcome.error?.message ?? 'unknown'}` };
+  const ranked = (outcome.data.candidates ?? [])
+    .map((candidate) => candidate.node_id)
+    .filter((id) => id !== rootId);
+  const wanted = new Set(question.node_ids ?? [question.node_id]);
+  const top = ranked.slice(0, topK);
+  const rank = ranked.findIndex((id) => wanted.has(id));
+  return {
+    ok: rank !== -1 && rank < topK,
+    rank: rank === -1 ? null : rank + 1,
+    /** How many results the search actually returned — the real denominator. */
+    ranked: ranked.length,
+    top,
+    reason:
+      rank === -1
+        ? `source ${[...wanted].join('/')} absent from ${ranked.length} ranked result(s)`
+        : rank < topK
+          ? null
+          : `source ranked ${rank + 1}, outside top ${topK}`,
+  };
+}
+
 // ── prep (Step 2) ────────────────────────────────────────────────────────
+/**
+ * A usable question has actual text in it. Stated as a predicate because the
+ * batch that voided the experiment was NOT a wrong answer — it was an empty
+ * string that every downstream check accepted: `''` shares no 3-gram with any
+ * summary, so the leakage gate passed it, printed `[ok]`, and 180 scored runs
+ * then asked two models nothing at all. A check that can pass on garbage is
+ * worse than no check, so the same predicate is enforced at three layers:
+ * here at prep, again at gate 12, and once more before a question is ever sent.
+ */
+export function questionTextValid(text) {
+  if (typeof text !== 'string') return { ok: false, reason: 'not a string' };
+  const trimmed = text.trim();
+  if (trimmed.length === 0) return { ok: false, reason: 'empty' };
+  if (trimmed.length < MIN_QUESTION_CHARS) return { ok: false, reason: `only ${trimmed.length} chars (min ${MIN_QUESTION_CHARS})` };
+  if (trimmed.split(/\s+/).length < MIN_QUESTION_WORDS) return { ok: false, reason: `only ${trimmed.split(/\s+/).length} words (min ${MIN_QUESTION_WORDS})` };
+  return { ok: true, reason: null };
+}
+
+const ANCHOR_RULES = [
+  '- ANCHOR IT. The question must name something distinctive from the surrounding excerpt — a file',
+  '  name, the activity underway, an adjacent decision — so that exactly ONE moment in a long',
+  '  session could be the one being asked about. A question like "how many characters were omitted',
+  '  when it was truncated?" is useless: a real session truncates hundreds of things.',
+  '- The anchor must come from the excerpt itself, not from the fact. Never include the fact.',
+  '- QUOTE ANCHORS VERBATIM. Copy the distinctive identifiers exactly as the excerpt spells them —',
+  '  file names, function or symbol names, flag names, script names, proper nouns. Do NOT paraphrase',
+  '  the anchor: "the marathon script" finds nothing if the excerpt says marathon.mjs; write',
+  '  marathon.mjs. Paraphrase everything else about the question, never the identifiers.',
+  '- Someone searching the session with your question as the search query must land on THIS moment.',
+].join('\n');
+
+const PARAPHRASE_RETRY_INSTRUCTIONS = [
+  'Your previous question was rejected. Write a better one.',
+  'Output ONE plain-text question and nothing else — no preamble, no reasoning, no JSON, no blank reply.',
+  'It must be at least one full sentence, must not contain the fact itself, and above all it must be',
+  'SPECIFIC ENOUGH TO IDENTIFY ONE MOMENT in a long session:',
+  ANCHOR_RULES,
+].join('\n');
+
+
 const PARAPHRASE_INSTRUCTIONS = [
   'You are writing ONE recall question for a memory benchmark.',
   '',
@@ -1455,11 +1851,11 @@ const PARAPHRASE_INSTRUCTIONS = [
   'Write a single question whose only correct answer is that fact.',
   '',
   'Rules:',
-  '- Use NONE of the distinctive vocabulary from the excerpt. Describe the situation in your own',
-  '  plain words, the way a colleague who was not there would ask about it.',
-  '- Do not mention file names, symbol names, or tool names from the excerpt.',
+  '- Describe the situation in your own plain words, the way a colleague who was not there would',
+  '  ask about it. Do not copy phrasing wholesale.',
+  ANCHOR_RULES,
   '- Do not include the fact itself in the question.',
-  '- One sentence. Output the question and nothing else.',
+  '- One or two sentences. Output the question and nothing else.',
 ].join('\n');
 
 async function runPrep(scenario, options) {
@@ -1476,11 +1872,13 @@ async function runPrep(scenario, options) {
   const budgets = budgetsFor(scenario, Math.min(...WINDOWS), ratio, verdict.slackFraction);
   const boundary = truncationBoundarySeq(events, scenario.blobs, budgets.K);
   const rootPins = summaries.size === 0 ? {} : rootByWindow(scenario, ratio, verdict.slackFraction);
-  for (const [w, pin] of Object.entries(rootPins)) {
-    console.log(
-      `root pin W=${w}: rootKeep=${pin.rootKeep ?? 'DEAD'} root ${pin.rootBlockTokens} tok, ` +
-        `${pin.branchesSurviving} branch summaries visible (seq ${pin.branchSeqRange?.from ?? '-'}-${pin.branchSeqRange?.to ?? '-'}), zoneB ${pin.zoneB}`,
-    );
+  for (const [w, perArm] of Object.entries(rootPins)) {
+    for (const [arm, pin] of Object.entries(perArm)) {
+      console.log(
+        `root pin W=${w}/${arm}: rootKeep=${pin.rootKeep ?? 'DEAD'} root ${pin.rootBlockTokens} tok, ` +
+          `${pin.branchesSurviving} branch summaries visible (seq ${pin.branchSeqRange?.from ?? '-'}-${pin.branchSeqRange?.to ?? '-'}), zoneB ${pin.zoneB}`,
+      );
+    }
   }
 
   const { onceOnly, all, wellShaped } = extractLiterals(events, scenario.blobs, scenario.store);
@@ -1496,42 +1894,40 @@ async function runPrep(scenario, options) {
     ? []
     : head.filter((r) => ![...summaries.values()].some((body) => body.includes(r.literal)));
 
-  const strata = {
-    head: pickDeterministic(head, Q_PER_STRATUM),
-    tail: pickDeterministic(tail, Q_PER_STRATUM),
-    deep: pickDeterministic(deep, Q_PER_STRATUM),
-  };
+  // ONE literal, ONE question. `deep` is a subset of `head` by construction
+  // (a head fact absent from every summary), so without an explicit carry-over
+  // the same literal is drawn twice — observed: s1-q01-head and s1-q07-deep
+  // both asked about `../src/trace/index.js`. Strata are therefore cut in a
+  // fixed order, each excluding everything already claimed.
+  const claimed = new Set();
+  const strata = {};
+  const pools = {};
+  for (const [stratum, source] of [['head', head], ['tail', tail], ['deep', deep]]) {
+    // The pool is deeper than the cut: a question whose literal fails the
+    // self-retrieval gate twice is discarded and the NEXT candidate drawn,
+    // which needs candidates to draw.
+    pools[stratum] = pickDeterministic(source, POOL_DEPTH, { exclude: claimed });
+    strata[stratum] = pools[stratum].slice(0, Q_PER_STRATUM);
+    for (const item of pools[stratum]) claimed.add(item.literal);
+  }
   // `spanning` is exploratory (Graft 5): two literals from two DIFFERENT
   // phases, so answering it needs at least a two-branch hop. Pre-registered as
   // exploratory here so it cannot be promoted into the primary verdict later.
   // Its literals are disjoint from the primary strata's — an exploratory probe
   // that re-asks a scored question's answer is not an independent probe.
-  const claimed = new Set(Object.values(strata).flat().map((r) => r.literal));
-  const spanPool = pickDeterministic(head, Q_PER_STRATUM * 2, { exclude: claimed });
-  const spanning = [];
-  for (let i = 0; i + 1 < spanPool.length && spanning.length < Q_PER_STRATUM; i += 2) {
-    spanning.push({ ...spanPool[i], pair: spanPool[i + 1] });
-  }
+  const spanPool = pickDeterministic(head, POOL_DEPTH * 2, { exclude: claimed });
+  const spanningPool = [];
+  for (let i = 0; i + 1 < spanPool.length; i += 2) spanningPool.push({ ...spanPool[i], pair: spanPool[i + 1] });
+  pools.spanning = spanningPool;
+  const spanning = spanningPool.slice(0, Q_PER_STRATUM);
 
   const selected = [];
   let n = 0;
   for (const stratum of [...PRIMARY_STRATA, ...EXPLORATORY_STRATA]) {
     const pool = stratum === 'spanning' ? spanning : strata[stratum];
     for (const item of pool) {
-      const literals = stratum === 'spanning' ? [item.literal, item.pair.literal] : [item.literal];
       n += 1;
-      selected.push({
-        id: `${scenario.id}-q${String(n).padStart(2, '0')}-${stratum}`,
-        stratum,
-        exploratory: EXPLORATORY_STRATA.includes(stratum),
-        node_id: item.node_id,
-        node_ids: stratum === 'spanning' ? [item.node_id, item.pair.node_id] : [item.node_id],
-        seq: item.seq,
-        kind: item.kind,
-        answer_literals: literals,
-        answer_regexes: answerRegexesFor(literals),
-        source_context: stratum === 'spanning' ? `${item.context}\n---\n${item.pair.context}` : item.context,
-      });
+      selected.push({ ...buildSelectedItem(item, stratum), id: `${scenario.id}-q${String(n).padStart(2, '0')}-${stratum}` });
     }
   }
 
@@ -1544,9 +1940,34 @@ async function runPrep(scenario, options) {
     counts: { distinct: all.length, once_only: onceOnly.length, head: head.length, tail: tail.length, deep: deep.length },
     deep_pending: deepPending,
     selected,
+    /** Deeper candidate lists, so a literal rejected by g15 has a successor. */
+    pools: Object.fromEntries(
+      Object.entries(pools).map(([stratum, list]) => [
+        stratum,
+        list.map((item) => ({
+          literal: item.literal,
+          pair: item.pair?.literal ?? null,
+          kind: item.kind,
+          seq: item.seq,
+          node_id: item.node_id,
+        })),
+      ]),
+    ),
   };
   writeFileSync(join(scenario.artifacts, 'literals.json'), `${JSON.stringify(literalsFile, null, 2)}\n`);
-  writeFileSync(manifestPath(scenario), `${JSON.stringify(buildManifest(scenario, { ratio, root_by_window: rootPins, literals: { sha256: sha256(JSON.stringify(literalsFile)) } }), null, 2)}\n`);
+  // Carry an intact question pin forward. Re-running the offline half to pick
+  // up a new pin shape must not silently unpin the question set — that would
+  // turn a bookkeeping refresh into a freeze break.
+  const previous = readManifest(scenario);
+  const questionsPathNow = join(scenario.artifacts, 'questions.json');
+  const questionsPin =
+    previous?.questions !== undefined && existsSync(questionsPathNow) && sha256File(questionsPathNow) === previous.questions.sha256
+      ? { questions: previous.questions }
+      : {};
+  writeFileSync(
+    manifestPath(scenario),
+    `${JSON.stringify(buildManifest(scenario, { ratio, root_by_window: rootPins, literals: { sha256: sha256(JSON.stringify(literalsFile)) }, ...questionsPin }), null, 2)}\n`,
+  );
   console.log(
     `strata: head=${strata.head.length} tail=${strata.tail.length} deep=${strata.deep.length} spanning=${spanning.length}` +
       (deepPending ? ' (deep is EMPTY: node_summaries has no rows yet)' : ''),
@@ -1570,28 +1991,125 @@ async function runPrep(scenario, options) {
   // ── live: one small paraphrase batch, third model family ───────────────
   loadDotEnv();
   const apiKey = process.env.OPENROUTER_API_KEY ?? process.env.OPENROUTER_KEY;
-  if (!apiKey) throw new Error('OPENROUTER_API_KEY is not set — the paraphrase batch needs it');
-  const meter = new InMemoryCostMeter({ capUsd: 0.25 });
-  const provider = new MeteredProvider(new OpenRouterProvider({ apiKey }), meter);
+  if (!apiKey && process.env.TRANSPLANT_MOCK !== '1') {
+    throw new Error('OPENROUTER_API_KEY is not set — the paraphrase batch needs it');
+  }
+  // Regeneration rounds: up to 4 strata x POOL_DEPTH draws x PARAPHRASE_ATTEMPTS
+  // at ~$0.0002 each. The cap is headroom, not a target.
+  const meter = new InMemoryCostMeter({ capUsd: 0.5 });
+  const provider =
+    process.env.TRANSPLANT_MOCK === '1'
+      ? new MeteredProvider(mockParaphraser(), meter)
+      : new MeteredProvider(new OpenRouterProvider({ apiKey }), meter);
   const questions = [];
-  for (const item of selected) {
-    // The paraphraser sees the raw L0 span and the fact. It never sees node_id,
-    // branch_id, the stratum, or which retrieval tool would surface the answer.
+  const toolCtx = toolContextFor(scenario);
+  const rootId = scenario.store.root()?.id ?? null;
+  const unusable = [];
+  const discarded = [];
+
+  /** One paraphrase attempt, fully validated: text, leakage, and self-retrieval. */
+  const attemptOne = async (item, attempt) => {
     const result = await provider.complete({
       model: PARAPHRASE_MODEL,
       messages: [
         {
           role: 'user',
-          content: `${PARAPHRASE_INSTRUCTIONS}\n\n# Excerpt\n${item.source_context}\n\n# Fact\n${item.answer_literals.join(' AND ')}`,
+          content:
+            `${attempt === 1 ? PARAPHRASE_INSTRUCTIONS : PARAPHRASE_RETRY_INSTRUCTIONS}` +
+            `\n\n# Excerpt\n${item.wide_context ?? item.source_context}\n\n# Fact\n${item.answer_literals.join(' AND ')}`,
         },
       ],
-      maxTokens: 200,
+      maxTokens: 1_024,
     });
-    const question = result.text.trim().split('\n')[0] ?? '';
-    const summary = summaries.get(item.node_id) ?? '';
-    const gate = leakageGate({ question, summaryText: summary, answerLiterals: item.answer_literals });
-    questions.push({ ...item, question, leakage: gate, rejected: !gate.ok });
-    console.log(`  ${item.id} [${gate.ok ? 'ok' : `REJECTED: shares ${JSON.stringify(gate.shared[0])}`}] ${question.slice(0, 110)}`);
+    const question = (result.text ?? '')
+      .trim()
+      .split('\n')
+      .find((line) => line.trim().length > 0)
+      ?.trim() ?? '';
+    const diagnostics = {
+      attempt,
+      model: result.model,
+      stopReason: result.stopReason,
+      rawTextLength: (result.text ?? '').length,
+      usage: result.usage,
+    };
+    const valid = questionTextValid(question);
+    if (!valid.ok) return { ok: false, question, why: `text: ${valid.reason}`, diagnostics };
+    // Leakage: the anchor must be RAW L0 phrasing, never summary phrasing.
+    const gate = leakageGate({
+      question,
+      summaryText: summaries.get(item.node_id) ?? '',
+      answerLiterals: item.answer_literals,
+    });
+    if (!gate.ok) return { ok: false, question, why: `leakage: shares ${JSON.stringify(gate.shared[0])}`, diagnostics, gate };
+    // g15, applied at prep so a bad question never reaches a scored batch.
+    const retrieval = await selfRetrieval({ ...item, question }, toolCtx, { rootId });
+    if (!retrieval.ok) return { ok: false, question, why: `self-retrieval: ${retrieval.reason}`, diagnostics, gate, retrieval };
+    return { ok: true, question, gate, retrieval, diagnostics };
+  };
+
+  // Draw a literal, try to paraphrase it into a question that clears all three
+  // checks; if it cannot after PARAPHRASE_ATTEMPTS, discard the LITERAL (not
+  // just the wording) and draw the next candidate from the same stratum's
+  // pool. `g15 + leakage` define the corridor: findable from the question,
+  // not lifted from the summary.
+  for (const stratum of [...PRIMARY_STRATA, ...EXPLORATORY_STRATA]) {
+    const pool = (pools[stratum] ?? []).map((item) => buildSelectedItem(item, stratum));
+    let placed = 0;
+    for (const item of pool) {
+      if (placed === Q_PER_STRATUM) break;
+      let outcome = null;
+      for (let attempt = 1; attempt <= PARAPHRASE_ATTEMPTS && (outcome === null || !outcome.ok); attempt += 1) {
+        outcome = await attemptOne(item, attempt);
+      }
+      if (!outcome.ok) {
+        discarded.push({
+          literal: item.answer_literals.join(' + '),
+          stratum,
+          why: outcome.why,
+          rank: outcome.retrieval?.rank ?? null,
+        });
+        console.log(`  [discarded ${stratum}] ${JSON.stringify(item.answer_literals)} — ${outcome.why}`);
+        continue;
+      }
+      placed += 1;
+      questions.push({
+        ...item,
+        id: `${scenario.id}-q${String(questions.length + 1).padStart(2, '0')}-${stratum}`,
+        question: outcome.question,
+        leakage: outcome.gate,
+        self_retrieval: { rank: outcome.retrieval.rank, top: outcome.retrieval.top },
+        rejected: false,
+      });
+      console.log(`  ${stratum} ${placed}/${Q_PER_STRATUM} [ok, source at rank ${outcome.retrieval.rank}] ${outcome.question.slice(0, 100)}`);
+    }
+    if (placed < Q_PER_STRATUM) {
+      unusable.push({ stratum, placed, needed: Q_PER_STRATUM, poolDepth: pool.length });
+    }
+  }
+
+  if (unusable.length > 0) {
+    // Loud, and nothing is written: a partial question set silently shrinks a
+    // pre-registered stratum, which is the same class of failure as an empty one.
+    throw new Error(
+      `prep could not fill every stratum — questions.json NOT written.\n` +
+        unusable.map((u) => `  ${u.stratum}: ${u.placed}/${u.needed} placed from a pool of ${u.poolDepth}`).join('\n') +
+        `\n${discarded.length} literal(s) discarded:\n` +
+        discarded.map((d) => `  ${d.stratum} ${JSON.stringify(d.literal)}: ${d.why}`).join('\n') +
+        `\n\nPer-stratum self-retrieval ranks of the discarded literals:\n` +
+        [...new Set(discarded.map((d) => d.stratum))]
+          .map((stratum) => {
+            const ranks = discarded.filter((d) => d.stratum === stratum && d.rank !== null).map((d) => d.rank);
+            const absent = discarded.filter((d) => d.stratum === stratum && d.rank === null).length;
+            return `  ${stratum}: ranks [${ranks.join(', ')}]${absent > 0 ? `, ${absent} absent from the ranking` : ''}`;
+          })
+          .join('\n') +
+        '\n\nIf one stratum is systematically far down the ranking while others place at 1-3, the constraint is ' +
+        "that BRANCH, not the literals: `context_search` indexes SUMMARY text, so a question anchored in raw L0 " +
+        'can only retrieve a branch whose summary kept that phrasing. The leakage gate forbids reusing summary ' +
+        'phrasing and g15 requires retrieving through it — a real corridor, and it can be narrow. Raising ' +
+        'POOL_DEPTH only helps when the ranks are near the threshold.',
+    );
   }
   const kept = questions.filter((q) => !q.rejected);
   const file = { scenario: scenario.id, trace_sha256: scenario.traceSha, paraphraser: PARAPHRASE_MODEL, ratio, questions: kept, rejected: questions.filter((q) => q.rejected) };
@@ -1617,6 +2135,30 @@ function providerFor(bucket, meters, capUsd = CAP_USD_PER_MODEL) {
   const apiKey = process.env.OPENROUTER_API_KEY ?? process.env.OPENROUTER_KEY;
   if (!apiKey) throw new Error('OPENROUTER_API_KEY is not set');
   return new MeteredProvider(new OpenRouterProvider({ apiKey }), meters.get(bucket));
+}
+
+/**
+ * Offline paraphraser. Echoes a distinctive phrase from the excerpt so the
+ * generated question actually retrieves its own source — which is what makes
+ * this a real exercise of the prep loop rather than a smoke test of it.
+ */
+function mockParaphraser() {
+  return {
+    id: 'transplant-mock-paraphraser',
+    async complete(request) {
+      const excerpt = request.messages[0]?.content ?? '';
+      const body = excerpt.slice(excerpt.indexOf('# Excerpt'), excerpt.indexOf('# Fact'));
+      const words = body.split(/\s+/).filter((w) => /^[A-Za-z][\w./-]{5,}$/.test(w));
+      const anchor = words.slice(0, 12).join(' ');
+      return {
+        text: `While working on ${anchor} — what value did the session settle on at that point?`,
+        model: request.model,
+        usage: { input: 100, output: 30, cacheRead: 0, cacheWrite: 0 },
+        toolCalls: [],
+        stopReason: 'end_turn',
+      };
+    },
+  };
 }
 
 /**
@@ -1661,8 +2203,25 @@ export function compactionSummaryValid(text) {
 }
 
 async function buildCompactionArtifact(scenario, budgets, meters) {
-  const path = join(scenario.artifacts, `compact-${budgets.window}.json`);
-  if (existsSync(path)) return JSON.parse(readFileSync(path, 'utf8'));
+  // A mocked build must never be freezable as the real baseline, for the same
+  // reason mocked runs land in `results-mock/`.
+  const path = join(
+    scenario.artifacts,
+    `compact-${budgets.window}${process.env.TRANSPLANT_MOCK === '1' ? '.mock' : ''}.json`,
+  );
+  if (existsSync(path)) {
+    const cached = JSON.parse(readFileSync(path, 'utf8'));
+    // A frozen artifact is not automatically a valid one: the W=16384 file on
+    // disk predates the floor and holds a 169-char conversational fragment.
+    // Loading it silently is how a broken baseline reaches a scored batch.
+    if (!compactionSummaryValid(cached.summary ?? '')) {
+      throw new Error(
+        `compaction artifact ${path} is not a valid baseline (${(cached.summary ?? '').length} chars) — ` +
+          'delete it and let --phase run rebuild it; a broken baseline makes every arm comparison meaningless',
+      );
+    }
+    return cached;
+  }
   // Its OWN ledger. Billing the build to whichever answering model happened to
   // trigger the lazy build made a $0.38 one-off look like per-question spend on
   // qwen; a baseline's construction cost is a real number and belongs in a
@@ -1688,6 +2247,7 @@ async function buildCompactionArtifact(scenario, budgets, meters) {
   if (current.length > 0) chunks.push(current);
 
   let running = '(no earlier summary)';
+  const skippedChunks = [];
   for (const chunk of chunks) {
     const result = await provider.complete({
       model: COMPACT_MODEL_OR,
@@ -1701,6 +2261,8 @@ async function buildCompactionArtifact(scenario, budgets, meters) {
             'Output ONLY the complete updated summary. Do not address the user, ask questions, or offer',
             'options — you are writing a document, not holding a conversation. Begin directly with the',
             'summary content.',
+            'If the new chunk adds little, output the complete running summary again with only minor',
+            'additions — always output the full document.',
             '',
             '# Running summary so far',
             running,
@@ -1740,13 +2302,38 @@ async function buildCompactionArtifact(scenario, budgets, meters) {
       });
       candidate = retry.text.trim();
       if (!compactionSummaryValid(candidate)) {
-        throw new Error(
-          `compaction build W=${budgets.window}: invalid summary after retry at chunk ` +
-            `${chunks.indexOf(chunk) + 1}/${chunks.length} (${candidate.length} chars) — refusing to freeze a broken baseline`,
+        // Neither die nor accept: KEEP the last good summary, record the gap,
+        // and continue. Dying mid-build throws away every chunk already paid
+        // for, and accepting a 234-char reply poisons every later chunk. A
+        // skipped chunk is honest and cheap here because the compact arm also
+        // carries a verbatim tail that overlaps the newest content anyway —
+        // and the gap is recorded, so no reader has to guess.
+        const index = chunks.indexOf(chunk) + 1;
+        skippedChunks.push({ chunk: index, of: chunks.length, chars: candidate.length });
+        console.log(
+          `[compaction W=${budgets.window}] SKIPPED chunk ${index}/${chunks.length}: still not a summary after the ` +
+            `corrective retry (${candidate.length} chars) — keeping the previous running summary and continuing`,
         );
+        continue;
       }
     }
     running = candidate;
+  }
+  // Skipping keeps the build alive; it must not become a way to accept an
+  // invalid baseline. If every chunk (or every chunk that mattered) was
+  // skipped, `running` is still the placeholder — an artifact that summarises
+  // nothing. Both rules hold together only if the FINAL document is checked.
+  if (!compactionSummaryValid(running)) {
+    throw new Error(
+      `compaction build W=${budgets.window}: the final rolling summary is not a document ` +
+        `(${running.length} chars after ${skippedChunks.length}/${chunks.length} skipped chunks) — refusing to freeze a broken baseline`,
+    );
+  }
+  if (skippedChunks.length > chunks.length * MAX_SKIPPED_CHUNK_FRACTION) {
+    console.log(
+      `[compaction W=${budgets.window}] WARNING: ${skippedChunks.length}/${chunks.length} chunks skipped — ` +
+        'this baseline is missing a large share of the session and should be treated as degraded, not representative',
+    );
   }
   const snapshot = meters.get(bucket).snapshot();
   const artifact = {
@@ -1757,6 +2344,8 @@ async function buildCompactionArtifact(scenario, budgets, meters) {
     model: COMPACT_MODEL_OR,
     model_spec: COMPACT_MODEL,
     max_summary_tokens: MAX_SUMMARY_TOKENS,
+    /** Chunks whose model output never became a summary; their content is absent. */
+    skipped_chunks: skippedChunks,
     build: {
       usd: snapshot.totalUsd,
       calls: snapshot.entries.reduce((n, e) => n + e.calls, 0),
@@ -1768,7 +2357,8 @@ async function buildCompactionArtifact(scenario, budgets, meters) {
   writeFileSync(path, `${JSON.stringify(artifact, null, 2)}\n`);
   console.log(
     `built compaction artifact W=${budgets.window} $${snapshot.totalUsd.toFixed(4)} ` +
-      `(${chunks.length} chunks x ${chunkBudget} tok, ${artifact.build.calls} calls on ${COMPACT_MODEL_OR}, maxSummaryTokens=${MAX_SUMMARY_TOKENS})`,
+      `(${chunks.length} chunks x ${chunkBudget} tok, ${artifact.build.calls} calls on ${COMPACT_MODEL_OR}, maxSummaryTokens=${MAX_SUMMARY_TOKENS})` +
+      (skippedChunks.length === 0 ? '' : `; SKIPPED ${skippedChunks.length} chunk(s): ${skippedChunks.map((c) => `${c.chunk}/${c.of}`).join(', ')}`),
   );
   return artifact;
 }
@@ -1808,8 +2398,11 @@ async function buildArm(scenario, arm, budgets, artifacts) {
       return { system: FLAT_SYSTEM, context, tools: [], meta: { chunks: artifact.chunks } };
     }
     case 'tree':
+    case 'tree-wide':
     case 'tree-static': {
-      const withTools = arm === 'tree';
+      // `tree-wide` differs from `tree` only in the rootKeep already derived
+      // into `budgets` — same assembler, same tools, same everything else.
+      const withTools = arm !== 'tree-static';
       const { assembler, prompt } = buildTreePrompt(scenario, budgets, { withTools });
       return {
         system: prompt.system,
@@ -1835,6 +2428,11 @@ const SMOKE_QUESTION =
   'Before answering anything else, call context_search once with a query of your choice, then reply with the id of the first result.';
 
 export async function runOneReplicate(scenario, built, question, model, provider, budgets) {
+  // Last line of defence. 180 scored runs once asked two models the empty
+  // string and dutifully recorded 0/1 for the small talk that came back; a run
+  // that cannot state its own question is not a data point.
+  const asked = questionTextValid(question);
+  if (!asked.ok) throw new Error(`refusing to run with an unusable question (${asked.reason}): ${JSON.stringify(question)}`);
   const messages =
     built.messages !== undefined
       ? [...built.messages, { role: 'user', content: question }]
@@ -1984,6 +2582,21 @@ async function runArms(scenario, options) {
     if (!existsSync(questionsPath)) throw new Error(`no questions.json at ${questionsPath} — run --phase prep --allow-live`);
     questions = JSON.parse(readFileSync(questionsPath, 'utf8')).questions;
     if (options.stratum !== undefined) questions = questions.filter((q) => q.stratum === options.stratum);
+    // Pre-flight, before a single token is spent: an unusable question set
+    // should abort the batch, not produce one error row per run. (Layer (c)
+    // inside `runOneReplicate` stays as the last-resort guard for a question
+    // that reaches it by some other path.)
+    const unusable = questions
+      .map((q) => ({ id: q.id, ...questionTextValid(q.question) }))
+      .filter((q) => !q.ok);
+    if (questions.length === 0) throw new Error(`no questions to run from ${questionsPath}`);
+    if (unusable.length > 0) {
+      throw new Error(
+        `${unusable.length}/${questions.length} question(s) in ${questionsPath} are unusable — refusing to run:\n` +
+          unusable.map((q) => `  ${q.id}: ${q.reason}`).join('\n') +
+          '\nRe-run `--phase prep --allow-live`; it now fails loudly rather than writing empty questions.',
+      );
+    }
   }
 
   const retriever = new TreeRetriever({ store: scenario.store, blobs: scenario.blobs, trace: scenario.trace });
@@ -2011,17 +2624,56 @@ async function runArms(scenario, options) {
     }
   }
   const compactionBuildUsd = artifacts.compaction?.build?.usd ?? null;
+  const compactionSkippedChunks = artifacts.compaction?.skipped_chunks ?? [];
+  if (compactionSkippedChunks.length > 0) {
+    console.log(
+      `compaction artifact W=${window} has ${compactionSkippedChunks.length} SKIPPED chunk(s) ` +
+        `(${compactionSkippedChunks.map((c) => `${c.chunk}/${c.of}`).join(', ')}) — that content is absent from the baseline summary`,
+    );
+  }
 
   const rows = [];
   for (const model of models) {
     const provider = providerFor(model, meters);
     for (const arm of arms) {
-      const built = { ...(await buildArm(scenario, arm, budgets, artifacts)), toolCtx };
-      const n = smoke ? SMOKE_N : arm === 'naive-full' ? 1 : questions[0]?.exploratory === true ? SPANNING_REPS : reps;
-      for (const question of questions) {
-        for (let rep = 1; rep <= n; rep += 1) {
+      // Only the tree arms have an arm-dependent budget (their rootKeep); the
+      // window, K, zone sizes and reply cap are shared, so the baselines are
+      // byte-for-byte what they were before this arm existed.
+      const armBudgets = TREE_ARMS.includes(arm)
+        ? budgetsFor(scenario, window, ratio, ratioVerdict(ratio).slackFraction, arm)
+        : budgets;
+      if (TREE_ARMS.includes(arm)) {
+        console.log(
+          `  [${arm}] rootKeep=${armBudgets.rootKeep} root=${armBudgets.rootBlockTokens} tok, ` +
+            `${armBudgets.branchesSurviving} branch summaries visible ` +
+            `(seq ${armBudgets.branchSeqRange?.from ?? '-'}-${armBudgets.branchSeqRange?.to ?? '-'})`,
+        );
+      }
+      const built = { ...(await buildArm(scenario, arm, armBudgets, artifacts)), toolCtx };
+      const n = smoke ? SMOKE_N : questions[0]?.exploratory === true ? SPANNING_REPS : reps;
+      // `naive-full` is a PRECONDITION, not a scored arm: it exists to log one
+      // HTTP 400 per model as context-death evidence. Asking it all 12
+      // questions re-proves the same 400 twelve times and spends twelve times
+      // the tokens doing it, so it runs exactly once and is logged once.
+      const armQuestions = arm === 'naive-full' ? questions.slice(0, 1) : questions;
+      const armReps = arm === 'naive-full' ? 1 : n;
+      for (const question of armQuestions) {
+        for (let rep = 1; rep <= armReps; rep += 1) {
           try {
-            const r = await runOneReplicate(scenario, built, question.question, model, provider, budgets);
+            let r;
+            for (let attempt = 1; attempt <= 2; attempt += 1) {
+              try {
+                r = await runOneReplicate(scenario, built, question.question, model, provider, armBudgets);
+                break;
+              } catch (error) {
+                // A malformed provider body is transient and costs the run;
+                // one retry converts a lost cell into a data point. Anything
+                // else propagates to the classifier below untouched.
+                const kind = classifyRunError(error);
+                if (!kind.retryable || attempt === 2) throw error;
+                console.log(`  ${arm}/${model}/${question.id}#${rep}: ${kind.status}, retrying once`);
+              }
+            }
             const grade = smoke || question.answer_literals.length === 0 ? { score: null, success: null } : gradeAnswer(r.finalText, question);
             rows.push({ scenario: scenario.id, model, arm, window, question: question.id, stratum: question.stratum, rep, ...r, ...grade });
             console.log(
@@ -2035,11 +2687,29 @@ async function runArms(scenario, options) {
               rows.push({ scenario: scenario.id, model, arm, window, question: question.id, stratum: question.stratum, rep, status: 'cost_cap', score: null });
               break;
             }
-            const kind = error instanceof ModelCallError ? 'model_call_error' : 'error';
             // Step 5's routing signal: unparseable tool args mean this model's
             // tree arm runs as `tree-static` and `deep` is UNTESTABLE for it.
-            console.log(`  ${arm}/${model}/${question.id}#${rep}: ${kind} ${error.message.slice(0, 160)}`);
-            rows.push({ scenario: scenario.id, model, arm, window, question: question.id, stratum: question.stratum, rep, status: kind, error: error.message, score: null });
+            const kind = classifyRunError(error);
+            console.log(
+              `  ${arm}/${model}/${question.id}#${rep}: ${kind.status} ${error.message.slice(0, 160)}` +
+                (kind.hint === null ? '' : `\n    -> ${kind.hint}`),
+            );
+            rows.push({
+              scenario: scenario.id,
+              model,
+              arm,
+              window,
+              question: question.id,
+              stratum: question.stratum,
+              rep,
+              status: kind.status,
+              error: error.message,
+              errorHint: kind.hint,
+              // Without a stack the last one took a full offline reproduction
+              // to locate; three frames would have named it immediately.
+              errorStack: (error.stack ?? '').split('\n').slice(0, 4).join('\n'),
+              score: null,
+            });
           }
           const total = [...meters.values()].reduce((sum, m) => sum + m.totalUsd(), 0);
           if (total > CAP_USD_TOTAL) throw new Error(`total spend $${total.toFixed(2)} exceeded the $${CAP_USD_TOTAL} cap`);
@@ -2057,7 +2727,7 @@ async function runArms(scenario, options) {
   const truncatedRuns = rows.filter((r) => (r.resultsTruncated ?? 0) > 0).length;
   writeFileSync(
     join(out, name),
-    `${JSON.stringify({ budgets, compactionBuildUsd, compaction: artifacts.compaction?.build ?? null, rows }, null, 2)}\n`,
+    `${JSON.stringify({ budgets, compactionBuildUsd, compactionSkippedChunks, compaction: artifacts.compaction?.build ?? null, rows }, null, 2)}\n`,
   );
   console.log(
     `\nwrote ${join(out, name)}; answering spend ${[...meters]
@@ -2128,6 +2798,36 @@ export function contextGrowthSeries(rows) {
   return out;
 }
 
+/**
+ * Names a failed run instead of recording a bare message.
+ *
+ * The batch-2 tree arm lost 14 of 60 runs at W=32768 to
+ * `Cannot read properties of undefined (reading '0')` — sporadic, per-call,
+ * and untraceable from the row. It is not harness code: the §9 handlers were
+ * exercised offline against every node kind (and a bogus id) without a throw.
+ * It is `packages/core/src/models/openrouter.ts:153`, which reads
+ * `response.choices[0]` and only THEN checks `choice === undefined` — so a
+ * body with no `choices` key at all throws before the guard can fire.
+ * Classified (and retried once) here rather than patched there because core is
+ * outside this harness's remit; the one-line fix is `response.choices?.[0]`.
+ */
+export function classifyRunError(error) {
+  const message = error?.message ?? String(error);
+  if (/Cannot read properties of undefined \(reading '0'\)/.test(message)) {
+    return {
+      status: 'provider_bad_response',
+      retryable: true,
+      hint:
+        'OpenRouter returned a body with no `choices` array. packages/core/src/models/openrouter.ts:153 ' +
+        'indexes `response.choices[0]` BEFORE its `choice === undefined` guard, so the guard never fires. ' +
+        'One-line fix: `const choice = response.choices?.[0];`',
+    };
+  }
+  if (error instanceof CostCapExceededError) return { status: 'cost_cap', retryable: false, hint: null };
+  if (error instanceof ModelCallError) return { status: 'model_call_error', retryable: false, hint: null };
+  return { status: 'error', retryable: false, hint: null };
+}
+
 // ── verdict (Step 6's reporting half) ────────────────────────────────────
 function runVerdict(scenario) {
   const dir = join(scenario.artifacts, 'results');
@@ -2181,6 +2881,19 @@ function runVerdict(scenario) {
           rows.filter((r) => r.model === model && r.window === window && r.arm === arm && r.stratum === stratum && typeof r.score === 'number').map((r) => r.score);
         const tree = pick('tree').length > 0 ? pick('tree') : pick('tree-static');
         const compact = pick('compact-rolling');
+        // R6: the ablation is reported beside the primary contrast, from the
+        // same results directory and the same epoch — one variable, Zone B
+        // composition, so a difference here is attributable to it and nothing
+        // else. Reported whenever the cells exist; absent otherwise.
+        const wide = pick('tree-wide');
+        if (wide.length > 0 && tree.length > 0) {
+          const ablation = bootstrapCI(wide, tree);
+          console.log(
+            `${model} W=${window} ${stratum}: R6 tree-wide − tree = ${ablation.point.toFixed(3)} ` +
+              `CI [${ablation.lo.toFixed(3)}, ${ablation.hi.toFixed(3)}] ` +
+              `${ablation.crossesZero ? 'crosses 0 (no detectable effect of Zone B width)' : 'clear of 0'}`,
+          );
+        }
         if (tree.length === 0 || compact.length === 0) continue;
         const ci = bootstrapCI(tree, compact);
         const esc = escalationN(mean(tree), mean(compact));

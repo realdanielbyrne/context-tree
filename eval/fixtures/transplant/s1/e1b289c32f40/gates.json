@@ -99,6 +99,7 @@
         "to": 754
       },
       "overBudget": [],
+      "arm": "tree",
       "rootSummarySha": "f80808c3fd62736e439d06ad42b29a6fa694d4ebb6c4397919a62f04bb8e86fc"
     },
     "32768": {
@@ -146,6 +147,7 @@
         "to": 754
       },
       "overBudget": [],
+      "arm": "tree",
       "rootSummarySha": "2c7fbe668193766cdd17e3de4b816cdcd0be5e4fcda3d881c2f7a73e76cc8596"
     }
   },
@@ -197,39 +199,73 @@
     {
       "id": "g8-over-budget",
       "status": "PASS",
-      "detail": "overBudget == [] at W = 16384 and 32768; branch summaries surviving in Zone B: W=16384 -> 1/21 (rootKeep=2, root 2587 tok), W=32768 -> 2/21 (rootKeep=16, root 6095 tok)",
+      "detail": "overBudget == [] for every (W, arm); branch summaries surviving: W=16384/tree -> 1/21 (keep2, root 2587 tok), W=16384/tree-wide -> 1/21 (keep2, root 2587 tok), W=32768/tree -> 2/21 (keep16, root 6095 tok), W=32768/tree-wide -> 11/21 (keep2, root 2587 tok)",
       "survivors": {
-        "16384": 1,
-        "32768": 2
+        "16384/tree": 1,
+        "16384/tree-wide": 1,
+        "32768/tree": 2,
+        "32768/tree-wide": 11
       }
     },
     {
       "id": "g9-zone-b-nesting",
       "status": "PASS",
-      "detail": "Zone B branch lists nest newest-aligned across W ∈ {16384:1b/keep2/root2587, 32768:2b/keep16/root6095, 65536:19b/keep40/root6917, 200000:21b/keep40/root6917}; creation order intact, root excluded (derived per window) — DEAD, no Zone B renders: W=8192 (zoneB 1925; smallest keep=2 root 2587 tok leaves no branch)",
+      "detail": "Zone B branch lists nest newest-aligned across W ∈ {tree@16384:1b/keep2, tree@32768:2b/keep16, tree@65536:19b/keep40, tree@200000:21b/keep40, tree-wide@16384:1b/keep2, tree-wide@32768:11b/keep2, tree-wide@65536:21b/keep2, tree-wide@200000:21b/keep2}; creation order intact, root excluded (derived per window) — DEAD, no Zone B renders: tree@W=8192 (zoneB 1925; no keep leaves a branch; root 2587 tok), tree-wide@W=8192 (zoneB 1925; no keep leaves a branch; root 6917 tok)",
       "nesting": [
         {
+          "arm": "tree",
           "w": 16384,
           "rootKeep": 2,
           "rootBlockTokens": 2587,
           "branches": 1
         },
         {
+          "arm": "tree",
           "w": 32768,
           "rootKeep": 16,
           "rootBlockTokens": 6095,
           "branches": 2
         },
         {
+          "arm": "tree",
           "w": 65536,
           "rootKeep": 40,
           "rootBlockTokens": 6917,
           "branches": 19
         },
         {
+          "arm": "tree",
           "w": 200000,
           "rootKeep": 40,
           "rootBlockTokens": 6917,
+          "branches": 21
+        },
+        {
+          "arm": "tree-wide",
+          "w": 16384,
+          "rootKeep": 2,
+          "rootBlockTokens": 2587,
+          "branches": 1
+        },
+        {
+          "arm": "tree-wide",
+          "w": 32768,
+          "rootKeep": 2,
+          "rootBlockTokens": 2587,
+          "branches": 11
+        },
+        {
+          "arm": "tree-wide",
+          "w": 65536,
+          "rootKeep": 2,
+          "rootBlockTokens": 2587,
+          "branches": 21
+        },
+        {
+          "arm": "tree-wide",
+          "w": 200000,
+          "rootKeep": 2,
+          "rootBlockTokens": 2587,
           "branches": 21
         }
       ]
@@ -242,22 +278,368 @@
     {
       "id": "g11-literal-uniqueness",
       "status": "PASS",
-      "detail": "all 12 selected item(s) have literals occurring exactly once in L0"
+      "detail": "12 item(s): every answer literal occurs exactly once in L0 and belongs to exactly one question"
     },
     {
       "id": "g12-leakage-gate",
       "status": "PASS",
-      "detail": "12 question(s): zero 3-gram overlap (answer literal excluded); deep literals absent from every summary"
+      "detail": "12 question(s), all non-trivial (>= 20 chars, >= 4 words): zero 3-gram overlap (answer literal excluded); deep literals absent from every summary"
     },
     {
       "id": "g13-manifest-hashed",
       "status": "PASS",
-      "detail": "question-set sha 2f225798cfba matches the manifest; grader = exactMatchJudge + regex, zero model calls"
+      "detail": "question-set sha 1fbd2a854454 matches the manifest; grader = exactMatchJudge + regex, zero model calls"
     },
     {
       "id": "g14-cost-cap",
       "status": "PASS",
       "detail": "CostCapExceededError fires past the cap (meter recorded $30.00)"
+    },
+    {
+      "id": "g15-self-retrieval",
+      "status": "PASS",
+      "detail": "all 12 question(s) retrieve their own source within top 20 (ranks: 15, 11, 15, 10, 7, 5, 1, 11, 17, 6, 2, 11; task root excluded) | strict top-3: 2/12 | WARNING: topK=20 >= 19 results returned, so this threshold accepts every result the search returns and proves nothing about referent uniqueness",
+      "selfRetrieval": [
+        {
+          "id": "s1-q01-head",
+          "ok": true,
+          "rank": 15,
+          "ranked": 19,
+          "top": [
+            "n_1WAD2VDY2YPXVF79V20K82TEXK",
+            "n_1F6E3RF111CVYDQ7MA643CRGBC",
+            "n_1ZDHE4823CEZMPPMH8M8H452BP",
+            "n_18ZHNQYZRHWS0K4P4GHXHF1ND5",
+            "n_11RPJ28833FQ1CY47DSW5T93NG",
+            "n_1A84WKF26NWA90DDR9ENP8BMSD",
+            "n_16BHTPNT77GCNRJQH6ASZJGQGT",
+            "n_1KYBBC6PCAH0M474M0EMX9AD0Z",
+            "n_1NH76HCY6DZ25G5YBTJMBT3BXJ",
+            "n_10MK5T7JRRKENQ275F460TS827",
+            "n_1C6D33C0FMZ129RA2R0GXXCRM6",
+            "n_1JNW5D8CNYSATE4X6NV3Z39R81",
+            "n_1PPHC64K0QTM0N8JD3RPST4GZ8",
+            "n_1C0BDXFHPYAX7N4B5AGK8KB4Q5",
+            "n_1E48X9HAFPEYNQHHSF609KHMEE",
+            "n_1BGBV85XX4QTHMYPGFB7YAF1HT",
+            "n_1TVA5EV1N43SYCJM48K080EKF1",
+            "n_1X4N1KJ480NEHTRYEX6WE1XRKR",
+            "n_1FJ2VN7BZMD0C22JVNB4NGNNPW"
+          ],
+          "reason": null
+        },
+        {
+          "id": "s1-q02-head",
+          "ok": true,
+          "rank": 11,
+          "ranked": 19,
+          "top": [
+            "n_1WAD2VDY2YPXVF79V20K82TEXK",
+            "n_1NH76HCY6DZ25G5YBTJMBT3BXJ",
+            "n_16BHTPNT77GCNRJQH6ASZJGQGT",
+            "n_18ZHNQYZRHWS0K4P4GHXHF1ND5",
+            "n_1A84WKF26NWA90DDR9ENP8BMSD",
+            "n_1KYBBC6PCAH0M474M0EMX9AD0Z",
+            "n_1ZDHE4823CEZMPPMH8M8H452BP",
+            "n_1TVA5EV1N43SYCJM48K080EKF1",
+            "n_1E48X9HAFPEYNQHHSF609KHMEE",
+            "n_10MK5T7JRRKENQ275F460TS827",
+            "n_1C0BDXFHPYAX7N4B5AGK8KB4Q5",
+            "n_1PPHC64K0QTM0N8JD3RPST4GZ8",
+            "n_11RPJ28833FQ1CY47DSW5T93NG",
+            "n_1X4N1KJ480NEHTRYEX6WE1XRKR",
+            "n_1FJ2VN7BZMD0C22JVNB4NGNNPW",
+            "n_15NSXSQ4W9X9C2ETGMA5QCSJ05",
+            "n_161P8JTCNTZ2S217FDR4ABC2NB",
+            "n_1JNW5D8CNYSATE4X6NV3Z39R81",
+            "n_2FR05HT5ABQ061NAG0DVSDF6ZH"
+          ],
+          "reason": null
+        },
+        {
+          "id": "s1-q03-head",
+          "ok": true,
+          "rank": 15,
+          "ranked": 19,
+          "top": [
+            "n_1WAD2VDY2YPXVF79V20K82TEXK",
+            "n_1A84WKF26NWA90DDR9ENP8BMSD",
+            "n_1PPHC64K0QTM0N8JD3RPST4GZ8",
+            "n_16BHTPNT77GCNRJQH6ASZJGQGT",
+            "n_11RPJ28833FQ1CY47DSW5T93NG",
+            "n_1ZDHE4823CEZMPPMH8M8H452BP",
+            "n_1X4N1KJ480NEHTRYEX6WE1XRKR",
+            "n_1NH76HCY6DZ25G5YBTJMBT3BXJ",
+            "n_1BGBV85XX4QTHMYPGFB7YAF1HT",
+            "n_10MK5T7JRRKENQ275F460TS827",
+            "n_18ZHNQYZRHWS0K4P4GHXHF1ND5",
+            "n_1FJ2VN7BZMD0C22JVNB4NGNNPW",
+            "n_1KYBBC6PCAH0M474M0EMX9AD0Z",
+            "n_1TVA5EV1N43SYCJM48K080EKF1",
+            "n_1JNW5D8CNYSATE4X6NV3Z39R81",
+            "n_1C0BDXFHPYAX7N4B5AGK8KB4Q5",
+            "n_161P8JTCNTZ2S217FDR4ABC2NB",
+            "n_1F6E3RF111CVYDQ7MA643CRGBC",
+            "n_1C6D33C0FMZ129RA2R0GXXCRM6"
+          ],
+          "reason": null
+        },
+        {
+          "id": "s1-q04-tail",
+          "ok": true,
+          "rank": 10,
+          "ranked": 18,
+          "top": [
+            "n_1BGBV85XX4QTHMYPGFB7YAF1HT",
+            "n_1ZDHE4823CEZMPPMH8M8H452BP",
+            "n_11RPJ28833FQ1CY47DSW5T93NG",
+            "n_161P8JTCNTZ2S217FDR4ABC2NB",
+            "n_2WKHMBCXPKYN0V4JHSY3BG3DFQ",
+            "n_16BHTPNT77GCNRJQH6ASZJGQGT",
+            "n_10MK5T7JRRKENQ275F460TS827",
+            "n_1WAD2VDY2YPXVF79V20K82TEXK",
+            "n_1PPHC64K0QTM0N8JD3RPST4GZ8",
+            "n_1A84WKF26NWA90DDR9ENP8BMSD",
+            "n_1X4N1KJ480NEHTRYEX6WE1XRKR",
+            "n_18ZHNQYZRHWS0K4P4GHXHF1ND5",
+            "n_1E48X9HAFPEYNQHHSF609KHMEE",
+            "n_1FJ2VN7BZMD0C22JVNB4NGNNPW",
+            "n_1TVA5EV1N43SYCJM48K080EKF1",
+            "n_15NSXSQ4W9X9C2ETGMA5QCSJ05",
+            "n_1C6D33C0FMZ129RA2R0GXXCRM6",
+            "n_1F6E3RF111CVYDQ7MA643CRGBC"
+          ],
+          "reason": null
+        },
+        {
+          "id": "s1-q05-tail",
+          "ok": true,
+          "rank": 7,
+          "ranked": 19,
+          "top": [
+            "n_1WAD2VDY2YPXVF79V20K82TEXK",
+            "n_10MK5T7JRRKENQ275F460TS827",
+            "n_1NH76HCY6DZ25G5YBTJMBT3BXJ",
+            "n_1E48X9HAFPEYNQHHSF609KHMEE",
+            "n_1C6D33C0FMZ129RA2R0GXXCRM6",
+            "n_1FJ2VN7BZMD0C22JVNB4NGNNPW",
+            "n_1PPHC64K0QTM0N8JD3RPST4GZ8",
+            "n_1X4N1KJ480NEHTRYEX6WE1XRKR",
+            "n_1KYBBC6PCAH0M474M0EMX9AD0Z",
+            "n_161P8JTCNTZ2S217FDR4ABC2NB",
+            "n_1BGBV85XX4QTHMYPGFB7YAF1HT",
+            "n_16BHTPNT77GCNRJQH6ASZJGQGT",
+            "n_1ZDHE4823CEZMPPMH8M8H452BP",
+            "n_1F6E3RF111CVYDQ7MA643CRGBC",
+            "n_1A84WKF26NWA90DDR9ENP8BMSD",
+            "n_11RPJ28833FQ1CY47DSW5T93NG",
+            "n_1C0BDXFHPYAX7N4B5AGK8KB4Q5",
+            "n_18ZHNQYZRHWS0K4P4GHXHF1ND5",
+            "n_15NSXSQ4W9X9C2ETGMA5QCSJ05"
+          ],
+          "reason": null
+        },
+        {
+          "id": "s1-q06-tail",
+          "ok": true,
+          "rank": 5,
+          "ranked": 19,
+          "top": [
+            "n_1C6D33C0FMZ129RA2R0GXXCRM6",
+            "n_1KYBBC6PCAH0M474M0EMX9AD0Z",
+            "n_1WAD2VDY2YPXVF79V20K82TEXK",
+            "n_1E48X9HAFPEYNQHHSF609KHMEE",
+            "n_1PPHC64K0QTM0N8JD3RPST4GZ8",
+            "n_15NSXSQ4W9X9C2ETGMA5QCSJ05",
+            "n_18ZHNQYZRHWS0K4P4GHXHF1ND5",
+            "n_1NH76HCY6DZ25G5YBTJMBT3BXJ",
+            "n_1C0BDXFHPYAX7N4B5AGK8KB4Q5",
+            "n_11RPJ28833FQ1CY47DSW5T93NG",
+            "n_161P8JTCNTZ2S217FDR4ABC2NB",
+            "n_1X4N1KJ480NEHTRYEX6WE1XRKR",
+            "n_1ZDHE4823CEZMPPMH8M8H452BP",
+            "n_1FJ2VN7BZMD0C22JVNB4NGNNPW",
+            "n_16BHTPNT77GCNRJQH6ASZJGQGT",
+            "n_10MK5T7JRRKENQ275F460TS827",
+            "n_1TVA5EV1N43SYCJM48K080EKF1",
+            "n_1A84WKF26NWA90DDR9ENP8BMSD",
+            "n_1JNW5D8CNYSATE4X6NV3Z39R81"
+          ],
+          "reason": null
+        },
+        {
+          "id": "s1-q07-deep",
+          "ok": true,
+          "rank": 1,
+          "ranked": 19,
+          "top": [
+            "n_1E48X9HAFPEYNQHHSF609KHMEE",
+            "n_1PPHC64K0QTM0N8JD3RPST4GZ8",
+            "n_18ZHNQYZRHWS0K4P4GHXHF1ND5",
+            "n_1WAD2VDY2YPXVF79V20K82TEXK",
+            "n_1A84WKF26NWA90DDR9ENP8BMSD",
+            "n_1C6D33C0FMZ129RA2R0GXXCRM6",
+            "n_1ZDHE4823CEZMPPMH8M8H452BP",
+            "n_1KYBBC6PCAH0M474M0EMX9AD0Z",
+            "n_11RPJ28833FQ1CY47DSW5T93NG",
+            "n_1TVA5EV1N43SYCJM48K080EKF1",
+            "n_1C0BDXFHPYAX7N4B5AGK8KB4Q5",
+            "n_15NSXSQ4W9X9C2ETGMA5QCSJ05",
+            "n_16BHTPNT77GCNRJQH6ASZJGQGT",
+            "n_10MK5T7JRRKENQ275F460TS827",
+            "n_161P8JTCNTZ2S217FDR4ABC2NB",
+            "n_1F6E3RF111CVYDQ7MA643CRGBC",
+            "n_1X4N1KJ480NEHTRYEX6WE1XRKR",
+            "n_1BGBV85XX4QTHMYPGFB7YAF1HT",
+            "n_1NH76HCY6DZ25G5YBTJMBT3BXJ"
+          ],
+          "reason": null
+        },
+        {
+          "id": "s1-q08-deep",
+          "ok": true,
+          "rank": 11,
+          "ranked": 19,
+          "top": [
+            "n_1E48X9HAFPEYNQHHSF609KHMEE",
+            "n_161P8JTCNTZ2S217FDR4ABC2NB",
+            "n_1FJ2VN7BZMD0C22JVNB4NGNNPW",
+            "n_1KYBBC6PCAH0M474M0EMX9AD0Z",
+            "n_1WAD2VDY2YPXVF79V20K82TEXK",
+            "n_16BHTPNT77GCNRJQH6ASZJGQGT",
+            "n_1NH76HCY6DZ25G5YBTJMBT3BXJ",
+            "n_1JNW5D8CNYSATE4X6NV3Z39R81",
+            "n_10MK5T7JRRKENQ275F460TS827",
+            "n_1ZDHE4823CEZMPPMH8M8H452BP",
+            "n_1C0BDXFHPYAX7N4B5AGK8KB4Q5",
+            "n_1PPHC64K0QTM0N8JD3RPST4GZ8",
+            "n_11RPJ28833FQ1CY47DSW5T93NG",
+            "n_1A84WKF26NWA90DDR9ENP8BMSD",
+            "n_1X4N1KJ480NEHTRYEX6WE1XRKR",
+            "n_1TVA5EV1N43SYCJM48K080EKF1",
+            "n_1BGBV85XX4QTHMYPGFB7YAF1HT",
+            "n_15NSXSQ4W9X9C2ETGMA5QCSJ05",
+            "n_1C6D33C0FMZ129RA2R0GXXCRM6"
+          ],
+          "reason": null
+        },
+        {
+          "id": "s1-q09-deep",
+          "ok": true,
+          "rank": 17,
+          "ranked": 19,
+          "top": [
+            "n_1WAD2VDY2YPXVF79V20K82TEXK",
+            "n_18ZHNQYZRHWS0K4P4GHXHF1ND5",
+            "n_1ZDHE4823CEZMPPMH8M8H452BP",
+            "n_10MK5T7JRRKENQ275F460TS827",
+            "n_16BHTPNT77GCNRJQH6ASZJGQGT",
+            "n_1E48X9HAFPEYNQHHSF609KHMEE",
+            "n_1NH76HCY6DZ25G5YBTJMBT3BXJ",
+            "n_1FJ2VN7BZMD0C22JVNB4NGNNPW",
+            "n_1PPHC64K0QTM0N8JD3RPST4GZ8",
+            "n_1KYBBC6PCAH0M474M0EMX9AD0Z",
+            "n_1F6E3RF111CVYDQ7MA643CRGBC",
+            "n_1BGBV85XX4QTHMYPGFB7YAF1HT",
+            "n_161P8JTCNTZ2S217FDR4ABC2NB",
+            "n_11RPJ28833FQ1CY47DSW5T93NG",
+            "n_1A84WKF26NWA90DDR9ENP8BMSD",
+            "n_1X4N1KJ480NEHTRYEX6WE1XRKR",
+            "n_1JNW5D8CNYSATE4X6NV3Z39R81",
+            "n_15NSXSQ4W9X9C2ETGMA5QCSJ05",
+            "n_1C6D33C0FMZ129RA2R0GXXCRM6"
+          ],
+          "reason": null
+        },
+        {
+          "id": "s1-q10-spanning",
+          "ok": true,
+          "rank": 6,
+          "ranked": 19,
+          "top": [
+            "n_1PPHC64K0QTM0N8JD3RPST4GZ8",
+            "n_1WAD2VDY2YPXVF79V20K82TEXK",
+            "n_1BGBV85XX4QTHMYPGFB7YAF1HT",
+            "n_1NH76HCY6DZ25G5YBTJMBT3BXJ",
+            "n_1ZDHE4823CEZMPPMH8M8H452BP",
+            "n_1E48X9HAFPEYNQHHSF609KHMEE",
+            "n_11RPJ28833FQ1CY47DSW5T93NG",
+            "n_1FJ2VN7BZMD0C22JVNB4NGNNPW",
+            "n_1KYBBC6PCAH0M474M0EMX9AD0Z",
+            "n_16BHTPNT77GCNRJQH6ASZJGQGT",
+            "n_1A84WKF26NWA90DDR9ENP8BMSD",
+            "n_1C0BDXFHPYAX7N4B5AGK8KB4Q5",
+            "n_18ZHNQYZRHWS0K4P4GHXHF1ND5",
+            "n_1C6D33C0FMZ129RA2R0GXXCRM6",
+            "n_10MK5T7JRRKENQ275F460TS827",
+            "n_161P8JTCNTZ2S217FDR4ABC2NB",
+            "n_1X4N1KJ480NEHTRYEX6WE1XRKR",
+            "n_1TVA5EV1N43SYCJM48K080EKF1",
+            "n_15NSXSQ4W9X9C2ETGMA5QCSJ05"
+          ],
+          "reason": null
+        },
+        {
+          "id": "s1-q11-spanning",
+          "ok": true,
+          "rank": 2,
+          "ranked": 19,
+          "top": [
+            "n_1WAD2VDY2YPXVF79V20K82TEXK",
+            "n_1NH76HCY6DZ25G5YBTJMBT3BXJ",
+            "n_1ZDHE4823CEZMPPMH8M8H452BP",
+            "n_1F6E3RF111CVYDQ7MA643CRGBC",
+            "n_16BHTPNT77GCNRJQH6ASZJGQGT",
+            "n_1FJ2VN7BZMD0C22JVNB4NGNNPW",
+            "n_1E48X9HAFPEYNQHHSF609KHMEE",
+            "n_18ZHNQYZRHWS0K4P4GHXHF1ND5",
+            "n_1PPHC64K0QTM0N8JD3RPST4GZ8",
+            "n_1A84WKF26NWA90DDR9ENP8BMSD",
+            "n_10MK5T7JRRKENQ275F460TS827",
+            "n_161P8JTCNTZ2S217FDR4ABC2NB",
+            "n_11RPJ28833FQ1CY47DSW5T93NG",
+            "n_1C0BDXFHPYAX7N4B5AGK8KB4Q5",
+            "n_1KYBBC6PCAH0M474M0EMX9AD0Z",
+            "n_15NSXSQ4W9X9C2ETGMA5QCSJ05",
+            "n_1X4N1KJ480NEHTRYEX6WE1XRKR",
+            "n_1C6D33C0FMZ129RA2R0GXXCRM6",
+            "n_1JNW5D8CNYSATE4X6NV3Z39R81"
+          ],
+          "reason": null
+        },
+        {
+          "id": "s1-q12-spanning",
+          "ok": true,
+          "rank": 11,
+          "ranked": 19,
+          "top": [
+            "n_1WAD2VDY2YPXVF79V20K82TEXK",
+            "n_1NH76HCY6DZ25G5YBTJMBT3BXJ",
+            "n_1ZDHE4823CEZMPPMH8M8H452BP",
+            "n_1E48X9HAFPEYNQHHSF609KHMEE",
+            "n_1FJ2VN7BZMD0C22JVNB4NGNNPW",
+            "n_16BHTPNT77GCNRJQH6ASZJGQGT",
+            "n_1X4N1KJ480NEHTRYEX6WE1XRKR",
+            "n_1BGBV85XX4QTHMYPGFB7YAF1HT",
+            "n_1PPHC64K0QTM0N8JD3RPST4GZ8",
+            "n_1F6E3RF111CVYDQ7MA643CRGBC",
+            "n_1A84WKF26NWA90DDR9ENP8BMSD",
+            "n_161P8JTCNTZ2S217FDR4ABC2NB",
+            "n_11RPJ28833FQ1CY47DSW5T93NG",
+            "n_10MK5T7JRRKENQ275F460TS827",
+            "n_18ZHNQYZRHWS0K4P4GHXHF1ND5",
+            "n_15NSXSQ4W9X9C2ETGMA5QCSJ05",
+            "n_1KYBBC6PCAH0M474M0EMX9AD0Z",
+            "n_1TVA5EV1N43SYCJM48K080EKF1",
+            "n_1C0BDXFHPYAX7N4B5AGK8KB4Q5"
+          ],
+          "reason": null
+        }
+      ],
+      "strictTop3": 2,
+      "topK": 20,
+      "branchCount": 19,
+      "vacuous": true
     }
   ]
 }

@@ -46,6 +46,28 @@ export function mergeSpans(spans: readonly SeqSpan[]): SeqSpan[] {
 }
 
 /**
+ * Intersects each span with `[from ?? -inf, to ?? +inf]` — `context_fetch`'s
+ * `from`/`to` (§9, R10). A span that lands entirely outside the range is
+ * dropped rather than emitted empty, so an out-of-range request reads as "no
+ * span here" instead of a zero-length one a caller has to special-case.
+ *
+ * An over-wide range is a no-op (the clamp cannot widen past the node's own
+ * span), and this is what makes the concatenation of a partition of ranges
+ * byte-identical to no range at all: `renderSpans`/`renderIndex` only ever see
+ * narrower or equal spans, never a reordered or padded one.
+ */
+export function clampSpans(spans: readonly SeqSpan[], from?: number, to?: number): SeqSpan[] {
+  if (from === undefined && to === undefined) return spans.map((span) => ({ ...span }));
+  const result: SeqSpan[] = [];
+  for (const span of spans) {
+    const start = from === undefined ? span.start : Math.max(span.start, from);
+    const end = to === undefined ? span.end : Math.min(span.end, to);
+    if (start <= end) result.push({ start, end });
+  }
+  return result;
+}
+
+/**
  * The event's primary L2 payload, or null when it carries none. Used by
  * `context_peek`, which wants one cheap excerpt rather than every blob an
  * event references.
@@ -97,4 +119,40 @@ export function renderSpans(trace: TraceLog, blobs: BlobStore, spans: readonly S
     }
   }
   return { text: blocks.join('\n\n'), events: blocks.length };
+}
+
+/**
+ * `context_fetch depth:"index"` (§9, R10): one row per event — `seq · type ·
+ * tool · path · bytes` — from L0 plus an L2 *stat*, never L2 text. This is
+ * what keeps `index` a hermetic, D15-compliant peek at a branch's shape: it
+ * lets a model decide WHERE to range-fetch without ever paying for, or
+ * leaking, the content it hasn't asked for yet.
+ *
+ * Capped at `INDEX_ROW_CAP` rows with one D18-style elision line, reusing the
+ * existing "no rendered list grows unboundedly" idiom (`assemble/format.ts`)
+ * rather than inventing a second cap rule.
+ */
+const INDEX_ROW_CAP = 120;
+
+export function renderIndex(trace: TraceLog, blobs: BlobStore, spans: readonly SeqSpan[]): RenderedDetail {
+  const rows: string[] = [];
+  let total = 0;
+  for (const span of spans) {
+    for (const event of trace.read({ from: span.start, to: span.end })) {
+      total += 1;
+      if (rows.length >= INDEX_ROW_CAP) continue;
+      const ref = payloadRef(event);
+      const bytes = ref === null ? 0 : blobs.size(ref);
+      const tool = event.type === 'tool_call' ? event.tool : undefined;
+      const path = event.type === 'tool_call' ? event.path : undefined;
+      const parts = [`[${event.seq}] ${event.type}`];
+      if (tool !== undefined) parts.push(tool);
+      if (path !== undefined) parts.push(`path=${path}`);
+      parts.push(`bytes=${bytes}`);
+      rows.push(parts.join(' '));
+    }
+  }
+  const more = total - rows.length;
+  if (more > 0) rows.push(`(+${more} more)`);
+  return { text: rows.join('\n'), events: Math.min(total, INDEX_ROW_CAP) };
 }

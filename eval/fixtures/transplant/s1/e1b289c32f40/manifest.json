@@ -33,14 +33,15 @@
     "g11-literal-uniqueness",
     "g12-leakage-gate",
     "g13-manifest-hashed",
-    "g14-cost-cap"
+    "g14-cost-cap",
+    "g15-self-retrieval"
   ],
   "models": {
     "answerers": [
       "qwen/qwen-2.5-72b-instruct",
       "openai/gpt-3.5-turbo"
     ],
-    "paraphraser": "z-ai/glm-5.3-flash",
+    "paraphraser": "deepseek/deepseek-v4-flash",
     "compaction": "claude-haiku-4-5-20251001"
   },
   "windows": [
@@ -64,33 +65,59 @@
   "ratio": 0.850896663206653,
   "root_by_window": {
     "16384": {
-      "rootKeep": 2,
-      "rootBlockTokens": 2587,
-      "branchesSurviving": 1,
-      "branchSeqRange": {
-        "from": 732,
-        "to": 754
+      "tree": {
+        "rootKeep": 2,
+        "rootBlockTokens": 2587,
+        "branchesSurviving": 1,
+        "branchSeqRange": {
+          "from": 732,
+          "to": 754
+        },
+        "rootSummarySha": "f80808c3fd62736e439d06ad42b29a6fa694d4ebb6c4397919a62f04bb8e86fc",
+        "zoneB": 3850
       },
-      "rootSummarySha": "f80808c3fd62736e439d06ad42b29a6fa694d4ebb6c4397919a62f04bb8e86fc",
-      "zoneB": 3850
+      "tree-wide": {
+        "rootKeep": 2,
+        "rootBlockTokens": 2587,
+        "branchesSurviving": 1,
+        "branchSeqRange": {
+          "from": 732,
+          "to": 754
+        },
+        "rootSummarySha": "f80808c3fd62736e439d06ad42b29a6fa694d4ebb6c4397919a62f04bb8e86fc",
+        "zoneB": 3850
+      }
     },
     "32768": {
-      "rootKeep": 16,
-      "rootBlockTokens": 6095,
-      "branchesSurviving": 2,
-      "branchSeqRange": {
-        "from": 639,
-        "to": 754
+      "tree": {
+        "rootKeep": 16,
+        "rootBlockTokens": 6095,
+        "branchesSurviving": 2,
+        "branchSeqRange": {
+          "from": 639,
+          "to": 754
+        },
+        "rootSummarySha": "2c7fbe668193766cdd17e3de4b816cdcd0be5e4fcda3d881c2f7a73e76cc8596",
+        "zoneB": 7701
       },
-      "rootSummarySha": "2c7fbe668193766cdd17e3de4b816cdcd0be5e4fcda3d881c2f7a73e76cc8596",
-      "zoneB": 7701
+      "tree-wide": {
+        "rootKeep": 2,
+        "rootBlockTokens": 2587,
+        "branchesSurviving": 11,
+        "branchSeqRange": {
+          "from": 359,
+          "to": 754
+        },
+        "rootSummarySha": "f80808c3fd62736e439d06ad42b29a6fa694d4ebb6c4397919a62f04bb8e86fc",
+        "zoneB": 7701
+      }
     }
   },
   "literals": {
-    "sha256": "7dea64c187f41805c6c312c1f8367bbfd5fbb4b4c229a1296c48063e9b83e2fc"
+    "sha256": "9c838bfa2a5a1575760b0a4525e145c4262489517836c4f703930aca5c1ec6b8"
   },
   "questions": {
-    "sha256": "2f225798cfba4c37a7b6b602ea34a1bf84f1766738edd5efeec053061a81ff21",
+    "sha256": "1fbd2a854454b0309d3726b4e6e7df7743a54efae9c1fcfec165f9f4562f9e36",
     "count": 12
   }
 }

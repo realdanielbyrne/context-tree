@@ -76,9 +76,14 @@ export interface ContextTreeConfig {
   rootModel: string;
   /** Eval judge (§15). */
   judgeModel: string;
+  /**
+   * L3 embedding model. Its vector width is not recorded here — sqlite-vec
+   * takes the dimension from the first vector actually written and enforces
+   * that width thereafter (`store/sqlite.ts` `ensureEmbeddingsTable`), so
+   * there is nothing for a config field to validate in advance. L3 is
+   * disposable (D8): switching models is `dropEmbeddings()` + re-embed.
+   */
   embedModel: string;
-  /** L3 vector width. A change forces an L3 rebuild — L3 is disposable. */
-  embedDim: number;
   provider: 'anthropic' | 'openrouter' | 'mock' | 'recorded';
   /** §9.2 / D14. Mode A is the v1 default (§19 Q5). */
   mode: 'tool-backend' | 'middleware';
@@ -101,8 +106,7 @@ export const DEFAULT_CONFIG: ContextTreeConfig = {
   leafModel: 'claude-haiku-4-5-20251001',
   rootModel: 'claude-sonnet-5',
   judgeModel: 'claude-opus-5',
-  embedModel: 'voyage-3-lite',
-  embedDim: 512,
+  embedModel: 'text-embedding-3-small',
   provider: 'anthropic',
   mode: 'tool-backend',
   toolPhase: { ...DEFAULT_TOOL_PHASE },
@@ -124,9 +128,10 @@ export const DEFAULT_CONFIG: ContextTreeConfig = {
  * config load, so `resolveConfig` substitutes the right set when the caller names
  * a provider without naming models.
  *
- * OpenRouter exposes no embedding endpoint, so `embedModel` there is unusable and
- * L3 stays empty — which is exactly why §9's lexical beam-search fallback is
- * mandatory rather than a nicety.
+ * `embedModel` is unaffected by this table: it selects an embeddings client
+ * built separately (`models/embeddings.ts`), not a chat-completion model, and
+ * §9's lexical beam-search fallback still runs whenever no embedder — of
+ * either provider — is configured or L3 hasn't been populated.
  */
 export const PROVIDER_MODEL_DEFAULTS: Readonly<
   Record<'anthropic' | 'openrouter', Pick<ContextTreeConfig, 'leafModel' | 'rootModel' | 'judgeModel'>>
@@ -183,7 +188,6 @@ export function resolveConfig(
   }
   merged.neutralPhases = merged.neutralPhases.map((p, i) => assertPhase(p, `neutralPhases[${i}]`));
 
-  if (merged.embedDim <= 0) throw new ConfigError('embedDim must be > 0');
   if (merged.summarize.concurrency <= 0) throw new ConfigError('summarize.concurrency must be > 0');
   if (merged.rootKeep <= 0) throw new ConfigError('rootKeep must be > 0');
   if (merged.budgets.zoneB <= 0 || merged.budgets.zoneC <= 0) {
@@ -219,6 +223,7 @@ export interface ApiKeys {
   anthropic?: string;
   openrouter?: string;
   voyage?: string;
+  openai?: string;
 }
 
 /**
@@ -233,6 +238,7 @@ export const API_KEY_ENV_NAMES: Readonly<Record<keyof ApiKeys, readonly string[]
   anthropic: ['ANTHROPIC_API_KEY', 'ANTHROPIC_KEY'],
   openrouter: ['OPENROUTER_API_KEY', 'OPENROUTER_KEY'],
   voyage: ['VOYAGE_API_KEY', 'VOYAGE_KEY'],
+  openai: ['OPENAI_API_KEY', 'OPENAI_KEY'],
 });
 
 /** API keys, environment only (§11). */

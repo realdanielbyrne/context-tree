@@ -59,11 +59,41 @@ export interface TurnRecord {
 
 export type TokenTotals = TokenUsage & { total: number };
 
+/**
+ * loop9b-item3 §3: pure derivations of `turns[].toolCalls` (names only, no
+ * new capture) that separate the completion-gate's own trailing-turn
+ * contribution from the batching-density question the null test (§5.4) asks.
+ */
+export interface BatchingMetrics {
+  /** Consecutive zero-tool-call turns at the tail of the run. */
+  trailingBareTurns: number;
+  /** The tree-only completion-gate nudge fired at least once this run. */
+  gateFired: boolean;
+  /** After the gate fired, the very next turn issued tool calls again. */
+  gateRescued: boolean;
+  /** Total tool calls / turns that made at least one call — the corrected density. */
+  callsPerToolUsingTurn: number;
+  /** Total tool calls / all turns (mixes in the trailing-empty-turn question). */
+  callsPerTurn: number;
+  /** `write_file` calls / turns containing at least one `write_file`. */
+  writesPerWriteBearingTurn: number;
+  /** Largest single-turn `read_file` fan-out. */
+  maxReadBatch: number;
+  /** Largest single-turn `write_file` fan-out. */
+  maxWriteBatch: number;
+  /** Turns whose only tool calls are `run_command`. */
+  runCommandOnlyTurns: number;
+}
+
 export interface RunMetrics {
   tokens: TokenTotals;
   turns: { modelTurns: number; toolCalls: number };
   speed: { wallMs: number; p50TurnMs: number; p95TurnMs: number; outputTokensPerSec: number };
   costUsd: number;
+  batching: BatchingMetrics;
+  /** item 1's one-way latch (`runTreeArm`'s `lazyCrossed`); false for non-tree arms. */
+  lazyCrossed: boolean;
+  finalTextChars: number;
 }
 
 export interface JudgeResult {

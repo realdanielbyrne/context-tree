@@ -26,7 +26,7 @@ function toCandidate(hit: SummaryHit): Candidate {
     node_id: hit.nodeId,
     path: hit.path,
     span: file === undefined ? undefined : { start_line: file.start_line, end_line: file.end_line },
-    symbol: hit.meta?.symbols[0],
+    symbol: hit.meta?.symbols?.[0],
     score: hit.score,
     provider: PROVIDER_ID,
     tier: 'fuzzy',

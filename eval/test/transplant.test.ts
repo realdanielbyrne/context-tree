@@ -19,9 +19,16 @@ import { describe, expect, it } from 'vitest';
 import {
   FRACTIONS,
   answerRegexesFor,
+  ARM_IDS,
+  TREE_ARMS,
   binomialN,
   ROOT_KEEP_LADDER,
+  ladderFor,
+  classifyRunError,
+  selfRetrieval,
   capToolResult,
+  compactionSummaryValid,
+  questionTextValid,
   requestTokens,
   runOneReplicate,
   contextGrowthSeries,
@@ -381,7 +388,8 @@ describe('window cap on appended tool results', () => {
     };
     const budgets = { window, maxReplyTokens };
 
-    const result = await runOneReplicate(null, built, 'the question', 'stub-model', provider, budgets);
+    const question = 'What value did we settle on for that limit, and in which file?';
+    const result = await runOneReplicate(null, built, question, 'stub-model', provider, budgets);
 
     expect(result.status).toBe('completed');
     expect(result.resultsTruncated).toBe(1);
@@ -394,6 +402,199 @@ describe('window cap on appended tool results', () => {
     expect(requests).toHaveLength(2);
     expect(requestTokens(requests[1]) + maxReplyTokens).toBeLessThanOrEqual(window);
     expect(result.peakRequestTokens + maxReplyTokens).toBeLessThanOrEqual(window);
+  });
+});
+
+describe('question text validity — the check that voided a batch', () => {
+  // 12 questions came back as "" and every downstream check accepted them:
+  // an empty string shares no 3-gram with any summary, so the leakage gate
+  // passed it and printed [ok], and 180 scored runs then asked two models
+  // nothing at all. Rule 8: a check that can pass on garbage is worse than
+  // no check, so the same predicate now guards prep, gate 12, and dispatch.
+  it('rejects exactly the shapes that sailed through: empty, blank, too short, too few words', () => {
+    expect(questionTextValid('').ok).toBe(false);
+    expect(questionTextValid('').reason).toBe('empty');
+    expect(questionTextValid('   \n  ').ok).toBe(false);
+    expect(questionTextValid('What was it?').ok).toBe(false); // 12 chars
+    expect(questionTextValid('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa').ok).toBe(false); // long, 1 word
+    expect(questionTextValid(undefined).ok).toBe(false);
+    expect(questionTextValid(null).ok).toBe(false);
+  });
+
+  it('accepts a real paraphrased question', () => {
+    const q = 'What limit did we agree on for the retry behaviour discussed early in that session?';
+    expect(questionTextValid(q).ok).toBe(true);
+    expect(questionTextValid(q).reason).toBeNull();
+  });
+
+  it('shows why the leakage gate alone could not catch it', () => {
+    // The gate is not wrong — it is vacuous on an empty input, which is
+    // precisely why the input must be checked before the gate's verdict counts.
+    const gate = leakageGate({ question: '', summaryText: 'anything at all here', answerLiterals: [] });
+    expect(gate.ok).toBe(true);
+    expect(questionTextValid('').ok).toBe(false);
+  });
+
+  it('refuses to dispatch a run whose question is unusable', async () => {
+    const provider = { id: 'never-called', async complete() { throw new Error('the model must not be called'); } };
+    const built = { system: 's', messages: [{ role: 'user', content: 'ctx' }], tools: [], toolCtx: {} };
+    await expect(
+      runOneReplicate(null, built, '', 'm', provider, { window: 16_384, maxReplyTokens: 800 }),
+    ).rejects.toThrow(/unusable question \(empty\)/);
+  });
+});
+
+describe('R6 ablation — tree vs tree-wide', () => {
+  // One variable, Zone B composition. `tree` walks the keep ladder
+  // largest-first (most root headlines); `tree-wide` smallest-first (most
+  // visible branch summaries). Everything else — window, K, zone budgets,
+  // reply cap, store, questions, epoch — is identical.
+  it('walks the ladder from opposite ends, over the same rungs', () => {
+    expect(ladderFor('tree')).toEqual(ROOT_KEEP_LADDER);
+    expect(ladderFor('tree-wide')).toEqual([...ROOT_KEEP_LADDER].reverse());
+    expect([...ladderFor('tree-wide')].sort((a: number, b: number) => a - b)).toEqual(
+      [...ROOT_KEEP_LADDER].sort((a: number, b: number) => a - b),
+    );
+  });
+
+  it('tree-static shares tree\'s ladder, and an unknown arm falls back to it', () => {
+    expect(ladderFor('tree-static')).toEqual(ROOT_KEEP_LADDER);
+    expect(ladderFor('truncate-tail')).toEqual(ROOT_KEEP_LADDER);
+  });
+
+  it('picks opposite rungs when several pass — the whole point of the ablation', () => {
+    // Shaped like W=32768 on the real store: keep16 and everything below it fit.
+    const passes = new Set([16, 12, 8, 6, 4, 2]);
+    const fits = (keep: number) => ({ ok: passes.has(keep), branchesSurviving: passes.has(keep) ? 40 / keep : 0 });
+    expect(deriveRootKeep(fits, ladderFor('tree')).rootKeep).toBe(16);
+    expect(deriveRootKeep(fits, ladderFor('tree-wide')).rootKeep).toBe(2);
+  });
+
+  it('collapses to the SAME keep when only one rung passes — a real no-op, not a bug', () => {
+    // W=16384 on the real store: only keep2 leaves room for a branch, so both
+    // arms derive keep2 and the ablation cannot say anything at that window.
+    const fits = (keep: number) => ({ ok: keep === 2, branchesSurviving: keep === 2 ? 1 : 0 });
+    expect(deriveRootKeep(fits, ladderFor('tree')).rootKeep).toBe(2);
+    expect(deriveRootKeep(fits, ladderFor('tree-wide')).rootKeep).toBe(2);
+  });
+
+  it('keeps every tree-shaped arm in the pin set, and no baseline in it', () => {
+    expect(TREE_ARMS).toContain('tree');
+    expect(TREE_ARMS).toContain('tree-wide');
+    expect(TREE_ARMS).not.toContain('truncate-tail');
+    expect(TREE_ARMS).not.toContain('compact-rolling');
+    expect(ARM_IDS).toContain('tree-wide');
+  });
+});
+
+describe('question self-retrieval (g15)', () => {
+  // g11 proves the ANSWER is a unique string in L0; g15 proves the QUESTION
+  // has a unique referent in the world the model searches. Batch 2 scored ~0
+  // because only the first was checked: "how many characters were omitted when
+  // it was truncated?" has a string-unique answer and hundreds of referents.
+  // `selfRetrieval` takes its search function as an option, defaulting to the
+  // real `context_search` handler — so the ranking logic is unit-testable
+  // while the gate still exercises the exact beam the tree arm calls.
+  const fakeSearch = (nodeIds: string[]) => async () => ({ ok: true, data: { candidates: nodeIds.map((id) => ({ node_id: id })) } });
+
+  it('accepts a question whose source ranks inside the top K, root excluded', async () => {
+    const question = { question: 'a specific anchored question about the loader', node_id: 'p2' };
+    const result = await selfRetrieval(question, {}, { topK: 3, rootId: 'root', search: fakeSearch(['root', 'p1', 'p2', 'p3']) });
+    // Root is filtered out first, so p2 is rank 2, not rank 3.
+    expect(result.ok).toBe(true);
+    expect(result.rank).toBe(2);
+  });
+
+  it('rejects a question whose source ranks below the cut — the batch-2 shape', async () => {
+    const question = { question: 'how many characters were omitted when it was truncated?', node_id: 'p9' };
+    const ranked = ['root', 'p1', 'p2', 'p3', 'p4', 'p9'];
+    const result = await selfRetrieval(question, {}, { topK: 3, rootId: 'root', search: fakeSearch(ranked) });
+    expect(result.ok).toBe(false);
+    expect(result.rank).toBe(5);
+    expect(result.reason).toMatch(/outside top 3/);
+  });
+
+  it('rejects a question whose source never appears at all', async () => {
+    const result = await selfRetrieval({ question: 'unanchored question text here', node_id: 'p9' }, {}, { topK: 3, rootId: 'root', search: fakeSearch(['root', 'p1']) });
+    expect(result.ok).toBe(false);
+    expect(result.rank).toBeNull();
+    expect(result.reason).toMatch(/absent from/);
+  });
+
+  it('accepts a spanning question when EITHER source branch ranks', async () => {
+    const question = { question: 'a two-branch question', node_id: 'pA', node_ids: ['pA', 'pB'] };
+    const result = await selfRetrieval(question, {}, { topK: 3, rootId: 'root', search: fakeSearch(['root', 'pB', 'pZ']) });
+    expect(result.ok).toBe(true);
+    expect(result.rank).toBe(1);
+  });
+
+  it('excluding the task root is load-bearing: it ranks first for every query', async () => {
+    const question = { question: 'a specific anchored question', node_id: 'p3' };
+    const withRootExcluded = await selfRetrieval(question, {}, { topK: 3, rootId: 'root', search: fakeSearch(['root', 'p1', 'p2', 'p3']) });
+    const withRootCounted = await selfRetrieval(question, {}, { topK: 3, rootId: null, search: fakeSearch(['root', 'p1', 'p2', 'p3']) });
+    expect(withRootExcluded.ok).toBe(true); // rank 3
+    expect(withRootCounted.ok).toBe(false); // rank 4 — the root ate a slot
+  });
+});
+
+describe('one literal, one question', () => {
+  it('never draws the same literal into two strata', () => {
+    // `deep` is a SUBSET of `head` (a head fact absent from every summary), so
+    // without an explicit carry-over the two strata cut the same literals —
+    // observed: all three deep questions duplicated all three head questions.
+    const pool = [
+      { literal: 'alpha_one', node_id: 'p1' },
+      { literal: 'beta_two', node_id: 'p2' },
+      { literal: 'gamma_three', node_id: 'p3' },
+    ];
+    const claimed = new Set<string>();
+    const head = pickDeterministic(pool, 2, { exclude: claimed });
+    for (const item of head) claimed.add(item.literal);
+    const deep = pickDeterministic(pool, 2, { exclude: claimed });
+    const overlap = deep.filter((d: { literal: string }) => head.some((h: { literal: string }) => h.literal === d.literal));
+    expect(overlap).toEqual([]);
+    expect(deep).toHaveLength(1); // only one candidate was left unclaimed
+  });
+});
+
+describe('run-error classification', () => {
+  it('names the OpenRouter no-choices bug rather than logging a bare message', () => {
+    const kind = classifyRunError(new Error("Cannot read properties of undefined (reading '0')"));
+    expect(kind.status).toBe('provider_bad_response');
+    expect(kind.retryable).toBe(true);
+    expect(kind.hint).toMatch(/openrouter\.ts:153/);
+    expect(kind.hint).toMatch(/response\.choices\?\.\[0\]/);
+  });
+
+  it('leaves other failures classified but not retried', () => {
+    expect(classifyRunError(new Error('boom')).status).toBe('error');
+    expect(classifyRunError(new Error('boom')).retryable).toBe(false);
+  });
+});
+
+describe('compaction summary validity', () => {
+  const document = 'The session began with '.padEnd(700, 'x');
+
+  it('rejects the 169-char conversational fragment that stood in for a 196k-token session', () => {
+    expect(
+      compactionSummaryValid(
+        'The fixable structure is clear, but the work is post-MVP scope. Shall I open an issue for hierarchical Zone B collapse, or would you rather measure it first in a loop-7?',
+      ),
+    ).toBe(false);
+  });
+
+  it('rejects a document-length reply that still ends by asking the user something', () => {
+    expect(compactionSummaryValid(`${document}Shall I continue?`)).toBe(false);
+  });
+
+  it('accepts a real rolling summary', () => {
+    expect(compactionSummaryValid(document)).toBe(true);
+  });
+
+  it('rejects the placeholder a fully-skipped build leaves behind', () => {
+    // Skipping keeps a build alive; it must not become a way to freeze an
+    // artifact that summarises nothing.
+    expect(compactionSummaryValid('(no earlier summary)')).toBe(false);
   });
 });
 

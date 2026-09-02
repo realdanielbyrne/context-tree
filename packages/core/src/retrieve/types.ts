@@ -55,12 +55,25 @@ export interface TreeSearchResult {
 }
 
 export interface FetchBranchOptions {
-  depth?: 'summary' | 'full';
+  /**
+   * Defaults to `'full'` (R9): a summary cannot carry a verbatim literal by
+   * construction, so a caller that does not ask is handed raw detail, not a
+   * paraphrase. `'index'` (R10) lists the branch's events instead of reading
+   * them, so a wide branch can be sized before it is read.
+   */
+  depth?: 'summary' | 'index' | 'full';
   /**
    * Narrows the read to the file node(s) under the branch keyed by this path
-   * (§9's common case, §10 rule 4). Only those nodes' L0 spans are read.
+   * (§10 rule 4). Only those nodes' L0 spans are read.
    */
   file?: string;
+  /**
+   * Inclusive L0 `seq` bounds (R10), clamped to the target node(s)' own span —
+   * an over-wide range is a no-op and a disjoint one yields an empty result,
+   * never a throw. Ignored at `depth: 'summary'`, which never reads L0.
+   */
+  from?: number;
+  to?: number;
 }
 
 export interface FetchedBranch {
@@ -69,7 +82,7 @@ export interface FetchedBranch {
   kind: NodeKind;
   title: string;
   phaseType: PhaseType | null;
-  depth: 'summary' | 'full';
+  depth: 'summary' | 'index' | 'full';
   /** Path this content is scoped to: the `file` narrowing, or a file node's own path. */
   file?: string;
   text: string;
@@ -78,9 +91,9 @@ export interface FetchedBranch {
   /** 0 when there is no summary yet (§8 summarizes async) or several nodes were merged. */
   summaryVersion: number;
   meta: SummaryMeta | null;
-  /** L0 ranges read. Empty at depth `summary`, which touches L1 only. */
+  /** L0 ranges read (clamped by `from`/`to`). Empty at depth `summary`, which touches L1 only. */
   spans: SeqSpan[];
-  /** L0 events rendered. 0 at depth `summary`. */
+  /** L0 events covered. 0 at depth `summary`; capped at 120 (+elision) at depth `index`. */
   events: number;
 }
 

@@ -8,6 +8,7 @@ import {
   aggregateArm,
   avgOf,
   deltasFor,
+  deriveBatchingMetrics,
   percentile,
   summarizeMetrics,
   totalOf,
@@ -81,6 +82,81 @@ function makeResult(overrides: Partial<RunResult> & { arm: RunResult['arm'] } & 
     ...overrides,
   };
 }
+
+describe('deriveBatchingMetrics (loop9b-item3 §3, pure over turns[].toolCalls)', () => {
+  // [1 read, 5 writes, 0, 0]: one tool-using turn, one 5-fan-out write turn,
+  // then two trailing bare turns — the gate fires on the first bare turn and
+  // is NOT rescued (the run just ends on the second).
+  const turnWith = (toolCalls: string[]): TurnRecord => ({
+    index: 0,
+    latencyMs: 1,
+    usage: usageOf(0, 0),
+    toolCalls,
+    stopReason: toolCalls.length > 0 ? 'tool_use' : 'end_turn',
+  });
+  const fixture: TurnRecord[] = [
+    turnWith(['read_file']),
+    turnWith(Array(5).fill('write_file')),
+    turnWith([]),
+    turnWith([]),
+  ];
+
+  it('derives every field from a synthetic fixture with a known shape', () => {
+    const batching = deriveBatchingMetrics(fixture);
+    expect(batching).toEqual({
+      trailingBareTurns: 2,
+      gateFired: true,
+      gateRescued: false,
+      callsPerToolUsingTurn: 3,
+      callsPerTurn: 1.5,
+      writesPerWriteBearingTurn: 5,
+      maxReadBatch: 1,
+      maxWriteBatch: 5,
+      runCommandOnlyTurns: 0,
+    });
+  });
+
+  it('marks a run rescued when tool work resumes right after the first bare-after-work turn', () => {
+    const rescued: TurnRecord[] = [
+      turnWith(['write_file']),
+      turnWith([]), // gate fires here
+      turnWith(['run_command']), // rescued
+      turnWith([]), // run ends here — not a second nudge (the latch already tripped)
+    ];
+    const batching = deriveBatchingMetrics(rescued);
+    expect(batching.gateFired).toBe(true);
+    expect(batching.gateRescued).toBe(true);
+    expect(batching.trailingBareTurns).toBe(1);
+    expect(batching.runCommandOnlyTurns).toBe(1);
+  });
+
+  it('never fires on a bare-only run with no prior tool work', () => {
+    const batching = deriveBatchingMetrics([turnWith([])]);
+    expect(batching.gateFired).toBe(false);
+    expect(batching.gateRescued).toBe(false);
+    expect(batching.trailingBareTurns).toBe(1);
+  });
+
+  it('composes into summarizeMetrics as metrics.batching, alongside lazyCrossed and finalTextChars', () => {
+    const metrics = summarizeMetrics({
+      turns: fixture,
+      wallMs: 100,
+      usage: { ...ZERO_TOTALS },
+      costUsd: 0,
+      lazyCrossed: true,
+      finalTextChars: 42,
+    });
+    expect(metrics.batching).toEqual(deriveBatchingMetrics(fixture));
+    expect(metrics.lazyCrossed).toBe(true);
+    expect(metrics.finalTextChars).toBe(42);
+  });
+
+  it('defaults lazyCrossed to false and finalTextChars to 0 when omitted (native/dsa arms)', () => {
+    const metrics = summarizeMetrics({ turns: fixture, wallMs: 100, usage: { ...ZERO_TOTALS }, costUsd: 0 });
+    expect(metrics.lazyCrossed).toBe(false);
+    expect(metrics.finalTextChars).toBe(0);
+  });
+});
 
 describe('aggregateArm', () => {
   it('averages across runs and computes success rate over judged runs only', () => {

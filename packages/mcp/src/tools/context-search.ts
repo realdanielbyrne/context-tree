@@ -35,11 +35,15 @@ export const CONTEXT_SEARCH = 'context_search';
  */
 const TREE_PROVIDER = 'tree';
 
+/** R8: a hit's snippet length — the same 240 `toCandidate` already computes below. */
+const SNIPPET_CHARS = 240;
+
 export const CONTEXT_SEARCH_DESCRIPTION =
-  'Rank this task\'s branch summaries against a query and return their node ids. ' +
+  'Rank this task\'s branch summaries against a query and return their node ids and pointers. ' +
   'Reach for it when you know WHAT you need but not WHICH branch it happened in — before re-deriving ' +
   'a decision, re-reading a file another phase already changed, or re-answering an open question. ' +
-  'It searches summaries, never raw turns: expand a hit with context_peek, then context_fetch.';
+  'It searches summaries, never raw turns, and each hit carries a short snippet, not the summary body: ' +
+  'the content is one context_fetch away.';
 
 const shape = {
   query: z.string().min(1).describe('What you are looking for, in words. Matched against branch summaries.'),
@@ -52,6 +56,16 @@ const shape = {
 export const contextSearchSchema = z.object(shape);
 export const contextSearchInputShape = shape;
 
+/**
+ * The pointer-only slice of `SummaryMeta` a search hit carries (R8): `files`,
+ * `symbols` and `node_ids` are what a model uses to judge relevance or aim a
+ * follow-up fetch; the prose fields (`tests`, `artifacts`, `open_questions`,
+ * `decisions`) stay in Zone B, which already renders them for every branch a
+ * prompt shows — a search hit repeating them would be a second, truncatable
+ * copy of content that is never gone from the prompt in the first place.
+ */
+export type SearchHitMeta = Pick<SummaryMeta, 'files' | 'symbols' | 'node_ids'>;
+
 export interface SearchHitPayload {
   node_id: NodeId;
   kind: NodeKind;
@@ -60,9 +74,10 @@ export interface SearchHitPayload {
   path: string | null;
   summary_version: number;
   score: number;
-  /** The §8 rehydration pointers — files, symbols, tests, tickets, open questions. */
-  meta: SummaryMeta | null;
-  text: string;
+  /** Pointer fields only (R8) — the full §8 metadata is one context_fetch away. */
+  meta: SearchHitMeta | null;
+  /** First 240 chars of the summary — enough to judge relevance, not a duplicate of Zone B (R8). */
+  snippet: string;
 }
 
 export interface ContextSearchData {
@@ -80,6 +95,11 @@ export interface ContextSearchData {
   unavailable: string[];
 }
 
+function toHitMeta(meta: SummaryMeta | null): SearchHitMeta | null {
+  if (meta === null) return null;
+  return { files: meta.files, symbols: meta.symbols, node_ids: meta.node_ids };
+}
+
 function toHitPayload(hit: SummaryHit): SearchHitPayload {
   return {
     node_id: hit.nodeId,
@@ -89,8 +109,8 @@ function toHitPayload(hit: SummaryHit): SearchHitPayload {
     path: hit.path ?? null,
     summary_version: hit.version,
     score: hit.score,
-    meta: hit.meta,
-    text: hit.text,
+    meta: toHitMeta(hit.meta),
+    snippet: hit.text.slice(0, SNIPPET_CHARS),
   };
 }
 
@@ -101,7 +121,7 @@ function toCandidate(hit: SummaryHit): Candidate {
     node_id: hit.nodeId,
     path: hit.path,
     span: file === undefined ? undefined : { start_line: file.start_line, end_line: file.end_line },
-    symbol: hit.meta?.symbols[0],
+    symbol: hit.meta?.symbols?.[0],
     score: hit.score,
     provider: TREE_PROVIDER,
     tier: 'fuzzy',

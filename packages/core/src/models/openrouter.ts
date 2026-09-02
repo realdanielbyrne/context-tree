@@ -150,7 +150,10 @@ function toMessageParam(
 }
 
 function fromOpenRouterResponse(response: OpenRouterCompletionLike): CompletionResult {
-  const choice = response.choices[0];
+  // `?.` matters: an error body has no `choices` key at all, and indexing
+  // undefined throws before the guard can name the real problem. Cost 14/60
+  // runs in the first scored transplant batch.
+  const choice = response.choices?.[0];
   if (choice === undefined) {
     throw new ModelCallError('openrouter returned no choices');
   }

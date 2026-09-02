@@ -1,0 +1,34 @@
+{
+  "window": 32768,
+  "chunks": 14,
+  "chunk_budget": 19254,
+  "model": "anthropic/claude-haiku-4.5",
+  "model_spec": "claude-haiku-4-5-20251001",
+  "max_summary_tokens": 1024,
+  "skipped_chunks": [
+    {
+      "chunk": 14,
+      "of": 14,
+      "chars": 427
+    }
+  ],
+  "build": {
+    "usd": 0.328641,
+    "calls": 15,
+    "entries": [
+      {
+        "model": "anthropic/claude-haiku-4.5",
+        "calls": 15,
+        "usage": {
+          "input": 261301,
+          "output": 13468,
+          "cacheRead": 0,
+          "cacheWrite": 0
+        },
+        "usd": 0.328641
+      }
+    ],
+    "bucket": "compaction:W32768"
+  },
+  "summary": "Session maintenance: v5.6 (map-after-breakpoint + budget-aware truncation retry) incremental Zone C caching is landed, tested, and deployed. Iter9 (n=5) completed with 4/5 success, median $0.281/20 turns and −18% cost/turn vs v5.5. Rep3 failed at 40-turn trajectory cap (temperature 1.0 luck, not cache failure); its per-turn economics match passing runs. All prior iter8 issues resolved: fresh input per turn fell from 2.4–7.6k to 36–892 tokens, billing signature converged on cached-native (cacheRead climbs monotonically, cacheWrite stays delta-sized ~1.2k), and FM-1 leaf truncations dropped from 2-of-3 runs to 0/5.\n\n**Core completed work:**\n\nFile: `packages/core/src/assemble/format.ts` (line 81–106): Refactored `renderActiveHeader` to emit only the title line (no volatile descendant map) and new `renderActiveMap` function to emit the descendant index with seq ranges. The split prevents per-edit churn ahead of the append-only event stream. Line 81–90 documented the cache-friendly structure: Zone C head carries no volatility, events remain cache-stable, and the map (growing on edits) moves to the end.\n\nFile: `packages/core/src/assemble/assembler.ts` (line 271–291): Rewired Zone C block assembly to emit `C:head` (title only), then event blocks, then `C:map` (descendants last). Callers caching Zone C must position the breakpoint BEFORE the map so descendant churn never voids event cache. Per-turn measurement from iter8-rep1 showed the old layout re-wrote 10–16k tokens/turn while edits landed; new layout decouples map writes from event reads.\n\nFile: `packages/core/src/summarize/summarizer.ts` (line 265–295): When `stopReason === 'max_tokens'`, the reply was truncated mid-JSON and retrying at the identical budget fails byte-identically (FM-1 root cause). Now doubles `maxTokens` on retry instead. Test added and passing.\n\nFile: `eval/src/loop.ts` (lines 603–943, further revised seq 597–598): Added `toZoneCCachedRequest()` builder implementing Anthropic's cache mechanics with one `ChatMessage` per Zone C block and breakpoint placement ONLY on the last cached block (now correctly positioned before the relocated `C:map`). Prior Zone C events become 0.1× reads; map and tail ride uncached after the marker. Test validates one message per block with correct breakpoint placement (3 markers: system + Zone B end + Zone C end) and byte-identity preservation on append.\n\n**Test updates (seq 606–612):** File `packages/core/test/assemble.test.ts` updated to expect `C:map:${active.id}` as the final Zone C block. File `eval/test/loop.test.ts` updated to reflect map-after-breakpoint: contents now show `'descendant index\\n\\nfetched detail'` (map+tail merged after breakpoint), and marked blocks document that only cached blocks (up to last event) carry the breakpoint. File `packages/core/test/e2e.test.ts` (seq 623–624) updated to expect the map block in the Zone C chain.\n\n**Eval scripts created:**\n\nFile: `eval/scripts/ct-growth.mjs`: Ingests `results.json` files, computes per-turn context (input + cacheRead + cacheWrite), and reports fresh/turn (median), ctx@last, slope, quad, costUsd. Detects quadratic token growth; used to diagnose FM-7 (iter8-rep1 showed cacheRead pinned while cacheWrite grew 10–16k/turn due to map churn).\n\n**Experiment results:**\n\n**Iter7 (context-tree v5, tree-dsa v6, A/B test):** 3 replicates. Context-tree: rep1 failed at 40 turns ($1.01, FM-6 fresh-input signature), rep2 $0.216/10 turns (success), rep3 $0.213/"
+}

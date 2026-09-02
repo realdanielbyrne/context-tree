@@ -1,8 +1,10 @@
 /**
  * §9 `context_fetch` — expansion. `depth: 'summary'` is an L1 read;
- * `depth: 'full'` replays the branch's L0 span through L2; `file` narrows to
- * the file node(s) keyed by one path, which §9 names as the common case and
- * §10 rule 4 as the cheap one.
+ * `depth: 'full'` (the default, R9) replays the branch's L0 span through L2;
+ * `depth: 'index'` (R10) lists that span's events instead of reading them.
+ * `file` narrows any depth to the file node(s) keyed by one path (§10 rule 4);
+ * `from`/`to` (R10) additionally narrows a `'full'`/`'index'` read to an
+ * inclusive L0 `seq` range.
  */
 import { z } from 'zod';
 import type { NodeId, NodeKind, PhaseType, SeqSpan, SummaryMeta } from '@context-tree/core';
@@ -22,24 +24,40 @@ export const CONTEXT_FETCH = 'context_fetch';
  * contract, and the tool list is the one thing it cannot install without.
  */
 export const CONTEXT_FETCH_DESCRIPTION =
-  'Return a recorded branch of this task: its summary, or the full events under it. ' +
-  'Reach for it BEFORE EDITING any file whose current content is not already in your context — your ' +
-  'memory of a file predates whatever a later branch did to it — and whenever a summary names a file, ' +
-  'test or ticket you are about to touch. Pass `file` to narrow to one file node instead of a whole ' +
-  'branch; that is the cheap common case. The result lands in the transcript tail only: it never ' +
-  'mutates the stored tree and never invalidates the cached prompt prefix.';
+  'Return a recorded branch of this task: the full events under it (the default), an index of those ' +
+  'events, or its summary. Reach for it BEFORE EDITING any file whose current content is not already ' +
+  'in your context — your memory of a file predates whatever a later branch did to it — and whenever a ' +
+  'summary names a file, test or ticket you are about to touch, or whenever your answer must reproduce ' +
+  "a number, an identifier, or someone's exact words: a summary can tell you something happened, never " +
+  "what it said. A branch too large to read whole: call with `depth: 'index'` first to see its events, " +
+  'then narrow with `from`/`to`. The result lands in the transcript tail only: it never mutates the ' +
+  'stored tree and never invalidates the cached prompt prefix.';
 
 const shape = {
   branch_id: z.string().min(1).describe('Node id of the branch to read, as returned by context_search.'),
   depth: z
-    .enum(['summary', 'full'])
+    .enum(['summary', 'index', 'full'])
     .optional()
-    .describe("'summary' (default) returns the branch summary; 'full' replays every recorded event under it."),
+    .describe(
+      "'full' (default) replays every recorded event under the branch; 'index' lists those events " +
+        "(seq, type, tool, path, bytes) without reading their content; 'summary' returns the branch's " +
+        'stored paraphrase, which cannot contain a literal the paraphrase dropped.',
+    ),
   file: z
     .string()
     .min(1)
     .optional()
     .describe('Repo-relative path: read only the file node(s) under this branch keyed by it.'),
+  from: z
+    .number()
+    .int()
+    .optional()
+    .describe("Inclusive L0 event number to start at (depth 'full'/'index' only). Clamped to the branch's own span."),
+  to: z
+    .number()
+    .int()
+    .optional()
+    .describe("Inclusive L0 event number to end at (depth 'full'/'index' only). Clamped to the branch's own span."),
 };
 
 export const contextFetchSchema = z.object(shape);
@@ -50,7 +68,7 @@ export interface ContextFetchData {
   kind: NodeKind;
   title: string;
   phase_type: PhaseType | null;
-  depth: 'summary' | 'full';
+  depth: 'summary' | 'index' | 'full';
   file: string | null;
   /** 0 when §8 has not summarized this branch yet, or several nodes were merged. */
   summary_version: number;
@@ -73,7 +91,12 @@ export async function contextFetch(ctx: ToolContext, input: unknown): Promise<To
   if (!branch.ok) return branch;
 
   try {
-    const fetched = ctx.retriever.fetchBranch(args.branch_id, { depth: args.depth ?? 'summary', file: args.file });
+    const fetched = ctx.retriever.fetchBranch(args.branch_id, {
+      depth: args.depth ?? 'full',
+      file: args.file,
+      from: args.from,
+      to: args.to,
+    });
     const data: ContextFetchData = {
       branch_id: fetched.nodeId,
       kind: fetched.kind,

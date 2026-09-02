@@ -71,6 +71,11 @@ export const DEFAULT_PRICES: PriceTable = Object.freeze({
   'qwen/qwen3.7-flash': { input: 0.03, output: 0.13, cacheRead: 0.006, cacheWrite: 0.038 },
   'qwen/qwen-2.5-72b-instruct': { input: 0.36, output: 0.4, cacheRead: 0.036, cacheWrite: 0.45 },
   'openai/gpt-3.5-turbo': { input: 0.5, output: 1.5, cacheRead: 0.05, cacheWrite: 0.625 },
+  // Embeddings have no output/cache tokens; an embedding call reports only
+  // `input`, so those three rates are irrelevant but must still be present —
+  // `ModelPrice` has no optional fields, and a partial price is a silent gap
+  // in the §16 cap the moment a caller's usage shape ever includes them.
+  'text-embedding-3-small': { input: 0.02, output: 0, cacheRead: 0, cacheWrite: 0 },
 });
 
 /**

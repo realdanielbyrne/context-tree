@@ -19,7 +19,7 @@ import type {
   TreeStore,
 } from '../contracts/index.js';
 import { ContextTreeError, StoreInvariantError } from '../contracts/index.js';
-import { mergeSpans, nodeSpan, payloadRef, renderSpans } from './detail.js';
+import { clampSpans, mergeSpans, nodeSpan, payloadRef, renderIndex, renderSpans } from './detail.js';
 import { buildLexicalIndex, lexicalScore, summaryDocument, uniqueTerms } from './lexical.js';
 import type {
   EmbedSummariesResult,
@@ -180,17 +180,26 @@ export class TreeRetriever {
   }
 
   /**
-   * `context_fetch`. `depth: 'summary'` is an L1 read; `depth: 'full'` replays
-   * the branch's L0 span through L2. `file` narrows to the file node(s) under
-   * the branch keyed by that path — the read itself is restricted to their
-   * spans (§10 rule 4), nothing wider is loaded and filtered.
+   * `context_fetch`. Defaults to `depth: 'full'` (R9): `depth: 'summary'` is
+   * an L1 read of the §8 paraphrase, `depth: 'full'` replays the branch's L0
+   * span through L2, and `depth: 'index'` lists that span's events instead of
+   * reading them (R10) — a shape-before-content peek at a branch too big to
+   * fetch whole. `file` narrows every depth to the file node(s) under the
+   * branch keyed by that path (§10 rule 4); `from`/`to` (R10) additionally
+   * narrows a `'full'`/`'index'` read to an inclusive L0 `seq` range, clamped
+   * to the target span so an over-wide range is a no-op and a disjoint one
+   * yields an empty result rather than a throw.
    */
   fetchBranch(nodeId: NodeId, options: FetchBranchOptions = {}): FetchedBranch {
     const branch = this.requireNode(nodeId);
-    const depth = options.depth ?? 'summary';
+    const depth = options.depth ?? 'full';
     const targets = options.file === undefined ? [branch] : this.fileNodes(branch, options.file);
     const single = targets.length === 1 ? targets[0] : undefined;
     const file = options.file ?? asPath(branch.meta_json.path);
+    // The §8 rehydration pointers travel with every depth (not just `summary`):
+    // a `'full'`/`'index'` read is still ABOUT this branch, and meta is what
+    // lets a caller judge relevance without a second round trip.
+    const summary = single === undefined ? null : this.store.currentSummary(single.id);
 
     const base = {
       nodeId: branch.id,
@@ -200,10 +209,11 @@ export class TreeRetriever {
       depth,
       file,
       nodes: targets.map((node) => node.id),
+      summaryVersion: summary?.version ?? 0,
+      meta: summary?.meta ?? null,
     };
 
     if (depth === 'summary') {
-      const summary = single === undefined ? null : this.store.currentSummary(single.id);
       return {
         ...base,
         // Several nodes only happens when one path was touched by more than one
@@ -214,28 +224,26 @@ export class TreeRetriever {
             : targets
                 .map((node) => `## ${node.title}\n${this.store.currentSummary(node.id)?.text ?? ''}`)
                 .join('\n\n'),
-        summaryVersion: summary?.version ?? 0,
-        meta: summary?.meta ?? null,
         spans: [],
         events: 0,
       };
     }
 
-    const spans = mergeSpans(
+    const rawSpans = mergeSpans(
       targets.flatMap((node) => {
         const span = nodeSpan(node);
         return span === null ? [] : [span];
       }),
     );
+    const spans = clampSpans(rawSpans, options.from, options.to);
+
+    if (depth === 'index') {
+      const rendered = renderIndex(this.requireTrace("fetchBranch depth:'index'"), this.blobs, spans);
+      return { ...base, text: rendered.text, spans, events: rendered.events };
+    }
+
     const rendered = renderSpans(this.requireTrace("fetchBranch depth:'full'"), this.blobs, spans);
-    return {
-      ...base,
-      text: rendered.text,
-      summaryVersion: 0,
-      meta: null,
-      spans,
-      events: rendered.events,
-    };
+    return { ...base, text: rendered.text, spans, events: rendered.events };
   }
 
   /**

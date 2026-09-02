@@ -14,6 +14,7 @@ import {
   LEAF_SUMMARY_VERSION,
   ROOT_SUMMARY_VERSION,
   SYSTEM_CONTRACT_VERSION,
+  SYSTEM_CONTRACT_VERSIONS,
   TOOL_CONTRACT_RULES,
   leafSummaryPrompt,
   loadPrompt,
@@ -24,6 +25,7 @@ import {
   type ChildSummary,
   type LeafSummaryInput,
 } from '../src/prompts/index.js';
+import { ContextTreeError } from '../src/contracts/errors.js';
 
 const PROMPT_DIR = fileURLToPath(new URL('../src/prompts/', import.meta.url));
 
@@ -123,35 +125,77 @@ describe('the §9 system-prompt contract', () => {
   });
 });
 
-describe('summarizer prompts ask for exactly the §8 contract the parser enforces', () => {
-  for (const name of ['leaf-summary', 'root-summary'] as const) {
-    it(`${name} demands every SummaryMeta field and every enum value`, () => {
-      const template = loadPrompt(name);
-      // A field the parser requires but the prompt never names is a guaranteed
-      // SummaryContractError at runtime.
-      for (const field of [
-        'text',
-        'files',
-        'symbols',
-        'tests',
-        'artifacts',
-        'open_questions',
-        'decisions',
-        'node_ids',
-        'start_line',
-        'end_line',
-      ]) {
-        expect(template).toContain(field);
-      }
-      for (const value of ['passed', 'failed', 'skipped', 'unknown', 'ticket', 'pr', 'url', 'other']) {
-        expect(template).toContain(value);
-      }
-    });
+describe('systemContract version selector (loop9-item3 step 1: the Zone A trim)', () => {
+  it('defaults to v1, byte-identical to the file on disk — a default drift is a silent epoch shift', () => {
+    // The transplant experiment's frozen epoch renders v1 at run time; a default
+    // that quietly stopped matching the file would change every recorded run's
+    // Zone A prefix without anyone editing v1.md.
+    expect(systemContract()).toBe(readFileSync(PROMPT_DIR + `system-contract.${SYSTEM_CONTRACT_VERSION}.md`, 'utf8'));
+    expect(systemContract('v1')).toBe(systemContract());
+  });
 
-    it(`${name} tells the model the metadata is for relevance without expansion (§9 unknown-unknowns)`, () => {
-      expect(plain(loadPrompt(name))).toMatch(/without\s+expanding/i);
-    });
-  }
+  it('v2 is v1 minus the "Two ways this goes wrong" section, and nothing else changed', () => {
+    const v1 = systemContract('v1');
+    const v2 = systemContract('v2');
+    expect(v1).toContain('Two ways this goes wrong');
+    expect(v2).not.toContain('Two ways this goes wrong');
+    // Everything v2 keeps is a verbatim prefix of v1 (a clean heading-to-EOF cut,
+    // not an edit to the surviving Rules/Tools sections).
+    expect(v1.startsWith(v2)).toBe(true);
+  });
+
+  it('throws on an unknown version rather than silently falling back to v1', () => {
+    let thrown: unknown;
+    try {
+      systemContract('v9' as never);
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(ContextTreeError);
+    expect((thrown as Error).message).toMatch(/unknown system contract version: v9/);
+  });
+});
+
+describe('system-contract v3 (loop9b item 2, R10/R11): what a summary cannot carry', () => {
+  it('is registered alongside v2 (loop9-item3) without replacing it — the two arms select different files', () => {
+    expect(SYSTEM_CONTRACT_VERSIONS).toContain('v1');
+    expect(SYSTEM_CONTRACT_VERSIONS).toContain('v2');
+    expect(SYSTEM_CONTRACT_VERSIONS).toContain('v3');
+  });
+
+  it('systemContract() with no argument still resolves to v1, so every untouched caller is unaffected', () => {
+    expect(systemContract()).toBe(systemContract('v1'));
+  });
+
+  it('rejects an unregistered version rather than silently resolving nothing', () => {
+    expect(() => systemContract('v9' as never)).toThrow(/unknown system contract version/);
+  });
+
+  it('keeps exactly three numbered rules, same as v1 — one replaced, none added (G5)', () => {
+    const v3 = systemContract('v3');
+    expect(v3.match(/^\d+\.\s/gm)).toHaveLength(3);
+  });
+
+  it('replaces rule 2 with the "a summary cannot tell you what it said" mechanism statement', () => {
+    const v1 = systemContract('v1');
+    const v3 = systemContract('v3');
+    // v1's rule 2 ("If a summary mentions something you need, fetch that
+    // branch") is gone from v3 — the thing under test is a REPLACEMENT of the
+    // mechanism, not an addition alongside it.
+    expect(v1).toMatch(/fetch that branch/);
+    expect(v3).not.toMatch(/fetch that branch/);
+    expect(v3).toMatch(/can never tell you what it said/i);
+    expect(v3).toContain('depth: "full"');
+  });
+
+  it('removes the v1 narrow-fetch instruction that argues against reaching for detail (Graft 1)', () => {
+    const v1 = systemContract('v1');
+    const v3 = systemContract('v3');
+    expect(v1).toMatch(/prefer `file` over a whole branch/);
+    expect(v3).not.toMatch(/prefer `file` over a whole branch/);
+    // The rest of that paragraph (accumulation + annotate) survives unchanged.
+    expect(v3).toMatch(/`annotate` it — that is what persists/);
+  });
 
   it('the root prompt summarizes child summaries, not raw events (§8)', () => {
     expect(loadPrompt('root-summary')).toMatch(/child summar/i);

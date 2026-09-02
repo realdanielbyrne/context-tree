@@ -403,11 +403,22 @@ describe('TreeRetriever.beamSearch — the L3-absent fallback (§9)', () => {
 });
 
 describe('TreeRetriever.fetchBranch — context_fetch', () => {
+  it('defaults to depth full (R9), because a summary can never contain a literal the paraphrase dropped', () => {
+    const f = fixture();
+    const retriever = new TreeRetriever({ store: f.store, blobs: f.blobs, trace: f.trace });
+
+    const fetched = retriever.fetchBranch(f.nodes.f2.id);
+
+    expect(fetched.depth).toBe('full');
+    expect(fetched.text).toContain('applyTier');
+    expect(fetched.spans).toEqual([{ start: 7, end: 8 }]);
+  });
+
   it('at depth summary returns the stored summary and its §8 rehydration pointers without touching L0', () => {
     const f = fixture();
     const retriever = new TreeRetriever({ store: f.store, blobs: f.blobs, trace: f.trace });
 
-    const fetched = retriever.fetchBranch(f.nodes.f1.id);
+    const fetched = retriever.fetchBranch(f.nodes.f1.id, { depth: 'summary' });
 
     expect(fetched.depth).toBe('summary');
     expect(fetched.text).toBe('Read computeDiscount and confirmed the rounding error.');
@@ -429,6 +440,65 @@ describe('TreeRetriever.fetchBranch — context_fetch', () => {
     expect(fetched.text).toContain('applyTier');
     expect(fetched.text).toContain('edit applied to src/pricing.ts');
     expect(fetched.text).toContain('[7] tool_call Edit path=src/pricing.ts');
+  });
+
+  it('at depth full carries the same §8 meta a depth-summary fetch would, not the old hard-coded null (2h)', () => {
+    const f = fixture();
+    const retriever = new TreeRetriever({ store: f.store, blobs: f.blobs, trace: f.trace });
+
+    const full = retriever.fetchBranch(f.nodes.f2.id, { depth: 'full' });
+    const summary = retriever.fetchBranch(f.nodes.f2.id, { depth: 'summary' });
+
+    expect(full.meta).toEqual(summary.meta);
+    expect(full.meta?.symbols).toEqual(['applyTier']);
+  });
+
+  it('at depth index lists events (seq/type/tool/path/bytes) from L0 + L2 stat only, never blob text', () => {
+    const f = fixture();
+    const retriever = new TreeRetriever({ store: f.store, blobs: f.blobs, trace: f.trace });
+
+    const fetched = retriever.fetchBranch(f.nodes.p2.id, { depth: 'index' });
+
+    expect(fetched.depth).toBe('index');
+    expect(fetched.text).toContain('[7] tool_call Edit path=src/pricing.ts bytes=');
+    expect(fetched.text).toContain('[10] tool_call Write path=docs/authentication.md bytes=');
+    // The whole point of `index`: it never reads a blob's content.
+    expect(f.calls.full).toEqual([]);
+    expect(f.calls.prefix).toEqual([]);
+  });
+
+  it('narrows a full/index read with from/to, clamped to the branch\'s own span (R10)', () => {
+    const f = fixture();
+    const retriever = new TreeRetriever({ store: f.store, blobs: f.blobs, trace: f.trace });
+
+    // p2 spans 6-12; narrow to just the Edit call + its result (7-8).
+    const narrowed = retriever.fetchBranch(f.nodes.p2.id, { depth: 'full', from: 7, to: 8 });
+    expect(narrowed.spans).toEqual([{ start: 7, end: 8 }]);
+    expect(narrowed.text).toContain('applyTier');
+    expect(narrowed.text).not.toContain('oauth login flow');
+
+    // An over-wide range is a no-op — clamped back to the node's own span.
+    const overWide = retriever.fetchBranch(f.nodes.p2.id, { depth: 'full', from: 0, to: 1_000 });
+    const full = retriever.fetchBranch(f.nodes.p2.id, { depth: 'full' });
+    expect(overWide.text).toBe(full.text);
+    expect(overWide.spans).toEqual(full.spans);
+
+    // A disjoint range yields an empty result, never a throw.
+    const disjoint = retriever.fetchBranch(f.nodes.p2.id, { depth: 'full', from: 1_000, to: 1_010 });
+    expect(disjoint.text).toBe('');
+    expect(disjoint.spans).toEqual([]);
+  });
+
+  it('concatenating a partition of from/to ranges is byte-identical to depth full (G3 partition identity)', () => {
+    const f = fixture();
+    const retriever = new TreeRetriever({ store: f.store, blobs: f.blobs, trace: f.trace });
+
+    const full = retriever.fetchBranch(f.nodes.p2.id, { depth: 'full' });
+    const partA = retriever.fetchBranch(f.nodes.p2.id, { depth: 'full', to: 8 });
+    const partB = retriever.fetchBranch(f.nodes.p2.id, { depth: 'full', from: 9 });
+
+    expect(`${partA.text}\n\n${partB.text}`).toBe(full.text);
+    expect(partA.events + partB.events).toBe(full.events);
   });
 
   it('with file restricts the READ to that file node rather than loading the branch and filtering (§10 rule 4)', () => {
@@ -472,6 +542,13 @@ describe('TreeRetriever.fetchBranch — context_fetch', () => {
     const retriever = new TreeRetriever({ store: f.store, blobs: f.blobs });
 
     expect(() => retriever.fetchBranch(f.nodes.f2.id, { depth: 'full' })).toThrow(/TraceLog/);
+  });
+
+  it('also throws with no depth argument at all, because the default is now full, not summary (R9)', () => {
+    const f = fixture();
+    const retriever = new TreeRetriever({ store: f.store, blobs: f.blobs });
+
+    expect(() => retriever.fetchBranch(f.nodes.f2.id)).toThrow(/TraceLog/);
   });
 
   it('throws for an unknown node id', () => {

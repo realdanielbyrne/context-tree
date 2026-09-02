@@ -234,7 +234,6 @@ function configScaffold(cwd: string): string {
     rootModel: DEFAULT_CONFIG.rootModel,
     judgeModel: DEFAULT_CONFIG.judgeModel,
     embedModel: DEFAULT_CONFIG.embedModel,
-    embedDim: DEFAULT_CONFIG.embedDim,
     budgets: DEFAULT_CONFIG.budgets,
     summarize: DEFAULT_CONFIG.summarize,
     retrieval: DEFAULT_CONFIG.retrieval,
