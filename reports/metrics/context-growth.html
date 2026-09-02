@@ -1,0 +1,297 @@
+<title>Context Growth Curves</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#FBFBF9; --surface:#FFFFFF; --ink:#1C1E21; --muted:#5C6167;
+  --line:#DFE1E4; --accent:#0E6B54; --warm:#A64F2A; --code-bg:#F1F2F0;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#16181B; --surface:#1D2024; --ink:#E7E9EB; --muted:#9BA1A8;
+    --line:#33373C; --accent:#46B090; --warm:#D68A62; --code-bg:#25282D;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#16181B; --surface:#1D2024; --ink:#E7E9EB; --muted:#9BA1A8;
+  --line:#33373C; --accent:#46B090; --warm:#D68A62; --code-bg:#25282D;
+}
+body{background:var(--ground); color:var(--ink);
+  font:17px/1.65 "Source Serif 4",Georgia,serif; margin:0;}
+main{max-width:760px; margin:0 auto; padding:56px 24px 80px;}
+h1{font-size:1.9rem; font-weight:700; line-height:1.2; margin:0 0 6px; text-wrap:balance;}
+h2{font-size:1.2rem; font-weight:700; margin:40px 0 10px;}
+.meta{color:var(--muted); font-size:.92rem; margin-bottom:34px;}
+.abstract{margin:0 0 6px; padding:0 0 22px; border-bottom:1px solid var(--line);}
+.abstract h2{margin:0 0 8px; font-size:1.05rem;}
+p{margin:0 0 14px; max-width:70ch;}
+.tablewrap{overflow-x:auto; background:var(--surface); border:1px solid var(--line);
+  border-radius:6px; margin:14px 0 6px;}
+table{border-collapse:collapse; width:100%; font-size:.85rem;}
+th{font-size:.72rem; letter-spacing:.04em; text-transform:uppercase; color:var(--muted);
+  text-align:right; padding:9px 13px; border-bottom:1px solid var(--line); white-space:nowrap;
+  font-family:"IBM Plex Mono",monospace; font-weight:500;}
+th:first-child, td:first-child{text-align:left;}
+td{padding:7px 13px; border-bottom:1px solid var(--line);
+  font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums;
+  font-size:.84rem; text-align:right; white-space:nowrap;}
+td:first-child{font-family:"Source Serif 4",Georgia,serif; font-size:.9rem;}
+tr:last-child td{border-bottom:none;}
+.tcap{font-size:.85rem; color:var(--muted); margin:6px 2px 18px; max-width:72ch;}
+.tcap b{color:var(--ink);}
+figure{background:var(--surface); border:1px solid var(--line); border-radius:6px;
+  padding:18px 14px 6px; margin:16px 0 6px;}
+figcaption{font-size:.85rem; color:var(--muted); padding:8px 8px 10px; max-width:72ch; line-height:1.5;}
+figcaption b{color:var(--ink);}
+.chartwrap{overflow-x:auto;}
+.chartwrap > div{min-width:620px;}
+code{font-family:"IBM Plex Mono",monospace; font-size:.82em; background:var(--code-bg);
+  padding:1px 5px; border-radius:4px;}
+footer{margin-top:48px; padding-top:14px; border-top:1px solid var(--line);
+  color:var(--muted); font-size:.82rem; line-height:1.5;}
+svg{display:block; width:100%; height:auto;}
+svg text{font-family:"IBM Plex Mono",monospace; font-size:11px; fill:var(--muted);
+  font-variant-numeric:tabular-nums;}
+svg .serieslabel{font-size:12px; font-weight:600;}
+ol{max-width:70ch; padding-left:1.4em;}
+li{margin-bottom:10px;}
+</style>
+<main>
+<h1>Context size per turn in long conversations</h1>
+<div class="meta">Context-tree evaluation program · supplementary note to the loop-8 interim report · September 1, 2026</div>
+
+<p style="font-size:.92rem; color:var(--muted); border:1px solid var(--line); border-radius:6px; padding:10px 14px; max-width:72ch;"><em>Status.</em> This is an interim supplementary note, not a new experiment. It plots data already on disk from the runs described in the loop-8 interim report [1], because a reader asked to see context size against turn with both arms on one chart. Loop-8's conclusions are unchanged by it; one of them is sharpened.</p>
+
+<div class="abstract">
+<h2>Abstract</h2>
+<p>An agent's prompt normally carries the transcript of everything the agent has done, so the prompt grows with the length of the conversation and eventually exceeds the model's context window. Context-tree is a context-management layer that reorganizes that linear conversation into a summary-headed tree: the full history is written to disk, the work is segmented into branches, and the prompt carries a short summary per completed branch instead of the raw events, together with tools the agent calls to fetch any detail back on demand. This note plots context size per turn for context-tree and for the ordinary transcript on the same axes, in the two regimes we have data for. Above context-tree's size threshold, measured offline on a deterministic 200-branch task, the transcript grows by 284 tokens per branch and crosses a 16,384-token window at branch 57 and a 32,768-token window at branch 115, while the tree prompt is constant at 9,062 tokens from branch 70 through branch 200. Below the threshold, measured live on two 60&nbsp;kB software tasks, the result runs the other way: the tree carries roughly twice the baseline's context per turn — final-turn medians of 39,201 tokens against 19,157 on sw-5-dozen and 36,601 against 20,191 on sw-6-ripple — because the threshold never fired, so the tree showed the whole trace and paid for its own fixed contract on top. The threshold is currently estimated as characters divided by four, which under-counts code-dense text. Replacing that estimate with a real token count is the first item of loop 9; these charts are its motivating evidence, and we expect the live curves to bend flat once it lands.</p>
+</div>
+
+<h2>1&ensp;Terms, and where the data comes from</h2>
+<p>A <b>turn</b> is one model call inside a run: the harness sends a prompt, the model answers, any tool results come back, and the next turn begins. <b>Context size per turn</b> is the number of tokens the model saw on that call — fresh input tokens plus cache-read tokens plus cache-write tokens, as the provider reports them for that request. We add the three because they partition one thing: cached or not, every token in those three counts was in the prompt the model read. Output tokens are excluded; they are not context. Both quantities are provider-independent in the sense that matters here — tokens and turns, never dollars.</p>
+<p>We compare two <b>arms</b>, holding the model and the task fixed. The <b>native transcript</b> baseline (<code>native</code> in the harness) is what agent harnesses do by default: the prompt contains the whole conversation, re-sent every turn, with the provider's prompt cache making the repetition cheap but not free. <b>Context-tree</b> (<code>context-tree</code>) is the candidate described in the abstract.</p>
+<p>Two of context-tree's terms appear below. A <b>branch</b> is its unit of organization: a contiguous stretch of work on one sub-problem, which gets a summary once it completes; a <b>fold</b> is the loop-8 change that keeps the list of those summaries from growing without limit, by giving individual headlines only to the 40 most recent branches and representing everything older with one line that says what was removed and how to retrieve it. Both are derived in [1]. <b>Devolved mode</b> is the third term and it governs §3: below a size threshold context-tree shows the whole trace rather than summaries, on the argument that summarizing a short conversation costs money for nothing. In that mode the tree's machinery — segmentation, summarization, folding — is dormant, and the prompt is the raw trace plus the tree's fixed contract, meaning its system prompt and the schemas of its four retrieval tools. Every live run in §3 ran in devolved mode from its first turn to its last.</p>
+<p>None of these curves required a new run. Every evaluation run already persists a per-turn record — <code>turns: TurnRecord[]</code> in the run's <code>results.json</code>, declared at <code>eval/src/types.ts:52</code>, carrying the usage split for each model call — so the series in Figures 2 and 3 is reconstructable for any run we still have on disk, including runs from earlier loops. Langfuse mirrors the same numbers remotely, one generation per model call, and is convenient for browsing, but the local files are the authoritative and provider-independent source and are what we read here. Going forward every experiment records this series, and every checkpoint report carries these charts (user directive, 1 September 2026).</p>
+
+<h2>2&ensp;Above the threshold: the marathon</h2>
+<p>Figure 1 is the regime the architecture was built for. It comes from the marathon harness [2], which replays 200 read–write–verify branches through the real storage and assembly pipeline with no language-model calls at all, and assembles both arms' prompts at every tenth branch. Token counts are the harness's <code>HeuristicTokenizer</code>. The run is bit-identical between invocations, which is why the transcript line is straight rather than noisy.</p>
+
+<figure>
+<div class="chartwrap"><div id="fig1"></div></div>
+<figcaption><b>Figure 1.</b> Context size against branch number on the 200-branch marathon task, both arms on the same axes. The vertical axis is tokens in the assembled prompt; the horizontal axis is the number of completed branches. The upper, brown line is the native transcript baseline, which grows by exactly 284 tokens per branch at every one of the twenty checkpoints. The lower, green line is context-tree: it rises while the root summary fills, folding first engages at branch 41, and from branch 70 through branch 200 the prompt is constant at 9,062 tokens. The two dashed lines are the context windows of two real models; the two ringed points on the transcript line are where it crosses them. This is an offline simulation — no model was called, the token counts are heuristic, and the branches are synthetic work units of uniform size.</figcaption>
+</figure>
+
+<p>The transcript crosses a 16,384-token window (the gpt-3.5-turbo class) at branch 57 and a 32,768-token window (the qwen-2.5-72b class) at branch 115, interpolating linearly between checkpoints. The loop-8 report quotes 56 and 113 for the same two crossings; the difference comes from the intercept of the fit, is under two branches, and does not affect any conclusion — but the numbers plotted here are the ones this series supports. Context-tree does not cross either line at any horizon the harness reaches.</p>
+<p>What Figure 1 is not is a chat. The live confirmation of the same claim is in [1]: at branch 200 one real request per arm was made against a 32,768-token model, and the 42,690-token transcript prompt was rejected with <code>context_length_exceeded</code> while the 9,062-token tree prompt was answered.</p>
+
+<h2>3&ensp;Below the threshold: two live tasks</h2>
+<p>Figures 2 and 3 are the regime our live tasks actually occupy, and they do not favour the candidate. The two scenarios are the long tasks built for loop 8: <b>sw-5-dozen</b>, twelve independently buggy modules, and <b>sw-6-ripple</b>, an interface migration touching ten dependent files. Each carries about 60&nbsp;kB of material and a hidden test suite. Both arms ran claude-sonnet-5 with three replicates each, in one batch, so the two arms saw the same code, the same prompts, and the same epoch [3]. All twelve runs completed and scored 100%.</p>
+
+<figure>
+<div class="chartwrap"><div id="fig2"></div></div>
+<figcaption><b>Figure 2.</b> Context size per turn on sw-5-dozen (twelve independently buggy modules, ~60&nbsp;kB of material), all six live runs on the same axes. The vertical axis is the tokens the model saw on that call — fresh input plus cache reads plus cache writes. The horizontal axis is the turn index within the run; a line ends where its run finished, which is why the lines have different lengths. Three lines per arm, one per replicate: brown is the native transcript baseline, green is context-tree. Both arms solved the task in every replicate. The tree starts 2,442 tokens above the baseline on turn 1 and is the smaller of the two through about turn 5; from turn 7 to the end it is clearly larger, ending at a median of 39,201 tokens against the baseline's 19,157.</figcaption>
+</figure>
+
+<figure>
+<div class="chartwrap"><div id="fig3"></div></div>
+<figcaption><b>Figure 3.</b> Context size per turn on sw-6-ripple (an interface migration touching ten dependent files, ~60&nbsp;kB of material), all six live runs on the same axes, plotted on the same scales as Figure 2. Axes, colours and replicate structure are as in Figure 2: brown is the native transcript baseline, green is context-tree, three replicates each, lines ending where their runs did. Final-turn median 36,601 tokens for the tree against 20,191 for the baseline.</figcaption>
+</figure>
+
+<p>The reading is plain. In this regime context-tree carries more context per turn than the baseline it is supposed to improve on. Final-turn medians are 39,201 tokens against 19,157 on sw-5, a factor of 2.0, and 36,601 against 20,191 on sw-6, a factor of 1.8. The peaks tell the same story: the tree reaches 41,866 tokens on sw-5 and 37,650 on sw-6, where the baseline never exceeds 21,617 and 21,678. The first turn is exactly 2,442 tokens more expensive under the tree in both scenarios — that number is the tree's fixed contract, paid before any work is done, and it is identical across the two tasks because it does not depend on the task. For the first five or six turns the two arms interleave, with the tree often the smaller; from about turn 7 the tree is above the baseline in every replicate and stays there.</p>
+<p>The cause is the one loop 8 identified and did not yet fix. The lazy threshold that would have switched the tree out of devolved mode never fired, because it estimates trace size as characters divided by four and the real tokenizer charges more than that for code-dense text. So on these tasks the tree never summarized anything: it showed the entire trace, in its own richer event rendering, and added its fixed contract on top. The summary-headed tree that Figure 1 measures was, in these runs, dormant machinery being paid for and not used.</p>
+<p>One control rules out the other candidate explanation. Loop 8 also fixed a cache-churn defect, and the tree arm was re-run on the same two scenarios afterwards (the v6.4 batch [3]); final-turn context in those six runs lands between 32,870 and 39,208 tokens, the same band as Figures 2 and 3. That fix changed how often the prefix was re-written to the provider's cache, not how large the prompt was.</p>
+<p>Turn counts do not offset the difference, and they do not aggravate it either. On sw-6 the tree finished in 15, 12 and 9 turns against the baseline's 20, 10 and 12; on sw-5 in 12, 9 and 16 against 19, 13 and 10. The medians are 12 against 12 on sw-6 and 12 against 13 on sw-5. So the tree is not buying its larger prompts with extra turns — it simply has larger prompts.</p>
+<p>These two figures are the motivating evidence for the first item of loop 9: measure the threshold with the real tokenizer, so that the switch out of devolved mode happens exactly when the trace would otherwise overflow its zone. When it lands, we expect these curves to stop climbing at the crossing point and run flat, in the manner of Figure 1's green line, and we will re-chart both scenarios to check that they do.</p>
+
+<h2>4&ensp;Open items and recommendations</h2>
+<ol>
+<li><b>Replace the characters÷4 lazy gate with a real token count, then re-run and re-chart sw-5 and sw-6.</b> This is the change Figures 2 and 3 argue for. The success criterion is visible on the chart: the tree's curve flattens at the crossing instead of tracking the trace, and its final-turn context falls below the baseline's on at least one of the two scenarios. Until it lands, no live run has ever crossed into summarized operation, so the flat line in Figure 1 remains established offline by construction only.</li>
+<li><b>Record the same per-turn series for every arm of the loop-9 transplant harness, plain compaction included.</b> In flight. Compaction is the honest competitor to context-tree in the below-threshold regime — it is what production harnesses actually do — and it belongs on these axes rather than being argued about.</li>
+<li><b>Make these charts a standing section of every checkpoint report.</b> The data has always been in <code>results.json</code>; the omission was in the reporting, not the instrumentation. Per-turn context against turn, both arms, one pair of axes, in every checkpoint from here on.</li>
+</ol>
+
+<h2>References</h2>
+<p style="font-size:.9rem;">[1]&ensp;<em>Making an agent's prompt size independent of conversation length</em> — the loop-8 interim report. <a href="https://claude.ai/code/artifact/d6875957-086a-4408-9de5-798b31aba6e6" style="color:var(--accent);">claude.ai/code/artifact/d6875957…</a> — folding and the list cap (decisions D17 and D18), the marathon harness, the live context-window probe, the recall probe, and the cache-churn fix.<br>
+[2]&ensp;<code>eval/scripts/marathon.mjs</code> in the context-tree repository — the deterministic 200-branch harness that produced Figure 1: no language-model calls, <code>HeuristicTokenizer</code> for token counts, a checkpoint every ten branches.<br>
+[3]&ensp;The <code>long-v6x</code> results batch (Figures 2 and 3: two scenarios × two arms × three replicates, claude-sonnet-5, one epoch) and the <code>long-v64</code> batch (tree arm only, after the cache fix), read from each run's <code>results.json</code> via <code>turns: TurnRecord[]</code>.</p>
+
+<footer>Supplementary note to loop 8 · Figure 1 from <code>eval/scripts/marathon.mjs</code>, offline and deterministic · Figures 2 and 3 from the <code>long-v6x</code> live batch, claude-sonnet-5, three replicates per cell, same epoch · September 1, 2026.</footer>
+</main>
+<script>
+const DATA = {"marathon":[[10,2974,2887],[20,5814,4517],[30,8654,6147],[40,11494,7778],[50,14334,8975],[60,17174,9092],[70,20014,9062],[80,22854,9062],[90,25694,9062],[100,28534,9062],[110,31374,9062],[120,34214,9062],[130,37054,9062],[140,39894,9062],[150,42734,9062],[160,45574,9062],[170,48414,9062],[180,51254,9062],[190,54094,9062],[200,56934,9062]],"live":{"sw-5-dozen":{"native":[[1571,1682,2052,9299,9940,10143,10256,10325,10418,10487,10534,10650,10719,10987,18126,18767,18880,18949,19157],[1571,1941,9188,9421,9534,11938,11975,16796,16875,16916,21275,21390,21617],[1571,1941,9188,9301,9410,9545,9880,16996,17109,17244]],"tree":[[4013,4173,4314,5502,5996,13544,14206,21604,37987,38230,38509,39201],[4013,4443,4584,4939,6205,21140,37569,37856,37958],[4013,4193,4373,4988,5263,6285,13173,13940,20537,24412,40897,41065,41356,41602,41866,41846]]},"sw-6-ripple":{"native":[[1550,2307,4961,17646,17701,17770,17954,18011,18131,18873,18900,18969,19944,20048,20117,20186,21368,21411,21567,21678],[1550,6942,7011,7052,7795,17705,17755,18876,19069,19252],[1550,1619,2302,4956,17571,17616,17685,17867,18988,19186,20050,20191]],"tree":[[3992,4658,4878,5709,11264,17021,22336,23650,24884,33664,33906,36522,36512,36575,36601],[3992,4460,9613,10826,16381,26694,27993,29238,37573,37604,37650,37648],[3992,4721,5555,11110,21423,22712,35791,36061,36393]]}}};
+const nf = n => n.toLocaleString('en-US');
+
+function chart(id, cfg){
+  const W = 680, H = cfg.h, L = 66, R = 108, TP = 34, BT = 50;
+  const ax0 = L, ax1 = W - R, ay0 = H - BT, ay1 = TP;
+  const X = v => ax0 + (v - cfg.xmin) / (cfg.xmax - cfg.xmin) * (ax1 - ax0);
+  const Y = v => ay0 - v / cfg.ymax * (ay0 - ay1);
+  let g = '';
+
+  cfg.yticks.forEach(t => {
+    g += '<line x1="' + ax0 + '" y1="' + Y(t) + '" x2="' + ax1 + '" y2="' + Y(t) +
+         '" stroke="var(--line)" stroke-width="1"/>' +
+         '<text x="' + (ax0 - 10) + '" y="' + (Y(t) + 4) + '" text-anchor="end">' +
+         (t ? (t / 1000) + 'k' : '0') + '</text>';
+  });
+  g += '<text x="' + (ax0 - 10) + '" y="' + (ay1 - 14) + '" text-anchor="end">tokens</text>';
+  cfg.xticks.forEach(t => {
+    g += '<text x="' + X(t) + '" y="' + (ay0 + 20) + '" text-anchor="middle">' + t + '</text>';
+  });
+  g += '<text x="' + ((ax0 + ax1) / 2) + '" y="' + (ay0 + 42) + '" text-anchor="middle">' + cfg.xtitle + '</text>';
+
+  (cfg.hlines || []).forEach(h => {
+    g += '<line x1="' + ax0 + '" y1="' + Y(h.y) + '" x2="' + ax1 + '" y2="' + Y(h.y) +
+         '" stroke="var(--muted)" stroke-width="1" stroke-dasharray="5 4" opacity=".65"/>' +
+         '<text x="' + (ax1 - 4) + '" y="' + (Y(h.y) + 15) + '" text-anchor="end">' + h.label + '</text>';
+  });
+
+  cfg.series.forEach(s => {
+    const op = s.op == null ? 1 : s.op;
+    g += '<polyline fill="none" stroke="' + s.color + '" stroke-width="2" opacity="' + op +
+         '" stroke-linejoin="round" points="' +
+         s.pts.map(p => X(p[0]).toFixed(1) + ',' + Y(p[1]).toFixed(1)).join(' ') + '"/>';
+    if (s.dot) s.pts.forEach(p => {
+      g += '<circle cx="' + X(p[0]).toFixed(1) + '" cy="' + Y(p[1]).toFixed(1) + '" r="' + s.dot +
+           '" fill="' + s.color + '" opacity="' + op + '"/>';
+    });
+  });
+
+  (cfg.marks || []).forEach(m => {
+    g += '<circle cx="' + X(m.x).toFixed(1) + '" cy="' + Y(m.y).toFixed(1) + '" r="5" fill="' + m.color +
+         '" stroke="var(--surface)" stroke-width="1.5"/>' +
+         '<text x="' + (X(m.x) - 9).toFixed(1) + '" y="' + (Y(m.y) - 9).toFixed(1) +
+         '" text-anchor="end">' + m.label + '</text>';
+  });
+  (cfg.ends || []).forEach(e => {
+    g += '<text x="' + (X(e.x) + 8).toFixed(1) + '" y="' + (Y(e.y) + 4).toFixed(1) +
+         '" class="serieslabel" fill="' + e.color + '">' + e.label + '</text>';
+  });
+
+  let lx = ax0;
+  cfg.legend.forEach(l => {
+    g += '<rect x="' + lx + '" y="' + (ay1 - 26) + '" width="13" height="3" fill="' + l.color + '"/>' +
+         '<text x="' + (lx + 19) + '" y="' + (ay1 - 20) + '">' + l.label + '</text>';
+    lx += 38 + l.label.length * 6.7;
+  });
+
+  g += '<g data-c="1" style="display:none"><line y1="' + (ay1 - 10) + '" y2="' + ay0 +
+       '" stroke="var(--muted)" stroke-width="1" opacity=".8"/></g>';
+  g += '<g data-t="1" style="display:none"></g>';
+  g += '<rect data-o="1" x="' + ax0 + '" y="' + (ay1 - 10) + '" width="' + (ax1 - ax0) +
+       '" height="' + (ay0 - ay1 + 10) + '" fill="transparent"/>';
+
+  const host = document.getElementById(id);
+  host.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + cfg.alt + '">' + g + '</svg>';
+
+  const svg = host.firstChild;
+  const ov = svg.querySelector('[data-o]');
+  const cr = svg.querySelector('[data-c]');
+  const tp = svg.querySelector('[data-t]');
+  const cl = cr.firstChild;
+  const maps = cfg.series.map(s => ({ name: s.tip, color: s.color, m: new Map(s.pts) }));
+
+  function show(xv){
+    cl.setAttribute('x1', X(xv)); cl.setAttribute('x2', X(xv));
+    cr.style.display = '';
+    const rows = maps.map(r => ({ name: r.name, color: r.color, v: r.m.get(xv) }))
+                     .filter(r => r.v != null);
+    if (!rows.length){ tp.style.display = 'none'; return; }
+    const head = cfg.tipHead + ' ' + xv;
+    const wide = Math.max(head.length, ...rows.map(r => r.name.length + 8)) * 6.3 + 26;
+    const high = 22 + rows.length * 15 + 6;
+    let tx = X(xv) + 12;
+    if (tx + wide > W - 4) tx = X(xv) - 12 - wide;
+    let s = '<rect x="' + tx + '" y="' + (ay1 - 6) + '" width="' + wide + '" height="' + high +
+            '" rx="4" fill="var(--surface)" stroke="var(--line)" stroke-width="1"/>' +
+            '<text x="' + (tx + 11) + '" y="' + (ay1 + 11) + '" fill="var(--ink)">' + head + '</text>';
+    rows.forEach((r, i) => {
+      const yy = ay1 + 29 + i * 15;
+      s += '<rect x="' + (tx + 11) + '" y="' + (yy - 7) + '" width="10" height="3" fill="' + r.color + '"/>' +
+           '<text x="' + (tx + 26) + '" y="' + yy + '" fill="var(--ink)">' + r.name + ' ' + nf(r.v) + '</text>';
+    });
+    tp.innerHTML = s; tp.style.display = '';
+  }
+
+  ov.addEventListener('mousemove', e => {
+    const b = svg.getBoundingClientRect();
+    const raw = cfg.xmin + (((e.clientX - b.left) / b.width * W) - ax0) / (ax1 - ax0) * (cfg.xmax - cfg.xmin);
+    let best = cfg.xdomain[0];
+    cfg.xdomain.forEach(d => { if (Math.abs(d - raw) < Math.abs(best - raw)) best = d; });
+    show(best);
+  });
+  ov.addEventListener('mouseleave', () => { cr.style.display = 'none'; tp.style.display = 'none'; });
+}
+
+const WARM = 'var(--warm)', ACC = 'var(--accent)';
+
+chart('fig1', {
+  h: 320, xmin: 0, xmax: 200, xticks: [0, 40, 80, 120, 160, 200],
+  ymax: 60000, yticks: [0, 20000, 40000, 60000],
+  xtitle: 'completed branches', tipHead: 'branch',
+  xdomain: DATA.marathon.map(r => r[0]),
+  alt: 'Prompt tokens against completed branches. The native transcript grows linearly through both context windows; the context-tree prompt is flat from branch 70.',
+  hlines: [
+    { y: 16384, label: '16,384 window (gpt-3.5-turbo)' },
+    { y: 32768, label: '32,768 window (qwen-2.5-72b)' }
+  ],
+  series: [
+    { tip: 'native', color: WARM, dot: 3, pts: DATA.marathon.map(r => [r[0], r[1]]) },
+    { tip: 'tree',   color: ACC,  dot: 3, pts: DATA.marathon.map(r => [r[0], r[2]]) }
+  ],
+  marks: [
+    { x: 57.2,  y: 16384, color: WARM, label: 'branch 57' },
+    { x: 114.9, y: 32768, color: WARM, label: 'branch 115' }
+  ],
+  ends: [
+    { x: 200, y: 56934, color: WARM, label: 'native' },
+    { x: 200, y: 9062,  color: ACC,  label: 'context-tree' }
+  ],
+  legend: [
+    { color: WARM, label: 'native transcript (baseline)' },
+    { color: ACC,  label: 'context-tree' }
+  ]
+});
+
+function liveChart(id, key, alt){
+  const d = DATA.live[key];
+  const reps = ['r1', 'r2', 'r3'];
+  const series = [];
+  ['native', 'tree'].forEach(arm => {
+    const color = arm === 'native' ? WARM : ACC;
+    d[arm].forEach((vals, i) => {
+      series.push({
+        tip: (arm === 'native' ? 'native ' : 'tree ') + reps[i], color: color, op: 0.68, dot: 2.2,
+        pts: vals.map((v, j) => [j + 1, v])
+      });
+    });
+  });
+  const endOf = arm => {
+    let best = null;
+    d[arm].forEach(vals => {
+      if (!best || vals.length > best.n) best = { n: vals.length, v: vals[vals.length - 1] };
+    });
+    return best;
+  };
+  const en = endOf('native'), et = endOf('tree');
+  chart(id, {
+    h: 340, xmin: 1, xmax: 20, xticks: [1, 5, 10, 15, 20],
+    ymax: 45000, yticks: [0, 10000, 20000, 30000, 40000],
+    xtitle: 'turn (one model call)', tipHead: 'turn',
+    xdomain: Array.from({ length: 20 }, (_, i) => i + 1),
+    alt: alt, series: series,
+    ends: [
+      { x: en.n, y: en.v, color: WARM, label: 'native' },
+      { x: et.n, y: et.v, color: ACC,  label: 'context-tree' }
+    ],
+    legend: [
+      { color: WARM, label: 'native transcript, 3 replicates' },
+      { color: ACC,  label: 'context-tree, 3 replicates' }
+    ]
+  });
+}
+
+liveChart('fig2', 'sw-5-dozen',
+  'Context size per turn on sw-5-dozen, three replicates per arm. The context-tree runs carry roughly twice the baseline context by the final turn.');
+liveChart('fig3', 'sw-6-ripple',
+  'Context size per turn on sw-6-ripple, three replicates per arm. The context-tree runs carry roughly 1.8 times the baseline context by the final turn.');
+</script>
