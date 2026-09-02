@@ -111,7 +111,7 @@ for (const [key, members] of [...groups.entries()].sort()) {
 const fmt = (x, digits = 3) =>
   x === undefined ? '-' : x >= 1000 ? Math.round(x).toLocaleString('en-US') : Number(x.toFixed(digits));
 
-console.log('| label | scenario | arm | n | ok | score med | cost mean±sd (cv) | cost median [IQR] | turns med | totTok med | inTok med | outTok med | cacheW med |');
+console.log('| label | scenario | arm | n | ok | score mean | cost mean±sd (cv) | cost median [IQR] | turns med | totTok med | inTok med | outTok med | cacheW med |');
 console.log('| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |');
 for (const e of summary) {
   const c = e.metrics.costUsd;
@@ -122,7 +122,7 @@ for (const e of summary) {
   const it = e.metrics.inputTokens;
   const ot = e.metrics.outputTokens;
   console.log(
-    `| ${e.label} | ${e.scenarioId} | ${e.arm} | ${e.n} | ${Math.round(e.successRate * 100)}% | ${fmt(sc.median * 100, 1)}% | ` +
+    `| ${e.label} | ${e.scenarioId} | ${e.arm} | ${e.n} | ${Math.round(e.successRate * 100)}% | ${fmt(sc.mean * 100, 1)}% | ` +
       `$${fmt(c.mean, 3)}±${fmt(c.sd, 3)} (${fmt(c.cv * 100, 1)}%) | $${fmt(c.median, 3)} [${fmt(c.p25, 3)}–${fmt(c.p75, 3)}] | ` +
       `${fmt(t.median, 1)} | ${fmt(tok.median, 0)} | ${fmt(it.median, 0)} | ${fmt(ot.median, 0)} | ${fmt(cw.median, 0)} |`,
   );
