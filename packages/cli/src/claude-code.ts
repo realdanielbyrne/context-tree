@@ -89,6 +89,11 @@ export function mapClaudeCodeTranscript(
       skipped += 1;
       continue;
     }
+    // Harness-injected lines (hook output, reminders) masquerade as user turns.
+    if (parsed.isMeta === true) {
+      skipped += 1;
+      continue;
+    }
     const message = parsed.message;
     if (!isRecord(message)) {
       failures.push({ line, error: `${kind} line has no "message" object` });

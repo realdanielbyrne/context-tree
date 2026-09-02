@@ -81,3 +81,8 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+# transplant fixtures: raw session transcripts + derived stores are private/rebuildable — only the manifest, questions, verdict doc and stats get committed
+eval/fixtures/transplant/*/trace.src.jsonl
+eval/fixtures/transplant/*/store/
+eval/scripts/.probe-tmp.mjs

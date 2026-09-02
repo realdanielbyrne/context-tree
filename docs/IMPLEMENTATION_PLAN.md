@@ -68,6 +68,7 @@ segmentation algorithm can change without data migration.
 | D16 | Node ids are a **deterministic function of the segmentation NodeKey**, not random ULIDs (added in implementation, 2026-08-31) | D8 requires L1 to be a function of L0+L2. With random ids, `rebuild()` mints new ones, so any L0 event referencing a node id (`manual_annotation`, §6) cannot be resolved after a rebuild — annotations and `node_links` were silently dropped. Deterministic ids make rebuild a genuine replay. Id keeps the `n_` + 26-char shape and encodes kind rank first so creation order (D5 / Zone B) still sorts a phase ahead of the file node sharing its start seq |
 | D17 | Root composition is a pure, byte-stable function of current child summaries — task title, the newest `rootKeep` (default 40) headlines verbatim, older members collapsed into one count + id-range + title-range fold line, merged open questions over the kept window. All member ids stay in `meta.node_ids`. Fold applies only to direct children of the task root (phase nodes) — never `file`/`turn` nodes, never across a task-root boundary. Zero LLM by default; an LLM digest of the folded members is permitted only as an optional, non-blocking upgrade (added in implementation, 2026-09-01) | Codifies the `deterministic-rollup-v1` precedent (implemented 2026-08, never recorded): the strong-model root call was mostly redundant with the verbatim leaf summaries already in Zone B. The cap is the boundedness fix: the uncapped headline list grew ~50-125 tok per closed branch, so the root block alone overflowed the 8k Zone B budget at n≈70-160 and grew forever after (root is exempt from rule-4 dropping). Capping makes the whole prompt O(1) in branch count. Grouping is `slice()` over creation order — deterministic from L0, no clock, no randomness, no LLM (D8). Lossy in prompt, lossless on disk: folded members keep their own D3-versioned `node_summaries` rows and remain reachable via `context_search` / `context_fetch` |
 | D18 | No rendered meta list (`files`, `symbols`, `tests`, `artifacts`, `decisions`, `open questions`, `fetchable nodes`) prints more than 40 values; overflow renders `+M more` (added in implementation, 2026-09-01) | The root block's `decisions` / `open_questions` / `fetchable nodes` are merges over *every* child, so capping only the headline list (D17) leaves a second ~50 tok/branch growth term. Rendering is capped, `SummaryMeta` is not — the full list stays in L1 for `context_fetch` |
+| D19 | Eval budgets are a **function of the target window W**, never hand-tuned: response .05 / Zone A .10 / Zone B .20 / Zone C .20 / lazy .35 / slack .10 of W, each **divided by the measured heuristic→BPE ratio**. Slack re-floors to .15 above ratio 1.15 (paid out of Zone C, never Zone B); ratio > 1.6 is a kill condition. `truncate-tail` keeps `K = 0.85·W/ratio − response`. **D17's `rootKeep` derives from W too** — the largest rung of `[40, 16, 12, 8, 6, 4, 2]` whose *assembled* Zone B fits its budget with at least one branch summary surviving; if no rung does, that window's cell is dead and is reported, never forced. The hand-tuned lazy constant is removed *as a rule* (added in implementation, 2026-09-01) | `EVAL_LAZY_TOKENS=30000` at W=32k *was the entire window* — a threshold picked against one model's context silently means "never transition" on any smaller one, and the harness cannot tell the two cases apart. Fractions make every budget a function of the window; the division makes it a function of the *tokenizer* too, because §10 sizes zones with `HeuristicTokenizer` while the provider bills its own BPE. Measured on the loop-9 substrate: cl100k / heuristic = 0.851 over all 697 L2 blobs, so budgets handed to the assembler unscaled misstate the real window by ~15%. The `rootKeep` clause has the same origin and a sharper edge: at keep=40 the rendered root block measured 6,917 tok — larger than the whole 16k Zone B budget (3,850) — and the root is exempt from rule-4 dropping (`assembler.ts:245-252`), so a fixed keep drops every branch summary and *still* reports `overBudget`. Its test is deliberately the §17 assertion itself rather than a share-of-Zone-B constant: a constant standing in for the property wanted is one tuning pass away from being reverse-engineered to rescue a result, whereas assembling the real prompt and asking it collapses two rules into one — wherever the derivation returns a keep, the §17 budget and non-root-only assertions provably hold. Zero code change — the harness derives and exports `EVAL_LAZY_TOKENS`; `eval/src/loop.ts` is untouched (the v6.5 gate lineage is mid-flight and must not be perturbed) |
 
 ## 4. Prior art and reference implementations
 
@@ -500,6 +501,8 @@ MCP server into Claude Code / Codex config, mirroring graft's onboarding UX.
 
 ## 15. Evaluation plan (G7 — the literature gap)
 
+### 15.1 Session resumption (the primary benchmark)
+
 **Benchmark: session resumption on coding tasks.** No existing benchmark tests
 "can a fresh agent resume this task from the tree alone" (LOCOMO-style QA does
 not). Build 20–30 scripted tasks (10 fresh / 10 resumed-mid-task / 10
@@ -512,8 +515,9 @@ Baselines, same frontier model in all arms:
 |-----|-------------------------------------------|
 | A | full transcript (upper bound quality, worst cost) |
 | B | flat last-N-token window (what naive agents do) |
-| C | single-level whole-transcript summary (Mem0-style flatten) |
+| C | **rolling compaction** — running summary carried forward over `0.5·W/ratio` chunks, oldest-first, plus a verbatim tail; model, `maxSummaryTokens = 1024`, **and total prompt budget all pinned to arm D's**. The practitioner default (cf. Claude Code's own compaction), and the only honest null hypothesis: a compaction baseline given a cheaper model or a smaller prompt measures the budget, not the organization |
 | D | **this system** (tree summaries + active branch + tools) |
+| C2 | MemGPT-style self-paged recall (arXiv:2310.08560) — **deferred, not built.** Plugs into the same `--arm` switch over the same frozen store and question set, so it costs a named line rather than a redesign |
 
 Metrics: task success rate, tool-call count, input tokens (cache-read vs
 cache-write split), p50/p95 latency, cost/task, organization quality
@@ -522,6 +526,45 @@ LLM-as-judge (strong model, rubric at `eval/rubric.md`). n≥5 seeds per task.
 
 v1 success criteria: D ≥ A − 5 pts on success rate, ≥50% lower input-token cost
 than A, ≥30% lower than C, tool-call overhead < 2.5/task.
+
+### 15.2 Cross-model transplant
+
+§15.1 holds the model fixed and varies the context. This holds the *context*
+fixed and varies the model: one real large-model trace is frozen, ingested
+once, summarized once, and then replayed to small-window models that never saw
+it (`qwen/qwen-2.5-72b-instruct` and `openai/gpt-3.5-turbo`, W ∈ {16,384,
+32,768}, budgets derived per D19). It is the null-hypothesis form of the §15
+claim — does the *organization* carry recall, or would any compaction of the
+same bytes do as well — which is why arm C is pinned to arm D's leaf model,
+output cap and prompt budget rather than merely being "a summary".
+
+Questions are extracted, not written. Answer literals are the ones occurring
+**exactly once** across all of L0, stratified `head` (outside truncation's keep
+window K), `tail` (inside it), and `deep` (absent from every stored summary, so
+only a `context_search` → `context_fetch` hop into raw L0 reaches it), plus an
+exploratory `spanning` stratum (n=3, two literals in two different branches)
+pre-registered as exploratory so it cannot be promoted post-hoc. A third model
+family paraphrases each span into a vocabulary-free question and never grades
+it; grading is `exactMatchJudge` plus a boundary-anchored regex and makes no
+model call. The leakage gate rejects any question sharing a 3-gram with its
+source phase's stored summary **after the answer literal is removed from the
+question** — without that carve-out the gate rejects every question that must
+contain its own answer token, which is most of them.
+
+Pass criteria, pre-registered: `tree ≥ compact-rolling + 0.25` MEAN on the
+`head` stratum, and `tree ≥ truncate-tail − 0.05` on `tail`; a tail-stratum
+tree loss is reported as a **regression, not a tradeoff**. n ≥ 5 per arm per
+model, all arms interleaved within one `(model, W)` cell so they share one
+epoch, against the same frozen store and the same frozen question set — the
+manifest hashes the source trace, `trace.jsonl`, the node dump,
+`node_summaries`, the `toolPhase` config and the question set, and a mismatch
+stops the run rather than warning. Escalation is pre-registered too: a
+bootstrap 95% CI on `tree − compact-rolling` that crosses 0 raises n to the
+larger of `16·p̄(1−p̄)/Δ²` and the pooled-σ two-proportion form, capped at 20,
+once; still overlapping publishes **"no detectable difference"**.
+
+Harness: `eval/scripts/transplant.mjs --phase gates|prep|run|verdict`, with the
+zero-token gates of §17 as numbered steps *before* any API key is read.
 
 ## 16. Milestones
 
@@ -556,6 +599,26 @@ per-PR spend via the cost meter.
   unchanged across the `rootKeep` crossing, and that the root block's byte
   delta at the crossing is bounded and does not grow when re-measured at later
   crossings (D5: bounded swap, not a late/large swap).
+- **BPE ratio (D19):** `ExactTokenizer(cl100k_base) / HeuristicTokenizer` over a
+  deterministically defined L0 sample — every L2 blob, sha order, newline-joined
+  — recorded per substrate. A local BPE table only, no API call, so it runs in
+  CI. Slack re-floors above 1.15; above 1.6 the run stops. The same assertion
+  proves the native transcript exceeds the target window in *real* tokens
+  rather than chars/4, which is what makes "the answer lies outside the window"
+  a precondition instead of an assumption.
+- **Zone-B nesting:** for W ∈ {8k, 16k, 32k, 64k, 200k}, the branch-summary id
+  list at W is a **contiguous, newest-aligned suffix** of the list at the next
+  larger W, with `overBudget == []` at every W. A suffix, not a prefix: rule-4
+  degradation drops the *oldest* branches first, so a smaller window keeps the
+  newest ones. Set inclusion is not enough either — a reorder is precisely the
+  D5 cache killer. The root block is excluded, since `rootKeep` is derived per
+  window (D19). Zero tokens, and the most reviewer-legible portability claim
+  the tree makes.
+- **Zone B is never root-only:** at every window that renders, at least one
+  branch summary survives alongside the root. The root is exempt from rule-4
+  dropping, so a `overBudget == []` prompt whose Zone B is nothing but the root
+  is a flattened summary wearing the tree's costs — it would pass the budget
+  assertion and silently invalidate every arm scored against it.
 - **Focused tests locally** (`pnpm vitest run <path>`); full suite in CI.
 
 ## 18. Risks and mitigations

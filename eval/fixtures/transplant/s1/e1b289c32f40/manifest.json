@@ -1,0 +1,96 @@
+{
+  "scenario": "s1",
+  "trace": {
+    "path": "eval/fixtures/transplant/s1/trace.src.jsonl",
+    "sha256": "e1b289c32f406908906411a524928c15efb79b1b047fb3f82dfc4f0c7da76044",
+    "bytes": 4663077
+  },
+  "store": {
+    "path": "eval/fixtures/transplant/s1/store",
+    "trace_jsonl_sha256": "64293edf90293a8d9e7e54a79ae370c6f5d6b4d7d38bc051053510f3321fe878",
+    "node_dump_sha256": "cd2796f7ce01e566d10502f63b6d828e24dad15a66c7417b09f3269e1bdfeaea",
+    "leaf_summaries_sha256": "9bea4800fe8e15e453ec12e29c2875f60a196e3652735b8952336d0921ad0a2a",
+    "summaries": 22,
+    "nodes": 46,
+    "l0_events": 754,
+    "blobs": 697
+  },
+  "config": {
+    "path": "context-tree.config.json",
+    "sha256": "67f8f9a0e12672a46146734ca43f2f64427cf3b5ad2bf8a76048cf350ef01769"
+  },
+  "gates": [
+    "g1-trace-sha",
+    "g2-hermetic-import",
+    "g3-ismeta-skipped",
+    "g4-unmapped-tools",
+    "g5-rebuild-determinism",
+    "g6-native-exceeds-window",
+    "g7-bpe-ratio",
+    "g8-over-budget",
+    "g9-zone-b-nesting",
+    "g10-prefix-stability",
+    "g11-literal-uniqueness",
+    "g12-leakage-gate",
+    "g13-manifest-hashed",
+    "g14-cost-cap"
+  ],
+  "models": {
+    "answerers": [
+      "qwen/qwen-2.5-72b-instruct",
+      "openai/gpt-3.5-turbo"
+    ],
+    "paraphraser": "z-ai/glm-5.3-flash",
+    "compaction": "claude-haiku-4-5-20251001"
+  },
+  "windows": [
+    16384,
+    32768
+  ],
+  "fractions": {
+    "reply": 0.05,
+    "zoneA": 0.1,
+    "zoneB": 0.2,
+    "zoneC": 0.2,
+    "lazy": 0.35,
+    "slack": 0.1
+  },
+  "caps": {
+    "per_model_usd": 3,
+    "total_usd": 6,
+    "max_summary_tokens": 1024,
+    "root_keep": 40
+  },
+  "ratio": 0.850896663206653,
+  "root_by_window": {
+    "16384": {
+      "rootKeep": 2,
+      "rootBlockTokens": 2587,
+      "branchesSurviving": 1,
+      "branchSeqRange": {
+        "from": 732,
+        "to": 754
+      },
+      "rootSummarySha": "f80808c3fd62736e439d06ad42b29a6fa694d4ebb6c4397919a62f04bb8e86fc",
+      "zoneB": 3850
+    },
+    "32768": {
+      "rootKeep": 16,
+      "rootBlockTokens": 6095,
+      "branchesSurviving": 2,
+      "branchSeqRange": {
+        "from": 639,
+        "to": 754
+      },
+      "rootSummarySha": "2c7fbe668193766cdd17e3de4b816cdcd0be5e4fcda3d881c2f7a73e76cc8596",
+      "zoneB": 7701
+    }
+  },
+  "literals": {
+    "sha256": "7dea64c187f41805c6c312c1f8367bbfd5fbb4b4c229a1296c48063e9b83e2fc"
+  },
+  "questions": {
+    "sha256": "2f225798cfba4c37a7b6b602ea34a1bf84f1766738edd5efeec053061a81ff21",
+    "count": 12
+  }
+}

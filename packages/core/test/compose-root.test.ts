@@ -230,6 +230,6 @@ describe('composeRootSummary D17 fold', () => {
     // Uncapped, 4500 extra branches would have added ~100k chars.
     expect(Math.abs((l?.text.length ?? 0) - (s?.text.length ?? 0))).toBeLessThanOrEqual(60);
     // A folded member's own summary row is untouched and still queryable.
-    expect(large.store.currentSummary(large.ids[0])?.text).toBe('Step 1 did the thing.');
+    expect(large.store.currentSummary(large.ids[0]!)?.text).toBe('Step 1 did the thing.');
   });
 });

@@ -1,0 +1,242 @@
+{
+  "scenario": "s1",
+  "trace_sha256": "e1b289c32f406908906411a524928c15efb79b1b047fb3f82dfc4f0c7da76044",
+  "ratio": 0.850896663206653,
+  "boundary_seq": 720,
+  "K": 15404,
+  "counts": {
+    "distinct": 2713,
+    "once_only": 509,
+    "head": 497,
+    "tail": 12,
+    "deep": 497
+  },
+  "deep_pending": false,
+  "selected": [
+    {
+      "id": "s1-q01-head",
+      "stratum": "head",
+      "exploratory": false,
+      "node_id": "n_1E48X9HAFPEYNQHHSF609KHMEE",
+      "node_ids": [
+        "n_1E48X9HAFPEYNQHHSF609KHMEE"
+      ],
+      "seq": 175,
+      "kind": "path",
+      "answer_literals": [
+        "../src/trace/index.js"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])\\.\\./src/trace/index\\.js(?![\\w])"
+      ],
+      "source_context": "ss while the session silently paid full price on every\n * turn, so the assertions are on block ids and token counts, not prose.\n */\nimport { afterEach, describe, expect, it } from 'vitest';\nimport { mkdtempSync, rmSync } from 'node:fs';\nimport { tmpdir } from 'node:os';\nimport { join } from 'node:path';\nimport { StoreInvariantError } from '../src/contracts/index.js';\nimport type {\n  AssembledPrompt,\n  NodeStatus,\n  PhaseType,\n  PromptBlock,\n  SummaryMeta,\n  TreeNode,\n  Zone,\n} from '../src/contracts/index.js';\nimport { FsBlobStore } from '../src/blobs/index.js';\nimport { JsonlTraceLog } from '../src/trace/index.js';\nimport { openInMemoryStore, type SqliteTreeStore } from '../src/store/index.js';\nimport { HeuristicTokenizer } from '../src/tokens/index.js';\nimport {\n  ZoneAssembler,\n  toCompletionRequest,\n  toMessages,\n  truncateToTokens,\n} from '../src/assemble/index.js';\nimport type Anthropic from '@anthropic-ai/sdk';\nimport { AnthropicProvider } from '../src/models/index.js';\nimport type { AnthropicClientLike, AnthropicMessageLike } from '../src/models/index.js';\n\n/** Frozen Zone A stand-ins: the real ones come from `src/prompts/` (§14.1). */\nconst SYSTEM = 'CONTEXT-TREE CONTRACT\\nFetch before you edi"
+    },
+    {
+      "id": "s1-q02-head",
+      "stratum": "head",
+      "exploratory": false,
+      "node_id": "n_1C0BDXFHPYAX7N4B5AGK8KB4Q5",
+      "node_ids": [
+        "n_1C0BDXFHPYAX7N4B5AGK8KB4Q5"
+      ],
+      "seq": 558,
+      "kind": "quoted",
+      "answer_literals": [
+        "Read StubProvider and retry test examples"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])Read StubProvider and retry test examples(?![\\w])"
+      ],
+      "source_context": "### tool_call Bash (seq 558)\nargs: {\"command\":\"sed -n '36,80p' packages/core/test/summarize.test.ts; sed -n '205,260p' packages/core/test/summarize.test.ts\",\"description\":\"Read StubProvider and retry test examples\"}"
+    },
+    {
+      "id": "s1-q03-head",
+      "stratum": "head",
+      "exploratory": false,
+      "node_id": "n_1NH76HCY6DZ25G5YBTJMBT3BXJ",
+      "node_ids": [
+        "n_1NH76HCY6DZ25G5YBTJMBT3BXJ"
+      ],
+      "seq": 585,
+      "kind": "number",
+      "answer_literals": [
+        "246,163"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])246,163(?![\\w])"
+      ],
+      "source_context": "84    │ 931   │ 931  │ 0.1656887           │\n│ 2       │ 'iter8-rep3' │ 'context-tree' │ 'sw-2-multimod' │ true │ 24    │ 429        │ 15891    │ 341   │ 412  │ 0.39574329999999996 │\n└─────────┴──────────────┴────────────────┴─────────────────┴──────┴───────┴────────────┴──────────┴───────┴──────┴─────────────────────┘\n| label | scenario | arm | n | ok | cost mean±sd (cv) | cost median [IQR] | turns med | totTok med | cacheW med |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n| iter8 | sw-2-multimod | context-tree | 3 | 100% | $0.469±0.346 (73.7%) | $0.396 [0.281–0.621] | 24 | 246,163 | 80,877 |"
+    },
+    {
+      "id": "s1-q04-tail",
+      "stratum": "tail",
+      "exploratory": false,
+      "node_id": "n_1PPHC64K0QTM0N8JD3RPST4GZ8",
+      "node_ids": [
+        "n_1PPHC64K0QTM0N8JD3RPST4GZ8"
+      ],
+      "seq": 732,
+      "kind": "number",
+      "answer_literals": [
+        "2650"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])2650(?![\\w])"
+      ],
+      "source_context": "anielbyrne-GitHub-rpm-context-tree/memory/eval-v5-lineage-state.md (seq 732)\nargs: {\"file_path\":\"/Users/danielbyrne/.claude/projects/-Users-danielbyrne-GitHub-rpm-context-tree/memory/eval-v5-lineage-state.md\",\"content\":\"---\\nname: eval-v5-lineage-state\\ndescription: \\\"Where the context-tree eval experiment program stands after loops 1–6 (2026-09-01) — gates, winner v5.6, open items\\\"\\nmetadata:\\n  type: project\\n---\\n\\nAs of 2026-09-01 (afternoon) the experiment lineage stands at **v5.6, the program's winner**. Env gates in `eval/src/loop.ts`: `EVAL_NATIVE_CACHE=1`, `EVAL_ZONEC_LATEST=1`,\n...[2650 chars elided - call `context_fetch` for the full detail]\n---\nname: eval-v5-lineage-state\ndescription: \"Where the context-tree eval experiment program stands after loops 1–6 (2026-09-01) — gates, winner v5.6, open items\"\nmetadata:\n  type: project\n---\n\nAs of 2026-09-01 (afternoon) the experiment lineage stands at **v5.6, the program's winner**. Env gates in `eval/src/loop.ts`: `EVAL_NATIVE_CACHE=1`, `EVAL_ZONEC_LATEST=1`, `EVAL_SUMMARIZE_ON_CLOSE=1`, and `EVAL_ZONEC_CACHE=1` (v5.5/v5.6 incremental Zone C caching — per-block messages, moving breakpoint on the last cached C block, `C:map` + tail "
+    },
+    {
+      "id": "s1-q05-tail",
+      "stratum": "tail",
+      "exploratory": false,
+      "node_id": "n_1A84WKF26NWA90DDR9ENP8BMSD",
+      "node_ids": [
+        "n_1A84WKF26NWA90DDR9ENP8BMSD"
+      ],
+      "seq": 728,
+      "kind": "quoted",
+      "answer_literals": [
+        "Sync report to artifact publish path"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])Sync report to artifact publish path(?![\\w])"
+      ],
+      "source_context": "### tool_call Bash (seq 728)\nargs: {\"command\":\"cp reports/metrics/tree-vs-transcript.html /private/tmp/claude-501/-Users-danielbyrne-GitHub-rpm-context-tree/4bf1e198-8af4-47e0-ae99-fa2ca13f1400/scratchpad/tree-vs-transcript.html && echo synced\",\"description\":\"Sync report to artifact publish path\"}"
+    },
+    {
+      "id": "s1-q06-tail",
+      "stratum": "tail",
+      "exploratory": false,
+      "node_id": "n_1PPHC64K0QTM0N8JD3RPST4GZ8",
+      "node_ids": [
+        "n_1PPHC64K0QTM0N8JD3RPST4GZ8"
+      ],
+      "seq": 744,
+      "kind": "quoted",
+      "answer_literals": [
+        "DSA on context tokens"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])DSA on context tokens(?![\\w])"
+      ],
+      "source_context": "intuition is right in two places, and both are already load-bearing in the design:\n\n**The tree is the DSA decomposition, at coarse grain.** DSA = retain everything + sparse view + re-attend on demand. That's exactly L0/L2 (retain everything) + Zone B summaries (sparse view) + `context_fetch` (re-attend on demand). And here's the kicker: once v5.6 keeps the whole transcript-equivalent in the cached prefix at 0.1×, **token-level DSA is already running over our context — inside the model**. Modern attention over a retained cached prefix *is* sparse token selection; the cheapest implementation of \"DSA on context tokens\" is to retain everything cheaply and let attention do the selecting. The prompt layer should only do what attention can't: keep the context inside the window and the bill bounded.\n\n**Token-level selection is viable at exactly one cache-free point: write time.** Selection that happens *once, at a phase close, appending to the prefix* costs no cache — that's summarize-on-close. So the legitimate home for DSA-on-tokens is inside the summarizer: extractive scoring of which raw lines/tokens survive into a branch's summary (and into the FM-6 Zone C window). One-shot compression at epoch boundaries"
+    },
+    {
+      "id": "s1-q07-deep",
+      "stratum": "deep",
+      "exploratory": false,
+      "node_id": "n_1E48X9HAFPEYNQHHSF609KHMEE",
+      "node_ids": [
+        "n_1E48X9HAFPEYNQHHSF609KHMEE"
+      ],
+      "seq": 175,
+      "kind": "path",
+      "answer_literals": [
+        "../src/trace/index.js"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])\\.\\./src/trace/index\\.js(?![\\w])"
+      ],
+      "source_context": "ss while the session silently paid full price on every\n * turn, so the assertions are on block ids and token counts, not prose.\n */\nimport { afterEach, describe, expect, it } from 'vitest';\nimport { mkdtempSync, rmSync } from 'node:fs';\nimport { tmpdir } from 'node:os';\nimport { join } from 'node:path';\nimport { StoreInvariantError } from '../src/contracts/index.js';\nimport type {\n  AssembledPrompt,\n  NodeStatus,\n  PhaseType,\n  PromptBlock,\n  SummaryMeta,\n  TreeNode,\n  Zone,\n} from '../src/contracts/index.js';\nimport { FsBlobStore } from '../src/blobs/index.js';\nimport { JsonlTraceLog } from '../src/trace/index.js';\nimport { openInMemoryStore, type SqliteTreeStore } from '../src/store/index.js';\nimport { HeuristicTokenizer } from '../src/tokens/index.js';\nimport {\n  ZoneAssembler,\n  toCompletionRequest,\n  toMessages,\n  truncateToTokens,\n} from '../src/assemble/index.js';\nimport type Anthropic from '@anthropic-ai/sdk';\nimport { AnthropicProvider } from '../src/models/index.js';\nimport type { AnthropicClientLike, AnthropicMessageLike } from '../src/models/index.js';\n\n/** Frozen Zone A stand-ins: the real ones come from `src/prompts/` (§14.1). */\nconst SYSTEM = 'CONTEXT-TREE CONTRACT\\nFetch before you edi"
+    },
+    {
+      "id": "s1-q08-deep",
+      "stratum": "deep",
+      "exploratory": false,
+      "node_id": "n_1C0BDXFHPYAX7N4B5AGK8KB4Q5",
+      "node_ids": [
+        "n_1C0BDXFHPYAX7N4B5AGK8KB4Q5"
+      ],
+      "seq": 558,
+      "kind": "quoted",
+      "answer_literals": [
+        "Read StubProvider and retry test examples"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])Read StubProvider and retry test examples(?![\\w])"
+      ],
+      "source_context": "### tool_call Bash (seq 558)\nargs: {\"command\":\"sed -n '36,80p' packages/core/test/summarize.test.ts; sed -n '205,260p' packages/core/test/summarize.test.ts\",\"description\":\"Read StubProvider and retry test examples\"}"
+    },
+    {
+      "id": "s1-q09-deep",
+      "stratum": "deep",
+      "exploratory": false,
+      "node_id": "n_1NH76HCY6DZ25G5YBTJMBT3BXJ",
+      "node_ids": [
+        "n_1NH76HCY6DZ25G5YBTJMBT3BXJ"
+      ],
+      "seq": 585,
+      "kind": "number",
+      "answer_literals": [
+        "246,163"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])246,163(?![\\w])"
+      ],
+      "source_context": "84    │ 931   │ 931  │ 0.1656887           │\n│ 2       │ 'iter8-rep3' │ 'context-tree' │ 'sw-2-multimod' │ true │ 24    │ 429        │ 15891    │ 341   │ 412  │ 0.39574329999999996 │\n└─────────┴──────────────┴────────────────┴─────────────────┴──────┴───────┴────────────┴──────────┴───────┴──────┴─────────────────────┘\n| label | scenario | arm | n | ok | cost mean±sd (cv) | cost median [IQR] | turns med | totTok med | cacheW med |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n| iter8 | sw-2-multimod | context-tree | 3 | 100% | $0.469±0.346 (73.7%) | $0.396 [0.281–0.621] | 24 | 246,163 | 80,877 |"
+    },
+    {
+      "id": "s1-q10-spanning",
+      "stratum": "spanning",
+      "exploratory": true,
+      "node_id": "n_1E48X9HAFPEYNQHHSF609KHMEE",
+      "node_ids": [
+        "n_1E48X9HAFPEYNQHHSF609KHMEE",
+        "n_1C0BDXFHPYAX7N4B5AGK8KB4Q5"
+      ],
+      "seq": 55,
+      "kind": "quoted",
+      "answer_literals": [
+        "from dedent import dedent_text",
+        "parseThing"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])from dedent import dedent_text(?![\\w])",
+        "(?<![\\w])parseThing(?![\\w])"
+      ],
+      "source_context": "3000000)\n    case(\"numparse\", 'parse_count(\"42\")', 42)\n    case(\"numparse\", 'parse_count(\"-1.5k\")', -1500)\n\n    # dedent: common (minimum) indent; blank lines blanked and ignored\n    case(\"dedent\", 'dedent_text(\"    a\\\\n  b\\\\n      c\")', \"  a\\\\nb\\\\n    c\")\n    case(\"dedent\", 'dedent_text(\"  a\\\\n\\\\n  b\")', \"a\\\\n\\\\nb\")\n    case(\"dedent\", 'dedent_text(\"a\\\\n  b\")', \"a\\\\n  b\")\n    case(\"dedent\", 'dedent_text(\"   \\\\n  x\")', \"\\\\nx\")\n\n    lines = [\n        \"import sys\",\n        \"from slugify import slugify\",\n        \"from wordwrap import wrap_text\",\n        \"from numparse import parse_count\",\n        \"from dedent import dedent_text\",\n        \"\",\n        \"failures = 0\",\n    ]\n    for module, expr, expected in cases:\n        lines.append(\"try:\")\n        lines.append(\"    got = %s\" % expr)\n        lines.append(\"except Exception as e:\")\n        lines.append(\"    got = 'raised %s: %s' % (type(e).__name__, e)\")\n        lines.append(\"if got != %r:\" % (expected,))\n        lines.append(\n            \"    print('FAIL [%s] %s -> %%r (want %%r)' %% (got, %r))\"\n            % (module, expr.replace(\"%\", \"%%\"), expected)\n        )\n        lines.append(\"    failures += 1\")\n    lines.append(\"\")\n    lines.append(\"if failures:\")\n    lines.\n---\nso no contract violation) with invented lines\n    // and an invented symbol — exactly the plausible hallucination that would\n    // make every rehydration pointer untrustworthy if it were stored.\n    const provider = new StubProvider(async (call) =>\n      replyBody(echoedNodeIds(call.content), {\n        files: [{ path: 'src/a.ts', start_line: 900, end_line: 901, symbol: 'ghost' }],\n        symbols: ['ghost'],\n      }),\n    );\n    const summary = await summarizerFor(fx, provider).summarizeLeaf(fx.p1);\n\n    expect(summary.meta.files).toEqual([A_SPAN]);\n    expect(summary.meta.symbols).toEqual(['parseThing']);\n    // Prose-side fields still come from the model — it is the only source for them.\n    expect(summary.meta.node_ids).toEqual([fx.p1, fx.f1]);\n  });\n\n  it('carries the model\\'s decisions and open questions through, since they are the fields the tree cannot know', async () => {\n    const fx = fixture();\n    const provider = new StubProvider(async (call) =>\n      replyBody(echoedNodeIds(call.content), {\n        open_questions: ['is the fallback lexer still needed?'],\n        decisions: ['keep the recursive-descent parser'],\n        tests: [{ name: 'parses a fence', status: 'failed' }],\n   "
+    },
+    {
+      "id": "s1-q11-spanning",
+      "stratum": "spanning",
+      "exploratory": true,
+      "node_id": "n_1JNW5D8CNYSATE4X6NV3Z39R81",
+      "node_ids": [
+        "n_1JNW5D8CNYSATE4X6NV3Z39R81",
+        "n_1A84WKF26NWA90DDR9ENP8BMSD"
+      ],
+      "seq": 18,
+      "kind": "quoted",
+      "answer_literals": [
+        "implements its own minimal tool-use loop",
+        "13097"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])implements its own minimal tool-use loop(?![\\w])",
+        "(?<![\\w])13097(?![\\w])"
+      ],
+      "source_context": "### tool_result for seq 17 (seq 18)\n1\t/**\n2\t * The §15 harness agent loop — \"implements its own minimal tool-use loop\"\n3\t * (packages/mcp contract). Each scenario runs twice on the same frontier model:\n4\t *\n5\t *   native        full-transcript context. The message list grows every turn;\n6\t *                 tools are the four harness tools only.\n7\t *   context-tree  the tree IS the context. Every turn's events are appended to\n8\t *                 L0 via `appendEvent`, the §8 summarizer refreshes stale\n9\t *                 branches, and the request is assembled by ZoneAssembler\n10\t *                 (Zone A contract + schemas, Zone B summaries, Zone C active\n11\t *                 branch, tail fetches). The f\n---\n### tool_result for seq 690 (seq 691)\nturn  in    cr     cw\n   0     1   4788    362\n   1     1   5150    391\n   2     1   4788   2327\n   3    37   4788   1705\n   4    36   6493   1641\n   5    36   8134   3922\n   6    36  12056    473\n   7    36  12529    568\n   8    36  13097    299\n   9    36  13396   1195\n  10    36  14591   1550\n  11    36  16141   1316\n  12    37  17457    171\n  13    36  17628    279\n  14   110  17907   1976\n  15   109  19883   1208\n  16   109  21091   1490\n  17   109  22581   1069\n  18   109  23650    144\n  19   179  23794    862"
+    },
+    {
+      "id": "s1-q12-spanning",
+      "stratum": "spanning",
+      "exploratory": true,
+      "node_id": "n_1NH76HCY6DZ25G5YBTJMBT3BXJ",
+      "node_ids": [
+        "n_1NH76HCY6DZ25G5YBTJMBT3BXJ",
+        "n_1FJ2VN7BZMD0C22JVNB4NGNNPW"
+      ],
+      "seq": 587,
+      "kind": "number",
+      "answer_literals": [
+        "7244",
+        "Extract suite points and spend"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])7244(?![\\w])",
+        "(?<![\\w])Extract suite points and spend(?![\\w])"
+      ],
+      "source_context": "### tool_result for seq 586 (seq 587)\nturn  in    cr     cw\n   0     1   4788    362\n   1     1   5150    563\n   2     1   5713   1176\n   3     1   4788   2040\n   4     1   5588   1791\n   5     1   4788   2491\n   6     1   7279    459\n   7     2   4788   2192\n   8     1   6568    685\n   9     2   6568  10809\n  10     1   6568  11365\n  11     1   6568  11637\n  12     1   6568  12809\n  13     1   6568  14474\n  14     1   6568  14644\n  15     2   6568  15460\n  16     1   6568  16283\n  17    78   6568  16331\n  18   153   6568  16343\n  19   230   4788   2456\n  20   229   7244    521\n  21   230   7765    174\n  22   229   7939    375\n  23   230   4788   3174\n  24   229   7335   1479\n  25   229   7335   1686\n  26   229   7335   2831\n  27   229   7335   3436\n  28   229   7335   3858\n  29   229   7335   4193\n  30   229   7335   5088\n  31   230   7335   5378\n  32   229   7335   5663\n  33   230   7335   7822\n  34   229   7335   8049\n  35   229   7335   8330\n  36   299   7335   8993\n---\n('fs');\\nlet total=0, pts=[];\\nfor (const rep of ['suite-rep1','suite-rep2','suite-rep3']) {\\n  const rs=JSON.parse(fs.readFileSync('eval/results/suite-final/'+rep+'/results.json','utf8'));\\n  for (const r of rs){ total+=r.metrics.costUsd; pts.push({it:'suite',arm:r.arm,task:r.scenarioId,cost:+r.metrics.costUsd.toFixed(4),turns:r.metrics.turns.modelTurns,ok:r.success===true,cw:r.metrics.tokens.cacheWrite,cr:r.metrics.tokens.cacheRead,inp:r.metrics.tokens.input,tot:r.metrics.tokens.total});}\\n}\\nconsole.log('suite spend', total.toFixed(2));\\nconsole.log(JSON.stringify(pts));\\n\\\"\",\"description\":\"Extract suite points and spend\"}"
+    }
+  ]
+}

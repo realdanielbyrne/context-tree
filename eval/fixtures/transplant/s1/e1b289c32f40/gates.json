@@ -1,0 +1,263 @@
+{
+  "ratio": 0.850896663206653,
+  "table": {
+    "16384": {
+      "window": 16384,
+      "ratio": 0.850896663206653,
+      "slackFraction": 0.1,
+      "zoneCFraction": 0.2,
+      "reply": 962,
+      "zoneA": 1925,
+      "zoneB": 3850,
+      "zoneC": 3850,
+      "lazy": 6739,
+      "slack": 1925,
+      "K": 15404,
+      "maxReplyTokens": 800,
+      "rootKeep": 2,
+      "rootLadder": [
+        {
+          "keep": 40,
+          "ok": false,
+          "rootBlockTokens": 6917,
+          "branchesSurviving": 0,
+          "branchSeqRange": null,
+          "overBudget": [
+            "B"
+          ],
+          "zoneB": 6917
+        },
+        {
+          "keep": 16,
+          "ok": false,
+          "rootBlockTokens": 6095,
+          "branchesSurviving": 0,
+          "branchSeqRange": null,
+          "overBudget": [
+            "B"
+          ],
+          "zoneB": 6095
+        },
+        {
+          "keep": 12,
+          "ok": false,
+          "rootBlockTokens": 4771,
+          "branchesSurviving": 0,
+          "branchSeqRange": null,
+          "overBudget": [
+            "B"
+          ],
+          "zoneB": 4771
+        },
+        {
+          "keep": 8,
+          "ok": false,
+          "rootBlockTokens": 3967,
+          "branchesSurviving": 0,
+          "branchSeqRange": null,
+          "overBudget": [
+            "B"
+          ],
+          "zoneB": 3967
+        },
+        {
+          "keep": 6,
+          "ok": false,
+          "rootBlockTokens": 3538,
+          "branchesSurviving": 0,
+          "branchSeqRange": null,
+          "overBudget": [],
+          "zoneB": 3538
+        },
+        {
+          "keep": 4,
+          "ok": false,
+          "rootBlockTokens": 3105,
+          "branchesSurviving": 0,
+          "branchSeqRange": null,
+          "overBudget": [],
+          "zoneB": 3105
+        },
+        {
+          "keep": 2,
+          "ok": true,
+          "rootBlockTokens": 2587,
+          "branchesSurviving": 1,
+          "branchSeqRange": {
+            "from": 732,
+            "to": 754
+          },
+          "overBudget": [],
+          "zoneB": 3623
+        }
+      ],
+      "rootKeepOk": true,
+      "rootBlockTokens": 2587,
+      "branchesSurviving": 1,
+      "branchSeqRange": {
+        "from": 732,
+        "to": 754
+      },
+      "overBudget": [],
+      "rootSummarySha": "f80808c3fd62736e439d06ad42b29a6fa694d4ebb6c4397919a62f04bb8e86fc"
+    },
+    "32768": {
+      "window": 32768,
+      "ratio": 0.850896663206653,
+      "slackFraction": 0.1,
+      "zoneCFraction": 0.2,
+      "reply": 1925,
+      "zoneA": 3850,
+      "zoneB": 7701,
+      "zoneC": 7701,
+      "lazy": 13478,
+      "slack": 3850,
+      "K": 30808,
+      "maxReplyTokens": 800,
+      "rootKeep": 16,
+      "rootLadder": [
+        {
+          "keep": 40,
+          "ok": false,
+          "rootBlockTokens": 6917,
+          "branchesSurviving": 0,
+          "branchSeqRange": null,
+          "overBudget": [],
+          "zoneB": 6917
+        },
+        {
+          "keep": 16,
+          "ok": true,
+          "rootBlockTokens": 6095,
+          "branchesSurviving": 2,
+          "branchSeqRange": {
+            "from": 639,
+            "to": 754
+          },
+          "overBudget": [],
+          "zoneB": 7633
+        }
+      ],
+      "rootKeepOk": true,
+      "rootBlockTokens": 6095,
+      "branchesSurviving": 2,
+      "branchSeqRange": {
+        "from": 639,
+        "to": 754
+      },
+      "overBudget": [],
+      "rootSummarySha": "2c7fbe668193766cdd17e3de4b816cdcd0be5e4fcda3d881c2f7a73e76cc8596"
+    }
+  },
+  "results": [
+    {
+      "id": "g1-trace-sha",
+      "status": "PASS",
+      "detail": "sha256=e1b289c32f406908906411a524928c15efb79b1b047fb3f82dfc4f0c7da76044 bytes=4663077",
+      "sha256": "e1b289c32f406908906411a524928c15efb79b1b047fb3f82dfc4f0c7da76044",
+      "bytes": 4663077
+    },
+    {
+      "id": "g2-hermetic-import",
+      "status": "PASS",
+      "detail": "ingest() re-derived L1 from L0+L2+tree-sitter alone: 754 events, 21 phases"
+    },
+    {
+      "id": "g4-unmapped-tools",
+      "status": "PASS",
+      "detail": "unmapped tools -> \"other\" list is empty"
+    },
+    {
+      "id": "g5-rebuild-determinism",
+      "status": "PASS",
+      "detail": "node ids + spans identical after re-derivation (cd2796f7ce01)"
+    },
+    {
+      "id": "g3-ismeta-skipped",
+      "status": "PASS",
+      "detail": "3 isMeta line(s) counted into skipped=2787; 0 imported as user turns"
+    },
+    {
+      "id": "g6-native-exceeds-window",
+      "status": "PASS",
+      "detail": "native transcript = 196385 cl100k tokens (heuristic 232624); 11.99x W=16384, 5.99x W=32768",
+      "nativeExact": 196385,
+      "nativeHeuristic": 232624,
+      "nativeChars": 661879
+    },
+    {
+      "id": "g7-bpe-ratio",
+      "status": "PASS",
+      "detail": "ratio = 207395/243737 = 0.850897 over all 697 L2 blobs; slack-stays-0.10",
+      "ratio": 0.850896663206653,
+      "sampleExact": 207395,
+      "sampleHeuristic": 243737,
+      "slackFraction": 0.1
+    },
+    {
+      "id": "g8-over-budget",
+      "status": "PASS",
+      "detail": "overBudget == [] at W = 16384 and 32768; branch summaries surviving in Zone B: W=16384 -> 1/21 (rootKeep=2, root 2587 tok), W=32768 -> 2/21 (rootKeep=16, root 6095 tok)",
+      "survivors": {
+        "16384": 1,
+        "32768": 2
+      }
+    },
+    {
+      "id": "g9-zone-b-nesting",
+      "status": "PASS",
+      "detail": "Zone B branch lists nest newest-aligned across W ∈ {16384:1b/keep2/root2587, 32768:2b/keep16/root6095, 65536:19b/keep40/root6917, 200000:21b/keep40/root6917}; creation order intact, root excluded (derived per window) — DEAD, no Zone B renders: W=8192 (zoneB 1925; smallest keep=2 root 2587 tok leaves no branch)",
+      "nesting": [
+        {
+          "w": 16384,
+          "rootKeep": 2,
+          "rootBlockTokens": 2587,
+          "branches": 1
+        },
+        {
+          "w": 32768,
+          "rootKeep": 16,
+          "rootBlockTokens": 6095,
+          "branches": 2
+        },
+        {
+          "w": 65536,
+          "rootKeep": 40,
+          "rootBlockTokens": 6917,
+          "branches": 19
+        },
+        {
+          "w": 200000,
+          "rootKeep": 40,
+          "rootBlockTokens": 6917,
+          "branches": 21
+        }
+      ]
+    },
+    {
+      "id": "g10-prefix-stability",
+      "status": "PASS",
+      "detail": "Zone A+B prefix byte-identical across 3 assemblies at W=16384 (a843904d0c77); tail appends after Zone C"
+    },
+    {
+      "id": "g11-literal-uniqueness",
+      "status": "PASS",
+      "detail": "all 12 selected item(s) have literals occurring exactly once in L0"
+    },
+    {
+      "id": "g12-leakage-gate",
+      "status": "PASS",
+      "detail": "12 question(s): zero 3-gram overlap (answer literal excluded); deep literals absent from every summary"
+    },
+    {
+      "id": "g13-manifest-hashed",
+      "status": "PASS",
+      "detail": "question-set sha 2f225798cfba matches the manifest; grader = exactMatchJudge + regex, zero model calls"
+    },
+    {
+      "id": "g14-cost-cap",
+      "status": "PASS",
+      "detail": "CostCapExceededError fires past the cap (meter recorded $30.00)"
+    }
+  ]
+}
