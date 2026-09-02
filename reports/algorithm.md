@@ -68,16 +68,19 @@ little: on that stratum it reduces to a single question, answered three times of
 four against once of five. With two points on the width axis and one stratum
 above the floor, the data cannot locate a turning point.
 
-Third, **what width costs is unknown, and this page has been wrong about it
-twice.** It first said width buys retrieval at the price of a larger prefix
-re-read every turn. It then said width is a pure reallocation costing nothing,
-because the assembled block is nearly the same size either way, 7,633 tokens
-against 7,569. The iteration-2 judge rejected both. Zone B's rendered size
-barely moves, which kills the first; but the run-level token gap between the
-arms is real and was never decomposed, so the second asserted an absence of cost
-that no measurement supports. The honest statement is that the arms differ by a
-measured amount at the run level and nobody has attributed it. That attribution
-is a next step, not a finding.
+Third, **what width costs cannot be attributed at this sample size**, and this
+page was wrong about it twice before arriving there. It first said width buys
+retrieval at the price of a larger prefix re-read every turn. It then said width
+is a pure reallocation costing nothing, because the assembled block is nearly
+the same size either way, 7,633 tokens against 7,569. Both were rejected: the
+rendered size does barely move, which kills the first, but the run-level gap is
+real, which kills the second.
+
+Iteration 3 decomposed that gap exactly — a median 12,168 input tokens, residual
+zero across all 76 completed rows — and every bucket's confidence interval
+crosses zero. So the decomposition is arithmetically complete and statistically
+silent. "Cannot attribute at n=38 per arm" is the finding, and it is the right
+answer rather than a third confident claim.
 
 The load-bearing finding is that the ladder direction is a human choice hiding
 inside a mechanism that looks derived, and the reproduction sharpened it: six of
@@ -124,11 +127,19 @@ map to the neutral phase and never close it, while every other call inside it
 maps to the same type. Three of the twelve test questions source from that one
 branch.
 
-The obvious fix is a config change the code already supports: emptying the
-neutral-phase list, which the segmenter's own contract calls the literal reading
-of its specification, re-segments the same events into 99 branches with a median
-of 3 events. **It does not close the boundary condition, and iteration 2 refuted
-the claim that it does.** One branch still exceeds the larger window afterwards
+The two causes turn out to be independent, and iteration 3 measured each
+separately: at the larger window, re-segmentation removes one over-window branch
+and the retrieval-renderer cap removes the other, and only both together reach
+zero. At the smaller window the cap moves nothing and re-segmentation takes four
+to three, so three branches remain over that window even with both applied. The
+cap fix also changes no question's containment in any of the four cells, which is
+why it is a payload fix rather than a retrieval fix.
+
+The config change on its own: emptying the neutral-phase list, which the
+segmenter's own contract calls the literal reading of its specification,
+re-segments the same events into 99 branches with a median of 3 events. **It does
+not close the boundary condition, and iteration 2 refuted the claim that it
+does.** One branch still exceeds the larger window afterwards
 and three still exceed the smaller one. It helps where it was measured — questions
 missing their source fall from three to none at the larger window and from seven
 to two at the smaller — but "eliminates the over-window branch entirely" was
@@ -220,20 +231,28 @@ The third breakpoint now exists in the library behind a field defaulting to
 off, which closes the defect that it lived only in the eval harness. Its value is
 another matter, and iteration 2 refuted the optimistic reading instructively.
 
-Through the cache simulator, marking the active-branch detail costs 23% *more*,
-because that marker moves every turn — a 100% rewrite frequency against a
-computed break-even of 78%. The frequency form of the rule this page carried,
-that it breaks even below about one turn in twelve, was a size ratio wearing a
-frequency's clothes; the break-even is a formula over the three published rates,
-and by it Zone B's marker wins at 2.7% rewrite while Zone C's loses at 100%.
-Same rule, opposite sides of the line.
+Iteration 2 ran the simulator and got +23%: marking the active-branch detail
+looked *worse*, because that marker moves every turn against a computed
+break-even of 78%. A live measurement of the same scheme, already published
+here, showed it 18% *cheaper*. Both could not be right.
 
-But a live measurement of the same scheme, already published here, shows it 18%
-*cheaper*. Both cannot be right, and the disagreement is the real result: the
-simulator matches only against the last submission's exact breakpoint set, where
-providers match any previously cached prefix. The instrument that was finally
-pointed at the builder needs validating against the live run before its verdicts
-count — and that validation is free, with the target already on disk.
+**Iteration 3 settled it against the instrument.** The simulator credited a
+cache read only on an exact block-index recurrence, so a marker that moves could
+never earn one — it paid for the whole marked region on every turn. Real
+providers match any previously cached prefix, so a moving marker pays a delta and
+still earns a read on everything before it. Corrected, with the old behaviour
+kept as an opt-in policy and every existing test pinned to it, the same replay
+reverses: the third breakpoint goes from +23% to −39.8%, and the extended
+simulator now reproduces the live run's shape rather than contradicting it —
+reads climbing, writes delta-sized, fresh input in the tens of tokens.
+
+Two things follow. The third breakpoint is a validated candidate for a default
+flip, gated on the second-scenario replicate. And the break-even identity is a
+statement about a marker whose whole region is rewritten on each change, not
+about this marker — the sweep script printed it as a verdict and no longer does.
+Sign and shape agree with the live run; the magnitudes (−39.8% offline against
+−18% live) are not reconciled, because the live figure bundled other changes on a
+different scenario.
 
 Terms. **L0** is the append-only event log. **L2** is the payload store, keyed by
 content hash. **L1** is the tree: nodes that point into L0 by sequence range and
@@ -561,6 +580,19 @@ fix.
 
 ## Change log
 
+- **2026-09-02 13:20** — DS-STAR iteration 3 closed and the pass ended at its
+  three-iteration bound. Closing report at `reports/metrics/tuning-pass-report.md`
+  (HTML twin alongside): 17 rejected candidates with the number that killed each,
+  what was learned kept separate from what was decided, state of the code by
+  path, and eight next steps ordered by information per unit of effort. Iteration
+  3's three results: the cache simulator was the thing at fault, and corrected it
+  reverses its own verdict from +23% to −39.8% while finally reproducing the live
+  run's shape; the two over-window causes are independent and need both fixes at
+  the larger window while neither closes the smaller; and the width gap
+  decomposes exactly to a median 12,168 tokens with every interval crossing zero,
+  so it cannot be attributed at this n. The sweep script's stale verdict line,
+  which the report caught still printing the pre-correction conclusion, is
+  retired.
 - **2026-09-02 12:35** — DS-STAR iteration 2 closed (four offline experiments plus
   a judge; `eval/plans/tuning/ITERATION-2-VERDICT.md`). It refuted more than it
   confirmed, including three claims this page was carrying. Re-segmentation does

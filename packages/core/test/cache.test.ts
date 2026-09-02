@@ -143,7 +143,12 @@ function harness(systemContract: string = SYSTEM) {
   const deps = { store, blobs, trace, tokenizer, systemContract };
   const assembler = new ZoneAssembler(deps);
   const assemble = (): AssembledPrompt => assembler.assemble({ toolSchemasText: TOOL_SCHEMAS });
-  const simulator = new ProviderCacheSimulator({ tokenizer });
+  // Pinned to the pre-2026-09-02 matching policy so every test using the
+  // shared `h.simulator` keeps its original, already-reviewed assertions.
+  // The corrected default ('automatic-prefix') is exercised directly, with
+  // its own simulator instances, in the "Zone C 3rd breakpoint" describe
+  // block below — see `CacheMatchPolicy` on `simulator.ts`.
+  const simulator = new ProviderCacheSimulator({ tokenizer, matchPolicy: 'exact-last-position' });
 
   return {
     store,
@@ -535,30 +540,66 @@ describe('Zone C 3rd breakpoint — opt-in only (exp-04-caching, `cacheZoneCBrea
     expect(messages[2]?.cacheBreakpoint).toBeUndefined(); // the map, fresh every turn
   });
 
-  it('bills a GROWING Zone C at the cache-WRITE rate with no offsetting read, because this harness only credits a read when the marker recurs at the SAME block position across turns (exp-04-caching §(b)/(c) finding: the marker moves every turn a new event lands, so it never recurs)', () => {
+  it('under the corrected default policy, bills a growing Zone C mostly as a cache READ with a delta-sized WRITE for just the new block — fixed 2026-09-02 (iteration 3, exp3-a-simulator-fidelity.md). The old exact-position policy on the SAME two prompts still shows the original, now-documented-as-conservative result: a whole-zone cache WRITE with no read at all, because it only credits a read when the marker recurs at the exact same block position, which a marker that advances by one block every turn never does. The live run of this exact design (`reports/metrics/tree-vs-transcript.md:155`) measured climbing reads and delta-sized writes — this test locks the fixed default onto that shape.', () => {
     const h = harness();
     activeBranchWithMap(h);
     const assembler = new ZoneAssembler({ ...h.deps, cacheZoneCBreakpoint: true });
     const assemble = () => assembler.assemble({ toolSchemasText: TOOL_SCHEMAS });
 
     const before = assemble();
-    h.simulator.submit(before);
-
     h.trace.append({ type: 'user_message', ts: TS, blob: h.blobs.put('also fix the tax line') });
     const after = assemble();
-    const outcome = h.simulator.submit(after);
 
-    // The mark landed on a NEW block this turn (the newly appended event is
-    // now the last non-map block), so it does not match any endBlockIndex this
-    // harness recorded as cached last turn — no read. It is still `cacheable`
-    // (a marker is present), so the whole stable run is billed as a WRITE
-    // (1.25x) rather than FRESH (1x, what the shipped default would charge for
-    // the identical bytes) — strictly worse per token, not better, under this
-    // harness's model. Only Zone A/B, unaffected by the new event, still reads.
-    expect(outcome.survivingSegments).toEqual(['A', 'B']);
-    expect(outcome.cacheRead).toBe(zoneTokens(after, 'A') + zoneTokens(after, 'B'));
-    expect(outcome.cacheWrite).toBeGreaterThan(0);
-    expect(outcome.cacheWrite + outcome.fresh).toBe(zoneTokens(after, 'C'));
+    // Corrected default: 'automatic-prefix'.
+    const fixed = new ProviderCacheSimulator({ tokenizer: h.tokenizer });
+    fixed.submit(before);
+    const fixedOutcome = fixed.submit(after);
+
+    expect(fixedOutcome.cacheRead).toBeGreaterThan(zoneTokens(after, 'A') + zoneTokens(after, 'B'));
+    expect(fixedOutcome.cacheWrite).toBeGreaterThan(0);
+    expect(fixedOutcome.cacheWrite).toBeLessThan(zoneTokens(before, 'C'));
+    expect(fixedOutcome.cacheRead + fixedOutcome.cacheWrite + fixedOutcome.fresh).toBe(fixedOutcome.total);
+
+    // Preserved old policy on the identical pair of prompts: the diagnosed defect.
+    const conservative = new ProviderCacheSimulator({ tokenizer: h.tokenizer, matchPolicy: 'exact-last-position' });
+    conservative.submit(before);
+    const conservativeOutcome = conservative.submit(after);
+
+    expect(conservativeOutcome.survivingSegments).toEqual(['A', 'B']);
+    expect(conservativeOutcome.cacheRead).toBe(zoneTokens(after, 'A') + zoneTokens(after, 'B'));
+    // The whole stable Zone C run is a WRITE, not a delta (only the uncached
+    // trailing map is `fresh`).
+    expect(conservativeOutcome.cacheWrite + conservativeOutcome.fresh).toBe(zoneTokens(after, 'C'));
+    expect(conservativeOutcome.cacheWrite).toBeGreaterThan(fixedOutcome.cacheWrite);
+  });
+
+  it('under the corrected default policy, cache reads climb and writes stay delta-sized across several turns of a growing Zone C — the shape the live measurement shows and the offline harness previously could not', () => {
+    const h = harness();
+    activeBranchWithMap(h);
+    const assembler = new ZoneAssembler({ ...h.deps, cacheZoneCBreakpoint: true });
+    const assemble = () => assembler.assemble({ toolSchemasText: TOOL_SCHEMAS });
+    const simulator = new ProviderCacheSimulator({ tokenizer: h.tokenizer });
+
+    const reads: number[] = [];
+    const writes: number[] = [];
+    for (let i = 0; i < 5; i += 1) {
+      if (i > 0) {
+        h.trace.append({ type: 'assistant_message', ts: TS, blob: h.blobs.put(`turn ${i} progress`) });
+      }
+      const outcome = simulator.submit(assemble());
+      reads.push(outcome.cacheRead);
+      writes.push(outcome.cacheWrite);
+    }
+
+    // Reads climb monotonically once the prefix is established (turn 0 is cold).
+    for (let i = 2; i < reads.length; i += 1) {
+      expect(reads[i]).toBeGreaterThanOrEqual(reads[i - 1] as number);
+    }
+    // Every write after the cold turn is a small delta, never the whole
+    // accumulated Zone C — the property the old policy could never show.
+    for (let i = 1; i < writes.length; i += 1) {
+      expect(writes[i]).toBeLessThan(reads[i] as number);
+    }
   });
 
   it('fails if the 3rd marker is dropped: stripping it turns the (still cacheable, still cache-write-billed) Zone C run into plain fresh input, even though every block is byte-identical', () => {

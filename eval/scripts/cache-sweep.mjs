@@ -243,7 +243,28 @@ console.log(`  f* = (Pinput - Pread) / (Pwrite - Pread) = (${Pinput} - ${Pread})
 console.log('  Below f*: marking (accept occasional cacheWrite) beats leaving it unmarked (plain input every turn).');
 console.log('  Above f*: leaving it unmarked (shipped default) is cheaper than paying the write premium this often.');
 console.log(`  MEASURED on this replay: the moving Zone-C marker rewrites on ${zoneCRewriteTurns}/${rows.length} turns = ${(measuredRewriteFreq * 100).toFixed(1)}% >> f* (${(crossoverFreq * 100).toFixed(1)}%)`);
-console.log(`  Verdict: on this trace the 3rd breakpoint, as coded (single moving marker), sits on the LOSING side of its own crossover.`);
+// The crossover above answers a DIFFERENT question from the session table this
+// script prints higher up, and conflating them is what made this line wrong.
+//
+// The frequency test asks: given a marker that rewrites on N of M turns, does
+// marking beat not marking IF EVERY REWRITE PAYS FOR THE WHOLE MARKED REGION?
+// Under the simulator's original exact-position matching that premise held, and
+// the answer was no. It does not hold against a real provider, which matches any
+// previously cached prefix, so a moving marker pays a DELTA and earns a read on
+// everything before it. Iteration 3 corrected the simulator accordingly
+// (`CacheMatchPolicy`, default `automatic-prefix`) and the same replay reversed:
+// the third breakpoint went from +23% to -39.8% on this fixture, agreeing in
+// sign and shape with the -18% measured live.
+//
+// So the crossover is reported as what it is — a rate identity, useful for
+// reasoning about a marker whose region is rewritten wholesale — and the verdict
+// line that read it as a verdict on the third breakpoint is retired.
+console.log(
+  `  Reading: f* is the break-even for a marker whose whole region is rewritten on each change. The Zone-C ` +
+    `marker moves on ${zoneCRewriteTurns}/${rows.length} turns (${(measuredRewriteFreq * 100).toFixed(1)}%), which is ` +
+    `above f* — but under automatic-prefix matching a move pays a DELTA, not the region, so this identity does not ` +
+    `decide the third breakpoint. See the session table above for that, and eval/plans/tuning/exp3-a-simulator-fidelity.md.`,
+);
 
 store.close();
 rmSync(dir, { recursive: true, force: true });

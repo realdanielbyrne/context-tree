@@ -1,0 +1,671 @@
+<title>Tuning Pass Closing Report</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#FBFBF9; --surface:#FFFFFF; --ink:#1C1E21; --muted:#5C6167;
+  --line:#DFE1E4; --accent:#0E6B54; --warm:#A64F2A; --cool:#2F4E8F; --code-bg:#F1F2F0;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#16181B; --surface:#1D2024; --ink:#E7E9EB; --muted:#9BA1A8;
+    --line:#33373C; --accent:#46B090; --warm:#D68A62; --cool:#8FB0E8; --code-bg:#25282D;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#16181B; --surface:#1D2024; --ink:#E7E9EB; --muted:#9BA1A8;
+  --line:#33373C; --accent:#46B090; --warm:#D68A62; --cool:#8FB0E8; --code-bg:#25282D;
+}
+body{background:var(--ground); color:var(--ink);
+  font:17px/1.65 "Source Serif 4",Georgia,serif; margin:0;}
+main{max-width:760px; margin:0 auto; padding:56px 24px 80px;}
+h1{font-size:1.9rem; font-weight:700; line-height:1.2; margin:0 0 6px; text-wrap:balance;}
+h2{font-size:1.2rem; font-weight:700; margin:40px 0 10px;}
+h3{font-size:1.02rem; font-weight:700; margin:26px 0 6px;}
+.meta{color:var(--muted); font-size:.92rem; margin-bottom:34px;}
+.abstract{margin:0 0 6px; padding:0 0 22px; border-bottom:1px solid var(--line);}
+.abstract h2{margin:0 0 8px; font-size:1.05rem;}
+p{margin:0 0 14px; max-width:70ch;}
+.example{background:var(--code-bg); border-radius:6px; padding:12px 16px;
+  font-family:"IBM Plex Mono",monospace; font-size:.78rem; line-height:1.55;
+  overflow-x:auto; white-space:pre; margin:0 0 14px;}
+.tablewrap{overflow-x:auto; background:var(--surface); border:1px solid var(--line);
+  border-radius:6px; margin:14px 0 6px;}
+table{border-collapse:collapse; width:100%; font-size:.85rem;}
+th{font-size:.72rem; letter-spacing:.04em; text-transform:uppercase; color:var(--muted);
+  text-align:right; padding:9px 13px; border-bottom:1px solid var(--line); white-space:nowrap;
+  font-family:"IBM Plex Mono",monospace; font-weight:500;}
+th:first-child, td:first-child{text-align:left;}
+td{padding:7px 13px; border-bottom:1px solid var(--line);
+  font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums;
+  font-size:.84rem; text-align:right; white-space:nowrap;}
+td:first-child{font-family:"Source Serif 4",Georgia,serif; font-size:.9rem; white-space:normal;}
+tr:last-child td{border-bottom:none;}
+.tcap{font-size:.85rem; color:var(--muted); margin:6px 2px 18px; max-width:72ch;}
+.tcap b{color:var(--ink);}
+figure{background:var(--surface); border:1px solid var(--line); border-radius:6px;
+  padding:18px 14px 6px; margin:16px 0 6px;}
+figcaption{font-size:.85rem; color:var(--muted); padding:8px 8px 10px; max-width:72ch; line-height:1.5;}
+figcaption b{color:var(--ink);}
+.chartwrap{overflow-x:auto;}
+.chartwrap > div{min-width:620px;}
+code{font-family:"IBM Plex Mono",monospace; font-size:.82em; background:var(--code-bg);
+  padding:1px 5px; border-radius:4px;}
+footer{margin-top:48px; padding-top:14px; border-top:1px solid var(--line);
+  color:var(--muted); font-size:.82rem; line-height:1.5;}
+svg{display:block; width:100%; height:auto;}
+svg text{font-family:"IBM Plex Mono",monospace; font-size:11px; fill:var(--muted);
+  font-variant-numeric:tabular-nums;}
+svg .serieslabel{font-size:12px; font-weight:600;}
+ol{max-width:70ch; padding-left:1.4em;}
+ul{max-width:70ch; padding-left:1.3em;}
+li{margin-bottom:10px;}
+.note{font-size:.92rem; color:var(--muted); border:1px solid var(--line); border-radius:6px;
+  padding:10px 14px; max-width:72ch;}
+</style>
+<main>
+<h1>Closing report of the four-dimension tuning pass</h1>
+<div class="meta">Context-tree evaluation program · DS-STAR pass, iterations 1&ndash;3 · September 2, 2026 · commit <code>77d5326</code></div>
+
+<p class="note"><em>Who this is for.</em> This is the handoff document for the next agent picking this work up with no memory of the pass. It states what is settled and with which number, what is dead and must not be re-run, what the pass learned about its own instruments, where the code stands by path, and what to do next in order. It is written to be consistent with <code>reports/algorithm.md</code>, which remains the reference description of the algorithm and the document the next agent should edit alongside any change. Where this report and that page disagree, that page is authoritative on the algorithm and this one is authoritative on what was measured in this pass.</p>
+
+<div class="abstract">
+<h2>Abstract</h2>
+<p><b>Context-tree</b> rewrites an agent's linear conversation into a summary-headed tree: completed stretches of work become short summaries in the prompt while the raw events stay on disk behind four retrieval tools. This pass ran three DS-STAR iterations to establish, by measurement, the four settings the algorithm leaves open &mdash; visible branch count, branch depth, summary timing, caching. Iteration 1 analysed artifacts already on disk and produced knowledge, not improvement; iterations 2 and 3 ran seven offline experiments at zero model calls. Two dimensions closed. The summary-timing gate lags one turn, overshooting its threshold by a median 8,306 tokens across six live crossings (n=6, claude-sonnet-5), and replays same-turn at a median 0. The cache simulator, once its matching rule was corrected, reversed its own verdict on a third cache breakpoint from +23% to &minus;39.8% session cost on one 754-turn fixture, agreeing in sign with a live run at &minus;18% cost per turn (n=5). Two did not close: branch count and depth are blocked behind a retrieval floor of 4 successes in 120 searched rows, not behind spend. The pass refuted more than it confirmed, including three claims the reference description carried. Main limitation: one frozen store, one scenario pair, one model family.</p>
+</div>
+
+<h2>1&ensp;Terms</h2>
+<p>A <b>turn</b> is one model call. A <b>run</b> is one arm attempting one question or scenario once; a <b>replicate</b> is one run within a cell and <b>n</b> is the number of replicates. An <b>epoch</b> is a batch of runs made in one sitting against one build, so two arms compared inside an epoch saw the same code, task material and model snapshot. An <b>arm</b> is one configuration under test; a <b>baseline</b> is the arm it is paired against.</p>
+<p>A <b>branch</b> (a <code>phase</code> node in the code) is context-tree's unit of summarization: a contiguous range of the append-only event log that receives one summary. The prompt is assembled in three fixed sections &mdash; <b>Zone A</b>, the frozen contract; <b>Zone B</b>, the root index plus branch summaries in creation order; <b>Zone C</b>, the active branch's raw detail &mdash; and retrieved results append after Zone C. <b>W</b> is the model's context window. The <b>fold level</b> (<code>rootKeep</code>) is how many of the most recent branches get an individual headline line in the root index before older ones fold to one line; a <b>rendered body</b> (<code>branchesSurviving</code>) is a branch whose full summary block renders separately in Zone B. The two move in opposite directions because both are paid out of one Zone B allowance. A <b>rung</b> is one entry on the fold ladder <code>[40,16,12,8,6,4,2]</code>.</p>
+<p>The <b>switch point</b> is the prompt size at which the tree stops showing the whole raw trace and starts showing summaries; the <b>latch</b> is the rule that once crossed, it never reverts. A <b>cache read</b> is a prompt token the provider served from a stored prefix; a <b>cache write</b> is one it had to store fresh. A <b>breakpoint</b> is a <code>cache_control</code> marker telling the provider where a cacheable prefix ends. <b>Exact tokens</b> means the cl100k BPE count; <b>heuristic tokens</b> means the assembler's own estimator, which over-counts real BPE by about 1.18&times; on this corpus. A <b>stratum</b> is one of the four question types on the frozen fixture: <b>head</b> (a fact from early in the session), <b>tail</b> (a recent fact), <b>deep</b> (a verbatim code literal), <b>spanning</b> (a fact requiring two places at once).</p>
+<p>Metrics throughout are tokens, turns, graded score and success counts. Scores are means, tokens and turns are medians. Every figure pairs a candidate against a baseline at the same model and the same epoch. Dollar figures appear only in the footnote, beside the baseline they are relative to.</p>
+
+<h2>2&ensp;What this pass set out to do, and how the three iterations actually ran</h2>
+<p><code>reports/algorithm.md</code> states four rules the algorithm is scored against: no budgets or caps; a hardcoded value is a defect unless it has been shown to hold off the host it was fitted on; setting a parameter from a model's limits is fine but guessing it is not; and prefer finding the sweet spot to picking a bound. It then names four dimensions where a real tradeoff exists and the winning setting has never been established &mdash; visible branch count, branch depth, summary timing, caching. This pass's objective was to establish those settings by measurement, scoped against the constant-and-boundary audit in <code>eval/plans/portability-audit/</code>, whose headline finding frames everything below: <code>packages/core</code> had <em>no representation of the host's window size anywhere</em>, so every value the tier-2 table says should be a fraction of W was a plain integer literal because there was nothing in the library to divide by.</p>
+
+<h3>2.1&ensp;Iteration 1 &mdash; analysis only, and it produced knowledge rather than improvement</h3>
+<p>Four analyses, one per dimension, at zero model calls: <code>eval/plans/tuning/0{1,2,3,4}-*.md</code>, published as four reports under <code>reports/metrics/tuning-*.md</code>. No configuration changed and no arm was run. What the iteration bought was a corrected framing, and the corrections were larger than any tuning result in the pass:</p>
+<ul>
+<li>Two different counts had been conflated. The fold level and the number of rendered summary bodies are different numbers moving in opposite directions, and the two shipped arms differ in which of them they maximise.</li>
+<li>&ldquo;Width helps&rdquo; was too broad. The effect holds on one stratum of four, and on the tail stratum both non-tree baselines beat both tree widths.</li>
+<li>Depth is not a decision anybody made. It is whatever the tool-name-to-phase map and the neutral-merge rule produce from a trace &mdash; on the one measured store, a 77-fold spread across 21 branches.</li>
+<li>The switch point's target is the Zone C fraction by the rule's own wording, and the two harnesses had drifted apart on it (0.35 against 0.20 for one quantity).</li>
+<li>A cache write costs 12.5 times a cache read per token, which settles that prefix <em>size</em> is not what decides the caching question.</li>
+</ul>
+<p>The four published reports also re-derived every load-bearing figure from the artifacts and found six figures in dimension 1's own analysis, seven in dimension 2's and nine in dimension 3's that did not reproduce as written. That auditing habit &mdash; publish the reproduction, not the note &mdash; is what made iterations 2 and 3 possible, and it is the single practice most worth carrying forward.</p>
+
+<h3>2.2&ensp;Iteration 2 &mdash; four offline experiments plus a judge</h3>
+<p>Four experiments (<code>eval/plans/tuning/exp-0{1,2,3,4}-*.md</code>), four new scripts under <code>eval/scripts/</code>, zero model calls, then an independent judge pass that re-ran every script and re-read every cited artifact at its anchor (<code>ITERATION-2-VERDICT.md</code>). Three of the four scripts reproduced to the token; the fourth did not, for a reason that turned out to matter more than the experiment (&sect;5.4). The iteration refuted more than it confirmed, including three claims <code>reports/algorithm.md</code> was carrying at the time.</p>
+
+<h3>2.3&ensp;Iteration 3 &mdash; three follow-ups, each forced by iteration 2's dependency order</h3>
+<p>Three tasks, again at zero model calls: <b>3-A</b> validated the cache simulator against an already-published live run and re-decided the third breakpoint (<code>exp3-a-simulator-fidelity.md</code>); <b>3-B</b> re-measured branch sizes after the double-render fix landed, crossing both segmentations with both renderer states (<code>exp3-b-branch-sizes.md</code>); <b>3-C</b> decomposed the run-level token gap between the two width arms bucket by bucket (<code>exp3-c-width-attribution.md</code>). Two produced a result; the third produced a demonstration that its question cannot be answered at the n available.</p>
+
+<p>Across all three iterations: zero live model calls were made by any experiment. Every live number in this report was already on disk when the pass started.</p>
+
+<h2>3&ensp;Conclusions per dimension</h2>
+
+<h3>3.1&ensp;Visible branch count &mdash; the mechanism is settled; the default is not, and the score floor blocks deciding it</h3>
+<p><b>Settled: there is no third allocation mechanism to build.</b> Rendered bodies are monotone non-increasing in the fold level. Walking every rung at every window through the real assembler gives, at W=32,768, bodies <code>0 / 2 / 5 / 6 / 8 / 10 / 11</code> at rungs <code>40 / 16 / 12 / 8 / 6 / 4 / 2</code>. So &ldquo;walk toward maximising rendered bodies subject to the same fits predicate&rdquo; always selects the ladder's smallest rung, which is exactly where the reversed-ladder arm <code>tree-wide</code> already stops. The two shipped arms are the two ends of one monotone curve. Reproduced by this report by re-running <code>eval/scripts/ladder-curve.mjs</code>: every cell identical.</p>
+<p><b>Settled: the fit predicate barely binds.</b> Six of the seven rungs satisfy it at W=32,768, so the hand-picked ladder direction, not the mechanism, picks the allocation. And the band where the choice matters at all is narrow: at W=8,192 no rung leaves a single body (the Zone B share is 1,925 heuristic tokens against a smallest root block of 2,587), and at W=200,000 every rung ties at 21 bodies, the whole store.</p>
+<p><b>Settled: width is a reallocation of a fixed Zone B block, not an addition to it.</b> Assembled Zone B is 7,633 heuristic tokens at rung 16 against 7,569 at rung 2 &mdash; a 64-token difference in the wide arm's favour, against a Zone B share of 7,701.</p>
+<p><b>Not settled, and now known not to be settleable on this fixture: what width costs at the run level.</b> The arms differ by a median 12,168 input tokens over completed runs (37,513 against 49,681; n=38 per arm, qwen-2.5-72b-instruct through OpenRouter, W=32,768, one epoch; both verified for this report). Iteration 3-C decomposed that gap exactly &mdash; the identity <code>B1&middot;T + echo + retrieval + output</code> reproduces <code>usage.input</code> with a maximum residual of 0 across all 76 completed rows &mdash; and then showed the decomposition cannot be trusted: a 10,000-resample bootstrap 95% confidence interval crosses zero for every bucket except output length, which is 2.9% of the point-estimate gap and is not a width mechanism. Run-level token standard deviation is 21,269 (<code>tree</code>) and 20,497 (<code>tree-wide</code>), roughly four times the 5,275-token mean gap. Resolving it needs about 246 completed rows per arm, 6.5&times; today's 38.</p>
+<p><b>Not settled: whether to flip the default.</b> The one measured advantage of the wide arm is a head-stratum mean of 0.333 (3 successes of 9 completed) against 0.091 (1 of 11), both non-tree baselines at 0.000 &mdash; and reduced to what happened, all four successes across both arms are on one question, <code>s1-q02-head</code>. On the other three strata both widths are 0.000, and on tail both baselines beat both widths (0.200 and 0.333). Flipping the default is an epoch shift and needs a second scenario, which cannot discriminate at any affordable n until the floor lifts.</p>
+
+<figure>
+<div class="chartwrap"><div id="fig1"></div></div>
+<figcaption><b>Figure 1.</b> How each fold level spends the Zone B allowance at W=32,768, rebuilt from the frozen store with the assembler's own renderer and tokenizer, no model call. Horizontal axis: fold level, plotted at its true value so the ladder's uneven rungs show as uneven. Vertical axis: heuristic tokens. The rising brown line is the root index block; the falling green line is the rendered summary bodies; the flat blue line is their sum, the assembled Zone B, which moves only between 6,917 and 7,633 across the whole ladder &mdash; the reallocation is nearly size-neutral. The dashed line is the Zone B share at this window, 7,701 tokens. The two ringed points are the rungs the two shipped arms actually choose: <code>tree</code> at 16 (2 bodies), <code>tree-wide</code> at 2 (11 bodies). Both paired baselines &mdash; truncate-tail and compact-rolling &mdash; render zero summaries by construction and so contribute no line here; they appear against these arms on graded score in &sect;3.1's text instead. Rung 40 fails the fit predicate not for exceeding the share but for leaving 784 tokens against a newest body of 1,036.</figcaption>
+</figure>
+
+<h3>3.2&ensp;Branch depth &mdash; the boundary condition is closed at the larger live window and open at the smaller</h3>
+<p><b>Settled: the two causes of an over-window branch are independent, and each owns exactly one branch at W=32,768.</b> Under today's segmentation with the pre-fix renderer, two branches exceed 32,768 exact tokens. Emptying the neutral-phase list removes one of them; applying the already-validated 512-byte edit-argument cap in the retrieval renderer removes the other. Together they reach zero. Iteration 3-B's four-cell cross product, reproduced for this report by re-running <code>eval/scripts/resegment.mjs</code>:</p>
+
+<div class="tablewrap">
+<table>
+<thead><tr><th>segmentation &middot; renderer</th><th>branches</th><th>max exact tok</th><th>&gt;8,192</th><th>&gt;16,384</th><th>&gt;32,768</th></tr></thead>
+<tbody>
+<tr><td><code>['other']</code> (today) &middot; uncapped</td><td>21</td><td>51,802</td><td>8</td><td>4</td><td>2</td></tr>
+<tr><td><code>['other']</code> (today) &middot; capped (shipped)</td><td>21</td><td>46,945</td><td>8</td><td>4</td><td>1</td></tr>
+<tr><td><code>[]</code> (candidate) &middot; uncapped</td><td>99</td><td>34,664</td><td>5</td><td>3</td><td>1</td></tr>
+<tr><td><code>[]</code> (candidate) &middot; capped (shipped)</td><td>99</td><td>24,986</td><td>5</td><td>3</td><td>0</td></tr>
+</tbody>
+</table>
+</div>
+<p class="tcap"><b>Table 1.</b> Branches whose raw rendered span exceeds each window, exact cl100k tokens, over the same 754 events of the frozen <code>s1</code> store. n=21 or 99 branches per cell; four cells, one deterministic replay each, zero model calls. The baseline cell is the first row &mdash; today's segmentation with the renderer as it was before the cap landed. Re-run for this report: every cell identical to <code>exp3-b-branch-sizes.md</code>.</p>
+
+<p><b>Settled: at W=16,384 the cap contributes nothing to the count and segmentation dominates.</b> Four branches exceed it before the cap and four after; the candidate segmentation takes that to three, and three remain with both fixes applied. The largest survivor, span 642&ndash;729 at 24,986 exact tokens, holds none of the six duplicated events and is simply 88 events of ordinary content larger than the window once concatenated. No rendering fix shrinks it; only a size-aware segmentation rule or the listing-then-range fetch path does, and neither has been measured.</p>
+<p><b>Settled: the cap is worth landing on its own terms, independent of the boundary condition.</b> Six of the store's 754 events carry a tool call's arguments <em>and</em> its post-state blob with byte-identical content &mdash; 70,227 duplicated characters trace-wide, 23,937 exact tokens. A full fetch of the worst branch now returns roughly half the bytes for the same information (48.5&ndash;49.9% smaller), and the median branch is untouched, because the cap fires on 5 of 21 branches under today's segmentation and 6 of 99 under the candidate.</p>
+<p><b>Settled: granularity explains almost none of the measured retrieval failures.</b> In the one forensic classification of 135 sampled rows on this store, &ldquo;fetched the correct branch but it was truncated&rdquo; is 0 of 135 (0 of 110 failures). Across all 444 rows of the sweep the oversized branch was fetched once, with no truncation. This is a structural risk to close, not a scoring problem to chase &mdash; and iteration 3-B confirms it directly: the cap fix changes zero per-question fit outcomes in either segmentation.</p>
+<p><b>Not settled: whether <code>neutralPhases: []</code> is worth its cost.</b> 4.71&times; the leaf-summarizer calls for 2.43&times; the summarizer spend (up from iteration 2's 2.33&times;, because the post-cap content is smaller so the fixed per-call overhead is a larger share), and the entire delta is the 78 extra calls' fixed overhead: a 724-token system prompt plus a 1,024-token output cap, with branch content held constant. Turns and graded score under the candidate are unmeasured on every task.</p>
+
+<figure>
+<div class="chartwrap"><div id="fig2"></div></div>
+<figcaption><b>Figure 2.</b> The 21 largest branches of the frozen store, ranked by size, in exact cl100k tokens, under all four segmentation&times;renderer cells. Horizontal axis: size rank, largest first. Vertical axis: exact tokens of the raw span a full fetch would return. The two dashed lines are the harness's two live windows. Brown is today's segmentation with the pre-fix renderer &mdash; the baseline, and the only cell with two branches above 32,768. Warm-dashed brown is the same segmentation after the cap: the second-largest branch drops from 35,657 to 18,351 and crosses back under 32,768, while the largest, 55&ndash;261, only falls 9.4% because its duplication is 2 events out of 207. Green is the candidate segmentation, uncapped; blue is the candidate capped, whose largest branch is 24,986 &mdash; under 32,768 but still over 16,384. The candidate has 99 branches; only its largest 21 are plotted so the two segmentations are comparable rank for rank.</figcaption>
+</figure>
+
+<h3>3.3&ensp;Summary timing &mdash; the lag is settled and fixable; the fraction is settled as a target and unmeasured as a value</h3>
+<p><b>Settled by definition, not by fitting: the switch point's target is the Zone C fraction of W.</b> The rule defines the switch as the size at which the whole trace fits where the active branch's detail would go, which <em>is</em> Zone C's allocation. The two are now one quantity by construction in <code>deriveZoneBudgets</code>, so the 0.35-against-0.20 drift between the two harnesses cannot recur.</p>
+<p><b>Settled and reproduced twice: the gate lags one turn, and the lag has a measured size.</b> It compares against the previous completed turn's billed prompt, so exactly one prompt above the threshold is always sent. Across the six recorded crossings the overshoot is a median 8,306 tokens, range 126 to 15,564 (n=6, claude-sonnet-5, two scenarios, one epoch). Recomputed for this report directly from <code>eval/results/long-v65-gate/*/results.json</code> without the script: median 8,305.5, identical set. Replayed with the check moved to the prompt about to be sent, median overshoot falls to 0 and worst case to 916, with five of six landing under the threshold, at a cost of 2.7&ndash;4.0 milliseconds of local tokenizing against turn latencies recorded in the seconds.</p>
+
+<figure>
+<div class="chartwrap"><div id="fig3"></div></div>
+<figcaption><b>Figure 3.</b> The size of the prompt actually sent on the crossing turn, under today's lagged gate and under the same-turn replay. Horizontal axis: the six recorded crossings, sorted ascending by overshoot. Vertical axis: context tokens (fresh input plus cache read plus cache write) on that turn. The dashed line is the 30,000-token threshold. Brown is the lagged gate as it runs today &mdash; the baseline, measured live on claude-sonnet-5 over three replicates each of <code>sw-5-dozen</code> and <code>sw-6-ripple</code>, n=6 crossings. Green is the same six crossings replayed against a check on the candidate prompt. Both series are sorted independently, so the pairing is by rank rather than by run: the published replay reports five of six at zero overshoot and one at 916 without saying which crossing carries it. The green series is a proxy &mdash; the runs' raw event logs were not archived, only per-turn usage &mdash; and its bias is upward, because one extra turn of trace growth is baked into the stand-in, so the true post-fix overshoot is at or below this line.</figcaption>
+</figure>
+
+<p><b>Settled as a refutation: a fraction sweep cannot rank the fractions.</b> From 0.15 to 0.35 of a 200,000-token window over a deterministic 300-branch corpus, the post-switch prompt is a constant 9,060 tokens at every fraction, so total tokens are the raw trace up to the crossing plus a constant afterwards, and an earlier crossing is arithmetically always cheaper. Re-run for this report: the whole table below is identical to what iteration 2 published. The sweep measures its own lower bound. Ranking a fraction needs turns and score, which no offline corpus in this repository represents.</p>
+
+<div class="tablewrap">
+<table>
+<thead><tr><th>switch fraction of W</th><th>switch point (tok)</th><th>crossing branch</th><th>peak prompt (tok)</th><th>post-switch prompt (tok)</th><th>total tokens over the run</th></tr></thead>
+<tbody>
+<tr><td>never switch (baseline)</td><td>&mdash;</td><td>never</td><td>85,334</td><td>85,334</td><td>12,862,800</td></tr>
+<tr><td>0.15</td><td>30,000</td><td>106</td><td>29,954</td><td>9,060</td><td>3,361,230</td></tr>
+<tr><td>0.20</td><td>40,000</td><td>141</td><td>39,894</td><td>9,060</td><td>4,271,440</td></tr>
+<tr><td>0.25</td><td>50,000</td><td>176</td><td>49,834</td><td>9,060</td><td>5,529,550</td></tr>
+<tr><td>0.30</td><td>60,000</td><td>211</td><td>59,774</td><td>9,060</td><td>7,135,560</td></tr>
+<tr><td>0.35</td><td>70,000</td><td>247</td><td>69,998</td><td>9,060</td><td>9,150,408</td></tr>
+</tbody>
+</table>
+</div>
+<p class="tcap"><b>Table 2.</b> The switch-fraction sweep over a deterministic 300-branch corpus at W=200,000, zero model calls, one replicate per fraction because the replay is byte-identical on repetition. The paired baseline is the first row, the same corpus with no switch at all. The load-bearing column is the fifth: the post-switch prompt is the same 9,060 tokens at every fraction, which makes the sixth column monotone by arithmetic rather than by discovery, and makes the extrapolated optimum &ldquo;switch immediately&rdquo; &mdash; branch 9, f&nbsp;&asymp;&nbsp;0.015. Re-run for this report: every cell identical.</p>
+<p><b>Settled: summary cost is one lump at a badly chosen moment, not a standing tax.</b> Zero leaf-summarizer calls on the 17 runs that never cross; 6.9% to 19.3% of run cost, median 9.4%, on the six that do (n=6, claude-sonnet-5 agent with claude-haiku-4-5 summarizer). The transition's own price shows on the turn <em>after</em> the switch &mdash; a median 18,274 cache-write tokens against 273 for the matched no-switch arm on the turn after its own largest write, n=6 each &mdash; and costs zero to six extra turns depending on the baseline chosen. A spike on the crossing turn itself is not diagnostic, because the no-switch arm spikes on its own growth turns too.</p>
+<p><b>Not settled: which fraction, and whether an early switch buys tokens with turns.</b> Graded score separates nothing here: every cell is 3 of 3 or 5 of 5 at a mean of 1.000, so this dimension is currently unfalsifiable on score and can be ranked only on tokens and turns.</p>
+
+<h3>3.4&ensp;Caching &mdash; the instrument was the problem, and fixing it flipped the verdict</h3>
+<p><b>Settled arithmetically from two published rates: a cache write costs 12.5 times a cache read per token</b>, so prefix size is not the lever. The frequency form of that rule &mdash; &ldquo;breaks even below about one turn in twelve&rdquo; &mdash; was a size ratio wearing a frequency's clothes and has been retired in favour of the derivation the frequency question needs: marking a block beats leaving it unmarked while its rewrite frequency stays below <code>f* = (Pinput &minus; Pread) / (Pwrite &minus; Pread)</code>, which is 0.7826 at claude-sonnet-5's published rates. That is a formula over three per-model prices, not a constant. Measured against the real trace, Zone B rewrites on 20 of 754 turns (2.65%), far inside the winning side, which is why its single trailing marker is correctly placed.</p>
+<p><b>Settled: the simulator's verdict against the third breakpoint was an artifact of the simulator.</b> <code>ProviderCacheSimulator</code> credited a cache read only when a breakpoint recurred at the same block index as in the immediately previous submission, so a marker advancing one block per turn could never earn a read by construction. Iteration 3-A confirmed the diagnosis at the exact lines, then extended the simulator to track the longest prefix ever confirmed cached and to bill at block rather than whole-segment granularity, reachable as the new default <code>'automatic-prefix'</code> policy with the original preserved byte-for-byte as <code>'exact-last-position'</code>.</p>
+<p><b>Settled: with the fixed instrument, the third breakpoint is cheaper, and the shape matches the live run.</b> Re-running <code>eval/scripts/cache-sweep.mjs</code> unchanged for this report reproduces iteration 3-A exactly: session cache reads 6,335,267 tokens for the shipped 2-breakpoint layout against 11,486,477 for the 3rd-breakpoint layout, on an identical 15,130,974-token session total; median per-turn cache-read fraction 0.557 against 0.982; session cost &minus;39.8% (n=754 turns, 1 scenario, deterministic replay, zero model calls). Cache reads climb 7,231&nbsp;&rarr;&nbsp;19,476 and are non-decreasing on 727 of 753 turn-to-turn steps; writes are delta-sized at a median 113 tokens on the turns that write anything outside a phase transition; fresh input is 0&ndash;288 tokens per turn, median 85. The already-published live run of the same design measured cache reads climbing 4,788&nbsp;&rarr;&nbsp;23,794, writes at about 1.2k median, fresh input 36&ndash;892 tokens per turn, and cost per turn down 18% (n=5 replicates, <code>sw-2-multimod</code>). The sign and the shape agree; the magnitude does not, and should not be read as agreeing, because the live comparison bundled several v5.6-era changes on a different scenario while the offline one isolates a single config field.</p>
+<p><b>Not settled: whether to flip <code>cacheZoneCBreakpoint</code> on by default.</b> It remains off. One deterministic single-fixture simulator run is the validation step, not the second-scenario replicate that iteration 2 pre-registered as the gate for a default flip.</p>
+
+<figure>
+<div class="chartwrap"><div id="fig4"></div></div>
+<figcaption><b>Figure 4.</b> Per-turn billing under the extended cache simulator for the 3rd-breakpoint layout, sampled across the 754-turn deterministic replay of the frozen store (turns 1, 2, 8, 61, 181, 301, 481, 721, 746, 754 &mdash; the sample <code>exp3-a-simulator-fidelity.md</code> publishes). Horizontal axis: turn index. Vertical axis: heuristic tokens billed at that rate on that turn. Green is cache read, brown is cache write, blue is fresh input. The two dashed lines are the endpoints of the cache-read climb recorded in the already-published <em>live</em> run of the same design (4,788 rising to 23,794 tokens, n=5 replicates on <code>sw-2-multimod</code>, claude-sonnet-5) &mdash; a different scenario and a different measurement method, drawn here as the reference the simulator had to reproduce in shape rather than as a paired baseline. The write spikes at turns 181 and 746 are phase transitions, where Zone C resets to a newly active branch; 20 of the 754 turns are transitions and the shape claim is about the other 734.</figcaption>
+</figure>
+
+<h2>4&ensp;What was rejected, and the number that rejected it</h2>
+<p>This is the section that stops a re-run. Each entry is dead on the evidence given, and the entry names what would have to change for it to become live again.</p>
+
+<div class="tablewrap">
+<table>
+<thead><tr><th>Candidate, killed</th><th>The number that killed it</th><th>What would revive it</th></tr></thead>
+<tbody>
+<tr><td>A new allocation mechanism for the fold ladder &mdash; &ldquo;walk toward maximising rendered bodies subject to the fits predicate&rdquo;</td><td>Bodies are monotone non-increasing in the rung: 0/2/5/6/8/10/11 at rungs 40&rarr;2, W=32,768. The body-maximising walk <em>is</em> the reversed ladder already shipped as <code>tree-wide</code>.</td><td>Nothing. There is no third allocation. Only a default flip remains, and it is an epoch shift.</td></tr>
+<tr><td>Demand-driven widening keyed on search <em>occurrence</em></td><td>Head-stratum search rates are 8 of 11 completed runs (narrow) against 8 of 9 (wide), and the narrow arm still scored 0.091 against 0.333. Searching does not track where the bottleneck is.</td><td>Nothing on this fixture.</td></tr>
+<tr><td>Demand-driven widening keyed on retrieval <em>confidence</em> &mdash; the refinement iteration 1 explicitly left open</td><td>4 successes in 120 searched rows (3.3%), all four on one question; Pearson r between offline retrieval rank and score is 0.062 (n=120); the best-possible-rank question <code>s1-q07-deep</code> scores 0.000 across all 6 of its searched attempts. Reproduced for this report.</td><td>A retrieval floor above 3.3%. A rank-keyed policy has no headroom while 116 of 120 rows fail at every rank from 1 to 17.</td></tr>
+<tr><td>A user-set effort dial for width</td><td>Widening helped one stratum of four and changed nothing on three, while a dial can only be set per session. n=15 attempted per (arm, stratum) cell.</td><td>Evidence that question mix is knowable in advance and stable within a session. Nothing measures it.</td></tr>
+<tr><td>The two earlier top-k branch-pruning arms, sometimes read as width evidence</td><td>Never fired: the segmenter produced about 3 branches against a cutoff of 3, so the floor property held on every run across six iterations. Honest nulls about pruning a count that was never large.</td><td>A store with many branches <em>and</em> a selection question, which is not the question this dimension asks.</td></tr>
+<tr><td>Iteration 1's claim that <code>neutralPhases: []</code> &ldquo;eliminates the over-window branch entirely&rdquo; and that every question then sources from a branch fitting every tested window</td><td>34,664 exact tokens still over W=32,768 under the candidate with the pre-fix renderer, and 2 of 12 questions still over W=16,384. The chars&divide;4&times;0.851 estimator that produced the wrong table undercounts the branch at seq 267&ndash;276 by 67% (21,396 estimated against 35,657 exact).</td><td>Nothing &mdash; superseded by Table 1, which gives the true four-cell counts.</td></tr>
+<tr><td>Iteration 1's claim that two earlier reports both name leaf-summarizer passes as the dominant residual cost</td><td>One names the <em>root</em> summarizer at sonnet prices; only the summary-timing analysis measures the leaf, at a median 9.4% of run cost (n=6).</td><td>Nothing. It was a citation error.</td></tr>
+<tr><td>Any switch fraction selected from the sweep, including 0.15</td><td>The post-switch prompt is a constant 9,060 tokens at all five fractions, so the ranking is an identity of the generator and the extrapolated optimum is &ldquo;switch immediately&rdquo; (branch 9, f&nbsp;&asymp;&nbsp;0.015). Re-run for this report.</td><td>A corpus that represents turns and score. The Zone C fraction remains the switch's <em>definition</em>; only its <em>value</em> is open.</td></tr>
+<tr><td>The +23% figure as evidence against the third cache breakpoint</td><td>&minus;39.8% session cost under the corrected match policy on the identical fixture and layouts, agreeing in sign with &minus;18% cost per turn measured live (n=5). The simulator credited a read only on an exact block-index recurrence, so a moving marker could never earn one.</td><td>Nothing. The figure is withdrawn.</td></tr>
+<tr><td>Turning the third cache breakpoint on by default now</td><td>Rejected in the opposite direction by the same evidence: one deterministic replay of one fixture is the instrument's validation, not the pre-registered second-scenario replicate.</td><td>The second-scenario simulator replicate. That is next step 3.</td></tr>
+<tr><td><code>exp-04-caching.md</code>'s absolute session table as a citable measurement</td><td>Does not reproduce: cache read 6,209,893 against its published 5,079,261 on re-run, because the root-summary version the assembler reads grew from 407 to 1,677 heuristic tokens between the measurement and the judge pass. Direction, the identity of the two layouts' read totals, and <code>f*</code> all reproduce; the absolute cells do not.</td><td>A dated, hashed L1. That is next step 2.</td></tr>
+<tr><td>Iteration 1's attribution of the width token gap to Zone B width (~465 tokens per summary, ~4,185 per turn, ~12,555 per run)</td><td>Zone B's rendered size is 7,633 against 7,569 tokens at the two rungs, so there is no per-summary addition to multiply. The figure divides a fixed-size block by its contents and then multiplies by 9, counting a budget twice.</td><td>Nothing. Withdrawn.</td></tr>
+<tr><td>Iteration 2's replacement claim that width therefore costs nothing</td><td>The arms differ by a median 12,168 input tokens and a median 5,456 peak request tokens at identical median turn counts of 3.0 (n=38 per arm). An absence of cost that no measurement supports.</td><td>Nothing. Also withdrawn &mdash; and iteration 3-C's exact decomposition then showed the correct answer is &ldquo;unknown at this n&rdquo;.</td></tr>
+<tr><td>Any causal attribution of the width gap at n=38, in either direction</td><td>Bootstrap 95% CIs cross zero for the total (&minus;3,978 to +14,886), for turn-1 prompt &times; turn count (&minus;2,062 to +8,446) and for appended retrieval payload (&minus;3,792 to +7,394). Only output length excludes zero (+36 to +278), and it is 2.9% of the gap.</td><td>About 246 completed rows per arm, roughly 390 attempted per arm at the fixture's 63% completion rate.</td></tr>
+<tr><td>A median-based bucket decomposition of the width gap</td><td>Median is not linear: the four median bucket gaps sum to 2,425 tokens against an actual median run gap of 12,225.5. It would not sum to the number it claims to decompose.</td><td>Nothing. Exactness requires means; means then fail the significance check.</td></tr>
+<tr><td>Turn and wall-clock ceilings as instruments (removed earlier the same day, and this pass depends on the removal)</td><td>Of 26 runs stopped by a ceiling, 16 were graded as failures the models never committed; one of those 16 sat under a published reliability headline, which measured only on runs that produced an outcome is 3 of 3 with two unmeasured and no measured reliability difference at all.</td><td>Nothing. Spend cap and stall detection replaced them; <code>--max-turns</code> survives with no default for a probe that deliberately wants a bound.</td></tr>
+<tr><td>A reply cap (a ceiling on how much the model may say), as distinct from reply headroom</td><td>The portability clamp of 800 tokens won at every window above about 16,000, so a reservation that looked window-derived was a constant; on a model that reasons before answering the budget could be spent thinking, leaving an empty reply graded as a wrong answer.</td><td>Nothing. Headroom stays because prompt plus reply must fit; the ceiling is gone.</td></tr>
+</tbody>
+</table>
+</div>
+<p class="tcap"><b>Table 3.</b> Everything this pass killed, with the deciding statistic. Seventeen entries; nine of them kill a claim an earlier iteration of this same pass had made, which is the shape a working refutation loop has.</p>
+
+<h2>5&ensp;What was learned, separately from what was decided</h2>
+<p>The decisions are in &sect;3 and the deaths in &sect;4. What follows is the part that cost the most time and would be invisible in a results table.</p>
+
+<h3>5.1&ensp;Mechanisms now understood</h3>
+<ul>
+<li><b>Two counts, one allowance.</b> The fold level and the rendered-body count are paid out of the same Zone B share, so raising one lowers the other. Every earlier statement about &ldquo;how many summaries the model sees&rdquo; was ambiguous between them.</li>
+<li><b>Depth is emergent, not chosen.</b> A branch closes only when a non-neutral tool call's phase type differs from the open one. The oversized branch spans 207 events because its 64 shell calls and 2 skill calls map to the neutral phase (which extends rather than closes) while every non-neutral call inside it maps to the same type, so the closing condition never fires across 22 alternating runs of tool identity.</li>
+<li><b>A branch can never render smaller than its largest atomic event.</b> That is why a segmentation change alone cannot close the over-window boundary, and why a rendering fix was needed alongside it.</li>
+<li><b>The switch gate's overshoot is one turn of whatever growth the task is producing</b> &mdash; a median 14,784 tokens on these tasks, and 248 tokens on the one crossing that overshot by only 126. The lag adds no fixed cost; it adds a turn.</li>
+<li><b>The zone partition is itself a budget, and it manufactured a result.</b> Because zones compete for an invented share of W rather than for W, extra bodies necessarily displace headlines even when the real window has room. The displacement appears and disappears exactly with whether the share binds: 2 bodies against 11 at W=32,768 where the share is 7,701 tokens; every rung tied at 21 at W=200,000 where the share is 47,009 against a whole-store Zone B of at most 16,921; nothing rendered at all at W=8,192 where the share is 1,925 against a 2,587-token root block, though the real window has room for both.</li>
+<li><b>A provider's automatic prefix matching cannot be modelled at whole-segment granularity.</b> A moving single breakpoint can only produce a delta-sized write if the simulator can credit part of the segment the marker sits at the end of. Extending which submissions count as history does not fix it on its own.</li>
+</ul>
+
+<h3>5.2&ensp;Assumptions that turned out false, and what replaced them</h3>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Was believed</th><th>Replaced by</th></tr></thead>
+<tbody>
+<tr><td>Width buys retrieval at the price of a larger prefix re-read every turn</td><td>Zone B's rendered size barely moves (7,633 against 7,569 tokens), so there is no larger prefix &mdash; but the run-level gap is real and unattributed, so neither &ldquo;costs&rdquo; nor &ldquo;free&rdquo; survives</td></tr>
+<tr><td>&ldquo;Largest rung that fits&rdquo; is a derived mechanism</td><td>Six of seven rungs fit, so the hand-picked ladder direction makes the decision almost unaided</td></tr>
+<tr><td>Re-segmentation closes the over-window branch</td><td>It removes one of two at W=32,768 and one of four at W=16,384; the surviving branch needed a rendering fix, and three still exceed the smaller window with both applied</td></tr>
+<tr><td>A corpus-wide heuristic-to-tokenizer ratio can price a single branch</td><td>It undercounts one branch by 67% and another by 43%. A ratio is a fair average and an unsafe per-branch predictor; segmentation proposals get exact tokens</td></tr>
+<tr><td>A cache-write/read ratio of 12.5 implies a break-even at one rewrite in twelve turns</td><td><code>f* = (Pinput &minus; Pread)/(Pwrite &minus; Pread)</code> = 0.7826 at this model's rates &mdash; a formula over three published prices, re-evaluated per host</td></tr>
+<tr><td>The offline cache harness could rank caching designs</td><td>It cannot rank any design whose marker moves, until it matches against every previously cached position. That was the finding; the design under test was never the problem</td></tr>
+<tr><td>A fraction sweep would locate a switch-point sweet spot</td><td>The sweep's argmin is its own smallest tested value, because the post-switch prompt is constant. Tokens alone cannot express this tradeoff</td></tr>
+<tr><td>Summary cost is a standing tax on every run</td><td>Zero on the 17 runs that never cross; median 9.4% of run cost on the six that do. One lump at a badly chosen moment</td></tr>
+<tr><td>The code summarizes every stale branch in one parallel batch</td><td>Only the backlog is batched at the crossing; after the latch, summarization is incremental on each branch close</td></tr>
+<tr><td>Empty completions from reasoning models were a provider quirk putting text in another field</td><td>The reply clamp was spending the budget on thinking and leaving nothing to say. The clamp is gone and an empty completion with no tool call now fails loudly</td></tr>
+</tbody>
+</table>
+</div>
+<p class="tcap"><b>Table 4.</b> Ten assumptions the pass falsified, with their replacements. Six of the ten were carried by <code>reports/algorithm.md</code> itself at some point during the pass; that page has since been corrected in each case.</p>
+
+<h3>5.3&ensp;An instrument that had to be fixed before it could measure</h3>
+<p>Iteration 2's fourth experiment was the first thing in the program ever to point the cache assertion harness at the request builder that produced every live caching number. It returned +23% against the third breakpoint. An already-published live run of the same design had measured &minus;18% cost per turn. Both could not be right, and the disagreement was the result: the simulator's read boundary was built from a single previous submission and tested by exact equality of an integer block index, so a marker that advances one block per turn could never earn a read. Iteration 3-A confirmed that at the lines, extended the policy, and the sign flipped. Two lessons generalise. First, a conservative instrument is safe for detecting regressions and unsafe for ranking designs &mdash; under-crediting cannot hide a regression, but it can invert a comparison. Second, the validation target was free and already on disk; the cheapest experiment in the pass was the one that checked an instrument against a measurement already paid for.</p>
+<p>A live residue of this remains in the tree and the next agent will hit it: <code>eval/scripts/cache-sweep.mjs</code> still <em>prints</em> its pre-iteration-3 conclusion &mdash; &ldquo;the 3rd breakpoint, as coded, sits on the LOSING side of its own crossover&rdquo; &mdash; underneath a table whose own numbers now say the opposite. Verified by re-running it for this report. The narrative line is stale, not the arithmetic.</p>
+
+<h3>5.4&ensp;A frozen fixture that was being written to, and a metric that was fabricating data</h3>
+<p><b>The fixture was frozen only for L0 and L2.</b> <code>eval/fixtures/transplant/s1/store/</code> is gitignored, so <code>git status</code> proves nothing about it, and the manifest pins <code>trace.jsonl</code> and the config file but not the database. <code>composeRootSummary</code> appends a root-summary version every time a rung is composed that the store has not already seen, the assembler reads the <em>latest</em> version, and that version's text grew from 407 to 1,677 heuristic tokens between one experiment being written and the judge re-running it one minute later. The predicted session delta of 1,270 tokens &times; 754 turns &asymp; 958k matched an observed 1,154,537, of which 1,130,632 was cache read &mdash; the right size in the right place. The store today holds <b>1,546 root-summary versions against 21 branch summaries</b> (verified by SQL for this report). Consequence, and it is retroactive: every published Zone B number in this program is dated by a root version nobody records. The scripts now copy the store to a scratch directory before touching it, which stops new writes; it does not date the old numbers.</p>
+<p><b>A metric was fabricating failures.</b> Two harnesses ran the same kind of bounded tool loop and only one of them had been fixed. In <code>eval/scripts/transplant.mjs</code>, a run that exhausted its six-turn ceiling returned an empty final answer that was fed straight to the grader and scored 0, indistinguishable from a wrong answer &mdash; 2 of 60 rows in the primary <code>tree</code> arm and 7 of 60 (11.7%) in the <code>tree-wide</code> ablation, every one of the seven with <code>fetched:true, searched:true</code>, meaning the model was actively using its tools and just needed more than six round trips. The same file already excluded <code>cost_cap</code> rows from scoring for the identical reason, which is what proves it was an oversight rather than a design choice. It is now fixed, and the correction moves a published cell: <code>tree-wide</code>'s head-stratum mean is 0.333 over 9 completed runs, not the 0.273 over 11 that earlier reports quote.</p>
+
+<h3>5.5&ensp;A cause misattributed and later corrected</h3>
+<p>Three of these are worth carrying, because each was believed long enough to shape a decision.</p>
+<ul>
+<li><b>The 16 fabricated failures.</b> A run the harness stopped was graded as a task failure. Corrected twice: first by making harness-stopped runs ungradable, then by narrowing that &mdash; a capped run whose hidden tests <em>pass</em> keeps its success, because the grade is a filesystem fact. The narrowed rule recovers 10 legitimate successes and still removes the 16 fabricated failures.</li>
+<li><b>Empty replies blamed on the provider.</b> Written off as reasoning models putting text in an unread field; actually the reply clamp being spent on thinking. The root cause was in the harness, not the provider.</li>
+<li><b>The tail stratum's zeros blamed on the newest branch starting too late.</b> All three tail sources are inside the visible summary range in both arms, and the source branch renders as a full body in both. The cause is behavioural &mdash; 34.8% of sampled rows searched and never fetched, 8.9% never searched &mdash; not structural. Nothing about branch granularity or width would move it.</li>
+</ul>
+
+<h3>5.6&ensp;Numbers checked for this report, and the three that did not reproduce</h3>
+<p>Every load-bearing figure in &sect;3 and &sect;4 was recomputed for this report from the artifacts, not quoted. Reproduced exactly: the whole ladder curve at all five windows including the 0/2/5/6/8/10/11 body counts and the dead cell at 8,192; Pearson r = 0.062 (n=120) with 4 successes all on <code>s1-q02-head</code> and rank-1 <code>s1-q07-deep</code> at 0.000 over 6; all four cells of the re-segmentation table and every branch size in Figure 2; the switch-fraction sweep's constant 9,060 and its 3,361,230-to-9,150,408 range; the cache sweep's 6,335,267 against 11,486,477 cache reads and its &minus;39.8%; <code>f*</code> = 0.7826 and 12.5&times;; the six gate crossings with median overshoot 8,305.5 and a median 265,428 billed tokens per run; the width arms' 37,513 against 49,681 median input at 38 completed rows each with mean turns 3.00 against 3.24; every stratum score cell in &sect;3.1; the manifest ratio 0.850896663206653; and the test counts (541 passed / 9 skipped in <code>packages/core</code>, 599 / 9 across <code>packages/</code>, 91 in <code>eval/test/{loop,transplant}.test.ts</code>).</p>
+<p>Three did not, and a next agent should treat the corrected value as the one to use:</p>
+<ol>
+<li><b>The pre-registered turn guard's baseline for <code>sw-6-ripple</code> is 18 turns, not 16.</b> <code>ITERATION-2-VERDICT.md</code> &sect;5 states &ldquo;baseline medians are 13 and 16 turns&rdquo;. Recomputed from the same three replicates: <code>sw-5-dozen</code> is 10/13/16 turns, median <b>13</b> (matches); <code>sw-6-ripple</code> is 14/18/33, median <b>18</b>. The guard in next step 4 is restated against 18.</li>
+<li><b>The capped branch sizes are 13 exact tokens larger than the judge measured.</b> The verdict's table gives 17,345 (span 267&ndash;271) and 18,338 (span 267&ndash;276) with the cap applied; re-running <code>resegment.mjs</code> gives <b>17,358</b> and <b>18,351</b>. Every count, threshold crossing and conclusion is unchanged; the discrepancy is a 0.08% difference in where the elision lands.</li>
+<li><b>The &ldquo;max-bodies rung&rdquo; column reports a rung matching neither shipped arm at W=65,536.</b> <code>ladder-curve.mjs</code> prints <code>keep=12 (21 bodies) &rarr; NEITHER shipped arm</code> there, which reads as contradicting the monotonicity conclusion. It does not: five rungs (12/8/6/4/2) all tie at 21 bodies at that window and the script's tie-break reports the largest. Monotone non-increasing holds (19/19/21/21/21/21/21). Do not read that cell as a counterexample.</li>
+</ol>
+<p>One further non-reproduction is already on record and is restated because it is load-bearing: <code>exp-04-caching.md</code>'s absolute session table cannot be reproduced at all, for the reason in &sect;5.4. Its shipped-layout baseline today is a session cache read of 6,335,267 tokens, not the 5,079,261 it published.</p>
+
+<h2>6&ensp;State of the code</h2>
+<p>At commit <code>77d5326</code>. Test counts run for this report: <code>packages/core</code> 541 passed / 9 skipped (24 files); <code>packages/</code> as a whole 599 passed / 9 skipped (26 files); <code>eval/test/loop.test.ts</code> + <code>eval/test/transplant.test.ts</code> 91 passed / 0 skipped. The 9 skips are the pre-existing <code>LIVE=1</code>-gated files under <code>packages/core/test/live/</code>, skipped identically before this pass; nothing else was skipped.</p>
+
+<p class="note"><em>Uncommitted at <code>77d5326</code>.</em> Iteration 3's own code changes are in the working tree and not yet committed: <code>packages/core/src/cache/{simulator.ts,index.ts}</code>, <code>packages/core/test/{cache.test.ts,e2e.test.ts}</code> and <code>eval/scripts/resegment.mjs</code>, plus the three <code>exp3-*.md</code> reports and this report's two files. Everything else described below is committed. Commit or discard deliberately before starting a new epoch, and re-run the three test suites afterwards &mdash; the counts above were taken with these changes present.</p>
+
+<h3>6.1&ensp;Landed and on by default</h3>
+<ul>
+<li><b><code>packages/core/src/assemble/budgets.ts</code></b> &mdash; new. Exports <code>ZONE_FRACTIONS</code> (frozen, explicitly labelled unvalidated), <code>deriveZoneBudgets(window, ratio)</code>, <code>zoneBRemainder(...)</code>, <code>replyHeadroom(...)</code>, <code>replyAllowance(...)</code>. Every zone allowance now derives from one host-supplied number in one place, and the switch point is the Zone C share by construction. Tested in <code>packages/core/test/budgets.test.ts</code>. Additive: a window changes nothing about what gets built, which a test asserts.</li>
+<li><b><code>packages/core/src/assemble/assembler.ts</code></b> &mdash; <code>ZoneAssemblerDeps.window</code> and <code>AssembleOptions.window</code> take the host's context window, host-supplied with no default. <code>BudgetReport</code> gained <code>window</code>, <code>windowRemaining</code>, <code>overWindow</code> and <code>replyAllowance</code>. It reports rather than enforces: a caller that ignores <code>overWindow</code> gets a provider error, which is the loud failure.</li>
+<li><b><code>packages/core/src/retrieve/detail.ts:9,103-104</code></b> &mdash; the edit-argument cap. Imports <code>ARGS_CAP_WITH_BLOB</code>, <code>elision</code> and <code>safeCut</code> from <code>assemble/format.ts</code>, so the same 512-byte rule now applies in both renderers from one exported constant. No new constant. Guarded by <code>packages/core/test/retrieve.test.ts</code> (33 passed) and <code>packages/mcp/test/mcp.test.ts</code> (39 passed).</li>
+<li><b><code>packages/core/src/cache/simulator.ts</code></b> &mdash; <code>CacheMatchPolicy</code>, default <code>'automatic-prefix'</code>, with <code>'exact-last-position'</code> preserved byte-for-byte on a separate code path. Every pre-existing test that depended on the old numbers now constructs its simulator with the old policy explicitly and keeps its original assertions. <code>packages/core/test/cache.test.ts</code> is 18 tests.</li>
+<li><b><code>eval/scripts/transplant.mjs:3384-3401</code></b> &mdash; a run stopped at <code>MAX_TURNS</code> or the time cap is now ungradable (<code>score: null, success: null</code>) rather than graded 0, mirroring the treatment <code>cost_cap</code> already had.</li>
+<li><b><code>eval/scripts/transplant.mjs:775-777</code></b> and the four tuning scripts &mdash; each copies the frozen store to an <code>mkdtemp</code> scratch directory before running, so the fixture stops being written to.</li>
+<li><b>Zero-cost experiment scripts</b>, all runnable with no network: <code>eval/scripts/ladder-curve.mjs</code>, <code>resegment.mjs</code> (extended in place to cross both segmentations with both renderer states), <code>switch-fraction-sweep.mjs</code>, <code>cache-sweep.mjs</code>, and the pre-existing <code>marathon.mjs</code>.</li>
+</ul>
+
+<h3>6.2&ensp;Landed behind a flag, default off</h3>
+<ul>
+<li><b><code>cacheZoneCBreakpoint</code></b> &mdash; <code>packages/core/src/assemble/assembler.ts:90</code> (the field) and <code>:176-180</code> (the marker). The third cache breakpoint, moved into the library from an eval script. Default <b>off</b>, verified byte-identical by the 541-test run. Its verdict is now &ldquo;candidate for a default flip, pending a second-scenario replicate&rdquo; (&sect;3.4).</li>
+<li><b><code>SegmentConfig.neutralPhases</code></b> &mdash; <code>packages/core/src/contracts/segment.ts:55-58</code>, default unchanged at <code>['other']</code> (<code>packages/core/src/config.ts:113</code>). Setting it to <code>[]</code> is the <code>tree-fine</code> arm. Changing the default re-segments L1, so every node id, span and stored summary changes and all derived layers must be deleted and rebuilt, never migrated. No measurement crosses that boundary in either direction.</li>
+<li><b><code>ARM_ROOT_LADDER</code></b> &mdash; <code>eval/scripts/transplant.mjs:398-410</code>. The <code>tree-wide</code> arm is the reversed ladder; making it the default is an epoch shift at any window where the Zone B share binds.</li>
+<li><b><code>EVAL_LAZY_TOKENS</code> / <code>EVAL_LAZY_K</code></b> &mdash; the switch/latch gate, off by default in <code>eval/src/loop.ts:795,804</code>. Every published run that exercises the switch point set <code>EVAL_LAZY_TOKENS=30000</code> by hand on the command line. A plain invocation does not.</li>
+</ul>
+
+<h3>6.3&ensp;Written but unrun</h3>
+<ul>
+<li><b><code>replyAllowance</code> has never been used live.</b> Offline reasoning plus unit tests only. It is next step 1, and its whole point &mdash; that a small-window model iterates through a long session on progressively shorter replies rather than failing when its prompt outgrows a fixed ceiling &mdash; is a behavioural claim no offline check can settle.</li>
+<li><b><code>zoneBRemainder</code> is available to callers but not used by the assembler.</b> Giving Zone B the true remainder needs Zone C's size first, and the zones assemble in layout order. That is a behaviour change and belongs to a judged candidate, not a defect fix.</li>
+<li><b>The same-turn switch check did not land.</b> <code>eval/src/loop.ts:820,829,1035</code> still sets <code>lastPromptTokens</code> from the previous call's billed usage and reads it before the next one, so the median 8,306-token overshoot is still live. Iteration 2 recommended landing it and it has not been landed. It is part of next step 4, and landing it declares an epoch boundary.</li>
+<li><b>The listing-then-range fetch path exists and is untested live.</b> It is the only remaining lever on the three branches still over W=16,384.</li>
+</ul>
+
+<h3>6.4&ensp;Still open in the shipped library, by path</h3>
+<ul>
+<li><code>packages/core/src/config.ts:116-119</code> &mdash; <code>zoneB: 8_000</code>, <code>zoneC: 30_000</code>, <code>rootKeep: 40</code>, <code>retrieval.limit: 20</code>, all flat integers. On the one measured store, <code>rootKeep: 40</code> renders no body at all at W=32,768 and exceeds the whole Zone B share at W=16,384, so it is not merely unvalidated but known to fail there.</li>
+<li>Five mutually inconsistent excerpt sizes (800 / 2,000 / 2,000 / 240 &times;3 / 65,536 chars) across <code>retrieve/retriever.ts:49</code>, <code>mcp/src/tools/context-peek.ts:15</code>, <code>retrieve/vector-provider.ts:19</code>, <code>providers/hydrate.ts:15</code> and three separate definitions of <code>SNIPPET_CHARS</code>. The 65,536-char default alone exceeds the entire default Zone C allowance.</li>
+<li><code>renderSpans</code> (<code>retrieve/detail.ts</code>) and <code>renderBranchDetail</code> (<code>summarize/detail.ts</code>) have per-event caps but no aggregate cap. These are the mechanism behind the &ldquo;leaf larger than the window&rdquo; boundary condition.</li>
+<li><b><code>ZoneAssembler</code> is never constructed inside <code>packages/mcp</code>.</b> Verified again for this report: the only non-test constructions are in <code>packages/core/test/</code>. A host attaching the shipped MCP server today gets four retrieval tools and no prompt assembly, so the whole <code>assemble/</code> subsystem &mdash; including every budget above &mdash; has no live effect on any such deployment. Fixing the budgets changes eval scores, not yet any running system.</li>
+<li><b>The switch/latch step has no code in <code>packages/core</code> or <code>packages/mcp</code> at all.</b> It lives only in <code>eval/src/loop.ts</code>, which is explicitly out of scope for what ships.</li>
+<li><code>MAX_TURNS = 6</code> at <code>eval/scripts/transplant.mjs:123</code>. The turn ceiling was removed from <code>eval/src/loop.ts</code> and not from this harness; capped rows are now excluded rather than graded, but the ceiling still truncates runs, and 9 rows in the committed W=32,768 fixtures hit it.</li>
+</ul>
+
+<h3>6.5&ensp;Where the data and scripts are</h3>
+<div class="tablewrap">
+<table>
+<thead><tr><th>What</th><th>Path</th></tr></thead>
+<tbody>
+<tr><td>The reference description and the four rules</td><td><code>reports/algorithm.md</code></td></tr>
+<tr><td>Iteration-1 analyses, iteration-2 experiments, the judge's verdict, iteration-3 experiments, the queue</td><td><code>eval/plans/tuning/</code></td></tr>
+<tr><td>The four published dimension reports (HTML canonical, markdown twin)</td><td><code>reports/metrics/tuning-{branch-count,branch-depth,summary-policy,caching}.{html,md}</code></td></tr>
+<tr><td>The constant-and-boundary audit this pass was scoped against</td><td><code>eval/plans/portability-audit/{01-core,02-harness,03-transplant}.md</code></td></tr>
+<tr><td>The frozen store: 754 events, 21 branches, 46 nodes &mdash; every structural number in this report</td><td><code>eval/fixtures/transplant/s1/store/</code> (gitignored; <code>trace.jsonl</code> sha256 pinned in the manifest, <code>tree.db</code> not)</td></tr>
+<tr><td>The twelve questions, four strata, gates, ladder, manifest, and the result files behind every width figure</td><td><code>eval/fixtures/transplant/s1/e1b289c32f40/</code></td></tr>
+<tr><td>The six live switch crossings and their per-turn usage</td><td><code>eval/results/long-v65-gate/*/results.json</code> and <code>long-v65-gate.log</code></td></tr>
+<tr><td>The matched no-switch baseline arm, one day earlier</td><td><code>eval/results/long-v64/</code></td></tr>
+<tr><td>The live cache measurement the simulator was validated against</td><td><code>reports/metrics/tree-vs-transcript.md:155</code>, from the <code>long-v6x</code> batch</td></tr>
+<tr><td>The forensic six-mechanism classification of 135 sampled rows</td><td><code>eval/plans/loop9b-analysis/01-run-forensics.md</code></td></tr>
+</tbody>
+</table>
+</div>
+<p class="tcap"><b>Table 5.</b> Where everything lives. The <code>e1b289c32f40</code> directory name is the fixture's content hash and is stable; the <code>results/</code> subdirectory inside it holds the committed run files, and the working tree currently carries several uncommitted additions there.</p>
+
+<h2>7&ensp;Recommended next steps</h2>
+<p>Ordered by expected information gained per unit of effort, where effort is counted in tokens and runs spent. Items 2, 3 and 5 cost no model tokens at all. Each is specified to be executed cold.</p>
+
+<h3>Step 1 &mdash; The per-turn reply allowance needs its own round: replay first</h3>
+<p><b>Why first.</b> It is the only shipped-library behaviour in this pass that is implemented, unit-tested and never run, and everything offline can show is that the arithmetic is right. What is unknown is behavioural: whether a model given a small allowance produces a usefully short answer or a uselessly truncated one, whether quality degrades gracefully as the allowance shrinks, and where the allowance becomes too small for the task &mdash; the floor <code>replyAllowance</code> deliberately refuses to guess.</p>
+<p><b>Substrate.</b> The transplant fixture, not a new long-running scenario. It already is a long session: 754 events, roughly 196,000 tokens, frozen with its hashes. Instead of the twelve isolated question runs it drives today, walk forward through the trace &mdash; assemble the prompt as it stood at each point, compute the allowance, and ask a live question at intervals. Every arm then sees byte-identical inputs, so the comparison is same-epoch by construction. This needs one harness change: <code>transplant.mjs</code> asks its questions at a single fixed store state today, so an interval-walk mode has to be added before any run.</p>
+<p><b>Arms</b> (one variable, three levels): <code>no-limit</code> &mdash; send no <code>max_tokens</code>, today's live default; <code>fixed-ceiling</code> &mdash; the removed behaviour and the control the existing corpus was measured under (8,192 in the live harness, 800 in the portability one; use 800, because that is the clamp the fixture's own numbers were produced with); <code>allowance</code> &mdash; <code>BudgetReport.replyAllowance</code> passed straight through as <code>max_tokens</code>.</p>
+<p><b>Flags.</b> <code>EVAL_LAZY_TOKENS</code> derived from the window rather than set to 30,000, so the switch is the Zone C share as the rule requires; the seven gate flags on; <code>cacheZoneCBreakpoint</code> off; <code>neutralPhases: ['other']</code>; ladder <code>tree</code>. No <code>--max-turns</code>, no <code>--time-cap-ms</code>; bound spend with <code>--cost-cap-usd</code> and let stall detection end a run that will not finish.</p>
+<p><b>Model and window.</b> <code>openai/gpt-3.5-turbo</code> at W=16,384, through OpenRouter. Not a preference: the mechanism only engages once the prompt approaches the window, and this is the smallest window in the fixture and the only cell where the tree arm completed 60 of 60 runs. Run the same design at W=32,768 on <code>qwen/qwen-2.5-72b-instruct</code> only if the small-window cell shows a curve worth confirming.</p>
+<p><b>n.</b> 12 questions &times; 3 arms &times; 5 replicates = 180 attempted runs at W=16,384, all interleaved in one epoch.</p>
+<p><b>Pre-registered win criterion.</b> (i) <em>Primary:</em> the <code>allowance</code> arm's mean graded score is at or above <code>fixed-ceiling</code>'s at every allowance decile, with the baseline on disk being the tree arm's existing W=16,384 cell. (ii) <em>Primary:</em> the <code>allowance</code> arm completes at least as many runs as <code>fixed-ceiling</code> &mdash; the claim is that a session continues where a fixed ceiling would have made the request invalid. (iii) <em>Guard:</em> median run tokens for <code>allowance</code> no worse than <code>fixed-ceiling</code>'s baseline of 13,107 (n=60 completed, verified for this report). (iv) <em>Guard:</em> the fraction of replies stopping at the allowance rather than at the model's own stopping point is recorded per arm; it is a diagnostic, not a criterion.</p>
+<p><b>Pre-registered refutation, carried verbatim from the queue.</b> The failure that would refute the change is a run where shrinking allowances produce truncated-but-scored answers, because that trades a loud failure for a silent one &mdash; the opposite of what the change is for. Operationally: if the <code>allowance</code> arm's share of replies ending at <code>stopReason: 'length'</code> rises while its graded score holds or falls, the mechanism is hiding truncation and must be retired.</p>
+<p><b>What the replay cannot show, and it matters.</b> A frozen replay breaks the feedback loop. The allowance changes what the model says, what it says changes the trace, and the trace changes the next prompt. The replay settles answer quality at each allowance level and the shape of the curve; it cannot show whether shrinking allowances change the session's trajectory. A genuinely long live run is the confirmation, worth paying for only after the replay says there is something to confirm, and scoped to whichever allowance regime the replay says is interesting. <b>Do not run them in the other order.</b></p>
+<p><b>Estimated tokens.</b> 180 runs &times; a median 13,107 tokens per completed run at this cell &asymp; <b>2.4M tokens</b>, essentially all of it fresh input, since this endpoint bills no cache.</p>
+<div class="example">node eval/scripts/transplant.mjs --scenario s1 --window 16384 \
+  --model openai/gpt-3.5-turbo --arms tree \
+  --reply-mode no-limit,fixed-ceiling,allowance --walk-intervals 12 --reps 5 \
+  --cost-cap-usd &lt;cap&gt;
+# --reply-mode and --walk-intervals do not exist yet; adding them is the prerequisite.</div>
+
+<h3>Step 2 &mdash; Date the fixture's L1, or stop reading its latest summary version (zero tokens, zero runs)</h3>
+<p><b>Why second.</b> Nothing assembler-driven is trustworthy until a pass can prove the store it measured is the store the previous pass measured. This is what makes one iteration-2 table irreproducible, and it retroactively dates every Zone B number in the repository. One day's work.</p>
+<p><b>What to do.</b> Either add <code>tree.db</code>'s node-dump and summary hashes to <code>manifest.json</code> as a pre-flight check every script runs, or have assembler-driven scripts pin an explicit summary version rather than taking the newest. Prefer the second: it is strictly local to the scripts and does not require the fixture to stop growing. While in there, three small things: correct the stale verdict paragraph <code>cache-sweep.mjs</code> still prints (&sect;5.3); resolve the one deleted result file sitting uncommitted inside the fixture directory, by restoring it or committing the deletion deliberately; and record which of the 1,546 root-summary versions each published Zone B figure was measured against, as far as the dates allow.</p>
+<p><b>Win criterion.</b> Re-running all four tuning scripts twice, hours apart, produces byte-identical output, and a deliberate mutation of <code>tree.db</code> makes the pre-flight check fail loudly.</p>
+<div class="example">node eval/scripts/cache-sweep.mjs   # must be byte-identical across two runs hours apart
+node eval/scripts/ladder-curve.mjs
+node eval/scripts/resegment.mjs
+node eval/scripts/switch-fraction-sweep.mjs</div>
+
+<h3>Step 3 &mdash; The second-scenario simulator replicate that decides the cache default (zero tokens, zero runs)</h3>
+<p><b>Why third.</b> It is free, it is the pre-registered gate iteration 2 set for a shipped default flip, and iteration 3-A has already done the instrument validation it depends on. The information is a default, not another measurement.</p>
+<p><b>Arms.</b> <code>shipped</code> (2 breakpoints) against <code>3rd-breakpoint</code> (<code>cacheZoneCBreakpoint: true</code>), under <code>matchPolicy: 'automatic-prefix'</code>, over a second frozen store &mdash; a different trace from a different session, ingested through the same pipeline. The <code>s1</code> result is the baseline: &minus;39.8% session cost, cache reads 6,335,267 against 11,486,477 on a 15,130,974-token session total, n=754 turns.</p>
+<p><b>Pre-registered win criterion.</b> The second store must reproduce all three structural properties &mdash; cache reads non-decreasing on at least 90% of turn-to-turn steps outside phase transitions, median write on writing turns at least an order of magnitude below the read total on those turns, and median fresh input under 500 tokens per turn &mdash; and the session cost delta must be negative. Any one of the three failing means the design is store-shaped and the default stays off. Both arms must also still pass <code>packages/core/test/cache.test.ts</code> unchanged.</p>
+<p><b>Estimated tokens.</b> Zero model tokens. Ingesting a second store costs leaf-summarizer calls once (21 branches at the <code>s1</code> scale, about 210k input tokens on the cheap model), and that cost is shared with step 8.</p>
+<div class="example">node eval/scripts/cache-sweep.mjs --store eval/fixtures/transplant/s2/store
+# --store does not exist yet; today the fixture path is hardcoded.</div>
+
+<h3>Step 4 &mdash; Land the same-turn switch check, then the one live batch worth paying for</h3>
+<p><b>Why fourth.</b> This is the pass's one confirmed win with a live experiment attached, and it is the only live batch anything in three iterations recommends buying. The implementation is one local tokenizer pass; the batch is what confirms that removing the overshoot does not cost more elsewhere than it saves.</p>
+<p><b>Implement first.</b> Move the check ahead of dispatch and apply it to the candidate prompt using the <code>HeuristicTokenizer</code> the assembler already constructs locally (<code>eval/src/loop.ts:771</code>), <em>carrying the ratio correction</em> &mdash; a heuristic count runs about 17.5% above the provider's on this corpus, so an uncorrected candidate count fires early by that margin. The correction already exists as the division inside the budget derivation; import it, do not reinvent the threshold. No flag: it restores the stated rule and lives in the measurement harness, so no shipped default moves. <b>Declare an epoch boundary at the commit</b> &mdash; it changes which turn crosses, so no total-token, turn-count or cost figure from <code>long-v65-gate</code> or earlier may be compared to a run made after it.</p>
+<p><b>Arms.</b> <code>lagged</code> (today, <code>lastPromptTokens</code> from the previous call) against <code>same-turn</code>. One variable.</p>
+<p><b>Scenarios, model, n.</b> <code>sw-5-dozen</code> and <code>sw-6-ripple</code> &mdash; the only two scenarios on record that cross the switch and the source of all six recorded crossings. 3 replicates per scenario per arm = 12 runs, interleaved same-day, one epoch, so the <code>lagged</code> arm doubles as a within-epoch reproduction of the six crossings. <code>claude-sonnet-5</code> for the agent and <code>claude-haiku-4-5-20251001</code> for the leaf summarizer: not a choice, it is the only model the crossings exist on and changing it forfeits the comparison.</p>
+<p><b>Pre-registered win criterion, per scenario.</b> (i) The crossing turn's prompt is within 1,000 tokens of the threshold in at least 5 of the 6 <code>same-turn</code> runs; the offline proxy predicts 5 of 6 at zero and one at 916, so anything worse says the candidate prompt is not what the gate should measure. (ii) Median total billed tokens for <code>same-turn</code> at or below <code>lagged</code>'s, whose baseline is on disk at a median 265,428 billed tokens per run (n=6, verified for this report). A rise means removing the overshoot cost more elsewhere than it saved, which is the one outcome that retires the fix. (iii) <em>Guard:</em> median turns for <code>same-turn</code> no worse than the baseline plus 2, where the baselines are <b>13 turns on <code>sw-5-dozen</code> and 18 on <code>sw-6-ripple</code></b> &mdash; recomputed for this report; the verdict's &ldquo;13 and 16&rdquo; is wrong on the second (&sect;5.6). An earlier, smaller crossing bought with turns is not a win. (iv) <em>Guard, pooled:</em> no run graded <code>success: false</code> on a scenario where <code>lagged</code> graded true. These are graded by hidden tests against the sandbox, so a regression there is a filesystem fact.</p>
+<p><b>Estimated tokens.</b> 12 runs &times; a median 265,428 billed tokens &asymp; <b>3.2M billed tokens</b>, roughly 60% of it cache reads on the recorded mix.</p>
+<div class="example">EVAL_LAZY_TOKENS=30000 node eval/dist/run.js \
+  --scenarios sw-5-dozen,sw-6-ripple --arms context-tree \
+  --reps 3 --cost-cap-usd &lt;cap&gt;      # once per arm, interleaved same-day</div>
+
+<h3>Step 5 &mdash; The zero-token instrumentation bundle (zero tokens, zero runs)</h3>
+<p><b>Why fifth.</b> Three one-field changes, none of which needs a model call, each of which retires an interpretive gap that currently forces a hypothesis where a measurement belongs. They are bundled because each is smaller than the overhead of scheduling it alone, and because every later step reads more cheaply with them in place.</p>
+<ol>
+<li><b>Decompose <code>peakRequestTokens</code> by zone in the transplant harness.</b> It is the only way to settle where the width gap lives, and until it exists neither competing claim about width's cost can be defended. Note the honest limit: iteration 3-C shows that even a perfect decomposition does not reach significance at n=38, so this buys attribution, not resolution.</li>
+<li><b>Record the <code>depth</code> argument on every <code>context_fetch</code>.</b> It retires the largest interpretive gap in the depth dimension &mdash; the 4.4% &ldquo;fetched the correct branch, no truncation, still wrong&rdquo; bucket cannot be attributed today, and neither can the single fetch of the oversized branch. Every future run then discriminates a tool-design limit from a model-competence limit for free.</li>
+<li><b>Record non-agent model calls per turn.</b> <code>metrics.tokens.total</code> counts the agent model only, so the leaf summarizer's tokens appear in no total-token figure this program publishes, and no artifact says which turn a summarize call landed on. One field on <code>TurnRecord</code>. Until it exists, no total-token number in this program includes summary cost &mdash; state that caveat wherever a total is quoted.</li>
+</ol>
+<p><b>Win criterion.</b> Re-reading one existing result file plus one new run reproduces the run's <code>peakRequestTokens</code> as the sum of its zone parts, exactly; and the leaf summarizer's tokens appear in a run total for the first time.</p>
+
+<h3>Step 6 &mdash; Raw-by-default fetch: the floor-lifting change that unblocks two dimensions</h3>
+<p><b>Why sixth, and why nothing about width or depth should be bought before it.</b> Both blocked dimensions are blocked behind the same floor, not behind spend. None of the twelve answer literals appears in any of the twenty-one rendered summary bodies, so the current fetch default cannot answer a verbatim question, and 9 of 12 questions sit at exactly 0.000 across both widths and every retrieval rank. A second scenario at n=15 per cell would compare two arms whose expected successes are about 4 and 4.</p>
+<p><b>Arms.</b> <code>summary-default</code> (today) against <code>raw-default</code> &mdash; fetch returns raw events by default, aimed by a sequence range, with a listing mode; &ldquo;raw, sized to fit&rdquo; replacing &ldquo;summary or raw&rdquo;. Pair it with the already-verdicted <code>search-hits-are-coordinates</code> change if the two can be isolated, and do not bundle them if they cannot: measured search payload falls from 9,673 to 4,898 tokens on its own.</p>
+<p><b>Model, window, n.</b> The fixture's own cells, so the baselines are on disk: <code>qwen/qwen-2.5-72b-instruct</code> at W=32,768 and <code>openai/gpt-3.5-turbo</code> at W=16,384, 12 questions &times; 5 replicates &times; 2 arms per window = 240 attempted runs.</p>
+<p><b>Pre-registered win criterion.</b> Successes across the 120 searched-row population rise from 4 to at least 12 (a threefold lift, chosen because below that no affordable width or depth experiment discriminates), with no stratum falling below its current mean and no median run-token rise above 1.5&times; the paired baseline cell. If successes stay under 12, the retrieval problem is not the fetch default and the width and depth dimensions should be recorded as closed-by-blockage rather than pursued.</p>
+<p><b>Estimated tokens.</b> 240 runs at the two cells' medians (13,107 and 37,513 tokens) &asymp; <b>6.1M tokens</b>.</p>
+
+<h3>Step 7 &mdash; Port the derived budgets into the live suite (zero runs to decide it)</h3>
+<p><b>Why seventh.</b> A defect fix, not an experiment, and it is the audit's top recommendation. Until it lands, no comparison of switch policies is measuring the policy that would ship: the live suite's switch point, Zone B allowance and Zone C allowance are the absolute literals 30,000 / 8,000 / 30,000 and its fold level the constant 40, while the derivation exists in <code>packages/core/src/assemble/budgets.ts</code>. Delete the absolutes, derive from W with the switch equal to the Zone C share, and port the fold-ladder derivation so the live suite stops using a constant that is known to render no body at all at W=32,768 on the one store that has been measured. It is ranked below the experiments because it changes no measurement on its own &mdash; and above nothing, because it is a prerequisite for any future switch-fraction work.</p>
+<p><b>Win criterion.</b> A run at ten times the window produces ten times each allowance (a test already asserts this for the library function); the live suite's <code>results.json</code> records a derived switch equal to its Zone C share; and the existing 91 eval tests plus 599 package tests stay green.</p>
+
+<h3>Step 8 &mdash; A second store, and only then the width-cost replicate</h3>
+<p><b>Why last.</b> Every limitation in every dimension is the same limitation &mdash; n=1 store, one trace, one host's tool-name map. The offline recipe is already written and runs at zero model tokens: re-segment a second store's event log under both configurations, locate each question's sequence in the new segmentation, count branches and sizes, and re-run the harness's own zero-token structural gates against each candidate's re-derived tree. That last part is the missing step even on <code>s1</code>: a candidate that multiplies branch count by 4.71 changes how many branch summaries fit a given allowance, which is exactly what the over-budget gate asserts, and its interaction with the fold level is unexamined.</p>
+<p><b>The width-cost replicate is dominated and should not be bought yet.</b> Resolving the 5,275-token mean gap needs about 246 completed rows per arm, roughly 390 attempted per arm at the fixture's 63% completion rate, about 780 runs and <b>29M tokens</b> at the W=32,768 cell's median &mdash; and step 6 may change the arms' behaviour enough to invalidate the whole batch. Buy it only after step 6 lands and only if the floor lifted.</p>
+
+<h2>8&ensp;Standing constraints the next agent must respect</h2>
+<ol>
+<li><b>No budgets or caps.</b> Not on turns, not on wall-clock, not on reply length. Bound the resource itself: spend by a spend cap, a run that will not finish by non-progress. Two of these have already corrupted measurements here &mdash; a turn ceiling fabricated 16 failures and a reply clamp produced empty answers that were then graded wrong.</li>
+<li><b>Never delete a rule to satisfy a constraint that is itself a guess.</b> Reply <em>headroom</em> is required by the algorithm, because prompt plus reply must fit the window; a reply <em>ceiling</em> is not. The distinction is explicit in the code and must stay explicit in any change.</li>
+<li><b>Do not silently deviate from a D-numbered decision.</b> If implementation shows one is wrong, say so, propose the change, and update the decision row.</li>
+<li><b>L1, L3 and L4 are derived. Never write a migration for them.</b> Changing the segmenter or a summary prompt means deleting the derived layers and rebuilding. Summaries are versioned, never overwritten.</li>
+<li><b>Prompt layout is fixed; only content migrates.</b> Zone A, then Zone B in creation order, then Zone C. Zone B is never relevance-ordered &mdash; reordering a cached prefix is the cache killer. Retrieved results append after Zone C.</li>
+<li><b>Ingestion is hermetic.</b> It reads the event log, the payload store and a parser, and calls nothing over a network.</li>
+<li><b>An epoch shift forfeits every comparison across it.</b> Re-segmenting, flipping the ladder default, and moving the switch check all change what gets built or when. Declare the boundary at the commit and never compare a total-token, turn-count or cost figure across it.</li>
+<li><b>Never grade a run the harness stopped as a task failure.</b> A failing grade becomes <code>success: null</code>. The one exception is narrow and deliberate: a capped run whose hidden tests <em>pass</em> keeps its success, because the grade is a filesystem fact. A stall keeps both directions, because ending in a loop is a real task failure.</li>
+<li><b>Report metrics as tokens, turns, graded score and success counts; means for scores, medians for tokens and turns; state n everywhere.</b> Dollar figures appear once, in a footnote, beside the baseline they are relative to &mdash; never as a bare figure in a claim.</li>
+<li><b>Every comparison pairs candidate against baseline at the same model and the same epoch.</b> Where a same-epoch baseline does not exist, say so in the same breath as the number; three of the six recorded cache-invalidation mechanisms have no valid baseline and are reported as within-run or before-and-after observations only.</li>
+<li><b>Price a segmentation or rendering proposal with a real tokenizer, never with the corpus-wide ratio.</b> The ratio undercounted two branches by 43% and 67%.</li>
+<li><b>Copy the frozen fixture before touching it, and check <code>git status</code> after.</b> Its store directory is gitignored, so <code>git status</code> alone proves nothing; the copy is what protects it.</li>
+<li><b>Unknown tool maps to <code>other</code>, never a crash.</b> The tool-to-phase map is the one row every port must edit.</li>
+<li><b>A conservative instrument can invert a comparison.</b> Under-crediting cannot hide a regression but can flip a sign, so validate an instrument against a paid-for measurement before letting it rank designs.</li>
+<li><b>No total-token figure in this program includes leaf-summarizer cost.</b> The harness's total counts the agent model only. Quote totals with that caveat until step 5 lands.</li>
+<li><b>Do not run a live width or depth arm before the retrieval floor lifts.</b> With 9 of 12 questions at exactly zero across both widths and every rank, no affordable n discriminates.</li>
+</ol>
+
+<h2>9&ensp;What this pass did not test</h2>
+<p>Stated as scope, so a next agent does not read an untested condition as a settled one.</p>
+<ul>
+<li><b>Live model calls: none.</b> No experiment in any of the three iterations called a model. Every live number here was already on disk when the pass started, from batches run on 1&ndash;2 September.</li>
+<li><b>Stores: one.</b> Every structural number &mdash; the 77-fold branch spread, the 21-versus-99 re-segmentation, the ladder curve, all four cells of Table 1, the cache replay, the width decomposition &mdash; comes from <code>transplant/s1</code>: one trace, one task, one host's tool-name map, 754 events. Whether the neutral-merge mechanism or the size spread is a property of the rule or of this one session is the single largest unknown.</li>
+<li><b>Windows: assembled at five, scored at two.</b> Structural gates run at 8,192 / 16,384 / 32,768 / 65,536 / 200,000, but no scored run has ever been made at 8,192 (a dead cell for both tree arms), at 65,536, or at 200,000. The 8,192 cell is the clearest evidence for deleting the zone partition and has never carried a model call.</li>
+<li><b>Models: four, and not interchangeably.</b> Width and depth numbers are <code>qwen/qwen-2.5-72b-instruct</code> and <code>openai/gpt-3.5-turbo</code> through OpenRouter, which bills no cache at all &mdash; every rewrite claim in this pass is Anthropic-specific, and the OpenRouter path reports <code>cacheWrite: 0</code> by design. Timing and caching numbers are <code>claude-sonnet-5</code> with <code>claude-haiku-4-5</code> summaries. No dimension has been measured on more than one model family.</li>
+<li><b>Caching &times; width: not measured.</b> The width dimension was measured entirely on an endpoint that bills no cache. Under a cache the same reallocation is nearly free while the prefix is stable and expensive at each rewrite, so a width policy chosen there may be the wrong one here. That coupling is between dimensions 1 and 3 and nothing has measured it.</li>
+<li><b>Providers: one, for every cache claim.</b> No non-Anthropic provider in this repository reports a cache-write count, so nothing at all has measured a breakpoint scheme on a second provider.</li>
+<li><b>Summary quality at either granularity: not measured.</b> The candidate segmentation puts many branches at roughly one tool call plus its result, and 47 of its 99 branches carry no phase identity beyond <code>other</code>. Whether a summary of that little work is worth its own leaf pass is untouched.</li>
+<li><b>Turns and score under the candidate segmentation: unmeasured on every task, short or long.</b> Only containment and branch count have been measured, so the question the fourth rule asks &mdash; which setting wins &mdash; is open.</li>
+<li><b>The reply allowance live: never run.</b> That is step 1, and its trajectory question cannot be answered by the replay that step 1 buys.</li>
+<li><b>The listing-then-range fetch path: exists, untested live.</b> It is the only lever left on the three branches over W=16,384.</li>
+<li><b>Contract v2 and v3: registered, unreachable.</b> The shipped server always installs v1 and has no configuration field to choose otherwise, so the tier-2 table's &ldquo;host, if a smaller model needs different instruction&rdquo; overstates what is configurable.</li>
+<li><b>Populations the scenarios never exercised.</b> Twelve questions in four strata from one frozen trace &mdash; not a live session whose composition could be observed. Every graded scenario in the timing dimension scores 1.000 with every replicate passing, so no timing policy can currently be shown to make an agent more reliable, only cheaper or dearer. And no scenario in the program separates the arms on reliability at all once harness-stopped rows are excluded.</li>
+<li><b>A multi-entry or TTL-bounded cache: not modelled.</b> The simulator's <code>automatic-prefix</code> policy tracks one running prefix. A real cache holding several entries under a time-to-live could do better than these numbers, never worse.</li>
+</ul>
+
+<footer><sup>&dagger;</sup> In United States dollars, at the rates in <code>packages/core/src/models/cost.ts</code> &mdash; <code>claude-sonnet-5</code> at $2.00 per million input tokens, $10.00 output, $0.20 cache read and $2.50 cache write; <code>claude-haiku-4-5</code> at $1.00 input and $5.00 output; <code>qwen/qwen-2.5-72b-instruct</code> at $0.36 input and $0.40 output with cache billed at zero &mdash; the six baseline switch-crossing runs cost $0.279 to $0.650, median $0.335, and twelve comparable runs for step 4 price at roughly $4; the median completed width run costs $0.0137 under <code>tree</code> and $0.0181 under <code>tree-wide</code>, against $0.0082 under the truncate-tail baseline and $0.0048 under compact-rolling; and the 754-turn cache replay prices at $18.88 for the shipped layout against $11.36 for the third breakpoint. Dollars appear here once, beside the baselines they are relative to; every claim in this report is made in tokens, turns, graded score and success counts.<br><br>
+DS-STAR pass, iterations 1&ndash;3, four dimensions &middot; zero live model calls in any iteration &middot; Figures 1, 2 and the switch-fraction table reproduced for this report by re-running <code>eval/scripts/{ladder-curve,resegment,switch-fraction-sweep}.mjs</code> against a copy of the frozen <code>s1</code> store &middot; Figure 3 recomputed from <code>eval/results/long-v65-gate/*/results.json</code>, <code>claude-sonnet-5</code>, three replicates on each of two scenarios, one epoch &middot; Figure 4 from <code>eval/plans/tuning/exp3-a-simulator-fidelity.md</code>'s published per-turn sample of a re-run of <code>eval/scripts/cache-sweep.mjs</code>, whose session totals were reproduced for this report &middot; width scores and tokens from <code>eval/fixtures/transplant/s1/e1b289c32f40/results/</code>, <code>qwen/qwen-2.5-72b-instruct</code> at W=32,768, five replicates per question, completed runs only &middot; September 2, 2026 &middot; commit <code>77d5326</code>.</footer>
+</main>
+<script>
+const nf = n => n.toLocaleString('en-US');
+
+/* One chart function, shared by every figure on this page — the same one used by
+   context-growth.html, with a single optional `ylab` formatter added so a figure
+   whose y axis is not in thousands can label its own ticks. Default behaviour is
+   byte-identical to the original. */
+function chart(id, cfg){
+  const W = 680, H = cfg.h, L = 66, R = 108, TP = 34, BT = 50;
+  const ax0 = L, ax1 = W - R, ay0 = H - BT, ay1 = TP;
+  const ymin = cfg.ymin == null ? 0 : cfg.ymin;
+  const ylab = cfg.ylab || (t => t ? (t / 1000) + 'k' : '0');
+  const X = v => ax0 + (v - cfg.xmin) / (cfg.xmax - cfg.xmin) * (ax1 - ax0);
+  const Y = v => ay0 - (v - ymin) / (cfg.ymax - ymin) * (ay0 - ay1);
+  let g = '';
+
+  cfg.yticks.forEach(t => {
+    g += '<line x1="' + ax0 + '" y1="' + Y(t) + '" x2="' + ax1 + '" y2="' + Y(t) +
+         '" stroke="var(--line)" stroke-width="1"/>' +
+         '<text x="' + (ax0 - 10) + '" y="' + (Y(t) + 4) + '" text-anchor="end">' +
+         ylab(t) + '</text>';
+  });
+  g += '<text x="' + (ax0 - 10) + '" y="' + (ay1 - 14) + '" text-anchor="end">' +
+       (cfg.ytitle || 'tokens') + '</text>';
+  cfg.xticks.forEach(t => {
+    g += '<text x="' + X(t) + '" y="' + (ay0 + 20) + '" text-anchor="middle">' +
+         (cfg.xlab ? cfg.xlab(t) : t) + '</text>';
+  });
+  g += '<text x="' + ((ax0 + ax1) / 2) + '" y="' + (ay0 + 42) + '" text-anchor="middle">' + cfg.xtitle + '</text>';
+
+  (cfg.hlines || []).forEach(h => {
+    g += '<line x1="' + ax0 + '" y1="' + Y(h.y) + '" x2="' + ax1 + '" y2="' + Y(h.y) +
+         '" stroke="var(--muted)" stroke-width="1" stroke-dasharray="5 4" opacity=".65"/>' +
+         '<text x="' + (ax1 - 4) + '" y="' + (Y(h.y) + 15) + '" text-anchor="end">' + h.label + '</text>';
+  });
+
+  cfg.series.forEach(s => {
+    const op = s.op == null ? 1 : s.op;
+    g += '<polyline fill="none" stroke="' + s.color + '" stroke-width="' + (s.w == null ? 2 : s.w) + '" opacity="' + op +
+         '" stroke-linejoin="round"' + (s.dash ? ' stroke-dasharray="' + s.dash + '"' : '') + ' points="' +
+         s.pts.map(p => X(p[0]).toFixed(1) + ',' + Y(p[1]).toFixed(1)).join(' ') + '"/>';
+    if (s.dot) s.pts.forEach(p => {
+      g += '<circle cx="' + X(p[0]).toFixed(1) + '" cy="' + Y(p[1]).toFixed(1) + '" r="' + s.dot +
+           '" fill="' + s.color + '" opacity="' + op + '"/>';
+    });
+  });
+
+  (cfg.marks || []).forEach(m => {
+    g += '<circle cx="' + X(m.x).toFixed(1) + '" cy="' + Y(m.y).toFixed(1) + '" r="5" fill="' + m.color +
+         '" stroke="var(--surface)" stroke-width="1.5"/>' +
+         '<text x="' + (X(m.x) + (m.side === 'left' ? -9 : 9)).toFixed(1) + '" y="' + (Y(m.y) - 9).toFixed(1) +
+         '" text-anchor="' + (m.side === 'left' ? 'end' : 'start') + '">' + m.label + '</text>';
+  });
+  (cfg.ends || []).forEach(e => {
+    g += '<text x="' + (X(e.x) + 8).toFixed(1) + '" y="' + (Y(e.y) + 4).toFixed(1) +
+         '" class="serieslabel" fill="' + e.color + '">' + e.label + '</text>';
+  });
+
+  let lx = ax0;
+  cfg.legend.forEach(l => {
+    g += '<rect x="' + lx + '" y="' + (ay1 - 26) + '" width="13" height="3" fill="' + l.color + '"/>' +
+         '<text x="' + (lx + 19) + '" y="' + (ay1 - 20) + '">' + l.label + '</text>';
+    lx += 38 + l.label.length * 6.7;
+  });
+
+  g += '<g data-c="1" style="display:none"><line y1="' + (ay1 - 10) + '" y2="' + ay0 +
+       '" stroke="var(--muted)" stroke-width="1" opacity=".8"/></g>';
+  g += '<g data-t="1" style="display:none"></g>';
+  g += '<rect data-o="1" x="' + ax0 + '" y="' + (ay1 - 10) + '" width="' + (ax1 - ax0) +
+       '" height="' + (ay0 - ay1 + 10) + '" fill="transparent"/>';
+
+  const host = document.getElementById(id);
+  if (!host) return;
+  host.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + cfg.alt + '">' + g + '</svg>';
+
+  const svg = host.firstChild;
+  const ov = svg.querySelector('[data-o]');
+  const cr = svg.querySelector('[data-c]');
+  const tp = svg.querySelector('[data-t]');
+  const cl = cr.firstChild;
+  const maps = cfg.series.filter(s => s.tip).map(s => ({ name: s.tip, color: s.color, m: new Map(s.pts) }));
+
+  function show(xv){
+    cl.setAttribute('x1', X(xv)); cl.setAttribute('x2', X(xv));
+    cr.style.display = '';
+    const rows = maps.map(r => ({ name: r.name, color: r.color, v: r.m.get(xv) }))
+                     .filter(r => r.v != null);
+    if (!rows.length){ tp.style.display = 'none'; return; }
+    const head = cfg.tipHead + ' ' + xv;
+    const wide = Math.max(head.length, ...rows.map(r => r.name.length + 10)) * 6.3 + 26;
+    const high = 22 + rows.length * 15 + 6;
+    let tx = X(xv) + 12;
+    if (tx + wide > W - 4) tx = X(xv) - 12 - wide;
+    let s = '<rect x="' + tx + '" y="' + (ay1 - 6) + '" width="' + wide + '" height="' + high +
+            '" rx="4" fill="var(--surface)" stroke="var(--line)" stroke-width="1"/>' +
+            '<text x="' + (tx + 11) + '" y="' + (ay1 + 11) + '" fill="var(--ink)">' + head + '</text>';
+    rows.forEach((r, i) => {
+      const yy = ay1 + 29 + i * 15;
+      s += '<rect x="' + (tx + 11) + '" y="' + (yy - 7) + '" width="10" height="3" fill="' + r.color + '"/>' +
+           '<text x="' + (tx + 26) + '" y="' + yy + '" fill="var(--ink)">' + r.name + ' ' + nf(r.v) + '</text>';
+    });
+    tp.innerHTML = s; tp.style.display = '';
+  }
+
+  ov.addEventListener('mousemove', e => {
+    const b = svg.getBoundingClientRect();
+    const raw = cfg.xmin + (((e.clientX - b.left) / b.width * W) - ax0) / (ax1 - ax0) * (cfg.xmax - cfg.xmin);
+    let best = cfg.xdomain[0];
+    cfg.xdomain.forEach(d => { if (Math.abs(d - raw) < Math.abs(best - raw)) best = d; });
+    show(best);
+  });
+  ov.addEventListener('mouseleave', () => { cr.style.display = 'none'; tp.style.display = 'none'; });
+}
+
+const WARM = 'var(--warm)', ACC = 'var(--accent)', COOL = 'var(--cool)';
+
+/* ---- Figure 1: the fold ladder as tokens, W=32,768 ---------------------- */
+const LADDER = [
+  /* rung, root block, body tokens, assembled Zone B */
+  [2, 2587, 4982, 7569],
+  [4, 3105, 4467, 7572],
+  [6, 3538, 3965, 7503],
+  [8, 3967, 3091, 7058],
+  [12, 4771, 2575, 7346],
+  [16, 6095, 1538, 7633],
+  [40, 6917, 0, 6917]
+];
+chart('fig1', {
+  h: 320, xmin: 0, xmax: 42, xticks: [0, 10, 20, 30, 40],
+  ymax: 8200, yticks: [0, 2000, 4000, 6000, 8000],
+  xtitle: 'fold level (rootKeep)', tipHead: 'rung',
+  xdomain: LADDER.map(r => r[0]),
+  alt: 'Root index block, rendered summary bodies and their sum against the fold level at a 32,768-token window. The root block rises with the fold level, the bodies fall, and the sum is nearly flat.',
+  hlines: [{ y: 7701, label: 'Zone B share at W=32,768' }],
+  series: [
+    { tip: 'Zone B total', color: COOL, dot: 3, pts: LADDER.map(r => [r[0], r[3]]) },
+    { tip: 'root index',   color: WARM, dot: 3, pts: LADDER.map(r => [r[0], r[1]]) },
+    { tip: 'bodies',       color: ACC,  dot: 3, pts: LADDER.map(r => [r[0], r[2]]) }
+  ],
+  marks: [
+    { x: 2, y: 4982, color: ACC, label: 'tree-wide: 11 bodies', side: 'right' },
+    { x: 16, y: 1538, color: ACC, label: 'tree: 2 bodies', side: 'left' }
+  ],
+  legend: [
+    { color: COOL, label: 'assembled Zone B' },
+    { color: WARM, label: 'root index' },
+    { color: ACC, label: 'summary bodies' }
+  ]
+});
+
+/* ---- Figure 2: ranked branch sizes, four cells -------------------------- */
+const CUR_UNCAP = [51802,35657,27800,23085,10347,9882,9202,8868,7877,7758,6471,3942,3706,2455,2431,2059,1425,1384,1181,988,687];
+const CUR_CAP   = [46945,27800,23085,18351,9687,9202,9146,8490,7877,7758,6471,3942,3706,2455,2431,2059,1425,1384,1181,988,687];
+const CAN_UNCAP = [34664,24986,16395,10508,8748,8024,7734,7190,6603,5602,4209,3818,3209,3140,3069,2614,2541,2219,2209,2102,2012];
+const CAN_CAP   = [24986,17358,16395,10508,8748,8024,7734,7190,5602,4209,3818,3261,3140,3069,2614,2541,2219,2209,2102,2012,1890];
+const rank = a => a.map((v, i) => [i + 1, v]);
+chart('fig2', {
+  h: 320, xmin: 1, xmax: 21, xticks: [1, 5, 10, 15, 20],
+  ymax: 55000, yticks: [0, 20000, 40000],
+  xtitle: 'branch size rank (largest first)', tipHead: 'rank',
+  xdomain: CUR_UNCAP.map((_, i) => i + 1),
+  alt: 'The 21 largest branches ranked by size in exact tokens, under four segmentation and renderer combinations, against two context windows.',
+  hlines: [
+    { y: 32768, label: 'W=32,768' },
+    { y: 16384, label: 'W=16,384' }
+  ],
+  series: [
+    { tip: 'today, uncapped', color: WARM, dot: 3, pts: rank(CUR_UNCAP) },
+    { tip: 'today, capped', color: WARM, dot: 2.5, dash: '5 3', op: 0.75, pts: rank(CUR_CAP) },
+    { tip: 'candidate, uncapped', color: ACC, dot: 2.5, dash: '5 3', op: 0.75, pts: rank(CAN_UNCAP) },
+    { tip: 'candidate, capped', color: COOL, dot: 3, pts: rank(CAN_CAP) }
+  ],
+  legend: [
+    { color: WARM, label: "['other'] baseline" },
+    { color: ACC, label: '[] uncapped' },
+    { color: COOL, label: '[] capped' }
+  ]
+});
+
+/* ---- Figure 3: the crossing prompt, lagged against same-turn ------------ */
+const LAGGED = [30126, 36657, 37812, 38799, 41286, 45564];
+const SAMETURN = [30000, 30000, 30000, 30000, 30000, 30916];
+chart('fig3', {
+  h: 300, xmin: 1, xmax: 6, xticks: [1, 2, 3, 4, 5, 6],
+  ymin: 28000, ymax: 47000, yticks: [28000, 32000, 36000, 40000, 44000],
+  xtitle: 'recorded crossing, sorted by overshoot', tipHead: 'crossing',
+  xdomain: [1, 2, 3, 4, 5, 6],
+  alt: 'Prompt size on the crossing turn for the six recorded live crossings, under the lagged gate and under a same-turn replay. The lagged series rises well above the threshold; the same-turn series sits on it.',
+  hlines: [{ y: 30000, label: '30,000-token threshold' }],
+  series: [
+    { tip: 'lagged (today)', color: WARM, dot: 4, pts: LAGGED.map((v, i) => [i + 1, v]) },
+    { tip: 'same-turn (replay)', color: ACC, dot: 4, pts: SAMETURN.map((v, i) => [i + 1, v]) }
+  ],
+  legend: [
+    { color: WARM, label: 'lagged gate, n=6' },
+    { color: ACC, label: 'same-turn replay, n=6' }
+  ]
+});
+
+/* ---- Figure 4: per-turn billing, 3rd breakpoint, extended simulator ---- */
+const TURNS = [1, 2, 8, 61, 181, 301, 481, 721, 746, 754];
+const CREAD = [0, 7231, 7617, 12846, 7710, 10579, 17754, 36616, 13408, 19476];
+const CWRITE = [7231, 30, 6648, 74, 29685, 95, 59, 112, 5534, 881];
+const CFRESH = [0, 0, 0, 288, 288, 85, 139, 0, 78, 78];
+chart('fig4', {
+  h: 320, xmin: 1, xmax: 754, xticks: [1, 200, 400, 600, 754],
+  ymax: 40000, yticks: [0, 10000, 20000, 30000, 40000],
+  xtitle: 'turn index (754-turn deterministic replay)', tipHead: 'turn',
+  xdomain: TURNS,
+  alt: 'Per-turn cache read, cache write and fresh input under the extended cache simulator for the third-breakpoint layout, sampled across a 754-turn replay. Reads climb, writes are small except at phase transitions, fresh input is negligible.',
+  hlines: [
+    { y: 23794, label: 'live run: read climbs to 23,794' },
+    { y: 4788, label: 'live run: read starts at 4,788' }
+  ],
+  series: [
+    { tip: 'cache read', color: ACC, dot: 3.5, pts: TURNS.map((t, i) => [t, CREAD[i]]) },
+    { tip: 'cache write', color: WARM, dot: 3.5, pts: TURNS.map((t, i) => [t, CWRITE[i]]) },
+    { tip: 'fresh input', color: COOL, dot: 3.5, pts: TURNS.map((t, i) => [t, CFRESH[i]]) }
+  ],
+  legend: [
+    { color: ACC, label: 'cache read' },
+    { color: WARM, label: 'cache write' },
+    { color: COOL, label: 'fresh input' }
+  ]
+});
+</script>

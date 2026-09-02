@@ -17,11 +17,33 @@
  * reason §10 rule 1 forbids relevance-ordering Zone B, and it is invisible to
  * every other kind of test — the model sees the same text either way.
  *
- * Two deliberate simplifications, both conservative:
- *  - only the PREVIOUS submission's cache entries are considered live. A real
- *    cache holds several entries under a TTL, so a session that alternates
- *    between two prompts would score better in reality than here. Under-crediting
- *    cache reads cannot hide a D5 regression; over-crediting could.
+ * `matchPolicy` (default `'automatic-prefix'`) decides HOW a submission's
+ * prefix is checked against cache history — see the two modes documented on
+ * `ProviderCacheSimulatorOptions`. Iteration 2 of the tuning loop
+ * (`eval/plans/tuning/ITERATION-2-VERDICT.md` §1, experiment 4) diagnosed the
+ * original algorithm — matching only the immediately previous submission's
+ * exact breakpoint positions — as unable to credit a read for a breakpoint
+ * that moves forward by one block every turn, because that exact position
+ * never recurs. That produced a false "+23% more expensive" verdict on the
+ * Zone C 3rd breakpoint that a live, already-published measurement directly
+ * contradicts (`reports/metrics/tree-vs-transcript.md:155`: cacheRead
+ * climbing 4,788→23,794, cacheWrite staying delta-sized at ~1.2k, −18% cost
+ * per turn) — and which Anthropic's own documented behaviour explains: a
+ * single trailing breakpoint is matched against the LONGEST previously
+ * cached prefix, not against one specific remembered position. `'exact-last-
+ * position'` is the original algorithm, preserved byte-for-byte and still
+ * reachable for anything that wants the more conservative model.
+ *
+ * Two remaining simplifications, both still conservative in the sense the
+ * original comment claimed:
+ *  - `'automatic-prefix'` tracks one running "longest known cached prefix",
+ *    refreshed to this submission's own furthest cacheable position every
+ *    turn. A real provider's cache persists under a TTL independent of what
+ *    any one request's breakpoints reference, so a submission that (unlike
+ *    every submission actually observed in this codebase) *drops* a
+ *    previously-placed breakpoint would, in this model, lose credit for
+ *    everything past its new, shorter reach a turn earlier than a real TTL
+ *    would — under-crediting, not over-crediting, in that edge case.
  *  - the tokenizer is INJECTED and its id is stamped on every outcome (§17's
  *    "deterministic tokenizer"), and block tokens are re-counted from `text`
  *    rather than trusting `PromptBlock.tokens`. The harness's numbers must be a
@@ -140,21 +162,51 @@ interface Submission {
   segments: CacheSegment[];
 }
 
+/**
+ * How a submission's prefix is checked against cache history.
+ *
+ *  - `'automatic-prefix'` (the default): matches against the LONGEST prefix
+ *    ever cached, refreshed each turn to this submission's own furthest
+ *    cacheable position. This is what lets a single breakpoint that moves
+ *    forward by one block every turn still earn a read for everything before
+ *    the new block — exactly the "climbing reads, delta-sized writes" shape
+ *    `reports/metrics/tree-vs-transcript.md:155` measured live, and what
+ *    Anthropic's own documented behaviour describes for a trailing
+ *    breakpoint. A dropped breakpoint (the regression `cache.test.ts` guards
+ *    against) still shows up as zero reads, because a submission with no
+ *    cacheable segment cannot extend or read the cached prefix at all.
+ *  - `'exact-last-position'`: the original algorithm, preserved byte-for-byte.
+ *    It only credits a read when the CURRENT submission's breakpoint lands at
+ *    the exact block position one of the PREVIOUS submission's breakpoints
+ *    also landed at. This under-credits any breakpoint that advances by less
+ *    than a whole previously-seen segment each turn (§1 of
+ *    `eval/plans/tuning/ITERATION-2-VERDICT.md`, experiment 4) — kept as an
+ *    explicit opt-in for anything that wants that stricter, more
+ *    pessimistic model rather than as the default.
+ */
+export type CacheMatchPolicy = 'automatic-prefix' | 'exact-last-position';
+
 export interface ProviderCacheSimulatorOptions {
   tokenizer: Tokenizer;
   /** Defaults to `EXACT_PREFIX_PROFILE`. */
   profile?: CacheProviderProfile;
+  /** Defaults to `'automatic-prefix'`. See `CacheMatchPolicy`. */
+  matchPolicy?: CacheMatchPolicy;
 }
 
 export class ProviderCacheSimulator {
   private readonly tokenizer: Tokenizer;
   private readonly profile: CacheProviderProfile;
+  private readonly matchPolicy: CacheMatchPolicy;
   private previous: Submission | null = null;
+  /** `'automatic-prefix'` only: the longest prefix confirmed cached so far. */
+  private cachedPrefix: MeasuredBlock[] = [];
   private readonly log: CacheOutcome[] = [];
 
   constructor(options: ProviderCacheSimulatorOptions) {
     this.tokenizer = options.tokenizer;
     this.profile = options.profile ?? EXACT_PREFIX_PROFILE;
+    this.matchPolicy = options.matchPolicy ?? 'automatic-prefix';
   }
 
   /** Submits one assembled prompt and reports what the cache did with it. */
@@ -163,6 +215,12 @@ export class ProviderCacheSimulator {
     const segments = this.segment(blocks);
     const previous = this.previous;
 
+    // This diagnostic (commonPrefixBlocks/commonPrefixTokens) is deliberately
+    // scoped to the immediately previous submission only, regardless of
+    // matchPolicy — it answers "how much of literally last turn's bytes
+    // survived", the number the D3/D4 cascade tests key on, which is a
+    // different question from "how much can the provider actually serve from
+    // cache" below.
     let commonPrefixBlocks = 0;
     let commonPrefixTokens = 0;
     if (previous !== null) {
@@ -176,34 +234,75 @@ export class ProviderCacheSimulator {
       }
     }
 
-    // A read hits the longest cached prefix that still matches, so the boundary
-    // is the furthest segment end that (a) the previous submission actually
-    // cached and (b) is still byte-identical. Requiring (a) is what makes a
-    // dropped breakpoint — itself a §10 rule 5 regression — show up as lost
-    // cache reads rather than as nothing at all.
-    const previouslyCached = new Set(
-      (previous?.segments ?? []).filter((s) => s.cacheable).map((s) => s.endBlockIndex),
-    );
-    let readBoundary = 0;
-    for (const segment of segments) {
-      if (!segment.cacheable) continue;
-      if (segment.endBlockIndex > commonPrefixBlocks) break;
-      if (!previouslyCached.has(segment.endBlockIndex)) continue;
-      readBoundary = segment.endBlockIndex;
-    }
-
-    const outcomeSegments: SegmentOutcome[] = segments.map((segment) => ({
-      ...segment,
-      reused: segment.cacheable && segment.endBlockIndex <= readBoundary,
-    }));
-
+    let outcomeSegments: SegmentOutcome[];
     let cacheRead = 0;
     let cacheWrite = 0;
     let fresh = 0;
-    for (const segment of outcomeSegments) {
-      if (segment.reused) cacheRead += segment.tokens;
-      else if (segment.cacheable) cacheWrite += segment.tokens;
-      else fresh += segment.tokens;
+
+    if (this.matchPolicy === 'exact-last-position') {
+      // Original algorithm, unchanged: a read hits the longest cached prefix
+      // that still matches, so the boundary is the furthest segment end that
+      // (a) the previous submission actually cached at that EXACT position and
+      // (b) is still byte-identical. Requiring (a) at exact-position
+      // granularity is what makes a breakpoint that moves every turn never
+      // earn a read here — the documented limitation this policy exists to
+      // preserve on request.
+      const previouslyCached = new Set(
+        (previous?.segments ?? []).filter((s) => s.cacheable).map((s) => s.endBlockIndex),
+      );
+      let readBoundary = 0;
+      for (const segment of segments) {
+        if (!segment.cacheable) continue;
+        if (segment.endBlockIndex > commonPrefixBlocks) break;
+        if (!previouslyCached.has(segment.endBlockIndex)) continue;
+        readBoundary = segment.endBlockIndex;
+      }
+
+      outcomeSegments = segments.map((segment) => ({
+        ...segment,
+        reused: segment.cacheable && segment.endBlockIndex <= readBoundary,
+      }));
+      for (const segment of outcomeSegments) {
+        if (segment.reused) cacheRead += segment.tokens;
+        else if (segment.cacheable) cacheWrite += segment.tokens;
+        else fresh += segment.tokens;
+      }
+    } else {
+      // 'automatic-prefix': match against the longest prefix ever cached,
+      // not only the immediately previous submission's exact breakpoint
+      // positions. Read credit is computed at BLOCK granularity — a segment
+      // can be partially read and partially (re)written — because that
+      // partial credit inside a single marked span is exactly the mechanism
+      // that produces delta-sized writes under one moving breakpoint; a
+      // whole-segment-or-nothing model cannot reproduce that shape no matter
+      // how much history it is given.
+      let commonWithCache = 0;
+      while (commonWithCache < blocks.length && commonWithCache < this.cachedPrefix.length) {
+        const mine = blocks[commonWithCache];
+        const theirs = this.cachedPrefix[commonWithCache];
+        if (mine === undefined || theirs === undefined) break;
+        if (mine.id !== theirs.id || mine.text !== theirs.text) break;
+        commonWithCache += 1;
+      }
+      const furthestCacheableEnd = segments.reduce(
+        (max, s) => (s.cacheable ? Math.max(max, s.endBlockIndex) : max),
+        0,
+      );
+      const readBoundary = Math.min(commonWithCache, furthestCacheableEnd);
+
+      outcomeSegments = segments.map((segment) => ({
+        ...segment,
+        reused: segment.cacheable && segment.endBlockIndex <= readBoundary,
+      }));
+      for (let i = 0; i < blocks.length; i += 1) {
+        const block = blocks[i];
+        if (block === undefined) continue;
+        if (i < readBoundary) cacheRead += block.tokens;
+        else if (i < furthestCacheableEnd) cacheWrite += block.tokens;
+        else fresh += block.tokens;
+      }
+
+      this.cachedPrefix = blocks.slice(0, furthestCacheableEnd);
     }
 
     const divergence = this.divergence(blocks, previous, commonPrefixBlocks);

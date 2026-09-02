@@ -781,7 +781,16 @@ describe('e2e: cache behaviour across a phase transition (D5, D6)', () => {
     const fixture = await summarized();
     const store = fixture.handle.store;
     const zones = assembler(fixture);
-    const simulator = new ProviderCacheSimulator({ tokenizer: new HeuristicTokenizer() });
+    // Pinned to the pre-2026-09-02 matching policy: this test's phase-
+    // transition assertion (only Zone A survives) is specifically about the
+    // exact-position model's known under-crediting of a Zone B that grows at
+    // its end — see `CacheMatchPolicy` on `simulator.ts`. The corrected
+    // default ('automatic-prefix') is exercised in `cache.test.ts`'s "Zone C
+    // 3rd breakpoint" describe block instead.
+    const simulator = new ProviderCacheSimulator({
+      tokenizer: new HeuristicTokenizer(),
+      matchPolicy: 'exact-last-position',
+    });
 
     const implementation = phaseNamed(store, 'implementation');
     const verification = phaseNamed(store, 'verification');

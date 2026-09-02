@@ -1,15 +1,20 @@
 #!/usr/bin/env node
 /**
- * DS-STAR tuning · dimension 2 (branch depth) · experiment 2.
+ * DS-STAR tuning · dimension 2 (branch depth) · experiment 2, extended in
+ * iteration 3 (task B) with the edit-argument-cap dimension.
  *
  * Re-derives L1 from the frozen `transplant/s1` store's L0 under two
  * `SegmentConfig`s — today's shipped default (`neutralPhases: ['other']`) and
  * the segmenter's own documented alternative (`neutralPhases: []`, "the
- * literal §7 rule") — and reports what changes: branch count and size
- * distribution, how many branches exceed each window the transplant harness
- * tests, whether each of the twelve frozen questions' answer literal still
- * falls inside a branch that fits, and the leaf-summarizer call count each
- * segmentation implies, priced at the leaf model's named rate.
+ * literal §7 rule") — crossed with two renderings of `context_fetch`'s raw
+ * detail: **uncapped** (`retrieve/detail.ts` as it stood before iteration 2's
+ * defect fix — args always rendered in full) and **capped** (the shipped fix:
+ * `ARGS_CAP_WITH_BLOB` applied whenever a post-state blob is also present,
+ * imported straight from `@context-tree/core` so this script measures the
+ * real constant, not a copy of it). Four cells result, and for each: branch
+ * count and size distribution, how many branches exceed each window the
+ * transplant harness tests, and whether each of the twelve frozen questions'
+ * answer literal still falls inside a branch that fits.
  *
  * Zero model calls, zero network. `segment()` is pure (D15); this script only
  * re-runs it and `applySegmentation()` against a COPY of the frozen store —
@@ -42,6 +47,9 @@ import {
   isToolResult,
   isSegmentBoundary,
   isManualAnnotation,
+  ARGS_CAP_WITH_BLOB,
+  elision,
+  safeCut,
 } from '@context-tree/core';
 
 /**
@@ -50,15 +58,28 @@ import {
  * re-exported from the package root, so this reproduces it exactly rather
  * than reaching past the package's public surface. Byte-for-byte the same
  * rendering `context_fetch depth:"full"` would produce for one span.
+ *
+ * `capArgs`: when true, reproduces the fix landed in `retrieve/detail.ts` —
+ * args are capped at `ARGS_CAP_WITH_BLOB` (imported, not re-typed) whenever a
+ * post-state blob is also present, the same rule `assemble/format.ts` has
+ * applied to Zone C since v5.9b. When false, reproduces the pre-fix renderer
+ * that iteration 2 found emitted a write's content twice.
  */
-function renderEvent(event, blobs) {
+function renderEvent(event, blobs, capArgs) {
   const head = `[${event.seq}] ${event.type}`;
   if (isUserMessage(event) || isAssistantMessage(event)) {
     return `${head}\n${blobs.getText(event.blob)}`;
   }
   if (isToolCall(event)) {
     const lines = [event.path === undefined ? `${head} ${event.tool}` : `${head} ${event.tool} path=${event.path}`];
-    if (event.args_blob !== undefined) lines.push(`--- args\n${blobs.getText(event.args_blob)}`);
+    if (event.args_blob !== undefined) {
+      const args = blobs.getText(event.args_blob);
+      const capped =
+        capArgs && event.blob !== undefined && args.length > ARGS_CAP_WITH_BLOB
+          ? `${args.slice(0, safeCut(args, ARGS_CAP_WITH_BLOB))}${elision(args.length - safeCut(args, ARGS_CAP_WITH_BLOB))}`
+          : args;
+      lines.push(`--- args\n${capped}`);
+    }
     if (event.blob !== undefined) lines.push(`--- content\n${blobs.getText(event.blob)}`);
     return lines.join('\n');
   }
@@ -78,11 +99,11 @@ function renderEvent(event, blobs) {
   return head;
 }
 
-function renderSpans(trace, blobs, spans) {
+function renderSpans(trace, blobs, spans, capArgs) {
   const blocks = [];
   for (const span of spans) {
     for (const event of trace.read({ from: span.start, to: span.end })) {
-      blocks.push(renderEvent(event, blobs));
+      blocks.push(renderEvent(event, blobs, capArgs));
     }
   }
   return { text: blocks.join('\n\n'), events: blocks.length };
@@ -147,7 +168,7 @@ function fmt(n) {
  * `g5-rebuild-determinism` already established reproduces the frozen tree
  * exactly.
  */
-function resegmentAndMeasure(events, config, neutralPhases, trace, blobs) {
+function resegmentAndMeasure(events, config, neutralPhases, trace, blobs, capArgs) {
   const segmentation = segment(events, {
     toolPhase: config.toolPhase,
     neutralPhases,
@@ -165,7 +186,7 @@ function resegmentAndMeasure(events, config, neutralPhases, trace, blobs) {
   const branches = phaseNodes.map((node) => {
     const start = node.span_start_seq;
     const end = node.span_end_seq ?? start;
-    const detail = renderSpans(trace, blobs, [{ start, end }]);
+    const detail = renderSpans(trace, blobs, [{ start, end }], capArgs);
     const chars = detail.text.length;
     const tokensExact = countTokens(detail.text);
     const tokensHeuristic = heuristic.count(detail.text);
@@ -206,14 +227,28 @@ async function main() {
 
     console.log(`L0 events: ${events.length}\n`);
 
-    const CANDIDATES = [
-      { name: 'current (neutralPhases: ["other"])', neutralPhases: config.neutralPhases },
-      { name: 'neutralPhases: []  (literal §7 rule)', neutralPhases: [] },
+    // Task B (iteration 3): cross the two segmentations against the two
+    // renderings of context_fetch's raw detail — before and after the
+    // ARGS_CAP_WITH_BLOB fix landed in retrieve/detail.ts. Four cells.
+    const SEGMENTATIONS = [
+      { segName: 'current (neutralPhases: ["other"])', neutralPhases: config.neutralPhases },
+      { segName: 'neutralPhases: []  (literal §7 rule)', neutralPhases: [] },
     ];
+    const CAP_VARIANTS = [
+      { capName: 'uncapped (pre-fix renderer)', capArgs: false },
+      { capName: 'capped (shipped fix, ARGS_CAP_WITH_BLOB=' + ARGS_CAP_WITH_BLOB + ')', capArgs: true },
+    ];
+    const CANDIDATES = SEGMENTATIONS.flatMap((seg) =>
+      CAP_VARIANTS.map((cap) => ({
+        ...seg,
+        ...cap,
+        name: `${seg.segName} / ${cap.capName}`,
+      })),
+    );
 
     const results = CANDIDATES.map((c) => ({
       ...c,
-      ...resegmentAndMeasure(events, config, c.neutralPhases, trace, blobs),
+      ...resegmentAndMeasure(events, config, c.neutralPhases, trace, blobs, c.capArgs),
     }));
 
     // ---- Table 1: branch count + size distribution -----------------------
@@ -330,9 +365,16 @@ async function main() {
     }
 
     // ---- Table 4: leaf-summarizer call count + price footnote -------------
+    // Unaffected by the args cap (branch *count* is a segmentation property,
+    // not a rendering one), so this table is restricted to the two
+    // segmentations under today's shipped (capped) renderer — the pricing
+    // comparison iteration 2 already ran, kept here as a regression check
+    // rather than re-run across all four cells.
     console.log('\n' + '='.repeat(100));
     console.log('TABLE 4 — leaf-summarizer calls implied, priced at the leaf model\'s named rate');
+    console.log('(restricted to the shipped/capped renderer — call count is a segmentation property)');
     console.log('='.repeat(100));
+    const cappedResults = results.filter((r) => r.capArgs === true);
     const leafModel = config.leafModel; // 'claude-haiku-4-5-20251001' on this store
     const { price, matched } = priceFor(leafModel);
     const maxSummaryTokens = config.summarize.maxSummaryTokens;
@@ -349,16 +391,16 @@ async function main() {
     console.log(`Per-call output cap assumed: maxSummaryTokens=${maxSummaryTokens} (config.ts, upper bound — real output is usually less)\n`);
     console.log(pad('config', 40) + pad('leaf calls', 12) + pad('sum input tok', 16) + pad('est. cost (USD)', 16));
     const costRows = [];
-    for (const r of results) {
+    for (const r of cappedResults) {
       const sumInputTok = r.branches.reduce((s, b) => s + b.tokensExact + leafPromptTok, 0);
       const usd = r.branches.reduce(
         (s, b) =>
           s + usdFor({ input: b.tokensExact + leafPromptTok, output: maxSummaryTokens, cacheRead: 0, cacheWrite: 0 }, price),
         0,
       );
-      costRows.push({ name: r.name, calls: r.branches.length, sumInputTok, usd });
+      costRows.push({ name: r.segName, calls: r.branches.length, sumInputTok, usd });
       console.log(
-        pad(r.name, 40) + pad(String(r.branches.length), 12) + pad(String(sumInputTok), 16) + pad(`$${usd.toFixed(4)}`, 16),
+        pad(r.segName, 40) + pad(String(r.branches.length), 12) + pad(String(sumInputTok), 16) + pad(`$${usd.toFixed(4)}`, 16),
       );
     }
     const ratio = costRows[1].calls / costRows[0].calls;

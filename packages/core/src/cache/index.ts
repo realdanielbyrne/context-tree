@@ -8,6 +8,7 @@ export {
   EXACT_PREFIX_PROFILE,
   ProviderCacheSimulator,
   cacheReport,
+  type CacheMatchPolicy,
   type CacheOutcome,
   type CacheProviderProfile,
   type CacheSegment,
