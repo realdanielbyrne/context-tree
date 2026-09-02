@@ -90,13 +90,36 @@ unit retrieves better. The transplant work made the stakes concrete: one branch
 in the frozen session is larger than the whole window it was being read into, so
 depth is not a free parameter.
 
-**When summaries are written, and under what policy.** Both earlier reports
-reached the same conclusion independently, that the leverage is here rather than
-in selection. This loop measured one instance. The switch from showing the whole
-trace to summarizing it now fires, and the per-turn curve flattens after it, but
-every measured crossing cost more than it saved — because the switch point is an
-absolute number instead of a fraction of the window, and because it reads the
-previous turn and therefore lands well past where it aimed.
+**When summaries are written, and under what policy.** *Analysed 2026-09-02;
+full report at `reports/metrics/tuning-summary-policy.md`.* Both earlier reports
+independently concluded the leverage is here rather than in selection, and this
+pass establishes three things.
+
+The switch point's target is now settled: it is the Zone C fraction, because the
+rule's own wording — the size at which the whole trace fits where the active
+branch's detail would go — describes Zone C's allocation by definition. The two
+harnesses had drifted apart on it, one deriving 0.35 and the other 0.20 for what
+is the same quantity, and the live harness's matching constants match only
+because someone picked the same number twice.
+
+The gate lags by one turn, and the lag is measured rather than argued: it
+compares against the previous completed turn's billed size, so the six recorded
+crossings landed between 126 and 15,564 tokens past the threshold, median 8,306.
+Removing the lag costs one local tokenizer pass over the prompt about to be
+sent, not a model call.
+
+Summary cost is not a standing tax but a single lump at a badly chosen moment.
+It is zero on every short task that never crosses, and 6.9% to 19.3% of run cost
+on long tasks that do, median 9.4%, arriving as one parallel batch that shows a
+cache-write spike and two to six extra turns to absorb it.
+
+The experiment that ranks timing policies needs no further spend. The existing
+marathon harness already drives the production assembler over a real store with
+no model call anywhere, the per-branch summary cost is already recorded in every
+result file, and the budget derivation is a pure function of window and ratio, so
+a candidate policy can be re-sequenced arithmetically over data already in hand.
+One new parameter — when a branch's summary is inserted relative to a candidate
+switch fraction — turns today's single curve into a comparable family.
 
 **How caching is handled.** The prompt layout exists to keep a stable cached
 prefix, and cache reads are where the token gap actually lives: on the refactor
@@ -167,10 +190,10 @@ a number fitted somewhere else and never re-checked, which rule 2 calls a defect
 
 | Value | Now | Where it should come from | State |
 | --- | --- | --- | --- |
-| switch point | 30,000, absolute (live suite) | a fraction of W; the portability harness already computes 0.35·W ÷ ratio | **unvalidated** — and measured wrong: on a 200k-window model the derived form is ≈70k, so these traces would never cross, while the absolute 30,000 forced a crossing that cost more than it saved on every replicate |
+| switch point | 30,000, absolute (live suite) | **resolved 2026-09-02: the Zone C fraction of W** (see dimension 3 below) | **unvalidated, and the target is now known.** The rule defines the switch as the size at which the whole trace fits where the active branch's detail would go, which *is* the Zone C allocation. The live harness's switch and Zone C budget are both the literal 30,000, matching by coincidence rather than derivation; the portability harness derives 0.35 for one and 0.20 for the other, so the identity broke where the derivation lives. Measured consequence of the absolute form: on a 200k-window model the derived switch is ≈70k, so these traces would never cross, while 30,000 forced a crossing that cost more than it saved on every replicate |
 | Zone B budget | 8,000, absolute (live) | a fraction of W | **unvalidated** live; derived in the portability harness |
 | Zone C budget | 30,000, absolute (live); unbounded before the switch | a fraction of W | **unvalidated** live; derived in the portability harness |
-| zone fractions | reply .05, A .10, B .20, C .20, switch .35, slack .10 | measurement against tokens, turns and score — rule 4 | **unvalidated as values.** They are a design allocation summing to 1, never swept. Two are also inconsistent: the switch fraction is .35 while Zone C is .20, though the rule says the switch is "the whole trace fits where the active branch's detail would go", which makes them the same quantity |
+| zone fractions | reply .05, A .10, B .20, C .20, switch .35, slack .10 | measurement against tokens, turns and score — rule 4 | **unvalidated as values**, never swept. The switch/Zone C inconsistency is **resolved in favour of .20**: they are the same quantity by the rule's own wording, and the growth report reached the same conclusion from measurement. The remaining fractions are still a design allocation summing to 1, and dimension 3 names the zero-spend sweep that would test .15/.20/.25/.30 |
 | heuristic-to-tokenizer ratio | 0.851 on this corpus | measured per corpus, refuses above 1.6 | **derived.** The shape rule 3 asks for: procedure ships, re-runs per host |
 | root keep (visible summaries) | 40 (live); per-window ladder (portability) | measurement — this is DS-STAR dimension 1 | **derived** in the portability harness (largest fold level whose assembled Zone B fits); **unvalidated** constant in the live suite. Which value *wins* is unmeasured either way |
 | search result limit | 20 | W and the per-hit payload size | **unvalidated.** At a 16k window the search payload alone overflowed the remaining room in 8 of 15 runs |
@@ -307,6 +330,12 @@ that already have a derivation in the other harness.
 
 ## Change log
 
+- **2026-09-02 11:35** — dimension 3 (summary timing) analysed; its findings folded
+  into the switch-point and zone-fraction rows and into its own section. The
+  switch/Zone C contradiction is resolved in favour of the Zone C fraction. Two
+  new measured numbers: the gate's one-turn lag overshoots by a median 8,306
+  tokens across six crossings, and summary cost is 0% on tasks that never cross
+  against a median 9.4% on those that do.
 - **2026-09-02 11:30** — added the three candidate policies for the visible-branch count (fit-derived, demand-driven, user-selected) and the reason it is a real tradeoff: width buys retrieval but is re-read every turn.
 - **2026-09-02 11:25** — rewritten around the four rules the owner stated: no
   budgets or caps; a hardcoded value is a defect unless that value is
