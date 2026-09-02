@@ -241,3 +241,38 @@ reproduces current behavior exactly.
 `claude-sonnet-5`, n=5 per arm, run by replicate — that is a separate batch
 against the `eval/dist` this pass just rebuilt, per the judge verdict §4
 Step 5 and §6's live-batch checklist.
+
+## Verdict (2026-09-02 10:16, `eval/results/sw3-loop9b/`, same-epoch, n=5 per arm, claude-sonnet-5)
+
+| arm | median tokens | × native | median turns | turns per run | success |
+|---|---:|---:|---:|---|---|
+| A native | 40,040 | 1.00 | 9 | 14, 8, 8, 9, 14 | 5/5 |
+| B tree (v6.5 candidate config) | 68,634 | 1.71 | 9 | 9, 9, 10, 8, 7 | 5/5 |
+| C tree + contract v2 | 94,263 | 2.35 | 11 | 9, 11, 13, 6, 13 | 5/5 |
+| D tree + no completion gate | 89,602 | 2.24 | 11 | 11, 12, 8, 11, 6 | 5/5 |
+
+1. **The published 3.4× gap was mostly a cross-day artifact.** Measured on one
+   day, the tree runs 1.71× native on tokens with the same median turns and a
+   tighter turn distribution (variance 1.3 against native's 9.8). The 1.5× bar
+   is not met; the remaining gap is 28,594 tokens at the median.
+2. **The batching-density mechanism is refuted.** Calls per tool-using turn are
+   2.15–3.38 for native and 2.25–3.20 for the tree; exact two-sided
+   Mann-Whitney p = 0.81. Native's earlier "2.77 vs 1.49" came from three fast
+   runs on a different day.
+3. **Both candidates are null at this n.** Paired against B, removing the gate
+   changed turns by +2, +3, −2, +3, −1 (the judge's prediction was −1 on every
+   pair) and tokens by +16.8k, +48.6k, −41.0k, +21.0k, −12.3k. The trimmed
+   contract changed turns by 0, +2, +3, −2, +6, which the judge had named as
+   the falsifier for "the deleted prose does no behavioural work". The flag
+   itself works (trailing bare turns 1 under D against 2 under B).
+4. **Do not raise n.** Native alone spans 33,501 to 65,033 tokens across five
+   runs; a deletion worth 2–3k tokens per run cannot be resolved live at any
+   affordable n. The gap decomposes deterministically from `turns[]` instead:
+   Zone A carries 1,582 more tokens per turn than native (≈14k over nine
+   turns) and the completion-gate turn re-reads the prefix once (≈13k). Both
+   are measurable offline without a single model call.
+
+**Route.** The completion gate stays (it rescued 23 runs elsewhere in the corpus
+and its removal bought nothing measurable here). Contract v2 is retired as a live
+candidate. Item 3 closes with the corrected number; the checkpoint report carries
+the cross-day lesson: no cross-epoch comparison enters a headline again.

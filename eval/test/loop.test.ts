@@ -836,11 +836,11 @@ describe('loop9-item3 step 1 gate (EVAL_CONTRACT_VERSION) — the Zone A trim ar
   });
 
   it('an unrecognized EVAL_CONTRACT_VERSION throws rather than silently falling back to v1', async () => {
-    vi.stubEnv('EVAL_CONTRACT_VERSION', 'v3');
+    vi.stubEnv('EVAL_CONTRACT_VERSION', 'v9');
     const agent = new MockProvider({ reply: 'done' });
     const { result } = await runTreeWithAgent(agent);
     expect(result.status).toBe('error');
-    expect(result.error).toMatch(/unknown system contract version: v3/);
+    expect(result.error).toMatch(/unknown system contract version: v9/);
     // The whole point of failing loudly: no request was ever sent with a
     // silently-substituted contract.
     expect(agent.requests).toHaveLength(0);

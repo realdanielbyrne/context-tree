@@ -115,12 +115,14 @@ a line must name the line it replaces.
 - **Search hits are coordinates** (item 2, arm `tree-thin`): a hit carries a 240-character snippet and pointer metadata, not the full summary. Changes line 10's return value only. Grounds: at a 16k window the search payload alone overflowed headroom in 8 of 15 runs.
 - **Contract v3** (item 2, arm `tree-verbatim`): rule 2 replaced by "a summary can never tell you what it said; fetch at full depth before stating a number, identifier or quote", and the sentence preferring `file`/`peek` over a branch fetch deleted. Line 12, one rule replaced, one removed.
 - **Semantic ranking** (item 2, arm `tree-semantic`, conditional on an offline rank check): an embeddings client so line 10's vector path runs. No line change.
-- **Completion-gate removal** (item 3, judge B, arm `no-gate`): the eval harness's nudge turn ("you stopped calling tools") fires on 185 of 204 tree runs and rescues 23; on sw-3 it fired 14 times, rescued nothing, and cost ~13.8k tokens per fire. Harness rule, not an algorithm line; removal predicted to cut one turn and ~13k tokens per run, and not to reach the 1.5× bar.
+- **Completion-gate removal** (item 3, arm `no-gate`) — **measured null and retired** (2026-09-02, n=5 same-epoch: paired turn deltas +2, +3, −2, +3, −1; the gate stays because it rescued 23 runs elsewhere). The same batch corrected the sw-3 headline: the tree runs 1.71× native on tokens same-day, not the 3.4× of the cross-day comparison, with equal median turns.
+- **Contract v2 trim** (item 3, arm `tree+v2`) — **measured null and retired** as a live candidate; it moved turn counts (0, +2, +3, −2, +6), so the deleted section was not behaviourally inert.
 - **One budget derivation** (from the 2026-09-02 runs): delete the live harness's absolute 30,000-token switch and derive it from W as the transplant does; set the switch equal to the Zone C fraction as line 3 already states. Line 9 becomes true of both harnesses.
 - **Dropped:** `tree-active` (pre-filling Zone C with the newest branch) — headroom was not the constraint, and it hands the tail stratum its answer by construction.
 
 ## Change log
 
+- **2026-09-02 10:20** — item 3 measured same-epoch at n=5: sw-3 gap corrected to 1.71× native; completion-gate removal and the contract trim both null and retired; batching-density hypothesis refuted (p = 0.81). No line changes.
 - **2026-09-02 09:35** — item 1 measured at n=3 (long-v65-gate): gate fires, curve flattens, final context not below native, total tokens up; evidence row for line 3 updated.
 - **2026-09-02 09:30** — judge verdicts for items 2 and 3 folded into the candidates section; `tree-active` recorded as dropped; the single-derivation candidate for the budget switch added after the first live crossings cost more than they saved on a 200k model.
 - **2026-09-02 09:20** — simplicity audit and configuration-parameter register added at the owner's request ("simple algorithm without special conditions that are fragile"; "configuration parameters that might need to be tweaked to fit a particular model or harness should be tracked"). Line 7's fallback chain flagged as a deletion candidate.
