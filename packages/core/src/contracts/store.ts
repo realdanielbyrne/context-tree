@@ -92,6 +92,8 @@ export interface TreeStore {
   summaryVersion(id: NodeId, version: number): NodeSummary | null;
   /** Ascending by version — the audit trail of what the model actually saw. */
   summaryVersions(id: NodeId): NodeSummary[];
+  /** Pins the current summary pointer to a specific version (for reproducible reads). */
+  setCurrentSummaryVersion(id: NodeId, version: number): void;
 
   // ── links (D10) ──────────────────────────────────────────────────────────
   putLink(link: { from_id: NodeId; to_id: NodeId; kind: LinkKind; created_at?: string }): NodeLink;

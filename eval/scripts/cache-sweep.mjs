@@ -26,10 +26,11 @@
  *
  * Usage: node eval/scripts/cache-sweep.mjs [maxTurns]
  */
-import { cpSync, mkdtempSync, rmSync } from 'node:fs';
+import { cpSync, mkdtempSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 import {
   ANTHROPIC_PROFILE,
   DEFAULT_CONFIG,
@@ -70,6 +71,26 @@ const trace = new JsonlTraceLog(paths.trace);
 const blobs = new FsBlobStore(paths.blobs);
 const store = openStore(paths.db);
 const tokenizer = new HeuristicTokenizer();
+
+/** Pin the root summary to the version recorded in the manifest for reproducibility. */
+function pinRootSummaryVersion(store) {
+  const REPO = fileURLToPath(new URL('../..', import.meta.url));
+  const manifestPath = join(REPO, 'eval/fixtures/transplant/s1/e1b289c32f40/manifest.json');
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  // Use the shipped arm (tree) at W=32768 as the reference
+  const expectedSha = manifest.root_by_window['32768']?.tree?.rootSummarySha;
+  if (!expectedSha) return;
+  const versions = store.summaryVersions(store.root().id);
+  for (const v of versions) {
+    const sha = createHash('sha256').update(v.text).digest('hex');
+    if (sha === expectedSha) {
+      store.setCurrentSummaryVersion(store.root().id, v.version);
+      break;
+    }
+  }
+}
+
+pinRootSummaryVersion(store);
 
 const phases = store
   .nodesInCreationOrder()

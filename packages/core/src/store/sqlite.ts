@@ -480,6 +480,13 @@ export class SqliteTreeStore implements TreeStore {
       .map(toSummary);
   }
 
+  setCurrentSummaryVersion(id: NodeId, version: number): void {
+    const node = this.requireNode(id);
+    const exists = this.stmt<SummaryRow>('SELECT 1 FROM node_summaries WHERE node_id = ? AND version = ?').get(id, version);
+    if (!exists) throw new Error(`setCurrentSummaryVersion: version ${version} not found for node ${id}`);
+    this.stmt('UPDATE nodes SET current_summary_version = ? WHERE id = ?').run(version, id);
+  }
+
   // ── links (D10) ────────────────────────────────────────────────────────────
 
   putLink(link: { from_id: NodeId; to_id: NodeId; kind: LinkKind; created_at?: string }): NodeLink {
