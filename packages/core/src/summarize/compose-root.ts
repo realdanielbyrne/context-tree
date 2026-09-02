@@ -23,6 +23,14 @@ export const DETERMINISTIC_ROOT_MODEL = 'deterministic-rollup-v1';
 
 const HEADLINE_MAX_CHARS = 200;
 
+/**
+ * D17: the root renders at most this many (newest) branch headlines; older
+ * members collapse into one fold line. The uncapped list grew ~50-125 tok per
+ * closed branch and the root is exempt from rule-4 dropping, so past ~70-160
+ * branches the root block alone overflowed the Zone B budget and grew forever.
+ */
+export const ROOT_KEEP_DEFAULT = 40;
+
 /** First line (or sentence) of a leaf summary, capped — the branch's one-line index entry. */
 function headline(text: string): string {
   const firstLine = text.split('\n', 1)[0] ?? '';
@@ -61,7 +69,12 @@ function mergedMeta(children: readonly NodeSummary[]): SummaryMeta {
  * has a summary yet (nothing to index), or the composed text is byte-identical
  * to the current root summary (no new version — see the cache contract above).
  */
-export function composeRootSummary(store: TreeStore, rootId: NodeId, now?: () => string): NodeSummary | null {
+export function composeRootSummary(
+  store: TreeStore,
+  rootId: NodeId,
+  now?: () => string,
+  rootKeep: number = ROOT_KEEP_DEFAULT,
+): NodeSummary | null {
   const root = store.getNode(rootId);
   if (root === null) throw new Error(`composeRootSummary: unknown node ${rootId}`);
   const covered: { id: NodeId; summary: NodeSummary }[] = [];
@@ -71,17 +84,34 @@ export function composeRootSummary(store: TreeStore, rootId: NodeId, now?: () =>
   }
   if (covered.length === 0) return null;
 
-  const lines = covered.map(({ summary }) => `- ${headline(summary.text)}`);
-  const open = [...new Set(covered.flatMap(({ summary }) => summary.meta.open_questions))];
-  const text = [root.title, ...lines, ...(open.length > 0 ? [`open: ${open.join('; ')}`] : [])].join('\n');
+  const keep = rootKeep >= covered.length ? covered : covered.slice(covered.length - rootKeep);
+  const folded = rootKeep >= covered.length ? [] : covered.slice(0, covered.length - rootKeep);
+  const lines = keep.map(({ summary }) => `- ${headline(summary.text)}`);
+  // Fold line first, at the oldest members' position — creation order holds
+  // (D5 rule 1). Endpoints AND titles: a bare count gives context_search no
+  // vocabulary to match on, which is this design's one named failure mode.
+  const oldest = folded[0];
+  const newest = folded[folded.length - 1];
+  const foldLine =
+    oldest === undefined || newest === undefined
+      ? []
+      : [
+          `- branches 1..${folded.length} (${folded.length} folded: ${oldest.id}..${newest.id}) ` +
+            `— "${headline(oldest.summary.text)}" .. "${headline(newest.summary.text)}" ` +
+            `— call context_search or context_fetch to recall`,
+        ];
+  const open = [...new Set(keep.flatMap(({ summary }) => summary.meta.open_questions))];
+  const text = [root.title, ...foldLine, ...lines, ...(open.length > 0 ? [`open: ${open.join('; ')}`] : [])].join(
+    '\n',
+  );
   if (text === store.currentSummary(rootId)?.text) return null;
 
-  const childIds = covered.map(({ id }) => id);
+  const childIds = covered.map(({ id }) => id); // ALL children — lossy in prompt, lossless on disk
   return store.putSummary({
     node_id: rootId,
     model: DETERMINISTIC_ROOT_MODEL,
     text,
-    meta: summaryMetaFrom(mergedMeta(covered.map(({ summary }) => summary)), branchFacts(store, root), [
+    meta: summaryMetaFrom(mergedMeta(keep.map(({ summary }) => summary)), branchFacts(store, root), [
       rootId,
       ...childIds,
     ]),

@@ -68,6 +68,14 @@ export interface RunMetrics {
 
 export interface JudgeResult {
   success: boolean | null;
+  /**
+   * Graded score in [0, 1] — the A/B metric HF-style benchmark tables report
+   * (fraction of hidden cases, rubric grade), where `success` is only the
+   * all-or-nothing bit. `null` = ungraded (no SCORE line, judge errored).
+   * Command judges read a canonical `SCORE: <passed>/<total>` stdout line;
+   * without one, exit status degrades to binary 1/0.
+   */
+  score: number | null;
   detail: string;
 }
 

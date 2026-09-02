@@ -765,6 +765,23 @@ async function runTreeArm(
     // v5.7 (EVAL_DET_ROOT=1): the Zone B root is composed from leaf headlines
     // by a pure function — no strong-model call, no truncation-retry path.
     const detRoot = process.env.EVAL_DET_ROOT === '1';
+    // v6.3 (EVAL_ROOT_KEEP=<n>): the deterministic root renders at most n
+    // branch headlines; older members collapse to one fold line (member ids
+    // stay in meta.node_ids). 0 = uncapped = prior behaviour, byte-for-byte.
+    const rootKeep = Number.parseInt(process.env.EVAL_ROOT_KEEP ?? '0', 10) || 0;
+    const composeRoot = (rootId: string): void => {
+      const summary = composeRootSummary(
+        handle.store,
+        rootId,
+        undefined,
+        rootKeep > 0 ? rootKeep : Number.POSITIVE_INFINITY,
+      );
+      if (summary !== null && rootKeep > 0) {
+        const total = summary.meta.node_ids.filter((id) => id !== rootId).length;
+        const folded = total - Math.min(total, rootKeep);
+        if (folded > 0) process.stderr.write(`[eval] root fold: ${folded} of ${total} branches folded\n`);
+      }
+    };
     // v5.8 (EVAL_FETCH_EVENTS=1): context-tool results and the completion
     // nudge are appended to L0 like every other exchange, replacing the
     // never-actually-dropped ephemeral tail (see the isContextTool branch).
@@ -846,7 +863,7 @@ async function runTreeArm(
         }
       }
       if (pending.length === 0) {
-        if (detRoot && rootId !== undefined) composeRootSummary(handle.store, rootId);
+        if (detRoot && rootId !== undefined) composeRoot(rootId);
         newEventsSinceSummary = 0;
         return;
       }
@@ -863,7 +880,7 @@ async function runTreeArm(
       }
       // After the leaves land: the root is a pure compose over them, and a
       // byte-identical composition writes no new version (Zone B stability).
-      if (detRoot && rootId !== undefined) composeRootSummary(handle.store, rootId);
+      if (detRoot && rootId !== undefined) composeRoot(rootId);
       newEventsSinceSummary = 0;
     };
 
@@ -920,6 +937,14 @@ async function runTreeArm(
         // which spans the whole trace.
         activeNodeId,
         selection: keepBranches === undefined ? undefined : { keepBranches },
+        // v6.4: devolved mode promises the WHOLE trace, but the fixed 30k Zone C
+        // budget silently contradicted that once the real tokenizer (which
+        // charges punctuation runs the chars/4 lazy gate does not) pushed a
+        // code-heavy trace over it. Past that point fitZoneC recomputed its
+        // shared truncation cap every turn, and a one-token cap shift resized
+        // EVERY truncated block — rewriting the whole ~30k cached prefix once
+        // per turn (measured: sw-6-ripple cacheWrite 162k vs native 20k).
+        ...(belowLazyK ? { zoneCBudget: Number.POSITIVE_INFINITY } : {}),
       });
       const request =
         process.env.EVAL_ZONEC_CACHE === '1'
@@ -1086,6 +1111,7 @@ export async function runScenario(loop: LoopOptions): Promise<LoopOutput> {
   let finalText = '';
   let success: boolean | null = null;
   let judgeDetail = '';
+  let judgeScore: number | null = null;
 
   try {
     const config = resolveConfig({
@@ -1144,6 +1170,7 @@ export async function runScenario(loop: LoopOptions): Promise<LoopOutput> {
       });
       success = judge.success;
       judgeDetail = judge.detail;
+      judgeScore = judge.score;
     } catch (error) {
       if (error instanceof CostCapExceededError) {
         status = 'cost_cap';
@@ -1175,7 +1202,7 @@ export async function runScenario(loop: LoopOptions): Promise<LoopOutput> {
     })),
     status,
     success,
-    judge: { success, detail: judgeDetail },
+    judge: { success, score: judgeScore, detail: judgeDetail },
     metrics,
     turns: [...turns],
     error: errorText,

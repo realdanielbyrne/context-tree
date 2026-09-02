@@ -21,19 +21,37 @@ export function normalizeAnswer(text: string): string {
 export function exactMatchJudge(finalText: string, answer: string): JudgeResult {
   const produced = normalizeAnswer(finalText);
   const expected = normalizeAnswer(answer);
-  if (expected === '') return { success: null, detail: 'exact_match judge has an empty answer' };
+  if (expected === '') return { success: null, score: null, detail: 'exact_match judge has an empty answer' };
   const matched = produced === expected || produced.includes(expected);
   return {
     success: matched,
+    // Exact match is binary by nature — the score just mirrors it.
+    score: matched ? 1 : 0,
     detail: matched
       ? `final answer matched "${expected}"`
       : `final answer did not match "${expected}" — agent said: "${produced.slice(0, 400)}"`,
   };
 }
 
+/**
+ * Graded score from a hidden runner's stdout: the canonical `SCORE: <p>/<t>`
+ * line wins (partial credit even on a failing exit); without one, exit status
+ * degrades to binary 1/0 — the per-task convention benchmark tables use.
+ */
+export function parseCommandScore(stdout: string, passed: boolean): number | null {
+  const match = /^\s*SCORE:\s*(\d+)\s*\/\s*(\d+)\s*$/m.exec(stdout);
+  if (match !== null) {
+    const p = Number.parseInt(match[1] ?? '0', 10);
+    const t = Number.parseInt(match[2] ?? '0', 10);
+    if (t > 0 && p >= 0 && p <= t) return p / t;
+  }
+  return passed ? 1 : 0;
+}
+
 export async function commandJudge(sandbox: Sandbox, command: string): Promise<JudgeResult> {
   const outcome = await sandbox.run(command, COMMAND_TIMEOUT_MS);
-  return { success: outcome.exitCode === 0 && !outcome.timedOut, detail: renderOutcome(outcome, 4000) };
+  const passed = outcome.exitCode === 0 && !outcome.timedOut;
+  return { success: passed, score: parseCommandScore(outcome.stdout, passed), detail: renderOutcome(outcome, 4000) };
 }
 
 function extractJson(text: string): Record<string, unknown> | null {
@@ -61,7 +79,7 @@ export interface RubricJudgeArgs {
 export async function rubricJudge(args: RubricJudgeArgs): Promise<JudgeResult> {
   const prompt = [
     'You are grading an AI agent on one task. Reply with ONLY a JSON object of the shape',
-    '{"success": <true|false>, "reason": "<one short paragraph>"}',
+    '{"success": <true|false>, "score": <0.0-1.0 fraction of the rubric satisfied>, "reason": "<one short paragraph>"}',
     '',
     '# Rubric',
     args.rubric,
@@ -84,10 +102,13 @@ export async function rubricJudge(args: RubricJudgeArgs): Promise<JudgeResult> {
   const result = await args.provider.complete(request);
   const parsed = extractJson(result.text);
   if (parsed === null || typeof parsed['success'] !== 'boolean') {
-    return { success: null, detail: `judge reply was not the expected JSON: ${result.text.slice(0, 200)}` };
+    return { success: null, score: null, detail: `judge reply was not the expected JSON: ${result.text.slice(0, 200)}` };
   }
   const reason = typeof parsed['reason'] === 'string' ? parsed['reason'] : '(judge returned no reason)';
-  return { success: parsed['success'], detail: reason };
+  const rawScore = parsed['score'];
+  const score =
+    typeof rawScore === 'number' && rawScore >= 0 && rawScore <= 1 ? rawScore : parsed['success'] ? 1 : 0;
+  return { success: parsed['success'], score, detail: reason };
 }
 
 export interface JudgeArgs {

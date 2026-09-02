@@ -29,10 +29,12 @@ import { HeuristicTokenizer } from '../src/tokens/index.js';
 import {
   ZoneAssembler,
   renderEvent,
+  renderSummaryBlock,
   toCompletionRequest,
   toMessages,
   truncateToTokens,
 } from '../src/assemble/index.js';
+import { composeRootSummary } from '../src/summarize/index.js';
 import type Anthropic from '@anthropic-ai/sdk';
 import { AnthropicProvider } from '../src/models/index.js';
 import type { AnthropicClientLike, AnthropicMessageLike } from '../src/models/index.js';
@@ -800,5 +802,113 @@ describe('renderEvent — tool_call payload dedup (v5.9b)', () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+/**
+ * D17 + D18: the prompt is bounded as branch count grows without limit. Before
+ * these caps the composed root added ~50-125 tok per closed branch while being
+ * exempt from rule-4 dropping, so Zone B was permanently over budget past
+ * ~160 branches — the "indefinite conversation" failure mode.
+ */
+describe('D17/D18 boundedness', () => {
+  function seedBranches(h: ReturnType<typeof harness>, from: number, to: number): void {
+    for (let i = from; i <= to; i += 1) {
+      const node = h.store.insertNode({
+        parent_id: h.root.id,
+        kind: 'phase',
+        title: `step ${i}`,
+        phase_type: 'implementation',
+        span_start_seq: i * 2 - 1,
+        span_end_seq: i * 2,
+        status: 'closed',
+      });
+      h.store.putSummary({
+        node_id: node.id,
+        model: 'mock-leaf',
+        text: `Step ${i} did the thing.`,
+        meta: summaryMeta({ node_ids: [node.id] }),
+      });
+    }
+  }
+
+  it('holds the root block flat and Zone B inside budget at 500 and 5000 branches', () => {
+    const small = harness(null);
+    seedBranches(small, 1, 500);
+    composeRootSummary(small.store, small.root.id);
+    const smallPrompt = small.assembler.assemble({ toolSchemasText: TOOL_SCHEMAS });
+
+    const large = harness(null);
+    seedBranches(large, 1, 5000);
+    composeRootSummary(large.store, large.root.id);
+    const largePrompt = large.assembler.assemble({ toolSchemasText: TOOL_SCHEMAS });
+
+    const rootBlock = (p: AssembledPrompt): PromptBlock => {
+      const block = inZone(p, 'B').find((b) => b.id.startsWith('B:root:'));
+      if (block === undefined) throw new Error('no root block');
+      return block;
+    };
+    // Flat modulo digit growth (fold count, step numbers, "+M more") — O(log n).
+    expect(Math.abs(rootBlock(largePrompt).tokens - rootBlock(smallPrompt).tokens)).toBeLessThanOrEqual(30);
+    // Pre-D17 this was permanently true past ~160 branches: the root alone
+    // exceeded the budget and the root is exempt from rule-4 dropping.
+    expect(smallPrompt.budgets.overBudget).not.toContain('B');
+    expect(largePrompt.budgets.overBudget).not.toContain('B');
+    expect(largePrompt.budgets.zoneB).toBeLessThanOrEqual(8000);
+  });
+
+  it('changes only the root block across the rootKeep crossing — every other Zone B id survives (D5 bounded swap)', () => {
+    const h = harness(null);
+    seedBranches(h, 1, 39);
+    composeRootSummary(h.store, h.root.id);
+    const before = h.assembler.assemble({ toolSchemasText: TOOL_SCHEMAS });
+
+    seedBranches(h, 40, 41);
+    composeRootSummary(h.store, h.root.id);
+    const after = h.assembler.assemble({ toolSchemasText: TOOL_SCHEMAS });
+
+    const nonRootIds = (p: AssembledPrompt): string[] =>
+      inZone(p, 'B')
+        .filter((b) => !b.id.startsWith('B:root:'))
+        .map((b) => b.id);
+    // The 39 pre-crossing branch blocks are byte-for-byte the same ids, in the
+    // same order, with the two new blocks appended — nothing reordered, nothing
+    // rewritten but the root (whose version bumps as it does on EVERY close).
+    expect(nonRootIds(after).slice(0, 39)).toEqual(nonRootIds(before));
+    expect(nonRootIds(after).length).toBe(41);
+  });
+
+  it('caps every rendered meta list at 40 values with an explicit +M more (D18)', () => {
+    const h = harness(null);
+    const node = h.store.insertNode({
+      parent_id: h.root.id,
+      kind: 'phase',
+      title: 'decisions galore',
+      phase_type: 'implementation',
+      span_start_seq: 1,
+      span_end_seq: 2,
+      status: 'closed',
+    });
+    const decisions = Array.from({ length: 41 }, (_, i) => `d${i + 1}`);
+    const summary = h.store.putSummary({
+      node_id: node.id,
+      model: 'mock-leaf',
+      text: 'Decided many things.',
+      meta: summaryMeta({ decisions }),
+    });
+
+    const rendered = renderSummaryBlock(node, summary, false);
+    expect(rendered).toContain('d40 (+1 more)');
+    expect(rendered).not.toContain('d41');
+
+    const summary40 = h.store.putSummary({
+      node_id: node.id,
+      model: 'mock-leaf',
+      text: 'Decided many things.',
+      meta: summaryMeta({ decisions: decisions.slice(0, 40) }),
+    });
+    expect(renderSummaryBlock(node, summary40, false)).not.toContain('more)');
+    // The stored meta keeps the FULL list — the cap is render-only (lossless L1).
+    expect(summary.meta.decisions.length).toBe(41);
   });
 });

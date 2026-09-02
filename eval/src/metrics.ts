@@ -70,6 +70,8 @@ export interface ArmAggregate {
   completed: number;
   /** successes / judged runs — null when nothing was judged. */
   successRate: number | null;
+  /** Mean graded score over judged runs (judge.score, 0-1); null when ungraded. */
+  avgScore: number | null;
   avgInputTokens: number;
   avgOutputTokens: number;
   avgCacheReadTokens: number;
@@ -95,6 +97,12 @@ export function aggregateArm(arm: Arm, results: readonly RunResult[]): ArmAggreg
       judged.length > 0
         ? results.filter((result) => result.success === true).length / judged.length
         : null,
+    avgScore: (() => {
+      const scores = results
+        .map((result) => result.judge?.score)
+        .filter((score): score is number => typeof score === 'number');
+      return scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
+    })(),
     avgInputTokens: avgOf(results.map((result) => result.metrics.tokens.input)),
     avgOutputTokens: avgOf(results.map((result) => result.metrics.tokens.output)),
     avgCacheReadTokens: avgOf(results.map((result) => result.metrics.tokens.cacheRead)),

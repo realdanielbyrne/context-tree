@@ -66,6 +66,8 @@ segmentation algorithm can change without data migration.
 | D14 | Optional **middleware mode**: context-tree can be the agent's *only* code-semantics tool surface, proxying/fanning out provider calls and owning assembly + eviction | One stable tool set in Zone A instead of a dozen host tools → larger frozen cache prefix; centralized eviction; every retrieval event is an L0 `tool_call` row, so D1 indexes it into the tree unchanged |
 | D15 | Ingestion stays **hermetic**: the mandatory pipeline (segmenter, spans, store) uses only L0 + L2 + tree-sitter — no graft-like semantic search. Cross-file semantic enrichment is an optional post-pass: provenance-stamped, non-blocking, discardable | Rebuild determinism (D8): tree must not depend on external index state (graft graph drifts, APIs change). Latency: ingestion is ms-scale inline; `graft ask` is seconds-scale query-shaped. Symbol spans within edited files (the semantic work ingestion needs) are covered locally by tree-sitter (D9) |
 | D16 | Node ids are a **deterministic function of the segmentation NodeKey**, not random ULIDs (added in implementation, 2026-08-31) | D8 requires L1 to be a function of L0+L2. With random ids, `rebuild()` mints new ones, so any L0 event referencing a node id (`manual_annotation`, §6) cannot be resolved after a rebuild — annotations and `node_links` were silently dropped. Deterministic ids make rebuild a genuine replay. Id keeps the `n_` + 26-char shape and encodes kind rank first so creation order (D5 / Zone B) still sorts a phase ahead of the file node sharing its start seq |
+| D17 | Root composition is a pure, byte-stable function of current child summaries — task title, the newest `rootKeep` (default 40) headlines verbatim, older members collapsed into one count + id-range + title-range fold line, merged open questions over the kept window. All member ids stay in `meta.node_ids`. Fold applies only to direct children of the task root (phase nodes) — never `file`/`turn` nodes, never across a task-root boundary. Zero LLM by default; an LLM digest of the folded members is permitted only as an optional, non-blocking upgrade (added in implementation, 2026-09-01) | Codifies the `deterministic-rollup-v1` precedent (implemented 2026-08, never recorded): the strong-model root call was mostly redundant with the verbatim leaf summaries already in Zone B. The cap is the boundedness fix: the uncapped headline list grew ~50-125 tok per closed branch, so the root block alone overflowed the 8k Zone B budget at n≈70-160 and grew forever after (root is exempt from rule-4 dropping). Capping makes the whole prompt O(1) in branch count. Grouping is `slice()` over creation order — deterministic from L0, no clock, no randomness, no LLM (D8). Lossy in prompt, lossless on disk: folded members keep their own D3-versioned `node_summaries` rows and remain reachable via `context_search` / `context_fetch` |
+| D18 | No rendered meta list (`files`, `symbols`, `tests`, `artifacts`, `decisions`, `open questions`, `fetchable nodes`) prints more than 40 values; overflow renders `+M more` (added in implementation, 2026-09-01) | The root block's `decisions` / `open_questions` / `fetchable nodes` are merges over *every* child, so capping only the headline list (D17) leaves a second ~50 tok/branch growth term. Rendering is capped, `SummaryMeta` is not — the full list stays in L1 for `context_fetch` |
 
 ## 4. Prior art and reference implementations
 
@@ -286,6 +288,9 @@ answers questions, enrichment decorates — never the reverse.**
 - **Background (D11):** summarization runs async after phase close ("sleep-time
   compute"); the prompt assembler reads whatever summary version is current and
   never blocks on the summarizer.
+- The root role has no LLM tier: root summaries are deterministic compositions
+  of the current leaf summaries (D17), so the strong model is never called for
+  a root and a root recompose never appears in the cost meter.
 
 
 ## 9. Retrieval and tool API (D7) — the MCP server
@@ -401,8 +406,15 @@ Rules:
    its (already-generated, backgrounded) summary, which is inserted into Zone
    B. Cost is proportional to summaries + new branch, not history length.
 3. `context_fetch` results are appended after Zone C — cache-prefix untouched.
-4. Budget: Zone B ≤ ~8k tokens (summarize harder if exceeded); Zone C ≤ ~30k
-   tokens (fetch narrowly via `file:` param instead of whole branches).
+4. Budget: Zone B ≤ ~8k tokens. Two caps hold it there as branch count grows
+   without bound: the root block renders at most `rootKeep` (default 40) newest
+   branch headlines, older members collapsing into **one** deterministic fold
+   line at their oldest member's position (D17); and no rendered meta list
+   prints more than 40 values, `+M more` beyond that (D18). Residual overflow
+   drops the OLDEST non-root branch blocks, as before. No rollup node is
+   created, nothing is reordered, and creation order (rule 1) is untouched.
+   Zone C ≤ ~30k tokens (fetch narrowly via `file:` param instead of whole
+   branches).
 5. Emit cache-control breakpoints at the Zone A/B and B/C boundaries
    (Anthropic prompt caching: `cache_control` markers; OpenRouter: pass through
    provider-native caching where available).
@@ -538,6 +550,12 @@ per-PR spend via the cost meter.
 - **Cache assertion harness:** deterministic tokenizer + provider cache
   simulator asserting exactly which prefix ranges survive each event type —
   this is where D5 regressions will surface.
+- **Boundedness:** the composed root block's token count is flat between 500
+  and 5,000 synthetic closed branches, and `budgets.zoneB ≤ 8000` at both —
+  plus a cache assertion that every Zone B block id except `B:root:*` is
+  unchanged across the `rootKeep` crossing, and that the root block's byte
+  delta at the crossing is bounded and does not grow when re-measured at later
+  crossings (D5: bounded swap, not a late/large swap).
 - **Focused tests locally** (`pnpm vitest run <path>`); full suite in CI.
 
 ## 18. Risks and mitigations
@@ -564,4 +582,13 @@ per-PR spend via the cost meter.
    size savings and eviction wins are real (§15 adds a Mode A/B arm).
 6. Provider ranking weights: the §9.1 tier order is fixed in v1; if eval
    shows a tier is dead weight for coding tasks, drop it rather than tune it.
+7. If a marathon recall probe shows the D17 fold line is too thin a hook, does
+   Zone B need a real intermediate tier? Default: no — first try a stronger
+   `context_search` prior, then a bounded deterministic digest *inside* the
+   existing fold line. The pre-designed escalation, if a tier is genuinely
+   earned, is the base-k cover: closed branches render as the maximal
+   k^L-aligned complete groups of their count, each group one deterministic
+   ~300-tok block keyed by its oldest member, k=4 (the only arity that stays
+   near-budget at n=10,000, since a flat per-rollup cap makes larger k
+   strictly more expensive per level).
 

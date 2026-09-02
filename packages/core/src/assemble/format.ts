@@ -28,8 +28,20 @@ function seqRange(node: TreeNode): string {
   return `seq ${node.span_start_seq}-${node.span_end_seq ?? node.span_start_seq}`;
 }
 
+/**
+ * D18: no rendered meta list prints more than LIST_MAX_VALUES entries. The root
+ * block's decisions/open-questions/fetchable-nodes are merges over EVERY child,
+ * so an uncapped list re-introduces the ~50-tok/branch growth that capping the
+ * root's headline list (D17) removed. Prompt lossy, L1 lossless — the full list
+ * stays in the stored SummaryMeta and is reachable by context_fetch.
+ */
+const LIST_MAX_VALUES = 40;
+
 function listLine(label: string, values: readonly string[]): string | null {
-  return values.length === 0 ? null : `${label}: ${values.join(', ')}`;
+  if (values.length === 0) return null;
+  const shown = values.slice(0, LIST_MAX_VALUES);
+  const more = values.length - shown.length;
+  return `${label}: ${shown.join(', ')}${more > 0 ? ` (+${more} more)` : ''}`;
 }
 
 /**

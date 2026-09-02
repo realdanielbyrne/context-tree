@@ -131,3 +131,105 @@ describe('composeRootSummary', () => {
     expect(summary?.meta.decisions).toEqual(['use dataclass']);
   });
 });
+
+/**
+ * D17: past `rootKeep` branches the root stops growing — older members fold
+ * into ONE line. Without this the root added ~50-125 tok per closed branch
+ * while being exempt from rule-4 dropping, so it alone overflowed the 8k
+ * Zone B budget at n≈70-160 and the prompt grew without bound thereafter.
+ */
+describe('composeRootSummary D17 fold', () => {
+  function manyBranches(n: number): { store: SqliteTreeStore; root: string; ids: string[] } {
+    const store = openInMemoryStore();
+    const root = store.insertNode({
+      parent_id: null,
+      kind: 'task',
+      title: 'marathon task',
+      span_start_seq: 1,
+      span_end_seq: n * 2,
+      meta_json: {},
+    });
+    const ids: string[] = [];
+    for (let i = 1; i <= n; i += 1) {
+      const node = store.insertNode({
+        parent_id: root.id,
+        kind: 'phase',
+        title: `step ${i}`,
+        phase_type: 'implementation',
+        span_start_seq: i * 2 - 1,
+        span_end_seq: i * 2,
+        meta_json: {},
+      });
+      store.putSummary({
+        node_id: node.id,
+        model: 'leaf',
+        text: `Step ${i} did the thing.`,
+        meta: meta({ open_questions: i === 1 ? ['oldest question'] : [] }),
+      });
+      ids.push(node.id);
+    }
+    return { store, root: root.id, ids };
+  }
+
+  it('folds all but the newest rootKeep branches into one line carrying ids AND titles, keeps every id in node_ids', () => {
+    const fx = manyBranches(5);
+    const summary = composeRootSummary(fx.store, fx.root, () => NOW, 3);
+
+    const lines = summary?.text.split('\n') ?? [];
+    expect(lines[0]).toBe('marathon task');
+    // The fold line sits at its oldest members' position — creation order (D5 rule 1).
+    expect(lines[1]).toBe(
+      `- branches 1..2 (2 folded: ${fx.ids[0]}..${fx.ids[1]}) ` +
+        '— "Step 1 did the thing." .. "Step 2 did the thing." ' +
+        '— call context_search or context_fetch to recall',
+    );
+    expect(lines.slice(2, 5)).toEqual([
+      '- Step 3 did the thing.',
+      '- Step 4 did the thing.',
+      '- Step 5 did the thing.',
+    ]);
+    // open question from the FOLDED window is out of the prompt...
+    expect(summary?.text).not.toContain('oldest question');
+    // ...but nothing is lost on disk: ALL member ids stay fetchable.
+    expect(summary?.meta.node_ids).toEqual([fx.root, ...fx.ids]);
+  });
+
+  it('is a provable no-op at or below rootKeep — the loop-7 regression guarantee', () => {
+    const fx = manyBranches(3);
+    const capped = composeRootSummary(fx.store, fx.root, () => NOW, 3);
+    expect(capped?.text).not.toContain('folded');
+
+    const fx2 = manyBranches(3);
+    const uncapped = composeRootSummary(fx2.store, fx2.root, () => NOW, Number.POSITIVE_INFINITY);
+    expect(capped?.text).toBe(uncapped?.text);
+  });
+
+  it('is deterministic and byte-stable across identical builds, fold line included', () => {
+    const a = manyBranches(60);
+    const b = manyBranches(60);
+    const sa = composeRootSummary(a.store, a.root, () => NOW);
+    const sb = composeRootSummary(b.store, b.root, () => NOW);
+    // Hand-built fixtures mint clock-based node ids (the D16 deterministic-id
+    // guarantee lives on the segmenter path), so compare modulo the ids: any
+    // window/ordering nondeterminism would still surface here.
+    const anonymize = (text?: string): string | undefined => text?.replace(/n_[0-9A-Z]{26}/g, 'n_ID');
+    expect(anonymize(sa?.text)).toBe(anonymize(sb?.text));
+    // Byte-stability: recomposing the same store writes no new version.
+    expect(composeRootSummary(a.store, a.root, () => NOW)).toBeNull();
+  });
+
+  it('renders a flat root as branch count grows: same line count and near-same size at 500 and 5000', () => {
+    const small = manyBranches(500);
+    const large = manyBranches(5000);
+    const s = composeRootSummary(small.store, small.root, () => NOW);
+    const l = composeRootSummary(large.store, large.root, () => NOW);
+
+    expect(s?.text.split('\n').length).toBe(l?.text.split('\n').length);
+    // Node ids are fixed-width; the only growth left is digits in the fold
+    // count and in the kept headlines' step numbers — O(log n), not O(n).
+    // Uncapped, 4500 extra branches would have added ~100k chars.
+    expect(Math.abs((l?.text.length ?? 0) - (s?.text.length ?? 0))).toBeLessThanOrEqual(60);
+    // A folded member's own summary row is untouched and still queryable.
+    expect(large.store.currentSummary(large.ids[0])?.text).toBe('Step 1 did the thing.');
+  });
+});

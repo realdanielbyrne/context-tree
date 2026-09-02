@@ -1733,6 +1733,9 @@ def build_hidden_test() -> str:
         )
         lines.append("    failures += 1")
     lines.append("")
+    # Canonical graded-score line the eval judge parses (partial credit even
+    # on a failing exit); keep it before the human-readable verdict lines.
+    lines.append("print('SCORE: %%d/%d' %% (%d - failures))" % (len(_CASES), len(_CASES)))
     lines.append("if failures:")
     lines.append("    print('%d case(s) failed' % failures)")
     lines.append("    sys.exit(1)")

@@ -87,6 +87,8 @@ export interface ContextTreeConfig {
   fileTools: string[];
   languages: Record<string, string>;
   budgets: { zoneB: number; zoneC: number };
+  /** D17: max branch headlines the composed root renders; older members fold into one line. */
+  rootKeep: number;
   summarize: { concurrency: number; maxSummaryTokens: number };
   retrieval: { providers: string[]; limit: number };
   /** Per-run spend cap in USD; null disables the cap. */
@@ -108,6 +110,7 @@ export const DEFAULT_CONFIG: ContextTreeConfig = {
   fileTools: [...DEFAULT_FILE_TOOLS],
   languages: { ...DEFAULT_LANGUAGES },
   budgets: { zoneB: 8_000, zoneC: 30_000 },
+  rootKeep: 40,
   summarize: { concurrency: 8, maxSummaryTokens: 1_024 },
   retrieval: { providers: ['graft', 'serena', 'augment', 'vector', 'grep'], limit: 20 },
   costCapUsd: null,
@@ -182,6 +185,7 @@ export function resolveConfig(
 
   if (merged.embedDim <= 0) throw new ConfigError('embedDim must be > 0');
   if (merged.summarize.concurrency <= 0) throw new ConfigError('summarize.concurrency must be > 0');
+  if (merged.rootKeep <= 0) throw new ConfigError('rootKeep must be > 0');
   if (merged.budgets.zoneB <= 0 || merged.budgets.zoneC <= 0) {
     throw new ConfigError('budgets must be > 0');
   }
