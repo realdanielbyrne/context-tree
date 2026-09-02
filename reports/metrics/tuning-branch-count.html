@@ -1,0 +1,577 @@
+<title>Visible Branch Count</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#FBFBF9; --surface:#FFFFFF; --ink:#1C1E21; --muted:#5C6167;
+  --line:#DFE1E4; --accent:#0E6B54; --warm:#A64F2A; --cool:#2F4E8F; --grey:#7A7F86; --code-bg:#F1F2F0;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#16181B; --surface:#1D2024; --ink:#E7E9EB; --muted:#9BA1A8;
+    --line:#33373C; --accent:#46B090; --warm:#D68A62; --cool:#8FB0E8; --grey:#9BA1A8; --code-bg:#25282D;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#16181B; --surface:#1D2024; --ink:#E7E9EB; --muted:#9BA1A8;
+  --line:#33373C; --accent:#46B090; --warm:#D68A62; --cool:#8FB0E8; --grey:#9BA1A8; --code-bg:#25282D;
+}
+body{background:var(--ground); color:var(--ink);
+  font:17px/1.65 "Source Serif 4",Georgia,serif; margin:0;}
+main{max-width:760px; margin:0 auto; padding:56px 24px 80px;}
+h1{font-size:1.9rem; font-weight:700; line-height:1.2; margin:0 0 6px; text-wrap:balance;}
+h2{font-size:1.2rem; font-weight:700; margin:40px 0 10px;}
+h3{font-size:1.02rem; font-weight:700; margin:26px 0 6px;}
+.meta{color:var(--muted); font-size:.92rem; margin-bottom:34px;}
+.abstract{margin:0 0 6px; padding:0 0 22px; border-bottom:1px solid var(--line);}
+.abstract h2{margin:0 0 8px; font-size:1.05rem;}
+p{margin:0 0 14px; max-width:70ch;}
+.tablewrap{overflow-x:auto; background:var(--surface); border:1px solid var(--line);
+  border-radius:6px; margin:14px 0 6px;}
+table{border-collapse:collapse; width:100%; font-size:.85rem;}
+th{font-size:.72rem; letter-spacing:.04em; text-transform:uppercase; color:var(--muted);
+  text-align:right; padding:9px 13px; border-bottom:1px solid var(--line); white-space:nowrap;
+  font-family:"IBM Plex Mono",monospace; font-weight:500;}
+th:first-child, td:first-child{text-align:left;}
+td{padding:7px 13px; border-bottom:1px solid var(--line);
+  font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums;
+  font-size:.84rem; text-align:right; white-space:nowrap;}
+td:first-child{font-family:"Source Serif 4",Georgia,serif; font-size:.9rem;}
+tr:last-child td{border-bottom:none;}
+.tcap{font-size:.85rem; color:var(--muted); margin:6px 2px 18px; max-width:72ch;}
+.tcap b{color:var(--ink);}
+figure{background:var(--surface); border:1px solid var(--line); border-radius:6px;
+  padding:18px 14px 6px; margin:16px 0 6px;}
+figcaption{font-size:.85rem; color:var(--muted); padding:8px 8px 10px; max-width:72ch; line-height:1.5;}
+figcaption b{color:var(--ink);}
+.chartwrap{overflow-x:auto;}
+.chartwrap > div{min-width:620px;}
+code{font-family:"IBM Plex Mono",monospace; font-size:.82em; background:var(--code-bg);
+  padding:1px 5px; border-radius:4px;}
+footer{margin-top:48px; padding-top:14px; border-top:1px solid var(--line);
+  color:var(--muted); font-size:.82rem; line-height:1.5;}
+svg{display:block; width:100%; height:auto;}
+svg text{font-family:"IBM Plex Mono",monospace; font-size:11px; fill:var(--muted);
+  font-variant-numeric:tabular-nums;}
+svg .serieslabel{font-size:12px; font-weight:600;}
+svg .vlabel{font-size:10.5px;}
+ol{max-width:70ch; padding-left:1.4em;}
+li{margin-bottom:10px;}
+.note{font-size:.92rem; color:var(--muted); border:1px solid var(--line); border-radius:6px;
+  padding:10px 14px; max-width:72ch;}
+</style>
+<main>
+<h1>How many branch summaries the model should see</h1>
+<div class="meta">Context-tree evaluation program · DS-STAR dimension 1 (visible branch count) · September 2, 2026</div>
+
+<p class="note"><em>Status.</em> This is the full treatment of the dimension summarised in <code>reports/algorithm.md</code>, "What the DS-STAR loop is for". No new model runs were made for it. Every number below is either read from a committed artifact or recomputed offline from one, and the recomputation disagrees with the analysis it publishes in six places, which §7 lists. Where a published figure did not reproduce, the reproduced value is the one used.</p>
+
+<div class="abstract">
+<h2>Abstract</h2>
+<p>Context-tree replaces an agent's raw conversation history with a summary-headed tree: completed stretches of work become <b>branches</b>, each branch gets a short summary, and the prompt carries summaries plus tools for fetching detail back. This report asks how many of those summaries the prompt should carry. It makes two corrections to the way the question was previously framed. First, two different counts had been conflated. The <b>fold level</b> (<code>rootKeep</code>) is how many recent branches get an individual headline in the root index before older ones fold to one line; the number of branches whose <em>full summary body</em> is rendered separately is a different count, and the two move in opposite directions, because both are paid out of one budget. Reproducing the whole fold ladder from the frozen store confirms this exactly: at a 32,768-token window, fold level 16 renders 16 headlines and 2 bodies, fold level 2 renders 2 headlines and 11 bodies, and the assembled section is the same size either way — 7,633 against 7,569 heuristic tokens. Width, in this fixture, is a reallocation and not an addition. Second, "width helps" was too broad. Across four question types the wide setting beat the narrow one on one of them: means over completed runs of 0.333 (n=9) against 0.091 (n=11) on early-session questions, with both non-tree baselines at 0.000; on the other three types both widths sat at 0.000, and on recent-fact questions the baselines beat both. Reduced to successes, the entire effect is three of four completed runs against one of five on a <em>single</em> question, and no answer literal for any of the twelve questions appears in any of the twenty-one rendered bodies — so width cannot be putting the answer in the prompt, and what it plausibly buys is fetch aim rather than recall. The measured per-turn cost of the reallocation is 349 tokens on the first turn (medians, n=38 each); the 12,168-token gap in median run input between the two arms is real but belongs to later-turn retrieval payloads and a longer turn distribution, not to Zone B. The load-bearing finding is that the ladder's direction is a human choice inside a mechanism that looks derived: six of the seven rungs satisfy the fit predicate at this window, and which one is used is decided by which end of the ladder someone wrote for the arm. Of the three candidate policies, fit-derived is kept as the ceiling but does not determine the allocation beneath it; demand-driven fails because search occurrence does not track the bottleneck; a user-set effort dial fails because no single width serves a whole session. The experiment that settles it is a rung sweep on the one stratum with signal, which needs no new code.</p>
+</div>
+
+<h2>1&ensp;Terms, and what has actually been run</h2>
+
+<p>A <b>turn</b> is one model call. A <b>branch</b> is context-tree's unit of organisation: a contiguous stretch of work that gets one summary when it closes. The prompt is assembled in three fixed sections — <b>Zone A</b>, the frozen contract; <b>Zone B</b>, the root index plus branch summaries in creation order; <b>Zone C</b>, the active branch's raw detail — and retrieved results are appended after Zone C. <b>W</b> is the model's context window; each zone's budget is a fixed fraction of W divided by a measured heuristic-to-tokenizer ratio, so at W=32,768 with ratio 0.851 the Zone B budget is 7,701 <b>heuristic tokens</b> (the assembler's own tokenizer, which over-counts real BPE by about 1.18× on this corpus) and at W=16,384 it is 3,850.</p>
+
+<p>Two counts are the subject of this report and are defined once here. <b>Fold level</b> (<code>rootKeep</code> in the code) is the rung on a ladder: how many of the most recent branches get an individual headline line in the root index, with everything older folded into a single line saying what was removed and how to retrieve it. <b>Rendered bodies</b> (<code>branchesSurviving</code> in the harness) is how many branches have their full summary block — prose plus rehydration pointers: files, symbols, tests, decisions, open questions, fetchable node ids — rendered separately in Zone B. A single rung fixes both, and raising the rung lowers the body count, because the root index and the bodies are paid out of the same Zone B budget.</p>
+
+<p>Two arms differ in exactly one thing. <code>tree</code> walks the ladder <code>[40, 16, 12, 8, 6, 4, 2]</code> largest-first (<code>eval/scripts/transplant.mjs:385</code>) and takes the first rung that passes; <code>tree-wide</code> walks the same ladder reversed, smallest-first (<code>transplant.mjs:398-410</code>). The predicate a rung must pass is not a share constant: it assembles the real prompt at that rung and asks whether Zone B fits its budget <em>and</em> at least one branch body survived (<code>deriveRootKeep</code>, <code>transplant.mjs:450</code>; the rationale is R4 and R5 of <code>eval/fixtures/transplant/JUDGE-VERDICT.md:145-155</code>). Two baselines carry no summaries at all and are therefore the paired comparison for every score below: <b>truncate-tail</b>, which keeps the most recent slice of the raw trace that fits, and <b>compact-rolling</b>, which keeps a model-written rolling summary of the whole trace. Both run one turn and have no Zone B.</p>
+
+<p>All width evidence in this repository beyond two abandoned pruning arms (§5.4) comes from one fixture: <code>eval/fixtures/transplant/s1/e1b289c32f40/</code>, scenario <code>s1</code>. It is a frozen store of 754 append-only events, 46 nodes (1 task, 21 branch nodes, 24 file nodes) and 21 branch summaries — one version each, verified by SQL against <code>eval/fixtures/transplant/s1/store/tree.db</code>. Twelve questions, three in each of four <b>strata</b>: <b>head</b> (a fact from early in the session), <b>tail</b> (a recent fact), <b>deep</b> (a verbatim code literal), <b>spanning</b> (a fact requiring two places at once). Each question ran five replicates, so each (arm, stratum) cell is 15 attempted runs.</p>
+
+<p>Attempted is not completed, and the difference matters throughout. A run the harness stopped is not evidence of task failure, and neither is a provider fault. Of 60 attempted runs per tree arm at W=32,768, <code>tree</code> completed 38, hit the harness's six-turn cap twice, and lost 20 to an OpenRouter response with no choices; <code>tree-wide</code> completed 38, hit the cap 7 times, and lost 15 the same way. The two baselines completed 59 and 60 of 60. Every harness-stopped row in the committed files carries <code>score: 0</code> with an empty answer — a wrong answer no model gave — so all nine such rows are excluded from every mean below. The harness has since been corrected to write <code>score: null</code> for them (the comment at <code>transplant.mjs:3352-3365</code> names the same nine rows), but the committed fixture predates the fix.</p>
+
+<h2>2&ensp;The two counts move in opposite directions</h2>
+
+<p>The whole fold ladder can be rebuilt from the store with no model call and no assembly: render each branch's summary block with the assembler's own <code>renderSummaryBlock</code>, count it with the assembler's own tokenizer, take the root block size for each rung from <code>root-ladder.json</code>, and fill the remainder of the Zone B budget with bodies newest-first, which is the assembler's drop-oldest rule. That reconstruction reproduces the two rungs the fixture recorded exactly — 6,095 + 1,538 = 7,633 for fold level 16 at W=32,768, and 2,587 + 1,036 = 3,623 for fold level 2 at W=16,384, both matching <code>gates.json</code> to the token — and it reproduces every pass/fail verdict on both ladders. Table 1 is that reconstruction.</p>
+
+<div class="tablewrap"><table>
+<thead><tr><th>fold level</th><th>headlines</th><th>root block</th><th>left for bodies</th><th>bodies</th><th>body tokens</th><th>Zone B assembled</th><th>oldest visible seq</th><th>predicate</th></tr></thead>
+<tbody>
+<tr><td>40</td><td>21</td><td>6,917</td><td>784</td><td>0</td><td>0</td><td>6,917</td><td>—</td><td>fails: no body</td></tr>
+<tr><td>16 ← <code>tree</code></td><td>16</td><td>6,095</td><td>1,606</td><td>2</td><td>1,538</td><td>7,633</td><td>639</td><td>passes</td></tr>
+<tr><td>12</td><td>12</td><td>4,771</td><td>2,930</td><td>5</td><td>2,575</td><td>7,346</td><td>554</td><td>passes</td></tr>
+<tr><td>8</td><td>8</td><td>3,967</td><td>3,734</td><td>6</td><td>3,091</td><td>7,058</td><td>489</td><td>passes</td></tr>
+<tr><td>6</td><td>6</td><td>3,538</td><td>4,163</td><td>8</td><td>3,965</td><td>7,503</td><td>428</td><td>passes</td></tr>
+<tr><td>4</td><td>4</td><td>3,105</td><td>4,596</td><td>10</td><td>4,467</td><td>7,572</td><td>390</td><td>passes</td></tr>
+<tr><td>2 ← <code>tree-wide</code></td><td>2</td><td>2,587</td><td>5,114</td><td>11</td><td>4,982</td><td>7,569</td><td>359</td><td>passes</td></tr>
+</tbody></table></div>
+<p class="tcap"><b>Table 1.</b> The fold ladder at W=32,768, rebuilt from the frozen store; all token columns are heuristic tokens against a Zone B budget of 7,701. <b>headlines</b> is min(fold level, 21), since the store holds 21 branches. <b>left for bodies</b> is the budget minus the root block; <b>bodies</b> is how many summary bodies fit in it newest-first. <b>oldest visible seq</b> is where the oldest rendered body starts, out of 754 events. The two marked rows are what the two arms actually ran: they are the two ends of one ladder, not two settings of a dial. The paired baselines have no Zone B at all — truncate-tail and compact-rolling render zero summaries by construction — so within this table the pairing is the two tree arms against each other.</p>
+
+<p>Three things in Table 1 are worth stating separately. Fold level 40 fails the predicate but <em>not</em> for being over budget: its root block of 6,917 tokens fits the 7,701 budget with 784 to spare, which is less than the newest body's 1,036, so no body survives and the second clause of the predicate rejects it. So "the largest rung that fits" is imprecise; it is the largest rung that fits <em>and</em> leaves room for at least one body. Second, the assembled Zone B is nearly constant across the passing rungs — 7,058 to 7,633, a spread of 8% — which is what "budget-bound" means: the rung decides the composition, not the size. Third, six of the seven rungs pass. The mechanism does not choose between them; the direction of the walk does.</p>
+
+<p>The trade at this window is precise: 3,508 heuristic tokens of root headlines (6,095 − 2,587) buy 14 extra headlines, or the same budget buys 9 extra bodies for 3,444 tokens (4,982 − 1,538). One rendered body costs about 1.5 headlines in this region of the ladder, and about 2.1 headlines at the two means (476 tokens per body against 228 per headline, §4). In coverage terms the two arms differ by a factor of three: <code>tree</code>'s two bodies span sequence 639–754, 116 of 754 events (15%), while <code>tree-wide</code>'s eleven span 359–754, 396 events (53%).</p>
+
+<figure>
+<div class="chartwrap"><div id="fig1"></div></div>
+<figcaption><b>Figure 1.</b> Headlines rendered and bodies rendered against the fold level, at W=32,768, from the reconstruction in Table 1. The horizontal axis is the fold level in ladder order (2 to 40, unequally spaced rungs plotted at equal intervals). The rising brown line is the number of individual root headlines; the falling green line is the number of full summary bodies. The two ringed points are the rungs the two arms actually chose: <code>tree</code>, which walks the ladder from the right, stops at 16 with 2 bodies; <code>tree-wide</code>, which walks from the left, stops at 2 with 11 bodies. The lines cross between rungs 6 and 8. Six of the seven rungs satisfy the fit predicate; rung 40 is the only one that fails, and it fails for leaving no room for a body rather than for exceeding the budget. Both baselines would be a flat zero on both series and are omitted for that reason.</figcaption>
+</figure>
+
+<figure>
+<div class="chartwrap"><div id="fig2"></div></div>
+<figcaption><b>Figure 2.</b> The same ladder in tokens: how each rung spends the Zone B budget at W=32,768. Each bar is one fold level, split into the root index block (lower, brown) and the rendered summary bodies (upper, green), in heuristic tokens. The upper dashed line is the Zone B budget at W=32,768 (7,701 tokens); the lower dashed line is the budget at W=16,384 (3,850), above which every rung but 2 and 4 lies with the root block alone. The total height barely changes across the passing rungs — the reallocation is nearly size-neutral — while the split moves from almost all index at rung 40 to two thirds bodies at rung 2. The paired baselines contribute no bar: their Zone B is zero tokens.</figcaption>
+</figure>
+
+<p>At W=16,384 the two directions converge and the dimension is not tested at all. The Zone B budget is 3,850, and the reconstruction agrees with <code>gates.json</code> rung for rung: fold levels 40, 16, 12 and 8 exceed the budget on the root block alone (6,917, 6,095, 4,771, 3,967); levels 6 and 4 fit the budget — 3,538 and 3,105 — but leave 312 and 745 tokens against a newest body of 1,036, so no body survives and they fail the second clause with no over-budget flag; level 2 passes with one body. Both ladder directions therefore return the same rung, and no separate <code>tree-wide</code> run exists at this window. Its single visible body spans sequence 732–754, 23 of 754 events, so about 3% of the log is visible as a body and 97% is reachable only through retrieval. As R6 of the judge verdict says, that cell scores search-and-fetch, not summary width.</p>
+
+<div class="tablewrap"><table>
+<thead><tr><th>fold level</th><th>root block</th><th>Zone B budget</th><th>left for bodies</th><th>bodies</th><th>outcome</th></tr></thead>
+<tbody>
+<tr><td>40</td><td>6,917</td><td>3,850</td><td>—</td><td>0</td><td>over budget</td></tr>
+<tr><td>16</td><td>6,095</td><td>3,850</td><td>—</td><td>0</td><td>over budget</td></tr>
+<tr><td>12</td><td>4,771</td><td>3,850</td><td>—</td><td>0</td><td>over budget</td></tr>
+<tr><td>8</td><td>3,967</td><td>3,850</td><td>—</td><td>0</td><td>over budget</td></tr>
+<tr><td>6</td><td>3,538</td><td>3,850</td><td>312</td><td>0</td><td>fits, no body</td></tr>
+<tr><td>4</td><td>3,105</td><td>3,850</td><td>745</td><td>0</td><td>fits, no body</td></tr>
+<tr><td>2</td><td>2,587</td><td>3,850</td><td>1,263</td><td>1</td><td>passes (both arms)</td></tr>
+</tbody></table></div>
+<p class="tcap"><b>Table 2.</b> The same ladder at W=16,384, where both walk directions return the same rung and the width dimension collapses. Heuristic tokens, reconstructed from the store and matching <code>gates.json</code>'s recorded ladder on every row. The distinction between the last four rows is the correction: the published analysis records every rung from 40 down to 4 as failing on <code>overBudget:["B"]</code>, but rungs 6 and 4 fit the budget and fail only for leaving no room for one body.</p>
+
+<h2>3&ensp;What width did to the score</h2>
+
+<p>The comparison isolates branch count from everything else: same store, same window, same twelve questions, same model (<code>qwen/qwen-2.5-72b-instruct</code> through OpenRouter), and the only difference between the arms is which end of the ladder is walked. The two runs are 99 minutes apart on the same day and the same frozen fixture. The baselines were run in the same batch as <code>tree</code>. Table 3 is the whole width dataset.</p>
+
+<div class="tablewrap"><table>
+<thead><tr><th>stratum / arm</th><th>attempted</th><th>completed</th><th>harness-stopped</th><th>provider fault</th><th>successes</th><th>mean score</th><th>median turns</th><th>median tokens</th></tr></thead>
+<tbody>
+<tr><td>head — <code>tree</code> (2 bodies)</td><td>15</td><td>11</td><td>0</td><td>4</td><td>1 of 11</td><td>0.091</td><td>2</td><td>31,967</td></tr>
+<tr><td>head — <code>tree-wide</code> (11 bodies)</td><td>15</td><td>9</td><td>2</td><td>4</td><td>3 of 9</td><td>0.333</td><td>3</td><td>52,559</td></tr>
+<tr><td>head — truncate-tail</td><td>15</td><td>14</td><td>0</td><td>1</td><td>0 of 14</td><td>0.000</td><td>1</td><td>22,759</td></tr>
+<tr><td>head — compact-rolling</td><td>15</td><td>15</td><td>0</td><td>0</td><td>0 of 15</td><td>0.000</td><td>1</td><td>13,205</td></tr>
+<tr><td>tail — <code>tree</code></td><td>15</td><td>11</td><td>1</td><td>3</td><td>0 of 11</td><td>0.000</td><td>3</td><td>50,885</td></tr>
+<tr><td>tail — <code>tree-wide</code></td><td>15</td><td>13</td><td>0</td><td>2</td><td>0 of 13</td><td>0.000</td><td>3</td><td>32,022</td></tr>
+<tr><td>tail — truncate-tail</td><td>15</td><td>15</td><td>0</td><td>0</td><td>3 of 15</td><td>0.200</td><td>1</td><td>22,815</td></tr>
+<tr><td>tail — compact-rolling</td><td>15</td><td>15</td><td>0</td><td>0</td><td>5 of 15</td><td>0.333</td><td>1</td><td>13,287</td></tr>
+<tr><td>deep — <code>tree</code></td><td>15</td><td>11</td><td>1</td><td>3</td><td>0 of 11</td><td>0.000</td><td>4</td><td>54,365</td></tr>
+<tr><td>deep — <code>tree-wide</code></td><td>15</td><td>7</td><td>3</td><td>5</td><td>0 of 7</td><td>0.000</td><td>3</td><td>33,811</td></tr>
+<tr><td>deep — truncate-tail</td><td>15</td><td>15</td><td>0</td><td>0</td><td>0 of 15</td><td>0.000</td><td>1</td><td>22,754</td></tr>
+<tr><td>deep — compact-rolling</td><td>15</td><td>15</td><td>0</td><td>0</td><td>0 of 15</td><td>0.000</td><td>1</td><td>13,249</td></tr>
+<tr><td>spanning — <code>tree</code></td><td>15</td><td>5</td><td>0</td><td>10</td><td>0 of 5</td><td>0.000</td><td>3</td><td>38,614</td></tr>
+<tr><td>spanning — <code>tree-wide</code></td><td>15</td><td>9</td><td>2</td><td>4</td><td>0 of 9</td><td>0.000</td><td>3</td><td>54,835</td></tr>
+<tr><td>spanning — truncate-tail</td><td>15</td><td>15</td><td>0</td><td>0</td><td>0 of 15</td><td>0.000</td><td>1</td><td>22,738</td></tr>
+<tr><td>spanning — compact-rolling</td><td>15</td><td>15</td><td>0</td><td>0</td><td>0 of 15</td><td>0.000</td><td>1</td><td>13,237</td></tr>
+</tbody></table></div>
+<p class="tcap"><b>Table 3.</b> Graded score by stratum and arm, W=32,768, qwen-2.5-72b-instruct, one epoch. <b>mean score</b> is the mean over completed runs only, which is the denominator this report uses everywhere; <b>successes</b> counts completed runs whose answer matched the question's literal. <b>harness-stopped</b> is runs still calling tools at the harness's six-turn cap, <b>provider fault</b> is an OpenRouter reply with no choices. Both are excluded from the mean, so a cell's denominator is its completed count, never 15. <b>median tokens</b> is input plus output per run over completed runs. Every candidate row is paired with the two baseline rows in its own stratum.</p>
+
+<figure>
+<div class="chartwrap"><div id="fig3"></div></div>
+<figcaption><b>Figure 3.</b> Mean graded score by stratum, both widths against both baselines, W=32,768, same model and epoch. Four groups of four bars; within each group the order is <code>tree</code> (2 bodies, green), <code>tree-wide</code> (11 bodies, blue), truncate-tail (brown) and compact-rolling (grey), and the number beside each bar is the mean followed by the completed-run count it is a mean over. Only three of the sixteen bars are non-zero. Widening from 2 bodies to 11 raises the head bar from 0.091 to 0.333 and leaves the other three strata flat at zero; on the tail stratum both baselines are above both tree widths.</figcaption>
+</figure>
+
+<p>Two readings follow directly, and both are narrower than "width helps".</p>
+
+<p><b>Measured: the width effect is confined to one stratum out of four.</b> Head is the only stratum where either tree arm scores above zero at all. Tail, deep and spanning are 0.000 for both widths, so going from 2 rendered bodies to 11 changed nothing on three of the four question types in the only experiment that has tested it.</p>
+
+<p><b>Measured: on tail, wider is not merely no better — both widths are behind the baselines.</b> truncate-tail scores 0.200 (3 of 15) and compact-rolling 0.333 (5 of 15) against 0.000 for both tree widths. This is not a branch-count effect, since it holds identically at both widths, and it is the pre-registered trigger that caused the wide arm to be run at all: the verdict specified re-running the tree arm with the reversed ladder if <code>tree</code> fell more than 0.05 below truncate-tail on the tail stratum, and the observed gap is 0.20. The consequence for this dimension is only that "width helps" cannot be read as "the tree arm improves as it widens": on tail it is behind the flat baselines at both widths tested.</p>
+
+<p>Reduced to what actually happened, the effect is thinner still. Table 4 pairs each question's source location against whether that branch was rendered as a body in each arm.</p>
+
+<div class="tablewrap"><table>
+<thead><tr><th>question</th><th>stratum</th><th>source seq</th><th>body in <code>tree</code></th><th>body in <code>tree-wide</code></th><th><code>tree</code></th><th><code>tree-wide</code></th><th>truncate-tail</th><th>compact-rolling</th></tr></thead>
+<tbody>
+<tr><td>s1-q01-head</td><td>head</td><td>175</td><td>no</td><td>no</td><td>0/4</td><td>0/2</td><td>0/4</td><td>0/5</td></tr>
+<tr><td>s1-q02-head</td><td>head</td><td>558</td><td>no</td><td><b>yes</b></td><td><b>1/5</b></td><td><b>3/4</b></td><td>0/5</td><td>0/5</td></tr>
+<tr><td>s1-q03-head</td><td>head</td><td>18</td><td>no</td><td>no</td><td>0/2</td><td>0/3</td><td>0/5</td><td>0/5</td></tr>
+<tr><td>s1-q04-tail</td><td>tail</td><td>728</td><td>yes</td><td>yes</td><td>0/2</td><td>0/4</td><td>0/5</td><td>0/5</td></tr>
+<tr><td>s1-q05-tail</td><td>tail</td><td>744</td><td>yes</td><td>yes</td><td>0/5</td><td>0/5</td><td>0/5</td><td>0/5</td></tr>
+<tr><td>s1-q06-tail</td><td>tail</td><td>746</td><td>yes</td><td>yes</td><td>0/4</td><td>0/4</td><td><b>3/5</b></td><td><b>5/5</b></td></tr>
+<tr><td>s1-q07-deep</td><td>deep</td><td>55</td><td>no</td><td>no</td><td>0/4</td><td>0/1</td><td>0/5</td><td>0/5</td></tr>
+<tr><td>s1-q08-deep</td><td>deep</td><td>559</td><td>no</td><td>yes</td><td>0/4</td><td>0/3</td><td>0/5</td><td>0/5</td></tr>
+<tr><td>s1-q09-deep</td><td>deep</td><td>41</td><td>no</td><td>no</td><td>0/3</td><td>0/3</td><td>0/5</td><td>0/5</td></tr>
+<tr><td>s1-q10-spanning</td><td>spanning</td><td>173</td><td>no</td><td>no</td><td>0/0</td><td>0/4</td><td>0/5</td><td>0/5</td></tr>
+<tr><td>s1-q11-spanning</td><td>spanning</td><td>467</td><td>no</td><td>yes</td><td>0/2</td><td>0/4</td><td>0/5</td><td>0/5</td></tr>
+<tr><td>s1-q12-spanning</td><td>spanning</td><td>691</td><td>yes</td><td>yes</td><td>0/3</td><td>0/1</td><td>0/5</td><td>0/5</td></tr>
+</tbody></table></div>
+<p class="tcap"><b>Table 4.</b> Every question, its source event, whether the branch containing that event was rendered as a full body in each tree arm, and successes over completed runs in all four arms. W=32,768, same model and epoch. <b>body in <code>tree</code></b> is true when the source event is at or after sequence 639, <b>body in <code>tree-wide</code></b> at or after 359. Two cells in the whole matrix are non-zero. Three questions (q02, q08, q11) gain a rendered source branch when the arm widens; one of them changed score.</p>
+
+<p><b>Measured, and it is the honest size of the finding: the entire width effect is one question.</b> All four successes across both tree arms are on <code>s1-q02-head</code>: one of five completed runs under <code>tree</code>, three of four under <code>tree-wide</code>. Both other head questions source from events 175 and 18, outside even the wide arm's visible span, and score zero in every arm. Three questions gain a rendered source branch when the arm widens, and two of them — q08 (deep) and q11 (spanning) — did not move. So the stratum-level 0.091 against 0.333 rests on a single question at five and four replicates, and any statement about strata is a statement about three questions each.</p>
+
+<p><b>Measured: no width can put the answer in the prompt.</b> Rendering all 21 branch blocks with the assembler's own renderer and searching them for each question's answer literals finds none of the 15 literals across the 12 questions in any of the 21 bodies. That reproduces, against rendered bodies rather than summary prose, the boundary condition already on record in <code>reports/algorithm.md</code>: summaries do not contain the answer. The tail stratum makes the point sharply — the source branch for all three tail questions is rendered as a full body in <em>both</em> arms, and both arms still score 0.000 while the baselines, which show raw text, score 0.200 and 0.333.</p>
+
+<p><b>Hypothesis, not measured: what width buys is fetch aim.</b> Since the answer is in no body, the wide arm's advantage on q02 cannot be recall from the prompt. The recorded tool calls are consistent with aiming instead: the narrow arm's head-stratum fetches went to the task root node and to a file node (<code>loop.ts</code>), while the wide arm's went to branch nodes 489–553 and 554–570 and to the file node <code>summarizer.ts</code> (554–570) — and q02's source event, 558, lies inside branch 554–570, which is a rendered body only in the wide arm. That is a plausible mechanism supported by the fetch identifiers on disk, not an isolated result; nothing in this repository varies visibility while holding search behaviour fixed.</p>
+
+<p>On whether there is a turning point — a width past which more stops helping or starts hurting — the answer is that this fixture cannot locate one. It has two points on the width axis, at one window, with one stratum above the floor. There is no evidence of width hurting head-stratum recall between 2 and 11 bodies, and none that it keeps helping past 11, because 21 is the most the store could show and nothing between 2 and 11, or above 11, has been run. Search behaviour does not explain the difference either: on completed head runs the narrow arm searched on 8 of 11 and the wide arm on 8 of 9.</p>
+
+<h2>4&ensp;What width costs per turn</h2>
+
+<h3>4.1&ensp;The marginal Zone B cost of one more rendered body, from the store</h3>
+
+<p>The rendered cost of a branch body is not its prose. Each block carries the prose plus the rehydration pointers the summarizer is required to produce, and on this store the pointers dominate: over the 21 branches the rendered block is 476 heuristic tokens on average (median 417, range 140–1,372) while the prose alone is 195 (median 181, range 126–305). In real BPE the same blocks are 368 tokens on average (median 299, range 113–1,131). The marginal cost of one more root <em>headline</em>, from the ladder's own accounting, is 228 heuristic tokens — the root block grows from 2,587 to 6,917 tokens between fold levels 2 and 40, which is 19 more headlines. So a body is worth roughly two headlines at the means, and 1.5 at the specific rungs the two arms picked.</p>
+
+<figure>
+<div class="chartwrap"><div id="fig4a"></div></div>
+<div class="chartwrap"><div id="fig4b"></div></div>
+<figcaption><b>Figure 4.</b> The marginal Zone B cost per additional rendered summary, computed from the frozen store. Panel (a): the rendered size of each branch body in heuristic tokens, in the order Zone B fills them, newest first. The horizontal axis is how many bodies are rendered; each point is the cost of that one additional body. The upper dashed line is the mean over all 21 branches (476 tokens) and the lower dashed line is the marginal cost of one root headline (228), the thing a body is traded against. Marginal cost is not a constant: the newest branch alone costs 1,036 tokens and the 8th costs 140. Panel (b): the same series accumulated, against the two body allowances the arms actually had — 1,606 tokens for <code>tree</code> (fold level 16) and 5,114 for <code>tree-wide</code> (fold level 2). Where each cumulative curve crosses its allowance is where the body count stops: 2 bodies and 11 bodies, the two ringed points, which is how the recorded <code>branchesSurviving</code> values are reproduced. Neither baseline appears in either panel: both render zero summaries, so their Zone B cost is zero tokens by construction.</figcaption>
+</figure>
+
+<h3>4.2&ensp;Measured per-turn cost: the reallocation is nearly free, and the run-level gap is not Zone B</h3>
+
+<p>Because Zone B is budget-bound, showing 9 more bodies did not add 9 bodies' worth of tokens: it swapped 14 headlines for them. The assembled Zone B is 7,633 heuristic tokens under <code>tree</code> and 7,569 under <code>tree-wide</code> — the wide arm's section is 64 tokens <em>smaller</em>. The provider's own count of the first turn's prompt, before any retrieval has happened, is the clean per-turn measurement: median 9,066 tokens under <code>tree</code> and 9,415 under <code>tree-wide</code> over 38 completed runs each, a difference of 349 tokens or 3.9%. The sign is opposite to the heuristic-unit comparison, which is expected at this magnitude — a dense index of headlines, identifiers and hashes and a page of prose do not tokenize at the same rate, and the heuristic tokenizer is calibrated on neither — but both numbers agree that the reallocation costs a few hundred tokens per turn, not a few thousand.</p>
+
+<div class="tablewrap"><table>
+<thead><tr><th>arm</th><th>turn 1</th><th>turn 2</th><th>turn 3</th><th>turn 4</th><th>turn 5</th><th>turn 6</th><th>median run input</th><th>median turns</th></tr></thead>
+<tbody>
+<tr><td><code>tree</code> (2 bodies)</td><td>9,066</td><td>11,642</td><td>12,133</td><td>13,312</td><td>12,458</td><td>13,857</td><td>37,513</td><td>3</td></tr>
+<tr><td><code>tree-wide</code> (11 bodies)</td><td>9,415</td><td>12,338</td><td>13,006</td><td>15,153</td><td>17,301</td><td>20,321</td><td>49,681</td><td>3</td></tr>
+<tr><td>runs reaching the turn — <code>tree</code></td><td>38</td><td>32</td><td>24</td><td>12</td><td>6</td><td>2</td><td>38</td><td>38</td></tr>
+<tr><td>runs reaching the turn — <code>tree-wide</code></td><td>38</td><td>36</td><td>29</td><td>12</td><td>6</td><td>2</td><td>38</td><td>38</td></tr>
+<tr><td>truncate-tail (baseline)</td><td>22,642</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>22,642</td><td>1</td></tr>
+<tr><td>compact-rolling (baseline)</td><td>13,145</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>13,145</td><td>1</td></tr>
+</tbody></table></div>
+<p class="tcap"><b>Table 5.</b> Median prompt input tokens per turn, both widths against both baselines, W=32,768, same model and epoch, completed runs only. The per-turn medians are taken over the runs that reached that turn, and those counts are given as their own rows because the denominator shrinks with depth; the median run input is over all 38 completed runs and is not the sum of the per-turn medians. Both baselines answer in one turn, so they have a single column. Cache read and cache write are zero on every row of both files, so every token here is billed as fresh input.<sup>†</sup></p>
+
+<figure>
+<div class="chartwrap"><div id="fig5"></div></div>
+<figcaption><b>Figure 5.</b> Median prompt input tokens against turn index, both widths against both baselines, from Table 5. The two solid lines are the tree arms — green <code>tree</code>, blue <code>tree-wide</code> — and the two dashed horizontal lines are the single-turn baselines, truncate-tail at 22,642 tokens and compact-rolling at 13,145. Both tree arms start below both baselines and cross them: the gap between the two widths is 349 tokens on turn 1, where it is a pure Zone B difference, and 6,464 tokens by turn 6, where it is retrieval payload. The point count behind each marker falls from 38 to 2 with depth, so the right-hand end of both lines is two runs per arm.</figcaption>
+</figure>
+
+<p>The run-level difference is much larger than the per-turn one: median input over completed runs is 37,513 tokens for <code>tree</code> and 49,681 for <code>tree-wide</code>, a gap of 12,168. That gap is real and it is not Zone B. Median turns are 3 in both arms, so it is not turn count in the median either, though the wide arm's distribution runs slightly longer (mean 3.24 against 3.00, and 36 against 32 runs reaching a second turn). What Table 5 shows is that the two arms diverge <em>with depth</em>: 349 tokens apart on turn 1, 696 on turn 2, 6,464 by turn 6. Since Zone A, Zone B and Zone C are all held fixed by budget, the growing part is what gets appended after Zone C — search and fetch payloads — and the wide arm fetched more often (26 of 38 completed runs against 21 of 38). Median output tokens are 469 against 377, a small fraction of the gap.</p>
+
+<p>This is where the published analysis and the reproduction part company most sharply, and §7 records it: the figure of ~465 tokens per additional visible summary, and the ~4,185-per-turn and ~12,555-per-run predictions built on it, treat the extra bodies as an addition to <code>tree</code>'s Zone B rather than a substitution inside a fixed budget, and they use the Zone B <em>budget</em> (7,701) where the assembled size (7,569) belongs. The prediction landing within 3% of the measured 12,168-token gap is therefore a coincidence of magnitude, not a confirmation that the gap is where the summaries are.</p>
+
+<h3>4.3&ensp;Two cost regimes, and only one of them has been measured for width</h3>
+
+<p><b>Measured, this fixture:</b> <code>usage.cacheRead</code> and <code>usage.cacheWrite</code> are zero on every row of both result files. This OpenRouter endpoint bills no cache, so every token of Zone B is repriced as fresh input on every turn, and cost scales as (tokens in Zone B) × (turns). In that regime the reallocation is nearly free because Zone B's size barely changes.</p>
+
+<p><b>Not measured for width:</b> the live Anthropic suite, where a stable prefix is cache-read at roughly a tenth of the input rate and a rewrite is charged at the cache-write rate. Two facts from other passes bound what that means without settling it. The decomposition of the live suite's overhead on one scenario attributes about 69.5% of the token gap to re-reading the prompt over extra turns and about 24.0% to Zone A per turn, with everything else at 6.5% — it holds branch count fixed and is not a width finding. And every re-summarize pass rewrites Zone B's text and invalidates the cached prefix, producing 7.7k–27.4k cache-write tokens per run where the native transcript pays none. So under caching the cost of width is not "N bodies × K tokens" but "N bodies × K tokens, amortised until the next summarize pass, then rewritten once at the write rate" — a coupling between this dimension and the summary-timing dimension. No caching-regime width sweep exists.</p>
+
+<h2>5&ensp;The three candidate policies</h2>
+
+<h3>5.1&ensp;Fit-derived — keep it, but it does not decide the allocation</h3>
+
+<p>The policy is the one already implemented: walk a ladder and return the first rung whose predicate — assemble the real Zone B and ask whether it fits its budget with at least one body surviving — passes. It is genuinely dynamic per window and per store, it needs no notion of task difficulty, it has unit tests, and it contains no guessed constant: the numbers it consumes are W, the measured tokenizer ratio, and the store's own rendered sizes. Nothing in this pass argues against it as the mechanism that sets the <em>ceiling</em>.</p>
+
+<p>What this pass adds is that the ceiling is not the decision. Six of seven rungs pass the predicate at W=32,768 (Table 1), and the predicate is indifferent among them; the rung that gets used is whichever end of the ladder the arm's entry in <code>ARM_ROOT_LADDER</code> points at. The measured data says that choice matters: same store, same window, same budget, and the body-maximising direction scores 0.333 against the headline-maximising direction's 0.091 on the one stratum where either is above zero — while §3 also says that result is one question at nine and eleven completed runs, so "matters" here means "moved the only non-zero cell", not "is established". Fit-derived as a sufficient policy is falsified by its own data — a deliberately narrower rung than the largest-passing one scored higher — while fit-derived as a ceiling mechanism is untouched. The gap is a missing allocation rule, and the shipped default (<code>tree</code>, headline-rich) sits on the side of that gap the data did not favour.</p>
+
+<h3>5.2&ensp;Demand-driven — unnecessary, because search occurrence does not track the bottleneck</h3>
+
+<p>The proposal is to widen only when the model reveals it needs breadth by calling <code>context_search</code> or <code>context_fetch</code>, rather than estimating need in advance — the same argument that removed the turn ceiling. Every run logs whether it searched and fetched, so the proposal can be tested against data already on disk.</p>
+
+<p>It comes out unnecessary as specified. On the head stratum the narrow arm searched on 8 of 11 completed runs (73%) and the wide arm on 8 of 9 (89%), and the narrow arm still scored 0.091 against 0.333. The narrow arm is not failing to search; it searches at nearly the same rate and misses anyway. The reason is visible in the question set's own precomputed retrieval ranks: the two head questions that nobody answered rank 15th and 15th under the harness's lexical scorer, and the one that was answered ranks 11th — all inside the default result limit of 20, none near its top. A model that searches and receives a hit from the tail of the result list has no signal telling it that more width would have helped; "I searched" does not distinguish a search that worked from one that returned something weak. What is <em>not</em> falsified is a refinement keyed on search confidence rather than search occurrence — trigger a widen when the best hit is weak — and that refinement is untested because nothing logs a live confidence score beside the call, only the offline rank used to build the question set.</p>
+
+<h3>5.3&ensp;User-selected — unnecessary, because no single width serves a whole session</h3>
+
+<p>The proposal is an effort dial set by the user or the caller, described in the algorithm document as a reasonable escape hatch that must not be the mechanism. The stratum breakdown is a direct argument against it as a default, and it needs no new run: going from 2 bodies to 11 helped one question type and changed nothing for the other three, while costing the per-turn reallocation on every turn regardless of which type the current question is. A dial can only be set per session — nothing about its affordance lets it change per question inside one turn sequence — so a user would be choosing a single width for a session whose questions demonstrably want different ones. What would overturn that verdict is evidence that question mix is knowable in advance and stable within a session, and nothing here measures it: <code>s1</code>'s four strata are drawn from one frozen trace, not from a live session whose composition could be observed and declared up front.</p>
+
+<h3>5.4&ensp;Two earlier width policies that never engaged</h3>
+
+<p>For completeness, because they are sometimes read as width evidence: two earlier loops tried the opposite question — how <em>few</em> branches the model needs — through a top-k filter over branches rather than a fold-ladder walk. Neither ever fired. The segmenter merges consecutive same-type tool calls into one phase, so a 13-tool-call task produced only about 3 branches against a cutoff of 3, and the floor property (branches ≤ k means no selection, byte-identical prompt) held on every run: three iterations in the first attempt, and three more with a smarter idf-cosine and farthest-point scorer in the second. Both are honest nulls about pruning a branch count that was never large, which is a different claim from this fixture's, where 21 branches exist and the question is how many to show.</p>
+
+<h2>6&ensp;Does the fit-derived ceiling make the other two unnecessary?</h2>
+
+<p>Yes for the two alternatives, no for the question they were meant to answer. Fit-derived makes the maximum a function of the window and the store with no guessed constant, and that part is confirmed at both windows in this fixture. But more than one allocation of the same budget satisfies "fits with at least one body", and which one is used is decided today by a hand-picked ladder direction. Demand-driven does not fill that gap, because search occurrence does not track where the bottleneck is; a user dial does not fill it, because no single width serves a session. What fills it is a fit-derived-shaped fix: replace "walk this one hand-picked direction" with "walk toward maximising the number of rendered bodies subject to the same fits predicate", and then measure whether that direction wins.</p>
+
+<p>On present evidence the recommendation is to keep fit-derived as the ceiling mechanism, treat the headline-versus-body split as its one remaining open parameter, and not change the shipped headline-rich default on the strength of one question in one scenario at one window. The experiment that settles the allocation question is a rung sweep, and it needs no new code: <code>ARM_ROOT_LADDER</code> already accepts a per-arm ladder, so a one-element ladder pins a rung. Running fold levels 12, 8, 6 and 4 on the head stratum turns two points on the width axis into six and is the only design that can locate a turning point. Its cost is 4 rungs × 3 questions × 5 replicates = 60 runs; at the head-stratum token rates already measured (340,147 tokens for <code>tree</code>'s head cell, 611,556 for <code>tree-wide</code>'s) that is roughly 1.9M tokens, against the 4.1M the two existing width arms have already spent across all four strata. Because the fit predicate is deterministic and offline, every rung's assembled Zone B is known before a single call is made; only the grading needs the model.</p>
+
+<h2>7&ensp;Where the reproduction disagrees with the analysis it publishes</h2>
+
+<p>Six figures in <code>eval/plans/tuning/01-branch-count.md</code> did not reproduce. In every case the reproduced value is the one used above.</p>
+
+<ol>
+<li><b>The per-summary token statistics are a different tokenizer.</b> The analysis reports mean 120.7, median 110, range 75–197 as cl100k counts of the 21 branch summaries. cl100k gives mean 120.5, median 109, range 76–196; the published triple is <code>gpt-tokenizer</code>'s default export, which is <code>o200k_base</code>. The harness itself imports <code>gpt-tokenizer/encoding/cl100k_base</code> (<code>transplant.mjs:85</code>), so cl100k is the right label and the numbers move by less than a token. Neither figure is the cost of showing a summary, which is the rendered block (mean 476 heuristic, 368 cl100k), not the prose.</li>
+<li><b>~465 heuristic tokens per additional visible summary</b> is computed as (7,701 − 2,587) / 11, where 7,701 is the Zone B <em>budget</em>. The assembled Zone B at that rung is 7,569, and the eleven bodies are 4,982 tokens, so the per-body figure for that set is 453, the mean over all 21 branches is 476, and the marginal cost of the 9 bodies the wide arm adds over the narrow one is 383 each.</li>
+<li><b>~4,185 extra heuristic tokens per turn and ~12,555 per run do not reproduce as a width cost.</b> They treat the extra bodies as added to <code>tree</code>'s Zone B, but the budget is fixed and the bodies replace 14 root headlines: assembled Zone B is 7,633 under <code>tree</code> and 7,569 under <code>tree-wide</code>. The measured first-turn prompt difference is 349 tokens.</li>
+<li><b>The agreement between prediction and measurement is not a confirmation.</b> The measured 12,168-token run gap is 3.1% below the 12,555 predicted, and the analysis reads that as confirming the gap lives in visible summaries. Per-turn accounting says otherwise: the gap is 349 tokens on turn 1, where Zone B is the only difference, and 6,464 by turn 6, where retrieval payload is.</li>
+<li><b>The 16k ladder does not fail the way it is described.</b> "Every rung from 40 down to 4 fails on <code>overBudget:["B"]</code>" holds for 40, 16, 12 and 8; rungs 6 and 4 fit the budget (3,538 and 3,105 against 3,850) and fail only for leaving no room for one body. The same distinction applies at 32,768 to rung 40, which fits and still fails.</li>
+<li><b>The 16k coverage figure is inverted.</b> "Visibility ends at seq 732 out of 754 (about 3% of L0 excluded)" describes the opposite of what the verdict says and what the store shows: the single visible body <em>covers</em> about 3% of the log (23 of 754 events); the other 97% is outside Zone B.</li>
+</ol>
+
+<p>Two smaller descriptive slips, corrected above without affecting a conclusion: the store holds 21 leaf summaries and one root summary, not "22 leaf summaries" (the manifest's <code>summaries: 22</code> counts both, and the root carries 1,538 appended versions from repeated ladder walks); and the head-stratum "all rows" mean of 0.273 for <code>tree-wide</code> is the mean over the 11 rows carrying a score, which includes two fabricated zeros from harness-stopped runs — scoring all 15 attempted rows as zero gives 0.200, and the completed-only figure is 0.333.</p>
+
+<p>Everything else reproduced exactly: the per-window <code>rootKeep</code>, root-block and <code>branchesSurviving</code> table; the ladder's recorded pass/fail rows at both windows; 0.091 against 0.333 on head with both baselines at 0.000; 0.200 and 0.333 for the baselines on tail; ~228 heuristic tokens per root headline; median run input 37,513 against 49,681 and its 12,168 gap; median turns 3 and 3 with means 3.00 and 3.24; median output 377 against 469; zero cache read and write on every row; head-stratum search rates of 8 of 11 and 8 of 9; the retrieval ranks 15, 11 and 15; and 21 branch nodes each with exactly one summary version.</p>
+
+<h2>8&ensp;Open items and recommendations</h2>
+
+<p>Ordered by expected information gained per unit of effort, measured in tokens and runs spent. The first three cost nothing but reading files already on disk.</p>
+
+<ol>
+<li><b>Correlate retrieval rank with score among runs that searched (zero runs, zero tokens).</b> Every row records its search queries; every question records its offline retrieval rank. If score tracks rank among rows that searched, a confidence-triggered widen is worth building and §5.2's verdict is refined rather than final. If score is uncorrelated with rank even when the model searched, the miss is in how results are used and no width policy addresses it. This is the cheapest remaining discriminator between the fit-derived and demand-driven policies.</li>
+<li><b>Re-derive every stratum mean in the committed fixtures with harness-stopped rows excluded (zero runs, zero tokens).</b> The nine rows identified here carry <code>score: 0</code> with an empty answer, and the harness has since been fixed to write <code>null</code>. Any figure quoted from these files before that fix understates the tree arms; the one that matters most is <code>tree-wide</code>'s head cell, published as 0.273 and actually 0.333 over completed runs. Re-emitting the fixtures' summary tables under the corrected rule removes a standing source of fabricated zeros from every later report.</li>
+<li><b>Publish the ladder reconstruction as a test (zero runs, zero tokens).</b> The reconstruction in Tables 1 and 2 — render each body, fill the Zone B remainder newest-first — reproduces every recorded <code>branchesSurviving</code> and every pass/fail row at both windows from the store alone. As an assertion it would catch a change in the fold or drop-oldest rules offline, and it is the instrument the rung sweep in item 4 needs anyway.</li>
+<li><b>Sweep the middle rungs on the head stratum (60 runs, ≈1.9M tokens).</b> Fold levels 12, 8, 6 and 4 pass the predicate at W=32,768 and render 5, 6, 8 and 10 bodies. Pinning each as a one-element ladder needs no new code and turns two points on the width axis into six, which is the only design in reach that can locate a turning point or show the effect is monotone in body count. Run it on the head stratum first, because it is the only stratum with any signal, and hold the two baselines from the same batch.</li>
+<li><b>Replicate the two existing endpoints on a second scenario (120 runs, ≈4M tokens).</b> The current effect is one question in one scenario at one window. A second frozen store run through the same two ladder directions, everything else fixed, is what promotes "walk toward maximising rendered bodies" from an observation to a default — or leaves the shipped headline-rich default standing. Lower priority than item 4 only because it costs twice as much and cannot find a turning point.</li>
+<li><b>Give the live suite a derived fold level (implementation, no new runs to decide it).</b> The portability harness derives the rung per window and per store; the live suite still uses the constant 40 (<code>packages/core/src/config.ts:117</code>). On this store, fold level 40 renders no body at all at W=32,768 and exceeds the whole Zone B budget at W=16,384, so the constant is not merely unvalidated, it is known to fail on the one store that has been measured. Porting the derivation is a defect fix, not an experiment.</li>
+<li><b>Measure width once under caching (6 runs per arm on one live scenario).</b> Everything above is from an endpoint that bills no cache. Under a cache the same reallocation is nearly free while the prefix is stable and expensive at each rewrite, so a width policy chosen here may be the wrong one there. This is last because it cannot be interpreted until the summary-timing dimension settles when Zone B is rewritten; running it before that measures the interaction, not the dimension.</li>
+</ol>
+
+<h2>References</h2>
+<p style="font-size:.9rem;">[1]&ensp;<code>eval/plans/tuning/01-branch-count.md</code> — the analysis this report publishes, with its own citation trail.<br>
+[2]&ensp;<code>reports/algorithm.md</code> — the four rules, the tier-2 <code>root keep</code> row, and the boundary condition that summaries do not contain the answer.<br>
+[3]&ensp;<code>eval/scripts/transplant.mjs</code> — <code>ROOT_KEEP_LADDER</code> (line 385), <code>ARM_ROOT_LADDER</code> (398–410), <code>ladderFor</code> (423), <code>deriveRootKeep</code> (450), the fit predicate (564–581), the cl100k import (85), and the harness-stopped grading rule (3352–3366).<br>
+[4]&ensp;<code>eval/fixtures/transplant/s1/e1b289c32f40/</code> — <code>manifest.json</code> (store hashes, windows, fractions, ratio 0.851, <code>root_by_window</code>), <code>gates.json</code> (the recorded ladder per window), <code>root-ladder.json</code> (root block size per rung), <code>questions.json</code> (twelve questions, strata, answer literals, offline retrieval ranks), and <code>results/run-W32768-truncate-tail+compact-rolling+tree-qwen_qwen-2.5-72b-instruct.json</code> and <code>results/run-W32768-tree-wide-qwen_qwen-2.5-72b-instruct.json</code>.<br>
+[5]&ensp;<code>eval/fixtures/transplant/s1/store/tree.db</code> — 21 branch nodes with one summary version each; the rendered-body sizes in §4 were produced by <code>packages/core/dist/assemble/format.js</code>'s <code>renderSummaryBlock</code> and <code>HeuristicTokenizer</code> against a read-only query of this store.<br>
+[6]&ensp;<code>eval/fixtures/transplant/JUDGE-VERDICT.md:145-171</code> — R4 and R5 (why the predicate assembles the real prompt), R6 (the pre-registered ablation trigger and the headline-rich posture), and the 16k retrieval-only caveat.<br>
+[7]&ensp;<code>eval/plans/loop9-item3-sw3-overhead.md</code> — the live suite's overhead decomposition (69.5% re-read, 24.0% Zone A, 6.5% other), cited only to show it holds branch count fixed.<br>
+[8]&ensp;<code>reports/metrics/context-tree-dsa-arm-experiments.md</code> §4 and <code>reports/metrics/context-tree-long-task-dsa-iterations.md</code> §4–§5 — the two branch-pruning arms that never fired, and the 7.7k–27.4k cache-write-on-rewrite measurement.</p>
+
+<footer><sup>†</sup> In United States dollars, at OpenRouter's <code>qwen/qwen-2.5-72b-instruct</code> rates of $0.36 per million input tokens and $0.40 per million output, with cache read and cache write billed at zero by this endpoint (<code>packages/core/src/models/cost.ts:83</code>), the median completed run costs $0.0082 under the truncate-tail baseline and $0.0048 under compact-rolling, against $0.0137 under <code>tree</code> and $0.0181 under <code>tree-wide</code>. Dollars appear here once, beside the baselines they are relative to; every claim in this report is made in tokens, turns, graded score and success counts.<br><br>
+DS-STAR dimension 1 · no new model runs · scores from the <code>s1</code> transplant fixture at W=32,768, qwen-2.5-72b-instruct, five replicates per question, completed runs only · Zone B token figures reconstructed offline from the frozen store with the assembler's own renderer and tokenizer · September 2, 2026.</footer>
+</main>
+<script>
+const LADDER32 = [
+  { keep: 2,  head: 2,  root: 2587, bodies: 11, body: 4982 },
+  { keep: 4,  head: 4,  root: 3105, bodies: 10, body: 4467 },
+  { keep: 6,  head: 6,  root: 3538, bodies: 8,  body: 3965 },
+  { keep: 8,  head: 8,  root: 3967, bodies: 6,  body: 3091 },
+  { keep: 12, head: 12, root: 4771, bodies: 5,  body: 2575 },
+  { keep: 16, head: 16, root: 6095, bodies: 2,  body: 1538 },
+  { keep: 40, head: 21, root: 6917, bodies: 0,  body: 0 }
+];
+const BODY_TOKENS = [1036, 502, 449, 329, 259, 516, 734, 140, 234, 268, 515, 374, 539, 288, 417, 577, 300, 382, 246, 1372, 527];
+const SCORES = [
+  { stratum: 'head',     tree: [0.091, 11], wide: [0.333, 9],  trunc: [0.000, 14], comp: [0.000, 15] },
+  { stratum: 'tail',     tree: [0.000, 11], wide: [0.000, 13], trunc: [0.200, 15], comp: [0.333, 15] },
+  { stratum: 'deep',     tree: [0.000, 11], wide: [0.000, 7],  trunc: [0.000, 15], comp: [0.000, 15] },
+  { stratum: 'spanning', tree: [0.000, 5],  wide: [0.000, 9],  trunc: [0.000, 15], comp: [0.000, 15] }
+];
+const PERTURN = {
+  tree: [9066, 11642, 12133, 13312, 12458, 13857],
+  wide: [9415, 12338, 13006, 15153, 17301, 20321]
+};
+const WARM = 'var(--warm)', ACC = 'var(--accent)', COOL = 'var(--cool)', GREY = 'var(--grey)';
+
+/* One xy chart: numeric or categorical x, line series, dashed h-lines, ringed marks. */
+function chart(id, cfg){
+  const W = 680, H = cfg.h, L = 66, R = cfg.right == null ? 108 : cfg.right, TP = 34, BT = 50;
+  const ax0 = L, ax1 = W - R, ay0 = H - BT, ay1 = TP;
+  const ymin = cfg.ymin == null ? 0 : cfg.ymin;
+  const X = v => ax0 + (v - cfg.xmin) / (cfg.xmax - cfg.xmin) * (ax1 - ax0);
+  const Y = v => ay0 - (v - ymin) / (cfg.ymax - ymin) * (ay0 - ay1);
+  let g = '';
+
+  cfg.yticks.forEach(t => {
+    g += '<line x1="' + ax0 + '" y1="' + Y(t) + '" x2="' + ax1 + '" y2="' + Y(t) +
+         '" stroke="var(--line)" stroke-width="1"/>' +
+         '<text x="' + (ax0 - 10) + '" y="' + (Y(t) + 4) + '" text-anchor="end">' +
+         (cfg.ykilo ? (t ? (t / 1000) + 'k' : '0') : t) + '</text>';
+  });
+  g += '<text x="' + (ax0 - 10) + '" y="' + (ay1 - 14) + '" text-anchor="end">' + cfg.ytitle + '</text>';
+  cfg.xticks.forEach(t => {
+    const lab = cfg.xlabels ? cfg.xlabels[t] : t;
+    g += '<text x="' + X(t) + '" y="' + (ay0 + 20) + '" text-anchor="middle">' + lab + '</text>';
+  });
+  g += '<text x="' + ((ax0 + ax1) / 2) + '" y="' + (ay0 + 42) + '" text-anchor="middle">' + cfg.xtitle + '</text>';
+
+  (cfg.hlines || []).forEach(hl => {
+    g += '<line x1="' + ax0 + '" y1="' + Y(hl.y) + '" x2="' + ax1 + '" y2="' + Y(hl.y) +
+         '" stroke="' + (hl.color || 'var(--muted)') + '" stroke-width="1" stroke-dasharray="5 4" opacity=".8"/>' +
+         '<text x="' + (ax1 - 4) + '" y="' + (Y(hl.y) - 6) + '" text-anchor="end">' + hl.label + '</text>';
+  });
+
+  (cfg.bars || []).forEach(b => {
+    const y0 = Y(b.from), y1 = Y(b.to), w = cfg.barw == null ? 16 : cfg.barw;
+    g += '<rect x="' + (X(b.x) - w / 2) + '" y="' + Math.min(y0, y1) + '" width="' + w +
+         '" height="' + Math.max(1, Math.abs(y0 - y1)) + '" fill="' + b.color + '" opacity="' +
+         (b.op == null ? 1 : b.op) + '"/>';
+  });
+
+  cfg.series.forEach(s => {
+    const op = s.op == null ? 1 : s.op;
+    if (s.pts.length > 1) {
+      g += '<polyline fill="none" stroke="' + s.color + '" stroke-width="' + (s.w == null ? 2 : s.w) +
+           '" opacity="' + op + '" stroke-linejoin="round" points="' +
+           s.pts.map(p => X(p[0]).toFixed(1) + ',' + Y(p[1]).toFixed(1)).join(' ') + '"/>';
+    }
+    if (s.dot) s.pts.forEach(p => {
+      g += '<circle cx="' + X(p[0]).toFixed(1) + '" cy="' + Y(p[1]).toFixed(1) + '" r="' + s.dot +
+           '" fill="' + s.color + '" opacity="' + op + '"/>';
+    });
+  });
+
+  (cfg.marks || []).forEach(m => {
+    g += '<circle cx="' + X(m.x).toFixed(1) + '" cy="' + Y(m.y).toFixed(1) + '" r="5" fill="none" stroke="' +
+         m.color + '" stroke-width="2"/>' +
+         '<text x="' + (X(m.x) + (m.dx == null ? 9 : m.dx)).toFixed(1) + '" y="' +
+         (Y(m.y) + (m.dy == null ? -9 : m.dy)).toFixed(1) + '" text-anchor="' +
+         (m.anchor || 'start') + '" fill="' + m.color + '">' + m.label + '</text>';
+  });
+  (cfg.ends || []).forEach(e => {
+    g += '<text x="' + (X(e.x) + 8).toFixed(1) + '" y="' + (Y(e.y) + 4).toFixed(1) +
+         '" class="serieslabel" fill="' + e.color + '">' + e.label + '</text>';
+  });
+
+  let lx = ax0;
+  (cfg.legend || []).forEach(l => {
+    g += '<rect x="' + lx + '" y="' + (ay1 - 26) + '" width="13" height="3" fill="' + l.color + '"/>' +
+         '<text x="' + (lx + 19) + '" y="' + (ay1 - 20) + '">' + l.label + '</text>';
+    lx += 38 + l.label.length * 6.7;
+  });
+
+  const host = document.getElementById(id);
+  if (host == null) return null;
+  host.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + cfg.alt + '">' + g + '</svg>';
+  return host.firstChild;
+}
+
+/* Grouped horizontal bars: one group per row, one bar per arm. */
+function groupChart(id, cfg){
+  const W = 680, rowH = cfg.rowH, gap = 26, TP = 26, LB = 108;
+  const H = TP + cfg.rows.length * (cfg.rows[0].bars.length * rowH + gap) + 34;
+  const ax0 = LB, ax1 = W - 190;
+  const X = v => ax0 + (v / cfg.xmax) * (ax1 - ax0);
+  let g = '', y = TP;
+  let lx = ax0;
+  cfg.legend.forEach(l => {
+    g += '<rect x="' + lx + '" y="' + (TP - 20) + '" width="12" height="9" fill="' + l.color + '"/>' +
+         '<text x="' + (lx + 17) + '" y="' + (TP - 12) + '">' + l.label + '</text>';
+    lx += 30 + l.label.length * 6.2;
+  });
+  cfg.rows.forEach(row => {
+    const groupTop = y;
+    row.bars.forEach((b, i) => {
+      const by = groupTop + i * rowH;
+      const w = Math.max(1.2, X(b.v) - ax0);
+      g += '<rect x="' + ax0 + '" y="' + by + '" width="' + w.toFixed(1) + '" height="' + (rowH - 3) +
+           '" fill="' + b.color + '"/>' +
+           '<text x="' + (ax0 + w + 7).toFixed(1) + '" y="' + (by + rowH - 6) + '" class="vlabel" fill="' +
+           (b.v > 0 ? b.color : 'var(--muted)') + '">' + b.v.toFixed(3) + ' (n=' + b.n + ')</text>';
+    });
+    g += '<text x="' + (ax0 - 10) + '" y="' + (groupTop + (row.bars.length * rowH) / 2 + 3) +
+         '" text-anchor="end">' + row.label + '</text>';
+    y = groupTop + row.bars.length * rowH + gap;
+  });
+  g += '<text x="' + ((ax0 + ax1) / 2) + '" y="' + (H - 8) + '" text-anchor="middle">' + cfg.xtitle + '</text>';
+  const host = document.getElementById(id);
+  if (host == null) return null;
+  host.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + cfg.alt + '">' + g + '</svg>';
+  return host.firstChild;
+}
+
+function drawFigures(){
+  const xi = LADDER32.map((r, i) => i);
+  const labels = {};
+  LADDER32.forEach((r, i) => { labels[i] = String(r.keep); });
+
+  chart('fig1', {
+    h: 320, xmin: -0.35, xmax: 6.35, xticks: xi, xlabels: labels,
+    ymin: 0, ymax: 22, yticks: [0, 5, 10, 15, 20], ytitle: 'count',
+    xtitle: 'fold level (rootKeep), ladder order', right: 132,
+    alt: 'Headlines rendered rise with the fold level while rendered summary bodies fall, crossing between rungs 6 and 8.',
+    series: [
+      { color: WARM, dot: 3.2, pts: LADDER32.map((r, i) => [i, r.head]) },
+      { color: ACC,  dot: 3.2, pts: LADDER32.map((r, i) => [i, r.bodies]) }
+    ],
+    marks: [
+      { x: 5, y: 2,  color: ACC,  label: 'tree: 2 bodies', anchor: 'end', dx: -9 },
+      { x: 0, y: 11, color: ACC,  label: 'tree-wide: 11 bodies', dx: 9, dy: -9 },
+      { x: 5, y: 16, color: WARM, label: 'tree: 16 headlines', anchor: 'end', dx: -9 },
+      { x: 0, y: 2,  color: WARM, label: 'tree-wide: 2 headlines', dx: 9, dy: 16 }
+    ],
+    legend: [
+      { color: WARM, label: 'root headlines rendered' },
+      { color: ACC,  label: 'summary bodies rendered' }
+    ]
+  });
+
+  const bars = [];
+  LADDER32.forEach((r, i) => {
+    bars.push({ x: i, from: 0, to: r.root, color: WARM });
+    if (r.body > 0) bars.push({ x: i, from: r.root, to: r.root + r.body, color: ACC });
+  });
+  chart('fig2', {
+    h: 330, xmin: -0.5, xmax: 6.5, xticks: xi, xlabels: labels,
+    ymin: 0, ymax: 8600, yticks: [0, 2000, 4000, 6000, 8000], ytitle: 'heuristic tokens', ykilo: true,
+    xtitle: 'fold level (rootKeep), ladder order', right: 118, barw: 34,
+    alt: 'Zone B token composition per fold level: the root index block grows and the body allowance shrinks, with the total nearly constant across passing rungs.',
+    hlines: [
+      { y: 7701, label: 'Zone B budget, W=32,768' },
+      { y: 3850, label: 'Zone B budget, W=16,384' }
+    ],
+    bars: bars,
+    series: [
+      { color: GREY, w: 1.4, op: 0.9, pts: LADDER32.map((r, i) => [i, r.root + r.body]) }
+    ],
+    marks: [
+      { x: 5, y: 7633, color: ACC, label: 'tree', anchor: 'end', dx: -10, dy: -12 },
+      { x: 0, y: 7569, color: ACC, label: 'tree-wide', dx: 10, dy: -12 }
+    ],
+    legend: [
+      { color: WARM, label: 'root index block' },
+      { color: ACC,  label: 'rendered summary bodies' },
+      { color: GREY, label: 'Zone B assembled total' }
+    ]
+  });
+
+  groupChart('fig3', {
+    rowH: 15, xmax: 0.36, xtitle: 'mean graded score over completed runs (n per bar)',
+    alt: 'Mean graded score by stratum for both widths and both baselines; only head under the wide arm, and tail under the two baselines, are above zero.',
+    legend: [
+      { color: ACC,  label: 'tree (2 bodies)' },
+      { color: COOL, label: 'tree-wide (11 bodies)' },
+      { color: WARM, label: 'truncate-tail' },
+      { color: GREY, label: 'compact-rolling' }
+    ],
+    rows: SCORES.map(s => ({
+      label: s.stratum,
+      bars: [
+        { v: s.tree[0],  n: s.tree[1],  color: ACC },
+        { v: s.wide[0],  n: s.wide[1],  color: COOL },
+        { v: s.trunc[0], n: s.trunc[1], color: WARM },
+        { v: s.comp[0],  n: s.comp[1],  color: GREY }
+      ]
+    }))
+  });
+
+  chart('fig4a', {
+    h: 280, xmin: 1, xmax: 21, xticks: [1, 5, 10, 15, 21],
+    ymin: 0, ymax: 1500, yticks: [0, 500, 1000, 1500], ytitle: 'heuristic tokens', ykilo: false,
+    xtitle: '(a) rendered body number, newest first', right: 96,
+    alt: 'The rendered cost of each additional summary body, newest first, against the mean body cost and the marginal cost of one root headline.',
+    hlines: [
+      { y: 476, label: 'mean body, 476' },
+      { y: 228, label: 'one headline, 228' }
+    ],
+    series: [
+      { color: ACC, dot: 3, pts: BODY_TOKENS.map((v, i) => [i + 1, v]) }
+    ],
+    legend: [{ color: ACC, label: 'cost of that one body' }]
+  });
+
+  let cum = 0;
+  const cumPts = BODY_TOKENS.map((v, i) => { cum += v; return [i + 1, cum]; });
+  chart('fig4b', {
+    h: 300, xmin: 1, xmax: 21, xticks: [1, 5, 10, 15, 21],
+    ymin: 0, ymax: 10500, yticks: [0, 2500, 5000, 7500, 10000], ytitle: 'heuristic tokens', ykilo: true,
+    xtitle: '(b) bodies rendered, newest first', right: 116,
+    alt: 'Cumulative body tokens against the two body allowances, showing why the two arms stop at 2 and 11 rendered bodies.',
+    hlines: [
+      { y: 5114, label: 'tree-wide allowance, 5,114' },
+      { y: 1606, label: 'tree allowance, 1,606' }
+    ],
+    series: [
+      { color: ACC, dot: 2.6, pts: cumPts }
+    ],
+    marks: [
+      { x: 2,  y: 1538, color: COOL, label: 'tree stops: 2', dx: 9, dy: 14 },
+      { x: 11, y: 4982, color: COOL, label: 'tree-wide stops: 11', dx: 9, dy: 14 }
+    ],
+    legend: [{ color: ACC, label: 'cumulative body tokens' }]
+  });
+
+  chart('fig5', {
+    h: 320, xmin: 1, xmax: 6, xticks: [1, 2, 3, 4, 5, 6],
+    ymin: 0, ymax: 24000, yticks: [0, 6000, 12000, 18000, 24000], ytitle: 'tokens', ykilo: true,
+    xtitle: 'turn (one model call)', right: 128,
+    alt: 'Median prompt input per turn for both widths against the two single-turn baselines; the two widths are 349 tokens apart on turn 1 and 6,464 apart on turn 6.',
+    hlines: [
+      { y: 22642, label: 'truncate-tail, 1 turn' },
+      { y: 13145, label: 'compact-rolling, 1 turn' }
+    ],
+    series: [
+      { color: ACC,  dot: 3, pts: PERTURN.tree.map((v, i) => [i + 1, v]) },
+      { color: COOL, dot: 3, pts: PERTURN.wide.map((v, i) => [i + 1, v]) }
+    ],
+    ends: [
+      { x: 6, y: PERTURN.tree[5], color: ACC,  label: 'tree' },
+      { x: 6, y: PERTURN.wide[5], color: COOL, label: 'tree-wide' }
+    ],
+    legend: [
+      { color: ACC,  label: 'tree (2 bodies)' },
+      { color: COOL, label: 'tree-wide (11 bodies)' }
+    ]
+  });
+}
+
+drawFigures();
+</script>

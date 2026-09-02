@@ -1,0 +1,404 @@
+<title>Summary Timing Policy</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#FBFBF9; --surface:#FFFFFF; --ink:#1C1E21; --muted:#5C6167;
+  --line:#DFE1E4; --accent:#0E6B54; --warm:#A64F2A; --cool:#2F4E8F; --code-bg:#F1F2F0;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#16181B; --surface:#1D2024; --ink:#E7E9EB; --muted:#9BA1A8;
+    --line:#33373C; --accent:#46B090; --warm:#D68A62; --cool:#8FB0E8; --code-bg:#25282D;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#16181B; --surface:#1D2024; --ink:#E7E9EB; --muted:#9BA1A8;
+  --line:#33373C; --accent:#46B090; --warm:#D68A62; --cool:#8FB0E8; --code-bg:#25282D;
+}
+body{background:var(--ground); color:var(--ink);
+  font:17px/1.65 "Source Serif 4",Georgia,serif; margin:0;}
+main{max-width:760px; margin:0 auto; padding:56px 24px 80px;}
+h1{font-size:1.9rem; font-weight:700; line-height:1.2; margin:0 0 6px; text-wrap:balance;}
+h2{font-size:1.2rem; font-weight:700; margin:40px 0 10px;}
+h3{font-size:1rem; font-weight:700; margin:26px 0 8px;}
+.meta{color:var(--muted); font-size:.92rem; margin-bottom:34px;}
+.abstract{margin:0 0 6px; padding:0 0 22px; border-bottom:1px solid var(--line);}
+.abstract h2{margin:0 0 8px; font-size:1.05rem;}
+p{margin:0 0 14px; max-width:70ch;}
+.tablewrap{overflow-x:auto; background:var(--surface); border:1px solid var(--line);
+  border-radius:6px; margin:14px 0 6px;}
+table{border-collapse:collapse; width:100%; font-size:.85rem;}
+th{font-size:.72rem; letter-spacing:.04em; text-transform:uppercase; color:var(--muted);
+  text-align:right; padding:9px 13px; border-bottom:1px solid var(--line); white-space:nowrap;
+  font-family:"IBM Plex Mono",monospace; font-weight:500;}
+th:first-child, td:first-child{text-align:left;}
+td{padding:7px 13px; border-bottom:1px solid var(--line);
+  font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums;
+  font-size:.84rem; text-align:right; white-space:nowrap;}
+td:first-child{font-family:"Source Serif 4",Georgia,serif; font-size:.9rem;}
+tr:last-child td{border-bottom:none;}
+tr.sum td{font-weight:600;}
+tr.base td{color:var(--muted);}
+.tcap{font-size:.85rem; color:var(--muted); margin:6px 2px 18px; max-width:72ch;}
+.tcap b{color:var(--ink);}
+figure{background:var(--surface); border:1px solid var(--line); border-radius:6px;
+  padding:18px 14px 6px; margin:16px 0 6px;}
+figcaption{font-size:.85rem; color:var(--muted); padding:8px 8px 10px; max-width:72ch; line-height:1.5;}
+figcaption b{color:var(--ink);}
+.chartwrap{overflow-x:auto;}
+.chartwrap > div{min-width:620px;}
+code{font-family:"IBM Plex Mono",monospace; font-size:.82em; background:var(--code-bg);
+  padding:1px 5px; border-radius:4px;}
+pre{background:var(--code-bg); border:1px solid var(--line); border-radius:6px;
+  padding:11px 13px; overflow-x:auto; font-family:"IBM Plex Mono",monospace;
+  font-size:.78rem; line-height:1.5; margin:14px 0;}
+pre code{background:none; padding:0; font-size:1em;}
+footer{margin-top:48px; padding-top:14px; border-top:1px solid var(--line);
+  color:var(--muted); font-size:.82rem; line-height:1.5;}
+svg{display:block; width:100%; height:auto;}
+svg text{font-family:"IBM Plex Mono",monospace; font-size:11px; fill:var(--muted);
+  font-variant-numeric:tabular-nums;}
+svg .serieslabel{font-size:12px; font-weight:600;}
+ol{max-width:70ch; padding-left:1.4em;}
+ul{max-width:70ch; padding-left:1.4em;}
+li{margin-bottom:10px;}
+</style>
+<main>
+<h1>When summaries are written, and under what policy</h1>
+<div class="meta">Context-tree evaluation program · DS-STAR tuning pass, dimension 3 of 4 · September 2, 2026</div>
+
+<p style="font-size:.92rem; color:var(--muted); border:1px solid var(--line); border-radius:6px; padding:10px 14px; max-width:72ch;"><em>Scope and provenance.</em> This is the full treatment of the dimension summarised in <code>reports/algorithm.md</code> under &ldquo;What the DS-STAR loop is for&rdquo;. It re-derives every load-bearing number from the run artefacts on disk rather than from the analysis note it publishes (<code>eval/plans/tuning/03-summary-policy.md</code>), and §8 lists the figures in that note that did not reproduce as written, together with the reproduced values used here instead. No model was called for this report.</p>
+
+<div class="abstract">
+<h2>Abstract</h2>
+<p>Context-tree is a context-management layer that rewrites an agent&rsquo;s linear conversation into a summary-headed tree, so that a long conversation&rsquo;s prompt carries one short summary per completed unit of work instead of the raw events. When it does that rewriting &mdash; and on what trigger &mdash; is the open parameter this report is about. Three things are now established. First, the target of the switch point is settled by definition rather than by fitting: the rule states the switch as the size at which the whole trace fits where the active branch&rsquo;s detail would go, which is the Zone C allocation, so the switch fraction and the Zone C fraction are one quantity. They have drifted apart in the code &mdash; the portability harness derives 0.35 for one and 0.20 for the other and exports both from the same function two lines apart, while the live harness&rsquo;s two constants agree at 30,000 only because someone chose the same number twice. Second, the trigger lags by exactly one turn, because it compares against the previous completed turn&rsquo;s billed prompt rather than the prompt about to be sent. That lag is measured, not argued: across the six live crossings on disk the last raw prompt sent before the switch exceeded the 30,000-token budget by 126 to 15,564 tokens, median 8,306 (n=6, claude-sonnet-5, two scenarios), and one turn of growth in that regime is a median 14,784 tokens, which is why the overshoot is that size. Removing it costs one local tokenizer pass over the candidate prompt, not a model call, provided the same measured heuristic-to-tokenizer correction the portability harness already applies is carried with it. Third, the cost of summarizing is not a standing tax but a single lump at a badly chosen moment: it is zero on every run whose trigger never fires &mdash; 0 of 0 leaf-summarizer calls on 12 long-task runs and 5 short-task runs &mdash; and 6.9% to 19.3% of run cost, median 9.4%, on the 6 runs where it does. In tokens rather than cost, the turn immediately after the switch writes a median 18,274 cache tokens against 273 for the matched no-switch arm on the turn after its own largest write (n=6 each), and whole-run cache writes rise by about 21,600 tokens per run on both scenarios. Graded score separates nothing: every cell is 3 of 3 or 5 of 5 with a mean score of 1.000, so this dimension is being judged on tokens and turns alone. Finally, the fraction grid that would decide the switch fraction can be replayed over data already recorded: at 0.15 of a 200,000-token window &mdash; which is what the live constant is on that host &mdash; all 12 fully devolved trajectories cross, at 0.20 one of 12 crosses, and at 0.25 and above none do. That is a counterfactual replay, not a live measurement, and every number here comes from one model family, one window size and one epoch per cell.</p>
+</div>
+
+<h2>1&ensp;Terms, and what is being measured</h2>
+<p>A <b>turn</b> is one model call inside a run: the harness sends a prompt, the model answers, tool results come back, the next turn begins. <b>Context size per turn</b> is the number of tokens the model saw on that call &mdash; fresh input plus <b>cache-read</b> tokens plus <b>cache-write</b> tokens, as the provider reports them. A cache read is a token the provider served from a previously stored prefix; a cache write is a token it had to store fresh because the prefix changed. The three partition one thing, the prompt, so they are added. Output tokens are excluded from context and included in a run&rsquo;s total token bill.</p>
+<p>An <b>arm</b> is one context policy, holding model and task fixed. The <b>native transcript</b> baseline (<code>native</code>) re-sends the whole conversation every turn. <b>Context-tree</b> (<code>context-tree</code>) segments the event log into <b>branches</b> &mdash; contiguous stretches of work on one sub-problem &mdash; and, once a branch closes, has a cheap <b>leaf summarizer</b> write a summary of it. The prompt is assembled in three fixed sections: <b>Zone A</b> is the frozen contract, <b>Zone B</b> holds the root index and branch summaries in creation order, and <b>Zone C</b> holds the active branch&rsquo;s raw detail. <b>W</b> is the model&rsquo;s context window.</p>
+<p>Two terms name the thing under test. <b>Devolved mode</b> is context-tree showing the whole raw trace and summarizing nothing, on the argument that summarizing a short conversation spends model calls for no benefit. The <b>switch point</b> (in the live harness, the <b>lazy gate</b>, <code>EVAL_LAZY_TOKENS</code>) is the prompt size at which it stops doing that and starts summarizing. Every live number below is from a 30,000-token absolute gate. The <b>heuristic-to-tokenizer ratio</b> is the measured factor between the assembler&rsquo;s own cheap token count and the provider&rsquo;s billed count on this corpus, 0.851 (<code>eval/test/transplant.test.ts:169</code> pins it at 0.850896663206653); a heuristic count therefore runs about 17.5% above the provider&rsquo;s on the same text.</p>
+<p><b>Measured</b> below means read from a run artefact on disk. <b>Replay</b> means arithmetic over such an artefact under a policy that was never actually run &mdash; a counterfactual, which cannot account for the agent behaving differently under the counterfactual policy. <b>Hypothesis</b> means neither.</p>
+<p>Statistics follow the program&rsquo;s convention: mean for graded score, median for tokens and turns, n stated everywhere. Every run quoted here carries status <code>completed</code> and a real graded outcome; none was stopped by the harness, so none of the fabricated-failure correction that <code>reports/algorithm.md</code> describes for ceiling-stopped runs applies to any figure in this report. That is stated because the correction did apply to a previously published reliability claim, not because it is routine.</p>
+<p>The runs are four batches, all claude-sonnet-5 as the agent and <code>claude-haiku-4-5-20251001</code> as the leaf summarizer. <code>long-v6x</code> (1 September 2026) is native and context-tree on two long scenarios, three replicates each. <code>long-v64</code> (1 September) is the context-tree arm after a cache-churn fix, three replicates per scenario, whose gate never fired. <code>long-v65-gate</code> (2 September) is the same arm with the trigger reading real tokens, three replicates per scenario, whose gate fired once per run. <code>sw3-loop9b</code> is five replicates of a short scenario with its own same-batch native baseline. The two long scenarios are <b>sw-5-dozen</b>, twelve independently buggy modules, and <b>sw-6-ripple</b>, an interface migration across ten dependent files; each carries about 60&nbsp;kB of material and a hidden test suite. The one-day gap between the 1 and 2 September batches is the standing asymmetry in every long-task comparison here and is flagged again at each table.</p>
+
+<h2>2&ensp;What two earlier reports said, and what this pass adds</h2>
+<p>Two reports reached this dimension independently from different data. The short-task report states it as a ranking of causes: &ldquo;Where the leverage actually is: not selection, but (a) <em>when</em> summarization runs (lazy/off-critical-path was worth &minus;48% cost) and (b) <em>what model</em> does it&rdquo; (<code>reports/metrics/context-tree-dsa-arm-experiments.md:97</code>). The long-task report states it as a sequencing rule: make the mechanism measurable, &ldquo;then cut the summarizer cost floor (per-node breaker live-run, append-only summaries, cosine dedup, haiku root), and only then run the tree-dsa hyperparameter search &mdash; tuning before the mechanism fires would re-measure the floor&rdquo; (<code>reports/metrics/context-tree-long-task-dsa-iterations.md:17</code>). Neither measured the switch point in isolation, because until 2 September no live run had ever crossed it: the loop-8 interim report records that in all 24 of its long-task runs &ldquo;the summarization machinery never engaged&rdquo; (<code>reports/metrics/loop8-interim.md:139</code>), the gate having compared an estimate of characters divided by four against 30,000 while the real tokenizer charges more than that for code-dense text.</p>
+<p>What this pass adds is the first isolation of the timing question itself: the six crossings that exist, the separation of the trigger&rsquo;s lag from the trigger&rsquo;s threshold, the separation of the summarizer&rsquo;s cost from the reorganization&rsquo;s cost, and a fraction grid replayed at zero spend.</p>
+
+<h2>3&ensp;The switch point&rsquo;s target is the Zone C fraction</h2>
+<p>The rule in <code>reports/algorithm.md</code> defines the switch as the size at which the whole trace fits where the active branch&rsquo;s detail would go. That sentence describes Zone C&rsquo;s allocation by definition: Zone C <em>is</em> the space that holds the active branch&rsquo;s raw detail once the tree stops showing the raw trace. So the switch point is not a free parameter alongside the Zone C budget; it is the same number, and any code in which the two differ has drifted from the rule rather than implemented a second design decision. This is a reading of the specification, not a measurement, and it is stated first because it settles what the grid in §6 is a grid over.</p>
+<p>Two facts from the code make the drift concrete. In the portability harness the two fractions are literally adjacent and disagree: <code>FRACTIONS</code> sets <code>lazy: 0.35</code> against <code>zoneC: 0.2</code> (<code>eval/scripts/transplant.mjs:103</code>), both are divided by the same measured ratio in the same function (<code>deriveBudgets</code>, <code>transplant.mjs:345-375</code>), and both are then exported to the live loop from two consecutive lines &mdash; <code>process.env.EVAL_LAZY_TOKENS = String(budgets.lazy)</code> followed by a log line carrying <code>--zone-c-budget=${budgets.zoneC}</code> (<code>transplant.mjs:3238-3240</code>). Every recorded transplant run shows the pair as derived: at W&nbsp;=&nbsp;16,384, <code>lazy</code> 6,739 against <code>zoneC</code> 3,850; at W&nbsp;=&nbsp;32,768, 13,478 against 7,701. In the live harness the same two quantities agree, at the literal 30,000 each, but neither is computed from the other or from W &mdash; <code>packages/core</code> has no representation of W anywhere, which the core portability audit gives as its headline finding (<code>eval/plans/portability-audit/01-core.md</code>, &ldquo;Headline&rdquo;) &mdash; so the agreement is a coincidence of two hand-picked numbers, and the place where a derivation actually exists is exactly the place where the identity broke.</p>
+<p>What the evidence does <em>not</em> do is choose 0.20 over 0.35 on tokens, turns or score. No run in either harness has used a fractional switch at all: the live batches used the absolute 30,000, and the transplant runs are single-turn assemblies in which a gate has no second turn to fire on. §6 replays the grid; it does not settle it.</p>
+
+<h2>4&ensp;The trigger lags one turn, and the lag has a size</h2>
+<p>The gate compares against <code>lastPromptTokens</code>, which is declared at <code>eval/src/loop.ts:820</code> with the comment that it holds &ldquo;real tokens from the last completed turn&rdquo;, is assigned from <code>result.usage.input + result.usage.cacheRead + result.usage.cacheWrite</code> after each model call (<code>loop.ts:1035</code>), and is read by <code>belowLazyBudget()</code> (<code>loop.ts:829</code>). Because the trace only grows between turns, and because the comparison happens after a call rather than before one, exactly one prompt above the threshold is always sent: the first raw prompt to exceed the budget goes out in full, and only the turn after it is assembled from summaries. That is a property of the code, and Table 1 gives its measured size on every crossing on disk.</p>
+
+<div class="tablewrap"><table>
+<thead><tr><th>Run</th><th>crossing turn</th><th>prior-turn prompt</th><th>prompt at crossing</th><th>over the budget</th><th>growth in that turn</th><th>cache write, next turn</th></tr></thead>
+<tbody>
+<tr><td>sw-5-dozen r1</td><td>10</td><td>28,936</td><td>45,564</td><td>+15,564</td><td>16,628</td><td>26,178</td></tr>
+<tr><td>sw-5-dozen r2</td><td>7</td><td>20,188</td><td>36,657</td><td>+6,657</td><td>16,469</td><td>18,548</td></tr>
+<tr><td>sw-5-dozen r3</td><td>10</td><td>22,245</td><td>38,799</td><td>+8,799</td><td>16,554</td><td>18,413</td></tr>
+<tr><td>sw-6-ripple r1</td><td>14</td><td>28,187</td><td>41,286</td><td>+11,286</td><td>13,099</td><td>17,190</td></tr>
+<tr><td>sw-6-ripple r2</td><td>16</td><td>29,878</td><td>30,126</td><td>+126</td><td>248</td><td>6,004</td></tr>
+<tr><td>sw-6-ripple r3</td><td>11</td><td>24,733</td><td>37,812</td><td>+7,812</td><td>13,079</td><td>18,134</td></tr>
+<tr class="sum"><td>median (n = 6)</td><td>10.5</td><td>26,460</td><td>38,306</td><td>+8,306</td><td>14,784</td><td>18,274</td></tr>
+<tr class="base"><td>baseline: same arm, no switch (n = 6)</td><td>never</td><td>&mdash;</td><td>39,208 max</td><td>&mdash;</td><td>14,696</td><td>273</td></tr>
+</tbody></table></div>
+<p class="tcap"><b>Table 1.</b> The six recorded gate crossings, one row per replicate, claude-sonnet-5, 30,000-token absolute gate, <code>eval/results/long-v65-gate/*/results.json</code> with the crossings confirmed against <code>eval/results/long-v65-gate.log</code>. <b>crossing turn</b> counts the first model call as turn 1; the log prints a zero-based index, always one less. <b>prompt at crossing</b> is the context size of the last raw prompt sent, <b>over the budget</b> its excess over 30,000, <b>prior-turn prompt</b> the number the gate actually compared, and <b>growth in that turn</b> the difference between them. <b>cache write, next turn</b> is the cache-write tokens billed on the first turn assembled from summaries. The baseline row is the matched no-switch arm &mdash; the same two scenarios, same model, same three replicates each, gate never fired (<code>long-v64</code>, 1 September 2026, one day before the crossing runs): its largest prompt of the six runs, its median single-turn context growth on its own largest cache-write turn, and its median cache write on the turn after that turn.<sup>&dagger;</sup></p>
+
+<p>Two readings follow, and they are separable. The overshoot is a median 8,306 tokens (n&nbsp;=&nbsp;6), spanning 126 to 15,564, and its size is set by how much the trace grew during the lagging turn: a median 14,784 tokens on these tasks, with five of the six crossings growing 13,079 to 16,628 tokens in one call. The single exception is informative rather than noise: sw-6-ripple r2 grew 248 tokens in its crossing turn and consequently overshot by 126, which is what a trigger with no lag would look like everywhere. So the lag does not add a fixed cost; it adds one turn of whatever growth the task happens to be producing, and on these tasks that is about 15,000 tokens.</p>
+<p>The fix does not require a model call. The check has to be moved ahead of dispatch and applied to the candidate prompt &mdash; the one the assembler is about to build from the current trace &mdash; using the <code>HeuristicTokenizer</code> the assembler already constructs locally (<code>eval/src/loop.ts:771</code>). That is the same class of deterministic local pass the portability harness already runs over a whole corpus in <code>measureRatio</code> (<code>eval/scripts/transplant.mjs:719-722</code>). One caveat is load-bearing and is a consequence of §1&rsquo;s ratio: a heuristic count of the same text runs about 17.5% above the provider&rsquo;s, so comparing a heuristic candidate count against a threshold expressed in provider tokens would fire early by that margin. The correction already exists &mdash; it is the division by the measured ratio inside <code>deriveBudgets</code> &mdash; and a same-turn check must import it rather than reinvent the threshold. The engineering cost is restructuring where the check runs; <code>loop.ts</code> does not do it before assembly anywhere today. That the fix is cheap is an argument from the precedent, not a benchmark: nothing in this repository has yet measured a same-turn check against the lagged one.</p>
+
+<h2>5&ensp;The cost is one lump, not a standing tax</h2>
+<p>While the gate has not been crossed, <code>maybeResummarize</code> returns before doing anything at all (<code>if (belowLazyBudget()) return;</code>, <code>eval/src/loop.ts:871</code>), so every branch that closes in devolved mode accumulates unsummarized. The first call after the crossing builds the whole stale plan (<code>summarizer.stalePlan(rootId)</code>, <code>loop.ts:877-883</code>) and drains it in one awaited batch:</p>
+<pre><code>eval/src/loop.ts:936-937
+for (const nodeId of pending) summarizer.scheduleSummarize(nodeId);
+await summarizer.drain();</code></pre>
+<p>After the crossing the latch keeps <code>belowLazyBudget()</code> false, so subsequent branch closes are summarized as they happen. The batch is therefore the backlog only, and the recorded artefacts do not say which of a run&rsquo;s leaf-summarizer calls landed on which turn &mdash; <code>TurnRecord</code> carries only the agent model&rsquo;s usage (<code>eval/src/types.ts:63-69</code>). The lump is established below from cache writes, which are recorded per turn, rather than from the summarizer call log, which is not.</p>
+
+<div class="tablewrap"><table>
+<thead><tr><th>Arm and scenario</th><th>n</th><th>leaf calls</th><th>leaf tokens</th><th>share of run cost</th><th>mean score</th><th>success</th></tr></thead>
+<tbody>
+<tr><td>tree, switch fires &mdash; sw-5-dozen</td><td>3</td><td>2</td><td>18,836</td><td>7.6%</td><td>1.000</td><td>3/3</td></tr>
+<tr><td>tree, switch fires &mdash; sw-6-ripple</td><td>3</td><td>5</td><td>28,871</td><td>13.6%</td><td>1.000</td><td>3/3</td></tr>
+<tr class="sum"><td>tree, switch fires &mdash; both</td><td>6</td><td>3</td><td>21,166</td><td>9.4%</td><td>1.000</td><td>6/6</td></tr>
+<tr class="base"><td>baseline: tree, switch never fires (long tasks)</td><td>6</td><td>0</td><td>0</td><td>0%</td><td>1.000</td><td>6/6</td></tr>
+<tr class="base"><td>baseline: native transcript (long tasks)</td><td>6</td><td>0</td><td>0</td><td>0%</td><td>1.000</td><td>6/6</td></tr>
+<tr class="base"><td>baseline: tree, switch never fires (sw-3-refactor)</td><td>5</td><td>0</td><td>0</td><td>0%</td><td>1.000</td><td>5/5</td></tr>
+<tr class="base"><td>baseline: native transcript (sw-3-refactor)</td><td>5</td><td>0</td><td>0</td><td>0%</td><td>1.000</td><td>5/5</td></tr>
+</tbody></table></div>
+<p class="tcap"><b>Table 2.</b> The leaf summarizer&rsquo;s own contribution, computed from <code>costByModel</code> in each run&rsquo;s <code>results.json</code>. <b>leaf calls</b> and <b>leaf tokens</b> are the <code>claude-haiku-4-5-20251001</code> entry&rsquo;s call count and its input plus output tokens, medians per cell; <b>share of run cost</b> is that entry&rsquo;s cost divided by the run&rsquo;s total across both models, median per cell. Per-run shares in the firing cells are 6.9, 7.6, 8.4, 13.6, 19.3 and 10.3 percent. The long-task baselines are <code>long-v64</code> and <code>long-v6x</code> (1 September 2026); the short-task rows are the tree and native arms of <code>sw3-loop9b</code>, same batch and same commit as each other. <b>mean score</b> is the graded score, and <b>success</b> the count of replicates whose hidden test suite passed. Note that a run&rsquo;s <code>metrics.tokens.total</code> counts the agent model only &mdash; verified by reconstruction on all six firing runs &mdash; so the leaf tokens in this table appear in no total-token figure anywhere in this program&rsquo;s reporting.<sup>&dagger;</sup></p>
+
+<p>The shape is the finding. On every run whose trigger never fires the summarizer costs exactly nothing, over 17 runs and two very different task lengths; on the runs where it fires it is a median 9.4% of run cost, and the share tracks the number of branches summarized almost monotonically (2, 2, 3, 3, 5 and 9 calls against shares of 7.6, 8.4, 6.9, 10.3, 13.6 and 19.3 percent). The largest share belongs to the run with the <em>smallest</em> overshoot &mdash; sw-6-ripple r2, 126 tokens over, 9 leaf calls, 19.3% &mdash; which means the summarizer&rsquo;s share is driven by how many branches a run closes after the switch, not by the crossing itself. The crossing&rsquo;s own price shows up somewhere else.</p>
+
+<figure>
+<div class="chartwrap"><div id="fig1"></div></div>
+<figcaption><b>Figure 1.</b> Cache-write tokens per turn on sw-5-dozen, the switch arm against the matched no-switch arm. Vertical axis: cache-write tokens billed on that call, meaning prompt tokens the provider had to store fresh because the prefix had changed. Horizontal axis: turn index, first model call as turn 1; a line ends where its run ended. Green is context-tree with the trigger that never fired (<code>long-v64</code>, three replicates, 1 September 2026); blue is context-tree with the real-token trigger (<code>long-v65-gate</code>, three replicates, 2 September). Ringed blue points are the three crossings, at turns 10, 7 and 10. Both arms spike once when the raw trace grows sharply, so a spike alone is not the switch. What distinguishes them is the turn <em>after</em>: the blue arm writes 26,178, 18,548 and 18,413 tokens there, where the green arm writes 270, 267 and 234 after its own largest write, because the switch invalidates the entire cached prefix and the next prompt has to be stored from scratch.</figcaption>
+</figure>
+
+<figure>
+<div class="chartwrap"><div id="fig2"></div></div>
+<figcaption><b>Figure 2.</b> Cache-write tokens per turn on sw-6-ripple, constructed exactly as Figure 1 and on its own vertical scale, with the horizontal axis running to 33 turns because one blue replicate ran that long. Crossings are ringed at turns 14, 16 and 11. The blue replicate that crossed 126 tokens over budget is the one whose crossing ring sits near zero: it reorganized a small trace and paid 6,004 tokens on the following turn rather than 17,190 or 18,134, and then spent seventeen more calls writing repeatedly &mdash; the 15,272 and 18,456 spikes late in that line &mdash; as the agent re-fetched detail it had just been shown.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+<thead><tr><th>Scenario / arm</th><th>final ctx</th><th>total tokens</th><th>cache writes</th><th>turns</th><th>mean score</th><th>success</th></tr></thead>
+<tbody>
+<tr class="base"><td>sw-5-dozen &mdash; native transcript</td><td>19,157</td><td>175,661</td><td>19,156</td><td>13</td><td>1.000</td><td>3/3</td></tr>
+<tr class="base"><td>sw-5-dozen &mdash; tree, switch never fires</td><td>37,585</td><td>192,853</td><td>53,191</td><td>9</td><td>1.000</td><td>3/3</td></tr>
+<tr><td>sw-5-dozen &mdash; tree, switch fires</td><td>24,299</td><td>260,700</td><td>74,772</td><td>13</td><td>1.000</td><td>3/3</td></tr>
+<tr class="base"><td>sw-6-ripple &mdash; native transcript</td><td>20,191</td><td>168,208</td><td>20,190</td><td>12</td><td>1.000</td><td>3/3</td></tr>
+<tr class="base"><td>sw-6-ripple &mdash; tree, switch never fires</td><td>37,615</td><td>244,964</td><td>33,317</td><td>12</td><td>1.000</td><td>3/3</td></tr>
+<tr><td>sw-6-ripple &mdash; tree, switch fires</td><td>22,837</td><td>297,726</td><td>54,972</td><td>18</td><td>1.000</td><td>3/3</td></tr>
+</tbody></table></div>
+<p class="tcap"><b>Table 3.</b> Medians over three replicates per cell, claude-sonnet-5. <b>final ctx</b> is context size on the last turn; <b>total tokens</b> the run&rsquo;s whole agent-model bill including output; <b>cache writes</b> the run&rsquo;s cache-write tokens; <b>turns</b> the number of model calls. Each column is that column&rsquo;s median, so a row is not necessarily one run. The final-context, total-token and turn columns reproduce Table 1 of <code>reports/metrics/context-growth.md</code> exactly; the cache-write column is new here. Native and no-switch rows are 1 September 2026, switch rows 2 September.<sup>&dagger;</sup></p>
+
+<p>The transition&rsquo;s price, in tokens rather than cost, is about 21,600 cache-write tokens per run on both scenarios: median cache writes rise from 53,191 to 74,772 on sw-5-dozen and from 33,317 to 54,972 on sw-6-ripple against the same arm without a switch, and from 19,156 and 20,190 against the native baseline. Turns move differently on the two scenarios and it matters which baseline is used: against the same arm without a switch, median turns rise from 9 to 13 on sw-5-dozen and from 12 to 18 on sw-6-ripple; against the native baseline, from 13 to 13 and from 12 to 18. So the honest statement is nought to six extra turns depending on scenario and baseline, with n&nbsp;=&nbsp;3 per cell &mdash; the evidence is one scenario deep on either side of that range.</p>
+<p>Graded score separates nothing at all. Every cell in Tables 2 and 3 is a mean score of 1.000 with every replicate passing, so on these tasks timing policy is invisible to the grader and this dimension can only be ranked on tokens and turns. That is a fact about the scenarios, not about the policy: a scenario that no arm fails cannot show a policy improving reliability.</p>
+<p><em>Hypothesis, unmeasured.</em> The per-node scheduler the batch already uses (<code>scheduleSummarize</code> / <code>drain</code>) works at single-branch granularity, and the summary circuit breaker in the long-task report already exercises it that way for retries. Calling it on a branch as soon as that branch closes &mdash; independent of whether the switch has been crossed &mdash; would replace one full-backlog drain with N small ones. Nothing in this repository has been run that way, so the size of the effect, and whether spreading the cache-write cost over turns is cheaper than concentrating it, is unknown. §7 is how to narrow it without spending.</p>
+
+<h2>6&ensp;The fraction grid, replayed over data already recorded</h2>
+<p>Section 3 fixes what the switch fraction is a fraction <em>of</em>; it does not say which fraction. The grid can be replayed, at zero spend, over the twelve fully devolved trajectories on disk &mdash; the six <code>long-v6x</code> and six <code>long-v64</code> context-tree runs, whose gates never fired, so their whole per-turn series is what an unswitched tree does on these tasks. For a candidate fraction <em>f</em> on a host with window W, the threshold in provider-billed tokens is <em>f</em>&nbsp;&times;&nbsp;W, because the harness divides its heuristic budget by the measured ratio precisely so that the real prompt lands at <em>f</em>&nbsp;&times;&nbsp;W. The crossing turn is then the first turn whose prompt reaches that threshold, and the overshoot is that prompt&rsquo;s excess &mdash; the quantity §4 showed a lagged trigger sends and a same-turn trigger would not.</p>
+
+<div class="tablewrap"><table>
+<thead><tr><th>Switch fraction of W</th><th>threshold</th><th>trajectories crossing</th><th>median crossing turn</th><th>median overshoot</th><th>max overshoot</th></tr></thead>
+<tbody>
+<tr class="base"><td>0.15 (= the live constant on this host)</td><td>30,000</td><td>12 of 12</td><td>9</td><td>7,231</td><td>10,897</td></tr>
+<tr><td>0.20 (<code>FRACTIONS.zoneC</code>)</td><td>40,000</td><td>1 of 12</td><td>11</td><td>897</td><td>897</td></tr>
+<tr><td>0.25</td><td>50,000</td><td>0 of 12</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td></tr>
+<tr><td>0.30</td><td>60,000</td><td>0 of 12</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td></tr>
+<tr><td>0.35 (<code>FRACTIONS.lazy</code>)</td><td>70,000</td><td>0 of 12</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td></tr>
+</tbody></table></div>
+<p class="tcap"><b>Table 4.</b> Replay, not measurement. Each row applies a candidate switch fraction of a 200,000-token window to the twelve fully devolved per-turn context series on disk (<code>long-v6x</code> context-tree arm and <code>long-v64</code>, n&nbsp;=&nbsp;12, claude-sonnet-5, sw-5-dozen and sw-6-ripple, 1 September 2026) and reports where the switch would have landed. The 0.15 row is the baseline the other rows are read against, because 30,000 tokens is what the live gate used and 0.15 is the fraction of this host&rsquo;s window that it happens to be. The replay cannot account for the agent behaving differently after a switch it never experienced, so the crossing turns are trustworthy and everything a policy would do afterwards is not.</p>
+
+<figure>
+<div class="chartwrap"><div id="fig3"></div></div>
+<figcaption><b>Figure 3.</b> Context size per turn on the twelve fully devolved trajectories, with three candidate switch thresholds drawn as dashed lines. Vertical axis: tokens the model saw on that call. Horizontal axis: turn index. Brown lines are the six sw-5-dozen runs, green the six sw-6-ripple runs; all twelve are context-tree runs whose trigger never fired, so each line is the raw-trace regime running to the end of its run. The dashed lines are 0.15, 0.20 and 0.25 of a 200,000-token window. Every line crosses the lowest; one line, ringed, crosses the middle one at turn 11 with 40,897 tokens; none reaches the highest. The largest prompt anywhere in the twelve is 41,866 tokens, against a window of 200,000.</figcaption>
+</figure>
+
+<p>Three readings, in decreasing order of how much the data supports them. First, the live constant is not far wrong <em>as a fraction on this one host</em>: 30,000 tokens is 0.15 of a 200,000-token window, and the sweet spot for exercising the mechanism at all on this corpus lies between 0.15 and 0.20, since 0.20 fires on one trajectory of twelve and 0.25 fires on none. That is a statement about one window size and one pair of scenarios. Second, the argument for the fraction rather than the constant does not depend on which fraction wins, and it is a portability argument: on a 32,768-token host every fraction from 0.15 to 0.35 puts the threshold between 4,915 and 11,469 tokens, so all twelve trajectories cross &mdash; at a median turn of 3.5 to 6 &mdash; whereas the absolute 30,000 would never fire at all and would let the prompt run past the window it was supposed to protect. Those small-window crossing turns are arithmetic on trajectories produced under a 200,000-token host and should be read as showing the threshold&rsquo;s position, not as predicting a run. Third, the earlier report&rsquo;s conclusion that these traces &ldquo;would never have crossed&rdquo; under a window-derived budget (<code>reports/metrics/context-growth.md:354</code>) holds at 0.35 and at 0.25, and stops holding at 0.20: one of the twelve crosses. Nothing here compares 0.20 against 0.35 on tokens, turns or score, because no run has used either.</p>
+
+<h2>7&ensp;A zero-spend experiment that ranks timing policies</h2>
+<p>The comparison §5 leaves open &mdash; drain the backlog at the switch, as now, or summarize each branch as it closes &mdash; can be ranked offline before any live spend, because four things are already in place.</p>
+<ul>
+<li><b>A harness that drives the production assembler with no model call.</b> <code>eval/scripts/marathon.mjs</code> builds the real trace log, blob store and tree store, inserts branch nodes and leaf summaries directly &mdash; the same pattern <code>packages/core/test/assemble.test.ts</code>&rsquo;s <code>addBranch</code> harness uses &mdash; and reads real <code>ZoneAssembler</code> output, with &ldquo;zero LLM spend in the default path&hellip; no LLM call anywhere in this path&rdquo; (<code>eval/scripts/marathon.mjs:10-15</code>). It is deterministic by construction, which is why the curve it produced for the loop-8 report is a straight line rather than a noisy one.</li>
+<li><b>A recorded per-branch summarize cost.</b> <code>costByModel</code>&rsquo;s per-model usage in every existing <code>results.json</code> gives what the leaf model was billed for the branches a run actually summarized, and the summary itself is capped at <code>maxSummaryTokens</code>, 1,024 (<code>packages/core/src/config.ts:118</code>), independently of when the call happens. Re-bucketing a recorded summarize call as if it had run at branch-close time rather than at crossing time does not require re-running it.</li>
+<li><b>Pricing as a pure function.</b> <code>packages/core/src/models/cost.ts</code> turns a usage tuple into a figure with no network call, with Anthropic cache rates as fixed multiples of the input rate (<code>cost.ts:47-49</code>), so re-sequencing one large cache-write event into several small ones is arithmetic over numbers in hand.</li>
+<li><b>The budget derivation as a pure, tested function.</b> <code>deriveBudgets</code> and <code>ratioVerdict</code> are pure in (W, ratio) (<code>transplant.mjs:345-375</code> and <code>:472-482</code>) and unit-tested (<code>eval/test/transplant.test.ts:167-282</code>). Table 4 is one call of that arithmetic per grid point; extending the grid costs nothing.</li>
+</ul>
+<p>Concretely: give <code>marathon.mjs</code> two parameters &mdash; a switch fraction of the harness&rsquo;s configured window, swept over 0.15, 0.20, 0.25 and 0.30, and a summarization cadence, either <code>batch-at-crossing</code> (today&rsquo;s code) or <code>incremental-at-close</code> (each branch&rsquo;s summary inserted the moment it closes, regardless of the switch) &mdash; and run the existing deterministic 200-branch replay once per combination, eight runs at zero spend. Each combination yields an exact, reproducible token-per-branch curve through the real assembler. Ranking is then on two statistics already computed elsewhere in this program: cumulative tokens over the run, and the presence or absence of a single-branch spike in the cache-write series &mdash; the quantity Figures 1 and 2 show is what actually distinguishes the two cadences live. The grid should be paired with the same replay over the twelve recorded trajectories, as in Table 4, so the offline curve and the live traces agree on where each fraction puts the crossing.</p>
+<p>What the offline pass cannot produce is turns, because no model is called, and turns are where the transition&rsquo;s cost was largest on sw-6-ripple. That half of the ranking still needs a live batch of the design already used here &mdash; three replicates per scenario on sw-5-dozen and sw-6-ripple, interleaved in one epoch, against the matched no-switch arm run in the same epoch rather than the day before. The offline pass is what should choose which one or two candidates earn that spend.</p>
+
+<h2>8&ensp;Numbers that did not reproduce</h2>
+<p>Every figure in the abstract and Tables 1 to 3 was re-derived from the artefacts. Nine claims in the source note did not reproduce as written; the reproduced value is what this report uses.</p>
+<ol>
+<li><b><code>transplant.mjs:102</code> for <code>FRACTIONS</code></b> &mdash; the table is at line 103, both in the working tree and at the committed HEAD. Cited here as <code>:103</code>. The values themselves, <code>lazy: 0.35</code> and <code>zoneC: 0.2</code>, are exactly as stated.</li>
+<li><b>&ldquo;0.35&nbsp;&times;&nbsp;W/ratio &asymp; 70,000 tokens&rdquo;</b> &mdash; these are two different quantities. 0.35&nbsp;&times;&nbsp;200,000 is 70,000 provider-billed tokens; divided by the 0.851 ratio that <code>deriveBudgets</code> actually applies, the harness&rsquo;s budget is 82,256 heuristic tokens. The figure is right only without the division. This report expresses every threshold in provider-billed tokens, where the fraction is applied directly.</li>
+<li><b>&ldquo;0.20&nbsp;&times;&nbsp;200,000/0.851 &asymp; 47,000&rdquo; compared against the 45,564-token peak</b> &mdash; the arithmetic gives 47,003, but that is a heuristic-token budget being compared with a provider-billed prompt. In matched units the threshold is 40,000 provider tokens (equivalently the same prompt is about 53,542 heuristic tokens against a 47,003 heuristic budget). Both framings agree that this one run crosses, so the conclusion survives; the numbers do not.</li>
+<li><b>&ldquo;a proximity argument, not a crossing&rdquo;</b> &mdash; understated. At 0.20 the crossing is not near, it happens: one of the twelve devolved trajectories reaches 40,897 tokens at turn 11 (Table 4).</li>
+<li><b><code>reports/algorithm.md:94-95</code> and <code>:171-173</code></b> &mdash; the quoted sentences are not at those lines. That page was rewritten the same day to fold in this dimension&rsquo;s findings; the convergence sentence now sits at <code>:124-125</code> and the switch-point and zone-fraction table rows at <code>:237</code> and <code>:240</code>.</li>
+<li><b><code>eval/src/loop.ts:817-820</code> for <code>lastPromptTokens</code></b> &mdash; that range is the declaration and its comment. The assignment from provider usage is at <code>:1035</code> and the comparison at <code>:829</code>; the lag is a property of the gap between them, so all three are cited in §4.</li>
+<li><b><code>marathon.mjs:11-19</code></b> for the zero-spend guarantee &mdash; the quoted passage is at <code>:10-15</code>.</li>
+<li><b>&ldquo;two to six extra turns to absorb it&rdquo;</b> &mdash; no pairing yields two. Against the same arm without a switch the median rise is four turns on sw-5-dozen and six on sw-6-ripple; against the native transcript it is nought and six. Reported here as nought to six, baseline named.</li>
+<li><b>&ldquo;each such batch billed a cache-write spike&rdquo;</b> &mdash; a spike at the crossing turn is not diagnostic, because the matched no-switch arm spikes just as hard when its raw trace grows (up to 33,831 cache-write tokens on its own growth turns, against the switch arm&rsquo;s largest single-turn write of 40,774). The discriminating measurement is the turn <em>after</em> the switch: a median 18,274 cache-write tokens against 273 for the no-switch arm on the turn after its own largest write, n&nbsp;=&nbsp;6 each. That is what Figures 1 and 2 plot and what §5 claims.</li>
+</ol>
+<p>One framing in the source note is narrower than the code. &ldquo;The code summarizes every stale branch in one parallel batch&rdquo; is true of the backlog at the crossing only; after the latch, summarization runs on each branch close, and the six runs made 2 to 9 leaf calls each of which the artefacts cannot assign to a turn. So the lump is real and measured in cache writes, but the summarizer&rsquo;s cost share in Table 2 is partly post-switch incremental work rather than the batch.</p>
+
+<h2>9&ensp;Open items and recommendations</h2>
+<p>Ordered by expected information gained per unit of effort, where effort is tokens and runs spent. The first three cost nothing.</p>
+<ol>
+<li><b>Derive the switch from <code>FRACTIONS.zoneC</code> in one place both harnesses import.</b> Zero runs, zero tokens; it is a one-line change in the harness that already derives both numbers and exports them two lines apart (<code>transplant.mjs:3238-3240</code>), plus the removal of the live suite&rsquo;s absolute 30,000. It buys the most because until it lands, no comparison of switch policies is measuring the policy that would ship, and because §3 settles what the target is without needing an experiment to choose it. It does <em>not</em> settle which fraction; item 3 is that.</li>
+<li><b>Move the check ahead of dispatch, over the candidate prompt, carrying the ratio correction.</b> Zero live tokens to implement and test offline. It removes a median 8,306 tokens of raw prompt per crossing (n&nbsp;=&nbsp;6, range 126 to 15,564) that is currently sent and billed at cache-write rates, and it removes the largest single source of variance in Table 1, since the overshoot is just one turn of whatever growth the task is producing. The correction matters: without dividing by the measured ratio a heuristic candidate count fires about 17.5% early on this corpus.</li>
+<li><b>Run the eight-cell offline grid of §7 &mdash; four fractions crossed with two cadences &mdash; and the Table 4 replay at the same four fractions.</b> Zero tokens. It is the only thing that can rank <code>batch-at-crossing</code> against <code>incremental-at-close</code> before spending, and the cache-write series it produces is the statistic Figures 1 and 2 show actually distinguishes them. Its known blind spot is turns.</li>
+<li><b>Then one live batch on the two or three surviving cells: three replicates per scenario on sw-5-dozen and sw-6-ripple, all arms interleaved in a single epoch.</b> Roughly 250,000 to 300,000 agent tokens per run at the rates in Table 3, so twelve to eighteen runs. This is the cheapest way to get the half of the ranking the offline pass cannot produce, and it also closes the one-day epoch gap that every long-task comparison in this report carries.</li>
+<li><b>Add a per-turn record of non-agent model calls.</b> One field on <code>TurnRecord</code>, no runs. Today <code>metrics.tokens.total</code> counts the agent model only, so the leaf summarizer&rsquo;s tokens appear in no total-token figure this program publishes, and no artefact says which turn a summarize call landed on &mdash; which is why §5 has to establish the lump from cache writes instead. Every future timing experiment is cheaper to read with this field than without it.</li>
+<li><b>Replicate the firing case on a second model family and a second window size.</b> Every number in Tables 1 to 3 is one model family, one window, one epoch per cell, and n&nbsp;=&nbsp;3 per scenario. The 200,000-token window is doing a lot of work in §6: the whole reason the current constant looks nearly right as a fraction is that it is 0.15 of this particular host. A 32,768-token host is where the constant and the fraction diverge most, and the transplant harness already runs there.</li>
+<li><b>Find or build a scenario the arms can fail.</b> Every cell in this report scores 1.000 with every replicate passing, so timing policy is currently unfalsifiable on graded score and can only be ranked on tokens and turns. Until a scenario separates outcomes, no timing policy can be shown to make the agent more reliable &mdash; only cheaper or dearer.</li>
+</ol>
+
+<h2>References</h2>
+<p style="font-size:.9rem;">[1]&ensp;<code>eval/plans/tuning/03-summary-policy.md</code> &mdash; the analysis note this report publishes and verifies.<br>
+[2]&ensp;<code>reports/algorithm.md</code> &mdash; the algorithm as it runs, its four rules, the tier-2 parameter table, and the dimension summary this report is the full treatment of.<br>
+[3]&ensp;<code>reports/metrics/context-growth.md</code> and <code>.html</code> &mdash; per-turn context curves; source of the crossing table this report re-derives, and of Table 3&rsquo;s final-context, total-token and turn columns.<br>
+[4]&ensp;<code>reports/metrics/loop8-interim.md</code> &mdash; the 24 long-task runs in which the mechanism never engaged, and the marathon harness.<br>
+[5]&ensp;<code>reports/metrics/context-tree-dsa-arm-experiments.md</code> and <code>reports/metrics/context-tree-long-task-dsa-iterations.md</code> &mdash; the two earlier reports that independently put the leverage in timing rather than selection.<br>
+[6]&ensp;<code>eval/plans/loop9-item1-lazy-gate.md</code> &mdash; the real-token trigger, its regression test, and the latch, including the discarded un-latched batch that crossed at turn 8 (40,158 tokens) and again at turn 10 (43,331) and finished at 223,917 tokens (<code>:79-95</code>; the batch&rsquo;s <code>results.json</code> files were not kept, so those two figures are from the runbook and its log, not re-derived here).<br>
+[7]&ensp;Run artefacts: <code>eval/results/long-v6x/*/results.json</code>, <code>eval/results/long-v64/*/results.json</code>, <code>eval/results/long-v65-gate/*/results.json</code>, <code>eval/results/long-v65-gate.log</code>, <code>eval/results/sw3-loop9b/*/results.json</code>.<br>
+[8]&ensp;<code>eval/plans/portability-audit/01-core.md</code> and <code>eval/plans/portability-audit/03-transplant.md</code> &mdash; the absence of W from <code>packages/core</code>, and the switch/Zone-C mismatch at its exact line.</p>
+
+<footer><sup>&dagger;</sup> In United States dollars, at the harness&rsquo;s named rates of $2.00 per million input tokens, $10.00 per million output, $0.20 per million cache read and $2.50 per million cache write for claude-sonnet-5, and $1.00, $5.00, $0.10 and $1.25 for claude-haiku-4-5 (<code>packages/core/src/models/cost.ts:47-62</code>): against the native transcript baseline&rsquo;s median run of $0.136 on sw-5-dozen and $0.165 on sw-6-ripple, the tree without a switch costs $0.207 and $0.216, and the tree with the switch $0.334 and $0.336, of which the leaf summarizer&rsquo;s own median contribution is $0.032. Dollars appear once, here, beside the baseline they are relative to; every claim in this report is made in tokens, turns and graded score.<br><br>
+DS-STAR tuning pass, dimension 3 of 4 &middot; Tables 1&ndash;3 and Figures 1&ndash;2 from <code>long-v6x</code>, <code>long-v64</code>, <code>long-v65-gate</code> and <code>sw3-loop9b</code>, claude-sonnet-5 agent with a claude-haiku-4-5 leaf summarizer, three replicates per long-task cell and five per short-task cell &middot; Table 4 and Figure 3 are replay over the twelve devolved trajectories, not new runs &middot; no model was called for this report &middot; September 2, 2026.</footer>
+</main>
+<script>
+const CW = {"sw-5-dozen":{"noswitch":[[680,149,849,494,17088,33319,270,277,65],[0,179,275,141,161,848,493,17693,33831,267,280,65],[0,165,128,244,420,16553,32543,234,65]],"switch":[[0,479,155,141,848,493,17712,24181,250,40774,26178,1307,343],[680,192,476,425,7665,7398,33003,18548,208,997],[680,231,375,141,1181,493,6820,7640,1351,35164,18413,192,452,241,283,1115]]},"sw-6-ripple":{"noswitch":[[659,179,782,1050,2953,8663,5316,1176,1565,12870,278,120],[659,4858,141,220,356,953,2753,8653,656,1246,2008,5296,1120,235,327],[0,176,833,491,5537,1224,1235,10313,12870,275,242,121]],"switch":[[0,231,494,1832,157,282,835,5536,1163,5704,1429,1140,5315,12870,17190,170,175,449],[0,270,323,837,2956,8667,0,1497,1385,407,262,1467,1190,355,913,248,6004,4357,5762,5019,1688,1266,15272,1834,194,655,2901,262,1047,18456,262,648,262],[659,491,177,834,2753,3730,5853,4317,1285,1246,12870,18134,278,879]]}};
+const DEV = {"sw-5-dozen":[[4013,4173,4314,5502,5996,13544,14206,21604,37987,38230,38509,39201],[4013,4443,4584,4939,6205,21140,37569,37856,37958],[4013,4193,4373,4988,5263,6285,13173,13940,20537,24412,40897,41065,41356,41602,41866,41846],[4013,4162,5011,5505,20440,36973,37243,37519,37585],[4013,4193,4467,4608,4769,5617,6110,21045,37485,37752,38031,38097],[4013,4178,4306,4550,4970,19905,36197,36430,36496]],"sw-6-ripple":[[3992,4658,4878,5709,11264,17021,22336,23650,24884,33664,33906,36522,36512,36575,36601],[3992,4460,9613,10826,16381,26694,27993,29238,37573,37604,37650,37648],[3992,4721,5555,11110,21423,22712,35791,36061,36393],[3992,4172,4954,6004,8956,17620,22954,24167,25731,38810,39087,39208],[3992,8850,8991,9211,9567,10520,13292,21946,22602,23884,25891,31187,32307,32542,32870],[3992,4168,5001,5493,11048,12309,13543,23878,36977,37252,37493,37615]]};
+const CROSS = {"sw-5-dozen":[[10,40774,'turn 10'],[7,33003,'turn 7'],[10,35164,'turn 10']],
+               "sw-6-ripple":[[14,12870,'turn 14'],[16,248,'turn 16'],[11,12870,'turn 11']]};
+const nf = n => n.toLocaleString('en-US');
+
+function chart(id, cfg){
+  const W = 680, H = cfg.h, L = 66, R = 108, TP = 34, BT = 50;
+  const ax0 = L, ax1 = W - R, ay0 = H - BT, ay1 = TP;
+  const ymin = cfg.ymin == null ? 0 : cfg.ymin;
+  const X = v => ax0 + (v - cfg.xmin) / (cfg.xmax - cfg.xmin) * (ax1 - ax0);
+  const Y = v => ay0 - (v - ymin) / (cfg.ymax - ymin) * (ay0 - ay1);
+  let g = '';
+
+  cfg.yticks.forEach(t => {
+    g += '<line x1="' + ax0 + '" y1="' + Y(t) + '" x2="' + ax1 + '" y2="' + Y(t) +
+         '" stroke="var(--line)" stroke-width="1"/>' +
+         '<text x="' + (ax0 - 10) + '" y="' + (Y(t) + 4) + '" text-anchor="end">' +
+         (t ? (t / 1000) + 'k' : '0') + '</text>';
+  });
+  g += '<text x="' + (ax0 - 10) + '" y="' + (ay1 - 14) + '" text-anchor="end">tokens</text>';
+  cfg.xticks.forEach(t => {
+    g += '<text x="' + X(t) + '" y="' + (ay0 + 20) + '" text-anchor="middle">' + t + '</text>';
+  });
+  g += '<text x="' + ((ax0 + ax1) / 2) + '" y="' + (ay0 + 42) + '" text-anchor="middle">' + cfg.xtitle + '</text>';
+
+  (cfg.hlines || []).forEach(h => {
+    g += '<line x1="' + ax0 + '" y1="' + Y(h.y) + '" x2="' + ax1 + '" y2="' + Y(h.y) +
+         '" stroke="var(--muted)" stroke-width="1" stroke-dasharray="5 4" opacity=".65"/>' +
+         '<text x="' + (ax1 - 4) + '" y="' + (Y(h.y) + 15) + '" text-anchor="end">' + h.label + '</text>';
+  });
+
+  cfg.series.forEach(s => {
+    const op = s.op == null ? 1 : s.op;
+    g += '<polyline fill="none" stroke="' + s.color + '" stroke-width="' + (s.w == null ? 2 : s.w) + '" opacity="' + op +
+         '" stroke-linejoin="round" points="' +
+         s.pts.map(p => X(p[0]).toFixed(1) + ',' + Y(p[1]).toFixed(1)).join(' ') + '"/>';
+    if (s.dot) s.pts.forEach(p => {
+      g += '<circle cx="' + X(p[0]).toFixed(1) + '" cy="' + Y(p[1]).toFixed(1) + '" r="' + s.dot +
+           '" fill="' + s.color + '" opacity="' + op + '"/>';
+    });
+  });
+
+  (cfg.marks || []).forEach(m => {
+    g += '<circle cx="' + X(m.x).toFixed(1) + '" cy="' + Y(m.y).toFixed(1) + '" r="5" fill="' + m.color +
+         '" stroke="var(--surface)" stroke-width="1.5"/>' +
+         '<text x="' + (X(m.x) - 9).toFixed(1) + '" y="' + (Y(m.y) - 9).toFixed(1) +
+         '" text-anchor="end">' + m.label + '</text>';
+  });
+  (cfg.ends || []).forEach(e => {
+    g += '<text x="' + (X(e.x) + 8).toFixed(1) + '" y="' + (Y(e.y) + 4).toFixed(1) +
+         '" class="serieslabel" fill="' + e.color + '">' + e.label + '</text>';
+  });
+
+  let lx = ax0;
+  cfg.legend.forEach(l => {
+    g += '<rect x="' + lx + '" y="' + (ay1 - 26) + '" width="13" height="3" fill="' + l.color + '"/>' +
+         '<text x="' + (lx + 19) + '" y="' + (ay1 - 20) + '">' + l.label + '</text>';
+    lx += 38 + l.label.length * 6.7;
+  });
+
+  g += '<g data-c="1" style="display:none"><line y1="' + (ay1 - 10) + '" y2="' + ay0 +
+       '" stroke="var(--muted)" stroke-width="1" opacity=".8"/></g>';
+  g += '<g data-t="1" style="display:none"></g>';
+  g += '<rect data-o="1" x="' + ax0 + '" y="' + (ay1 - 10) + '" width="' + (ax1 - ax0) +
+       '" height="' + (ay0 - ay1 + 10) + '" fill="transparent"/>';
+
+  const host = document.getElementById(id);
+  host.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + cfg.alt + '">' + g + '</svg>';
+
+  const svg = host.firstChild;
+  const ov = svg.querySelector('[data-o]');
+  const cr = svg.querySelector('[data-c]');
+  const tp = svg.querySelector('[data-t]');
+  const cl = cr.firstChild;
+  const maps = cfg.series.filter(s => s.tip).map(s => ({ name: s.tip, color: s.color, m: new Map(s.pts) }));
+
+  function show(xv){
+    cl.setAttribute('x1', X(xv)); cl.setAttribute('x2', X(xv));
+    cr.style.display = '';
+    const rows = maps.map(r => ({ name: r.name, color: r.color, v: r.m.get(xv) }))
+                     .filter(r => r.v != null);
+    if (!rows.length){ tp.style.display = 'none'; return; }
+    const head = cfg.tipHead + ' ' + xv;
+    const wide = Math.max(head.length, ...rows.map(r => r.name.length + 8)) * 6.3 + 26;
+    const high = 22 + rows.length * 15 + 6;
+    let tx = X(xv) + 12;
+    if (tx + wide > W - 4) tx = X(xv) - 12 - wide;
+    let s = '<rect x="' + tx + '" y="' + (ay1 - 6) + '" width="' + wide + '" height="' + high +
+            '" rx="4" fill="var(--surface)" stroke="var(--line)" stroke-width="1"/>' +
+            '<text x="' + (tx + 11) + '" y="' + (ay1 + 11) + '" fill="var(--ink)">' + head + '</text>';
+    rows.forEach((r, i) => {
+      const yy = ay1 + 29 + i * 15;
+      s += '<rect x="' + (tx + 11) + '" y="' + (yy - 7) + '" width="10" height="3" fill="' + r.color + '"/>' +
+           '<text x="' + (tx + 26) + '" y="' + yy + '" fill="var(--ink)">' + r.name + ' ' + nf(r.v) + '</text>';
+    });
+    tp.innerHTML = s; tp.style.display = '';
+  }
+
+  ov.addEventListener('mousemove', e => {
+    const b = svg.getBoundingClientRect();
+    const raw = cfg.xmin + (((e.clientX - b.left) / b.width * W) - ax0) / (ax1 - ax0) * (cfg.xmax - cfg.xmin);
+    let best = cfg.xdomain[0];
+    cfg.xdomain.forEach(d => { if (Math.abs(d - raw) < Math.abs(best - raw)) best = d; });
+    show(best);
+  });
+  ov.addEventListener('mouseleave', () => { cr.style.display = 'none'; tp.style.display = 'none'; });
+}
+
+const WARM = 'var(--warm)', ACC = 'var(--accent)', COOL = 'var(--cool)';
+
+function cwChart(id, key, ymax, yticks, xmax, xticks, alt){
+  const d = CW[key];
+  const series = [], ends = [];
+  [['noswitch', ACC, 'no switch'], ['switch', COOL, 'switch']].forEach(([k, color, name]) => {
+    d[k].forEach((vals, i) => {
+      series.push({ tip: i === 0 ? name : null, color: color, op: i === 0 ? 0.95 : 0.5,
+                    w: i === 0 ? 2.2 : 1.2, dot: 2.2, pts: vals.map((v, j) => [j + 1, v]) });
+    });
+    let best = null;
+    d[k].forEach(vals => { if (!best || vals.length > best.n) best = { n: vals.length, v: vals[vals.length - 1] }; });
+    ends.push({ x: best.n, y: best.v, color: color, label: name });
+  });
+  chart(id, {
+    h: 340, xmin: 1, xmax: xmax, xticks: xticks,
+    ymax: ymax, yticks: yticks,
+    xtitle: 'turn (one model call)', tipHead: 'turn',
+    xdomain: Array.from({ length: xmax }, (_, i) => i + 1),
+    alt: alt, series: series, ends: ends,
+    marks: CROSS[key].map(c => ({ x: c[0], y: c[1], color: COOL, label: c[2] })),
+    legend: [
+      { color: ACC,  label: 'tree, switch never fires' },
+      { color: COOL, label: 'tree, switch fires' }
+    ]
+  });
+}
+
+cwChart('fig1', 'sw-5-dozen', 45000, [0, 10000, 20000, 30000, 40000], 16, [1, 5, 10, 15],
+  'Cache-write tokens per turn on sw-5-dozen. Both arms spike once on trace growth; only the switch arm writes a second large block on the turn after its crossing.');
+cwChart('fig2', 'sw-6-ripple', 20000, [0, 5000, 10000, 15000, 20000], 33, [1, 5, 10, 15, 20, 25, 30],
+  'Cache-write tokens per turn on sw-6-ripple. The switch arm writes a large block on the turn after each crossing, and one replicate keeps writing for seventeen further calls.');
+
+(function devChart(){
+  const series = [];
+  [['sw-5-dozen', WARM], ['sw-6-ripple', ACC]].forEach(([key, color]) => {
+    DEV[key].forEach((vals, i) => {
+      series.push({ tip: i === 0 ? key : null, color: color, op: 0.6, w: 1.4, dot: 2,
+                    pts: vals.map((v, j) => [j + 1, v]) });
+    });
+  });
+  chart('fig3', {
+    h: 340, xmin: 1, xmax: 16, xticks: [1, 5, 10, 15],
+    ymax: 52000, yticks: [0, 10000, 20000, 30000, 40000, 50000],
+    xtitle: 'turn (one model call)', tipHead: 'turn',
+    xdomain: Array.from({ length: 16 }, (_, i) => i + 1),
+    alt: 'Context size per turn on twelve devolved trajectories, with candidate switch thresholds at 0.15, 0.20 and 0.25 of a 200,000-token window drawn as dashed lines.',
+    hlines: [
+      { y: 30000, label: '0.15 W = 30,000' },
+      { y: 40000, label: '0.20 W = 40,000' },
+      { y: 50000, label: '0.25 W = 50,000' }
+    ],
+    series: series,
+    marks: [{ x: 11, y: 40897, color: WARM, label: 'turn 11' }],
+    legend: [
+      { color: WARM, label: 'sw-5-dozen, 6 runs' },
+      { color: ACC,  label: 'sw-6-ripple, 6 runs' }
+    ]
+  });
+})();
+</script>

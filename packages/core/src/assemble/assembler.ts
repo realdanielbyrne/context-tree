@@ -67,6 +67,27 @@ export interface ZoneAssemblerDeps {
    */
   systemContract: string;
   budgets?: { zoneB: number; zoneC: number };
+  /**
+   * The host's context window in tokens. Host-supplied on purpose: it is a
+   * property of the deployment, not something this library can derive or
+   * sensibly default. Supplying it is what makes `BudgetReport.window`,
+   * `windowRemaining` and `overWindow` meaningful, and it is the input
+   * `deriveZoneBudgets` needs so the zone allowances come from ONE measured
+   * number instead of two independently chosen constants.
+   */
+  window?: number;
+  /**
+   * D5 experiment 4 (`eval/plans/tuning/exp-04-caching.md`): mark a THIRD
+   * provider breakpoint at the end of Zone C's stable run — every block except
+   * the descendant map (`C:map:*`), which churns on every edit and must ride
+   * after the marker (see the comment above `zoneC`). Anthropic honours up to
+   * 4; the shipped default emits 2 (Zone A/B, Zone B/C) and leaves Zone C fresh
+   * on every turn. Defaults to `false` — today's behaviour — because turning
+   * this on is a request-shape change (`toMessages` splits Zone C into two
+   * messages instead of one) that a caller opts into deliberately, not a bug
+   * fix applied silently underneath existing callers.
+   */
+  cacheZoneCBreakpoint?: boolean;
 }
 
 /** A Zone B node contributes a summary block plus an optional links block; the
@@ -152,6 +173,17 @@ export class ZoneAssembler implements PromptAssembler {
       last.cacheBreakpointAfter = true;
       cacheBreakpoints.push(last.id);
     }
+    // Experiment 4's 3rd breakpoint, opt-in only (`cacheZoneCBreakpoint`): the
+    // last Zone C block that is not the descendant map, so the map (and any
+    // tail) keep riding uncached after it exactly as `renderActiveMap`'s
+    // comment above `zoneC` requires.
+    if (this.deps.cacheZoneCBreakpoint === true) {
+      const lastStable = [...zoneC.blocks].reverse().find((b) => !b.id.startsWith('C:map:'));
+      if (lastStable !== undefined) {
+        lastStable.cacheBreakpointAfter = true;
+        cacheBreakpoints.push(lastStable.id);
+      }
+    }
 
     const overBudget: Zone[] = [];
     // The asymmetry is deliberate: Zone B reports its degradation through
@@ -162,6 +194,7 @@ export class ZoneAssembler implements PromptAssembler {
     if (zoneC.truncated) overBudget.push('C');
 
     const tailTokens = sumTokens(tailBlocks);
+    const window = options.window ?? this.deps.window ?? null;
     const budgets: BudgetReport = {
       zoneA: sumTokens(zoneA),
       zoneB: zoneB.tokens,
@@ -170,8 +203,28 @@ export class ZoneAssembler implements PromptAssembler {
       total: 0,
       overBudget,
       droppedFromZoneB: zoneB.dropped,
+      window,
+      windowRemaining: null,
+      overWindow: false,
+      replyAllowance: null,
     };
     budgets.total = budgets.zoneA + budgets.zoneB + budgets.zoneC + budgets.tail;
+    // The one constraint that is not a matter of allocation: this prompt either
+    // fits the host's window or the request fails. Reported, never enforced
+    // here — the assembler's job is to say what it built and what that leaves,
+    // and a caller that ignores an `overWindow: true` gets a provider error,
+    // which is the loud failure. Silently trimming to fit would hide which zone
+    // lost content.
+    if (window !== null) {
+      budgets.windowRemaining = window - budgets.total;
+      budgets.overWindow = budgets.total > window;
+      // The largest reply that fits beside what was just built. A caller passes
+      // this straight to the provider as `max_tokens`, which is the honest form
+      // of a reply limit: arithmetic per turn rather than a number anyone
+      // picked. It shrinks as the session grows, so a small-window model keeps
+      // iterating on short answers instead of the request becoming invalid.
+      budgets.replyAllowance = Math.max(0, window - budgets.total);
+    }
 
     return {
       system: zoneA.map((b) => b.text).join('\n\n'),
@@ -360,10 +413,38 @@ function zoneEndsAtBreakpoint(prompt: AssembledPrompt, zone: Zone): boolean {
   return last.cacheBreakpointAfter === true || prompt.cacheBreakpoints.includes(last.id);
 }
 
+function isMarked(prompt: AssembledPrompt, block: PromptBlock): boolean {
+  return block.cacheBreakpointAfter === true || prompt.cacheBreakpoints.includes(block.id);
+}
+
 /**
- * Provider-facing projection of an assembled prompt: one message per zone, with
- * `cacheBreakpoint` where that zone's last block carries the §10 rule 5 marker,
- * so the models layer only has to translate a flag into a provider-native one.
+ * Splits one zone's blocks at its LAST marked block, so a breakpoint planted
+ * anywhere inside a zone (not only at the zone's own end) still lands on a
+ * message boundary a provider can key on. Two zone-B blocks are 1:1 with
+ * `zoneEndsAtBreakpoint`'s old behaviour when the mark sits on the zone's final
+ * block — `rest` is then empty and the caller emits one message, unchanged.
+ * Zone C's experiment-4 mark (last block before `C:map:*`) is what this exists
+ * for: everything through that block is one cacheable message, and the map
+ * (plus anything after it in the zone) rides in a second, uncached message.
+ */
+function splitAtLastMark(
+  prompt: AssembledPrompt,
+  blocks: readonly PromptBlock[],
+): { cached: readonly PromptBlock[]; rest: readonly PromptBlock[] } {
+  let cut = -1;
+  for (let i = 0; i < blocks.length; i += 1) {
+    if (isMarked(prompt, blocks[i]!)) cut = i;
+  }
+  if (cut === -1) return { cached: [], rest: blocks };
+  return { cached: blocks.slice(0, cut + 1), rest: blocks.slice(cut + 1) };
+}
+
+/**
+ * Provider-facing projection of an assembled prompt: one message per zone by
+ * default, or two for a zone carrying an internal breakpoint (experiment 4's
+ * opt-in 3rd marker) — the cached run up to and including the marked block,
+ * then the remainder, uncached, so the models layer only has to translate a
+ * flag into a provider-native one.
  *
  * Zone A is deliberately absent — it ships as `AssembledPrompt.system`, and
  * repeating it here would duplicate the frozen prefix. Its A/B breakpoint is the
@@ -376,12 +457,17 @@ export function toMessages(prompt: AssembledPrompt): ChatMessage[] {
   for (const zone of ['B', 'C', 'tail'] as const) {
     const blocks = prompt.blocks.filter((block) => block.zone === zone);
     if (blocks.length === 0) continue;
-    const message: ChatMessage = {
-      role: 'user',
-      content: blocks.map((block) => block.text).join('\n\n'),
-    };
-    if (zoneEndsAtBreakpoint(prompt, zone)) message.cacheBreakpoint = true;
-    messages.push(message);
+    const { cached, rest } = splitAtLastMark(prompt, blocks);
+    if (cached.length > 0) {
+      messages.push({
+        role: 'user',
+        content: cached.map((block) => block.text).join('\n\n'),
+        cacheBreakpoint: true,
+      });
+    }
+    if (rest.length > 0) {
+      messages.push({ role: 'user', content: rest.map((block) => block.text).join('\n\n') });
+    }
   }
   return messages;
 }

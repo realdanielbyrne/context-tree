@@ -6,6 +6,7 @@
  * replay of that range — never a column somebody remembered to keep in sync.
  */
 import type { BlobRef, BlobStore, SeqSpan, TraceEvent, TraceLog, TreeNode } from '../contracts/index.js';
+import { ARGS_CAP_WITH_BLOB, elision, safeCut } from '../assemble/format.js';
 import {
   isAssistantMessage,
   isManualAnnotation,
@@ -86,7 +87,24 @@ function renderEvent(event: TraceEvent, blobs: BlobStore): string {
   }
   if (isToolCall(event)) {
     const lines = [event.path === undefined ? `${head} ${event.tool}` : `${head} ${event.tool} path=${event.path}`];
-    if (event.args_blob !== undefined) lines.push(`--- args\n${blobs.getText(event.args_blob)}`);
+    // Same rule as Zone C's renderer (`assemble/format.ts`, v5.9b): when a
+    // post-state blob is present the args are capped, because a write's content
+    // would otherwise appear twice in one payload — once JSON-escaped here and
+    // once raw below. This renderer was missing the cap, so `context_fetch`
+    // results carried the duplicate that Zone C had stopped carrying: measured
+    // on the frozen store, 6 of 754 events duplicate byte-for-byte that way,
+    // and it inflates exactly the branches that already tokenize larger than
+    // the window they are read into. Dropping args instead went too far when
+    // it was tried in Zone C (turns 13 → 25 on one scenario) — the args are the
+    // model's only record of WHAT changed.
+    if (event.args_blob !== undefined) {
+      const args = blobs.getText(event.args_blob);
+      const capped =
+        event.blob !== undefined && args.length > ARGS_CAP_WITH_BLOB
+          ? `${args.slice(0, safeCut(args, ARGS_CAP_WITH_BLOB))}${elision(args.length - safeCut(args, ARGS_CAP_WITH_BLOB))}`
+          : args;
+      lines.push(`--- args\n${capped}`);
+    }
     if (event.blob !== undefined) lines.push(`--- content\n${blobs.getText(event.blob)}`);
     return lines.join('\n');
   }

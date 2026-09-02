@@ -676,3 +676,44 @@ describe('TreeRetriever.embedSummaries — L3 is disposable (D8)', () => {
     expect((await retriever.search('oauth login flow')).path).toBe('beam');
   });
 });
+
+describe('the edit-argument cap holds in the retrieval renderer too (2026-09-02)', () => {
+  it("caps a write's args when a post-state blob is present, so the content is not rendered twice", () => {
+    // Zone C stopped rendering this duplicate in v5.9b; `context_fetch` kept
+    // rendering it, so the same content came back once JSON-escaped in the args
+    // and once raw below — in exactly the payload a model reads to recover a
+    // fact. Measured on the frozen transplant store: 6 of 754 events duplicate
+    // byte-for-byte this way, inflating the branches that already tokenize
+    // larger than the window they are read into.
+    const f = fixture();
+    const body = 'X'.repeat(4_000);
+    const call = f.trace.append({
+      type: 'tool_call',
+      ts: TS,
+      tool: 'Write',
+      path: 'src/big.ts',
+      args_blob: f.blobs.put(JSON.stringify({ path: 'src/big.ts', content: body })),
+      blob: f.blobs.put(body),
+    });
+    const node = f.store.insertNode({
+      parent_id: f.store.root()?.id ?? null,
+      kind: 'phase',
+      title: 'write a large file',
+      phase_type: 'implementation',
+      span_start_seq: call.seq,
+      span_end_seq: call.seq,
+      status: 'closed',
+    });
+    const retriever = new TreeRetriever({ store: f.store, blobs: f.blobs, trace: f.trace });
+
+    const fetched = retriever.fetchBranch(node.id, { depth: 'full' });
+
+    // The raw post-state survives in full: it is the content the model needs.
+    expect(fetched.text).toContain(body);
+    // The args copy does not — one occurrence of the 4,000-character run, not two.
+    expect(fetched.text.split(body).length - 1).toBe(1);
+    // And the cut is marked rather than silent.
+    expect(fetched.text).toContain('--- args');
+    expect(fetched.text.length).toBeLessThan(body.length * 2);
+  });
+});

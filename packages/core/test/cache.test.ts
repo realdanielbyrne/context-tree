@@ -27,7 +27,7 @@ import { FsBlobStore } from '../src/blobs/index.js';
 import { JsonlTraceLog } from '../src/trace/index.js';
 import { openInMemoryStore, type SqliteTreeStore } from '../src/store/index.js';
 import { ExactTokenizer, HeuristicTokenizer } from '../src/tokens/index.js';
-import { ZoneAssembler } from '../src/assemble/index.js';
+import { ZoneAssembler, toMessages } from '../src/assemble/index.js';
 import {
   ANTHROPIC_PROFILE,
   CacheAssertionError,
@@ -481,6 +481,110 @@ describe('negative control — the harness must catch what §10 rule 1 forbids',
     expect(findPrefixDivergence(dropped, before, { throughZone: 'B' })?.kind).toBe('inserted');
     // Zone A is untouched either way — the invalidation starts where the edit is.
     expect(() => assertPrefixStable(dropped, before, { throughZone: 'A' })).not.toThrow();
+  });
+});
+
+describe('Zone C 3rd breakpoint — opt-in only (exp-04-caching, `cacheZoneCBreakpoint`)', () => {
+  /** An active branch with a descendant, so a `C:map:*` block exists to keep uncached. */
+  function activeBranchWithMap(h: ReturnType<typeof harness>) {
+    const active = h.addBranch({ title: 'patch', phase: 'implementation', status: 'open', summary: null });
+    h.store.insertNode({
+      parent_id: active.id,
+      kind: 'file',
+      title: 'src/pricing.ts',
+      span_start_seq: active.span_start_seq,
+      span_end_seq: active.span_start_seq,
+    });
+    return active;
+  }
+
+  it('is off by default: Zone C carries no breakpoint and ships as one always-fresh message, matching the shipped 2-breakpoint layout', () => {
+    const h = harness();
+    activeBranchWithMap(h);
+    const prompt = h.assembler.assemble({ toolSchemasText: TOOL_SCHEMAS });
+
+    expect(prompt.cacheBreakpoints.length).toBe(2); // Zone A/B, Zone B/C only
+    expect(inZone(prompt, 'C').some((b) => b.cacheBreakpointAfter === true)).toBe(false);
+    expect(toMessages(prompt).length).toBe(2); // B (marked), C — Zone C stays one message
+  });
+
+  it('marks the last non-map Zone C block when enabled, and turns that into a real 3rd message boundary through toMessages', () => {
+    const h = harness();
+    const active = activeBranchWithMap(h);
+    const assembler = new ZoneAssembler({ ...h.deps, cacheZoneCBreakpoint: true });
+    const prompt = assembler.assemble({ toolSchemasText: TOOL_SCHEMAS });
+
+    const zoneC = inZone(prompt, 'C');
+    const mapBlock = zoneC.at(-1);
+    const lastStable = zoneC.at(-2);
+    expect(mapBlock?.id).toBe(`C:map:${active.id}`);
+    expect(mapBlock?.cacheBreakpointAfter).not.toBe(true);
+    expect(lastStable?.cacheBreakpointAfter).toBe(true);
+    expect(prompt.cacheBreakpoints).toContain(lastStable?.id);
+    expect(prompt.cacheBreakpoints.length).toBe(3);
+
+    // Real effect, not just a simulator-visible flag: Zone C splits into a
+    // cached message (everything through `lastStable`) and an uncached one
+    // (the map), so a caller building a request off `toMessages` actually
+    // gets the 3rd `cache_control` this experiment measured.
+    const messages = toMessages(prompt);
+    expect(messages.length).toBe(3); // B, C-cached, C-map
+    expect(messages[0]?.cacheBreakpoint).toBe(true); // Zone B, unchanged
+    expect(messages[1]?.cacheBreakpoint).toBe(true); // Zone C's stable run
+    expect(messages[1]?.content).not.toContain('descendant'); // sanity: map text stays out
+    expect(messages[2]?.cacheBreakpoint).toBeUndefined(); // the map, fresh every turn
+  });
+
+  it('bills a GROWING Zone C at the cache-WRITE rate with no offsetting read, because this harness only credits a read when the marker recurs at the SAME block position across turns (exp-04-caching §(b)/(c) finding: the marker moves every turn a new event lands, so it never recurs)', () => {
+    const h = harness();
+    activeBranchWithMap(h);
+    const assembler = new ZoneAssembler({ ...h.deps, cacheZoneCBreakpoint: true });
+    const assemble = () => assembler.assemble({ toolSchemasText: TOOL_SCHEMAS });
+
+    const before = assemble();
+    h.simulator.submit(before);
+
+    h.trace.append({ type: 'user_message', ts: TS, blob: h.blobs.put('also fix the tax line') });
+    const after = assemble();
+    const outcome = h.simulator.submit(after);
+
+    // The mark landed on a NEW block this turn (the newly appended event is
+    // now the last non-map block), so it does not match any endBlockIndex this
+    // harness recorded as cached last turn — no read. It is still `cacheable`
+    // (a marker is present), so the whole stable run is billed as a WRITE
+    // (1.25x) rather than FRESH (1x, what the shipped default would charge for
+    // the identical bytes) — strictly worse per token, not better, under this
+    // harness's model. Only Zone A/B, unaffected by the new event, still reads.
+    expect(outcome.survivingSegments).toEqual(['A', 'B']);
+    expect(outcome.cacheRead).toBe(zoneTokens(after, 'A') + zoneTokens(after, 'B'));
+    expect(outcome.cacheWrite).toBeGreaterThan(0);
+    expect(outcome.cacheWrite + outcome.fresh).toBe(zoneTokens(after, 'C'));
+  });
+
+  it('fails if the 3rd marker is dropped: stripping it turns the (still cacheable, still cache-write-billed) Zone C run into plain fresh input, even though every block is byte-identical', () => {
+    const h = harness();
+    activeBranchWithMap(h);
+    const assembler = new ZoneAssembler({ ...h.deps, cacheZoneCBreakpoint: true });
+    const marked = assembler.assemble({ toolSchemasText: TOOL_SCHEMAS });
+    h.simulator.submit(marked);
+
+    // Same bytes, same order, the Zone C marker silently dropped — exactly the
+    // regression this test exists to catch (§17, mirroring the Zone A/B test
+    // above for the 3rd breakpoint this experiment adds).
+    const zoneCIds = new Set(inZone(marked, 'C').map((b) => b.id));
+    const droppedMark: AssembledPrompt = {
+      ...marked,
+      blocks: marked.blocks.map((block) =>
+        zoneCIds.has(block.id) ? { ...block, cacheBreakpointAfter: false } : block,
+      ),
+      cacheBreakpoints: marked.cacheBreakpoints.filter((id) => !zoneCIds.has(id)),
+    };
+
+    expect(() => assertPrefixStable(marked, droppedMark, { throughZone: 'tail' })).not.toThrow();
+    const outcome = h.simulator.submit(droppedMark);
+    expect(outcome.survivingSegments).toEqual(['A', 'B']); // unaffected by the Zone C change
+    expect(outcome.cacheWrite).toBe(0); // no longer cacheable at all without a marker
+    expect(outcome.fresh).toBe(zoneTokens(droppedMark, 'C')); // ALL of Zone C, not just the delta
   });
 });
 

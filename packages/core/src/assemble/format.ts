@@ -124,8 +124,18 @@ export function renderActiveMap(descendants: readonly TreeNode[]): string {
  * payload is always a blob read; a missing blob throws out of `blobs.get*`
  * rather than yielding a plausible-looking empty block.
  */
-/** Max rendered args bytes when a post-state blob is also present (v5.9b). */
-const ARGS_CAP_WITH_BLOB = 512;
+/**
+ * Max rendered args bytes when a post-state blob is also present (v5.9b).
+ *
+ * Exported because the SAME rule has to hold wherever an event is rendered.
+ * It did not: `retrieve/detail.ts` rendered `context_fetch` results with
+ * uncapped args, so a write's content appeared twice — once JSON-escaped in the
+ * args and once raw in the post-state — in exactly the payload the model reads
+ * back. Measured on the frozen store: 6 of 754 events carry a byte-identical
+ * duplicate that way, and it is a material part of why one branch tokenizes
+ * larger than the window it is read into. One rule, one constant, both callers.
+ */
+export const ARGS_CAP_WITH_BLOB = 512;
 
 export function renderEvent(event: TraceEvent, blobs: BlobStore): string {
   switch (event.type) {
@@ -178,12 +188,12 @@ export function renderTailBlock(id: string, text: string, ephemeral: boolean): s
 
 const BARE_ELISION = '...';
 
-function elision(dropped: number): string {
+export function elision(dropped: number): string {
   return `\n...[${dropped} chars elided - call \`context_fetch\` for the full detail]`;
 }
 
 /** Never split a surrogate pair — a lone half is not valid text to send. */
-function safeCut(text: string, at: number): number {
+export function safeCut(text: string, at: number): number {
   const clamped = Math.max(0, Math.min(at, text.length));
   if (clamped <= 0 || clamped >= text.length) return clamped;
   const code = text.charCodeAt(clamped - 1);

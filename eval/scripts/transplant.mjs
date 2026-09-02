@@ -669,6 +669,9 @@ async function buildSemanticToolCtx(scenario) {
   const viaOpenRouter = keys.openai === undefined;
   const copyRoot = mkdtempSync(join(tmpdir(), 'ct-transplant-semantic-'));
   const storeCopy = join(copyRoot, 'store');
+  // A copy of the working store (itself already a copy of the fixture since
+  // `openScenario` stopped writing the original) because embedSummaries writes
+  // L3 rows and this arm must not perturb the store the other arms read.
   cpSync(scenario.storeRoot, storeCopy, { recursive: true });
   const paths = storePaths(storeCopy);
   const trace = new JsonlTraceLog(paths.trace);
@@ -742,11 +745,37 @@ export function nodeDump(store) {
   );
 }
 
-function openScenario(scenarioId) {
+/**
+ * Opens the scenario. `mutable: false` (the default for every phase that
+ * composes a root) works on a COPY, so the frozen fixture is read-only by
+ * construction.
+ *
+ * Why a copy. The freeze covers L0, the node dump and the LEAF summaries, and
+ * the root is pinned per window by `root_by_window` — but composing a root
+ * WRITES a version, `currentSummary` returns the newest, and each window and
+ * arm composes at a different keep. So the root node accumulated 1,546 versions
+ * over this experiment's runs, and any script that read the root without
+ * composing first got whatever the previous run happened to leave. That is not
+ * hypothetical: the caching experiment's session table could not be reproduced
+ * hours later because six root versions had been appended in between, moving
+ * every Zone B number it had measured.
+ *
+ * Copying is cheap (one SQLite file plus a directory of blob hardlinks would do;
+ * a plain recursive copy is simpler and this store is small) and it makes the
+ * hazard structural rather than a rule someone has to remember.
+ */
+function openScenario(scenarioId, { mutable = false } = {}) {
   const dir = join(FIXTURES, scenarioId);
   const src = join(dir, 'trace.src.jsonl');
-  const storeRoot = join(dir, 'store');
-  if (!existsSync(storeRoot)) throw new Error(`scenario ${scenarioId}: no store at ${storeRoot}`);
+  const frozenRoot = join(dir, 'store');
+  if (!existsSync(frozenRoot)) throw new Error(`scenario ${scenarioId}: no store at ${frozenRoot}`);
+  let storeRoot = frozenRoot;
+  let scratch = null;
+  if (!mutable) {
+    scratch = mkdtempSync(join(tmpdir(), `ct-transplant-${scenarioId}-`));
+    storeRoot = join(scratch, 'store');
+    cpSync(frozenRoot, storeRoot, { recursive: true });
+  }
   const paths = storePaths(storeRoot);
   const config = { ...loadConfig(REPO), root: storeRoot };
   const trace = new JsonlTraceLog(paths.trace);
@@ -760,6 +789,8 @@ function openScenario(scenarioId) {
     dir,
     src,
     storeRoot,
+    /** The fixture itself, for hashing — never written when `mutable` is false. */
+    frozenRoot,
     paths,
     config,
     trace,
@@ -771,6 +802,7 @@ function openScenario(scenarioId) {
     close() {
       store.close();
       trace.close();
+      if (scratch !== null) rmSync(scratch, { recursive: true, force: true });
     },
   };
 }

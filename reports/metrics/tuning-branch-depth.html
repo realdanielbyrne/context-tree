@@ -1,0 +1,471 @@
+<title>Branch Depth</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#FBFBF9; --surface:#FFFFFF; --ink:#1C1E21; --muted:#5C6167;
+  --line:#DFE1E4; --accent:#0E6B54; --warm:#A64F2A; --cool:#2F4E8F; --code-bg:#F1F2F0;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#16181B; --surface:#1D2024; --ink:#E7E9EB; --muted:#9BA1A8;
+    --line:#33373C; --accent:#46B090; --warm:#D68A62; --cool:#8FB0E8; --code-bg:#25282D;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#16181B; --surface:#1D2024; --ink:#E7E9EB; --muted:#9BA1A8;
+  --line:#33373C; --accent:#46B090; --warm:#D68A62; --cool:#8FB0E8; --code-bg:#25282D;
+}
+body{background:var(--ground); color:var(--ink);
+  font:17px/1.65 "Source Serif 4",Georgia,serif; margin:0;}
+main{max-width:760px; margin:0 auto; padding:56px 24px 80px;}
+h1{font-size:1.9rem; font-weight:700; line-height:1.2; margin:0 0 6px; text-wrap:balance;}
+h2{font-size:1.2rem; font-weight:700; margin:40px 0 10px;}
+h3{font-size:1.02rem; font-weight:700; margin:26px 0 6px;}
+.meta{color:var(--muted); font-size:.92rem; margin-bottom:34px;}
+.abstract{margin:0 0 6px; padding:0 0 22px; border-bottom:1px solid var(--line);}
+.abstract h2{margin:0 0 8px; font-size:1.05rem;}
+p{margin:0 0 14px; max-width:70ch;}
+.example{background:var(--code-bg); border-radius:6px; padding:12px 16px;
+  font-family:"IBM Plex Mono",monospace; font-size:.78rem; line-height:1.55;
+  overflow-x:auto; white-space:pre; margin:0 0 14px;}
+.tablewrap{overflow-x:auto; background:var(--surface); border:1px solid var(--line);
+  border-radius:6px; margin:14px 0 6px;}
+table{border-collapse:collapse; width:100%; font-size:.85rem;}
+th{font-size:.72rem; letter-spacing:.04em; text-transform:uppercase; color:var(--muted);
+  text-align:right; padding:9px 13px; border-bottom:1px solid var(--line); white-space:nowrap;
+  font-family:"IBM Plex Mono",monospace; font-weight:500;}
+th:first-child, td:first-child{text-align:left;}
+td{padding:7px 13px; border-bottom:1px solid var(--line);
+  font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums;
+  font-size:.84rem; text-align:right; white-space:nowrap;}
+td:first-child{font-family:"Source Serif 4",Georgia,serif; font-size:.9rem;}
+tr:last-child td{border-bottom:none;}
+.tcap{font-size:.85rem; color:var(--muted); margin:6px 2px 18px; max-width:72ch;}
+.tcap b{color:var(--ink);}
+figure{background:var(--surface); border:1px solid var(--line); border-radius:6px;
+  padding:18px 14px 6px; margin:16px 0 6px;}
+figcaption{font-size:.85rem; color:var(--muted); padding:8px 8px 10px; max-width:72ch; line-height:1.5;}
+figcaption b{color:var(--ink);}
+code{font-family:"IBM Plex Mono",monospace; font-size:.82em; background:var(--code-bg);
+  padding:1px 5px; border-radius:4px;}
+footer{margin-top:48px; padding-top:14px; border-top:1px solid var(--line);
+  color:var(--muted); font-size:.82rem; line-height:1.5;}
+svg text{font-family:"IBM Plex Mono",monospace; font-size:11px; fill:var(--muted);}
+svg .serieslabel{font-size:12px; font-weight:600;}
+</style>
+<main>
+<h1>How deep a branch goes before it is summarized</h1>
+<div class="meta">Context-tree evaluation program · DS-STAR tuning pass, dimension 2 of 4 · September 2, 2026 · commit <code>d1bced9</code></div>
+
+<p style="font-size:.92rem; color:var(--muted); border:1px solid var(--line); border-radius:6px; padding:10px 14px; max-width:72ch;"><em>Status and provenance.</em> This report is the full treatment of the dimension summarized in <code>reports/algorithm.md</code> under "What the DS-STAR loop is for". No language model was called to produce any figure in it. Every number was recomputed for this report from the frozen store at <code>eval/fixtures/transplant/s1/store/</code> (SQLite <code>tree.db</code>, <code>trace.jsonl</code>, <code>blobs/</code>), from the compiled segmenter <code>packages/core/dist/segment/segment.js</code> run against that store's event log, or from result files already on disk. Section 8 lists the places where the underlying analysis note and this report disagree, and in each case the report uses the value that reproduced.</p>
+
+<div class="abstract">
+<h2>Abstract</h2>
+<p>Context-tree segments an agent's history into <b>branches</b> — contiguous stretches of work that each get one summary — and shows the model those summaries instead of raw events. How much work goes into one branch before it is summarized is that unit's <b>depth</b>, and it turns out to be nothing anybody chose: it is whatever the segmenter's tool-name-to-phase table and its neutral-merge rule happen to produce from a particular trace. On the one frozen store this repository has measured, that produces a 77-fold spread in branch size: 21 branches over 754 events, from 2,214 to 170,031 raw characters, median 23,515. One branch spans 207 events — 27% of the whole trace in a single node — and at an estimated 36,170 tokens it is larger than the entire 32,768-token window it was being retrieved into. It never closes because all 64 shell calls and 2 skill calls inside it map to the neutral phase, which by rule extends the open branch, while every non-neutral call inside it maps to the same phase type, so the one condition that could close it never fires across 22 alternating runs of tool identity. Three of the twelve evaluation questions source from that branch. The honest qualifier has to be said in the same breath: branch depth explains almost none of the retrieval failures actually measured on this store. In the 110-row failure sample that was forensically classified, "fetched the correct branch but it was truncated" is 0 cases, confirmed zero; and across all 180 tree-arm rows of the transplant sweep the oversized branch was fetched exactly once, with no truncation, at a peak request of 20,893 tokens — the models never went near it at full depth, so the risk never fired. Re-segmenting the same 754 events under a rule the code already accepts — an empty neutral-phase list, which the segmenter's own contract calls the literal reading of its specification — needs no new code and no size threshold, and turns 21 branches into 99 with a median of 3 events. Every one of the twelve questions then sources from a branch that fits both windows the harness actually runs questions at, where the shipped segmentation fails that test for 3 of 12 at 32,768 tokens and 7 of 12 at 16,384. The cost is 4.7 times the branches and therefore 4.7 times the leaf-summarizer calls, whose measured output is pinned near its 1,024-token ceiling on every call regardless of how small the branch is; on six long-task runs the leaf summarizer is already 6.9% to 19.3% of run cost, median 9.4%. What this closes is a boundary condition, not a scoring problem.</p>
+</div>
+
+<h2>1&ensp;Terms, and what actually sets depth</h2>
+<p>A <b>branch</b> (a <code>phase</code> node in the code) is context-tree's unit of summarization: a contiguous range of the append-only event log that receives one summary and appears in the prompt as that summary rather than as its events. Its <b>span</b> is a pair of sequence numbers, <code>span_start_seq</code>–<code>span_end_seq</code>; branches partition the log, so every event belongs to exactly one branch. <b>Depth</b>, the subject of this report, is how much of the log one branch covers before it is closed and summarized. A <b>phase type</b> is a coarse label — <code>diagnosis</code>, <code>implementation</code>, <code>verification</code>, <code>delivery</code>, <code>review</code>, or <code>other</code> — assigned to a tool call by a lookup table. <b>W</b> denotes a model's context window in tokens.</p>
+<p>The segmenter opens a branch on the first tool call and, on every later tool call, decides whether to close the open one. There is exactly one condition:</p>
+<div class="example">packages/core/src/segment/segment.ts:176
+} else if (!neutral.has(phaseType) &amp;&amp; open.phaseType !== phaseType) {
+  // The literal §7 rule, but only for non-neutral phases (Ruling C6):</div>
+<p><code>neutral</code> is built from <code>config.neutralPhases</code> (<code>segment.ts:63</code>), whose shipped default is <code>['other']</code> (<code>packages/core/src/config.ts:113</code>). So an open branch survives any run of tool calls that either keep mapping to the same non-neutral type, or map to <code>other</code> — and a call mapping to <code>other</code> never closes anything, however many of them accumulate. The tool-to-phase table (<code>DEFAULT_TOOL_PHASE</code>, <code>config.ts:17-43</code>) has exactly 20 entries, of which <code>run_command</code> and <code>Bash</code> are commented "explicitly neutral" (<code>config.ts:41</code>); this repository's own <code>context-tree.config.json</code> — the config the frozen store was ingested under — adds <code>Skill</code> and <code>ToolSearch</code> to <code>other</code> as well.</p>
+<p>Depth is therefore the joint product of two things nobody tuned against a metric: which phase types a given harness's tool names happen to map to, and how long a real task happens to stay inside one type, or inside <code>other</code>, before switching. Under the project's own rules for the algorithm, that is not a hardcoded value to be defended or replaced — it is an unmeasured consequence. The code already names the one alternative that requires no new code:</p>
+<div class="example">packages/core/src/contracts/segment.ts:56-57
+ * Phases that attach to the open phase instead of opening a new one
+ * (Ruling C6). Default `['other']`; `[]` restores the literal §7 rule.</div>
+<p>Section 5 measures that alternative. Sections 2 to 4 establish what the shipped rule actually produces, and what it does and does not cost.</p>
+
+<h2>2&ensp;The measured size distribution on the frozen store</h2>
+<p>The store at <code>eval/fixtures/transplant/s1/store/</code> holds one task root, 21 branches and 24 file nodes over a 754-event trace (<code>SELECT kind, count(*) FROM nodes GROUP BY kind</code>). By phase type the 21 branches are <code>implementation</code> ×10, <code>diagnosis</code> ×7 and <code>delivery</code> ×4; <code>verification</code> and <code>review</code> never occur in this trace. The 21 spans sum to exactly 754 events, confirming the partition.</p>
+<p>Raw size per branch is the sum, over every event in its span, of the byte size of that event's payload blobs (<code>blob</code>, <code>args_blob</code>, <code>output_blob</code>) — the same content <code>renderSpans</code> (<code>packages/core/src/retrieve/detail.ts:114-122</code>) concatenates, and therefore the same quantity a full-depth fetch of that branch would return, before the small per-event formatting that <code>renderSpans</code> adds. Token estimates are raw characters divided by four, times 0.850896663206653, this store's own measured heuristic-to-tokenizer ratio over all 697 payload blobs (<code>gates.json</code>, gate <code>g7-bpe-ratio</code>). The estimate is not a guess imported from elsewhere: it is re-derived per corpus, and on the one branch where an independent exact tokenizer count exists it agrees to four significant figures (§3).</p>
+
+<div class="tablewrap"><table>
+<tr><th>statistic</th><th>events</th><th>raw chars</th><th>est. tokens</th></tr>
+<tr><td>minimum</td><td>2</td><td>2,214</td><td>471</td></tr>
+<tr><td>lower hinge</td><td>10</td><td>5,284.5</td><td>1,124</td></tr>
+<tr><td>median</td><td>17</td><td>23,515</td><td>5,002</td></tr>
+<tr><td>upper hinge</td><td>52.5</td><td>34,923</td><td>7,429</td></tr>
+<tr><td>maximum</td><td>207</td><td>170,031</td><td>36,170</td></tr>
+<tr><td>max ÷ min</td><td>103.5×</td><td>76.8×</td><td>76.8×</td></tr>
+</table></div>
+<p class="tcap"><b>Table 1.</b> Branch size on the frozen store under the shipped segmentation, n = 21 branches over 754 events. Medians are reported for size, as they are for tokens and turns throughout this program. Hinges are Tukey hinges (the medians of the lower and upper halves, the median itself excluded); the more common linear-interpolation convention gives a lower hinge of 10 events / 5,426 chars and an upper hinge of 51 events / 33,065 chars on the same data, which is why the convention is stated. The 77-fold spread in raw characters is the finding: nothing in the rule bounds it, in either direction.</p>
+
+<figure><div id="fig1"></div>
+<figcaption><b>Figure 1.</b> Branch size distribution, shipped segmentation against the re-segmentation of §5, both computed from the same 754 events with no model call. Each series plots every branch's estimated size in tokens against its rank as a percentile, largest first — an inverse empirical distribution, so a point at percentile <em>p</em> reads "this fraction of branches is at least this large". Brown is the baseline, the shipped <code>neutralPhases: ['other']</code> rule (n = 21). Green is the candidate, <code>neutralPhases: []</code> (n = 99). The dashed lines are the two context windows the transplant harness actually asks questions at (<code>eval/scripts/transplant.mjs:99</code>). The baseline's largest branch sits above both; three more sit above the lower one. The candidate's whole distribution collapses toward the floor — its median branch is 648 estimated tokens against the baseline's 5,002 — while its own largest branch, 20,738 tokens over just 5 events, shows that a finer partition by tool identity does not bound branch size in tokens, because one very large tool result can dominate a branch of any event count.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+<tr><th>branch</th><th>phase type</th><th>span</th><th>events</th><th>raw chars</th><th>est. tokens</th></tr>
+<tr><td><code>n_1E48X9HA…</code></td><td>implementation</td><td>55–261</td><td>207</td><td>170,031</td><td>36,170</td></tr>
+<tr><td><code>n_1BGBV85X…</code></td><td>implementation</td><td>267–276</td><td>10</td><td>100,579</td><td>21,396</td></tr>
+<tr><td><code>n_1JNW5D8C…</code></td><td>diagnosis</td><td>1–54</td><td>54</td><td>84,179</td><td>17,907</td></tr>
+<tr><td><code>n_1A84WKF2…</code></td><td>delivery</td><td>639–731</td><td>93</td><td>83,410</td><td>17,743</td></tr>
+<tr><td><code>n_1PPHC64K…</code></td><td>implementation</td><td>732–754</td><td>23</td><td>36,781</td><td>7,824</td></tr>
+<tr><td><code>n_15NSXSQ4…</code></td><td>implementation</td><td>430–488</td><td>59</td><td>33,065</td><td>7,034</td></tr>
+<tr><td><code>n_11RPJ288…</code></td><td>implementation</td><td>359–389</td><td>31</td><td>30,459</td><td>6,479</td></tr>
+<tr><td><code>n_1FJ2VN7B…</code></td><td>implementation</td><td>320–349</td><td>30</td><td>28,853</td><td>6,138</td></tr>
+<tr><td><code>n_1KYBBC6P…</code></td><td>diagnosis</td><td>390–412</td><td>23</td><td>24,941</td><td>5,306</td></tr>
+<tr><td><code>n_1C6D33C0…</code></td><td>implementation</td><td>588–638</td><td>51</td><td>24,081</td><td>5,123</td></tr>
+<tr><td><code>n_1WAD2VDY…</code></td><td>diagnosis</td><td>489–553</td><td>65</td><td>23,515</td><td>5,002</td></tr>
+<tr><td><code>n_1C0BDXFH…</code></td><td>implementation</td><td>554–570</td><td>17</td><td>14,801</td><td>3,149</td></tr>
+<tr><td><code>n_16BHTPNT…</code></td><td>diagnosis</td><td>282–297</td><td>16</td><td>8,523</td><td>1,813</td></tr>
+<tr><td><code>n_1F6E3RF1…</code></td><td>diagnosis</td><td>262–266</td><td>5</td><td>8,301</td><td>1,766</td></tr>
+<tr><td><code>n_10MK5T7J…</code></td><td>implementation</td><td>298–307</td><td>10</td><td>8,053</td><td>1,713</td></tr>
+<tr><td><code>n_1NH76HCY…</code></td><td>diagnosis</td><td>571–587</td><td>17</td><td>5,426</td><td>1,154</td></tr>
+<tr><td><code>n_161P8JTC…</code></td><td>delivery</td><td>308–319</td><td>12</td><td>5,143</td><td>1,094</td></tr>
+<tr><td><code>n_18ZHNQYZ…</code></td><td>implementation</td><td>413–427</td><td>15</td><td>4,868</td><td>1,036</td></tr>
+<tr><td><code>n_1ZDHE482…</code></td><td>delivery</td><td>350–358</td><td>9</td><td>3,854</td><td>820</td></tr>
+<tr><td><code>n_1TVA5EV1…</code></td><td>diagnosis</td><td>428–429</td><td>2</td><td>3,690</td><td>785</td></tr>
+<tr><td><code>n_1X4N1KJ4…</code></td><td>delivery</td><td>277–281</td><td>5</td><td>2,214</td><td>471</td></tr>
+</table></div>
+<p class="tcap"><b>Table 2.</b> All 21 branches of the frozen store under the shipped segmentation, largest first; the baseline against which §5's candidate is measured. Every row was recomputed for this report from <code>tree.db</code> plus the payload blobs and reproduces the underlying analysis note exactly. Four branches exceed the harness's lower question window of 16,384 tokens on their own; one exceeds 32,768.</p>
+
+<h3>2.1&ensp;Nothing below a branch is ever summarized</h3>
+<p>The node-kind enumeration includes <code>'turn'</code> (<code>packages/core/src/contracts/tree.ts:11</code>), but nothing in <code>packages/core/src</code> ever emits a node of that kind; the only other reference, <code>ingest/apply.ts:134</code>, merely excludes such nodes from a filter. The one kind deeper than a branch that is actually produced is <code>file</code>: 24 nodes, one per distinct path touched by a file-shaped tool inside a branch (<code>config.ts:46-53</code>). Those nodes carry no summary of their own — joining <code>node_summaries</code> to <code>nodes</code> and grouping by kind returns rows only for <code>phase</code> (21) and <code>task</code> (1,538, from repeated root recomposition across the transplant sweep's window and arm combinations), and zero rows for <code>file</code>. So the finer structure the store already tracks is invisible to the prompt's summary section, and the branch is the deepest unit that is ever summarized at all.</p>
+
+<h2>3&ensp;The branch that exceeds the window it was read into</h2>
+<p><code>n_1E48X9HAFPEYNQHHSF609KHMEE</code>, span 55–261, phase type <code>implementation</code>, is 207 of the trace's 754 events — 27.4% of the whole history in one node — and at 170,031 raw characters it is the only branch of 21 that exceeds 32,768 tokens on its own. This is the branch for which an exact tokenizer count already exists in the record: <code>eval/plans/loop9b-item2-judge-verdict.md:65</code> measures 170,031 characters as 36,170 cl100k tokens and annotates it "no — larger than W". The independent estimate recomputed here is 36,170, which is the cross-check quoted in §2 for the ratio method. Three of the twelve evaluation questions source from inside this one branch: <code>s1-q01-head</code> at seq 175, <code>s1-q07-deep</code> at seq 55 — the branch's own opening event — and <code>s1-q10-spanning</code> at seq 173.</p>
+
+<div class="tablewrap"><table>
+<tr><th>tool</th><th>calls</th><th>mapped phase</th><th>neutral?</th><th>can close the branch?</th></tr>
+<tr><td><code>Bash</code></td><td>64</td><td><code>other</code></td><td>yes</td><td>no</td></tr>
+<tr><td><code>Edit</code></td><td>12</td><td><code>implementation</code></td><td>no</td><td>only on a type change</td></tr>
+<tr><td><code>Skill</code></td><td>2</td><td><code>other</code></td><td>yes</td><td>no</td></tr>
+<tr><td><code>Write</code></td><td>2</td><td><code>implementation</code></td><td>no</td><td>only on a type change</td></tr>
+<tr><td>total</td><td>80</td><td>—</td><td>—</td><td>—</td></tr>
+</table></div>
+<p class="tcap"><b>Table 3.</b> Every tool call inside span 55–261, counted directly from <code>trace.jsonl</code> for events of type <code>tool_call</code> with 55 ≤ seq ≤ 261. This is the mechanism, and it is complete: both neutral tools extend the open branch by rule and can never close it, and both non-neutral tools map to <code>implementation</code>, the type already open, so <code>open.phaseType !== phaseType</code> is false every time. The 80 calls form 22 runs of consecutive same-tool identity — the alternating edit-then-run shape of a long build-and-debug cycle — and not one of those 22 transitions is a phase-type transition. Under the shipped rule the entire cycle is one leaf however long it runs.</p>
+
+<div class="tablewrap"><table>
+<tr><th>file node</th><th>span</th><th>starts at</th><th>ends at</th></tr>
+<tr><td><code>build-multimod-scenario.py</code></td><td>55–261</td><td>55</td><td>261</td></tr>
+<tr><td><code>loop.ts</code></td><td>93–261</td><td>93</td><td>261</td></tr>
+<tr><td><code>loop.test.ts</code></td><td>103–261</td><td>103</td><td>261</td></tr>
+<tr><td><code>ct-stats.mjs</code></td><td>115–261</td><td>115</td><td>261</td></tr>
+<tr><td><code>format.ts</code></td><td>159–261</td><td>159</td><td>261</td></tr>
+<tr><td><code>assemble.test.ts</code></td><td>180–261</td><td>180</td><td>261</td></tr>
+</table></div>
+<p class="tcap"><b>Table 4.</b> The six file nodes the store already tracks inside the oversized branch, from <code>tree.db</code>. They are interleaved, not sequential: six distinct start points, one shared end point, because editing moved back and forth across all six files for the branch's whole 207-event length. This matters for §7's assessment of promoting file nodes to a summarized unit — the sub-structure exists, but it does not partition the branch.</p>
+
+<p><b>What this establishes, and what it does not.</b> Measured: one branch on this store is larger, alone, than the window the harness reads it into, and the rule that produced it contains nothing that could have prevented that. Not measured, and the subject of the next section: whether that ever cost a retrieval.</p>
+
+<h2>4&ensp;What branch depth does not explain</h2>
+<p>This section is placed before the fix rather than after it because it changes what the fix is for. <code>eval/plans/loop9b-analysis/01-run-forensics.md</code> is the one analysis that forensically classified retrieval outcomes on this exact store: 135 sampled model-turn transcripts, across the <code>head</code>, <code>tail</code> and <code>deep</code> question strata, the <code>tree</code> and <code>tree-wide</code> arms and both models, sorted into six mutually exclusive mechanisms by matching each row's recorded <code>fetchedIds</code> against the question's true source node.</p>
+
+<div class="tablewrap"><table>
+<tr><th>mechanism</th><th>rows</th><th>% of 135</th><th>% of 110 failures</th></tr>
+<tr><td>searched, never called <code>context_fetch</code></td><td>47</td><td>34.8%</td><td>42.7%</td></tr>
+<tr><td>fetched a wrong branch</td><td>44</td><td>32.6%</td><td>40.0%</td></tr>
+<tr><td>never searched, never fetched</td><td>12</td><td>8.9%</td><td>10.9%</td></tr>
+<tr><td>fetched the correct branch, no truncation, still wrong</td><td>6</td><td>4.4%</td><td>5.5%</td></tr>
+<tr><td>fetched the correct branch, then stopped by the turn ceiling</td><td>1</td><td>0.7%</td><td>0.9%</td></tr>
+<tr><td><b>fetched the correct branch but it was truncated</b></td><td><b>0</b></td><td><b>0.0%</b></td><td><b>0.0%</b></td></tr>
+<tr><td>infrastructure error (excluded)</td><td>21</td><td>15.6%</td><td>—</td></tr>
+<tr><td>success (excluded)</td><td>4</td><td>3.0%</td><td>—</td></tr>
+</table></div>
+<p class="tcap"><b>Table 5.</b> Mechanism aggregation from <code>01-run-forensics.md</code> §8, n = 135 sampled rows, 110 of them scored failures. The last mechanism is the only one branch depth could cause, and it is zero. Two cautions belong with this table. First, the two dominant rows are about whether the model looked at all, not about what it would have found. Second, a separate 5.2% of the 135 rows (7 rows) were stopped by the harness's own turn ceiling of six turns (<code>transplant.mjs:123</code>); a run the harness stopped is not evidence that the task was failed, and those rows sit inside the 110-row failure denominator, so every percentage in the right-hand column is very slightly pessimistic against the tree.</p>
+
+<p>Restated against this report's own distribution: the single branch structurally capable of causing a truncated fetch — the 36,170-token branch behind q01, q07 and q10 — never caused one. The census below is new to this report and is stronger than the sampled evidence, because it covers every row of the sweep rather than a sample.</p>
+
+<div class="tablewrap"><table>
+<tr><th>population</th><th>rows</th><th>fetched the oversized branch</th></tr>
+<tr><td>all rows, all arms</td><td>444</td><td>1</td></tr>
+<tr><td><code>tree</code> and <code>tree-wide</code> rows</td><td>180</td><td>1</td></tr>
+<tr><td>tree-arm rows on the three questions it sources</td><td>45</td><td>1</td></tr>
+<tr><td>— of those, searched at all</td><td>24</td><td>—</td></tr>
+<tr><td>— of those, fetched anything at all</td><td>21</td><td>—</td></tr>
+<tr><td>— of those, any fetch truncated</td><td>3</td><td>0</td></tr>
+</table></div>
+<p class="tcap"><b>Table 6.</b> How often the oversized branch was actually retrieved, counted over every row in the five <code>run-*.json</code> files of the transplant sweep. The one row that fetched it (<code>tree-wide</code>, qwen-2.5-72b-instruct, W = 32,768, <code>s1-q10-spanning</code>, replicate 3) recorded <code>resultsTruncated: 0</code> and a peak request of 20,893 tokens — far below both the branch's own 36,170 and the window — and its answer text discusses the content of one file inside the branch, so it did not receive the branch at full depth either. The three truncation events among those 45 rows all struck a different, incorrectly targeted branch and elided 110 to 208 tokens. The tree-arm rows show 18 truncation events in total, none of them on this branch.</p>
+
+<p>Table 7 gives the graded outcome those rows produce, paired arm against baseline at a fixed model, window and epoch. It is included because the metric that matters is score and turns, not the mechanism count, and because it carries a correction.</p>
+
+<div class="tablewrap"><table>
+<tr><th>arm · stratum</th><th>scored n</th><th>mean score</th><th>successes</th><th>median turns</th><th>median context tok</th></tr>
+<tr><td><code>truncate-tail</code> · head</td><td>14</td><td>0.000</td><td>0</td><td>1</td><td>22,638</td></tr>
+<tr><td><code>compact-rolling</code> · head</td><td>15</td><td>0.000</td><td>0</td><td>1</td><td>13,143</td></tr>
+<tr><td><code>tree</code> · head</td><td>11</td><td>0.091</td><td>1</td><td>2</td><td>31,584</td></tr>
+<tr><td><code>tree-wide</code> · head</td><td>9</td><td>0.333</td><td>3</td><td>3</td><td>51,373</td></tr>
+<tr><td><code>truncate-tail</code> · deep</td><td>15</td><td>0.000</td><td>0</td><td>1</td><td>22,642</td></tr>
+<tr><td><code>compact-rolling</code> · deep</td><td>15</td><td>0.000</td><td>0</td><td>1</td><td>13,147</td></tr>
+<tr><td><code>tree</code> · deep</td><td>11</td><td>0.000</td><td>0</td><td>4</td><td>54,100</td></tr>
+<tr><td><code>tree-wide</code> · deep</td><td>7</td><td>0.000</td><td>0</td><td>3</td><td>33,531</td></tr>
+<tr><td><code>truncate-tail</code> · tail</td><td>15</td><td>0.200</td><td>3</td><td>1</td><td>22,632</td></tr>
+<tr><td><code>compact-rolling</code> · tail</td><td>15</td><td>0.333</td><td>5</td><td>1</td><td>13,137</td></tr>
+<tr><td><code>tree</code> · tail</td><td>11</td><td>0.000</td><td>0</td><td>3</td><td>50,709</td></tr>
+<tr><td><code>tree-wide</code> · tail</td><td>13</td><td>0.000</td><td>0</td><td>3</td><td>31,477</td></tr>
+</table></div>
+<p class="tcap"><b>Table 7.</b> Graded outcome by arm and stratum, all cells at qwen-2.5-72b-instruct, W = 32,768, one epoch, 15 attempted replicates each. Scores are means, turns and context tokens are medians, per this program's convention. Context tokens are fresh input plus cache reads plus cache writes, summed over a row's turns. <b>Correction applied.</b> The stored result files score every turn-capped row 0, but the harness's own grader now refuses to do that — <code>transplant.mjs:3366</code> makes a harness-stopped run ungradable, on the recorded reasoning that "<code>null</code> is the only honest value, never <code>0</code>" — and the files on disk predate that change. All 9 turn-capped rows in the sweep are therefore excluded here, along with the 60 rows the harness already excluded as provider infrastructure errors, which is why scored n falls below 15 in six cells. Only one cell's mean moves: <code>tree-wide</code> · head is 0.333 (3 of 9) corrected, against 0.273 (3 of 11) if the two fabricated zeros are left in. The uncorrected 0.273 is the figure the source analysis quotes; the corrected 0.333 is the figure <code>reports/algorithm.md</code> carries.</p>
+
+<p><b>The qualifier, stated plainly.</b> Branch depth bears on exactly one of the six measured mechanisms, and that mechanism is zero. It is a contributing but unconfirmed factor in a second — the 4.4% "fetched correct, no truncation, still wrong" bucket — where <code>01-run-forensics.md</code> §6 explicitly declines to attribute cause, because the harness never recorded which <code>depth</code> argument a fetch used. The remaining four mechanisms, covering the overwhelming majority of failures, are about whether and where the model looked. The proximate cause upstream of the oversized branch is query formation: <code>deep</code>-stratum failures are 62% wrong-branch fetches, and for q07 the branch has the best self-retrieval rank in the whole gate suite — 1 of 19 ranked candidates, <code>gates.json</code> gate <code>g15</code> — yet zero of 15 sampled replicates ever fetched it. A risk that never fires because a different failure happens first is still a risk worth closing, but closing it should not be expected to move a score.</p>
+
+<h3>4.1&ensp;A claim about the tail stratum that does not hold</h3>
+<p>One explanation in circulation attributes the <code>tree</code> arm's 0.000 on the <code>tail</code> stratum to the newest branch starting too late — at seq 732, when the questions need 720–731. Neither source supports it, and this report's own node table contradicts it. <code>01-run-forensics.md</code> §3 states the opposite directly: all three tail sources — q04 at seq 728, inside branch 639–731, and q05/q06 at seq 744 and 746, inside branch 732–754 — are <em>inside</em> the visible summary range 639–754. Table 2 above confirms independently that those are exactly the two most recent branches. <code>loop9b-item2-judge-verdict.md:231-234</code> relies on the same fact as its stated reason for rejecting a different design, on the grounds that pre-filling the active zone with the newest branch's raw detail "hands the tail stratum its answer by construction" — which is a problem only because the range already covers it. The sourced explanation is behavioural, not structural: 34.8% of sampled rows searched and never fetched, and a further 8.9% never searched, so a model that can already see a one-paragraph summary of the right branch has no trigger to re-fetch it at full depth. That is a question about tool-use policy and summary content, and nothing about branch granularity would change it — the branch holding the answer is already visible and already correctly sized.</p>
+
+<h2>5&ensp;The config-only re-segmentation, and what it produces</h2>
+<p>Splitting a branch once its rendered size crosses a threshold is a cap: a number picked in advance about how much work should fit in one unit, imposed regardless of what the unit is. The alternative measured here is structural instead — derived from the trace's own shape — and needs no source change at all, because <code>segment()</code> already accepts <code>neutralPhases</code> as a parameter and is pure by construction. It was run directly against the frozen store's 754 events through the compiled segmenter, with the same tool-to-phase map the store was built from; running it with the shipped <code>['other']</code> reproduces the store's 21 branches and their exact spans, which is what makes the comparison a controlled one.</p>
+
+<div class="tablewrap"><table>
+<tr><th>quantity</th><th>baseline <code>['other']</code></th><th>candidate <code>[]</code></th></tr>
+<tr><td>branches</td><td>21</td><td>99</td></tr>
+<tr><td>events per branch, min / median / max</td><td>2 / 17 / 207</td><td>2 / 3 / 88</td></tr>
+<tr><td>est. tokens per branch, median</td><td>5,002</td><td>648</td></tr>
+<tr><td>est. tokens per branch, max</td><td>36,170</td><td>20,738</td></tr>
+<tr><td>branches over W = 8,192</td><td>4</td><td>3</td></tr>
+<tr><td>branches over W = 16,384</td><td>4</td><td>1</td></tr>
+<tr><td>branches over W = 32,768</td><td>1</td><td>0</td></tr>
+<tr><td>branches over W = 65,536</td><td>0</td><td>0</td></tr>
+<tr><td>file nodes</td><td>24</td><td>30</td></tr>
+<tr><td>branches typed <code>other</code></td><td>0</td><td>47</td></tr>
+</table></div>
+<p class="tcap"><b>Table 8.</b> The two segmentations over the same 754 events, zero model calls, same store, same tool map. Windows are the five the harness's nesting sweep covers (<code>transplant.mjs:101</code>); questions are only ever asked at 16,384 and 32,768 (<code>:99</code>). Two entries deserve care. The candidate still leaves one branch above 16,384 tokens — 20,738 tokens over 5 events — so "the over-window branch disappears" is true at 32,768 and false at 16,384; no question sources from that branch. And 47 of the candidate's 99 branches are typed <code>other</code>, meaning nearly half of the new units are runs of shell commands with no phase identity of their own, which is a summary-quality question this pass did not measure.</p>
+
+<figure><div id="fig2"></div>
+<figcaption><b>Figure 2.</b> For each of the twelve evaluation questions, the estimated size of the single branch its answer literal sits inside — baseline against candidate, same trace, same store, no model call. Brown is the shipped segmentation, green is <code>neutralPhases: []</code>. The dashed lines are the two windows the harness asks questions at, 16,384 and 32,768 tokens. Under the baseline, q01, q07 and q10 (all sourced from the 207-event branch) sit above both lines, and q03, q04, q09 and q12 sit above the lower one: 3 of 12 questions cannot fit their own source branch into W = 32,768, and 7 of 12 cannot fit it into W = 16,384. Under the candidate every one of the twelve sits below both lines, with the largest at 15,648 tokens. Fitting the window is necessary, not sufficient — §4 shows the models mostly never reached these branches at all.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+<tr><th>question</th><th>seq</th><th>baseline branch</th><th>est. tok</th><th>candidate branch</th><th>est. tok</th></tr>
+<tr><td>q01 · head</td><td>175</td><td>55–261</td><td>36,170</td><td>169–179</td><td>1,358</td></tr>
+<tr><td>q02 · head</td><td>558</td><td>554–570</td><td>3,149</td><td>556–570</td><td>2,506</td></tr>
+<tr><td>q03 · head</td><td>18</td><td>1–54</td><td>17,907</td><td>17–18</td><td>7,499</td></tr>
+<tr><td>q04 · tail</td><td>728</td><td>639–731</td><td>17,743</td><td>642–729</td><td>15,648</td></tr>
+<tr><td>q05 · tail</td><td>744</td><td>732–754</td><td>7,824</td><td>734–754</td><td>6,469</td></tr>
+<tr><td>q06 · tail</td><td>746</td><td>732–754</td><td>7,824</td><td>734–754</td><td>6,469</td></tr>
+<tr><td>q07 · deep</td><td>55</td><td>55–261</td><td>36,170</td><td>55–57</td><td>5,141</td></tr>
+<tr><td>q08 · deep</td><td>559</td><td>554–570</td><td>3,149</td><td>556–570</td><td>2,506</td></tr>
+<tr><td>q09 · deep</td><td>41</td><td>1–54</td><td>17,907</td><td>19–41</td><td>2,605</td></tr>
+<tr><td>q10 · spanning</td><td>173</td><td>55–261</td><td>36,170</td><td>169–179</td><td>1,358</td></tr>
+<tr><td>q11 · spanning</td><td>467</td><td>430–488</td><td>7,034</td><td>465–484</td><td>1,520</td></tr>
+<tr><td>q12 · spanning</td><td>691</td><td>639–731</td><td>17,743</td><td>642–729</td><td>15,648</td></tr>
+</table></div>
+<p class="tcap"><b>Table 9.</b> Per-question containment, n = 12 questions, both segmentations over the same events. Sequence numbers are from <code>questions.json</code>. Every question falls inside exactly one branch under both rules, which is true by construction and checked here only as a regression guard. At W = 32,768 the baseline fails containment for 3 of 12 and the candidate for 0 of 12; at W = 16,384 the baseline fails for 7 of 12 and the candidate for 0 of 12. At W = 8,192 the candidate fails for 2 of 12 (q04 and q12, at 15,648 tokens), but that window is already a dead cell for the tree arms — gate <code>g9</code> records that no fold level at 8,192 leaves room for a single branch summary — so it is not a window at which any question is asked. A stricter and more operational criterion than "fits W" is the measured turn-one headroom the same store's judge verdict reports, 22.8k tokens at W = 32,768 and 10.25k at W = 16,384: against that, the baseline contains 9 of 12 and 5 of 12 respectively, and the candidate 12 of 12 and 10 of 12.</p>
+
+<h2>6&ensp;What the finer partition costs</h2>
+<p>99 branches against 21 is 4.71 times the units, and therefore 4.71 times the number of leaf-summarizer calls, since exactly one leaf pass is made per branch. The measured shape of that cost, from the six long-task runs whose result files record cost by model, is below. These are the only runs in the repository where the summarizer fired at all: on five short-task runs whose size gate never crossed, its share is 0% on every run.</p>
+
+<div class="tablewrap"><table>
+<tr><th>run</th><th>leaf calls</th><th>input tok / call</th><th>output tok / call</th><th>leaf share of run cost</th></tr>
+<tr><td>sw-5-dozen r1</td><td>3</td><td>6,174</td><td>919</td><td>6.9%</td></tr>
+<tr><td>sw-5-dozen r2</td><td>2</td><td>7,402</td><td>640</td><td>7.6%</td></tr>
+<tr><td>sw-5-dozen r3</td><td>2</td><td>8,248</td><td>1,170</td><td>8.4%</td></tr>
+<tr><td>sw-6-ripple r1</td><td>3</td><td>6,085</td><td>932</td><td>10.3%</td></tr>
+<tr><td>sw-6-ripple r2</td><td>5</td><td>4,940</td><td>834</td><td>13.6%</td></tr>
+<tr><td>sw-6-ripple r3</td><td>9</td><td>8,918</td><td>1,005</td><td>19.3%</td></tr>
+<tr><td>median</td><td>3</td><td>6,788</td><td>926</td><td>9.4%</td></tr>
+</table></div>
+<p class="tcap"><b>Table 10.</b> Leaf-summarizer cost, n = 6 runs, all context-tree arm, claude-sonnet-5 as the agent and claude-haiku-4-5 as the leaf summarizer, one batch (<code>eval/results/long-v65-gate/*/results.json</code>). Share is the haiku line divided by the run's total across all models; root composition contributes nothing in these runs because the harness made it a pure function over leaf headlines. Recomputed here from the stored <code>costByModel</code> blocks: n = 6, median 9.35%, range 6.9% to 19.3%. The load-bearing column is output per call. Every one of the six runs sits between 640 and 1,170 tokens, against a configured ceiling of 1,024 (<code>config.ts:118</code>) — so leaf output is essentially saturated at the ceiling regardless of how large the branch was, and 4.71 times the calls is 4.71 times the leaf output tokens. Input per call, by contrast, is dominated by the branch's own detail, so a finer partition of the same trace roughly conserves total leaf input and adds one fixed prompt per extra call; that decomposition is a hypothesis from these six runs, not a measurement, because the stored usage does not separate the summarizer's own prompt from the branch content it carries.</p>
+<p>The relationship between that share and the tree's overall cost position is worth stating precisely, because it is often compressed. Two reports bear on it and they name different passes. <code>reports/metrics/context-tree-long-task-dsa-iterations.md</code> §5 lists three add-backs that make long tasks cost more even while fresh input falls, and the first is the <em>root</em> summarizer at sonnet prices re-running on every threshold crossing, with a second entry for a contract failure that re-billed the same node three times in one run. <code>eval/plans/tuning/03-summary-policy.md</code> §3(c) is the one that measures the <em>leaf</em> summarizer, and gives the numbers in Table 10. So the accurate statement is that summarization is the dominant residual cost line, that its measured leaf component is a median 9.4% of run cost arriving as a single batch, and that only one of the two reports attributes cost specifically to leaf passes.</p>
+
+<h2>7&ensp;The offline procedure that ranks candidate segmentations</h2>
+<p>Everything in §5 was produced by the following recipe, which costs nothing and is stated so that a second candidate or a second store can be run through it unchanged.</p>
+<ol style="max-width:70ch; padding-left:1.4em;">
+<li style="margin-bottom:8px;"><b>Re-segment the frozen store's event log under each candidate configuration.</b> <code>segment()</code> is pure and already parameterised on <code>neutralPhases</code>. Gate <code>g5-rebuild-determinism</code> already establishes that re-deriving the tree from the log alone reproduces the current node identifiers and spans exactly, so the re-derivation is faithful to the same invariant the store's gate suite checks.</li>
+<li style="margin-bottom:8px;"><b>Locate every question's sequence number in the new segmentation and record two facts</b> — whether it lands inside exactly one branch (true by construction; a regression guard, not a discovery), and whether that branch's estimated size fits each window. Size is estimated as characters ÷ 4 × the store's own measured ratio, the same re-derived-per-corpus procedure used for the ratio itself, applied per branch instead of once over the corpus. Run here over all five nesting windows, not only 32,768.</li>
+<li style="margin-bottom:8px;"><b>Count branches and their size distribution</b> as the zero-token proxy for summarizer-call cost. Table 8 is that count; Table 10 gives the per-call constants it must be multiplied by, which is the part that makes the proxy interpretable rather than merely comparable.</li>
+<li><b>Re-run the harness's own zero-token structural gates against each candidate's re-derived tree.</b> <code>g8-over-budget</code> (<code>transplant.mjs:1934-1969</code>: does the summary section still fit, with at least one branch summary surviving) and <code>g9-zone-b-nesting</code> (<code>:1972-2034</code>: does the newest-aligned contiguous-suffix property still hold) are exactly the invariants a segmentation change could break, and both are already pure functions of a store and a window. Not run in this pass. It is the missing step: a candidate that multiplies branch count by 4.71 changes how many branch summaries fit a given budget, which is precisely what <code>g8</code> asserts, and the interaction with the fold level is unexamined.</li>
+</ol>
+
+<h2>8&ensp;Departures from the source analysis</h2>
+<p>Every load-bearing figure in the underlying note was checked against the artifacts it cites. The following did not reproduce as stated; in each case the value used above is the reproduced one.</p>
+<ul style="max-width:70ch; padding-left:1.4em;">
+<li style="margin-bottom:8px;">"The only branch of 21 that exceeds any tested window" holds only at W = 32,768. At W = 16,384, also a window the harness asks questions at, four branches exceed the window: 36,170, 21,396, 17,907 and 17,743 estimated tokens. The consequence runs the same direction as the note's argument but is larger than the note claims: 7 of 12 questions, not 3, source from a branch too big for W = 16,384.</li>
+<li style="margin-bottom:8px;">"Every one of the twelve questions now sources from a branch that fits inside every tested window" holds at 16,384, 32,768, 65,536 and 200,000, and fails at 8,192, where q04 and q12's 15,648-token branch does not fit. That window is already recorded as a dead cell for the tree arms, so nothing depends on it, but the unqualified claim is wrong. At the branch level the candidate also still leaves one branch (20,738 tokens) above 16,384.</li>
+<li style="margin-bottom:8px;">The note's per-question table gives q02's and q08's baseline branch as 3,150 tokens; every other computation of the same branch, including the note's own distribution table, gives 3,149. A rounding slip, corrected here.</li>
+<li style="margin-bottom:8px;">"Two independent reports already identify leaf-summarizer calls as the largest lever" overstates one of the two. The long-task report names the <em>root</em> summarizer at sonnet prices as its first add-back; only the summary-policy note measures the leaf summarizer's share. §6 states it as measured.</li>
+<li style="margin-bottom:8px;">Two line anchors have drifted since the note was written, because <code>eval/scripts/transplant.mjs</code> has been edited: <code>g8</code> is at <code>:1934-1969</code>, not <code>:1926-1959</code>, and <code>g9</code> at <code>:1972-2034</code>, not <code>:1961-2020</code>. In <code>config.ts</code> the shipped <code>neutralPhases</code> default is at <code>:113</code>, the tool table at <code>:17-43</code> with its "explicitly neutral" comment at <code>:41</code>, and the file-tool list at <code>:46-53</code>. Every anchor's content is as described.</li>
+<li style="margin-bottom:8px;">The distribution note reports the branch range as "roughly 471 to 36,170 measured BPE tokens". Only the upper figure is a tokenizer measurement (from the judge verdict's exact count); the rest are estimates from the character-ratio method. Labelled as estimates throughout above.</li>
+<li>The note's quartiles (52.5 events, 34,923 characters) reproduce under Tukey hinges but not under the linear-interpolation convention, which gives 51 and 33,065. Both are stated in Table 1 with the method named.</li>
+</ul>
+<p>Everything else reproduced exactly, including all 21 rows of Table 2, the 64/12/2/2 tool census and its 22 runs, the six interleaved file nodes and their start sequences, the 0.850896663206653 ratio over 697 blobs, the 99-branch re-segmentation with its 2/3/88 event range and 20,738-token maximum, all twelve candidate branch spans and sizes, the zero-truncation finding, q07's rank of 1 of 19, and the leaf-summarizer shares of Table 10 to the nearest tenth of a percent.</p>
+
+<h2>9&ensp;Limitations</h2>
+<p>The evidence base is one store. Everything above rests on <code>transplant/s1</code>: one trace, one task, one host's tool-name map, 754 events. The mechanism in §3 is a statement about that trace's tool mix, and the mix of neutral to non-neutral calls — and therefore the size at which a branch stops closing — could differ substantially on another harness's tool surface. Nothing here has been shown to hold off the host it was measured on, which is the standard the project's own rules set for any value carried forward.</p>
+<p>No live run has compared the two segmentations. Tables 8 and 9 are containment and branch count; Table 10 is the cost side of the shipped configuration, not of the candidate. Turns and graded score under <code>neutralPhases: []</code> are unmeasured on every task, short or long, so the question the fourth rule asks — which setting wins — remains open, and §5 is not a recommendation to ship.</p>
+<p>Two structural alternatives were assessed and not tested. Promoting file nodes to a second summarized unit is attractive because the store already tracks them at no guessing cost, but Table 4 shows the oversized branch's six file nodes are interleaved rather than sequential, so a one-file-per-unit split would not partition that branch cleanly; it would have to interleave the way the events do, which re-derives §5's result from a different axis rather than adding a mechanism. Reclassifying neutral tools by command content rather than tool name is the more interesting of the two — the 64 shell calls in the oversized branch plausibly include test runs, and <code>verification</code> is a phase type the table already has and this trace never used — but today's segmenter classifies only on the tool name, never on the arguments, so that is a segmenter change rather than a configuration change, and it was not implemented or measured.</p>
+<p>Finally, one thing this dimension cannot settle. Median branch size falling from 17 events to 3 puts many branches at roughly one tool call plus its result. Whether a summary of that little work is worth its own leaf pass — whether summaries this granular are less useful per token spent on them — is a summary-quality question, and 47 of the candidate's 99 branches carrying no phase identity beyond <code>other</code> sharpens it. Nothing in this pass measured summary quality at either granularity.</p>
+
+<h2>10&ensp;Open items and recommendations</h2>
+<p>Ordered by expected information gained per unit of effort, where effort is counted in tokens and runs spent. The first three cost nothing.</p>
+<ol style="max-width:70ch; padding-left:1.4em;">
+<li style="margin-bottom:10px;"><b>Run step 4 of §7 against the candidate: re-check <code>g8</code> and <code>g9</code> on the re-derived 99-branch tree.</b> Zero tokens, zero runs, and it is the one result that could invalidate §5 outright — 4.71 times the branches changes how many branch summaries fit the summary budget, which is exactly what <code>g8</code> asserts, and the fold level interacts with it. No further work on this dimension should be sequenced ahead of this check.</li>
+<li style="margin-bottom:10px;"><b>Extend the containment sweep to a second store.</b> Zero tokens. Every limitation in §9 is the same limitation — n = 1 store — and the recipe in §7 is already written and runs offline. A second trace from a different harness's tool surface would establish whether the 77-fold spread and the neutral-merge mechanism are properties of the rule or of this one session, which is the single largest unknown here.</li>
+<li style="margin-bottom:10px;"><b>Translate branch count into summarizer cost arithmetically before spending anything live.</b> Zero tokens. Table 10 supplies the per-call constants and Table 8 the count; the missing piece is whether total leaf input is really conserved under a finer partition, which can be answered by summing the candidate's 99 branch spans and comparing against the baseline's 21 rather than by running anything.</li>
+<li style="margin-bottom:10px;"><b>Record the <code>depth</code> argument on every <code>context_fetch</code>.</b> One instrumentation change, no model calls to add it, and it retires the largest interpretive gap in §4: the 4.4% "fetched correct, still wrong" bucket cannot be attributed today, and neither can the single fetch of the oversized branch in Table 6. Every future run then discriminates a tool-design limit from a model-competence limit for free.</li>
+<li style="margin-bottom:10px;"><b>Only then, one live comparison of the two segmentations on the questions that change.</b> The three questions whose source branch shrinks by more than an order of magnitude — q01, q07, q10 — are where any effect must appear, and §4 predicts no effect, because the models never reached that branch. That prediction is worth one small paired run precisely because it is falsifiable and cheap, and because a confirmed null is what licenses treating this dimension as closed. Do not run the whole twelve-question sweep to learn it.</li>
+<li><b>Content-sensing for neutral tools, last.</b> Recognising test-shaped shell commands as <code>verification</code> is the most promising remaining lever on depth and the only one that would give this trace a phase type it currently never produces, but it is a segmenter change, it needs a per-host derivation procedure to avoid becoming a guessed constant, and it should not be built before items 1 and 2 have shown that depth is worth changing at all.</li>
+</ol>
+
+<h2>References</h2>
+<p style="font-size:.9rem;">[1]&ensp;<em>The context-tree algorithm</em>, <code>reports/algorithm.md</code> in this repository — the four rules this pass is scored against, and the summary of this dimension that this report is the full treatment of.<br>
+[2]&ensp;<em>Run forensics on the transplant sweep</em>, <code>eval/plans/loop9b-analysis/01-run-forensics.md</code> — the six-mechanism classification of 135 sampled rows used in §4.<br>
+[3]&ensp;<em>Judge verdict, loop 9b item 2</em>, <code>eval/plans/loop9b-item2-judge-verdict.md</code> — the exact-tokenizer branch sizes and turn-one headroom figures used in §3 and §5.<br>
+[4]&ensp;<em>When summaries are written, and under what policy</em>, <code>eval/plans/tuning/03-summary-policy.md</code> §3(c) — the leaf-summarizer cost measurement reproduced in Table 10.<br>
+[5]&ensp;<em>Why more money while reducing tokens</em>, <code>reports/metrics/context-tree-long-task-dsa-iterations.md</code> §5–§6 — the add-back attribution and defect ledger discussed in §6.<br>
+[6]&ensp;DS-STAR, the iteration methodology these tuning passes adapt: arXiv:2509.21825.</p>
+
+<footer><sup>†</sup> In United States dollars, at the harness's rates of $1.00 per million input and $5.00 per million output tokens for claude-haiku-4-5, and $2.00 input / $10.00 output / $0.20 cache read / $2.50 cache write per million for claude-sonnet-5 (<code>packages/core/src/models/cost.ts</code>), the median context-tree run on sw-6-ripple costs $0.336, of which the leaf summarizer is $0.046, against the native transcript baseline's median $0.165 on the same scenario, model and epoch. Dollars appear here once, beside the baseline they are relative to; every claim in this report is made in tokens, turns, graded score and success counts.<br><br>
+DS-STAR tuning pass, dimension 2 of 4 · zero live model calls · Tables 1–4 and 8–9 and both figures recomputed from <code>eval/fixtures/transplant/s1/store/</code> and <code>packages/core/dist/segment/segment.js</code> · Tables 5–7 from <code>eval/plans/loop9b-analysis/01-run-forensics.md</code> and the five <code>run-*.json</code> files of the transplant sweep, qwen-2.5-72b-instruct and gpt-3.5-turbo, one epoch · Table 10 from <code>eval/results/long-v65-gate/</code>, claude-sonnet-5 with claude-haiku-4-5 summaries, three replicates per scenario, one epoch · September 2, 2026 · commit <code>d1bced9</code>.</footer>
+</main>
+<script>
+const F1 = {
+  cur: [[2.38,36170],[7.14,21396],[11.9,17907],[16.67,17743],[21.43,7824],[26.19,7034],[30.95,6479],[35.71,6138],[40.48,5306],[45.24,5123],[50,5002],[54.76,3149],[59.52,1813],[64.29,1766],[69.05,1713],[73.81,1154],[78.57,1094],[83.33,1036],[88.1,820],[92.86,785],[97.62,471]],
+  lit: [[0.51,20738],[1.52,15648],[2.53,10696],[3.54,7546],[4.55,7499],[5.56,6469],[6.57,5693],[7.58,5141],[8.59,4676],[9.6,4536],[10.61,2980],[11.62,2605],[12.63,2506],[13.64,2095],[14.65,1856],[15.66,1685],[16.67,1624],[17.68,1585],[18.69,1520],[19.7,1490],[20.71,1462],[21.72,1460],[22.73,1406],[23.74,1358],[24.75,1356],[25.76,1231],[26.77,1227],[27.78,1070],[28.79,1027],[29.8,1024],[30.81,1006],[31.82,949],[32.83,840],[33.84,826],[34.85,824],[35.86,796],[36.87,792],[37.88,786],[38.89,785],[39.9,768],[40.91,764],[41.92,761],[42.93,719],[43.94,710],[44.95,678],[45.96,667],[46.97,657],[47.98,653],[48.99,653],[50,648],[51.01,643],[52.02,641],[53.03,591],[54.04,547],[55.05,484],[56.06,474],[57.07,473],[58.08,418],[59.09,410],[60.1,406],[61.11,380],[62.12,379],[63.13,371],[64.14,371],[65.15,351],[66.16,347],[67.17,347],[68.18,333],[69.19,331],[70.2,320],[71.21,305],[72.22,295],[73.23,295],[74.24,292],[75.25,287],[76.26,281],[77.27,263],[78.28,261],[79.29,260],[80.3,245],[81.31,207],[82.32,198],[83.33,197],[84.34,190],[85.35,183],[86.36,150],[87.37,128],[88.38,114],[89.39,90],[90.4,87],[91.41,80],[92.42,63],[93.43,53],[94.44,49],[95.45,49],[96.46,49],[97.47,49],[98.48,49],[99.49,49]]
+};
+const F2 = {
+  cur: [[1,36170],[2,3149],[3,17907],[4,17743],[5,7824],[6,7824],[7,36170],[8,3149],[9,17907],[10,36170],[11,7034],[12,17743]],
+  lit: [[1,1358],[2,2506],[3,7499],[4,15648],[5,6469],[6,6469],[7,5141],[8,2506],[9,2605],[10,1358],[11,1520],[12,15648]]
+};
+const nf = n => n.toLocaleString('en-US');
+
+function chart(id, cfg){
+  const W = 680, H = cfg.h, L = 66, R = 108, TP = 34, BT = 50;
+  const ax0 = L, ax1 = W - R, ay0 = H - BT, ay1 = TP;
+  const ymin = cfg.ymin == null ? 0 : cfg.ymin;
+  const X = v => ax0 + (v - cfg.xmin) / (cfg.xmax - cfg.xmin) * (ax1 - ax0);
+  const Y = v => ay0 - (v - ymin) / (cfg.ymax - ymin) * (ay0 - ay1);
+  let g = '';
+
+  cfg.yticks.forEach(t => {
+    g += '<line x1="' + ax0 + '" y1="' + Y(t) + '" x2="' + ax1 + '" y2="' + Y(t) +
+         '" stroke="var(--line)" stroke-width="1"/>' +
+         '<text x="' + (ax0 - 10) + '" y="' + (Y(t) + 4) + '" text-anchor="end">' +
+         (t ? (t / 1000) + 'k' : '0') + '</text>';
+  });
+  g += '<text x="' + (ax0 - 10) + '" y="' + (ay1 - 14) + '" text-anchor="end">tokens</text>';
+  cfg.xticks.forEach(t => {
+    g += '<text x="' + X(t) + '" y="' + (ay0 + 20) + '" text-anchor="middle">' + t + '</text>';
+  });
+  g += '<text x="' + ((ax0 + ax1) / 2) + '" y="' + (ay0 + 42) + '" text-anchor="middle">' + cfg.xtitle + '</text>';
+
+  (cfg.hlines || []).forEach(h => {
+    g += '<line x1="' + ax0 + '" y1="' + Y(h.y) + '" x2="' + ax1 + '" y2="' + Y(h.y) +
+         '" stroke="var(--muted)" stroke-width="1" stroke-dasharray="5 4" opacity=".65"/>' +
+         '<text x="' + (ax1 - 4) + '" y="' + (Y(h.y) + 15) + '" text-anchor="end">' + h.label + '</text>';
+  });
+
+  cfg.series.forEach(s => {
+    const op = s.op == null ? 1 : s.op;
+    g += '<polyline fill="none" stroke="' + s.color + '" stroke-width="' + (s.w == null ? 2 : s.w) + '" opacity="' + op +
+         '" stroke-linejoin="round" points="' +
+         s.pts.map(p => X(p[0]).toFixed(1) + ',' + Y(p[1]).toFixed(1)).join(' ') + '"/>';
+    if (s.dot) s.pts.forEach(p => {
+      g += '<circle cx="' + X(p[0]).toFixed(1) + '" cy="' + Y(p[1]).toFixed(1) + '" r="' + s.dot +
+           '" fill="' + s.color + '" opacity="' + op + '"/>';
+    });
+  });
+
+  (cfg.ends || []).forEach(e => {
+    g += '<text x="' + (X(e.x) + 8).toFixed(1) + '" y="' + (Y(e.y) + 4).toFixed(1) +
+         '" class="serieslabel" fill="' + e.color + '">' + e.label + '</text>';
+  });
+
+  let lx = ax0;
+  cfg.legend.forEach(l => {
+    g += '<rect x="' + lx + '" y="' + (ay1 - 26) + '" width="13" height="3" fill="' + l.color + '"/>' +
+         '<text x="' + (lx + 19) + '" y="' + (ay1 - 20) + '">' + l.label + '</text>';
+    lx += 38 + l.label.length * 6.7;
+  });
+
+  g += '<g data-c="1" style="display:none"><line y1="' + (ay1 - 10) + '" y2="' + ay0 +
+       '" stroke="var(--muted)" stroke-width="1" opacity=".8"/></g>';
+  g += '<g data-t="1" style="display:none"></g>';
+  g += '<rect data-o="1" x="' + ax0 + '" y="' + (ay1 - 10) + '" width="' + (ax1 - ax0) +
+       '" height="' + (ay0 - ay1 + 10) + '" fill="transparent"/>';
+
+  const host = document.getElementById(id);
+  if (!host) return null;
+  host.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + cfg.alt + '">' + g + '</svg>';
+
+  const svg = host.firstChild;
+  const ov = svg.querySelector('[data-o]');
+  const cr = svg.querySelector('[data-c]');
+  const tp = svg.querySelector('[data-t]');
+  const cl = cr.firstChild;
+  const maps = cfg.series.filter(s => s.tip).map(s => ({ name: s.tip, color: s.color, m: new Map(s.pts) }));
+
+  function show(xv){
+    cl.setAttribute('x1', X(xv)); cl.setAttribute('x2', X(xv));
+    cr.style.display = '';
+    const rows = maps.map(r => ({ name: r.name, color: r.color, v: r.m.get(xv) }))
+                     .filter(r => r.v != null);
+    if (!rows.length){ tp.style.display = 'none'; return; }
+    const head = cfg.tipHead + ' ' + xv;
+    const wide = Math.max(head.length, ...rows.map(r => r.name.length + 9)) * 6.3 + 26;
+    const high = 22 + rows.length * 15 + 6;
+    let tx = X(xv) + 12;
+    if (tx + wide > W - 4) tx = X(xv) - 12 - wide;
+    let s = '<rect x="' + tx + '" y="' + (ay1 - 6) + '" width="' + wide + '" height="' + high +
+            '" rx="4" fill="var(--surface)" stroke="var(--line)" stroke-width="1"/>' +
+            '<text x="' + (tx + 11) + '" y="' + (ay1 + 11) + '" fill="var(--ink)">' + head + '</text>';
+    rows.forEach((r, i) => {
+      const yy = ay1 + 29 + i * 15;
+      s += '<rect x="' + (tx + 11) + '" y="' + (yy - 7) + '" width="10" height="3" fill="' + r.color + '"/>' +
+           '<text x="' + (tx + 26) + '" y="' + yy + '" fill="var(--ink)">' + r.name + ' ' + nf(r.v) + '</text>';
+    });
+    tp.innerHTML = s; tp.style.display = '';
+  }
+
+  ov.addEventListener('mousemove', e => {
+    const b = svg.getBoundingClientRect();
+    const raw = cfg.xmin + (((e.clientX - b.left) / b.width * W) - ax0) / (ax1 - ax0) * (cfg.xmax - cfg.xmin);
+    let best = cfg.xdomain[0];
+    cfg.xdomain.forEach(d => { if (Math.abs(d - raw) < Math.abs(best - raw)) best = d; });
+    show(best);
+  });
+  ov.addEventListener('mouseleave', () => { cr.style.display = 'none'; tp.style.display = 'none'; });
+  return svg;
+}
+
+const WARM = 'var(--warm)', ACC = 'var(--accent)';
+
+chart('fig1', {
+  h: 330, xmin: 0, xmax: 100, xticks: [0, 20, 40, 60, 80, 100],
+  ymax: 40000, yticks: [0, 10000, 20000, 30000, 40000],
+  xtitle: 'branches, largest first (percentile)', tipHead: 'percentile',
+  xdomain: F1.cur.map(r => r[0]).concat(F1.lit.map(r => r[0])),
+  alt: 'Branch size in tokens against rank percentile, largest first. The shipped segmentation has one branch above both context windows; the re-segmentation collapses the whole distribution toward the floor.',
+  hlines: [
+    { y: 32768, label: 'W = 32,768' },
+    { y: 16384, label: 'W = 16,384' }
+  ],
+  series: [
+    { tip: "shipped ['other']", color: WARM, dot: 2.6, pts: F1.cur },
+    { tip: 'candidate []',      color: ACC,  dot: 1.6, pts: F1.lit }
+  ],
+  ends: [
+    { x: 2.38, y: 36170, color: WARM, label: 'shipped' },
+    { x: 0.51, y: 20738, color: ACC,  label: 'candidate' }
+  ],
+  legend: [
+    { color: WARM, label: "shipped neutralPhases ['other'], n=21" },
+    { color: ACC,  label: 'candidate [], n=99' }
+  ]
+});
+
+chart('fig2', {
+  h: 330, xmin: 1, xmax: 12, xticks: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+  ymax: 40000, yticks: [0, 10000, 20000, 30000, 40000],
+  xtitle: 'question (q01 to q12)', tipHead: 'question',
+  xdomain: F2.cur.map(r => r[0]),
+  alt: 'Size of each question source branch in tokens, shipped segmentation against the candidate, with both question windows marked.',
+  hlines: [
+    { y: 32768, label: 'W = 32,768' },
+    { y: 16384, label: 'W = 16,384' }
+  ],
+  series: [
+    { tip: 'shipped',   color: WARM, dot: 3, pts: F2.cur },
+    { tip: 'candidate', color: ACC,  dot: 3, pts: F2.lit }
+  ],
+  ends: [
+    { x: 1,  y: 36170, color: WARM, label: 'shipped' },
+    { x: 11, y: 1520,  color: ACC,  label: 'candidate' }
+  ],
+  legend: [
+    { color: WARM, label: "shipped neutralPhases ['other']" },
+    { color: ACC,  label: 'candidate neutralPhases []' }
+  ]
+});
+</script>

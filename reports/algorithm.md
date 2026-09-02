@@ -60,32 +60,48 @@ higher fold level spends the Zone B budget on headlines and leaves less room for
 bodies. So "how many summaries the model sees" has two answers, and the two
 arms that were compared differ in which of them they maximise.
 
-Second, "width helps" was too broad. The measured effect is
-stratum-conditional. On questions about the early session, wider was better —
-two visible bodies scored 0.091 against eleven at 0.333, with both baselines at
-zero. On the other three question types both widths sat flat at zero, and on
-recent-fact questions the baselines beat both. With only two points on the width
-axis and one stratum above the floor, the data cannot locate a turning point:
-there is no evidence width hurts as it grows from two to eleven, and none that
-it keeps helping past eleven, because nothing above eleven has been run.
+Second, "width helps" was too broad. The effect holds on questions about the
+early session — two bodies scored 0.091 against eleven at 0.333, both baselines
+zero — and sits flat at zero on the other three question types, with the
+baselines beating both widths on recent-fact questions. It also rests on very
+little: on that stratum it reduces to a single question, answered three times of
+four against once of five. With two points on the width axis and one stratum
+above the floor, the data cannot locate a turning point.
+
+Third, **what width costs is unknown, and this page has been wrong about it
+twice.** It first said width buys retrieval at the price of a larger prefix
+re-read every turn. It then said width is a pure reallocation costing nothing,
+because the assembled block is nearly the same size either way, 7,633 tokens
+against 7,569. The iteration-2 judge rejected both. Zone B's rendered size
+barely moves, which kills the first; but the run-level token gap between the
+arms is real and was never decomposed, so the second asserted an absence of cost
+that no measurement supports. The honest statement is that the arms differ by a
+measured amount at the run level and nobody has attributed it. That attribution
+is a next step, not a finding.
 
 The load-bearing finding is that the ladder direction is a human choice hiding
-inside a mechanism that looks derived. Fit-derived correctly makes the *ceiling*
-a function of the window and the store with no guessed constant, but more than
-one allocation of the same budget satisfies "fits", and which one gets used is
-decided by the direction someone wrote into the ladder rather than by
-measurement. That is the open parameter, and it is a fit-derived-shaped fix:
-replace "walk this hand-picked direction" with "walk toward maximising the
-number of rendered bodies subject to the same fits predicate", then measure.
+inside a mechanism that looks derived, and the reproduction sharpened it: six of
+the seven ladder rungs satisfy the fit predicate at the tested window. So
+"largest rung that fits" barely constrains anything, and the direction someone
+wrote into the ladder picks the allocation almost unaided.
 
-Both alternative policies come out unnecessary on present evidence, for
-specific reasons rather than by preference. Demand-driven fails because whether
-the model searches does not track where the bottleneck actually is. An effort
-dial fails because no single width serves a whole session. Neither fills the
-allocation gap, so the recommendation is to keep fit-derived as the ceiling,
-treat the headline-versus-body split as its one remaining parameter, and
-replicate the cheap experiment on a second scenario before changing the shipped
-default.
+Walking the whole curve then partially dissolved that finding, which is the
+right outcome for an experiment. The number of rendered bodies is monotone
+non-increasing in the fold level — 0, 2, 5, 6, 8, 10, 11 across the rungs at the
+32,768-token window — so the allocation maximising bodies is always the smallest
+rung, which is exactly where the wide arm already stops. There is no
+undiscovered third mechanism to build: the two shipped arms are the two ends of
+a monotone curve. What remains is whether to flip the default, which is an epoch
+shift and needs a second scenario first.
+
+Both alternative policies are now refuted rather than merely unnecessary.
+Demand-driven failed first on occurrence — whether the model searches does not
+track where the bottleneck is — and then again on confidence: across 120 rows
+that searched, retrieval rank carries no signal about score (correlation 0.06),
+and the question with the best possible rank scored zero on all six of its
+attempts. An effort dial fails because no single width serves a whole session.
+So keep the fit-derived ceiling, and the only open decision is whether to flip
+the ladder default, gated on replicating the divergence on a second scenario.
 
 *Is the count already dynamic?* Yes, in the portability harness: the fold level
 is the largest rung whose assembled Zone B fits, which is dynamic per window and
@@ -94,8 +110,12 @@ constant. What remains open is not whether to adapt but which allocation to
 adapt toward, which is the parameter named above.
 
 **How deep a branch goes before it is summarized.** *Analysed 2026-09-02; full
-report at `reports/metrics/tuning-branch-depth.md`.* Depth is not a decision
-anyone made. It is whatever the tool-name map and the neutral-merge rule produce
+report at `reports/metrics/tuning-branch-depth.md`.* Exact tokenization found
+**two** branches over the larger tested window and **four** over the smaller
+one, so seven of the twelve questions source from an over-window branch. The
+character-ratio estimate that first measured this undercounted two branches by
+43% and 67%, which is why the figures kept moving: a segmentation proposal has to
+be priced with a real tokenizer. Depth is not a decision anyone made. It is whatever the tool-name map and the neutral-merge rule produce
 from a trace, and on the one frozen store that has been measured, that is a
 77-fold spread: 21 branches over 754 events, from 2,214 to 170,031 characters.
 The largest spans 207 events and is bigger on its own than the entire window it
@@ -104,14 +124,28 @@ map to the neutral phase and never close it, while every other call inside it
 maps to the same type. Three of the twelve test questions source from that one
 branch.
 
-The fix is a config change already supported by the code rather than a new rule:
-emptying the neutral-phase list, which the segmenter's own contract calls the
-literal reading of its specification, re-segments the same events into 99
-branches with a median of 3 events, and the over-window branch disappears — every
-question then sources from a branch that fits every tested window. It is not
-free: 4.7 times the branches is comparable growth in leaf-summarizer calls, and
-two earlier reports both found those passes to be the dominant remaining cost
-line against the baseline.
+The obvious fix is a config change the code already supports: emptying the
+neutral-phase list, which the segmenter's own contract calls the literal reading
+of its specification, re-segments the same events into 99 branches with a median
+of 3 events. **It does not close the boundary condition, and iteration 2 refuted
+the claim that it does.** One branch still exceeds the larger window afterwards
+and three still exceed the smaller one. It helps where it was measured — questions
+missing their source fall from three to none at the larger window and from seven
+to two at the smaller — but "eliminates the over-window branch entirely" was
+wrong. The cost is also smaller than first stated: 4.7 times the branches but
+2.33 times the summarizer spend, because a finer branch carries a smaller
+prompt. And the claim that two earlier reports both named leaf-summarizer passes
+the dominant residual cost does not hold: one names the *root* summarizer, and
+only the summary-timing analysis measures the leaf.
+
+**The better fix turned out to be a defect, not a config change.** The surviving
+oversized branch is inflated by content rendered twice — a write's payload
+appearing once JSON-escaped in the tool arguments and once raw in the post-state,
+inside the same retrieval result. Zone C's renderer had capped that since v5.9b;
+the retrieval renderer never did, so `context_fetch` kept returning the duplicate
+that the prompt had stopped carrying. Six of the store's 754 events duplicate
+byte-for-byte this way. The cap now applies in both places from one exported
+constant, so the rule holds wherever an event is rendered.
 
 The honest qualifier is that granularity explains almost none of the *measured*
 retrieval failures. The oversized branch is a confirmed structural risk that
@@ -131,16 +165,35 @@ harnesses had drifted apart on it, one deriving 0.35 and the other 0.20 for what
 is the same quantity, and the live harness's matching constants match only
 because someone picked the same number twice.
 
-The gate lags by one turn, and the lag is measured rather than argued: it
-compares against the previous completed turn's billed size, so the six recorded
-crossings landed between 126 and 15,564 tokens past the threshold, median 8,306.
-Removing the lag costs one local tokenizer pass over the prompt about to be
-sent, not a model call.
+The gate lags by one turn, and both the lag and its fix are measured. It
+compares against the previous completed turn's billed size, so all six recorded
+crossings sent one prompt between 126 and 15,564 tokens over budget, median
+8,306. Replayed against those same crossings, checking the prompt about to be
+sent instead drops the median overshoot to zero and the worst case to 916, at a
+cost of two to four milliseconds of local tokenizing against multi-second turn
+latencies.
 
-Summary cost is not a standing tax but a single lump at a badly chosen moment.
-It is zero on every short task that never crosses, and 6.9% to 19.3% of run cost
-on long tasks that do, median 9.4%, arriving as one parallel batch that shows a
-cache-write spike and two to six extra turns to absorb it.
+The fraction sweep, by contrast, **cannot rank the fractions**, and saying so is
+the finding. From 0.15 to 0.35 the post-switch prompt is a constant 9,060
+tokens, so total tokens are the trace up to the crossing plus a constant
+afterwards — which makes an earlier crossing monotonically cheaper and the
+argmin whatever the smallest fraction tested happens to be. The sweep measures
+its own lower bound, not a sweet spot. Choosing a fraction needs a criterion
+tokens cannot supply, such as what the model can still answer once the raw trace
+is gone.
+
+Summary cost is not a standing tax but a single lump at a badly chosen moment:
+zero on the seventeen runs that never cross, against a median 9.4% of run cost
+on the six that do. The transition's own price shows on the turn *after* the
+switch — a median 18,274 cache-write tokens against 273 for the matched
+no-switch arm — and costs four to six extra turns. A spike on the crossing turn
+itself is not diagnostic, since the no-switch arm spikes on its own growth turns
+too. One correction to the mechanism as first stated: only the backlog is
+summarized in one batch, and after the latch summarization is incremental.
+
+A measurement gap surfaced here that affects every published figure: the
+harness's token total excludes the leaf summarizer, so no total-token number in
+this program includes summary cost.
 
 The experiment that ranks timing policies needs no further spend. The existing
 marathon harness already drives the production assembler over a real store with
@@ -163,14 +216,24 @@ cache-write line alone accounted for most of the total; writing it once and
 reading it thereafter brought the same work on the same trace and the same model
 down by a factor of 2.4.
 
-Two facts change what to do next. The shipped request builder emits two of the
-four breakpoints the provider allows and marks nothing on the active-branch
-detail, so that section is fresh input on every turn by construction — a third
-breakpoint is available and unused. And the cache assertion harness the plan
-called for already exists and runs offline, 612 lines of simulator with 575
-lines of tests, including one that specifically catches a dropped breakpoint.
-The instrument to test this dimension is therefore already in the repository and
-was not being used.
+The third breakpoint now exists in the library behind a field defaulting to
+off, which closes the defect that it lived only in the eval harness. Its value is
+another matter, and iteration 2 refuted the optimistic reading instructively.
+
+Through the cache simulator, marking the active-branch detail costs 23% *more*,
+because that marker moves every turn — a 100% rewrite frequency against a
+computed break-even of 78%. The frequency form of the rule this page carried,
+that it breaks even below about one turn in twelve, was a size ratio wearing a
+frequency's clothes; the break-even is a formula over the three published rates,
+and by it Zone B's marker wins at 2.7% rewrite while Zone C's loses at 100%.
+Same rule, opposite sides of the line.
+
+But a live measurement of the same scheme, already published here, shows it 18%
+*cheaper*. Both cannot be right, and the disagreement is the real result: the
+simulator matches only against the last submission's exact breakpoint set, where
+providers match any previously cached prefix. The instrument that was finally
+pointed at the builder needs validating against the live run before its verdicts
+count — and that validation is free, with the target already on disk.
 
 Terms. **L0** is the append-only event log. **L2** is the payload store, keyed by
 content hash. **L1** is the tree: nodes that point into L0 by sequence range and
@@ -237,7 +300,7 @@ a number fitted somewhere else and never re-checked, which rule 2 calls a defect
 | switch point | 30,000, absolute (live suite) | **resolved 2026-09-02: the Zone C fraction of W** (see dimension 3 below) | **unvalidated, and the target is now known.** The rule defines the switch as the size at which the whole trace fits where the active branch's detail would go, which *is* the Zone C allocation. The live harness's switch and Zone C budget are both the literal 30,000, matching by coincidence rather than derivation; the portability harness derives 0.35 for one and 0.20 for the other, so the identity broke where the derivation lives. Measured consequence of the absolute form: on a 200k-window model the derived switch is ≈70k, so these traces would never cross, while 30,000 forced a crossing that cost more than it saved on every replicate |
 | Zone B budget | 8,000, absolute (live) | a fraction of W | **unvalidated** live; derived in the portability harness |
 | Zone C budget | 30,000, absolute (live); unbounded before the switch | a fraction of W | **unvalidated** live; derived in the portability harness |
-| zone fractions | reply .05, A .10, B .20, C .20, switch .35, slack .10 | measurement against tokens, turns and score — rule 4 | **unvalidated as values**, never swept. The switch/Zone C inconsistency is **resolved in favour of .20**: they are the same quantity by the rule's own wording, and the growth report reached the same conclusion from measurement. The remaining fractions are still a design allocation summing to 1, and dimension 3 names the zero-spend sweep that would test .15/.20/.25/.30 |
+| zone fractions | A .10, B .20, C .20, switch = C, slack .10 | measurement against tokens, turns and score — rule 4 | **unvalidated as values**, never swept, but now **derived from the window in one place** (`deriveZoneBudgets`, 2026-09-02) instead of living as independent constants. The switch point is the Zone C share *by construction*, so the .35-versus-.20 drift cannot recur. Dimension 3's zero-spend sweep of .15/.20/.25/.30 is what would validate the value |
 | heuristic-to-tokenizer ratio | 0.851 on this corpus | measured per corpus, refuses above 1.6 | **derived.** The shape rule 3 asks for: procedure ships, re-runs per host |
 | root keep (fold level) | 40 (live); per-window ladder (portability) | measurement — DS-STAR dimension 1 | **derived** in the portability harness as the largest rung whose assembled Zone B fits; **unvalidated** constant in the live suite. Note this is the *fold level*, not the number of summary bodies rendered — the two move in opposite directions, and which allocation wins is decided today by a hand-picked ladder direction rather than by measurement |
 | search result limit | 20 | W and the per-hit payload size | **unvalidated.** At a 16k window the search payload alone overflowed the remaining room in 8 of 15 runs |
@@ -249,7 +312,8 @@ a number fitted somewhere else and never re-checked, which rule 2 calls a defect
 | tool-to-phase map | 8 entries | **the harness** — tool names differ per host | **host**, and the one row every port must edit. Unknown tool maps to "other" rather than failing |
 | contract version | v1 default, v2 and v3 registered | the model, if a smaller one needs different instruction | **host** |
 | leaf summarizer model | haiku today, a cheap flash model next | cost tiering | **host**; never changed inside a scenario, which would re-freeze the epoch |
-| reply budget | none | — | **removed** 2026-09-02. The live harness sends no `maxTokens`; the portability harness reserves the window's reply fraction with no ceiling |
+| reply allowance (per turn) | `window − assembled prompt`, reported on every prompt and passed as the provider's `max_tokens` | the window and this turn's prompt — pure arithmetic | **derived** 2026-09-02 (`replyAllowance`). Adapts per turn: nearly the whole window early, small late, and the session continues on short replies where a fixed ceiling would have made the request invalid. **Not yet tested live — needs its own DS-STAR round** |
+| reply headroom (pre-assembly reservation) | the model's reported maximum, or a measured observation; window share only as fallback | the model — rule 3 | **derived** 2026-09-02 (`replyHeadroom`). Used when deciding what to *include*; the per-turn allowance above is what actually reaches the provider. Both are distinct from a reply *cap*, removed the same day: headroom is required so prompt plus reply fits, while a ceiling on what the model may say is a guess about the work |
 | turn ceiling, wall-clock ceiling | none | — | **removed** 2026-09-02, see below |
 | gate set | seven environment flags, all on | — | not a parameter: these seven *are* the algorithm. Promote to defaults and delete the flags |
 
@@ -323,8 +387,8 @@ counting its steps. Each row is a condition, how it is checked, and what is know
 
 | Condition | Check | State |
 | --- | --- | --- |
-| window too small to hold Zone A plus one branch summary | assemble at 8k, 16k, 32k, 64k, 200k and assert each Zone B is a subset of the next larger | tested offline, passes |
-| a leaf larger than the whole window | fetch a branch whose raw span exceeds W | **found, and a fix is measured offline**: one branch is 36k tokens against a 32k window because neutral-phase merging never closes it. Emptying the neutral-phase list re-segments to 99 branches and no question's source exceeds any tested window. Costs 4.7× the summarizer calls; the listing-then-range path also exists and is still untested live |
+| window too small to hold Zone A plus one branch summary | assemble at 8k, 16k, 32k, 64k, 200k and assert each Zone B is a subset of the next larger | **FOUND at 8,192**, and it is the partition's doing rather than the window's: no fold level leaves a single summary body inside the 20% share, though the whole prompt would fit the window. The nesting assertion still passes because a dead cell is reported as dead rather than forced |
+| a leaf larger than the whole window | fetch a branch whose raw span exceeds W | **found, still open**, and now decomposed into two independent causes. Segmentation: two branches exceed 32,768 tokens and four exceed 16,384; the neutral-phase change reduces but does not eliminate them (one and three remain). Rendering: a write's content was emitted twice in retrieval results, six events byte-identical — that cap is now applied, and re-measuring the branch sizes after it is a next step. The listing-then-range path exists and is still untested live |
 | host model cannot drive tools | one throwaway search-and-answer call before any scored run | rule adopted after a model scored zero everywhere |
 | unknown tool name | segmenter maps it to "other" | tested |
 | tokenizer heuristic drifts from the real count | measure the ratio, refuse above 1.6 | tested in the transplant harness only |
@@ -344,9 +408,132 @@ not any particular count.
 | Loop 9 kickoff | the transplant harness derives its budgets from W | none | the harness's own switch constant |
 | 2026-09-02, item 1 | character estimate replaced by the model's own reported count | the latch, which replaced a property the character estimate had by accident | none |
 | 2026-09-02, item 3 | none: both candidates measured null and were retired | none | none |
+| 2026-09-02, iteration 2 | the frequency form of the cache rule (replaced by a formula over three published rates); the claim that the fit predicate under-determines the allocation (replaced by the monotone curve, which shows the two shipped arms are its two ends) | none | the missing edit-argument cap now shared from one exported constant instead of existing in one renderer only |
 
 Open defects: seven hardcoded values in the table above, four of them budgets
 that already have a derivation in the other harness.
+
+## The zone partition is itself a budget
+
+Found 2026-09-02 by the owner reading this page: the branch-count dimension talks
+about fitting a budget, which contradicts rule 1. It does, and the contradiction
+is load-bearing rather than cosmetic.
+
+The real constraint is the window: a prompt fits or the request fails. What the
+fit test actually compares against is an invented share of that window — twenty
+percent, assigned to Zone B — so "the largest fold level that fits" is fitting to
+a number nobody validated. Under rule 2 that share is an unvalidated constant;
+under rule 1 it is a budget.
+
+Three measurements make it worse than a harmless approximation.
+
+It barely binds. Six of the seven ladder rungs pass the test at the tested
+window, so the budget is not protecting anything and the hand-picked ladder
+direction makes the real decision.
+
+It cannot be checked against the truth. The word "window" appears nowhere in
+`packages/core/src/assemble/assembler.ts`. It sums the zones into a total and
+never compares that total to anything, because it has nothing to compare it to —
+the portability audit found the same absence structurally, that the shipped
+library has no representation of the host's window size at all. The partition
+exists as a substitute for the one number the library lacks.
+
+And it manufactured the reallocation result recorded above. Because the zones
+compete for an invented share rather than for the actual window, extra summary
+bodies necessarily displace root headlines even when the real window has room.
+"Width is a reallocation" is a fact about this implementation, not necessarily
+about the algorithm.
+
+**Fixed, 2026-09-02.** The library now has the window and checks the real
+constraint, in `packages/core`:
+
+- `ZoneAssemblerDeps.window` and `AssembleOptions.window` take the host's
+  context window. Host-supplied on purpose, with no default — a default window
+  would be a guess about the deployment, which is the defect being removed.
+- `BudgetReport` gained `window`, `windowRemaining` and `overWindow`. The
+  assembler had been summing a total and comparing it to nothing; now it names
+  the one constraint that is not a matter of allocation. It reports rather than
+  enforces: a caller that ignores `overWindow` gets a provider error, which is
+  the loud failure, and trimming here would hide which zone lost content.
+- `deriveZoneBudgets(window, ratio)` in `assemble/budgets.ts` derives every
+  allowance from that one number, replacing two independently chosen constants.
+  Ten times the window gives ten times each allowance, which a constant cannot
+  do and a test now enforces. The switch point is the same quantity as the Zone
+  C share by construction, so the two cannot drift apart again.
+- `zoneBRemainder(...)` is the answer to "fit against what?" that invents
+  nothing: what the window has left once the fixed contract, the active
+  branch's detail, the tail and the reply headroom are accounted for. A summary
+  block that fits the remainder is one the prompt can carry; one that fits a
+  fifth of the window may still overflow, and one rejected for exceeding that
+  fifth may have had room all along. A test shows the remainder exceeding the
+  share on the measured store's own numbers.
+
+The fractions are still unvalidated as values — rule 4 says which allocation
+wins has to be measured — but they are now one thing derived from a real
+quantity in one place, which is what a sweep needs to vary.
+
+**Reply headroom is required by the algorithm; a reply cap is not.** This
+distinction was blurred earlier in the day and is now explicit in
+`replyHeadroom(...)`. Prompt plus reply must fit the window, so the reservation
+stays: crowd the reply out and the provider truncates the answer. What was
+removed is the *ceiling* on how much the model may say, which is a guess about
+the work, and on a model that reasons before answering can be spent thinking —
+leaving an empty reply a grader scores as wrong. The size of the reservation
+comes from the model: every provider reports the largest completion it will
+emit, and asking is what rule 3 permits. A caller that has measured its own
+replies may reserve the largest it has actually seen instead, bounded by what
+the model could emit; exceeding that costs a truncated answer that is reported,
+not a silent degradation. The window fraction survives only as the fallback for
+a host that cannot say, and the function returns which of the three sources
+produced the number so a caller is never left assuming.
+
+**The per-turn reply allowance dissolves the tension I said was open.** Rather
+than reserving room before assembly for a reply whose size cannot be known, set
+the provider's reply limit *after* assembly from what the window has left:
+`replyAllowance(...)`, reported on every prompt as `BudgetReport.replyAllowance`
+and passed straight through as the provider's `max_tokens`.
+
+That is arithmetic per turn rather than a number anyone picked, so it is not the
+thing rule 1 forbids. And it buys behaviour a fixed ceiling cannot have. Early
+in a session the prompt is small and the allowance is nearly the whole window,
+so the model may answer at length. Late in a long session the prompt is large
+and the allowance is small, so the model answers briefly — and the session
+continues, where a fixed ceiling would have made the request invalid and ended
+it. A small-window model can iterate through a long session on short replies
+instead of failing at the point its prompt outgrew its ceiling. Sending the
+number also tells the model its own allowance, which a sentence in the prompt
+cannot do reliably: the provider stops at it, so the model shortens its answer
+rather than being cut mid-sentence.
+
+The allowance reaching zero is a signal, and it is the same quantity the switch
+point is about: when the room left for an answer stops being enough for a
+useful one, the prompt is what has to give, not the answer. The function
+deliberately does not pick a floor for "useful", because that is task-shaped and
+choosing one would smuggle back the constant this work removed. It reports which
+side bound the allowance — the window, so a smaller prompt buys a longer answer,
+or the model, so nothing does.
+
+**Untested.** All of the above is offline reasoning plus unit tests; no live run
+has used a per-turn allowance. It needs a DS-STAR round of its own, recorded as
+the first item in the closing report's next steps
+(`eval/plans/tuning/NEXT-STEPS-QUEUE.md`).
+
+The instrument for it already exists, and it is the transplant substrate rather
+than a new long-running scenario: a frozen 754-event session of roughly 196,000
+tokens, already used for the cross-model work. Walking forward through that trace
+and asking a live question at intervals produces the whole allowance curve
+against a real long horizon on a small-window model, repeatably, with every arm
+seeing byte-identical inputs. What a frozen replay cannot show is trajectory —
+the allowance changes what the model says, which changes the trace, which changes
+the next prompt, and a replay holds the trace fixed. So the replay settles answer
+quality at each allowance level, and only if that is worth confirming does a
+genuinely long live run become worth its cost.
+
+What remains open beyond that is the ordering. Giving Zone B the true remainder
+needs Zone C's size first, and the zones are assembled in layout order, so the
+remainder is available to a caller but not yet used by the assembler itself.
+That is a behaviour change and belongs to a judged candidate, not to a defect
+fix.
 
 ## Candidates with a verdict, not yet in force
 
@@ -374,6 +561,53 @@ that already have a derivation in the other harness.
 
 ## Change log
 
+- **2026-09-02 12:35** — DS-STAR iteration 2 closed (four offline experiments plus
+  a judge; `eval/plans/tuning/ITERATION-2-VERDICT.md`). It refuted more than it
+  confirmed, including three claims this page was carrying. Re-segmentation does
+  NOT close the over-window boundary condition. The width-cost question is
+  reopened as unknown, both my claim and its correction having been rejected.
+  The third cache breakpoint measures 23% worse offline while a live run of the
+  same scheme measured 18% better, which indicts the simulator rather than the
+  scheme. Confirmed instead: the lag fix drops median overshoot from 8,306 to
+  zero for two to four milliseconds of tokenizing, and the ladder curve is
+  monotone so there is no new allocation mechanism to build. Landed as defect
+  fixes: the missing edit-argument cap in the retrieval renderer, and the
+  harness now working on a copy so the frozen fixture stops being written — it
+  had accumulated 1,546 root-summary versions, which is why one experiment's
+  numbers could not be reproduced hours later.
+- **2026-09-02 12:25** — the owner proposed the per-turn reply allowance, which is
+  strictly better than both of my positions and dissolves the tension I had just
+  recorded as open: set the provider's reply limit after assembly from what the
+  window has left, rather than reserving for an unknowable reply beforehand.
+  Implemented as `replyAllowance` and reported on every prompt. Untested live;
+  queued as the first next step in the closing report. 721 tests pass.
+- **2026-09-02 12:20** — fixed rather than filed. `packages/core` now takes the
+  host's window, reports `window`/`windowRemaining`/`overWindow` so the real
+  constraint is checked instead of a share, derives every zone allowance from
+  that one number through `deriveZoneBudgets`, and offers `zoneBRemainder` as the
+  fit test that invents nothing. `replyHeadroom` makes the reply distinction
+  explicit: headroom is an algorithm requirement sized from the model's reported
+  maximum (or a measured observation), while a reply ceiling is not. All
+  additive — a window changes nothing about what gets built, which a test
+  asserts. 714 tests pass.
+- **2026-09-02 12:10** — the owner read this page and caught rule 1 being broken by
+  it: the branch-count fit test compares against an invented twenty-percent share
+  of the window, not against the window. Added a section on it. The partition
+  barely binds (six of seven rungs pass), cannot be checked against the truth (the
+  assembler has no representation of the window and never compares its own total
+  to anything), and manufactured the reallocation result recorded above. Candidate
+  recorded: delete the partition and fit against the window instead, which depends
+  on the audit's top recommendation of giving the library a window to fit against.
+- **2026-09-02 12:05** — all four dimension reports published under
+  `reports/metrics/` as HTML with markdown twins, and every writer's number-check
+  corrected this page. The largest: **width is a reallocation, not an addition** —
+  Zone B is budget-bound, the assembled block is the same size either way, so the
+  claim here that width costs tokens every turn was wrong. Also: four branches
+  exceed the smaller window rather than one, so seven questions are affected; six
+  of seven ladder rungs satisfy the fit predicate, so "largest that fits" barely
+  constrains; the devolved-mode cache fix trades writes for turns rather than
+  winning outright; and the harness's token total excludes the leaf summarizer,
+  so no published total includes summary cost.
 - **2026-09-02 11:45** — dimension 1 (visible branch count) analysed, and it
   corrected this document twice: the fold level and the count of rendered summary
   bodies are different numbers that move in opposite directions, and "width

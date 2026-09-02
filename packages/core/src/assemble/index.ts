@@ -11,11 +11,22 @@ export {
   type ZoneAssemblerDeps,
 } from './assembler.js';
 export {
+  ZONE_FRACTIONS,
+  deriveZoneBudgets,
+  replyAllowance,
+  replyHeadroom,
+  zoneBRemainder,
+  type ZoneBudgets,
+} from './budgets.js';
+export {
+  ARGS_CAP_WITH_BLOB,
+  elision,
   renderActiveHeader,
   renderActiveMap,
   renderEvent,
   renderLinksBlock,
   renderSummaryBlock,
   renderTailBlock,
+  safeCut,
   truncateToTokens,
 } from './format.js';

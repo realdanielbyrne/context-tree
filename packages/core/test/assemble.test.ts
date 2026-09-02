@@ -912,3 +912,84 @@ describe('D17/D18 boundedness', () => {
     expect(summary.meta.decisions.length).toBe(41);
   });
 });
+
+describe('the window is the real constraint (2026-09-02)', () => {
+  it('reports the window, what the prompt leaves of it, and whether it fits', () => {
+    // Before this the assembler summed `total` and compared it to nothing,
+    // because it had no window. "Fits" could therefore only mean "fits a share
+    // of a number the library did not have", which is what made the Zone B
+    // share a budget in the sense the project's rules forbid.
+    const h = harness();
+    h.addBranch({ title: 'reproduce', phase: 'diagnosis' });
+    const prompt = h.assembler.assemble({ toolSchemasText: TOOL_SCHEMAS, window: 200_000 });
+
+    expect(prompt.budgets.window).toBe(200_000);
+    expect(prompt.budgets.windowRemaining).toBe(200_000 - prompt.budgets.total);
+    expect(prompt.budgets.overWindow).toBe(false);
+  });
+
+  it('says overWindow when the prompt cannot be sent, and does NOT silently trim to fit', () => {
+    // A caller that ignores this gets a provider error, which is the loud
+    // failure. Trimming here would hide which zone lost content — and the
+    // whole point of the report is to say what was built.
+    const h = harness();
+    h.addBranch({ title: 'reproduce', phase: 'diagnosis' });
+    const tiny = h.assembler.assemble({ toolSchemasText: TOOL_SCHEMAS, window: 10 });
+
+    expect(tiny.budgets.overWindow).toBe(true);
+    expect(tiny.budgets.windowRemaining).toBeLessThan(0);
+    // Nothing was dropped to chase the window: the zones are as they were.
+    const same = h.assembler.assemble({ toolSchemasText: TOOL_SCHEMAS });
+    expect(tiny.budgets.total).toBe(same.budgets.total);
+  });
+
+  it('reports the reply allowance for this turn, which a caller passes as max_tokens', () => {
+    // The honest form of a reply limit: computed after assembly from what the
+    // window has left, so it adapts per turn instead of being a number someone
+    // picked. A session on a small window keeps going on short replies.
+    const h = harness();
+    h.addBranch({ title: 'reproduce', phase: 'diagnosis' });
+    const prompt = h.assembler.assemble({ toolSchemasText: TOOL_SCHEMAS, window: 32_768 });
+
+    expect(prompt.budgets.replyAllowance).toBe(32_768 - prompt.budgets.total);
+    expect(prompt.budgets.replyAllowance).toBeGreaterThan(0);
+  });
+
+  it('the reply allowance falls to zero rather than negative when the prompt fills the window', () => {
+    // Zero is the signal that the prompt must give, not the answer.
+    const h = harness();
+    h.addBranch({ title: 'reproduce', phase: 'diagnosis' });
+    const tiny = h.assembler.assemble({ toolSchemasText: TOOL_SCHEMAS, window: 10 });
+
+    expect(tiny.budgets.replyAllowance).toBe(0);
+    expect(tiny.budgets.overWindow).toBe(true);
+  });
+
+  it('leaves the window fields null when the host supplied none, rather than assuming one', () => {
+    // Honest about not knowing. A default window would be a guess about the
+    // deployment, which is the defect this change exists to remove.
+    const h = harness();
+    h.addBranch({ title: 'reproduce', phase: 'diagnosis' });
+    const prompt = h.assembler.assemble({ toolSchemasText: TOOL_SCHEMAS });
+
+    expect(prompt.budgets.window).toBeNull();
+    expect(prompt.budgets.windowRemaining).toBeNull();
+    expect(prompt.budgets.replyAllowance).toBeNull();
+    expect(prompt.budgets.overWindow).toBe(false);
+  });
+
+  it('a window changes nothing about what gets built — it is reported, not enforced', () => {
+    // The addition is observational. Every existing caller keeps its behaviour,
+    // which is what makes this a defect fix rather than an epoch shift.
+    const h = harness();
+    h.addBranch({ title: 'reproduce', phase: 'diagnosis' });
+    h.addBranch({ title: 'patch', phase: 'implementation' });
+
+    const without = h.assembler.assemble({ toolSchemasText: TOOL_SCHEMAS });
+    const with_ = h.assembler.assemble({ toolSchemasText: TOOL_SCHEMAS, window: 32_768 });
+
+    expect(ids(with_.blocks)).toEqual(ids(without.blocks));
+    expect(with_.budgets.zoneB).toBe(without.budgets.zoneB);
+    expect(with_.budgets.zoneC).toBe(without.budgets.zoneC);
+  });
+});

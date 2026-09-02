@@ -30,6 +30,32 @@ export interface BudgetReport {
   overBudget: Zone[];
   /** Summaries dropped to fit Zone B, oldest-first (never reordered). */
   droppedFromZoneB: NodeId[];
+  /**
+   * The host's context window, when the host supplied one, and what this prompt
+   * leaves of it.
+   *
+   * This is the only real constraint in the report: a prompt that exceeds the
+   * window fails at the provider, while a zone over its own share merely spent
+   * an allocation someone chose. Until 2026-09-02 the assembler had no window
+   * at all — it summed `total` and compared it to nothing — so "fits" could
+   * only ever mean "fits a share of a number the library did not have". Both
+   * fields are `null` when the host supplied no window, which is honest about
+   * not knowing rather than assuming a default.
+   */
+  window: number | null;
+  /** `window - total`, negative when the prompt cannot be sent. `null` if no window. */
+  windowRemaining: number | null;
+  /** True only when a window is known AND the prompt exceeds it. */
+  overWindow: boolean;
+  /**
+   * What to pass as the provider's `max_tokens` this turn — the largest reply
+   * that fits beside this prompt. `null` without a window.
+   *
+   * Per-turn arithmetic, not a chosen ceiling: early in a session it is nearly
+   * the whole window, late in a long one it is small, and a session continues
+   * on short replies where a fixed ceiling would have made the request invalid.
+   */
+  replyAllowance: number | null;
 }
 
 export interface TailEntry {
@@ -45,6 +71,12 @@ export interface AssembleOptions {
   activeNodeId?: NodeId;
   zoneBBudget?: number;
   zoneCBudget?: number;
+  /**
+   * The host's context window for this call, overriding the assembler's.
+   * Supplying it is what lets the report name the real constraint; omitting it
+   * leaves `window`/`windowRemaining` null rather than guessing.
+   */
+  window?: number;
   tail?: readonly TailEntry[];
   /** Tool schemas belong to Zone A and must be byte-stable across turns. */
   toolSchemasText?: string;
