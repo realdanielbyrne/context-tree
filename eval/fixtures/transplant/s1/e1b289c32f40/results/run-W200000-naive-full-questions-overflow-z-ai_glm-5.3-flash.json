@@ -1,0 +1,1363 @@
+{
+  "budgets": {
+    "window": 200000,
+    "ratio": 0.850896663206653,
+    "slackFraction": 0.1,
+    "zoneCFraction": 0.2,
+    "reply": 11752,
+    "zoneA": 23504,
+    "zoneB": 47009,
+    "zoneC": 47009,
+    "lazy": 82266,
+    "slack": 23504,
+    "K": 188037,
+    "maxReplyTokens": 10000,
+    "rootKeep": 40,
+    "rootLadder": [
+      {
+        "keep": 40,
+        "ok": true,
+        "rootBlockTokens": 6917,
+        "branchesSurviving": 21,
+        "branchSeqRange": {
+          "from": 1,
+          "to": 754
+        },
+        "overBudget": [],
+        "zoneB": 16921
+      }
+    ],
+    "rootKeepOk": true,
+    "rootBlockTokens": 6917,
+    "branchesSurviving": 21,
+    "branchSeqRange": {
+      "from": 1,
+      "to": 754
+    },
+    "overBudget": [],
+    "arm": "tree",
+    "rootSummarySha": "1eb0306cee54159eec2c5b9983e91e1d70020b5fa4e169d364c0a9aeb4074a6d"
+  },
+  "compactionBuildUsd": null,
+  "compactionSkippedChunks": [],
+  "compaction": null,
+  "rows": [
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-qo01-overflow",
+      "stratum": "overflow",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The property is **`tokenizerId`**.\n\nIn that test (the §17 one in `packages/core/test/cache.test.ts` — it's actually the *adjacent* test to the byte-identical/second-submission one; the `bytes` object lives in \"records the injected tokenizer id on every outcome so swapping tokenizers is a deliberate diff rather than a silent shift of every recorded range\"), the simulator is constructed with a custom tokenizer:\n\n```ts\nconst bytes = new ProviderCacheSimulator({\n  tokenizer: new ExactTokenizer('bytes-v0', (text) => text.length),\n}).submit(prompt);\n...\nexpect(bytes.tokenizerId).toBe('bytes-v0');\n```\n\nSo `bytes` is the cache *outcome* returned by `submit(prompt)`, and the assertion pins that the outcome records which tokenizer produced it — here the injected `ExactTokenizer` identified as `'bytes-v0'`. The purpose is provenance: every recorded cache range is tagged with the tokenizer that measured it, so swapping tokenizers (the same test also builds a `heuristic` simulator with the default tokenizer) shows up as an explicit, attributable diff rather than a silent shift.\n\nThe two companion assertions in the same test drive that point home:\n- `expect(bytes.total).not.toBe(heuristic.total)` — byte-length vs heuristic tokenization give different token counts;\n- `expect(bytes.segments.map((s) => s.blockIds)).toEqual(heuristic.segments.map((s) => s.blockIds))` — but the *block segmentation* (which blocks group into which cache segments) is identical regardless of tokenizer.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196855,
+      "usage": {
+        "input": 200688,
+        "output": 1286,
+        "cacheRead": 64,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 34277,
+          "usage": {
+            "input": 200688,
+            "output": 1286,
+            "cacheRead": 64,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200752,
+          "input": 200688,
+          "cacheRead": 64,
+          "cacheWrite": 0,
+          "output": 1286,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 34357,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "tokenizerId",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-qo01-overflow",
+      "stratum": "overflow",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "Let me verify the exact assertion in that test:",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196536,
+      "usage": {
+        "input": 48,
+        "output": 10508,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 148575,
+          "usage": {
+            "input": 48,
+            "output": 10508,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200752,
+          "input": 48,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 10508,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 148633,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "tokenizerId",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-qo01-overflow",
+      "stratum": "overflow",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The property is **`tokenizerId`**.\n\n```ts\nconst bytes = new ProviderCacheSimulator({\n  tokenizer: new ExactTokenizer('bytes-v0', (text) => text.length),\n}).submit(prompt);\n...\nexpect(bytes.tokenizerId).toBe('bytes-v0');\n```\n\n`bytes` is the outcome returned by `ProviderCacheSimulator.submit()`, and the assertion checks that the simulator stamps every outcome with the id of the tokenizer it was constructed with — here an `ExactTokenizer` registered as `'bytes-v0'` (counting bytes per text).\n\nOne precision: that assertion actually lives in the *neighboring* test in the same `Zone A — the frozen prefix (§10 rule 5, D5)` describe block — \"records the injected tokenizer id on every outcome so swapping tokenizers is a deliberate diff rather than a silent shift of every recorded range (§17)\". The byte-identical/read-from-cache test asserts on `survivingSegments`, `cacheRead`, `cacheWrite`, and `fresh` instead. The tokenizerId test exists because recorded cache ranges are only meaningful relative to the tokenizer that produced them — if someone swaps the tokenizer, the id change makes that a deliberate, visible diff in recorded data rather than a silent shift of every token range.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196791,
+      "usage": {
+        "input": 48,
+        "output": 2009,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 37223,
+          "usage": {
+            "input": 48,
+            "output": 2009,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200752,
+          "input": 48,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 2009,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 37283,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "tokenizerId",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-qo01-overflow",
+      "stratum": "overflow",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The property is **`tokenizerId`** — the assertion is:\n\n```ts\nexpect(bytes.tokenizerId).toBe('bytes-v0');\n```\n\nwhere `bytes` is the outcome of submitting a prompt through a simulator built with an exact tokenizer registered under that id:\n\n```ts\nconst bytes = new ProviderCacheSimulator({\n  tokenizer: new ExactTokenizer('bytes-v0', (text) => text.length),\n}).submit(prompt);\n```\n\nOne placement correction: this assertion isn't actually inside the byte-identical test. Both live under the `describe('Zone A — the frozen prefix (§10 rule 5, D5)')` block in `packages/core/test/cache.test.ts`, but `bytes` belongs to the *neighboring* test — \"records the injected tokenizer id on every outcome so swapping tokenizers is a deliberate diff rather than a silent shift of every recorded range (§17)\" (line ~209). That test also asserts `bytes.total` differs from the heuristic tokenizer's total while `bytes.segments.map(s => s.blockIds)` matches it — i.e., the recorded cache segment *structure* is tokenizer-independent, and the id field is what makes a tokenizer swap a visible diff instead of silently shifting every recorded token range.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196783,
+      "usage": {
+        "input": 48,
+        "output": 1448,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 27372,
+          "usage": {
+            "input": 48,
+            "output": 1448,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200752,
+          "input": 48,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 1448,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 27422,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "tokenizerId",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-qo01-overflow",
+      "stratum": "overflow",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "`tokenizerId`.\n\nThe assertion is `expect(bytes.tokenizerId).toBe('bytes-v0')` — where `bytes` is the outcome of submitting the same assembled prompt through a second `ProviderCacheSimulator` built with `new ExactTokenizer('bytes-v0', (text) => text.length)`. The point of the check (per that test's title, \"records the injected tokenizer id on every outcome so swapping tokenizers is a deliberate diff rather than a silent shift of every recorded range (§17)\") is that every simulator outcome is stamped with the id of the tokenizer that produced it — so swapping tokenizers shows up as an explicit, visible change in the recorded data (the test also asserts `bytes.total` differs from the heuristic tokenizer's total, while the segment `blockIds` structure stays identical) rather than silently shifting every recorded token range.\n\nOne precision note: that `bytes` assertion actually lives in the *neighboring* test in the same `Zone A` describe block — the one titled \"records the injected tokenizer id…\". The byte-identical/cache-read test itself (\"is byte-identical across a config-identical re-assemble and is read from cache on the second submission…\") asserts prefix stability and that the second submission's cost is entirely cacheRead with zero cacheWrite; it doesn't touch `bytes`.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196802,
+      "usage": {
+        "input": 48,
+        "output": 24250,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 363758,
+          "usage": {
+            "input": 48,
+            "output": 24250,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200752,
+          "input": 48,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 24250,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 363806,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "tokenizerId",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-qo02-overflow",
+      "stratum": "overflow",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The `description` field of that Bash tool call (seq 688, which read `suite-rep1/2/3` results.json from `eval/results/suite-final/`, summed `costUsd`, and printed `suite spend` plus the JSON points array) was:\n\n**`Extract suite points and spend`**",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196615,
+      "usage": {
+        "input": 70,
+        "output": 562,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 12047,
+          "usage": {
+            "input": 70,
+            "output": 562,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200774,
+          "input": 70,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 562,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 12106,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "Extract suite points and spend",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-qo02-overflow",
+      "stratum": "overflow",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The `description` field of that Bash tool call (seq 339, which looped over `suite-rep1`/`suite-rep2`/`suite-rep3` under `eval/results/suite-final/`, printed `suite spend 3.63`, and emitted the JSON array of points) was:\n\n**\"Extract suite points and spend\"**",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196624,
+      "usage": {
+        "input": 6,
+        "output": 333,
+        "cacheRead": 200768,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 6964,
+          "usage": {
+            "input": 6,
+            "output": 333,
+            "cacheRead": 200768,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200774,
+          "input": 6,
+          "cacheRead": 200768,
+          "cacheWrite": 0,
+          "output": 333,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 7019,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "Extract suite points and spend",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-qo02-overflow",
+      "stratum": "overflow",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The `description` field was **\"Extract suite points and spend\"**.\n\nThat was the Bash call at seq 739 in the record: it looped over `suite-rep1`/`suite-rep2`/`suite-rep3` under `eval/results/suite-final/`, accumulated `total += r.metrics.costUsd`, collected a points array (`it: 'suite'`, arm, task, cost, turns, ok, cw, cr, inp, tot), printed `'suite spend', total.toFixed(2)` (which came out to 3.63), and then `console.log(JSON.stringify(pts))` with the 12 per-run rows.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196687,
+      "usage": {
+        "input": 6,
+        "output": 433,
+        "cacheRead": 200768,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 8666,
+          "usage": {
+            "input": 6,
+            "output": 433,
+            "cacheRead": 200768,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200774,
+          "input": 6,
+          "cacheRead": 200768,
+          "cacheWrite": 0,
+          "output": 433,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 8722,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "Extract suite points and spend",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-qo02-overflow",
+      "stratum": "overflow",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The `description` field of that Bash tool call was **\"Extract suite points and spend\"**.\n\nThat call (seq 739 in the transcript) ran the `node -e` one-liner that looped over `['suite-rep1','suite-rep2','suite-rep3']`, read each `eval/results/suite-final/<rep>/results.json`, accumulated `total` from each run's `metrics.costUsd`, and printed `suite spend 3.63` plus the JSON array of per-run points (`it`, `arm`, `task`, `cost`, `turns`, `ok`, `cw`, `cr`, `inp`, `tot`) used to fold the suite-validation runs into the report's chart data.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196702,
+      "usage": {
+        "input": 6,
+        "output": 653,
+        "cacheRead": 200768,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 11564,
+          "usage": {
+            "input": 6,
+            "output": 653,
+            "cacheRead": 200768,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200774,
+          "input": 6,
+          "cacheRead": 200768,
+          "cacheWrite": 0,
+          "output": 653,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 11618,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "Extract suite points and spend",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-qo02-overflow",
+      "stratum": "overflow",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The `description` field of that Bash tool call (seq 339) was:\n\n**\"Extract suite points and spend\"**\n\nThat call ran the `node -e` one-liner that looped over `suite-rep1`, `suite-rep2`, and `suite-rep3` under `eval/results/suite-final/`, accumulated `metrics.costUsd` into a total, collected the per-run points (arm, task, cost, turns, ok, cacheWrite, cacheRead, input, total tokens) into an array, and printed `suite spend 3.63` followed by the JSON points array that was later folded into the report's chart data.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196687,
+      "usage": {
+        "input": 6,
+        "output": 494,
+        "cacheRead": 200768,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 10771,
+          "usage": {
+            "input": 6,
+            "output": 494,
+            "cacheRead": 200768,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200774,
+          "input": 6,
+          "cacheRead": 200768,
+          "cacheWrite": 0,
+          "output": 494,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 10830,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "Extract suite points and spend",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-qo03-overflow",
+      "stratum": "overflow",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "Zero. When I rebuilt the core package (seq 469), the verification was:\n\n```\nnpx tsc -p packages/core/tsconfig.json ...\ngrep -c \"seqRange(active)\" packages/core/dist/assemble/format.js\n→ 0\n```\n\nThat `0` was the confirmation that the v5.5 header fix — removing the volatile seq range from `renderActiveHeader` — had actually compiled through to `dist/` before the iter8/iter9 runs launched. It mattered because the eval resolves `@context-tree/core` from `dist/`, so a stale build would have silently kept the volatile bit in the Zone C header and re-created the exact cache-voiding churn FM-7 was about to expose.\n\nWorth noting the check was narrow by design: it only grepped for that one call site in one file. The related `seqRange(node)` calls (file nodes in the descendant map, Zone B branch headings) were still present at that point — the map's seqRanges were moved rather than removed in v5.6, since they're allowed to churn *behind* the breakpoint.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196731,
+      "usage": {
+        "input": 22,
+        "output": 473,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 13595,
+          "usage": {
+            "input": 22,
+            "output": 473,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200726,
+          "input": 22,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 473,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 13654,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "packages/core/dist/assemble/format.js",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-qo03-overflow",
+      "stratum": "overflow",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "**Zero** — `grep -c \"seqRange(active)\" packages/core/dist/assemble/format.js` returned `0` after the core rebuild.\n\nThat was the verification step for the v5.5 header fix: `renderActiveHeader` had been changed to drop the seq range from the Zone C header line (keeping only `(${active.status})`), and a count of 0 confirmed the compiled dist no longer contained the volatile `seqRange(active)` call — i.e., the fix had actually made it through `tsc` into the build the eval runs against, not just into the source.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196623,
+      "usage": {
+        "input": 22,
+        "output": 478,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 12561,
+          "usage": {
+            "input": 22,
+            "output": 478,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200726,
+          "input": 22,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 478,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 12619,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "packages/core/dist/assemble/format.js",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-qo03-overflow",
+      "stratum": "overflow",
+      "rep": 3,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=error, completion_tokens=68, reasoning_tokens=68, reasoning_chars=263) — the completion was spent entirely on reasoning tokens",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=error, completion_tokens=68, reasoning_tokens=68, reasoning_chars=263) — the completion was spent entirely on reasoning tokens\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-qo03-overflow",
+      "stratum": "overflow",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "**Zero (0).**\n\nWhen I rebuilt the core dist after the v5.5 header change, I verified it with:\n\n```\ngrep -c \"seqRange(active)\" packages/core/dist/assemble/format.js\n```\n\nwhich returned `0`. That was the desired outcome — it confirmed the volatile `seqRange(active)` call (the Zone C header's growing seq range that would have voided the cache of the append-only event stream behind it) was fully removed from the compiled `renderActiveHeader` in `packages/core/dist/assemble/format.js`, matching the source fix.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196618,
+      "usage": {
+        "input": 200726,
+        "output": 292,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 8362,
+          "usage": {
+            "input": 200726,
+            "output": 292,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200726,
+          "input": 200726,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 292,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 8422,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "packages/core/dist/assemble/format.js",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-qo03-overflow",
+      "stratum": "overflow",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "Zero. That grep was the verification step after rebuilding the core dist (`npx tsc -p packages/core/tsconfig.json` followed by `grep -c \"seqRange(active)\" packages/core/dist/assemble/format.js`), and it returned **0** — which was exactly what I wanted to confirm: the volatile `seqRange(active)` call had been compiled out of `renderActiveHeader` in the dist build, so the Zone C header fix was actually live in what the eval processes were running, not just in the source. (A stale dist would have shown 1 and meant iter8's runs were testing the old header.)\n\nOne nuance worth noting: `seqRange` itself still appears in the rebuilt file — but only inside `renderActiveMap` as `seqRange(node)` for the descendant index lines, which is fine, since that block was deliberately relocated to the uncached `C:map` position where churn is allowed.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196692,
+      "usage": {
+        "input": 200726,
+        "output": 659,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 13802,
+          "usage": {
+            "input": 200726,
+            "output": 659,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200726,
+          "input": 200726,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 659,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 13857,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "packages/core/dist/assemble/format.js",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-qo04-overflow",
+      "stratum": "overflow",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "`eval/src/types.ts` — specifically line 101, which declares the budgets type as `budgets: { zoneB: number; zoneC: number };` (i.e., the full path is `/Users/danielbyrne/GitHub/rpm/context-tree/eval/src/types.ts`).\n\nIn that same grep result, the other entries are uses rather than the declaration:\n- `eval/src/run.ts:98` — the concrete default values (`{ zoneB: 8000, zoneC: 30000 }`)\n- `eval/src/loop.ts:658` and `eval/src/loop.ts:942` — spreads of `options.budgets` into the ZoneAssembler/config\n\n(Note this is distinct from the core package's own type declaration at `packages/core/src/config.ts:89`, which appeared in the seq-399 result, not seq 401.)",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196691,
+      "usage": {
+        "input": 34,
+        "output": 720,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 13566,
+          "usage": {
+            "input": 34,
+            "output": 720,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200738,
+          "input": 34,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 720,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 13620,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "eval/src/types.ts",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-qo04-overflow",
+      "stratum": "overflow",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "`eval/src/types.ts` — line 101, where `budgets: { zoneB: number; zoneC: number };` is declared as a field (of the harness `HarnessOptions` interface). Full path: `/Users/danielbyrne/GitHub/rpm/context-tree/eval/src/types.ts`.\n\nThe other entries in that result are not type declarations:\n- `eval/src/run.ts:98` — the default *value* (`{ zoneB: 8000, zoneC: 30000 }`)\n- `eval/src/loop.ts:658` and `eval/src/loop.ts:942` — usages spreading `options.budgets` into the `ZoneAssembler`\n\nOne caveat to avoid confusion: the core package has its own separate budgets type at `packages/core/src/config.ts:89` (same shape, `ContextTreeConfig`), but that appeared in the seq 399 result, not seq 401 — seq 401 only shows the eval-side files.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196715,
+      "usage": {
+        "input": 34,
+        "output": 1661,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 27277,
+          "usage": {
+            "input": 34,
+            "output": 1661,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200738,
+          "input": 34,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 1661,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 27331,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "eval/src/types.ts",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-qo04-overflow",
+      "stratum": "overflow",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "`eval/src/types.ts` — specifically line 101, in the grep output shown as:\n\n```\neval/src/types.ts:101:  budgets: { zoneB: number; zoneC: number };\n```\n\nFull path: `/Users/danielbyrne/GitHub/rpm/context-tree/eval/src/types.ts`\n\nThat's the type declaration (the `budgets` field typed as `{ zoneB: number; zoneC: number }`, part of the harness `HarnessOptions` shape). The other entries in that grep result are not declarations:\n\n- `eval/src/run.ts:98` — where the concrete default *values* are set (`{ zoneB: 8000, zoneC: 30000 }`)\n- `eval/src/loop.ts:658` and `eval/src/loop.ts:942` — usages that spread `options.budgets` into the `ZoneAssembler` constructor\n\n(Worth noting the separate, lower-level declaration also exists in the session: `packages/core/src/config.ts:89` declares the same shape for the core `ContextTreeConfig`, with defaults at config.ts:110 — but within the seq 401 result specifically, the eval-side type lives in `eval/src/types.ts:101`.)",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196767,
+      "usage": {
+        "input": 34,
+        "output": 1013,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 18541,
+          "usage": {
+            "input": 34,
+            "output": 1013,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200738,
+          "input": 34,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 1013,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 18594,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "eval/src/types.ts",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-qo04-overflow",
+      "stratum": "overflow",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The budgets *type* declaration is in **`eval/src/types.ts`**, at line 101:\n\n```typescript\nbudgets: { zoneB: number; zoneC: number };\n```\n\nThe other hits in that grep output are usages, not the declaration:\n- `eval/src/run.ts:98` — sets the literal values (`budgets: { zoneB: 8000, zoneC: 30000 }`)\n- `eval/src/loop.ts:658` and `eval/src/loop.ts:942` — spread the budgets option into `ZoneAssembler` and `resolveConfig`\n\nSo relative to the repo root (`/Users/danielbyrne/GitHub/rpm/context-tree/`), the full path is `/Users/danielbyrne/GitHub/rpm/context-tree/eval/src/types.ts`. (For context, the corresponding *core* type lives in `packages/core/src/config.ts:89`, but that wasn't part of the seq 401 result.)",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196714,
+      "usage": {
+        "input": 34,
+        "output": 509,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 10895,
+          "usage": {
+            "input": 34,
+            "output": 509,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200738,
+          "input": 34,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 509,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 10953,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "eval/src/types.ts",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-qo04-overflow",
+      "stratum": "overflow",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "In that tool result, the line that declares the **type** — `budgets: { zoneB: number; zoneC: number };` — is at:\n\n**`eval/src/types.ts`, line 101** (full path: `/Users/danielbyrne/GitHub/rpm/context-tree/eval/src/types.ts`)\n\nFor distinction, the other lines in that result are usages, not the type declaration:\n- `eval/src/run.ts:98` — the concrete default *values* (`budgets: { zoneB: 8000, zoneC: 30000 }`) passed into `HarnessOptions`\n- `eval/src/loop.ts:658` and `eval/src/loop.ts:942` — spread sites consuming `options.budgets` when constructing the `ZoneAssembler`\n\n(For completeness: the core package has its own parallel declaration at `packages/core/src/config.ts:89` with the defaults at line 110 — `budgets: { zoneB: 8_000, zoneC: 30_000 }` — but that appeared in the seq 399 result, not seq 401.)",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196745,
+      "usage": {
+        "input": 34,
+        "output": 997,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 17309,
+          "usage": {
+            "input": 34,
+            "output": 997,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200738,
+          "input": 34,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 997,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 17365,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "eval/src/types.ts",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-qo06-overflow",
+      "stratum": "overflow",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The function is **`extractJsonObject`**, defined in `packages/core/src/prompts/index.ts` immediately after the `JSON_FENCE` constant:\n\n```typescript\nconst JSON_FENCE = /```(?:json)?[ \\t]*\\r?\\n([\\s\\S]*?)```/;\n\n/** Models wrap JSON in fences and prose; tolerate that, but tolerate nothing else. */\nfunction extractJsonObject(raw: string): unknown {\n  const candidates = [raw.trim()];\n  const fenced = JSON_FENCE.exec(raw);\n  if (fenced?.[1] !== undefined) candidates.push(fenced[1]);\n  const open = raw.indexOf('{');\n  const close = raw.lastIndexOf('}');\n  if (open >= 0 && close > open) candidates.push(raw.slice(open, close + 1));\n\n  for (const candidate of candidates) {\n    try {\n      return JSON.parse(candidate);\n    } catch {\n      // Next shape.\n    }\n  }\n  throw new SummaryContractError('response: no JSON object found in the model reply');\n}\n```\n\nIt tries three candidate shapes in order — the trimmed raw string, a fenced ```json block, and the span between the first `{` and last `}` — and throws the `SummaryContractError` with the \"no JSON object found in the model reply\" message (FM-1's signature) if none parse.\n\nWorth noting: a sibling function with a similar role, `asJsonObject`, exists in `packages/core/src/summarize/contract.ts` (also right after its own `JSON_FENCE` copy), but that one is the lenient helper used by `dropTreeOwnedContents` — it returns `null` on a miss rather than throwing. The throwing extractor that produces the live failure message is `extractJsonObject`.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196879,
+      "usage": {
+        "input": 37,
+        "output": 888,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 16937,
+          "usage": {
+            "input": 37,
+            "output": 888,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200741,
+          "input": 37,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 888,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 16993,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "extractJsonObject",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-qo06-overflow",
+      "stratum": "overflow",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "`extractJsonObject` — defined in `packages/core/src/prompts/index.ts` immediately after the `JSON_FENCE` regex (`const JSON_FENCE = /```(?:json)?[ \\t]*\\r?\\n([\\s\\S]*?)```/;`). It builds a small candidate list (the trimmed raw reply, any fenced ```json block, and the span from the first `{` to the last `}`), tries `JSON.parse` on each, and throws `SummaryContractError('response: no JSON object found in the model reply')` if none parse — that's the exact error message behind the FM-1 failures we tracked.\n\nOne nuance worth noting: the identical `JSON_FENCE` regex also appears in `packages/core/src/summarize/contract.ts`, where the function right after it is `asJsonObject` — the lenient twin that returns `null` on a miss instead of throwing, leaving the diagnosis to the strict parser. So: `extractJsonObject` is the one that raises the error; `asJsonObject` is its non-throwing counterpart used by `parseSummaryReply`/`dropTreeOwnedContents`.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196750,
+      "usage": {
+        "input": 37,
+        "output": 1655,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 34726,
+          "usage": {
+            "input": 37,
+            "output": 1655,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200741,
+          "input": 37,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 1655,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 34776,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "extractJsonObject",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    }
+  ],
+  "partial": true
+}
