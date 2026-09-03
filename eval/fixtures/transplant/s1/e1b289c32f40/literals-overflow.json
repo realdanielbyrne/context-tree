@@ -1,0 +1,299 @@
+{
+  "scenario": "s1",
+  "trace_sha256": "e1b289c32f406908906411a524928c15efb79b1b047fb3f82dfc4f0c7da76044",
+  "ratio": 0.850896663206653,
+  "ref_window": 65536,
+  "boundary_seq": 523,
+  "K": 61616,
+  "counts": {
+    "once_only": 509,
+    "overflow_pool": 328
+  },
+  "selected": [
+    {
+      "stratum": "overflow",
+      "exploratory": false,
+      "node_id": "n_1E48X9HAFPEYNQHHSF609KHMEE",
+      "node_ids": [
+        "n_1E48X9HAFPEYNQHHSF609KHMEE"
+      ],
+      "seq": 151,
+      "kind": "ident",
+      "answer_literals": [
+        "tokenizerId"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])tokenizerId(?![\\w])"
+      ],
+      "source_context": "_result for seq 150 (seq 151)\n99:    trace.append({ type: 'user_message', ts: TS, blob: blobs.put(`please ${spec.title}`) });\n100:    trace.append({ type: 'assistant_message', ts: TS, blob: blobs.put(`starting ${spec.title}`) });\n101:    trace.append({\n185:  it('is byte-identical across a config-identical re-assemble and is read from cache on the second submission, which is the only evidence the frozen prefix is actually earning anything', () => {\n215:    const bytes = new ProviderCacheSimulator({\n216:      tokenizer: new ExactTokenizer('bytes-v0', (text) => text.length),\n220:    expect(bytes.tokenizerId).toBe('bytes-v0');\n221:    expect(bytes.total).not.toBe(heuristic.total);\n223:    expect(bytes.segments.map((s) => s.blockIds)).toEqual(heuristic.segments.map((s) => s.blockIds));\n227:describe('event: a turn appended to the ACTIVE branch', () => {\n228:  it('leaves Zone A and Zone B fully cache-readable and charges only Zone C as fresh, because the appended turn lands after the last breakpoint (§10 rule 2)', () => {\n236:    h.trace.append({ type: 'user_message', ts: TS, blob: h.blobs.put('also fix the tax line') });\n237:    h.trace.append({\n261:  it('grows Zone B by exactly the newly-closed br",
+      "wide_context": "### tool_result for seq 150 (seq 151)\n99:    trace.append({ type: 'user_message', ts: TS, blob: blobs.put(`please ${spec.title}`) });\n100:    trace.append({ type: 'assistant_message', ts: TS, blob: blobs.put(`starting ${spec.title}`) });\n101:    trace.append({\n185:  it('is byte-identical across a config-identical re-assemble and is read from cache on the second submission, which is the only evidence the frozen prefix is actually earning anything', () => {\n215:    const bytes = new ProviderCacheSimulator({\n216:      tokenizer: new ExactTokenizer('bytes-v0', (text) => text.length),\n220:    expect(bytes.tokenizerId).toBe('bytes-v0');\n221:    expect(bytes.total).not.toBe(heuristic.total);\n223:    expect(bytes.segments.map((s) => s.blockIds)).toEqual(heuristic.segments.map((s) => s.blockIds));\n227:describe('event: a turn appended to the ACTIVE branch', () => {\n228:  it('leaves Zone A and Zone B fully cache-readable and charges only Zone C as fresh, because the appended turn lands after the last breakpoint (§10 rule 2)', () => {\n236:    h.trace.append({ type: 'user_message', ts: TS, blob: h.blobs.put('also fix the tax line') });\n237:    h.trace.append({\n261:  it('grows Zone B by exactly the newly-closed branch summary at its END, keeps the prefix through the previous last summary byte-identical, and rewrites Zone C in full', () => {\n273:    // still byt",
+      "id": "s1-qo01-overflow"
+    },
+    {
+      "stratum": "overflow",
+      "exploratory": false,
+      "node_id": "n_1FJ2VN7BZMD0C22JVNB4NGNNPW",
+      "node_ids": [
+        "n_1FJ2VN7BZMD0C22JVNB4NGNNPW"
+      ],
+      "seq": 339,
+      "kind": "quoted",
+      "answer_literals": [
+        "Extract suite points and spend"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])Extract suite points and spend(?![\\w])"
+      ],
+      "source_context": "('fs');\\nlet total=0, pts=[];\\nfor (const rep of ['suite-rep1','suite-rep2','suite-rep3']) {\\n  const rs=JSON.parse(fs.readFileSync('eval/results/suite-final/'+rep+'/results.json','utf8'));\\n  for (const r of rs){ total+=r.metrics.costUsd; pts.push({it:'suite',arm:r.arm,task:r.scenarioId,cost:+r.metrics.costUsd.toFixed(4),turns:r.metrics.turns.modelTurns,ok:r.success===true,cw:r.metrics.tokens.cacheWrite,cr:r.metrics.tokens.cacheRead,inp:r.metrics.tokens.input,tot:r.metrics.tokens.total});}\\n}\\nconsole.log('suite spend', total.toFixed(2));\\nconsole.log(JSON.stringify(pts));\\n\\\"\",\"description\":\"Extract suite points and spend\"}",
+      "wide_context": "### tool_call Bash (seq 339)\nargs: {\"command\":\"node -e \\\"\\nconst fs=require('fs');\\nlet total=0, pts=[];\\nfor (const rep of ['suite-rep1','suite-rep2','suite-rep3']) {\\n  const rs=JSON.parse(fs.readFileSync('eval/results/suite-final/'+rep+'/results.json','utf8'));\\n  for (const r of rs){ total+=r.metrics.costUsd; pts.push({it:'suite',arm:r.arm,task:r.scenarioId,cost:+r.metrics.costUsd.toFixed(4),turns:r.metrics.turns.modelTurns,ok:r.success===true,cw:r.metrics.tokens.cacheWrite,cr:r.metrics.tokens.cacheRead,inp:r.metrics.tokens.input,tot:r.metrics.tokens.total});}\\n}\\nconsole.log('suite spend', total.toFixed(2));\\nconsole.log(JSON.stringify(pts));\\n\\\"\",\"description\":\"Extract suite points and spend\"}",
+      "id": "s1-qo02-overflow"
+    },
+    {
+      "stratum": "overflow",
+      "exploratory": false,
+      "node_id": "n_15NSXSQ4W9X9C2ETGMA5QCSJ05",
+      "node_ids": [
+        "n_15NSXSQ4W9X9C2ETGMA5QCSJ05"
+      ],
+      "seq": 469,
+      "kind": "path",
+      "answer_literals": [
+        "packages/core/dist/assemble/format.js"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])packages/core/dist/assemble/format\\.js(?![\\w])"
+      ],
+      "source_context": "### tool_call Bash (seq 469)\nargs: {\"command\":\"npx tsc -p packages/core/tsconfig.json 2>&1 | grep -v \\\"npm warn\\\" | head -5; grep -c \\\"seqRange(active)\\\" packages/core/dist/assemble/format.js; echo \\\"core rebuilt\\\"\",\"description\":\"Rebuild core dist, verify header change landed\"}",
+      "wide_context": "### tool_call Bash (seq 469)\nargs: {\"command\":\"npx tsc -p packages/core/tsconfig.json 2>&1 | grep -v \\\"npm warn\\\" | head -5; grep -c \\\"seqRange(active)\\\" packages/core/dist/assemble/format.js; echo \\\"core rebuilt\\\"\",\"description\":\"Rebuild core dist, verify header change landed\"}",
+      "id": "s1-qo03-overflow"
+    },
+    {
+      "stratum": "overflow",
+      "exploratory": false,
+      "node_id": "n_1KYBBC6PCAH0M474M0EMX9AD0Z",
+      "node_ids": [
+        "n_1KYBBC6PCAH0M474M0EMX9AD0Z"
+      ],
+      "seq": 402,
+      "kind": "path",
+      "answer_literals": [
+        "eval/src/types.ts"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])eval/src/types\\.ts(?![\\w])"
+      ],
+      "source_context": "### tool_result for seq 401 (seq 402)\neval/src/run.ts:98:      budgets: { zoneB: 8000, zoneC: 30000 },\neval/src/loop.ts:658:      budgets: { ...args.options.budgets },\neval/src/loop.ts:942:      budgets: { ...options.budgets },\neval/src/run.ts:98:      budgets: { zoneB: 8000, zoneC: 30000 },\neval/src/run.ts:98:      budgets: { zoneB: 8000, zoneC: 30000 },\neval/src/types.ts:101:  budgets: { zoneB: number; zoneC: number };",
+      "wide_context": "### tool_result for seq 401 (seq 402)\neval/src/run.ts:98:      budgets: { zoneB: 8000, zoneC: 30000 },\neval/src/loop.ts:658:      budgets: { ...args.options.budgets },\neval/src/loop.ts:942:      budgets: { ...options.budgets },\neval/src/run.ts:98:      budgets: { zoneB: 8000, zoneC: 30000 },\neval/src/run.ts:98:      budgets: { zoneB: 8000, zoneC: 30000 },\neval/src/types.ts:101:  budgets: { zoneB: number; zoneC: number };",
+      "id": "s1-qo04-overflow"
+    },
+    {
+      "stratum": "overflow",
+      "exploratory": false,
+      "node_id": "n_11RPJ28833FQ1CY47DSW5T93NG",
+      "node_ids": [
+        "n_11RPJ28833FQ1CY47DSW5T93NG"
+      ],
+      "seq": 372,
+      "kind": "quoted",
+      "answer_literals": [
+        "Locate v5/v6 gates in loop.ts"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])Locate v5/v6 gates in loop\\.ts(?![\\w])"
+      ],
+      "source_context": "### tool_call Bash (seq 372)\nargs: {\"command\":\"grep -n \\\"EVAL_DSA_V6\\\\|makeTreeDsaV6Selector\\\\|DSA_V6_KEEP_FRACTION\\\\|DSA_V6_FOCUS_TAIL_CHARS\\\\|mergeKeepSets\\\\|EVAL_ZONEC_LATEST\\\\|EVAL_SUMMARIZE_ON_CLOSE\\\\|EVAL_NATIVE_CACHE\\\" eval/src/loop.ts | head -40\",\"description\":\"Locate v5/v6 gates in loop.ts\"}",
+      "wide_context": "### tool_call Bash (seq 372)\nargs: {\"command\":\"grep -n \\\"EVAL_DSA_V6\\\\|makeTreeDsaV6Selector\\\\|DSA_V6_KEEP_FRACTION\\\\|DSA_V6_FOCUS_TAIL_CHARS\\\\|mergeKeepSets\\\\|EVAL_ZONEC_LATEST\\\\|EVAL_SUMMARIZE_ON_CLOSE\\\\|EVAL_NATIVE_CACHE\\\" eval/src/loop.ts | head -40\",\"description\":\"Locate v5/v6 gates in loop.ts\"}",
+      "id": "s1-qo05-overflow"
+    },
+    {
+      "stratum": "overflow",
+      "exploratory": false,
+      "node_id": "n_1WAD2VDY2YPXVF79V20K82TEXK",
+      "node_ids": [
+        "n_1WAD2VDY2YPXVF79V20K82TEXK"
+      ],
+      "seq": 507,
+      "kind": "ident",
+      "answer_literals": [
+        "extractJsonObject"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])extractJsonObject(?![\\w])"
+      ],
+      "source_context": "### tool_result for seq 506 (seq 507)\n      decisions: requireStringArray(meta.decisions, 'meta.decisions'),\n      node_ids: requireStringArray(meta.node_ids, 'meta.node_ids'),\n    },\n  };\n}\n\nconst JSON_FENCE = /```(?:json)?[ \\t]*\\r?\\n([\\s\\S]*?)```/;\n\n/** Models wrap JSON in fences and prose; tolerate that, but tolerate nothing else. */\nfunction extractJsonObject(raw: string): unknown {\n  const candidates = [raw.trim()];\n  const fenced = JSON_FENCE.exec(raw);\n  if (fenced?.[1] !== undefined) candidates.push(fenced[1]);\n  const open = raw.indexOf('{');\n  const close = raw.lastIndexOf('}');\n  if (open >= 0 && close > open) candidates.push(raw.slice(open, close + 1));\n\n  for (const candidate of candidates) {\n    try {\n      return JSON.parse(candidate);\n    } catch {\n      // Next shape.\n    }\n  }\n  throw new SummaryContractError('response: no JSON object found in the model reply');\n}\n\nfunction fail(field: string, problem: string): never {\n  throw new Su",
+      "wide_context": "### tool_result for seq 506 (seq 507)\n      decisions: requireStringArray(meta.decisions, 'meta.decisions'),\n      node_ids: requireStringArray(meta.node_ids, 'meta.node_ids'),\n    },\n  };\n}\n\nconst JSON_FENCE = /```(?:json)?[ \\t]*\\r?\\n([\\s\\S]*?)```/;\n\n/** Models wrap JSON in fences and prose; tolerate that, but tolerate nothing else. */\nfunction extractJsonObject(raw: string): unknown {\n  const candidates = [raw.trim()];\n  const fenced = JSON_FENCE.exec(raw);\n  if (fenced?.[1] !== undefined) candidates.push(fenced[1]);\n  const open = raw.indexOf('{');\n  const close = raw.lastIndexOf('}');\n  if (open >= 0 && close > open) candidates.push(raw.slice(open, close + 1));\n\n  for (const candidate of candidates) {\n    try {\n      return JSON.parse(candidate);\n    } catch {\n      // Next shape.\n    }\n  }\n  throw new SummaryContractError('response: no JSON object found in the model reply');\n}\n\nfunction fail(field: string, problem: string): never {\n  throw new SummaryContractError(`${field}: ${problem}`);\n}\n\npackages/core/src/config.ts:90:  summarize: { concurrency: number; maxSummaryTokens: number };\npackages",
+      "id": "s1-qo06-overflow"
+    },
+    {
+      "stratum": "overflow",
+      "exploratory": false,
+      "node_id": "n_16BHTPNT77GCNRJQH6ASZJGQGT",
+      "node_ids": [
+        "n_16BHTPNT77GCNRJQH6ASZJGQGT"
+      ],
+      "seq": 295,
+      "kind": "quoted",
+      "answer_literals": [
+        "Memory over summaries, attention over detail"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])Memory over summaries, attention over detail(?![\\w])"
+      ],
+      "source_context": " content (\"what am I working on now\") gives the selector a signal that actually varies.\n- **Metadata guards over lexical cosine.** The §8 summaries carry structured meta — open questions, failing tests. Never evict a branch whose meta says its work is unfinished. That single rule would have prevented the iter6 failure (the dedent module's branch was evicted while unsolved).\n- **Move selection from Zone B to Zone C.** Summaries are cheap (~100s of tokens) and load-bearing — keep all of them, always. Detail is expensive — let DSA decide *which branch gets expanded*, not which summaries survive. \"Memory over summaries, attention over detail\" preserves the floor property permanently.\n- **Sticky/phase-boundary membership** so any change lands where Zone B invalidates anyway (a new summary arriving).\n- Embeddings behind the same cosine interface remain the paraphrase-robustness upgrade, but they're fourth on this list — the failures observed were signal-shape problems, not vocabulary problems.\n\nWant me to fold this into the report's §10 as the v6 spec (focus-scoring + meta guards + monotone k + Zone-C selection)? The suite runs are still a few minutes out, so it would ride the same republish.",
+      "wide_context": "e-to-task was near-uniform and eviction was effectively decided by recency+diversity — i.e., arbitrarily. Scoring against the *active branch's* recent content (\"what am I working on now\") gives the selector a signal that actually varies.\n- **Metadata guards over lexical cosine.** The §8 summaries carry structured meta — open questions, failing tests. Never evict a branch whose meta says its work is unfinished. That single rule would have prevented the iter6 failure (the dedent module's branch was evicted while unsolved).\n- **Move selection from Zone B to Zone C.** Summaries are cheap (~100s of tokens) and load-bearing — keep all of them, always. Detail is expensive — let DSA decide *which branch gets expanded*, not which summaries survive. \"Memory over summaries, attention over detail\" preserves the floor property permanently.\n- **Sticky/phase-boundary membership** so any change lands where Zone B invalidates anyway (a new summary arriving).\n- Embeddings behind the same cosine interface remain the paraphrase-robustness upgrade, but they're fourth on this list — the failures observed were signal-shape problems, not vocabulary problems.\n\nWant me to fold this into the report's §10 as the v6 spec (focus-scoring + meta guards + monotone k + Zone-C selection)? The suite runs are still a few minutes out, so it would ride the same republish.",
+      "id": "s1-qo07-overflow"
+    },
+    {
+      "stratum": "overflow",
+      "exploratory": false,
+      "node_id": "n_1JNW5D8CNYSATE4X6NV3Z39R81",
+      "node_ids": [
+        "n_1JNW5D8CNYSATE4X6NV3Z39R81"
+      ],
+      "seq": 18,
+      "kind": "ident",
+      "answer_literals": [
+        "timeCapMs"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])timeCapMs(?![\\w])"
+      ],
+      "source_context": " = resolveConfig({\n720\t      root: join(sandbox.path, '.context-tree'),\n721\t      provider: options.provider,\n722\t      leafModel: options.leafModel,\n723\t      rootModel: options.rootModel,\n724\t      judgeModel: options.judgeModel,\n725\t      budgets: { ...options.budgets },\n726\t      taskTitle: `${scenario.benchmark}/${scenario.id}`,\n727\t    });\n728\t    const armArgs: ArmArgs = {\n729\t      scenario,\n730\t      config,\n731\t      options,\n732\t      provider: meteredAgent,\n733\t      sandbox,\n734\t      turns,\n735\t      usage,\n736\t      runHandle,\n737\t      deadlineMs: startedAt.getTime() + options.timeCapMs,\n738\t    };\n739\t    const output =\n740\t      arm === 'native'\n741\t        ? await runNativeArm(armArgs)\n742\t        : arm === 'dsa'\n743\t          ? await runDsaArm(armArgs)\n744\t          : arm === 'tree-dsa'\n745\t            ? await runTreeArm({\n746\t                ...armArgs,\n747\t                summarizerProvider: meteredSummarizer,\n748\t                selectBranches: makeTreeDsaSelector(scenario.task),\n749\t              })\n750\t            : await runTreeArm({ ...armArgs, summarizerProvider: meteredSummarizer });\n751\t    status = output.status;\n752\t    finalText = output.finalText;\n753\t  } c",
+      "wide_context": "ing | undefined;\n714\t  let finalText = '';\n715\t  let success: boolean | null = null;\n716\t  let judgeDetail = '';\n717\t\n718\t  try {\n719\t    const config = resolveConfig({\n720\t      root: join(sandbox.path, '.context-tree'),\n721\t      provider: options.provider,\n722\t      leafModel: options.leafModel,\n723\t      rootModel: options.rootModel,\n724\t      judgeModel: options.judgeModel,\n725\t      budgets: { ...options.budgets },\n726\t      taskTitle: `${scenario.benchmark}/${scenario.id}`,\n727\t    });\n728\t    const armArgs: ArmArgs = {\n729\t      scenario,\n730\t      config,\n731\t      options,\n732\t      provider: meteredAgent,\n733\t      sandbox,\n734\t      turns,\n735\t      usage,\n736\t      runHandle,\n737\t      deadlineMs: startedAt.getTime() + options.timeCapMs,\n738\t    };\n739\t    const output =\n740\t      arm === 'native'\n741\t        ? await runNativeArm(armArgs)\n742\t        : arm === 'dsa'\n743\t          ? await runDsaArm(armArgs)\n744\t          : arm === 'tree-dsa'\n745\t            ? await runTreeArm({\n746\t                ...armArgs,\n747\t                summarizerProvider: meteredSummarizer,\n748\t                selectBranches: makeTreeDsaSelector(scenario.task),\n749\t              })\n750\t            : await runTreeArm({ ...armArgs, summarizerProvider: meteredSummarizer });\n751\t    status = output.status;\n752\t    finalText = output.finalText;\n753\t  } catch (error) {\n754\t    if (error instanceof CostCapExceededError) {\n755\t      status = 'cost_cap';\n756\t    } else {\n757\t      errorText = `${(error as",
+      "id": "s1-qo08-overflow"
+    },
+    {
+      "stratum": "overflow",
+      "exploratory": false,
+      "node_id": "n_1F6E3RF111CVYDQ7MA643CRGBC",
+      "node_ids": [
+        "n_1F6E3RF111CVYDQ7MA643CRGBC"
+      ],
+      "seq": 264,
+      "kind": "quoted",
+      "answer_literals": [
+        "Extract per-turn input distributions"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])Extract per-turn input distributions(?![\\w])"
+      ],
+      "source_context": "### tool_call Bash (seq 264)\nargs: {\"command\":\"node -e \\\"\\nconst fs = require('fs');\\nconst all = JSON.parse(fs.readFileSync('/private/tmp/claude-501/-Users-danielbyrne-GitHub-rpm-context-tree/4bf1e198-8af4-47e0-ae99-fa2ca13f1400/scratchpad/all-runs.json','utf8'));\\nconst inputs = (label, arm) => all.perRun.filter(r => r.label===label && r.arm===arm).flatMap(r => r.turns.map(t => t.usage.input));\\nconsole.log('CT5='+JSON.stringify(inputs('iter5','context-tree')));\\nconsole.log('CT6='+JSON.stringify(inputs('iter6','context-tree')));\\n\\\"\",\"description\":\"Extract per-turn input distributions\"}",
+      "wide_context": "### tool_call Bash (seq 264)\nargs: {\"command\":\"node -e \\\"\\nconst fs = require('fs');\\nconst all = JSON.parse(fs.readFileSync('/private/tmp/claude-501/-Users-danielbyrne-GitHub-rpm-context-tree/4bf1e198-8af4-47e0-ae99-fa2ca13f1400/scratchpad/all-runs.json','utf8'));\\nconst inputs = (label, arm) => all.perRun.filter(r => r.label===label && r.arm===arm).flatMap(r => r.turns.map(t => t.usage.input));\\nconsole.log('CT5='+JSON.stringify(inputs('iter5','context-tree')));\\nconsole.log('CT6='+JSON.stringify(inputs('iter6','context-tree')));\\n\\\"\",\"description\":\"Extract per-turn input distributions\"}",
+      "id": "s1-qo09-overflow"
+    },
+    {
+      "stratum": "overflow",
+      "exploratory": false,
+      "node_id": "n_10MK5T7JRRKENQ275F460TS827",
+      "node_ids": [
+        "n_10MK5T7JRRKENQ275F460TS827"
+      ],
+      "seq": 305,
+      "kind": "quoted",
+      "answer_literals": [
+        "Check suite progress before republishing"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])Check suite progress before republishing(?![\\w])"
+      ],
+      "source_context": "### tool_call Bash (seq 305)\nargs: {\"command\":\"S=\\\"/private/tmp/claude-501/-Users-danielbyrne-GitHub-rpm-context-tree/4bf1e198-8af4-47e0-ae99-fa2ca13f1400/scratchpad\\\"; for i in 1 2 3; do tail -1 \\\"$S/suite-rep$i.log\\\" | cut -c1-140; done; ps aux | grep -c \\\"[r]un.js.*suite-rep\\\"\",\"description\":\"Check suite progress before republishing\"}",
+      "wide_context": "### tool_call Bash (seq 305)\nargs: {\"command\":\"S=\\\"/private/tmp/claude-501/-Users-danielbyrne-GitHub-rpm-context-tree/4bf1e198-8af4-47e0-ae99-fa2ca13f1400/scratchpad\\\"; for i in 1 2 3; do tail -1 \\\"$S/suite-rep$i.log\\\" | cut -c1-140; done; ps aux | grep -c \\\"[r]un.js.*suite-rep\\\"\",\"description\":\"Check suite progress before republishing\"}",
+      "id": "s1-qo10-overflow"
+    },
+    {
+      "stratum": "overflow",
+      "exploratory": false,
+      "node_id": "n_1ZDHE4823CEZMPPMH8M8H452BP",
+      "node_ids": [
+        "n_1ZDHE4823CEZMPPMH8M8H452BP"
+      ],
+      "seq": 352,
+      "kind": "quoted",
+      "answer_literals": [
+        "Sync final report and check repo state"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])Sync final report and check repo state(?![\\w])"
+      ],
+      "source_context": "### tool_call Bash (seq 352)\nargs: {\"command\":\"cp \\\"/private/tmp/claude-501/-Users-danielbyrne-GitHub-rpm-context-tree/4bf1e198-8af4-47e0-ae99-fa2ca13f1400/scratchpad/tree-vs-transcript.html\\\" /Users/danielbyrne/GitHub/rpm/context-tree/reports/metrics/tree-vs-transcript.html && git status --short | head -15\",\"description\":\"Sync final report and check repo state\"}",
+      "wide_context": "### tool_call Bash (seq 352)\nargs: {\"command\":\"cp \\\"/private/tmp/claude-501/-Users-danielbyrne-GitHub-rpm-context-tree/4bf1e198-8af4-47e0-ae99-fa2ca13f1400/scratchpad/tree-vs-transcript.html\\\" /Users/danielbyrne/GitHub/rpm/context-tree/reports/metrics/tree-vs-transcript.html && git status --short | head -15\",\"description\":\"Sync final report and check repo state\"}",
+      "id": "s1-qo11-overflow"
+    },
+    {
+      "stratum": "overflow",
+      "exploratory": false,
+      "node_id": "n_18ZHNQYZRHWS0K4P4GHXHF1ND5",
+      "node_ids": [
+        "n_18ZHNQYZRHWS0K4P4GHXHF1ND5"
+      ],
+      "seq": 419,
+      "kind": "quoted",
+      "answer_literals": [
+        "Verify AssembledPrompt export path"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])Verify AssembledPrompt export path(?![\\w])"
+      ],
+      "source_context": "### tool_call Bash (seq 419)\nargs: {\"command\":\"grep -n \\\"assemble/index\\\\|from './assemble\\\\|AssembledPrompt\\\" packages/core/src/index.ts | head; grep -rn \\\"export.*AssembledPrompt\\\" packages/core/src/assemble/ | head -3\",\"description\":\"Verify AssembledPrompt export path\"}",
+      "wide_context": "### tool_call Bash (seq 419)\nargs: {\"command\":\"grep -n \\\"assemble/index\\\\|from './assemble\\\\|AssembledPrompt\\\" packages/core/src/index.ts | head; grep -rn \\\"export.*AssembledPrompt\\\" packages/core/src/assemble/ | head -3\",\"description\":\"Verify AssembledPrompt export path\"}",
+      "id": "s1-qo12-overflow"
+    },
+    {
+      "stratum": "overflow",
+      "exploratory": false,
+      "node_id": "n_161P8JTCNTZ2S217FDR4ABC2NB",
+      "node_ids": [
+        "n_161P8JTCNTZ2S217FDR4ABC2NB"
+      ],
+      "seq": 315,
+      "kind": "quoted",
+      "answer_literals": [
+        "Check SummaryMeta shape for guards"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])Check SummaryMeta shape for guards(?![\\w])"
+      ],
+      "source_context": "### tool_call Bash (seq 315)\nargs: {\"command\":\"grep -n \\\"open_questions\\\\|tests\\\" packages/core/src/contracts/*.ts | grep -i \\\"summary\\\\|meta\\\" | head; grep -n \\\"interface SummaryMeta\\\" -A 12 packages/core/src/contracts/*.ts | head -20\",\"description\":\"Check SummaryMeta shape for guards\"}",
+      "wide_context": "### tool_call Bash (seq 315)\nargs: {\"command\":\"grep -n \\\"open_questions\\\\|tests\\\" packages/core/src/contracts/*.ts | grep -i \\\"summary\\\\|meta\\\" | head; grep -n \\\"interface SummaryMeta\\\" -A 12 packages/core/src/contracts/*.ts | head -20\",\"description\":\"Check SummaryMeta shape for guards\"}",
+      "id": "s1-qo13-overflow"
+    },
+    {
+      "stratum": "overflow",
+      "exploratory": false,
+      "node_id": "n_1BGBV85XX4QTHMYPGFB7YAF1HT",
+      "node_ids": [
+        "n_1BGBV85XX4QTHMYPGFB7YAF1HT"
+      ],
+      "seq": 272,
+      "kind": "ident",
+      "answer_literals": [
+        "nrenderAll"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])nrenderAll(?![\\w])"
+      ],
+      "source_context": "ing each next block/marker\\ns = s.replace(\\\"})();\\\\n\\\\n/* ---- fig 2\\\", \\\"});\\\\n\\\\n/* ---- fig 2\\\")\\ns = s.replace(\\\"})();\\\\n\\\\n/* ---- fig 3\\\", \\\"});\\\\n\\\\n/* ---- fig 3\\\")\\ns = s.replace(\\\"})();\\\\n\\\\n/* ---- fig 4\\\", \\\"});\\\\n\\\\n/* ---- fig 4\\\")\\ns = s.replace(\\\"})();\\\\n\\\\n/* ---- fig 5\\\", \\\"});\\\\n\\\\n/* ---- fig 5\\\")\\ns = s.replace(\\\"})();\\\\n\\\\n/* ---- appendix table ---- */\\\", \\\"});\\\\n\\\\nconst FIGS=['fig-scatter','fig-bars','fig-cache','fig-hist','fig-strip'];\\\\nfunction renderAll(){for(const id of FIGS){const n=document.getElementById(id);if(n)n.innerHTML='';}for(const f of RENDERERS)f();}\\\\nrenderAll();\\\\ntry{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',renderAll);}catch(e){}\\\\nnew MutationObserver(renderAll).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});\\\\n\\\\n/* ---- appendix table ---- */\\\")\\nopen(p,'w').write(s)\\nprint('ok', s.count('RENDERERS.push(function(){'), 'push blocks')\\nEOF\",\"description\":\"Convert chart IIFEs to re-renderable functions\"}",
+      "wide_context": "tion(){') > out.count('!!'):\\n        pass\\n    out += '})();' + seg\\ns = out\\n# simpler deterministic approach: replace the closer immediately preceding each next block/marker\\ns = s.replace(\\\"})();\\\\n\\\\n/* ---- fig 2\\\", \\\"});\\\\n\\\\n/* ---- fig 2\\\")\\ns = s.replace(\\\"})();\\\\n\\\\n/* ---- fig 3\\\", \\\"});\\\\n\\\\n/* ---- fig 3\\\")\\ns = s.replace(\\\"})();\\\\n\\\\n/* ---- fig 4\\\", \\\"});\\\\n\\\\n/* ---- fig 4\\\")\\ns = s.replace(\\\"})();\\\\n\\\\n/* ---- fig 5\\\", \\\"});\\\\n\\\\n/* ---- fig 5\\\")\\ns = s.replace(\\\"})();\\\\n\\\\n/* ---- appendix table ---- */\\\", \\\"});\\\\n\\\\nconst FIGS=['fig-scatter','fig-bars','fig-cache','fig-hist','fig-strip'];\\\\nfunction renderAll(){for(const id of FIGS){const n=document.getElementById(id);if(n)n.innerHTML='';}for(const f of RENDERERS)f();}\\\\nrenderAll();\\\\ntry{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',renderAll);}catch(e){}\\\\nnew MutationObserver(renderAll).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});\\\\n\\\\n/* ---- appendix table ---- */\\\")\\nopen(p,'w').write(s)\\nprint('ok', s.count('RENDERERS.push(function(){'), 'push blocks')\\nEOF\",\"description\":\"Convert chart IIFEs to re-renderable functions\"}",
+      "id": "s1-qo14-overflow"
+    },
+    {
+      "stratum": "overflow",
+      "exploratory": false,
+      "node_id": "n_1E48X9HAFPEYNQHHSF609KHMEE",
+      "node_ids": [
+        "n_1E48X9HAFPEYNQHHSF609KHMEE"
+      ],
+      "seq": 218,
+      "kind": "quoted",
+      "answer_literals": [
+        "Build two-task suite file and validate rows"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])Build two-task suite file and validate rows(?![\\w])"
+      ],
+      "source_context": "ate/tmp/claude-501/-Users-danielbyrne-GitHub-rpm-context-tree/4bf1e198-8af4-47e0-ae99-fa2ca13f1400/scratchpad/suite-two-tasks.jsonl\\\"; wc -l \\\"/private/tmp/claude-501/-Users-danielbyrne-GitHub-rpm-context-tree/4bf1e198-8af4-47e0-ae99-fa2ca13f1400/scratchpad/suite-two-tasks.jsonl\\\"; python3 -c \\\"\\nimport json\\nfor line in open('/private/tmp/claude-501/-Users-danielbyrne-GitHub-rpm-context-tree/4bf1e198-8af4-47e0-ae99-fa2ca13f1400/scratchpad/suite-two-tasks.jsonl'):\\n    row=json.loads(line); print(row['id'], 'files:', len(row['files']), 'judge_files:', len(row['judge_files']))\\\"\",\"description\":\"Build two-task suite file and validate rows\"}",
+      "wide_context": " {\"command\":\"cat eval/scenarios/deepswe-agents-last-exam/sw-1-jsonc.jsonl.bak eval/scenarios/deepswe-agents-last-exam/agents-last-exam.jsonl > \\\"/private/tmp/claude-501/-Users-danielbyrne-GitHub-rpm-context-tree/4bf1e198-8af4-47e0-ae99-fa2ca13f1400/scratchpad/suite-two-tasks.jsonl\\\"; wc -l \\\"/private/tmp/claude-501/-Users-danielbyrne-GitHub-rpm-context-tree/4bf1e198-8af4-47e0-ae99-fa2ca13f1400/scratchpad/suite-two-tasks.jsonl\\\"; python3 -c \\\"\\nimport json\\nfor line in open('/private/tmp/claude-501/-Users-danielbyrne-GitHub-rpm-context-tree/4bf1e198-8af4-47e0-ae99-fa2ca13f1400/scratchpad/suite-two-tasks.jsonl'):\\n    row=json.loads(line); print(row['id'], 'files:', len(row['files']), 'judge_files:', len(row['judge_files']))\\\"\",\"description\":\"Build two-task suite file and validate rows\"}",
+      "id": "s1-qo15-overflow"
+    }
+  ]
+}

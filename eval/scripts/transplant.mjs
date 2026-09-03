@@ -17,10 +17,11 @@
  * beam fallback, always), `MeteredProvider` + `InMemoryCostMeter`, and the
  * `buildPrompt`/turn loop shape.
  *
- *   --phase gates    the zero-live-token verification checklist (items 1-14)
- *   --phase prep     literal extraction -> strata -> questions.json
- *   --phase run      one (model, W, arm) cell
- *   --phase verdict  MEAN score / tokens / turns per (arm, stratum, model)
+ *   --phase gates          the zero-live-token verification checklist (items 1-14)
+ *   --phase prep           literal extraction -> strata -> questions.json
+ *   --phase prep-overflow  literals below the WIDEST tested tail's boundary -> questions-overflow.json
+ *   --phase run            one (model, W, arm) cell
+ *   --phase verdict        MEAN score / tokens / turns per (arm, stratum, model)
  *
  * Hermeticity, restated because it is the whole experiment: `--phase gates` and
  * the offline half of `--phase prep` read only L0, L2, L1 and a local BPE table.
@@ -2932,6 +2933,163 @@ async function runPrep(scenario, options) {
   console.log(`\nkept ${kept.length}/${questions.length} questions -> ${path} (paraphrase spend $${meter.totalUsd().toFixed(4)})`);
 }
 
+const OVERFLOW_Q_COUNT = 5;
+const OVERFLOW_POOL_DEPTH = 15;
+
+/**
+ * `head` (in `--phase prep`) is cut against the SMALLEST tested window's K
+ * (16,384) so it is one frozen artifact — but `boundary` is non-increasing in
+ * K, so a literal outside the smallest window's tail is NOT guaranteed to be
+ * outside a WIDER window's tail (a bigger K walks further back before its
+ * budget is spent, pulling more of the trace into view). The live pass found
+ * exactly that: `head` questions the naive-full ground truth answers easily
+ * also score on `truncate-tail` at W=32,768/65,536, because they sit inside
+ * the wider tail after all.
+ *
+ * This phase cuts a SEPARATE stratum, `overflow`, against the WIDEST tested
+ * tail window's K. Because boundary(K) is non-increasing in K, a literal
+ * outside THAT boundary is outside every narrower tested window's tail too —
+ * the guarantee `head` was meant to give, now actually true at both W=32,768
+ * and W=65,536. Written to its own `questions-overflow.json` rather than
+ * appended to the frozen `questions.json`/`manifest.json` pair, so the
+ * existing freeze (Graft 2) is untouched.
+ */
+async function runPrepOverflow(scenario, options) {
+  const events = scenario.trace.all();
+  const summaries = summaryBodies(scenario.store);
+  const ratio = measureRatio(scenario);
+  const verdict = ratioVerdict(ratio);
+  if (!verdict.ok) {
+    throw new Error(`KILL GATE: heuristic->BPE ratio ${ratio.toFixed(4)} exceeds ${RATIO_KILL} — see Step 3 mitigation before proceeding`);
+  }
+  const refWindow = Number.parseInt(options.refWindow ?? '65536', 10);
+  if (!WINDOWS.includes(refWindow)) throw new Error(`--ref-window must be one of ${WINDOWS.join(', ')}`);
+  const budgets = budgetsFor(scenario, refWindow, ratio, verdict.slackFraction);
+  const boundary = truncationBoundarySeq(events, scenario.blobs, budgets.K);
+  console.log(`overflow boundary: seq < ${boundary} is unreachable by truncate-tail's raw tail at W=${refWindow} (K=${budgets.K})`);
+
+  const existingPath = join(scenario.artifacts, 'questions.json');
+  const claimed = new Set(
+    existsSync(existingPath)
+      ? JSON.parse(readFileSync(existingPath, 'utf8')).questions.flatMap((q) => q.answer_literals)
+      : [],
+  );
+
+  const { onceOnly } = extractLiterals(events, scenario.blobs, scenario.store);
+  const candidates = onceOnly.filter((r) => r.seq < boundary && !claimed.has(r.literal));
+  console.log(`candidates: ${onceOnly.length} once-only literal(s) -> ${candidates.length} below the overflow boundary and unclaimed by questions.json`);
+  if (candidates.length === 0) {
+    throw new Error(
+      `no once-only literal sits below seq ${boundary} at W=${refWindow} (K=${budgets.K}) — the trace is too short ` +
+        'for the overflow regime at this window, or every candidate there is already claimed by questions.json',
+    );
+  }
+  const pool = pickDeterministic(candidates, OVERFLOW_POOL_DEPTH, { exclude: claimed });
+  const selected = pool.map((item, i) => ({
+    ...buildSelectedItem(item, 'overflow'),
+    id: `${scenario.id}-qo${String(i + 1).padStart(2, '0')}-overflow`,
+  }));
+
+  const overflowFile = {
+    scenario: scenario.id,
+    trace_sha256: scenario.traceSha,
+    ratio,
+    ref_window: refWindow,
+    boundary_seq: boundary,
+    K: budgets.K,
+    counts: { once_only: onceOnly.length, overflow_pool: candidates.length },
+    selected,
+  };
+  writeFileSync(join(scenario.artifacts, 'literals-overflow.json'), `${JSON.stringify(overflowFile, null, 2)}\n`);
+  console.log(`pool: ${selected.length} candidate(s) ready for paraphrasing -> ${join(scenario.artifacts, 'literals-overflow.json')}`);
+
+  if (options.allowLive !== true) {
+    console.log(
+      '\nSTOPPED after literal extraction: the paraphrase batch is LIVE (`deepseek/deepseek-v4-flash`).\n' +
+        'Re-run with --allow-live to write questions-overflow.json.',
+    );
+    return;
+  }
+
+  loadDotEnv();
+  const apiKey = process.env.OPENROUTER_API_KEY ?? process.env.OPENROUTER_KEY;
+  if (!apiKey && process.env.TRANSPLANT_MOCK !== '1') {
+    throw new Error('OPENROUTER_API_KEY is not set — the paraphrase batch needs it');
+  }
+  const meter = new InMemoryCostMeter({ capUsd: 0.5 });
+  const provider =
+    process.env.TRANSPLANT_MOCK === '1'
+      ? new MeteredProvider(mockParaphraser(), meter)
+      : new MeteredProvider(new OpenRouterProvider({ apiKey }), meter);
+  const toolCtx = toolContextFor(scenario);
+  const rootId = scenario.store.root()?.id ?? null;
+
+  const attemptOne = async (item, attempt) => {
+    let result;
+    try {
+      result = await provider.complete({
+        model: PARAPHRASE_MODEL,
+        messages: [
+          {
+            role: 'user',
+            content:
+              `${attempt === 1 ? PARAPHRASE_INSTRUCTIONS : PARAPHRASE_RETRY_INSTRUCTIONS}` +
+              `\n\n# Excerpt\n${item.wide_context ?? item.source_context}\n\n# Fact\n${item.answer_literals.join(' AND ')}`,
+          },
+        ],
+        maxTokens: 1_024,
+      });
+    } catch (error) {
+      // A reasoning model can burn the whole completion budget on hidden
+      // reasoning tokens and emit no text (finish_reason=length) — a property
+      // of this excerpt+model pairing, not a retryable transport error. Treat
+      // it as a failed attempt so the caller draws the next pool candidate
+      // instead of crashing the batch.
+      return { ok: false, question: '', why: `model-error: ${error.message}` };
+    }
+    const question = (result.text ?? '')
+      .trim()
+      .split('\n')
+      .find((line) => line.trim().length > 0)
+      ?.trim() ?? '';
+    const valid = questionTextValid(question);
+    if (!valid.ok) return { ok: false, question, why: `text: ${valid.reason}` };
+    const gate = leakageGate({ question, summaryText: summaries.get(item.node_id) ?? '', answerLiterals: item.answer_literals });
+    if (!gate.ok) return { ok: false, question, why: `leakage: shares ${JSON.stringify(gate.shared[0])}` };
+    const retrieval = await selfRetrieval({ ...item, question }, toolCtx, { rootId, topK: selfRetrievalTopK(scenario) });
+    if (!retrieval.ok) return { ok: false, question, why: `self-retrieval: ${retrieval.reason}` };
+    return { ok: true, question, gate, retrieval };
+  };
+
+  const kept = [];
+  const discarded = [];
+  for (const item of selected) {
+    if (kept.length === OVERFLOW_Q_COUNT) break;
+    let outcome = null;
+    for (let attempt = 1; attempt <= PARAPHRASE_ATTEMPTS && (outcome === null || !outcome.ok); attempt += 1) {
+      outcome = await attemptOne(item, attempt);
+    }
+    if (!outcome.ok) {
+      discarded.push({ literal: item.answer_literals.join(' + '), why: outcome.why });
+      console.log(`  [discarded] ${JSON.stringify(item.answer_literals)} — ${outcome.why}`);
+      continue;
+    }
+    kept.push({ ...item, question: outcome.question, leakage: outcome.gate, self_retrieval: { rank: outcome.retrieval.rank, top: outcome.retrieval.top }, rejected: false });
+    console.log(`  ${kept.length}/${OVERFLOW_Q_COUNT} [ok, source at rank ${outcome.retrieval.rank}] ${outcome.question.slice(0, 100)}`);
+  }
+  if (kept.length < OVERFLOW_Q_COUNT) {
+    throw new Error(
+      `prep-overflow could not fill the overflow stratum — questions-overflow.json NOT written.\n` +
+        `${kept.length}/${OVERFLOW_Q_COUNT} placed from a pool of ${selected.length}.\n` +
+        discarded.map((d) => `  ${JSON.stringify(d.literal)}: ${d.why}`).join('\n'),
+    );
+  }
+  const outPath = join(scenario.artifacts, 'questions-overflow.json');
+  const outFile = { scenario: scenario.id, trace_sha256: scenario.traceSha, paraphraser: PARAPHRASE_MODEL, ref_window: refWindow, boundary_seq: boundary, K: budgets.K, questions: kept, rejected: discarded };
+  writeFileSync(outPath, `${JSON.stringify(outFile, null, 2)}\n`);
+  console.log(`\nkept ${kept.length}/${selected.length} overflow questions -> ${outPath} (paraphrase spend $${meter.totalUsd().toFixed(4)})`);
+}
+
 // ── run (Steps 4-6) ──────────────────────────────────────────────────────
 function providerFor(bucket, meters, capUsd = CAP_USD_PER_MODEL) {
   if (!meters.has(bucket)) meters.set(bucket, new InMemoryCostMeter({ capUsd }));
@@ -3549,7 +3707,7 @@ async function runArms(scenario, options) {
   const reps = Number.parseInt(options.reps ?? String(REPS), 10);
   const meters = new Map();
 
-  const questionsPath = join(scenario.artifacts, 'questions.json');
+  const questionsPath = join(scenario.artifacts, options.questionsFile ?? 'questions.json');
   let questions;
   if (smoke) {
     questions = [{ id: 'smoke', stratum: 'smoke', question: SMOKE_QUESTION, answer_literals: [], answer_regexes: [], node_id: null }];
@@ -3611,7 +3769,8 @@ async function runArms(scenario, options) {
   const out = join(scenario.artifacts, process.env.TRANSPLANT_MOCK === '1' ? 'results-mock' : 'results');
   mkdirSync(out, { recursive: true });
   const replyTag = options.replyMode !== undefined ? `-reply-${options.replyMode}` : '';
-  const name = `${smoke ? 'smoke' : 'run'}-W${window}-${arms.join('+')}${replyTag}-${models.map((m) => m.replaceAll('/', '_')).join('+')}.json`;
+  const questionsTag = options.questionsFile !== undefined ? `-${options.questionsFile.replace(/\.json$/, '')}` : '';
+  const name = `${smoke ? 'smoke' : 'run'}-W${window}-${arms.join('+')}${replyTag}${questionsTag}-${models.map((m) => m.replaceAll('/', '_')).join('+')}.json`;
 
   const rows = [];
   for (const model of models) {
@@ -3964,6 +4123,9 @@ if (isEntryPoint) {
       case 'prep':
         await runPrep(scenario, options);
         break;
+      case 'prep-overflow':
+        await runPrepOverflow(scenario, options);
+        break;
       case 'run':
         await runArms(scenario, options);
         break;
@@ -3971,7 +4133,7 @@ if (isEntryPoint) {
         runVerdict(scenario);
         break;
       default:
-        throw new Error(`unknown --phase "${options.phase}" — one of gates|prep|run|verdict`);
+        throw new Error(`unknown --phase "${options.phase}" — one of gates|prep|prep-overflow|run|verdict`);
     }
   } finally {
     scenario.close();
