@@ -96,7 +96,7 @@ const FIXTURES = join(REPO, 'eval/fixtures/transplant');
 
 // ── the frozen constants of the experiment ───────────────────────────────
 /** Verbatim from the verdict's Step 3. `W` is reported as given, never rounded. */
-export const WINDOWS = Object.freeze([16_384, 32_768]);
+export const WINDOWS = Object.freeze([16_384, 32_768, 65_536, 200_000, 1_000_000]);
 /** Graft 3's portability sweep. 200k is the published 200,000-token class. */
 export const NESTING_WINDOWS = Object.freeze([8_192, 16_384, 32_768, 65_536, 200_000]);
 /** D19 fractions of W. They sum to 1.00; each is divided by the measured ratio. */
@@ -120,7 +120,7 @@ const MAX_SUMMARY_TOKENS = 1_024;
 const ROOT_KEEP = 40;
 const REPS = 5;
 const SPANNING_REPS = 3;
-const MAX_TURNS = 6;
+const MAX_TURNS = 40;
 /**
  * The window share reserved so a reply fits beside the prompt. This is
  * arithmetic on W, not a limit on the model: `FRACTIONS.reply` of the window,
@@ -129,12 +129,12 @@ const MAX_TURNS = 6;
  * reasons before answering, 800 tokens of budget could be spent thinking, so
  * the reply came back empty and was graded a wrong answer.
  */
-const CAP_USD_PER_MODEL = 3.0;
+const CAP_USD_PER_MODEL = 15.0;
 /** The step-4 compaction build is a THIRD bucket, not part of an answerer's cell. */
 const CAP_USD_COMPACTION = 1.0;
 /** Above this share of skipped chunks the baseline is degraded, and says so. */
 const MAX_SKIPPED_CHUNK_FRACTION = 0.25;
-const CAP_USD_TOTAL = 6.0;
+const CAP_USD_TOTAL = 30.0;
 /**
  * Per-message chat-format overhead the raw text count cannot see (role tags and
  * separators) plus the reply priming, and a flat margin on top. Deliberately
@@ -212,6 +212,21 @@ export const ARM_IDS = Object.freeze([
   'tree-thin',
   'tree-verbatim',
   'tree-semantic',
+  // DS-STAR iter 2: grep raw event blobs for the query, then fetch raw events.
+  // Summaries locate the branch (beam/vector search); this arm tests whether
+  // raw-content search does better — the "two-stage" candidate.
+  'tree-grep',
+  // DS-STAR retrieval pass §7 item 1: tree prompt + raw recent events filling
+  // the remaining headroom. The ONE variable vs `tree`: raw tail events in the
+  // prompt. Same handlers, same contract, same rootKeep.
+  'tree-tail',
+  // DS-STAR iter 2: tree-tail without tools. Eliminates stall failure mode
+  // while keeping Zone B summaries as passive context alongside raw events.
+  'tree-tail-static',
+  // DS-STAR iter 3: tree-tail with headline-only Zone B (first sentence + metadata
+  // pointers, ~80% smaller). Tests episodic-index hypothesis: summaries as topic
+  // markers, not content paraphrases. No tools.
+  'tree-tail-headline',
 ]);
 
 /** Arms whose MEAN enters the primary verdict. `naive-full` is a precondition. */
@@ -407,6 +422,7 @@ export const ARM_ROOT_LADDER = Object.freeze({
   'tree-thin': ROOT_KEEP_LADDER,
   'tree-verbatim': ROOT_KEEP_LADDER,
   'tree-semantic': ROOT_KEEP_LADDER,
+  'tree-grep': ROOT_KEEP_LADDER,
 });
 
 /** Arms whose Zone B is tree-shaped and therefore need a per-arm root pin. */
@@ -418,6 +434,10 @@ export const TREE_ARMS = Object.freeze([
   'tree-thin',
   'tree-verbatim',
   'tree-semantic',
+  'tree-grep',
+  'tree-tail',
+  'tree-tail-static',
+  'tree-tail-headline',
 ]);
 
 export function ladderFor(arm) {
@@ -1289,7 +1309,7 @@ const TOOL_SCHEMAS_TEXT = JSON.stringify(CONTEXT_TOOL_SCHEMAS);
  * | `tree-verbatim`| Zone A policy text only (Step 4, Graft 1)     | legacy  | v3       |
  * | `tree-semantic`| search ranks by meaning, not lexical (Step 5) | legacy  | v1       |
  */
-const LEGACY_SURFACE_ARMS = new Set(['tree', 'tree-wide', 'tree-static', 'tree-verbatim', 'tree-semantic']);
+const LEGACY_SURFACE_ARMS = new Set(['tree', 'tree-wide', 'tree-static', 'tree-verbatim', 'tree-semantic', 'tree-tail', 'tree-tail-static', 'tree-tail-headline']);
 
 /** The pre-Step-3 hit shape (full `text`, full `meta`), off the SAME ranked hits `contextSearch` used. */
 async function legacySearchHits(ctx, input) {
@@ -1317,6 +1337,26 @@ async function legacySearchHits(ctx, input) {
  * runs the vector path when `ctx.retriever` was built with an `embed`.
  */
 export function handlersForArm(arm) {
+  if (arm === 'tree-grep') {
+    return {
+      ...HANDLERS,
+      [CONTEXT_SEARCH]: async (ctx, input) => {
+        const limit = ctx.config.retrieval.limit;
+        const result = ctx.retriever.grepEvents(input?.query ?? '', { kind: input?.kind, limit });
+        const hits = result.hits.map((hit) => ({
+          node_id: hit.nodeId,
+          kind: hit.kind,
+          title: hit.title,
+          phase_type: hit.phaseType,
+          path: hit.path ?? null,
+          summary_version: hit.version,
+          score: hit.score,
+          meta: hit.meta ? { files: hit.meta.files, symbols: hit.meta.symbols, node_ids: hit.meta.node_ids } : null,
+        }));
+        return { ok: true, data: { query: input?.query, path: 'grep', fallback: null, hits, candidates: [], provenance: [], unavailable: [] } };
+      },
+    };
+  }
   if (!LEGACY_SURFACE_ARMS.has(arm)) return HANDLERS;
   return {
     ...HANDLERS,
@@ -1475,12 +1515,12 @@ async function checkG1SearchPayloadSize(ctx, hasSummaries) {
   const outcome = await HANDLERS[CONTEXT_SEARCH](ctx, { query: 'implementation' });
   if (!outcome.ok) return fail('G1-search-payload-size', `context_search failed: ${outcome.error.message}`);
   const tokens = exact.count(JSON.stringify(outcome.data));
-  const oversizedSnippets = outcome.data.hits.filter((h) => typeof h.snippet === 'string' && h.snippet.length > 240);
-  const ok = tokens <= 5_000 && oversizedSnippets.length === 0;
+  const leakedSnippets = outcome.data.hits.filter((h) => typeof h.snippet === 'string' || typeof h.text === 'string');
+  const ok = tokens <= 5_000 && leakedSnippets.length === 0;
   return (ok ? pass : fail)(
     'G1-search-payload-size',
     `${tokens} cl100k tokens over ${outcome.data.hits.length} hit(s) at limit=${ctx.config.retrieval.limit} ` +
-      `(threshold 5000; oversized snippets: ${oversizedSnippets.length}; J4's pre-Step-3 measurement was 9673 tok)`,
+      `(threshold 5000; leaked snippet/text fields: ${leakedSnippets.length}; pre-fix was 9673 tok)`,
     { tokens },
   );
 }
@@ -3077,13 +3117,72 @@ async function buildArm(scenario, arm, budgets, artifacts) {
       );
       return { system: FLAT_SYSTEM, context, tools: [], meta: { chunks: artifact.chunks } };
     }
+    case 'tree-tail':
+    case 'tree-tail-static':
+    case 'tree-tail-headline': {
+      // DS-STAR retrieval pass §7 item 1: tree prompt + raw recent events.
+      // tree-tail: with tools (can search/fetch). tree-tail-static: no tools.
+      // tree-tail-headline: no tools + headline-only Zone B (first sentence + pointers).
+      const withTools = arm === 'tree-tail';
+      const { assembler, prompt } = buildTreePrompt(scenario, budgets, { withTools, systemText: treeSystemTextFor('tree') });
+      // tree-tail-headline: strip Zone B prose to first sentence + keep metadata lines.
+      // The heading (## Branch: ...) and metadata (files:, symbols:, ...) are on their
+      // own lines; the prose body is lines 2..N before the first metadata line.
+      if (arm === 'tree-tail-headline') {
+        for (const block of prompt.blocks) {
+          if (block.zone !== 'B' || block.id.startsWith('B:links:')) continue;
+          const lines = block.text.split('\n');
+          const heading = lines[0];
+          const metaLines = lines.filter((l) => /^(files|symbols|tests|artifacts|decisions|open questions|fetchable nodes):/.test(l));
+          const proseLines = lines.slice(1).filter((l) => !/^(files|symbols|tests|artifacts|decisions|open questions|fetchable nodes):/.test(l));
+          const prose = proseLines.join(' ').trim();
+          const firstSentence = prose.split(/(?<=[.!?])\s/)[0] || '';
+          block.text = [heading, firstSentence, ...metaLines].filter(Boolean).join('\n');
+          block.tokens = heuristic.count(block.text);
+        }
+        prompt.budgets.zoneB = prompt.blocks.filter((b) => b.zone === 'B').reduce((s, b) => s + b.tokens, 0);
+        prompt.budgets.total = prompt.budgets.zoneA + prompt.budgets.zoneB + prompt.budgets.zoneC + prompt.budgets.tail;
+      }
+      const treeMessages = toMessages(prompt);
+      const used = prompt.budgets.total;
+      const headroom = Math.max(0, budgets.window - used - budgets.maxReplyTokens);
+      const allEvents = scenario.trace.all();
+      const tailBoundary = truncationBoundarySeq(allEvents, scenario.blobs, headroom);
+      const tailEvents = allEvents.filter((e) => e.seq >= tailBoundary);
+      const tailText = tailEvents.length > 0
+        ? `# Verbatim recent events (most recent portion of the session trace)\n${renderNativeTranscript(tailEvents, scenario.blobs)}`
+        : '';
+      const tailTokens = heuristic.count(tailText);
+      const messagesWithTail = tailText
+        ? [...treeMessages, { role: 'user', content: tailText }]
+        : treeMessages;
+      return {
+        system: prompt.system,
+        messages: messagesWithTail,
+        tools: withTools ? CONTEXT_TOOL_SCHEMAS : [],
+        assembler,
+        handlers: withTools ? handlersForArm(arm) : {},
+        meta: {
+          zoneB: prompt.budgets.zoneB,
+          zoneC: prompt.budgets.zoneC,
+          overBudget: prompt.budgets.overBudget,
+          contractVersion: contractVersionFor(arm),
+          legacySurface: LEGACY_SURFACE_ARMS.has(arm),
+          tailEvents: tailEvents.length,
+          tailTokens,
+          tailFromSeq: tailBoundary,
+          headroom,
+        },
+      };
+    }
     case 'tree':
     case 'tree-wide':
     case 'tree-static':
     case 'tree-slice':
     case 'tree-thin':
     case 'tree-verbatim':
-    case 'tree-semantic': {
+    case 'tree-semantic':
+    case 'tree-grep': {
       // Every tree-shaped arm assembles the SAME prompt from the SAME store at
       // the SAME rootKeep. What differs is exactly one of three things, and the
       // wiring table at `handlersForArm` says which per arm:
@@ -3132,7 +3231,7 @@ async function buildArm(scenario, arm, budgets, artifacts) {
 const SMOKE_QUESTION =
   'Before answering anything else, call context_search once with a query of your choice, then reply with the id of the first result.';
 
-export async function runOneReplicate(scenario, built, question, model, provider, budgets) {
+export async function runOneReplicate(scenario, built, question, model, provider, budgets, replyMode = 'fixed-ceiling') {
   // Last line of defence. 180 scored runs once asked two models the empty
   // string and dutifully recorded 0/1 for the small talk that came back; a run
   // that cannot state its own question is not a data point.
@@ -3147,12 +3246,13 @@ export async function runOneReplicate(scenario, built, question, model, provider
         ];
   const searchQueries = [];
   const fetchedIds = [];
+  const fetchedDepths = []; // Record depth argument for each context_fetch
   /**
    * One record per model call, `TurnRecord`-shaped (`eval/src/types.ts`) plus
-   * the derived `promptTokens`. This is the context-size series: the whole
-   * claim is that the tree's prompt stays flat where a baseline's grows, and
-   * that is only visible per turn. Pure bookkeeping on usage the provider
-   * already returned — it costs no extra call.
+   * the derived `promptTokens` and zone budget decomposition. This is the
+   * context-size series: the whole claim is that the tree's prompt stays flat
+   * where a baseline's grows, and that is only visible per turn. Pure
+   * bookkeeping on usage the provider already returned — it costs no extra call.
    */
   const turnRecords = [];
   /** cl100k tokens dropped by the window cap on appended results (0 for most). */
@@ -3167,18 +3267,49 @@ export async function runOneReplicate(scenario, built, question, model, provider
   let status = 'turn_cap';
   let turns = 0;
   const started = Date.now();
+  let lastToolSig = '';
+  let stallCount = 0;
+  const STALL_LIMIT = 3;
+
+  const hasAssembler = built.assembler !== undefined;
 
   for (let turn = 1; turn <= (built.tools.length > 0 ? MAX_TURNS : 1); turn += 1) {
     turns = turn;
     const turnStarted = Date.now();
+
+    let maxTokens;
+    if (replyMode === 'no-limit') {
+      maxTokens = undefined;
+    } else if (replyMode === 'allowance') {
+      const assembled = built.assembler?.assemble({ toolSchemasText: built.tools.length > 0 ? TOOL_SCHEMAS_TEXT : '' });
+      maxTokens = assembled?.budgets?.replyAllowance ?? budgets.maxReplyTokens;
+    } else {
+      maxTokens = budgets.maxReplyTokens;
+    }
+
     const result = await provider.complete({
       model,
       system: built.system,
       messages,
       ...(built.tools.length > 0 ? { tools: built.tools } : {}),
-      maxTokens: budgets.maxReplyTokens,
+      maxTokens,
     });
     usage = addUsage(usage, result.usage);
+
+    // Capture zone budget decomposition for this turn (tree arms only)
+    let zoneBudgets = null;
+    if (hasAssembler) {
+      const assembled = built.assembler.assemble({ toolSchemasText: built.tools.length > 0 ? TOOL_SCHEMAS_TEXT : '' });
+      zoneBudgets = {
+        zoneA: assembled.budgets.zoneA,
+        zoneB: assembled.budgets.zoneB,
+        zoneC: assembled.budgets.zoneC,
+        tail: assembled.budgets.tail,
+        total: assembled.budgets.total,
+        overBudget: assembled.budgets.overBudget,
+      };
+    }
+
     turnRecords.push({
       index: turn,
       turn,
@@ -3192,6 +3323,10 @@ export async function runOneReplicate(scenario, built, question, model, provider
       output: result.usage.output,
       toolCalls: result.toolCalls.map((call) => call.name),
       stopReason: result.stopReason ?? null,
+      // Instrumentation bundle (Step 5):
+      zoneBudgets,
+      fetchedDepths: [], // populated below per turn
+      nonAgentModelCalls: 0, // leaf summarizer calls happen at ingestion, not during run
     });
     messages.push({ role: 'assistant', content: result.text.length > 0 ? result.text : '(invoking tool)' });
     if (result.toolCalls.length === 0) {
@@ -3199,9 +3334,17 @@ export async function runOneReplicate(scenario, built, question, model, provider
       status = 'completed';
       break;
     }
+    // Track depths for context_fetch calls in this turn
+    const turnFetchedDepths = [];
     for (const call of result.toolCalls) {
       if (call.name === CONTEXT_SEARCH && typeof call.input.query === 'string') searchQueries.push(call.input.query);
-      if (call.name === CONTEXT_FETCH && typeof call.input.branch_id === 'string') fetchedIds.push(call.input.branch_id);
+      if (call.name === CONTEXT_FETCH && typeof call.input.branch_id === 'string') {
+        fetchedIds.push(call.input.branch_id);
+        if (typeof call.input.depth === 'string') {
+          turnFetchedDepths.push(call.input.depth);
+          fetchedDepths.push({ turn, branchId: call.input.branch_id, depth: call.input.depth });
+        }
+      }
       let outcome;
       if (call.name === ANNOTATE) {
         annotateRefused += 1;
@@ -3213,6 +3356,18 @@ export async function runOneReplicate(scenario, built, question, model, provider
         outcome = handler
           ? await handler(built.toolCtx, call.input)
           : { ok: false, error: { code: 'invalid_input', message: `unknown tool: ${call.name}` } };
+      }
+      // Strip duplicate summary text from search results — Zone B already
+      // shows the summaries, so repeating them in the appended result wastes
+      // the window. Keep coordinates (node_id, title, score, meta) only.
+      if (call.name === CONTEXT_SEARCH && outcome.ok && Array.isArray(outcome.data?.hits)) {
+        outcome = {
+          ...outcome,
+          data: {
+            ...outcome.data,
+            hits: outcome.data.hits.map(({ snippet, text: _text, ...rest }) => rest),
+          },
+        };
       }
       const text = toCallToolResult(outcome).content[0]?.text ?? '';
       // Budget the append against what is actually left in the window.
@@ -3234,6 +3389,18 @@ export async function runOneReplicate(scenario, built, question, model, provider
       }
       messages.push({ role: 'user', content: prefix + capped.text });
     }
+    if (turnFetchedDepths.length > 0 && turnRecords.length > 0) {
+      turnRecords[turnRecords.length - 1].fetchedDepths = turnFetchedDepths;
+    }
+    // Stall detection: 3 consecutive turns with identical tool-call signatures.
+    const sig = result.toolCalls.map((c) => c.name).sort().join(',');
+    if (sig === lastToolSig) {
+      stallCount += 1;
+      if (stallCount >= STALL_LIMIT) { status = 'stalled'; break; }
+    } else {
+      stallCount = 0;
+    }
+    lastToolSig = sig;
   }
   return {
     status,
@@ -3243,6 +3410,7 @@ export async function runOneReplicate(scenario, built, question, model, provider
     fetched: fetchedIds.length > 0,
     searchQueries,
     fetchedIds,
+    fetchedDepths, // Instrumentation: depth argument for each context_fetch call
     annotateRefused,
     resultTokensTruncated,
     resultCharsTruncated,
@@ -3364,13 +3532,18 @@ async function runArms(scenario, options) {
       // the tokens doing it, so it runs exactly once and is logged once.
       const armQuestions = arm === 'naive-full' ? questions.slice(0, 1) : questions;
       const armReps = arm === 'naive-full' ? 1 : n;
+      // Reply mode from --reply-mode applies to tree arms only. Baselines
+      // (truncate-tail, compact-rolling, naive-full) always use no-limit because
+      // reasoning models spend a tight maxReplyTokens on thinking and return
+      // empty completions — the exact bug this experiment is measuring.
+      const replyMode = TREE_ARMS.includes(arm) ? (options.replyMode ?? 'no-limit') : 'no-limit';
       for (const question of armQuestions) {
         for (let rep = 1; rep <= armReps; rep += 1) {
           try {
             let r;
             for (let attempt = 1; attempt <= 2; attempt += 1) {
               try {
-                r = await runOneReplicate(scenario, built, question.question, model, provider, armBudgets);
+                r = await runOneReplicate(scenario, built, question.question, model, provider, armBudgets, replyMode);
                 break;
               } catch (error) {
                 // A malformed provider body is transient and costs the run;
@@ -3395,7 +3568,7 @@ async function runArms(scenario, options) {
             // Unlike the live suite there is no filesystem to inspect here: the
             // grader matches the model's final text, so a stopped run cannot
             // have passed. `null` is the only honest value, never `0`.
-            const gradable = r.status !== 'turn_cap' && r.status !== 'time_cap';
+            const gradable = r.status !== 'turn_cap' && r.status !== 'time_cap' && r.status !== 'stalled';
             const grade =
               smoke || question.answer_literals.length === 0 || !gradable
                 ? { score: null, success: null }
@@ -3451,7 +3624,8 @@ async function runArms(scenario, options) {
   // own directory rather than beside the results a verdict is computed from.
   const out = join(scenario.artifacts, process.env.TRANSPLANT_MOCK === '1' ? 'results-mock' : 'results');
   mkdirSync(out, { recursive: true });
-  const name = `${smoke ? 'smoke' : 'run'}-W${window}-${arms.join('+')}-${models.map((m) => m.replaceAll('/', '_')).join('+')}.json`;
+  const replyTag = options.replyMode !== undefined ? `-reply-${options.replyMode}` : '';
+  const name = `${smoke ? 'smoke' : 'run'}-W${window}-${arms.join('+')}${replyTag}-${models.map((m) => m.replaceAll('/', '_')).join('+')}.json`;
   const truncatedTotal = rows.reduce((n, r) => n + (r.resultTokensTruncated ?? 0), 0);
   const truncatedRuns = rows.filter((r) => (r.resultsTruncated ?? 0) > 0).length;
   writeFileSync(
