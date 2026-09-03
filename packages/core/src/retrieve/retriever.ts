@@ -491,7 +491,18 @@ export class TreeRetriever {
    */
   private findRelevantCenter(query: string, spans: readonly SeqSpan[]): number | null {
     if (this.trace === undefined) return null;
-    const terms = extractQueryFingerprints(query);
+    let terms = extractQueryFingerprints(query);
+    // Fallback: split the query into significant words (4+ chars) for substring matching.
+    // This handles natural-language queries with no distinctive identifiers.
+    if (terms.length === 0) {
+      const STOP = new Set(['what', 'when', 'where', 'which', 'that', 'this', 'from', 'with', 'they', 'their',
+        'there', 'were', 'have', 'been', 'about', 'only', 'also', 'after', 'before', 'into', 'does', 'most',
+        'more', 'than', 'then', 'each', 'both', 'such', 'over', 'even', 'same', 'other', 'could', 'would',
+        'should', 'will', 'being', 'under', 'the', 'and', 'for', 'not', 'was', 'are', 'but', 'how', 'its']);
+      terms = query.split(/\s+/)
+        .map(w => w.replace(/[^a-zA-Z0-9_-]/g, ''))
+        .filter(w => w.length >= 4 && !STOP.has(w.toLowerCase()));
+    }
     if (terms.length === 0) return null;
 
     // Weight terms by specificity: earlier in the extraction order = more specific

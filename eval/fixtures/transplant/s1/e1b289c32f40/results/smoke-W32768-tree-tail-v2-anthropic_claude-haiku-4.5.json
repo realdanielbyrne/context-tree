@@ -1,0 +1,380 @@
+{
+  "budgets": {
+    "window": 32768,
+    "ratio": 0.850896663206653,
+    "slackFraction": 0.1,
+    "zoneCFraction": 0.2,
+    "reply": 1925,
+    "zoneA": 3850,
+    "zoneB": 7701,
+    "zoneC": 7701,
+    "lazy": 13478,
+    "slack": 3850,
+    "K": 30808,
+    "maxReplyTokens": 1638,
+    "rootKeep": 16,
+    "rootLadder": [
+      {
+        "keep": 40,
+        "ok": false,
+        "rootBlockTokens": 6917,
+        "branchesSurviving": 0,
+        "branchSeqRange": null,
+        "overBudget": [],
+        "zoneB": 6917
+      },
+      {
+        "keep": 16,
+        "ok": true,
+        "rootBlockTokens": 6095,
+        "branchesSurviving": 2,
+        "branchSeqRange": {
+          "from": 639,
+          "to": 754
+        },
+        "overBudget": [],
+        "zoneB": 7633
+      }
+    ],
+    "rootKeepOk": true,
+    "rootBlockTokens": 6095,
+    "branchesSurviving": 2,
+    "branchSeqRange": {
+      "from": 639,
+      "to": 754
+    },
+    "overBudget": [],
+    "arm": "tree",
+    "rootSummarySha": "2c7fbe668193766cdd17e3de4b816cdcd0be5e4fcda3d881c2f7a73e76cc8596"
+  },
+  "compactionBuildUsd": null,
+  "compactionSkippedChunks": [],
+  "compaction": null,
+  "rows": [
+    {
+      "scenario": "s1",
+      "model": "anthropic/claude-haiku-4.5",
+      "arm": "tree-tail-v2",
+      "window": 32768,
+      "question": "smoke",
+      "stratum": "smoke",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "I have the context. DSA does work for tree branches — the three problems are individually fixable. Here's why each one matters and what the repairs would look like:\n\n**1. FM-5 (eviction dropped load-bearing context) — fixable: add a tombstone.**\nThe fatal run failed because the evicted branch vanished — the model had no pointer back to it. But the branch still exists in the tree (L1/L2), and `context_fetch` can restore it. The fix is a one-line rehydration pointer in Zone B: \"`auth-refactor` summarized and archived; fetch node n14 for restored detail\". §8's metadata already carries node IDs; the eviction path just needs to wire them into the compressed output instead of deleting silently. That turns an information loss into a cache-safe latency trade-off: \"I don't have the detail, but I know where it is.\"\n\n**2. FM-8 (cache-safe selection never fires) — fixable: batch eviction at budget epochs.**\nThe monotone lock-in wasn't inherent to DSA — it was the price of trying to select *every turn* without mutating the cached prefix, which is impossible (volatile-bit law). The fix: leave Zone B frozen for long stretches. When it hits a budget (say 100+ branches), run selection once, rewrite Zone B once, eat one deliberate cache epoch (~1.25× cost), then freeze again. The arithmetic works because the epoch's cost is paid *once* while the 0.1× re-read savings accrue every subsequent turn. It's the same amortization that made caching beat trimming — applied at the point where Zone B itself becomes the quadratic term.\n\n**3. The untrained selector made bad picks — fixable: let the LLM select at the boundary.**\nSince eviction now happens at rare epochs that involve an LLM call anyway (summarizer is already running), let the strong model rank: \"Which of these 40 branches still bear on open work?\" beats cosine similarity. Pin the active path unconditionally; score everything else by relevance to the active task.\n\n**Put those three together and you've rebuilt hierarchical Zone B collapse** — the successor already named in the report. Old branches don't evict; they fold into a super-summary (the tombstone + rehydration pointer), at budget-triggered epochs (the batching), ranked by the model (the trained selector).\n\nThe key insight: the failures weren't flaws in selection logic — they were flaws in trying to apply selection at the wrong cadence. Per-turn selection violates the cache invariant (byte churn); per-epoch selection respects it. DSA works on branches. It just needed to work on branches at the epoch layer, not the turn layer.",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "DSA selector monotone lock-in cache-safe eviction never fires FM-8"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 3857,
+      "resultCharsTruncated": 14052,
+      "resultsTruncated": 1,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 31636,
+      "usage": {
+        "input": 57743,
+        "output": 736,
+        "cacheRead": 8505,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 2757,
+          "usage": {
+            "input": 29980,
+            "output": 111,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 29980,
+          "input": 29980,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 111,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2210,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9843,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 10975,
+          "usage": {
+            "input": 27763,
+            "output": 625,
+            "cacheRead": 8505,
+            "cacheWrite": 0
+          },
+          "promptTokens": 36268,
+          "input": 27763,
+          "cacheRead": 8505,
+          "cacheWrite": 0,
+          "output": 625,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2210,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9843,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 13836,
+      "score": null,
+      "success": null
+    },
+    {
+      "scenario": "s1",
+      "model": "anthropic/claude-haiku-4.5",
+      "arm": "tree-tail-v2",
+      "window": 32768,
+      "question": "smoke",
+      "stratum": "smoke",
+      "rep": 1,
+      "status": "error",
+      "error": "Cannot access 'out' before initialization",
+      "errorHint": null,
+      "errorStack": "ReferenceError: Cannot access 'out' before initialization\n    at runArms (file:///Users/danielbyrne/GitHub/rpm/context-tree/eval/scripts/transplant.mjs:3620:20)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async file:///Users/danielbyrne/GitHub/rpm/context-tree/eval/scripts/transplant.mjs:3897:9",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "anthropic/claude-haiku-4.5",
+      "arm": "tree-tail-v2",
+      "window": 32768,
+      "question": "smoke",
+      "stratum": "smoke",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "Great — I have the search results confirming the DSA context. Let me address the user's question directly.\n\nNo, DSA-on-branches is not fixable without becoming a different mechanism. The three problems are interconnected by a deeper law:\n\n**The core issue: selection and prefix caching are incompatible at the per-turn cadence.**\n\nIn-model DSA works because the KV cache (the full state) never mutates — sparsity is applied in *read* (which tokens the model attends), not in *write* (which tokens are stored). Every token stays in the cache; attention changes every token, so a selection mistake is reversible one token later.\n\nAt the API level, every byte you remove from the prompt prefix to \"select\" is a write that voids the cache. FM-7 measured this exactly: when the descendant map grows on edits, the cacheRead freezes and cacheWrite re-bills the whole downstream zone — the system pays the *opposite* of what you'd gain from eviction. You cannot have both:\n- ✓ Byte-stable cached prefix (the thing that makes cheap re-reads possible)\n- ✓ Per-turn selection that removes branches from the prompt\n\nPick one. The tree v5.6 picked the first: keep everything in the prefix, and express selection additively behind the breakpoint (via Zone C expansion and context_fetch). That is the API-level analogue of in-model DSA — retention cheap, selection per-query, nothing mutates the cached bytes.\n\n**The fixes you listed (tombstones, batched epochs, model scoring) don't solve the incompatibility; they defer it.**\n\n- Tombstone + rehydration (FM-5 fix): still requires rewriting Zone B when the stub is placed, still voids the cache.\n- Batch eviction at 100+ branches (FM-8 fix): still requires rewriting Zone B, still 1.25× per batch, and the amortization only works if 100+ branches are rare enough that you never hit two batches in a run.\n- Model scoring instead of IDF (the trained selector): fixes proxy accuracy but doesn't fix the byte-churn law.\n\nBatching does make the math work — one 1.25× rewrite amortized over many turns of 0.1× re-reads — but the result is not \"DSA-on-branches\"; it's **hierarchical Zone B collapse**: a different mechanism that happens to use selection to decide *which* branches to fold. The report already names it as the successor.\n\n**When DSA-on-branches becomes hierarchical collapse:**\n\n1. Old branches don't get evicted; they get folded into a super-summary (one-line stub + link, like a §8 tombstone).\n2. Folding happens once, at a rare epoch triggered by Zone B budget (100+ branches).\n3. The model picks which branches to fold (not static scoring).\n4. After the fold, Zone B is byte-frozen again, and per-turn selection is not attempted.\n\nThat's fixable, testable, and won't fight the prefix-caching law. But it's a different name because the cadence, the write pattern, and the decision-maker are all different.\n\n**Why not try it now?** Because it only matters at scale — v5.6 wins with ~3 branches and nowhere near budget. Adding it would add code debt for a case that hasn't failed yet. Test it when the real task produces 100+ branches.",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "DSA selector failures FM-5 FM-8 eviction branch retention monotone lock-in"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 3853,
+      "resultCharsTruncated": 14189,
+      "resultsTruncated": 1,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 31781,
+      "usage": {
+        "input": 49228,
+        "output": 901,
+        "cacheRead": 17010,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 2456,
+          "usage": {
+            "input": 21475,
+            "output": 109,
+            "cacheRead": 8505,
+            "cacheWrite": 0
+          },
+          "promptTokens": 29980,
+          "input": 21475,
+          "cacheRead": 8505,
+          "cacheWrite": 0,
+          "output": 109,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2210,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9843,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 11972,
+          "usage": {
+            "input": 27753,
+            "output": 792,
+            "cacheRead": 8505,
+            "cacheWrite": 0
+          },
+          "promptTokens": 36258,
+          "input": 27753,
+          "cacheRead": 8505,
+          "cacheWrite": 0,
+          "output": 792,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2210,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9843,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 14480,
+      "score": null,
+      "success": null
+    },
+    {
+      "scenario": "s1",
+      "model": "anthropic/claude-haiku-4.5",
+      "arm": "tree-tail-v2",
+      "window": 32768,
+      "question": "smoke",
+      "stratum": "smoke",
+      "rep": 2,
+      "status": "error",
+      "error": "Cannot access 'out' before initialization",
+      "errorHint": null,
+      "errorStack": "ReferenceError: Cannot access 'out' before initialization\n    at runArms (file:///Users/danielbyrne/GitHub/rpm/context-tree/eval/scripts/transplant.mjs:3620:20)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async file:///Users/danielbyrne/GitHub/rpm/context-tree/eval/scripts/transplant.mjs:3897:9",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "anthropic/claude-haiku-4.5",
+      "arm": "tree-tail-v2",
+      "window": 32768,
+      "question": "smoke",
+      "stratum": "smoke",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "The first result is **n_1E48X9HAFPEYNQHHSF609KHMEE** (implementation phase).\n\nDSA on branches is fixable, yes — but the fixes reshape it into something different. Here's the arc:\n\n**The three failures and their fixes:**\n\n1. **FM-5 (eviction killed context).** Fixable: don't delete, tombstone. When a branch gets evicted from Zone B, leave a one-line stub with a rehydration pointer — \"`auth-refactor` collapsed; fetch node n14 for detail.\" The branch still lives in the tree; the model just doesn't see it *by default*. If the agent asks for it via `context_fetch`, it comes back. §8's rehydration metadata was designed for this — it just never wired into the eviction path.\n\n2. **FM-8 (cache-safe selection never fires).** Fixable: batch the evictions, don't do them per-turn. The monotone lock-in wasn't inevitable — it was the price of trying to select every turn without touching the cached prefix. But selecting at rare epochs (when Zone B hits 100+ branches) and rewriting once *does* punch through the cache economically, because the rewrite cost is a one-time 1.25× hit while the 0.1× re-read savings compound every subsequent turn. The amortization math says: when Zone B grows large enough, the eviction epoch pays for itself.\n\n3. **The untrained lexical selector.** Fixable: use the model. An epoch that already involves a summarizer call can ask the LLM directly: \"which of these 40 branches still matter to open work?\" — far better than cosine similarity on task text. Anchor the active path; everything else is fair game.\n\nCombine those three and you've rebuilt **hierarchical Zone B collapse** — the successor the report already names. Old branches fold into super-summaries (the tombstone), at budget-triggered epochs (the batching), scored by the model (the trained selector). It's not per-turn DSA; it's epoch-triggered hierarchical summarization.\n\n**Why it matters that DSA is fixable but different:** The failures weren't conceptual — they were *timing* and *medium*. Per-turn selection on a cached prefix violates the volatile-bit law; epoch-triggered hierarchical collapse doesn't. So DSA lives, but migrates: from \"which branches to keep live\" to \"which content survives into the next layer's summary\" — exactly what happens at every tree edge anyway.\n\n**The caveat:** At current scale (v5.6 keeps 3 branches) this fixes a non-problem. The 100+-branch horizon where Zone B collapse fires is a future scale gate. And measuring it correctly requires pinned temperature first — otherwise trajectory luck will bury the effect.",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "hierarchical Zone B collapse super-summary 100+ branches"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 3761,
+      "resultCharsTruncated": 14055,
+      "resultsTruncated": 1,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 31655,
+      "usage": {
+        "input": 49227,
+        "output": 750,
+        "cacheRead": 17010,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 2301,
+          "usage": {
+            "input": 21475,
+            "output": 106,
+            "cacheRead": 8505,
+            "cacheWrite": 0
+          },
+          "promptTokens": 29980,
+          "input": 21475,
+          "cacheRead": 8505,
+          "cacheWrite": 0,
+          "output": 106,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2210,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9843,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 10866,
+          "usage": {
+            "input": 27752,
+            "output": 644,
+            "cacheRead": 8505,
+            "cacheWrite": 0
+          },
+          "promptTokens": 36257,
+          "input": 27752,
+          "cacheRead": 8505,
+          "cacheWrite": 0,
+          "output": 644,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2210,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9843,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 13224,
+      "score": null,
+      "success": null
+    },
+    {
+      "scenario": "s1",
+      "model": "anthropic/claude-haiku-4.5",
+      "arm": "tree-tail-v2",
+      "window": 32768,
+      "question": "smoke",
+      "stratum": "smoke",
+      "rep": 3,
+      "status": "error",
+      "error": "Cannot access 'out' before initialization",
+      "errorHint": null,
+      "errorStack": "ReferenceError: Cannot access 'out' before initialization\n    at runArms (file:///Users/danielbyrne/GitHub/rpm/context-tree/eval/scripts/transplant.mjs:3620:20)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async file:///Users/danielbyrne/GitHub/rpm/context-tree/eval/scripts/transplant.mjs:3897:9",
+      "score": null
+    }
+  ],
+  "partial": false
+}

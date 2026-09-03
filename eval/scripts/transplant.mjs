@@ -49,6 +49,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  AnthropicProvider,
   CostCapExceededError,
   DEFAULT_EMBED_MODEL,
   ExactTokenizer,
@@ -1364,6 +1365,27 @@ async function legacySearchHits(ctx, input) {
  * the real handler already makes — so `tree-semantic`'s wrapped search still
  * runs the vector path when `ctx.retriever` was built with an `embed`.
  */
+/**
+ * Tool schemas per arm. tree-tail-v2 strips the `depth` parameter from
+ * context_fetch so the model always gets full content (semantically narrowed
+ * to fit the window). Other arms keep the standard schemas.
+ */
+function toolSchemasForArm(arm) {
+  if (arm === 'tree-tail-v2') {
+    return CONTEXT_TOOL_SCHEMAS.map((tool) => {
+      if (tool.name !== CONTEXT_FETCH) return tool;
+      const params = { ...tool.inputSchema };
+      if (params.properties) {
+        const { depth, ...rest } = params.properties;
+        params.properties = rest;
+      }
+      return { ...tool, inputSchema: params,
+        description: tool.description.replace(/Reach for it BEFORE EDITING/, 'Returns the full raw events of a branch, narrowed to the most relevant section when the branch is large. Reach for it BEFORE EDITING') };
+    });
+  }
+  return CONTEXT_TOOL_SCHEMAS;
+}
+
 export function handlersForArm(arm) {
   if (arm === 'tree-grep') {
     return {
@@ -1386,6 +1408,44 @@ export function handlersForArm(arm) {
     };
   }
   if (!LEGACY_SURFACE_ARMS.has(arm)) return HANDLERS;
+  // tree-tail-v2: raw fetch with semantic narrowing (not summary-only).
+  // Track the last search query so fetch can use it to center the narrowing band.
+  if (arm === 'tree-tail-v2') {
+    let lastSearchQuery = '';
+    return {
+      ...HANDLERS,
+      [CONTEXT_SEARCH]: async (ctx, input) => {
+        lastSearchQuery = input?.query ?? '';
+        return HANDLERS[CONTEXT_SEARCH](ctx, input);
+      },
+      [CONTEXT_FETCH]: async (ctx, input) => {
+        const args = input ?? {};
+        const branchId = args.branch_id;
+        if (!branchId) return { ok: false, error: { message: 'branch_id is required' } };
+        try {
+          // Use half the initial headroom — search results and prior turns
+          // consume the other half, so the fetch result must fit what remains.
+          const headroom = Math.floor((ctx._headroom ?? 20000) / 2);
+          const fetched = ctx.retriever.fetchBranch(branchId, {
+            depth: 'full',
+            file: args.file,
+            from: args.from,
+            to: args.to,
+            maxTokens: headroom,
+            query: lastSearchQuery,
+          });
+          return { ok: true, data: {
+            branch_id: fetched.nodeId, kind: fetched.kind, title: fetched.title,
+            phase_type: fetched.phaseType, depth: fetched.depth, file: fetched.file ?? null,
+            summary_version: fetched.summaryVersion, meta: fetched.meta,
+            nodes: fetched.nodes, spans: fetched.spans, events: fetched.events, text: fetched.text,
+          }};
+        } catch (error) {
+          return { ok: false, error: { message: error.message } };
+        }
+      },
+    };
+  }
   return {
     ...HANDLERS,
     [CONTEXT_FETCH]: (ctx, input) => HANDLERS[CONTEXT_FETCH](ctx, { depth: 'summary', ...(input ?? {}) }),
@@ -2873,13 +2933,17 @@ async function runPrep(scenario, options) {
 // ── run (Steps 4-6) ──────────────────────────────────────────────────────
 function providerFor(bucket, meters, capUsd = CAP_USD_PER_MODEL) {
   if (!meters.has(bucket)) meters.set(bucket, new InMemoryCostMeter({ capUsd }));
-  // TRANSPLANT_MOCK=1 drives the whole run loop offline against a deterministic
-  // provider — the seam the window-cap fix is verified through, and the only
-  // way to exercise the append path without spending anything.
   if (process.env.TRANSPLANT_MOCK === '1') {
     return new MeteredProvider(mockProvider(), meters.get(bucket));
   }
   loadDotEnv();
+  // Direct Anthropic provider for claude models — faster, no OpenRouter middleman.
+  if (bucket.startsWith('claude-') || bucket.startsWith('anthropic/claude-')) {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (apiKey) {
+      return new MeteredProvider(new AnthropicProvider({ apiKey }), meters.get(bucket));
+    }
+  }
   const apiKey = process.env.OPENROUTER_API_KEY ?? process.env.OPENROUTER_KEY;
   if (!apiKey) throw new Error('OPENROUTER_API_KEY is not set');
   return new MeteredProvider(new OpenRouterProvider({ apiKey }), meters.get(bucket));
@@ -3195,7 +3259,7 @@ async function buildArm(scenario, arm, budgets, artifacts) {
       return {
         system: prompt.system,
         messages: messagesWithTail,
-        tools: withTools ? CONTEXT_TOOL_SCHEMAS : [],
+        tools: withTools ? toolSchemasForArm(arm) : [],
         assembler,
         handlers: withTools ? handlersForArm(arm) : {},
         meta: {
@@ -3541,6 +3605,12 @@ async function runArms(scenario, options) {
     );
   }
 
+  // Hoisted so incremental writes can land results as each run completes.
+  const out = join(scenario.artifacts, process.env.TRANSPLANT_MOCK === '1' ? 'results-mock' : 'results');
+  mkdirSync(out, { recursive: true });
+  const replyTag = options.replyMode !== undefined ? `-reply-${options.replyMode}` : '';
+  const name = `${smoke ? 'smoke' : 'run'}-W${window}-${arms.join('+')}${replyTag}-${models.map((m) => m.replaceAll('/', '_')).join('+')}.json`;
+
   const rows = [];
   for (const model of models) {
     const provider = providerFor(model, meters);
@@ -3560,7 +3630,10 @@ async function runArms(scenario, options) {
       }
       // `toolCtx` first so an arm that builds its OWN context (tree-semantic,
       // whose store copy carries L3) overrides it rather than being clobbered.
-      const built = { toolCtx, ...(await buildArm(scenario, arm, armBudgets, artifacts)) };
+      const armResult = await buildArm(scenario, arm, armBudgets, artifacts);
+      // Pass headroom to toolCtx so narrowing-aware fetch can size its band.
+      const armToolCtx = { ...toolCtx, _headroom: armResult.meta?.headroom ?? 20000 };
+      const built = { toolCtx: armToolCtx, ...armResult };
       const n = smoke ? SMOKE_N : questions[0]?.exploratory === true ? SPANNING_REPS : reps;
       // `naive-full` at small windows is a PRECONDITION (context-death evidence).
       // At windows large enough to hold the trace, run all questions and reps so
@@ -3661,10 +3734,6 @@ async function runArms(scenario, options) {
     }
   }
 
-  const out = join(scenario.artifacts, process.env.TRANSPLANT_MOCK === '1' ? 'results-mock' : 'results');
-  mkdirSync(out, { recursive: true });
-  const replyTag = options.replyMode !== undefined ? `-reply-${options.replyMode}` : '';
-  const name = `${smoke ? 'smoke' : 'run'}-W${window}-${arms.join('+')}${replyTag}-${models.map((m) => m.replaceAll('/', '_')).join('+')}.json`;
   const truncatedTotal = rows.reduce((n, r) => n + (r.resultTokensTruncated ?? 0), 0);
   const truncatedRuns = rows.filter((r) => (r.resultsTruncated ?? 0) > 0).length;
   writeFileSync(

@@ -1,0 +1,369 @@
+{
+  "budgets": {
+    "window": 32768,
+    "ratio": 0.850896663206653,
+    "slackFraction": 0.1,
+    "zoneCFraction": 0.2,
+    "reply": 1925,
+    "zoneA": 3850,
+    "zoneB": 7701,
+    "zoneC": 7701,
+    "lazy": 13478,
+    "slack": 3850,
+    "K": 30808,
+    "maxReplyTokens": 1638,
+    "rootKeep": 16,
+    "rootLadder": [
+      {
+        "keep": 40,
+        "ok": false,
+        "rootBlockTokens": 6917,
+        "branchesSurviving": 0,
+        "branchSeqRange": null,
+        "overBudget": [],
+        "zoneB": 6917
+      },
+      {
+        "keep": 16,
+        "ok": true,
+        "rootBlockTokens": 6095,
+        "branchesSurviving": 2,
+        "branchSeqRange": {
+          "from": 639,
+          "to": 754
+        },
+        "overBudget": [],
+        "zoneB": 7633
+      }
+    ],
+    "rootKeepOk": true,
+    "rootBlockTokens": 6095,
+    "branchesSurviving": 2,
+    "branchSeqRange": {
+      "from": 639,
+      "to": 754
+    },
+    "overBudget": [],
+    "arm": "tree",
+    "rootSummarySha": "2c7fbe668193766cdd17e3de4b816cdcd0be5e4fcda3d881c2f7a73e76cc8596"
+  },
+  "compactionBuildUsd": null,
+  "compactionSkippedChunks": [],
+  "compaction": null,
+  "rows": [
+    {
+      "scenario": "s1",
+      "model": "claude-haiku-4-5-20251001",
+      "arm": "tree-tail-v2",
+      "window": 32768,
+      "question": "smoke",
+      "stratum": "smoke",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "The first result is **n_1E48X9HAFPEYNQHHSF609KHMEE**, the implementation phase covering the core fixes across loops 1–6.\n\nNow, to your question directly: **DSA works for tree branches, but the three fixable problems separate into two categories — one about safety, one about economics.**\n\n**Safety problem (FM-5): Fixable by design.**\nWhen the selector evicted a branch, it vanished without recovery. But branches never actually delete from L1/L2 — they're just ungrouped from Zone B. The fix is a rehydration pointer: instead of erasing, leave a tombstone (`\"auth-refactor collapsed — fetch node n14 for detail\"`). The model sees it can ask for the detail back if needed. This is already how §8 metadata works; it just wasn't wired into the eviction path. Cost: one message per evicted branch, only at the epoch when eviction happens (not per turn).\n\n**Economics problem (FM-8): Fixable by changing the *cadence*, not the selection itself.**\nThe monotone lock-in wasn't inherent to scoring — it was the price of trying to select *every turn* while keeping the prefix frozen. By the volatile-bit law, that's impossible: any per-turn membership change rewrites the prompt, voids the cache. The correct cadence: **leave Zone B byte-frozen for long stretches, and when it hits a budget (100+ branches), run selection once at a rare epoch that already involves an LLM call.** The amortization: you pay one 1.25× cache rewrite but recoup it across dozens of turns at 0.1× re-read savings. This is exactly the inverse of why cached re-reading beats trimming — same principle applied at the zone that's now quadratic.\n\n**Trained selector (the real flaw):** The untrained lexical proxy made bad picks. But since selection now runs at a rare epoch with an LLM call, let *the model* rank — \"which of these 100 branches still bear on open work\" is far better answered by the strong model than cosine similarity.\n\nCombine those three and you get **hierarchical Zone B collapse**: branches fold into super-summaries (the tombstones), at budget-triggered epochs (the batching), ranked by the model (the trained selector). This isn't \"fixable DSA-on-branches\" — it's the correct thing to have built instead. The report already names it as the next iteration target.\n\nTwo honest caveats: **(1)** At current scale this fixes a non-problem — v5.6 wins with three branches; the failure mode only exists at 100+ branches. Ship it when the horizon does. **(2)** Any experiment on it requires the standing prerequisite: pin temperature first. The 10-vs-37-turn trajectory noise is now your largest error bar; it will bury a real effect on selection.",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "hierarchical Zone B collapse super-summary branches eviction FM-5"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 3776,
+      "resultCharsTruncated": 14157,
+      "resultsTruncated": 1,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 31684,
+      "usage": {
+        "input": 49231,
+        "output": 766,
+        "cacheRead": 8505,
+        "cacheWrite": 8505
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1812,
+          "usage": {
+            "input": 21477,
+            "output": 102,
+            "cacheRead": 0,
+            "cacheWrite": 8505
+          },
+          "promptTokens": 29982,
+          "input": 21477,
+          "cacheRead": 0,
+          "cacheWrite": 8505,
+          "output": 102,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_use",
+          "zoneBudgets": {
+            "zoneA": 2210,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9843,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 12260,
+          "usage": {
+            "input": 27754,
+            "output": 664,
+            "cacheRead": 8505,
+            "cacheWrite": 0
+          },
+          "promptTokens": 36259,
+          "input": 27754,
+          "cacheRead": 8505,
+          "cacheWrite": 0,
+          "output": 664,
+          "toolCalls": [],
+          "stopReason": "end_turn",
+          "zoneBudgets": {
+            "zoneA": 2210,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9843,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 14174,
+      "score": null,
+      "success": null
+    },
+    {
+      "scenario": "s1",
+      "model": "claude-haiku-4-5-20251001",
+      "arm": "tree-tail-v2",
+      "window": 32768,
+      "question": "smoke",
+      "stratum": "smoke",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 3,
+      "finalText": "The answer is yes, but they're not fixable within the per-turn cadence that made them problems in the first place. Each one traces to trying to select branches on every turn without mutating the cached prefix — a constraint that's mathematically tight.\n\n**FM-5 (eviction destroyed context):** Fixable by keeping evicted branches as tombstones. Instead of deleting a branch from Zone B, leave a one-line stub with a rehydration pointer (`\"auth-refactor module (collapsed; fetch node n14 for full context)\"`). The model gets the hint that context exists without the byte churn. Cost: one line per evicted branch, no cache miss.\n\n**FM-8 (cache-safe selection never fires):** This one reveals the real constraint. The monotone lock-in wasn't a bug — it was the *only mathematically possible outcome* of trying to select per-turn without moving bytes ahead of the cached prefix. The fix isn't per-turn selection; it's **rare-epoch selection**. Every 10–20 turns (or when Zone B exceeds 100 branches), run selection *once*, rewrite Zone B *once*, accept one deliberate 1.25× cache epoch, then freeze again for the next stretch. The amortization arithmetic: one re-write cost amortizes over dozens of turns at 0.1× re-read, so the saving accumulates. This is why trimming lost to re-reading in the first place — apply the same principle in reverse at the point where Zone B itself becomes the quadratic term.\n\n**The untrained selector:** When selection happens at rare epochs, it can be expensive — you can afford to call the model at that boundary. \"Which of these 40 old branches still bear on open work, failing tests, or the next phase's open questions?\" is a question Claude answers far better than cosine similarity.\n\nWire those three together and you have **hierarchical Zone B collapse** — the named successor. Old branches don't evict; they fold into a super-summary. Selection happens in batches at budget boundaries, not every turn. The model does the ranking. That's the DSA fix that stays cache-safe.\n\nThe honest framing: DSA-on-branches isn't broken; the per-turn cadence was never viable. The fixed version has a different name and a different rhythm.",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "DSA selection retired monotone lock-in eviction FM-5 FM-8",
+        "DSA selector retired eviction FM-5 FM-8"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 3611,
+      "resultCharsTruncated": 13589,
+      "resultsTruncated": 1,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 31548,
+      "usage": {
+        "input": 70785,
+        "output": 714,
+        "cacheRead": 25515,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1795,
+          "usage": {
+            "input": 21477,
+            "output": 105,
+            "cacheRead": 8505,
+            "cacheWrite": 0
+          },
+          "promptTokens": 29982,
+          "input": 21477,
+          "cacheRead": 8505,
+          "cacheWrite": 0,
+          "output": 105,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_use",
+          "zoneBudgets": {
+            "zoneA": 2210,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9843,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 1612,
+          "usage": {
+            "input": 21541,
+            "output": 89,
+            "cacheRead": 8505,
+            "cacheWrite": 0
+          },
+          "promptTokens": 30046,
+          "input": 21541,
+          "cacheRead": 8505,
+          "cacheWrite": 0,
+          "output": 89,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_use",
+          "zoneBudgets": {
+            "zoneA": 2210,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9843,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 9645,
+          "usage": {
+            "input": 27767,
+            "output": 520,
+            "cacheRead": 8505,
+            "cacheWrite": 0
+          },
+          "promptTokens": 36272,
+          "input": 27767,
+          "cacheRead": 8505,
+          "cacheWrite": 0,
+          "output": 520,
+          "toolCalls": [],
+          "stopReason": "end_turn",
+          "zoneBudgets": {
+            "zoneA": 2210,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9843,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 13134,
+      "score": null,
+      "success": null
+    },
+    {
+      "scenario": "s1",
+      "model": "claude-haiku-4-5-20251001",
+      "arm": "tree-tail-v2",
+      "window": 32768,
+      "question": "smoke",
+      "stratum": "smoke",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "The first result is **n_1E48X9HAFPEYNQHHSF609KHMEE** (implementation phase).\n\nTo your question: yes, DSA on branches is fixable. The three problems I laid out — eviction destructiveness, cache-unsafe per-turn selection, and untrained proxy quality — each has a named fix, and they converge on **hierarchical Zone B collapse**, which the report already lists as the successor to the retired DSA-on-branches line.\n\nThe fixes are real, but they reframe the problem. What works in the model (dense KV cache + sparse attention per query) doesn't transfer directly to the prompt API because selection there means rewriting a byte-prefix, which is destructive to the cache. The working principle the loops discovered is the inverse: **retention is cheap (cached re-read at 0.1×), eviction is risky.** So the fix isn't \"better selection,\" it's \"selection at rarer boundaries, batched with natural epochs, carried by the model itself.\"\n\nThat design is ready to code. It's just not next—temp pinning is, because all 56 runs at default temperature are statistically muddier than they should be, and you can't measure the benefit of hierarchical collapse if the trajectory itself is random within a 10-vs-37-turn range.",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "hierarchical Zone B collapse super-summary tombstone eviction recovery"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 3743,
+      "resultCharsTruncated": 14273,
+      "resultsTruncated": 1,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 31345,
+      "usage": {
+        "input": 49225,
+        "output": 400,
+        "cacheRead": 17010,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1574,
+          "usage": {
+            "input": 21477,
+            "output": 102,
+            "cacheRead": 8505,
+            "cacheWrite": 0
+          },
+          "promptTokens": 29982,
+          "input": 21477,
+          "cacheRead": 8505,
+          "cacheWrite": 0,
+          "output": 102,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_use",
+          "zoneBudgets": {
+            "zoneA": 2210,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9843,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 5778,
+          "usage": {
+            "input": 27748,
+            "output": 298,
+            "cacheRead": 8505,
+            "cacheWrite": 0
+          },
+          "promptTokens": 36253,
+          "input": 27748,
+          "cacheRead": 8505,
+          "cacheWrite": 0,
+          "output": 298,
+          "toolCalls": [],
+          "stopReason": "end_turn",
+          "zoneBudgets": {
+            "zoneA": 2210,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9843,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 7410,
+      "score": null,
+      "success": null
+    }
+  ],
+  "partial": false
+}
