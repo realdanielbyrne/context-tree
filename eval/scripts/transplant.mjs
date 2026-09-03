@@ -1275,11 +1275,13 @@ export function bootstrapCI(treeScores, compactScores, { iterations = 2_000, see
 const QA_ADDENDUM = [
   '',
   '# Answering this question',
-  "You are being asked a single question about this task's history. The context above may omit",
-  'older branches entirely (see any "folded" line in the task summary) — use context_search,',
-  'context_fetch, or context_peek if you need to recall detail not shown above.',
-  'When you are ready, reply with your final answer in plain text and make NO further tool call:',
-  'a reply with no tool call ends the conversation.',
+  "You are being asked a single question about this task's recorded history.",
+  'The answer IS in the recorded events. If you cannot see it in the context above:',
+  '1. Call context_search with keywords from the question to find the right branch.',
+  '2. Call context_fetch with the branch_id from the search result to read the raw events.',
+  '3. The fetched content contains the answer — read it carefully and extract the literal.',
+  'Do NOT say "I don\'t have context" or give up. The events are recorded; use the tools to find them.',
+  'When you are ready, reply with your final answer in plain text and make NO further tool call.',
 ].join('\n');
 
 const FLAT_SYSTEM = [
