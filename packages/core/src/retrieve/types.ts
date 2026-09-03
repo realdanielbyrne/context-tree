@@ -16,6 +16,14 @@ import type { NodeId, NodeKind, PhaseType, SeqSpan, SummaryMeta } from '../contr
  */
 export type SummaryEmbedder = (texts: readonly string[]) => Promise<Float32Array[]>;
 
+/**
+ * Injected query rewriter — extracts searchable terms from a natural-language
+ * query when regex extraction finds nothing distinctive. Called at most once
+ * per search, only as a fallback. The input is the query; the output is an
+ * array of grep-worthy terms (file paths, identifiers, key phrases).
+ */
+export type QueryRewriter = (query: string) => Promise<string[]>;
+
 /** Which mechanism produced a result set. §15's eval attributes recall per path. */
 export type SearchPath = 'vector' | 'beam';
 

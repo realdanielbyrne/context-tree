@@ -14,6 +14,7 @@ export type {
   EmbedSummariesResult,
   FetchBranchOptions,
   FetchedBranch,
+  QueryRewriter,
   SearchPath,
   SummaryEmbedder,
   SummaryHit,

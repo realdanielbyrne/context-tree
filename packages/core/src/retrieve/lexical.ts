@@ -31,6 +31,30 @@ function termFrequency(text: string): Map<string, number> {
   return tf;
 }
 
+// Patterns for extracting distinctive fingerprints from raw event text.
+const FILE_PATH_PATTERN = /(?:[\w.-]+\/)+[\w.-]+\.\w+/g;
+const CAMEL_PATTERN = /\b[a-z][a-zA-Z0-9]*[A-Z][a-zA-Z0-9]*\b/g;
+const PASCAL_PATTERN = /\b[A-Z][a-z]+(?:[A-Z][a-z]+)+\b/g;
+const UPPER_SNAKE_PATTERN = /\b[A-Z][A-Z0-9_]{2,}\b/g;
+const DOTTED_PATTERN = /\b[a-z]\w*(?:\.[a-z]\w*)+\b/g;
+const BACKTICK_PATTERN = /`([^`]+)`/g;
+
+/**
+ * Extract distinctive fingerprints (file paths, identifiers, symbols) from
+ * raw text. These are the specific, low-frequency tokens that uniquely
+ * identify a branch's content — the signal TF-IDF over summary prose misses.
+ */
+export function extractFingerprints(text: string): Set<string> {
+  const fps = new Set<string>();
+  for (const m of text.matchAll(FILE_PATH_PATTERN)) fps.add(m[0]);
+  for (const m of text.matchAll(CAMEL_PATTERN)) fps.add(m[0]);
+  for (const m of text.matchAll(PASCAL_PATTERN)) fps.add(m[0]);
+  for (const m of text.matchAll(UPPER_SNAKE_PATTERN)) fps.add(m[0]);
+  for (const m of text.matchAll(DOTTED_PATTERN)) fps.add(m[0]);
+  for (const m of text.matchAll(BACKTICK_PATTERN)) { if (m[1] !== undefined) fps.add(m[1]); }
+  return fps;
+}
+
 /**
  * The document text for one node — the SAME string the vector path embeds, so
  * the two mechanisms in §15's eval rank identical content and only the scoring
@@ -40,8 +64,11 @@ function termFrequency(text: string): Map<string, number> {
  * document because they are what a query actually names ("the pricing.go
  * change"), and §8 guarantees every summary carries them. A node with no
  * summary yet still scores on its title rather than dropping out of the tree.
+ *
+ * When `fingerprints` are provided (extracted from raw events), they are
+ * appended so the index covers the specific identifiers summaries omit.
  */
-export function summaryDocument(node: TreeNode, summary: NodeSummary | null): string {
+export function summaryDocument(node: TreeNode, summary: NodeSummary | null, fingerprints?: Set<string>): string {
   const parts: string[] = [node.title];
   const nodePath = node.meta_json.path;
   if (typeof nodePath === 'string') parts.push(nodePath);
@@ -49,6 +76,9 @@ export function summaryDocument(node: TreeNode, summary: NodeSummary | null): st
     parts.push(summary.text);
     for (const file of summary.meta.files) parts.push(file.symbol === undefined ? file.path : `${file.path} ${file.symbol}`);
     for (const symbol of summary.meta.symbols) parts.push(symbol);
+  }
+  if (fingerprints !== undefined && fingerprints.size > 0) {
+    parts.push([...fingerprints].join(' '));
   }
   return parts.join('\n');
 }

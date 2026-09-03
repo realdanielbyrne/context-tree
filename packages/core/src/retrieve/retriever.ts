@@ -20,11 +20,12 @@ import type {
 } from '../contracts/index.js';
 import { ContextTreeError, StoreInvariantError } from '../contracts/index.js';
 import { clampSpans, mergeSpans, nodeSpan, payloadRef, renderIndex, renderSpans } from './detail.js';
-import { buildLexicalIndex, lexicalScore, summaryDocument, uniqueTerms } from './lexical.js';
+import { buildLexicalIndex, extractFingerprints, lexicalScore, summaryDocument, uniqueTerms } from './lexical.js';
 import type {
   EmbedSummariesResult,
   FetchBranchOptions,
   FetchedBranch,
+  QueryRewriter,
   SummaryEmbedder,
   SummaryHit,
   TreeSearchOptions,
@@ -43,6 +44,12 @@ export interface TreeRetrieverDeps {
   trace?: TraceLog;
   /** Absent means L3 is never written and `search` uses the beam path (§9). */
   embed?: SummaryEmbedder;
+  /**
+   * Fallback query rewriter — called once per search when regex extraction
+   * finds no distinctive terms in the query. Extracts searchable phrases
+   * from natural language. Optional; absent means regex-only extraction.
+   */
+  rewrite?: QueryRewriter;
 }
 
 const DEFAULT_LIMIT = 8;
@@ -65,23 +72,80 @@ export class TreeRetriever {
   private readonly blobs: BlobStore;
   private readonly trace: TraceLog | undefined;
   private readonly embed: SummaryEmbedder | undefined;
+  private readonly rewrite: QueryRewriter | undefined;
+  private fingerprintCache: Map<NodeId, Set<string>> | null = null;
 
   constructor(deps: TreeRetrieverDeps) {
     this.store = deps.store;
     this.blobs = deps.blobs;
     this.trace = deps.trace;
     this.embed = deps.embed;
+    this.rewrite = deps.rewrite;
+  }
+
+  /**
+   * Extract fingerprints (file paths, identifiers, symbols) from raw events
+   * for all phase nodes. Computed once, cached for subsequent searches.
+   */
+  private getFingerprints(): Map<NodeId, Set<string>> {
+    if (this.fingerprintCache !== null) return this.fingerprintCache;
+    if (this.trace === undefined) return new Map();
+
+    const cache = new Map<NodeId, Set<string>>();
+    for (const node of this.store.nodesInCreationOrder()) {
+      if (node.kind !== 'phase') continue;
+      const span = nodeSpan(node);
+      if (span === null) continue;
+      const parts: string[] = [];
+      for (const event of this.trace.read({ from: span.start, to: span.end })) {
+        for (const field of ['blob', 'args_blob', 'output_blob'] as const) {
+          const ref = (event as unknown as Record<string, unknown>)[field];
+          if (typeof ref === 'string') {
+            parts.push(this.blobs.getTextPrefix(ref, 8192));
+          }
+        }
+      }
+      cache.set(node.id, extractFingerprints(parts.join('\n')));
+    }
+    this.fingerprintCache = cache;
+    return cache;
   }
 
   /**
    * `context_search`. Vector path when L3 can answer, beam otherwise, and the
    * result says which ran so §15's eval attributes recall to the mechanism
-   * that earned it.
+   * that earned it. When L0 is available, distinctive terms from the query
+   * are grepped against raw events and merged via rank-reciprocal fusion.
    */
   async search(query: string, options: TreeSearchOptions = {}): Promise<TreeSearchResult> {
-    if (this.embed === undefined) return { ...this.beamSearch(query, options), fallback: 'no-embedder' };
-    if (this.store.embeddingDim() === null) return { ...this.beamSearch(query, options), fallback: 'no-embeddings' };
-    return this.searchSummaries(query, options);
+    let base: TreeSearchResult;
+    if (this.embed === undefined) {
+      base = { ...this.beamSearch(query, options), fallback: 'no-embedder' };
+    } else if (this.store.embeddingDim() === null) {
+      base = { ...this.beamSearch(query, options), fallback: 'no-embeddings' };
+    } else {
+      base = await this.searchSummaries(query, options);
+    }
+
+    if (this.trace === undefined) return base;
+    let grepTerms = extractQueryFingerprints(query);
+    if (grepTerms.length === 0 && this.rewrite !== undefined) {
+      try { grepTerms = await this.rewrite(query); } catch { /* degrade gracefully */ }
+    }
+    if (grepTerms.length === 0) return base;
+
+    const limit = normalizeLimit(options.limit);
+    const grepHits = new Map<NodeId, number>();
+    const MAX_GREP_PASSES = 5;
+    for (const term of grepTerms.slice(0, MAX_GREP_PASSES)) {
+      const result = this.grepEvents(term, { limit });
+      for (const hit of result.hits) {
+        grepHits.set(hit.nodeId, (grepHits.get(hit.nodeId) ?? 0) + 1);
+      }
+    }
+    if (grepHits.size === 0) return base;
+
+    return mergeWithGrep(base, grepHits, limit);
   }
 
   /**
@@ -138,6 +202,7 @@ export class TreeRetriever {
     const beamWidth = options.beamWidth === undefined ? limit : Math.max(1, Math.floor(options.beamWidth));
 
     const nodes = this.store.nodesInCreationOrder();
+    const fingerprints = this.getFingerprints();
     const documents = new Map<NodeId, string>();
     const summaries = new Map<NodeId, NodeSummary | null>();
     const childrenOf = new Map<NodeId | null, TreeNode[]>();
@@ -145,7 +210,7 @@ export class TreeRetriever {
     nodes.forEach((node, index) => {
       const summary = this.store.currentSummary(node.id);
       summaries.set(node.id, summary);
-      documents.set(node.id, summaryDocument(node, summary));
+      documents.set(node.id, summaryDocument(node, summary, fingerprints.get(node.id)));
       ordinal.set(node.id, index);
       const siblings = childrenOf.get(node.parent_id);
       if (siblings === undefined) childrenOf.set(node.parent_id, [node]);
@@ -424,6 +489,65 @@ export class TreeRetriever {
 
 function asPath(value: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined;
+}
+
+// Patterns for extracting distinctive terms from a search query.
+const BACKTICK_Q = /`([^`]+)`/g;
+const QUOTED_Q = /['"]([^'"]{3,})['"]/g;
+const FILE_PATH_Q = /[\w\-.]+(?:\/[\w\-.]+)+/g;
+const CAMEL_Q = /\b[a-z][a-zA-Z0-9]*[A-Z][a-zA-Z0-9]*\b/g;
+const PASCAL_Q = /\b[A-Z][a-z]+(?:[A-Z][a-z]+)+\b/g;
+const UPPER_SNAKE_Q = /\b[A-Z][A-Z0-9_]{3,}\b/g;
+
+/**
+ * Extract distinctive substrings from a search query that are worth grepping
+ * for in raw events: backtick-quoted, file paths, identifiers.
+ */
+function extractQueryFingerprints(query: string): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  const add = (s: string) => { if (s.length >= 3 && !seen.has(s)) { seen.add(s); result.push(s); } };
+
+  for (const m of query.matchAll(BACKTICK_Q)) add(m[1]!);
+  for (const m of query.matchAll(QUOTED_Q)) add(m[1]!);
+  for (const m of query.matchAll(FILE_PATH_Q)) add(m[0]);
+  for (const m of query.matchAll(CAMEL_Q)) add(m[0]);
+  for (const m of query.matchAll(PASCAL_Q)) add(m[0]);
+  for (const m of query.matchAll(UPPER_SNAKE_Q)) add(m[0]);
+  return result;
+}
+
+const RRF_K = 60;
+
+function mergeWithGrep(
+  base: TreeSearchResult,
+  grepHits: Map<NodeId, number>,
+  limit: number,
+): TreeSearchResult {
+  const merged = new Map<NodeId, { hit: SummaryHit; rrfScore: number }>();
+
+  for (const [rank, hit] of base.hits.entries()) {
+    merged.set(hit.nodeId, { hit, rrfScore: 1 / (RRF_K + rank + 1) });
+  }
+
+  const maxGrepScore = Math.max(...grepHits.values(), 1);
+  for (const [nodeId, count] of grepHits) {
+    const existing = merged.get(nodeId);
+    const grepRrf = (count / maxGrepScore) / (RRF_K + 1);
+    if (existing !== undefined) {
+      existing.rrfScore += grepRrf;
+    }
+  }
+
+  const sorted = [...merged.values()]
+    .sort((a, b) => b.rrfScore - a.rrfScore)
+    .slice(0, limit);
+
+  return {
+    hits: sorted.map(({ hit, rrfScore }) => ({ ...hit, score: rrfScore })),
+    path: base.path,
+    fallback: base.fallback,
+  };
 }
 
 function toHit(node: TreeNode, summary: NodeSummary | null, score: number): SummaryHit {
