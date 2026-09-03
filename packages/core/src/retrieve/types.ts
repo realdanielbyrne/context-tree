@@ -82,6 +82,16 @@ export interface FetchBranchOptions {
    */
   from?: number;
   to?: number;
+  /**
+   * When set, and the branch exceeds this token budget, narrow the result to a
+   * band of events centered on the most relevant section (found by grepping
+   * distinctive terms from `query` against the branch's events). The band is
+   * sized to fit `maxTokens`. At large windows where the branch fits, this is
+   * a no-op. Requires `query` to locate the center.
+   */
+  maxTokens?: number;
+  /** The search query that led to this fetch — used to center the narrowing band. */
+  query?: string;
 }
 
 export interface FetchedBranch {

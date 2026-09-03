@@ -1,0 +1,337 @@
+{
+  "budgets": {
+    "window": 32768,
+    "ratio": 0.850896663206653,
+    "slackFraction": 0.1,
+    "zoneCFraction": 0.2,
+    "reply": 1925,
+    "zoneA": 3850,
+    "zoneB": 7701,
+    "zoneC": 7701,
+    "lazy": 13478,
+    "slack": 3850,
+    "K": 30808,
+    "maxReplyTokens": 1638,
+    "rootKeep": 16,
+    "rootLadder": [
+      {
+        "keep": 40,
+        "ok": false,
+        "rootBlockTokens": 6917,
+        "branchesSurviving": 0,
+        "branchSeqRange": null,
+        "overBudget": [],
+        "zoneB": 6917
+      },
+      {
+        "keep": 16,
+        "ok": true,
+        "rootBlockTokens": 6095,
+        "branchesSurviving": 2,
+        "branchSeqRange": {
+          "from": 639,
+          "to": 754
+        },
+        "overBudget": [],
+        "zoneB": 7633
+      }
+    ],
+    "rootKeepOk": true,
+    "rootBlockTokens": 6095,
+    "branchesSurviving": 2,
+    "branchSeqRange": {
+      "from": 639,
+      "to": 754
+    },
+    "overBudget": [],
+    "arm": "tree",
+    "rootSummarySha": "2c7fbe668193766cdd17e3de4b816cdcd0be5e4fcda3d881c2f7a73e76cc8596"
+  },
+  "compactionBuildUsd": null,
+  "compactionSkippedChunks": [],
+  "compaction": null,
+  "rows": [
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-tail",
+      "window": 32768,
+      "question": "smoke",
+      "stratum": "smoke",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "`n_1E48X9HAFPEYNQHHSF609KHMEE`\n\nThat's the first hit (score 1.33) — a closed implementation phase from earlier in the lineage, covering the per-node §8 circuit breaker, the D5 volatile-bit decisions on Zone B headings, and the FM-1 through FM-4 tickets.",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "DSA eviction fixable hierarchical Zone B collapse tombstone epoch"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 28623,
+      "resultsTruncated": 1,
+      "resultTruncationEstimated": 1,
+      "peakRequestTokens": 31144,
+      "usage": {
+        "input": 31520,
+        "output": 301,
+        "cacheRead": 26112,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 7439,
+          "usage": {
+            "input": 26126,
+            "output": 71,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 26126,
+          "input": 26126,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 71,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2210,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9843,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 8060,
+          "usage": {
+            "input": 5394,
+            "output": 230,
+            "cacheRead": 26112,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31506,
+          "input": 5394,
+          "cacheRead": 26112,
+          "cacheWrite": 0,
+          "output": 230,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2210,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9843,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 15595,
+      "score": null,
+      "success": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-tail",
+      "window": 32768,
+      "question": "smoke",
+      "stratum": "smoke",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "`n_1E48X9HAFPEYNQHHSF609KHMEE`",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "DSA on branches fixable tombstone rehydration eviction hierarchical Zone B collapse"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 28905,
+      "resultsTruncated": 1,
+      "resultTruncationEstimated": 1,
+      "peakRequestTokens": 31090,
+      "usage": {
+        "input": 5409,
+        "output": 309,
+        "cacheRead": 52224,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 8717,
+          "usage": {
+            "input": 14,
+            "output": 197,
+            "cacheRead": 26112,
+            "cacheWrite": 0
+          },
+          "promptTokens": 26126,
+          "input": 14,
+          "cacheRead": 26112,
+          "cacheWrite": 0,
+          "output": 197,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2210,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9843,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 5915,
+          "usage": {
+            "input": 5395,
+            "output": 112,
+            "cacheRead": 26112,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31507,
+          "input": 5395,
+          "cacheRead": 26112,
+          "cacheWrite": 0,
+          "output": 112,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2210,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9843,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 14701,
+      "score": null,
+      "success": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-tail",
+      "window": 32768,
+      "question": "smoke",
+      "stratum": "smoke",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "`n_1E48X9HAFPEYNQHHSF609KHMEE`",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "DSA on branches selection fixable — eviction, monotone lock-in, hierarchical Zone B collapse"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 28541,
+      "resultsTruncated": 1,
+      "resultTruncationEstimated": 1,
+      "peakRequestTokens": 31090,
+      "usage": {
+        "input": 5398,
+        "output": 236,
+        "cacheRead": 52224,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 7128,
+          "usage": {
+            "input": 14,
+            "output": 127,
+            "cacheRead": 26112,
+            "cacheWrite": 0
+          },
+          "promptTokens": 26126,
+          "input": 14,
+          "cacheRead": 26112,
+          "cacheWrite": 0,
+          "output": 127,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2210,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9843,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 6113,
+          "usage": {
+            "input": 5384,
+            "output": 109,
+            "cacheRead": 26112,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31496,
+          "input": 5384,
+          "cacheRead": 26112,
+          "cacheWrite": 0,
+          "output": 109,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2210,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9843,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 13313,
+      "score": null,
+      "success": null
+    }
+  ]
+}

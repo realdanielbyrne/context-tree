@@ -14,6 +14,7 @@ import type {
   BlobStore,
   NodeId,
   NodeSummary,
+  SeqSpan,
   TraceLog,
   TreeNode,
   TreeStore,
@@ -300,7 +301,32 @@ export class TreeRetriever {
         return span === null ? [] : [span];
       }),
     );
-    const spans = clampSpans(rawSpans, options.from, options.to);
+    let { from, to } = options;
+
+    // Semantic narrowing: when the branch exceeds the token budget and a query
+    // is provided, center the result on the most relevant section.
+    if (options.maxTokens !== undefined && options.query !== undefined && depth !== 'index' && this.trace !== undefined) {
+      const fullSpans = clampSpans(rawSpans, from, to);
+      const fullRendered = renderSpans(this.trace, this.blobs, fullSpans);
+      const fullTokens = fullRendered.text.length * 0.85; // heuristic ratio
+      if (fullTokens > options.maxTokens) {
+        const centerSeq = this.findRelevantCenter(options.query, fullSpans);
+        if (centerSeq !== null) {
+          const allEvents = [...this.trace.read({ from: fullSpans[0]?.start, to: fullSpans[fullSpans.length - 1]?.end })];
+          const centerIdx = allEvents.findIndex(e => e.seq >= centerSeq);
+          // Size the band: estimate events per token, compute how many events fit
+          const tokPerEvent = fullTokens / Math.max(allEvents.length, 1);
+          const bandEvents = Math.max(3, Math.floor(options.maxTokens / tokPerEvent));
+          const halfBand = Math.floor(bandEvents / 2);
+          const startIdx = Math.max(0, centerIdx - halfBand);
+          const endIdx = Math.min(allEvents.length - 1, centerIdx + halfBand);
+          from = allEvents[startIdx]!.seq;
+          to = allEvents[endIdx]!.seq;
+        }
+      }
+    }
+
+    const spans = clampSpans(rawSpans, from, to);
 
     if (depth === 'index') {
       const rendered = renderIndex(this.requireTrace("fetchBranch depth:'index'"), this.blobs, spans);
@@ -448,6 +474,60 @@ export class TreeRetriever {
     }
     hits.sort((a, b) => b.score - a.score);
     return { hits: hits.slice(0, limit), path: 'beam' };
+  }
+
+  /**
+   * Find the most relevant event seq within a set of spans for a query.
+   * Uses the same fingerprint extraction as hybrid grep: extract distinctive
+   * terms from the query, scan events for matches, return the seq with the
+   * most hits. Returns null when no distinctive term matches.
+   */
+  /**
+   * Find the most relevant event seq within a set of spans for a query.
+   * Prioritizes specific terms (backtick-quoted, file paths) over generic ones.
+   * When multiple events match equally, picks the one closest to the query's
+   * answer (estimated by weighting later events slightly — answers tend to be
+   * specific content produced deeper in the branch).
+   */
+  private findRelevantCenter(query: string, spans: readonly SeqSpan[]): number | null {
+    if (this.trace === undefined) return null;
+    const terms = extractQueryFingerprints(query);
+    if (terms.length === 0) return null;
+
+    // Weight terms by specificity: earlier in the extraction order = more specific
+    // (backtick-quoted first, then file paths, then identifiers)
+    const termWeight = new Map<string, number>();
+    terms.forEach((t, i) => termWeight.set(t.toLowerCase(), terms.length - i));
+
+    const hits = new Map<number, number>(); // seq -> weighted score
+    for (const span of spans) {
+      for (const event of this.trace.read({ from: span.start, to: span.end })) {
+        for (const field of ['blob', 'args_blob', 'output_blob'] as const) {
+          const ref = (event as unknown as Record<string, unknown>)[field];
+          if (typeof ref !== 'string') continue;
+          const text = this.blobs.getTextPrefix(ref, 8192);
+          const lower = text.toLowerCase();
+          for (const term of terms) {
+            const lowerTerm = term.toLowerCase();
+            if (lower.includes(lowerTerm)) {
+              hits.set(event.seq, (hits.get(event.seq) ?? 0) + (termWeight.get(lowerTerm) ?? 1));
+            }
+          }
+        }
+      }
+    }
+    if (hits.size === 0) return null;
+    // Pick the LAST event at the highest score — the answer is typically in the
+    // specific action event, not the earlier discussion that mentions the same terms.
+    let bestSeq = 0;
+    let bestScore = 0;
+    for (const [seq, score] of hits) {
+      if (score > bestScore || (score === bestScore && seq > bestSeq)) {
+        bestSeq = seq;
+        bestScore = score;
+      }
+    }
+    return bestSeq;
   }
 
   private requireNode(id: NodeId): TreeNode {

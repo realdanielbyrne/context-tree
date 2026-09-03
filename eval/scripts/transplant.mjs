@@ -219,7 +219,7 @@ export const ARM_IDS = Object.freeze([
   // DS-STAR retrieval pass §7 item 1: tree prompt + raw recent events filling
   // the remaining headroom. The ONE variable vs `tree`: raw tail events in the
   // prompt. Same handlers, same contract, same rootKeep.
-  'tree-tail',
+  'tree-tail-v2',
   // DS-STAR iter 2: tree-tail without tools. Eliminates stall failure mode
   // while keeping Zone B summaries as passive context alongside raw events.
   'tree-tail-static',
@@ -435,7 +435,7 @@ export const TREE_ARMS = Object.freeze([
   'tree-verbatim',
   'tree-semantic',
   'tree-grep',
-  'tree-tail',
+  'tree-tail-v2',
   'tree-tail-static',
   'tree-tail-headline',
 ]);
@@ -651,6 +651,34 @@ function seqRangeOf(store, nodeIds) {
   };
 }
 
+/**
+ * Query rewriter: extracts searchable terms from a natural-language query
+ * using a cheap model when regex extraction finds nothing distinctive.
+ * Returns an array of grep-worthy phrases.
+ */
+function buildQueryRewriter() {
+  const keys = loadApiKeys();
+  const apiKey = keys.openrouter ?? keys.openai;
+  if (!apiKey) return undefined;
+  const viaOpenRouter = keys.openai === undefined;
+  const client = new OpenAI({ apiKey, baseURL: viaOpenRouter ? OPENROUTER_BASE_URL : undefined });
+  const model = 'z-ai/glm-5.3-flash';
+  return async (query) => {
+    const response = await client.chat.completions.create({
+      model,
+      messages: [
+        { role: 'system', content: 'Extract 3-5 distinctive searchable phrases from the user\'s query. Return ONLY a JSON array of strings. Each string should be a specific term, file path, identifier, or short phrase that would uniquely identify the relevant content in a codebase trace. No explanation.' },
+        { role: 'user', content: query },
+      ],
+      max_tokens: 200,
+      temperature: 0,
+    });
+    const text = response.choices?.[0]?.message?.content ?? '[]';
+    try { const arr = JSON.parse(text); return Array.isArray(arr) ? arr.filter((s) => typeof s === 'string' && s.length >= 2) : []; }
+    catch { return []; }
+  };
+}
+
 /** The read-only ToolContext the §9 handlers expect, over the frozen store. */
 function toolContextFor(scenario) {
   return {
@@ -663,7 +691,7 @@ function toolContextFor(scenario) {
       store: scenario.store,
       close() {},
     },
-    retriever: new TreeRetriever({ store: scenario.store, blobs: scenario.blobs, trace: scenario.trace }),
+    retriever: new TreeRetriever({ store: scenario.store, blobs: scenario.blobs, trace: scenario.trace, rewrite: buildQueryRewriter() }),
   };
 }
 
@@ -1309,7 +1337,7 @@ const TOOL_SCHEMAS_TEXT = JSON.stringify(CONTEXT_TOOL_SCHEMAS);
  * | `tree-verbatim`| Zone A policy text only (Step 4, Graft 1)     | legacy  | v3       |
  * | `tree-semantic`| search ranks by meaning, not lexical (Step 5) | legacy  | v1       |
  */
-const LEGACY_SURFACE_ARMS = new Set(['tree', 'tree-wide', 'tree-static', 'tree-verbatim', 'tree-semantic', 'tree-tail', 'tree-tail-static', 'tree-tail-headline']);
+const LEGACY_SURFACE_ARMS = new Set(['tree', 'tree-wide', 'tree-static', 'tree-verbatim', 'tree-semantic', 'tree-tail', 'tree-tail-v2', 'tree-tail-static', 'tree-tail-headline']);
 
 /** The pre-Step-3 hit shape (full `text`, full `meta`), off the SAME ranked hits `contextSearch` used. */
 async function legacySearchHits(ctx, input) {
@@ -3117,27 +3145,35 @@ async function buildArm(scenario, arm, budgets, artifacts) {
       );
       return { system: FLAT_SYSTEM, context, tools: [], meta: { chunks: artifact.chunks } };
     }
-    case 'tree-tail':
+    case 'tree-tail-v2':
     case 'tree-tail-static':
     case 'tree-tail-headline': {
-      // DS-STAR retrieval pass §7 item 1: tree prompt + raw recent events.
-      // tree-tail: with tools (can search/fetch). tree-tail-static: no tools.
-      // tree-tail-headline: no tools + headline-only Zone B (first sentence + pointers).
-      const withTools = arm === 'tree-tail';
+      // DS-STAR search-ranking epoch: tree prompt + raw recent events.
+      // tree-tail-v2: tools + keyword headlines + fingerprint search + grep + rewriter (full stack).
+      // tree-tail-static: no tools + verbose summaries (isolates tool contribution).
+      // tree-tail-headline: legacy; same as tree-tail-v2 (retained for backward compat).
+      const withTools = arm !== 'tree-tail-static';
       const { assembler, prompt } = buildTreePrompt(scenario, budgets, { withTools, systemText: treeSystemTextFor('tree') });
-      // tree-tail-headline: strip Zone B prose to first sentence + keep metadata lines.
-      // The heading (## Branch: ...) and metadata (files:, symbols:, ...) are on their
-      // own lines; the prose body is lines 2..N before the first metadata line.
-      if (arm === 'tree-tail-headline') {
+      // Keyword headlines for all tool-bearing arms: replace prose with fingerprints.
+      if (arm === 'tree-tail-v2' || arm === 'tree-tail-headline') {
+        // Keyword-list headlines: replace prose with fingerprints extracted from
+        // raw events. Each headline = heading + metadata lines + keyword fingerprints.
+        // No first-sentence prose — the keywords ARE the headline.
+        const retriever = toolContextFor(scenario).retriever;
+        const fingerprints = retriever['fingerprintCache'] ?? (() => {
+          retriever.beamSearch('warmup', { limit: 1 }); // trigger lazy cache
+          return retriever['fingerprintCache'] ?? new Map();
+        })();
         for (const block of prompt.blocks) {
           if (block.zone !== 'B' || block.id.startsWith('B:links:')) continue;
           const lines = block.text.split('\n');
           const heading = lines[0];
           const metaLines = lines.filter((l) => /^(files|symbols|tests|artifacts|decisions|open questions|fetchable nodes):/.test(l));
-          const proseLines = lines.slice(1).filter((l) => !/^(files|symbols|tests|artifacts|decisions|open questions|fetchable nodes):/.test(l));
-          const prose = proseLines.join(' ').trim();
-          const firstSentence = prose.split(/(?<=[.!?])\s/)[0] || '';
-          block.text = [heading, firstSentence, ...metaLines].filter(Boolean).join('\n');
+          // Extract node id from block id (B:<nodeId>)
+          const nodeId = block.id.startsWith('B:') ? block.id.slice(2) : null;
+          const fps = nodeId ? fingerprints.get(nodeId) : null;
+          const kwLine = fps && fps.size > 0 ? `keywords: ${[...fps].slice(0, 30).join(', ')}` : '';
+          block.text = [heading, ...metaLines, kwLine].filter(Boolean).join('\n');
           block.tokens = heuristic.count(block.text);
         }
         prompt.budgets.zoneB = prompt.blocks.filter((b) => b.zone === 'B').reduce((s, b) => s + b.tokens, 0);
@@ -3526,12 +3562,12 @@ async function runArms(scenario, options) {
       // whose store copy carries L3) overrides it rather than being clobbered.
       const built = { toolCtx, ...(await buildArm(scenario, arm, armBudgets, artifacts)) };
       const n = smoke ? SMOKE_N : questions[0]?.exploratory === true ? SPANNING_REPS : reps;
-      // `naive-full` is a PRECONDITION, not a scored arm: it exists to log one
-      // HTTP 400 per model as context-death evidence. Asking it all 12
-      // questions re-proves the same 400 twelve times and spends twelve times
-      // the tokens doing it, so it runs exactly once and is logged once.
-      const armQuestions = arm === 'naive-full' ? questions.slice(0, 1) : questions;
-      const armReps = arm === 'naive-full' ? 1 : n;
+      // `naive-full` at small windows is a PRECONDITION (context-death evidence).
+      // At windows large enough to hold the trace, run all questions and reps so
+      // the ground-truth score is comparable to other arms.
+      const nativeFitsWindow = arm === 'naive-full' && options.window >= 200000;
+      const armQuestions = arm === 'naive-full' && !nativeFitsWindow ? questions.slice(0, 1) : questions;
+      const armReps = arm === 'naive-full' && !nativeFitsWindow ? 1 : n;
       // Reply mode from --reply-mode applies to tree arms only. Baselines
       // (truncate-tail, compact-rolling, naive-full) always use no-limit because
       // reasoning models spend a tight maxReplyTokens on thinking and return
@@ -3579,6 +3615,11 @@ async function runArms(scenario, options) {
                 `score=${grade.score ?? '-'} tok=${r.usage.input + r.usage.output} req=${r.peakRequestTokens} ` +
                 `cut=${r.resultTokensTruncated} $${meters.get(model).totalUsd().toFixed(4)}`,
             );
+            // Incremental write so progress is visible and a failing run can be killed early.
+            writeFileSync(
+              join(out, name),
+              `${JSON.stringify({ budgets, compactionBuildUsd, compactionSkippedChunks, compaction: artifacts.compaction?.build ?? null, rows, partial: true }, null, 2)}\n`,
+            );
           } catch (error) {
             if (error instanceof CostCapExceededError) {
               console.log(`[cost cap] ${model} stopped at $${meters.get(model).totalUsd().toFixed(4)} (cap $${CAP_USD_PER_MODEL})`);
@@ -3620,8 +3661,6 @@ async function runArms(scenario, options) {
     }
   }
 
-  // A mocked run must never be mistakable for real data, so it lands in its
-  // own directory rather than beside the results a verdict is computed from.
   const out = join(scenario.artifacts, process.env.TRANSPLANT_MOCK === '1' ? 'results-mock' : 'results');
   mkdirSync(out, { recursive: true });
   const replyTag = options.replyMode !== undefined ? `-reply-${options.replyMode}` : '';
@@ -3630,7 +3669,7 @@ async function runArms(scenario, options) {
   const truncatedRuns = rows.filter((r) => (r.resultsTruncated ?? 0) > 0).length;
   writeFileSync(
     join(out, name),
-    `${JSON.stringify({ budgets, compactionBuildUsd, compactionSkippedChunks, compaction: artifacts.compaction?.build ?? null, rows }, null, 2)}\n`,
+    `${JSON.stringify({ budgets, compactionBuildUsd, compactionSkippedChunks, compaction: artifacts.compaction?.build ?? null, rows, partial: false }, null, 2)}\n`,
   );
   console.log(
     `\nwrote ${join(out, name)}; answering spend ${[...meters]

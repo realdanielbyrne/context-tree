@@ -1,0 +1,3841 @@
+{
+  "budgets": {
+    "window": 200000,
+    "ratio": 0.850896663206653,
+    "slackFraction": 0.1,
+    "zoneCFraction": 0.2,
+    "reply": 11752,
+    "zoneA": 23504,
+    "zoneB": 47009,
+    "zoneC": 47009,
+    "lazy": 82266,
+    "slack": 23504,
+    "K": 188037,
+    "maxReplyTokens": 10000,
+    "rootKeep": 40,
+    "rootLadder": [
+      {
+        "keep": 40,
+        "ok": true,
+        "rootBlockTokens": 6917,
+        "branchesSurviving": 21,
+        "branchSeqRange": {
+          "from": 1,
+          "to": 754
+        },
+        "overBudget": [],
+        "zoneB": 16921
+      }
+    ],
+    "rootKeepOk": true,
+    "rootBlockTokens": 6917,
+    "branchesSurviving": 21,
+    "branchSeqRange": {
+      "from": 1,
+      "to": 754
+    },
+    "overBudget": [],
+    "arm": "tree",
+    "rootSummarySha": "1eb0306cee54159eec2c5b9983e91e1d70020b5fa4e169d364c0a9aeb4074a6d"
+  },
+  "compactionBuildUsd": null,
+  "compactionSkippedChunks": [],
+  "compaction": null,
+  "rows": [
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q01-head",
+      "stratum": "head",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "In `packages/core/test/assemble.test.ts`, right after that comment block (\"...so the assertions are on block ids and token counts, not prose.\"), the import line whose path contains \"trace\" is:\n\n```ts\nimport { JsonlTraceLog } from '../src/trace/index.js';\n```\n\nSo it's `JsonlTraceLog`, imported from the trace index module (`../src/trace/index.js`). It's used by the test `harness()` helper (alongside `FsBlobStore` and `openInMemoryStore`) to append L0 events against the in-memory store.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196634,
+      "usage": {
+        "input": 200738,
+        "output": 807,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 23851,
+          "usage": {
+            "input": 200738,
+            "output": 807,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200738,
+          "input": 200738,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 807,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 23925,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "../src/trace/index.js",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q01-head",
+      "stratum": "head",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "In `packages/core/test/assemble.test.ts` — the file whose header comment ends with \"...the assertions are on block ids and token counts, not prose\" — the import from the trace path is:\n\n```ts\nimport { JsonlTraceLog } from '../src/trace/index.js';\n```\n\nSo the symbol imported is the **`JsonlTraceLog`** class (the JSONL implementation of the L0 trace log), pulled from `../src/trace/index.js`. In that test harness it's used to build the per-test fixture (`const trace = new JsonlTraceLog(join(dir, 'trace.jsonl'))`), which backs the `h.addBranch()` helper that appends user/assistant/tool events to L0 before assembling prompts.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196666,
+      "usage": {
+        "input": 8098,
+        "output": 693,
+        "cacheRead": 192640,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 11468,
+          "usage": {
+            "input": 8098,
+            "output": 693,
+            "cacheRead": 192640,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200738,
+          "input": 8098,
+          "cacheRead": 192640,
+          "cacheWrite": 0,
+          "output": 693,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 11523,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "../src/trace/index.js",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q01-head",
+      "stratum": "head",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "In `packages/core/test/assemble.test.ts`, the import is `JsonlTraceLog` from `'../src/trace/index.js'` — i.e., the JSONL trace log implementation re-exported through the core trace barrel module (`packages/core/src/trace/index.js`). It's the only import in that block whose path contains \"trace\", and it's used by the test harness's in-memory fixture (`harness()` creates a `JsonlTraceLog` alongside the `FsBlobStore` and in-memory store so tests can append L0 events and re-assemble prompts).",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196631,
+      "usage": {
+        "input": 8098,
+        "output": 863,
+        "cacheRead": 192640,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 19041,
+          "usage": {
+            "input": 8098,
+            "output": 863,
+            "cacheRead": 192640,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200738,
+          "input": 8098,
+          "cacheRead": 192640,
+          "cacheWrite": 0,
+          "output": 863,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 19093,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "../src/trace/index.js",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q01-head",
+      "stratum": "head",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "In `packages/core/test/assemble.test.ts` — whose header comment says the assertions are \"on block ids and token counts, not prose\" — the import containing \"trace\" in its path is:\n\n```ts\nimport { JsonlTraceLog } from '../src/trace/index.js';\n```\n\nSo the imported symbol is **`JsonlTraceLog`**, from `../src/trace/index.js` (resolving to `packages/core/src/trace/index.ts`). It supplies the in-memory JSONL trace-log fixture the test harness uses to append L0 events when checking Zone C behavior and cache-prefix stability.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196637,
+      "usage": {
+        "input": 8098,
+        "output": 470,
+        "cacheRead": 192640,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 9059,
+          "usage": {
+            "input": 8098,
+            "output": 470,
+            "cacheRead": 192640,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200738,
+          "input": 8098,
+          "cacheRead": 192640,
+          "cacheWrite": 0,
+          "output": 470,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 9116,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "../src/trace/index.js",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q01-head",
+      "stratum": "head",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "In `packages/core/test/assemble.test.ts`, the import block right after that doc comment (\"...the assertions are on block ids and token counts, not prose\") imports **`JsonlTraceLog`** from **`../src/trace/index.js`** — the only import whose path contains \"trace\".\n\nIt's used by the test `harness()` fixture (line ~82) as the L0 trace log backing the assembler, e.g. `const trace = new JsonlTraceLog(join(dir, 'trace.jsonl'))`, which `addBranch` appends events to and the harness passes into `ZoneAssembler` for the cache assertions.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196645,
+      "usage": {
+        "input": 8098,
+        "output": 768,
+        "cacheRead": 192640,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 12729,
+          "usage": {
+            "input": 8098,
+            "output": 768,
+            "cacheRead": 192640,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200738,
+          "input": 8098,
+          "cacheRead": 192640,
+          "cacheWrite": 0,
+          "output": 768,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 12783,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "../src/trace/index.js",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q02-head",
+      "stratum": "head",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The description of that command (seq 558) was **\"Read StubProvider and retry test examples\"**.\n\nThe command itself was:\n\n```bash\nsed -n '36,80p' packages/core/test/summarize.test.ts; sed -n '205,260p' packages/core/test/summarize.test.ts\n```\n\nIt was used to read the `StubProvider` class definition and the retry-related test examples in the summarizer test file, in preparation for adding the FM-1 truncation-retry test (the `TruncatingProvider` test that verified `provider.budgets` equals `[256, 512]` when a reply was cut off by `max_tokens`).",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196663,
+      "usage": {
+        "input": 8104,
+        "output": 278,
+        "cacheRead": 192640,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 5873,
+          "usage": {
+            "input": 8104,
+            "output": 278,
+            "cacheRead": 192640,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200744,
+          "input": 8104,
+          "cacheRead": 192640,
+          "cacheWrite": 0,
+          "output": 278,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 5929,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "Read StubProvider and retry test examples",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q02-head",
+      "stratum": "head",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The command's description was **\"Read StubProvider and retry test examples\"**.\n\nThat call (seq 558) ran `sed -n '36,80p' packages/core/test/summarize.test.ts; sed -n '205,260p' packages/core/test/summarize.test.ts` — reading the `StubProvider` test-double class definition (lines 36–80) and the existing summarizer retry/summary-versioning test examples (lines 205–260), which I then used as patterns for the FM-1 truncation-retry test added afterward.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196638,
+      "usage": {
+        "input": 8104,
+        "output": 249,
+        "cacheRead": 192640,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 5717,
+          "usage": {
+            "input": 8104,
+            "output": 249,
+            "cacheRead": 192640,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200744,
+          "input": 8104,
+          "cacheRead": 192640,
+          "cacheWrite": 0,
+          "output": 249,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 5774,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "Read StubProvider and retry test examples",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q02-head",
+      "stratum": "head",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The description was **\"Read StubProvider and retry test examples\"**.\n\nThe full tool call (seq 558) was a Bash command:\n\n```\nsed -n '36,80p' packages/core/test/summarize.test.ts; sed -n '205,260p' packages/core/test/summarize.test.ts\n```\n\nIt was used while preparing the FM-1 truncation-retry fix, to read the test file's `StubProvider` class (lines 36–80) and the existing contract-retry test examples (lines 205–260) so the new truncation-retry test could follow the same fixture patterns.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196652,
+      "usage": {
+        "input": 8104,
+        "output": 397,
+        "cacheRead": 192640,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 7629,
+          "usage": {
+            "input": 8104,
+            "output": 397,
+            "cacheRead": 192640,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200744,
+          "input": 8104,
+          "cacheRead": 192640,
+          "cacheWrite": 0,
+          "output": 397,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 7686,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "Read StubProvider and retry test examples",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q02-head",
+      "stratum": "head",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The description was: **\"Read StubProvider and retry test examples\"**\n\nThe full tool call (seq 558) was a Bash command:\n```bash\nsed -n '36,80p' packages/core/test/summarize.test.ts; sed -n '205,260p' packages/core/test/summarize.test.ts\n```\nIt was used to inspect the `StubProvider` test-double class and the retry-behavior test examples while building the FM-1 truncation-retry fix and its unit test.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196627,
+      "usage": {
+        "input": 8104,
+        "output": 255,
+        "cacheRead": 192640,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 5653,
+          "usage": {
+            "input": 8104,
+            "output": 255,
+            "cacheRead": 192640,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200744,
+          "input": 8104,
+          "cacheRead": 192640,
+          "cacheWrite": 0,
+          "output": 255,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 5712,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "Read StubProvider and retry test examples",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q02-head",
+      "stratum": "head",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The `description` on that tool call was: **\"Read StubProvider and retry test examples\"**\n\n(The full command was `sed -n '36,80p' packages/core/test/summarize.test.ts; sed -n '205,260p' packages/core/test/summarize.test.ts`, issued to pull the `StubProvider` test-double implementation and the existing retry-behavior test examples before writing the FM-1 truncation-retry test.)",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196614,
+      "usage": {
+        "input": 8104,
+        "output": 276,
+        "cacheRead": 192640,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 5940,
+          "usage": {
+            "input": 8104,
+            "output": 276,
+            "cacheRead": 192640,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200744,
+          "input": 8104,
+          "cacheRead": 192640,
+          "cacheWrite": 0,
+          "output": 276,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 5995,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "Read StubProvider and retry test examples",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q03-head",
+      "stratum": "head",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The header description of `eval/src/loop.ts` — the \"§15 harness agent loop\" docstring — cites the **`packages/mcp` contract**: its opening line reads `The §15 harness agent loop — \"implements its own minimal tool-use loop\" (packages/mcp contract)`. So the referenced contract is the MCP package's contract (`@context-tree/mcp`), not a standalone file name — the docstring doesn't name anything more specific than that. (Consistent with the eval README, which says `src/loop.ts` \"implements the minimal tool-use loop the `@context-tree/mcp` contract describes\", and the loop imports the tool handlers — `HANDLERS`, `ToolContext`, `ToolName` — from that same package.)",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196660,
+      "usage": {
+        "input": 8088,
+        "output": 2644,
+        "cacheRead": 192640,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 81084,
+          "usage": {
+            "input": 8088,
+            "output": 2644,
+            "cacheRead": 192640,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200728,
+          "input": 8088,
+          "cacheRead": 192640,
+          "cacheWrite": 0,
+          "output": 2644,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 81120,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "implements its own minimal tool-use loop",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q03-head",
+      "stratum": "head",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "<tool_call>Bash<arg_key>command</arg_key><arg_value>head -12 eval/src/loop.ts; echo ----; ls packages/mcp/src/ 2>/dev/null; grep -rln \"contract\" packages/mcp/src/ packages/mcp/*.md 2>/dev/null | head</arg_value><arg_key>description</arg_key><arg_value>Re-check loop.ts header and locate the mcp contract file</arg_value></tool_call>",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196601,
+      "usage": {
+        "input": 8088,
+        "output": 6958,
+        "cacheRead": 192640,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 218432,
+          "usage": {
+            "input": 8088,
+            "output": 6958,
+            "cacheRead": 192640,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200728,
+          "input": 8088,
+          "cacheRead": 192640,
+          "cacheWrite": 0,
+          "output": 6958,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 218468,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "implements its own minimal tool-use loop",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q03-head",
+      "stratum": "head",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The description of the §15 harness agent loop is the header comment at the top of `eval/src/loop.ts`, and it cites the **`packages/mcp` contract** — i.e., the contract implemented by the `@context-tree/mcp` package. The comment reads:\n\n> *The §15 harness agent loop — \"implements its own minimal tool-use loop\" (packages/mcp contract).*\n\nThat's also the package the loop dispatches context tools through (`import { HANDLERS, type ToolContext, type ToolName } from '@context-tree/mcp'`), so the four §9 tools (`context_fetch` / `context_search` / `context_peek` / `annotate`) run through the same handlers the MCP server registers.\n\nOne caveat: the session record only shows the reference to the package-level contract (\"packages/mcp\"), not a specific file opened inside `packages/mcp/` — so if you're looking for the exact document where that contract is written down, the session record doesn't pin it beyond the package itself. (The §-numbered design spec the comments quote from lives elsewhere in the repo; I searched for an `IMPLEMENTATION_PLAN.md` at one point and it didn't exist — only `CLAUDE.md` and `README.md` were at the repo root.)",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196772,
+      "usage": {
+        "input": 8088,
+        "output": 1530,
+        "cacheRead": 192640,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 75648,
+          "usage": {
+            "input": 8088,
+            "output": 1530,
+            "cacheRead": 192640,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200728,
+          "input": 8088,
+          "cacheRead": 192640,
+          "cacheWrite": 0,
+          "output": 1530,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 75688,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "implements its own minimal tool-use loop",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q03-head",
+      "stratum": "head",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "<tool_call>Bash (seq 755)\nargs: {\"command\":\"sed -n '1,20p' eval/src/loop.ts; echo ---; grep -n \\\"contract\\\" eval/src/loop.ts | head -10\",\"description\":\"Re-read loop.ts header description and contract mentions\"}",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196563,
+      "usage": {
+        "input": 8088,
+        "output": 2070,
+        "cacheRead": 192640,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 60845,
+          "usage": {
+            "input": 8088,
+            "output": 2070,
+            "cacheRead": 192640,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200728,
+          "input": 8088,
+          "cacheRead": 192640,
+          "cacheWrite": 0,
+          "output": 2070,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 60893,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "implements its own minimal tool-use loop",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q03-head",
+      "stratum": "head",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The header comment on `eval/src/loop.ts` — the §15 harness agent loop — referenced the **`packages/mcp` contract**, quoted as *\"implements its own minimal tool-use loop\" (packages/mcp contract)*.\n\nThat's a package-level reference rather than a single named file: it points to the `@context-tree/mcp` package, whose `HANDLERS` (plus `ToolContext` and `ToolName` types) the loop",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196596,
+      "usage": {
+        "input": 170676,
+        "output": 857,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 31575,
+          "usage": {
+            "input": 170676,
+            "output": 857,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 170676,
+          "input": 170676,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 857,
+          "toolCalls": [],
+          "stopReason": "error",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 31623,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "implements its own minimal tool-use loop",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q04-tail",
+      "stratum": "tail",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The message echoed was **`synced`**.\n\nThe command was:\n\n```bash\ncp reports/metrics/tree-vs-transcript.html /private/tmp/claude-501/.../scratchpad/tree-vs-transcript.html && echo synced\n```\n\n(described as \"Sync report to artifact publish path\"), and it output `synced` to confirm the copy into the scratchpad succeeded before the artifact was republished.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196591,
+      "usage": {
+        "input": 200732,
+        "output": 648,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 24103,
+          "usage": {
+            "input": 200732,
+            "output": 648,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200732,
+          "input": 200732,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 648,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 24148,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "Sync report to artifact publish path",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q04-tail",
+      "stratum": "tail",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The command was:\n\n```bash\ncp reports/metrics/tree-vs-transcript.html /private/tmp/claude-501/.../scratchpad/tree-vs-transcript.html && echo synced\n```\n\nand the message echoed to confirm the transfer was **`synced`** (this was the copy into the scratchpad so the updated report could be republished to the same artifact URL).",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196584,
+      "usage": {
+        "input": 200732,
+        "output": 533,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 22139,
+          "usage": {
+            "input": 200732,
+            "output": 533,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200732,
+          "input": 200732,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 533,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 22184,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Sync report to artifact publish path",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q04-tail",
+      "stratum": "tail",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The echoed confirmation message was **`synced`**.\n\nThis occurred in the command that copied the updated report from the repo into the scratchpad publish path:\n\n```bash\ncp reports/metrics/tree-vs-transcript.html /private/tmp/claude-501/.../scratchpad/tree-vs-transcript.html && echo synced\n```\n\nwhich returned `synced` — confirming the copy succeeded just before the artifact was republished (label `v4-loops-4-6`). (The earlier transfer in the opposite direction — scratchpad → `reports/metrics/` — used the same `echo synced` confirmation.)",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196632,
+      "usage": {
+        "input": 28,
+        "output": 715,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 13524,
+          "usage": {
+            "input": 28,
+            "output": 715,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200732,
+          "input": 28,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 715,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 13582,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Sync report to artifact publish path",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q04-tail",
+      "stratum": "tail",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The message echoed was **`synced`**.\n\nThe command was:\n\n```bash\ncp reports/metrics/tree-vs-transcript.html /private/tmp/claude-501/-Users-danielbyrne-GitHub-rpm-context-tree/4bf1e198-8af4-47e0-ae99-fa2ca13f1400/scratchpad/tree-vs-transcript.html && echo synced\n```\n\n(described as \"Sync report to artifact publish path\"), and the tool returned `synced` — confirming the updated report from `reports/metrics/` had been copied into the scratchpad so it could be republished to the artifact at the same URL.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196645,
+      "usage": {
+        "input": 28,
+        "output": 628,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 11553,
+          "usage": {
+            "input": 28,
+            "output": 628,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200732,
+          "input": 28,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 628,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 11607,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "Sync report to artifact publish path",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q04-tail",
+      "stratum": "tail",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "`synced`\n\nThat was the output of the command that copied the report:\n\n```bash\ncp reports/metrics/tree-vs-transcript.html /private/tmp/claude-501/.../scratchpad/tree-vs-transcript.html && echo synced\n```\n\nThe `&& echo synced` only fires if the `cp` succeeded, so the single word \"synced\" confirmed the transfer to the scratchpad before the artifact was republished from that path.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196598,
+      "usage": {
+        "input": 28,
+        "output": 225,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 5725,
+          "usage": {
+            "input": 28,
+            "output": 225,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200732,
+          "input": 28,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 225,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 5783,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Sync report to artifact publish path",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q05-tail",
+      "stratum": "tail",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The only cache-free point identified was **write time** — selection that happens once, at a phase close, when new content is being *appended* to the prefix rather than rewriting an already-cached span.\n\nThe reasoning from that discussion: appending to the prefix costs no cache (the cached bytes ahead of it stay a valid byte-prefix), whereas any per-turn selection *inside* the cached span rewrites prompt bytes mid-prefix and voids the byte-prefix cache — the same law measured four times (FM-2, FM-3, the header seqRange, FM-7). So token-level DSA is viable exactly where the tree already does its one-shot compression: **inside the summarizer, at summarize-on-close** — extractive scoring of which raw lines/tokens survive into a branch's summary (and into the FM-6 Zone C token-budget window).\n\nThe contrast drawn was one-shot compression at epoch boundaries vs. per-turn attention emulation: in-model DSA selects per query against fully-retained KV state, but at the context layer the only place selection doesn't fight the cache is when the tokens are entering the record for the first time.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196740,
+      "usage": {
+        "input": 28,
+        "output": 639,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 13676,
+          "usage": {
+            "input": 28,
+            "output": 639,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200732,
+          "input": 28,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 639,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 13729,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "DSA on context tokens",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q05-tail",
+      "stratum": "tail",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "**Write time** — the moment content enters the cached prefix, i.e., at a phase close.\n\nThe reasoning: selection is only free of cache consequences when nothing already cached is being rewritten. At write time, you're choosing which tokens get compressed *before* they're appended, so the cache never sees the churn — there's no prefix violation to pay for. That's exactly the summarize-on-close cadence (v5.4), which is why the legitimate home for DSA-on-tokens was identified as **inside the summarizer**: extractive scoring of which raw lines/tokens survive into a branch's summary (and, as a named follow-up, into the FM-6 Zone C token-budget window).\n\nEverything else is spoken for:\n\n- **Read time (per-turn, in the prompt)** — selection rewrites cached bytes mid-prefix, voiding the byte-prefix cache. That's the volatile-bit law, measured four times (FM-2, FM-3, the header seqRange, FM-7). And the cache-safe variant provably never fires (FM-8's monotone lock-in).\n- **Read time (in the model)** — attention already does per-query token selection over the retained KV cache for free; once v5.6 keeps the transcript-equivalent in a cached prefix, in-model DSA *is* running over the context. No prompt-layer work needed.\n\nSo the principle: **sparsity per query belongs to the model; sparsity per epoch belongs to the context layer** — and the only epoch where token selection costs nothing is the write.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196828,
+      "usage": {
+        "input": 28,
+        "output": 794,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 18165,
+          "usage": {
+            "input": 28,
+            "output": 794,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200732,
+          "input": 28,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 794,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 18218,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "DSA on context tokens",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q05-tail",
+      "stratum": "tail",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "**Write time** — the one cache-free point identified for token-level selection.\n\nThe reasoning from that discussion: selection is only cache-free when it happens *once, at a phase close, appending to the prefix* — because appending never rewrites cached bytes, it costs no cache epoch. That's exactly what summarize-on-close (v5.4) already does. So the legitimate home for DSA-on-tokens is inside the summarizer: extractive scoring of which raw lines/tokens survive into a branch's summary, and into the FM-6 Zone C token-budget window. One-shot compression at epoch boundaries, not per-turn attention emulation.\n\nThe contrast that makes this the *only* viable point: anywhere in the cached span, per-turn token selection rewrites prompt bytes mid-prefix and voids the byte-prefix cache (the volatile-bit law, measured four times — FM-2, FM-3, the header seqRange, FM-7). And the cache-safe workaround (monotone membership) provably never selects at all (FM-8). So token-level DSA works either **per query inside the model** (where it's free and non-destructive — and effectively already happens over our retained cached prefix) or **per epoch at write time in the context layer** — which is what the summarizer is.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196776,
+      "usage": {
+        "input": 28,
+        "output": 469,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 11108,
+          "usage": {
+            "input": 28,
+            "output": 469,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200732,
+          "input": 28,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 469,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 11161,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "DSA on context tokens",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q05-tail",
+      "stratum": "tail",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "**Write time** — selection that happens once, at a phase close, as content is being appended to the cached prefix. Because the selection result is *new* bytes being added (rather than a reshuffling of bytes already in the cached span), it costs no cache: there's nothing being invalidated.\n\nConcretely, that's summarize-on-close: when a branch closes, the summarizer performs one-shot extractive scoring of which raw lines/tokens survive into the branch's summary (and, per the named follow-up, into the FM-6 Zone C token-budget window). So the legitimate home for DSA-on-tokens is **inside the summarizer at epoch boundaries** — compression applied once per epoch, never per-turn attention emulation.\n\nThe contrast that makes this the *only* such point: per-turn token selection would rewrite prompt bytes mid-prefix, voiding the byte-prefix cache (the law measured four times — FM-2, FM-3, the header seqRange, FM-7), and the cache-safe per-turn variant provably degenerates to no selection (FM-8's monotone lock-in). In-model DSA can select per query because its KV cache retains everything and selection is free recomputation; the context layer only gets a free selection event when it's already writing new bytes anyway — which is exactly what a phase close is.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196782,
+      "usage": {
+        "input": 28,
+        "output": 541,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 13104,
+          "usage": {
+            "input": 28,
+            "output": 541,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200732,
+          "input": 28,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 541,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 13160,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "DSA on context tokens",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q05-tail",
+      "stratum": "tail",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "Write time — the one point in the pipeline where token selection happens without touching a cached prefix.\n\nThe reasoning from that discussion: per-turn token selection rewrites prompt bytes mid-prefix, voiding the byte-prefix cache (the failure measured four times as FM-2/FM-3/header seqRange/FM-7), and the cache-safe per-turn variant provably degenerates to no selection at all (FM-8's monotone lock-in). But selection that happens **once, at a phase close, appending to the prefix** costs no cache at all — that's exactly what summarize-on-close already does.\n\nSo the legitimate home for DSA-on-tokens is inside the summarizer: extractive scoring of which raw lines/tokens survive into a branch's summary (and into the FM-6 Zone C window). One-shot compression at epoch boundaries, not per-turn attention emulation — sparsity per query belongs to the model; sparsity per epoch belongs to the context layer.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196704,
+      "usage": {
+        "input": 28,
+        "output": 462,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 9474,
+          "usage": {
+            "input": 28,
+            "output": 462,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200732,
+          "input": 28,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 462,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 9533,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "DSA on context tokens",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q06-tail",
+      "stratum": "tail",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The comment attached to that block in `zoneC()` (`packages/core/src/assemble/assembler.ts`) reads:\n\n```\n// The descendant map goes LAST: it grows with every edit, and churn ahead\n// of the append-only event stream voids the events' cache (see\n// renderActiveMap). Callers that cache Zone C must keep it after their\n// moving breakpoint.\n```\n\nSo the requirement it states: **callers that cache Zone C must keep the `C:map` block after their moving breakpoint** — i.e., excluded from the cached span.\n\nThe reasoning behind it: the descendant map grows on every file edit, so unlike the event blocks (append-only within a phase), its text churns turn over turn. If it sat ahead of the cache breakpoint, that churn would no longer be a byte-prefix match against the previously cached span, voiding the cache of everything before it — the same volatile-bit law measured live as FM-7 (iter8-rep1: cacheRead pinned at the A+B prefix while cacheWrite re-billed the whole zone during edit turns). That's why `toZoneCCachedRequest` in `eval/src/loop.ts` filters `C:map:` blocks out of the cached sequence and folds them, unmarked, into the trailing message with the tail.\n\nThe matching comment on `renderActiveMap` in `format.ts` says the same thing from the renderer's side: seq ranges are fine *there* because \"this block is expected to change and is never cached.\"",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196834,
+      "usage": {
+        "input": 42,
+        "output": 1024,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 17513,
+          "usage": {
+            "input": 42,
+            "output": 1024,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200746,
+          "input": 42,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 1024,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 17563,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Callers that cache Zone C must keep it after their moving breakpoint.",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q06-tail",
+      "stratum": "tail",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The comment reads:\n\n```ts\n// The descendant map goes LAST: it grows with every edit, and churn ahead\n// of the append-only event stream voids the events' cache (see\n// renderActiveMap). Callers that cache Zone C must keep it after their\n// moving breakpoint.\n```\n\nSo the stated requirement for caching callers is: **keep the `C:map` block after their moving cache breakpoint** — i.e., exclude it from the cached span.\n\nThe reasoning behind it: the map (descendant index) grows with every file edit, and because Anthropic cache lookups match previously cached prefixes byte-for-byte, any churn *ahead* of stable bytes voids them. Since the event blocks in Zone C are append-only within a phase, putting the volatile map last — after the events — lets a caller place its breakpoint on the last event block and bill only the map + tail as fresh (this is exactly what `toZoneCCachedRequest` in `eval/src/loop.ts` does: it filters out `C:map:` blocks from the cached set and joins them with the tail after the breakpoint). The comment on `renderActiveMap` itself in `format.ts` carries the same contract, noting seq ranges are acceptable there precisely because the block is expected to change and is never cached.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196790,
+      "usage": {
+        "input": 42,
+        "output": 938,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 21789,
+          "usage": {
+            "input": 42,
+            "output": 938,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200746,
+          "input": 42,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 938,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 21833,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Callers that cache Zone C must keep it after their moving breakpoint.",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q06-tail",
+      "stratum": "tail",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The comment above the `C:map` push in `zoneC()` states:\n\n> \"The descendant map goes LAST: it grows with every edit, and churn ahead of the append-only event stream voids the events' cache (see renderActiveMap). Callers that cache Zone C must keep it after their moving breakpoint.\"\n\nSo the requirement for cache-aware callers is: **the `C:map` block must be kept *after* their moving cache breakpoint** — i.e., emitted outside the cached span (which `toZoneCCachedRequest` in `eval/src/loop.ts` honors by filtering `C:map:` blocks out of the cached sequence and joining them, with the tail, into one trailing unmarked message).\n\nThe reasoning chain in the comment: the descendant map grows on every file edit, so if it sat ahead of the breakpoint (as it originally did as Zone C's *first* block), its churn would break the byte-prefix match and void the cache of the append-only event stream behind it — the same volatile-bit law behind FM-2 and the header fix, measured live in iter8-rep1 (cacheRead pinned at the A+B prefix while cacheWrite re-billed the whole zone during edit turns). The same law is restated on `renderActiveMap` itself in `format.ts`: its seqRanges are fine precisely because the block \"is expected to change and is never cached.\"",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196809,
+      "usage": {
+        "input": 42,
+        "output": 772,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 15223,
+          "usage": {
+            "input": 42,
+            "output": 772,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200746,
+          "input": 42,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 772,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 15264,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "Callers that cache Zone C must keep it after their moving breakpoint.",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q06-tail",
+      "stratum": "tail",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The comment states:\n\n> \"Callers that cache Zone C must keep it after their moving breakpoint.\"\n\nThe full comment above the block reads:\n\n```\n// The descendant map goes LAST: it grows with every edit, and churn ahead\n// of the append-only event stream voids the events' cache (see\n// renderActiveMap). Callers that cache Zone C must keep it after their\n// moving breakpoint.\n```\n\nSo the requirement is: the `C:map:${active.id}` block must be placed **after** the moving cache breakpoint in any request the caller builds. The rationale is the volatile-bit law that loop 5 measured three times — the map grows on every file edit, so if it sat ahead of the breakpoint, its churn would invalidate the byte-prefix and void the cache of the append-only event stream behind it (measured live in iter8-rep1: cacheRead pinned at the A+B prefix while cacheWrite re-billed the whole growing zone, 10.8k→16.3k tokens/turn).\n\nThis is why `toZoneCCachedRequest()` in `eval/src/loop.ts` partitions Zone C: it filters out `C:map:` blocks from the cached run of per-event messages (where the moving breakpoint lands on the last cached block) and appends them, along with the ephemeral tail, into one trailing **unmarked** message after the breakpoint. The map rides uncached, so its per-edit churn costs nothing but its own tokens.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196826,
+      "usage": {
+        "input": 42,
+        "output": 603,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 14133,
+          "usage": {
+            "input": 42,
+            "output": 603,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200746,
+          "input": 42,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 603,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 14173,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "Callers that cache Zone C must keep it after their moving breakpoint.",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q06-tail",
+      "stratum": "tail",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "In `packages/core/src/assemble/assembler.ts`, the comment above the `C:map:${active.id}` push reads:\n\n```\n// The descendant map goes LAST: it grows with every edit, and churn ahead\n// of the append-only event stream voids the events' cache (see\n// renderActiveMap). Callers that cache Zone C must keep it after their\n// moving breakpoint.\n```\n\nSo the stated requirement is: **\"Callers that cache Zone C must keep it after their moving breakpoint\"** — i.e., the `C:map` block (the descendant index, which grows with every file edit) must sit *outside* the cached span, after the moving `cacheBreakpoint`, never before it. If churn-prone map bytes were placed ahead of the cached append-only event stream, the previously cached prefix would no longer match byte-for-byte and the whole zone's cache would be voided — the same volatile-bit law measured as FM-7 (iter8-rep1: cacheRead pinned at 6,568 while cacheWrite re-billed 10.8k→16.3k each edit turn).\n\nThe paired docstring on `renderActiveMap()` in `format.ts` carries the same contract: the map is \"rendered after the event stream so its per-edit churn never invalidates the cached events before it,\" and its seq ranges are explicitly fine \"because this block is expected to change and is never cached.\"\n\nAnd the eval side honors it: `toZoneCCachedRequest()` partitions Zone C with `const cached = zoneC.filter((block) => !block.id.startsWith('C:map:'))`, puts the breakpoint on the last cached block, and joins `C:map` + tail into the single trailing unmarked message.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196885,
+      "usage": {
+        "input": 42,
+        "output": 925,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 18473,
+          "usage": {
+            "input": 42,
+            "output": 925,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200746,
+          "input": 42,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 925,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 18528,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Callers that cache Zone C must keep it after their moving breakpoint.",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q07-deep",
+      "stratum": "deep",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "Quick correction on the premise: in the generated `hidden_test.py`, all imports appear at the top of the file, *before* any test cases run — nothing is imported after the `numparse` cases. The generated layout is:\n\n```python\nimport sys\nfrom slugify import slugify\nfrom wordwrap import wrap_text\nfrom numparse import parse_count\nfrom dedent import dedent_text\n\nfailures = 0\n# ... then the try/except test cases for slugify, wordwrap, numparse, dedent\n```\n\nSo the module imported immediately before `from wordwrap import wrap_text` is **`slugify`** (via `from slugify import slugify`) — matching the module-by-module work order the task prescribes (slugify → wordwrap → numparse → dedent).",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196685,
+      "usage": {
+        "input": 34,
+        "output": 1420,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 24710,
+          "usage": {
+            "input": 34,
+            "output": 1420,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200738,
+          "input": 34,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 1420,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 24755,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "from dedent import dedent_text",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q07-deep",
+      "stratum": "deep",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "`from slugify import slugify` — the **slugify** module.\n\nOne clarification on the phrasing: in the generated `hidden_test.py`, all imports are emitted at the top of the file, *before* any test cases run — nothing is imported after the numparse cases. The generated script's opening block is:\n\n```python\nimport sys\nfrom slugify import slugify\nfrom wordwrap import wrap_text\nfrom numparse import parse_count\nfrom dedent import dedent_text\n\nfailures = 0\n```\n\nSo the line immediately preceding `from wordwrap import wrap_text` is the slugify import (with `import sys` first overall). The numparse *test cases* (`parse_count(\"1,234,567\")`, `parse_count(\"2.5k\")`, etc.) appear later in the file, executed in module order: slugify → wordwrap → numparse → dedent.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196706,
+      "usage": {
+        "input": 34,
+        "output": 1793,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 32876,
+          "usage": {
+            "input": 34,
+            "output": 1793,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200738,
+          "input": 34,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 1793,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 32916,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "from dedent import dedent_text",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q07-deep",
+      "stratum": "deep",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "In the generated hidden test script, the import block is:\n\n```python\nimport sys\nfrom slugify import slugify\nfrom wordwrap import wrap_text\nfrom numparse import parse_count\nfrom dedent import dedent_text\n```\n\nSo the import immediately preceding `from wordwrap import wrap_text` is **`from slugify import slugify`** (after the initial `import sys`).\n\nOne clarification on ordering, in case it matters for what you're checking: the imports all appear at the top of the generated `hidden_test.py`, *before* any of the test cases run — the numparse/dedent case blocks are appended after the imports, not interleaved with them. The case groups execute in the order slugify → wordwrap → numparse → dedent, each accumulating failures before the final `sys.exit(1)` if any failed.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196692,
+      "usage": {
+        "input": 34,
+        "output": 776,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 15439,
+          "usage": {
+            "input": 34,
+            "output": 776,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200738,
+          "input": 34,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 776,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 15484,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "from dedent import dedent_text",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q07-deep",
+      "stratum": "deep",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "In the generated `hidden_test.py`, the import block is:\n\n```python\nimport sys\nfrom slugify import slugify\nfrom wordwrap import wrap_text\nfrom numparse import parse_count\nfrom dedent import dedent_text\n```\n\nSo the module imported immediately before `from wordwrap import wrap_text` is **`slugify`** (`from slugify import slugify`).\n\nOne clarification on the question's framing: the numparse test cases don't sit adjacent to that import — all the imports are emitted at the top of the script, before any test cases run. The case blocks are appended afterwards in module order (slugify's 4 cases, then wordwrap's 4, then numparse's 5, then dedent's 4), each wrapped in a `try/except` that records `FAIL [module] ...` lines so the generator's self-verification can assert every module's bug is individually caught before writing the scenario.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196712,
+      "usage": {
+        "input": 34,
+        "output": 542,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 11645,
+          "usage": {
+            "input": 34,
+            "output": 542,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200738,
+          "input": 34,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 542,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 11687,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "from dedent import dedent_text",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q07-deep",
+      "stratum": "deep",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "`from slugify import slugify` — the `slugify` module.\n\nThe full import block emitted by `build_hidden_test()` is, in order:\n\n```python\nimport sys\nfrom slugify import slugify\nfrom wordwrap import wrap_text\nfrom numparse import parse_count\nfrom dedent import dedent_text\n```\n\nSo immediately preceding the wordwrap import is the slugify import. (One note: all imports sit at the top of the generated `hidden_test.py`, before any test cases run — the numparse/dedent cases are just `try/except` blocks appended after `failures = 0`, so no module is imported after the numparse test cases themselves.)",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196658,
+      "usage": {
+        "input": 34,
+        "output": 881,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 18171,
+          "usage": {
+            "input": 34,
+            "output": 881,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200738,
+          "input": 34,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 881,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 18206,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "from dedent import dedent_text",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q08-deep",
+      "stratum": "deep",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "`['parseThing']`.\n\nIn that test (in `packages/core/test/summarize.test.ts`), the stub model claims `symbols: ['ghost']` alongside the invented span `files: [{ path: 'src/a.ts', start_line: 900, end_line: 901, symbol: 'ghost' }]`, but the assertion is:\n\n```ts\nexpect(summary.meta.symbols).toEqual(['parseThing']);\n```\n\n`'parseThing'` is the real symbol the tree's D9 tree-sitter pass derived for the fixture branch. The test's point is that symbol/span claims are tree-owned, not model-owned — the model's hallucinated `'ghost'` is discarded and the authoritative tree-sitter values are stored instead (same override that produces `meta.files === [A_SPAN]`), because §9 only treats rehydration pointers as verifiable if the tree produced them.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196701,
+      "usage": {
+        "input": 38,
+        "output": 590,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 12228,
+          "usage": {
+            "input": 38,
+            "output": 590,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200742,
+          "input": 38,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 590,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 12275,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "parseThing",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q08-deep",
+      "stratum": "deep",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "`['parseThing']`.\n\nIn that test (in `packages/core/test/summarize.test.ts` — \"stores the tree-sitter spans, not the model's\"), the stub model returns invented metadata — `files: [{ path: 'src/a.ts', start_line: 900, end_line: 901, symbol: 'ghost' }]` and `symbols: ['ghost']` — for a path that genuinely is inside the branch, so there's no contract violation to trigger. The assertions are:\n\n```ts\nexpect(summary.meta.files).toEqual([A_SPAN]);        // the tree's authoritative span\nexpect(summary.meta.symbols).toEqual(['parseThing']); // the real symbol, not 'ghost'\nexpect(summary.meta.node_ids).toEqual([fx.p1, fx.f1]); // prose-side fields still come from the model\n```\n\nThe point of the test: `files` and `symbols` are **tree-owned fields** (D9 tree-sitter output), so the summarizer replaces whatever the model sent with the store's verified values — `A_SPAN` and `parseThing`. A hallucinated `'ghost'` symbol, if stored, would poison every §9 rehydration pointer. The model's own prose-side fields (like `node_ids` content, decisions, open questions) are the only ones that pass through.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196793,
+      "usage": {
+        "input": 38,
+        "output": 732,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 14422,
+          "usage": {
+            "input": 38,
+            "output": 732,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200742,
+          "input": 38,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 732,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 14474,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "parseThing",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q08-deep",
+      "stratum": "deep",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "`['parseThing']`.\n\nIn that test (\"stores the tree-sitter spans, not the model's…\"), the stub model replies with invented metadata — a file span at `src/a.ts:900-901` with symbol `'ghost'`, plus `symbols: ['ghost']`. The assertions then verify the tree overrides the model on the D9-owned fields:\n\n```js\nexpect(summary.meta.files).toEqual([A_SPAN]);\nexpect(summary.meta.symbols).toEqual(['parseThing']);\n// Prose-side fields still come from the model — it is the only source for them.\nexpect(summary.meta.node_ids).toEqual([fx.p1, fx.f1]);\n```\n\nSo `'ghost'` never survives: `symbols` is replaced wholesale with the tree-sitter-derived symbol from the fixture (`'parseThing'`), just as `files` is replaced with the real span `A_SPAN`. The point of the test is that the model only owns the prose-side fields (`text`, `tests`, `decisions`, `open_questions`, `artifacts`) — anything the tree can verify itself (spans, symbols, paths) is authoritative from the tree, which is what keeps §9's rehydration pointers trustworthy.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196765,
+      "usage": {
+        "input": 38,
+        "output": 626,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 14973,
+          "usage": {
+            "input": 38,
+            "output": 626,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200742,
+          "input": 38,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 626,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 15024,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "parseThing",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q08-deep",
+      "stratum": "deep",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "`['parseThing']` — the tree's real symbol, not the model's invented `'ghost'`.\n\nThe test (in `packages/core/test/summarize.test.ts`, \"stores the tree-sitter spans, not the model's...\") has the stub provider deliberately hallucinate both a bogus span (`{ path: 'src/a.ts', start_line: 900, end_line: 901, symbol: 'ghost' }`) and a bogus symbol (`symbols: ['ghost']`). The assertions then verify the summarizer overwrites both model-owned inventions with D9 tree-sitter ground truth:\n\n- `summary.meta.files` → `[A_SPAN]` (the fixture's real span constant)\n- `summary.meta.symbols` → `['parseThing']`\n- `summary.meta.node_ids` → `[fx.p1, fx.f1]` — the prose-side fields that legitimately come from the model\n\nThe comment in the test explains why: this is \"exactly the plausible hallucination that would make every rehydration pointer untrustworthy if it were stored.\" The tree is the authority on spans/symbols; the model only owns the fields the tree cannot know (text, decisions, open questions, etc.).",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196766,
+      "usage": {
+        "input": 38,
+        "output": 816,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 16030,
+          "usage": {
+            "input": 38,
+            "output": 816,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200742,
+          "input": 38,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 816,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 16080,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "parseThing",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q08-deep",
+      "stratum": "deep",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "`['parseThing']`.\n\nThe test ('stores the tree-sitter spans, not the model's…' in `packages/core/test/summarize.test.ts`) has the stub model claim `symbols: ['ghost']` — an invented symbol at invented lines (900–901 of `src/a.ts`) inside a path that legitimately belongs to the branch, so no contract violation fires. But `symbols` is one of the two tree-owned fields (along with `files`): `summaryMetaFrom` replaces whatever the model sent wholesale with the values D9 (tree-sitter span ingestion) produced. The assertion is:\n\n```typescript\nexpect(summary.meta.symbols).toEqual(['parseThing']);\n```\n\nThat's the point of the test — the invented `'ghost'` is exactly the plausible hallucination that would make every rehydration pointer untrustworthy if it were stored, so the model's version is dropped and the tree's verified symbol is kept. (Its sibling assertion checks `meta.files` the same way: `[A_SPAN]` instead of the model's fabricated span.) Only prose-side fields like `open_questions`, `decisions`, and `node_ids` still come from the model.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196761,
+      "usage": {
+        "input": 38,
+        "output": 604,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 14693,
+          "usage": {
+            "input": 38,
+            "output": 604,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200742,
+          "input": 38,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 604,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 14744,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "parseThing",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q09-deep",
+      "stratum": "deep",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "`PHASE_TYPES`.\n\nThe import block at the top of `packages/core/src/config.ts` (the module whose doc comment begins \"§11 configuration\") reads:\n\n```ts\nimport { PHASE_TYPES, type PhaseType } from './contracts/tree.js';\n```\n\nSo alongside the `PhaseType` type, the module imports `PHASE_TYPES` from `./contracts/tree.js` (a value — the set of valid phase types — used, among other things, to validate the `DEFAULT_TOOL_PHASE` mapping).\n\nOne precision note: in this session I only *read* that file (while investigating the tool→phase mapping that drives segmentation); `DEFAULT_TOOL_PHASE` itself was never edited — the session's core edits were to `assemble/format.ts`, `assemble/assembler.ts`, and `summarize/summarizer.ts`. But the import line above is what the file declares, and `PHASE_TYPES` is the only other name it pulls from `./contracts/tree.js`.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196729,
+      "usage": {
+        "input": 50,
+        "output": 1004,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 20970,
+          "usage": {
+            "input": 50,
+            "output": 1004,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200754,
+          "input": 50,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 1004,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 21015,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "PHASE_TYPES",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q09-deep",
+      "stratum": "deep",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "From that module (`packages/core/src/config.ts`, the one whose header comment reads \"§11 configuration\"), the import line is:\n\n```typescript\nimport { PHASE_TYPES, type PhaseType } from './contracts/tree.js';\n```\n\nSo the name imported alongside `PhaseType` was **`PHASE_TYPES`**. One precision worth noting: `PHASE_TYPES` is a value (the frozen list of phase types), not a type — it's imported without the `type` modifier, while `PhaseType` is the only `type`-qualified import on that line.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196646,
+      "usage": {
+        "input": 50,
+        "output": 601,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 14070,
+          "usage": {
+            "input": 50,
+            "output": 601,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200754,
+          "input": 50,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 601,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 14126,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "PHASE_TYPES",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q09-deep",
+      "stratum": "deep",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "`PHASE_TYPES` — the import line at the top of `packages/core/src/config.ts` was:\n\n```ts\nimport { PHASE_TYPES, type PhaseType } from './contracts/tree.js';\n```\n\nTwo small clarifications: `PHASE_TYPES` is a runtime constant (the set of valid phase types), not a type — `PhaseType` was the only type-only import on that line. And strictly speaking I read that file (to trace the tool→phase mapping behind the segmenter) rather than editing `DEFAULT_TOOL_PHASE` — that export was never modified during the session.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196649,
+      "usage": {
+        "input": 50,
+        "output": 934,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 18834,
+          "usage": {
+            "input": 50,
+            "output": 934,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200754,
+          "input": 50,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 934,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 18881,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "PHASE_TYPES",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q09-deep",
+      "stratum": "deep",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "`PHASE_TYPES` — the import in `packages/core/src/config.ts` (the module opening with the \"§11 configuration\" comment) reads:\n\n```ts\nimport { PHASE_TYPES, type PhaseType } from './contracts/tree.js';\n```\n\nOne precision worth noting: `PHASE_TYPES` is actually a runtime value (the set of phase-type names used by `DEFAULT_TOOL_PHASE`'s consumers), not a type — it's imported alongside the `type PhaseType` modifier import. Also, to be exact about the session: I read that import block while investigating the tool→phase mapping for the segmenter (to understand how branches form, for the >k-branch task design); I didn't edit `DEFAULT_TOOL_PHASE` itself.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196682,
+      "usage": {
+        "input": 50,
+        "output": 828,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 19234,
+          "usage": {
+            "input": 50,
+            "output": 828,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200754,
+          "input": 50,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 828,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 19277,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "PHASE_TYPES",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q09-deep",
+      "stratum": "deep",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "One clarification first: in the session I only *read* that module (`packages/core/src/config.ts`, whose header comment begins \"§11 configuration\") to inspect the `DEFAULT_TOOL_PHASE` tool→phase mapping — I never edited that export. The changes I made were in `format.ts`, `assembler.ts`, `summarizer.ts`, `loop.ts`, and the test files.\n\nAs for the import line at the top of that file, it reads:\n\n```ts\nimport { PHASE_TYPES, type PhaseType } from './contracts/tree.js';\n```\n\nSo there's a small false premise in the question: `PhaseType` is the *only* type imported from `'./contracts/tree.js'`. The name imported alongside it is `PHASE_TYPES`, but that's a runtime value (the frozen set of valid phase types), not a type. The file's other imports — `readFileSync` from `node:fs`, `dirname`/`isAbsolute`/`resolve` from `node:path`, and `ConfigError` from `'./contracts/errors.js'` — come from different modules and aren't types either.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196760,
+      "usage": {
+        "input": 50,
+        "output": 1073,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 25064,
+          "usage": {
+            "input": 50,
+            "output": 1073,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200754,
+          "input": 50,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 1073,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 25106,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "PHASE_TYPES",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q10-spanning",
+      "stratum": "spanning",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The path is **`src/a.ts`**.\n\nIn that test (`packages/core/test/summarize.test.ts` — \"stores the tree-sitter spans, not the model's\"), the stub summarizer's `replyBody` override invents:\n\n```python\nfiles: [{ path: 'src/a.ts', start_line: 900, end_line: 901, symbol: 'ghost' }],\nsymbols: ['ghost'],\n```\n\nSo it's a fabricated entry — real-ish path (`src/a.ts`), invented line span (900–901), and the invented symbol `ghost`. The test then asserts the stored summary contains the tree's authoritative values instead (`A_SPAN` and `'parseThing'`), proving D9 drops the model's `files`/`symbols` fields and re-derives them from tree-sitter spans — the hallucination-proofing that keeps §9's rehydration pointers trustworthy.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196707,
+      "usage": {
+        "input": 40,
+        "output": 748,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 15400,
+          "usage": {
+            "input": 40,
+            "output": 748,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200744,
+          "input": 40,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 748,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 15435,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "../src/render/index.js",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "src/a.ts",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q10-spanning",
+      "stratum": "spanning",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "`src/a.ts`.\n\nIn that test (\"stores the tree-sitter spans, not the model's…\"), the stub provider's `replyBody` overrides are:\n\n```js\nfiles: [{ path: 'src/a.ts', start_line: 900, end_line: 901, symbol: 'ghost' }],\nsymbols: ['ghost'],\n```\n\nThe path is deliberately chosen to be *inside* the branch (so it doesn't trip the contract's path-whitelist check — the tree does verify the path itself), while the line numbers (900–901) and the symbol `ghost` are invented. The test then asserts those hallucinated values never reach storage: `summary.meta.files` comes back as the real tree-sitter span `A_SPAN` and `summary.meta.symbols` as `['parseThing']` — both produced by D9, not the model.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196697,
+      "usage": {
+        "input": 40,
+        "output": 1145,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 21046,
+          "usage": {
+            "input": 40,
+            "output": 1145,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200744,
+          "input": 40,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 1145,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 21097,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "../src/render/index.js",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "src/a.ts",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q10-spanning",
+      "stratum": "spanning",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "`src/a.ts`.\n\nIn that test (\"stores the tree-sitter spans, not the model's\"), the stubbed summarizer reply is built with the hallucinated span attached to that path:\n\n```js\nreplyBody(echoedNodeIds(call.content), {\n  files: [{ path: 'src/a.ts', start_line: 900, end_line: 901, symbol: 'ghost' }],\n  symbols: ['ghost'],\n})\n```\n\nThe point of the test is that this invented entry is *not* what gets stored: `src/a.ts` at lines 900–901 with symbol `ghost` never existed in the tree (the fixture's real span is the `A_SPAN` constant, with symbol `parseThing`). The assertions confirm the D9 tree-owned values win — `summary.meta.files` equals `[A_SPAN]` and `summary.meta.symbols` equals `['parseThing']` — so a model hallucinating plausible-looking rehydration pointers can't poison §9's fetch targets. Only prose-side fields (`text`, `node_ids`, decisions, open questions) come from the model.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196747,
+      "usage": {
+        "input": 40,
+        "output": 1223,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 24164,
+          "usage": {
+            "input": 40,
+            "output": 1223,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200744,
+          "input": 40,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 1223,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 24215,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "../src/render/index.js",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "src/a.ts",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q10-spanning",
+      "stratum": "spanning",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The path is **`src/a.ts`**.\n\nIn that test (`packages/core/test/summarize.test.ts` — \"stores the tree-sitter spans, not the model's, because §9 only calls a span verifiable if D9 produced it\"), the stubbed summarizer reply contains:\n\n```typescript\nfiles: [{ path: 'src/a.ts', start_line: 900, end_line: 901, symbol: 'ghost' }],\nsymbols: ['ghost'],\n```\n\n— i.e., an invented `ghost` symbol at lines 900–901 of `src/a.ts`, a path deliberately inside the branch so it passes the §8 contract check. The test then asserts the *stored* summary ignores the hallucination: `meta.files` equals the tree-derived `A_SPAN` and `meta.symbols` equals the real `'parseThing'` — because D9/tree-owned fields (`files`, `symbols`) are overwritten from the tree's tree-sitter facts, never trusted from the model.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196726,
+      "usage": {
+        "input": 40,
+        "output": 880,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 17676,
+          "usage": {
+            "input": 40,
+            "output": 880,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200744,
+          "input": 40,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 880,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 17726,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "../src/render/index.js",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "src/a.ts",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q10-spanning",
+      "stratum": "spanning",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "`src/a.ts`.\n\nIn that test (`packages/core/test/summarize.test.ts`, \"stores the tree-sitter spans, not the model's\"), the stub reply is:\n\n```ts\nreplyBody(echoedNodeIds(call.content), {\n  files: [{ path: 'src/a.ts', start_line: 900, end_line: 901, symbol: 'ghost' }],\n  symbols: ['ghost'],\n})\n```\n\nThe path is deliberately the *real* path of the fixture's file node (`src/a.ts`, the same path the fixture's `addBranch` helper assigns) — only the line numbers (900–901) and the symbol name (`ghost`) are hallucinated. That's what makes the test sharp: the path itself doesn't trigger a contract violation, so the only thing standing between the invented span and the stored summary is D9's rule that `files`/`symbols` are tree-owned fields. The assertions confirm the summary ends up with the tree's real span (`A_SPAN`, symbol `parseThing`) and not the model's ghost.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196740,
+      "usage": {
+        "input": 40,
+        "output": 1114,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 22545,
+          "usage": {
+            "input": 40,
+            "output": 1114,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200744,
+          "input": 40,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 1114,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 22597,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "../src/render/index.js",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "src/a.ts",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q11-spanning",
+      "stratum": "spanning",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "None — that output didn't contain any per-turn cache data. The command described as \"Check whether core resolves via dist\" (`ls packages/core/dist/assemble/ | head -3; grep -n '\"main\"|\"exports\"' packages/core/package.json`) printed only dist file listings and package.json fields:\n\n```\nassembler.d.ts\nassembler.d.ts.map\n10:  \"main\": \"./dist/index.js\",\n12:  \"exports\": {\n```\n\nThere's no \"cr\" value or turn numbering in it, so I can't give you a cr-at-turn-16 from that command.\n\nThe per-turn cr tables came from different commands (`node -e` scripts reading results.json). If you meant one of those, turn 16's cr was:\n\n| Source table | Turn 16 cr |\n|---|---|\n| iter4 tree-dsa per-turn dump | 4,788 (pinned at the Zone A floor — the FM-2 evidence) |\n| iter8-rep1 per-turn profile | 6,568 (pinned at the A+B prefix — the FM-7 evidence) |\n| iter9-rep1 per-turn profile | 21,091 (climbing — the v5.6 fix working) |",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196769,
+      "usage": {
+        "input": 32,
+        "output": 2210,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 38954,
+          "usage": {
+            "input": 32,
+            "output": 2210,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200736,
+          "input": 32,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 2210,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 39005,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "packages/core/package.json",
+          "exact_match": true,
+          "regex": true
+        },
+        {
+          "literal": "16283",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q11-spanning",
+      "stratum": "spanning",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The command that checked whether core resolves via dist didn't actually print any per-turn cache data — its full output was just:\n\n```\nassembler.d.ts\nassembler.d.ts.map\nassembler.js\n10:  \"main\": \"./dist/index.js\",\n12:  \"exports\": {\n```\n\n(no `cr` values, no turn rows). So there's no cr value from that command's output.\n\nYou may be thinking of one of the per-turn cache-profile tables printed later. Three of them included a turn 16:\n\n- **iter9-rep1** (v5.6, the one used to show the cache signature converging): turn 16 → `cr = 21,091` (with `in=109`, `cw=1,490`) — part of the cacheRead climb 4,788 → 23,794\n- **iter8-rep1** (v5.5, the FM-7 evidence): turn 16 → `cr = 6,568` (pinned at the A+B prefix while `cw=16,283` re-billed the whole zone)\n- **iter4 tree-dsa** (the original broken-cache table): turn 16 → `cr = 4,788` (Zone A only)\n\nIf you meant the iter9-rep1 table (the most recent one showing the fixed behavior), the answer is **21,091**.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196803,
+      "usage": {
+        "input": 32,
+        "output": 2292,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 42408,
+          "usage": {
+            "input": 32,
+            "output": 2292,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200736,
+          "input": 32,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 2292,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 42445,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "packages/core/package.json",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "16283",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q11-spanning",
+      "stratum": "spanning",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The command that checked whether core resolves via dist (`ls packages/core/dist/assemble/ ... ; grep -n '\"main\"|\"exports\"' packages/core/package.json`) didn't output any \"cr\" value — its output was just the dist file listing (`assembler.d.ts`, `assembler.d.ts.map`, `assembler.js`) and the package.json lines (`\"main\": \"./dist/index.js\"`, `\"exports\": {`).\n\nYou may be thinking of a different command — the iter9-rep1 per-turn cache profile (columns `turn / in / cr / cw`), where **turn 16 had cr = 21091** (with input 109 and cacheWrite 1490). But that command was inspecting the cache telemetry, not the core dist resolution.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196670,
+      "usage": {
+        "input": 32,
+        "output": 929,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 19665,
+          "usage": {
+            "input": 32,
+            "output": 929,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200736,
+          "input": 32,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 929,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 19722,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "packages/core/package.json",
+          "exact_match": true,
+          "regex": true
+        },
+        {
+          "literal": "16283",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q11-spanning",
+      "stratum": "spanning",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "Small correction first: the command that checked whether core resolves via dist (`ls packages/core/dist/assemble/` + `grep '\"main\"|\"exports\"' packages/core/package.json`) didn't output any per-turn data — its output was just the dist file listing (`assembler.d.ts`, `assembler.d.ts.map`, `assembler.js`) and the package.json lines (`\"main\": \"./dist/index.js\"`, `\"exports\": {`). No `cr` column, no turns.\n\nYou're most likely thinking of the **per-turn cache profile of iter8-rep1** (the `turn in cr cw` table I printed to diagnose FM-7). There, turn 16 was:\n\n```\nturn 16:  in=1,  cr=6,568,  cw=16,283\n```\n\nThat cr of **6,568** — pinned flat across turns 8–18 while cacheWrite re-billed the whole growing zone (10.8k→16.3k) — was the FM-7 smoking gun: the descendant map churning at the top of Zone C was voiding the cached event stream.\n\nIf you instead meant the earlier iter4 tree-dsa table (the one joined with selector telemetry), turn 16 there had `cr=4,788` — the Zone-A-only floor, which was that run's evidence for FM-2.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196795,
+      "usage": {
+        "input": 32,
+        "output": 1936,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 39235,
+          "usage": {
+            "input": 32,
+            "output": 1936,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200736,
+          "input": 32,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 1936,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 39286,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "packages/core/package.json",
+          "exact_match": true,
+          "regex": true
+        },
+        {
+          "literal": "16283",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q11-spanning",
+      "stratum": "spanning",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "None — that command's output didn't contain any per-turn cache data. The check on whether core resolves via dist (`ls packages/core/dist/assemble/` + `grep '\"main\"' packages/core/package.json`) only printed the dist file listing and the `main`/`exports` fields; there were no `turn / in / cr / cw` tables in it.\n\nYou're likely thinking of one of the two per-turn cache profiles, which did report `cr` at turn 16:\n\n- **iter8-rep1** (the FM-7 diagnostic): turn 16 → in 1, **cr 6,568**, cw 16,283 — the \"cacheRead pinned at the A+B prefix while cacheWrite re-bills the zone\" evidence.\n- **iter9-rep1** (the v5.6 convergence evidence): turn 16 → in 109, **cr 21,091**, cw 1,490 — cacheRead climbing as the incremental Zone C cache accumulates.\n\nIf you meant one of those, the values are 6,568 (iter8) and 21,091 (iter9) respectively.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196747,
+      "usage": {
+        "input": 32,
+        "output": 2011,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 35717,
+          "usage": {
+            "input": 32,
+            "output": 2011,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200736,
+          "input": 32,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 2011,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 35769,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "packages/core/package.json",
+          "exact_match": true,
+          "regex": true
+        },
+        {
+          "literal": "16283",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q12-spanning",
+      "stratum": "spanning",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "Looking at the per-turn table in `tool_result for seq 690` (the iter9-rep1 cache profile), the row where `cw` was 568 is **turn 7**, where `cr` was **12,529** (with `in` = 36).\n\nFor context in that row's neighborhood: cacheRead had been climbing steadily turn-over-turn (4,788 → 5,150 → … → 12,529), which was the signature v5.6 was designed to produce — each turn's cacheWrite being read back at 0.1× on subsequent turns.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196636,
+      "usage": {
+        "input": 36,
+        "output": 408,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 9512,
+          "usage": {
+            "input": 36,
+            "output": 408,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200740,
+          "input": 36,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 408,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 9549,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "12529",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "systemChars",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q12-spanning",
+      "stratum": "spanning",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "At **turn 7**, where `cw` was **568**, the value of `cr` (cacheRead) was **12,529**.\n\nFor context in that row: `in` (fresh input) was 36. This is one of the turns in iter9-rep1 that demonstrated the v5.6 cache signature working — the cacheRead value climbing monotonically (this row continues the climb from turn 6's 12,056 toward turn 8's 13,097) while cacheWrite stayed delta-sized.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196623,
+      "usage": {
+        "input": 36,
+        "output": 506,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 9379,
+          "usage": {
+            "input": 36,
+            "output": 506,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200740,
+          "input": 36,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 506,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 9421,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "12529",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "systemChars",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q12-spanning",
+      "stratum": "spanning",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "At turn 7 of the `iter9-rep1` per-turn cache profile, where `cw` was **568**, the `cr` value was **12529** (with `in` = 36).\n\nThat row sits in the middle of rep1's textbook v5.6 cache signature — cacheRead climbing monotonically (12,056 → 12,529 → 13,396 across turns 6–8) while cacheWrite stayed delta-sized, which is exactly the converged billing behavior the v5.6 map-relocation was meant to produce.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196629,
+      "usage": {
+        "input": 36,
+        "output": 238,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 6637,
+          "usage": {
+            "input": 36,
+            "output": 238,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200740,
+          "input": 36,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 238,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 6684,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "12529",
+          "exact_match": true,
+          "regex": true
+        },
+        {
+          "literal": "systemChars",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q12-spanning",
+      "stratum": "spanning",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "In that per-turn cache profile of iter9-rep1 (the result of the tool call at seq 690), `cw` was 568 at **turn 7**, where `cr` was **12,529** (with `in` = 36).\n\nThat row sits in the stretch where cacheRead was climbing monotonically (4,788 → 23,794 across the run) while cacheWrite stayed delta-sized — the \"textbook profile\" cited in the Loop 6 report section as evidence the v5.6 cache signature converged on cached native's.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196630,
+      "usage": {
+        "input": 36,
+        "output": 1026,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 20546,
+          "usage": {
+            "input": 36,
+            "output": 1026,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200740,
+          "input": 36,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 1026,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 20593,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "12529",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "systemChars",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-q12-spanning",
+      "stratum": "spanning",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "At turn 7 — the only turn where `cw` was 568 — the value of `cr` (cacheRead) was **12,529**.\n\nThat's the row in iter9-rep1's per-turn cache profile:\n\n```\nturn   in     cr      cw\n  7    36   12529    568\n```\n\nThis row is one of the clean examples of the v5.6 signature: turn 6 did the heavy cacheWrite (12,056 read back + 473 written), and turn 7 read that grown prefix (12,529 cacheRead at 0.1×) while writing only a small delta (568 tokens at 1.25×).",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196659,
+      "usage": {
+        "input": 36,
+        "output": 561,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 10219,
+          "usage": {
+            "input": 36,
+            "output": 561,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200740,
+          "input": 36,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 561,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 10265,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "12529",
+          "exact_match": true,
+          "regex": true
+        },
+        {
+          "literal": "systemChars",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    }
+  ]
+}
