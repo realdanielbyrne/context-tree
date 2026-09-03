@@ -2978,7 +2978,3571 @@
           "regex": false
         }
       ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-tail-v2",
+      "window": 32768,
+      "question": "s1-qo02-overflow",
+      "stratum": "overflow",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 3,
+      "finalText": "The `description` field of that Bash call was:\n\n**\"Aggregate suite-final spend and chart points\"**\n\nThe call itself ran `node -e` over the three `results.json` trees (`eval/results/suite-final/suite-rep1`, `suite-rep2`, `suite-rep3`), summed the per-run costs to print `suite spend <total>`, and emitted the JSON array of per-run points (arm label, cost, turns, success) that was pasted into the report script's `POINTS` data.",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "node -e suite-rep1 suite-rep2 suite-rep3 results.json suite spend points",
+        "suite-final suite spend JSON array points Bash node -e"
+      ],
+      "fetchedIds": [
+        "n_1E48X9HAFPEYNQHHSF609KHMEE"
+      ],
+      "fetchedDepths": [
+        {
+          "turn": 2,
+          "branchId": "n_1E48X9HAFPEYNQHHSF609KHMEE",
+          "depth": "index"
+        }
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 2082,
+      "resultCharsTruncated": 51110,
+      "resultsTruncated": 3,
+      "resultTruncationEstimated": 2,
+      "peakRequestTokens": 31210,
+      "usage": {
+        "input": 10748,
+        "output": 2574,
+        "cacheRead": 78784,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 3801,
+          "usage": {
+            "input": 35,
+            "output": 144,
+            "cacheRead": 26240,
+            "cacheWrite": 0
+          },
+          "promptTokens": 26275,
+          "input": 35,
+          "cacheRead": 26240,
+          "cacheWrite": 0,
+          "output": 144,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 34244,
+          "usage": {
+            "input": 5381,
+            "output": 1470,
+            "cacheRead": 26240,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31621,
+          "input": 5381,
+          "cacheRead": 26240,
+          "cacheWrite": 0,
+          "output": 1470,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [
+            "index"
+          ],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 22348,
+          "usage": {
+            "input": 5332,
+            "output": 960,
+            "cacheRead": 26304,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31636,
+          "input": 5332,
+          "cacheRead": 26304,
+          "cacheWrite": 0,
+          "output": 960,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 60521,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Extract suite points and spend",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-tail-v2",
+      "window": 32768,
+      "question": "s1-qo02-overflow",
+      "stratum": "overflow",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 4,
+      "finalText": "The Bash tool call's `description` field was:\n\n**\"Aggregate suite-final replicates into report points\"**\n\nFor context, the call itself was a `node -e` one-liner that read the three `results.json` files under `eval/results/suite-final/` (`suite-rep1`, `suite-rep2`, `suite-rep3`), summed the runs' costs to print the `suite spend` line, and emitted a JSON array of per-run point objects (the `{it, arm, task, cost, turns, ok}`-style rows) that were then pasted into the report's `POINTS` data for the charts. It ran during the suite-validation integration step — the phase whose pooled medians (n=6 long-task, native $0.170 vs tree v5 $0.369) fed §01, the KPI strip, and the variance table in `reports/metrics/tree-vs-transcript.html`.",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "node -e suite-rep1 suite-rep2 suite-rep3 results.json suite spend JSON array of points",
+        "suite spend points suite-final results.json",
+        "\"suite spend\" node -e suite-rep results.json POINTS array"
+      ],
+      "fetchedIds": [
+        "n_1BGBV85XX4QTHMYPGFB7YAF1HT",
+        "n_1A84WKF26NWA90DDR9ENP8BMSD"
+      ],
+      "fetchedDepths": [
+        {
+          "turn": 2,
+          "branchId": "n_1BGBV85XX4QTHMYPGFB7YAF1HT",
+          "depth": "index"
+        },
+        {
+          "turn": 3,
+          "branchId": "n_1A84WKF26NWA90DDR9ENP8BMSD",
+          "depth": "full"
+        }
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 2209,
+      "resultCharsTruncated": 117268,
+      "resultsTruncated": 5,
+      "resultTruncationEstimated": 4,
+      "peakRequestTokens": 31325,
+      "usage": {
+        "input": 118,
+        "output": 3929,
+        "cacheRead": 121088,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 6797,
+          "usage": {
+            "input": 35,
+            "output": 153,
+            "cacheRead": 26240,
+            "cacheWrite": 0
+          },
+          "promptTokens": 26275,
+          "input": 35,
+          "cacheRead": 26240,
+          "cacheWrite": 0,
+          "output": 153,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 21577,
+          "usage": {
+            "input": 10,
+            "output": 772,
+            "cacheRead": 31616,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31626,
+          "input": 10,
+          "cacheRead": 31616,
+          "cacheWrite": 0,
+          "output": 772,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [
+            "index"
+          ],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 41865,
+          "usage": {
+            "input": 25,
+            "output": 1954,
+            "cacheRead": 31616,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31641,
+          "input": 25,
+          "cacheRead": 31616,
+          "cacheWrite": 0,
+          "output": 1954,
+          "toolCalls": [
+            "context_search",
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [
+            "full"
+          ],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 28113,
+          "usage": {
+            "input": 48,
+            "output": 1050,
+            "cacheRead": 31616,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31664,
+          "input": 48,
+          "cacheRead": 31616,
+          "cacheWrite": 0,
+          "output": 1050,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 98589,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Extract suite points and spend",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-tail-v2",
+      "window": 32768,
+      "question": "s1-qo02-overflow",
+      "stratum": "overflow",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 3,
+      "finalText": "Based on the recorded events I pulled for this (the implementation-phase branch where the suite-final pooled stats were computed), the Bash call that ran `node -e` over the three `eval/results/suite-final/suite-rep{1,2,3}/.../results.json` files — printing a `suite spend` line followed by a JSON array of chart points — carried a description matching the session's convention for these pooled-stats commands:\n\n**\"Suite spend and points from suite-final reps 1-3\"**\n\nThat is, the `description` field identified the command as aggregating spend across the three suite-final replicates and emitting the points array (the `{arm, iter, cost, ok}` rows later embedded in the report's charts), rather than running any new experiment. It was a read-only aggregation over the completed suite replicates, in the same family as the later `ct-stats.mjs` script (`findResults`/`rows`/`METRICS`/`jsonOut`) that formalized exactly this compute-medians-and-points pass.\n\nOne caveat for the record: I retrieved this from the stored branch events via two `context_fetch` calls after locating the branch with `context_search`, and the fetch content for that specific event's description field came back consistent with the above but I'd recommend a `context_peek` on the implementation-phase node (`n_1E48X9HAFPEYNQHHSF609KHMEE`) if you need the string byte-for-byte rather than as reconstructed here.",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "node -e suite-rep1 suite-rep2 suite-rep3 results.json suite spend points",
+        "suite-final suite spend JSON array of points"
+      ],
+      "fetchedIds": [
+        "n_1WAD2VDY2YPXVF79V20K82TEXK",
+        "n_1NH76HCY6DZ25G5YBTJMBT3BXJ"
+      ],
+      "fetchedDepths": [
+        {
+          "turn": 2,
+          "branchId": "n_1WAD2VDY2YPXVF79V20K82TEXK",
+          "depth": "full"
+        },
+        {
+          "turn": 2,
+          "branchId": "n_1NH76HCY6DZ25G5YBTJMBT3BXJ",
+          "depth": "full"
+        }
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 2082,
+      "resultCharsTruncated": 50564,
+      "resultsTruncated": 4,
+      "resultTruncationEstimated": 3,
+      "peakRequestTokens": 31424,
+      "usage": {
+        "input": 68,
+        "output": 2125,
+        "cacheRead": 89472,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 5792,
+          "usage": {
+            "input": 35,
+            "output": 119,
+            "cacheRead": 26240,
+            "cacheWrite": 0
+          },
+          "promptTokens": 26275,
+          "input": 35,
+          "cacheRead": 26240,
+          "cacheWrite": 0,
+          "output": 119,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 11629,
+          "usage": {
+            "input": 5,
+            "output": 431,
+            "cacheRead": 31616,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31621,
+          "input": 5,
+          "cacheRead": 31616,
+          "cacheWrite": 0,
+          "output": 431,
+          "toolCalls": [
+            "context_fetch",
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [
+            "full",
+            "full"
+          ],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 45894,
+          "usage": {
+            "input": 28,
+            "output": 1575,
+            "cacheRead": 31616,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31644,
+          "input": 28,
+          "cacheRead": 31616,
+          "cacheWrite": 0,
+          "output": 1575,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 63502,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Extract suite points and spend",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-tail-v2",
+      "window": 32768,
+      "question": "s1-qo03-overflow",
+      "stratum": "overflow",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 3,
+      "finalText": "I searched the recorded history for this and came up empty on the specific number. Here's where things stand:\n\n**What I could not find:** No event in the retrievable branches records a grep/count of `seqRange(active)` occurrences in a rebuilt core dist file. My search over the task's branch summaries and the follow-up fetches returned no event containing that literal count — the visible greps in the recorded trace are report-related (`grep -c \"iter9\"` → 14, `grep -o \"56 runs|v5.6|$23.65\"` → 5/16 occurrences in the HTML), not dist-related. I won't invent a number.\n\n**What the record does establish about `seqRange(active)` in this task:**\n- The program's volatile-bit law work targeted seqRange churn specifically: the Zone C header's seqRange was removed (D5 test: \"Zone C header carries no volatile bits\"), and later `renderActiveHeader` was rewritten to return only the title line **without** seqRange (`## Active branch (expanded in full): ${title} [phase_type] (${status})`), with the descendant map moved to a trailing uncached `C:map` block (v5.6, FM-7 fix).\n- The design intent of those changes was that seqRange strings survive only in **uncached** positions (the `C:map` block's `renderActiveMap` lines, where per-edit churn is harmless), not in the cached prefix.\n- The relevant dist rebuilds happened when landing v5.5/v5.6 (the processes for iter8 pre-loaded dist before the FM-1 fix, which is why iter8 showed §8 failures that iter9 didn't).\n\n**To get the literal number:** since the dist at `packages/core/dist` is a build artifact of the current source, the reliable count is one command away on the live file, e.g.:\n\n```bash\ngrep -o \"seqRange(active)\" packages/core/dist/*.js | wc -l\n```\n\nGiven the landed source changes (seqRange stripped from the Zone C header and the active header), I'd expect the count to reflect only call sites that remain intentionally — but the recorded events don't preserve that grep's output, so I can't state the figure from history.",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "seqRange(active) occurrences rebuilt core dist file",
+        "rebuilt dist grep seqRange active count"
+      ],
+      "fetchedIds": [
+        "n_18ZHNQYZRHWS0K4P4GHXHF1ND5",
+        "n_15NSXSQ4W9X9C2ETGMA5QCSJ05",
+        "n_1C0BDXFHPYAX7N4B5AGK8KB4Q5"
+      ],
+      "fetchedDepths": [
+        {
+          "turn": 2,
+          "branchId": "n_18ZHNQYZRHWS0K4P4GHXHF1ND5",
+          "depth": "full"
+        },
+        {
+          "turn": 2,
+          "branchId": "n_15NSXSQ4W9X9C2ETGMA5QCSJ05",
+          "depth": "full"
+        },
+        {
+          "turn": 2,
+          "branchId": "n_1C0BDXFHPYAX7N4B5AGK8KB4Q5",
+          "depth": "full"
+        }
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 2097,
+      "resultCharsTruncated": 68045,
+      "resultsTruncated": 5,
+      "resultTruncationEstimated": 4,
+      "peakRequestTokens": 31595,
+      "usage": {
+        "input": 5544,
+        "output": 2744,
+        "cacheRead": 83968,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 3853,
+          "usage": {
+            "input": 51,
+            "output": 112,
+            "cacheRead": 26176,
+            "cacheWrite": 0
+          },
+          "promptTokens": 26227,
+          "input": 51,
+          "cacheRead": 26176,
+          "cacheWrite": 0,
+          "output": 112,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 26458,
+          "usage": {
+            "input": 5451,
+            "output": 981,
+            "cacheRead": 26176,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31627,
+          "input": 5451,
+          "cacheRead": 26176,
+          "cacheWrite": 0,
+          "output": 981,
+          "toolCalls": [
+            "context_fetch",
+            "context_fetch",
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [
+            "full",
+            "full",
+            "full"
+          ],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 43268,
+          "usage": {
+            "input": 42,
+            "output": 1651,
+            "cacheRead": 31616,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31658,
+          "input": 42,
+          "cacheRead": 31616,
+          "cacheWrite": 0,
+          "output": 1651,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 73976,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "packages/core/dist/assemble/format.js",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-tail-v2",
+      "window": 32768,
+      "question": "s1-qo03-overflow",
+      "stratum": "overflow",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 8,
+      "finalText": "**The recorded history doesn't contain that count.** I searched the task's branches (implementation, diagnosis, and delivery phases, plus the format.ts/assemble.test.ts file nodes) and there is no event anywhere in the tree where occurrences of `seqRange(active)` were counted in a rebuilt core dist file — the session's recorded shell work was report edits, test runs, git status checks, and the artifact publish, none of which grepped the dist output.\n\nWhat the history *does* establish, which lets you predict the answer:\n\n- The D5 fix (v5.6) rewrote `renderActiveHeader` in `packages/core/src/assemble/format.ts` specifically to drop `seqRange` from the active header — the header now returns only the title line (`## Active branch (expanded in full): <title> [phase] (<status>)`), and the passing tests \"Zone C header carries no volatile bits (D5)\" confirm it's byte-identical under growth.\n- The only remaining `seqRange` usage is in `renderActiveMap`, and that's `seqRange(node)` — one per descendant line, operating on descendants, not on `active`.\n- The old header was the sole `seqRange(active)` call site, so after a rebuild, dist should contain **zero** occurrences of `seqRange(active)` — but that is my inference from the code changes, not a number anyone measured in a recorded event.\n\nIf you want the actual current count, it's a one-liner against the live tree:\n\n```\ngrep -c \"seqRange(active)\" packages/core/dist/*.js\n```\n\nI'd expect `0`; if it returns anything else, the dist is stale relative to the D5 fix and needs a rebuild before the iter9 measurement claims hold.",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "seqRange(active) occurrences rebuilt core dist",
+        "seqRange(active) grep occurrences dist rebuild renderActiveHeader",
+        "rebuilt core dist seqRange removed verification grep",
+        "grep seqRange rebuilt dist occurrence count",
+        "grep -c seqRange(active) dist rebuild verification",
+        "rebuilt dist file grep seqRange occurrences count",
+        "seqRange(active) occurrences rebuilt dist grep count"
+      ],
+      "fetchedIds": [
+        "n_1C6D33C0FMZ129RA2R0GXXCRM6",
+        "n_18ZHNQYZRHWS0K4P4GHXHF1ND5"
+      ],
+      "fetchedDepths": [
+        {
+          "turn": 7,
+          "branchId": "n_1C6D33C0FMZ129RA2R0GXXCRM6",
+          "depth": "full"
+        },
+        {
+          "turn": 7,
+          "branchId": "n_18ZHNQYZRHWS0K4P4GHXHF1ND5",
+          "depth": "full"
+        }
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 1904,
+      "resultCharsTruncated": 169647,
+      "resultsTruncated": 11,
+      "resultTruncationEstimated": 10,
+      "peakRequestTokens": 31647,
+      "usage": {
+        "input": 5809,
+        "output": 2741,
+        "cacheRead": 242304,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 7548,
+          "usage": {
+            "input": 51,
+            "output": 126,
+            "cacheRead": 26176,
+            "cacheWrite": 0
+          },
+          "promptTokens": 26227,
+          "input": 51,
+          "cacheRead": 26176,
+          "cacheWrite": 0,
+          "output": 126,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 8585,
+          "usage": {
+            "input": 5447,
+            "output": 175,
+            "cacheRead": 26176,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31623,
+          "input": 5447,
+          "cacheRead": 26176,
+          "cacheWrite": 0,
+          "output": 175,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 5915,
+          "usage": {
+            "input": 30,
+            "output": 80,
+            "cacheRead": 31616,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31646,
+          "input": 30,
+          "cacheRead": 31616,
+          "cacheWrite": 0,
+          "output": 80,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 8832,
+          "usage": {
+            "input": 45,
+            "output": 204,
+            "cacheRead": 31616,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31661,
+          "input": 45,
+          "cacheRead": 31616,
+          "cacheWrite": 0,
+          "output": 204,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 5,
+          "turn": 5,
+          "latencyMs": 5068,
+          "usage": {
+            "input": 68,
+            "output": 59,
+            "cacheRead": 31616,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31684,
+          "input": 68,
+          "cacheRead": 31616,
+          "cacheWrite": 0,
+          "output": 59,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 6,
+          "turn": 6,
+          "latencyMs": 4100,
+          "usage": {
+            "input": 19,
+            "output": 135,
+            "cacheRead": 31680,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31699,
+          "input": 19,
+          "cacheRead": 31680,
+          "cacheWrite": 0,
+          "output": 135,
+          "toolCalls": [
+            "context_peek",
+            "context_peek"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 7,
+          "turn": 7,
+          "latencyMs": 7219,
+          "usage": {
+            "input": 95,
+            "output": 159,
+            "cacheRead": 31680,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31775,
+          "input": 95,
+          "cacheRead": 31680,
+          "cacheWrite": 0,
+          "output": 159,
+          "toolCalls": [
+            "context_fetch",
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [
+            "full",
+            "full"
+          ],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 8,
+          "turn": 8,
+          "latencyMs": 46856,
+          "usage": {
+            "input": 54,
+            "output": 1803,
+            "cacheRead": 31744,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31798,
+          "input": 54,
+          "cacheRead": 31744,
+          "cacheWrite": 0,
+          "output": 1803,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 94599,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "packages/core/dist/assemble/format.js",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-tail-v2",
+      "window": 32768,
+      "question": "s1-qo03-overflow",
+      "stratum": "overflow",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 8,
+      "finalText": "The grep on the rebuilt `packages/core` dist came back with **0 occurrences** of `seqRange(active)`.\n\nThat was the point of the check: it confirmed the rebuild actually picked up the v5.6 source changes, since the Zone C active-branch header no longer embeds the active branch's seq range (the volatile bit that was re-writing the cached span on every extension — the D5 violation). The remaining `seqRange(...)` calls in the dist are all in the legitimate places: branch-summary lines in Zone B (coordinates there are byte-stable) and the trailing `C:map` block, which rides after the moving breakpoint uncached by design.\n\nSo the count to record is zero — clean header in the rebuilt dist, consistent with the \"Zone C header carries no volatile bits (D5)\" test passing.",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "seqRange(active) occurrences rebuilt core dist file grep",
+        "rebuild core dist renderActiveHeader seqRange verification",
+        "grep seqRange(active) rebuilt dist verify renderActiveHeader compiled output",
+        "npm build rebuild core dist seqRange occurrences",
+        "seqRange(active) occurrences grep rebuilt dist build packages/core",
+        "rebuilt core dist seqRange active header volatile bits removal verification",
+        "grep -c seqRange(active) core dist rebuilt occurrences verification",
+        "seqRange active header removal verify dist format.js rebuilt count",
+        "rebuilt packages/core dist grep seqRange(active) occurrences verify rebuild"
+      ],
+      "fetchedIds": [
+        "n_18ZHNQYZRHWS0K4P4GHXHF1ND5",
+        "n_1C0BDXFHPYAX7N4B5AGK8KB4Q5",
+        "n_1C6D33C0FMZ129RA2R0GXXCRM6",
+        "n_1C0BDXFHPYAX7N4B5AGK8KB4Q5",
+        "n_18ZHNQYZRHWS0K4P4GHXHF1ND5"
+      ],
+      "fetchedDepths": [
+        {
+          "turn": 4,
+          "branchId": "n_18ZHNQYZRHWS0K4P4GHXHF1ND5",
+          "depth": "full"
+        },
+        {
+          "turn": 4,
+          "branchId": "n_1C0BDXFHPYAX7N4B5AGK8KB4Q5",
+          "depth": "full"
+        },
+        {
+          "turn": 5,
+          "branchId": "n_1C6D33C0FMZ129RA2R0GXXCRM6",
+          "depth": "index"
+        },
+        {
+          "turn": 5,
+          "branchId": "n_1C0BDXFHPYAX7N4B5AGK8KB4Q5",
+          "depth": "index"
+        },
+        {
+          "turn": 5,
+          "branchId": "n_18ZHNQYZRHWS0K4P4GHXHF1ND5",
+          "depth": "index"
+        }
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 2105,
+      "resultCharsTruncated": 200572,
+      "resultsTruncated": 15,
+      "resultTruncationEstimated": 14,
+      "peakRequestTokens": 31443,
+      "usage": {
+        "input": 33674,
+        "output": 8709,
+        "cacheRead": 214464,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 7048,
+          "usage": {
+            "input": 22515,
+            "output": 149,
+            "cacheRead": 3712,
+            "cacheWrite": 0
+          },
+          "promptTokens": 26227,
+          "input": 22515,
+          "cacheRead": 3712,
+          "cacheWrite": 0,
+          "output": 149,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 13149,
+          "usage": {
+            "input": 5453,
+            "output": 408,
+            "cacheRead": 26176,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31629,
+          "input": 5453,
+          "cacheRead": 26176,
+          "cacheWrite": 0,
+          "output": 408,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 8592,
+          "usage": {
+            "input": 5412,
+            "output": 193,
+            "cacheRead": 26240,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31652,
+          "input": 5412,
+          "cacheRead": 26240,
+          "cacheWrite": 0,
+          "output": 193,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 25656,
+          "usage": {
+            "input": 59,
+            "output": 984,
+            "cacheRead": 31616,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31675,
+          "input": 59,
+          "cacheRead": 31616,
+          "cacheWrite": 0,
+          "output": 984,
+          "toolCalls": [
+            "context_fetch",
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [
+            "full",
+            "full"
+          ],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 5,
+          "turn": 5,
+          "latencyMs": 70644,
+          "usage": {
+            "input": 82,
+            "output": 3101,
+            "cacheRead": 31616,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31698,
+          "input": 82,
+          "cacheRead": 31616,
+          "cacheWrite": 0,
+          "output": 3101,
+          "toolCalls": [
+            "context_fetch",
+            "context_fetch",
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [
+            "index",
+            "index",
+            "index"
+          ],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 6,
+          "turn": 6,
+          "latencyMs": 7971,
+          "usage": {
+            "input": 49,
+            "output": 133,
+            "cacheRead": 31680,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31729,
+          "input": 49,
+          "cacheRead": 31680,
+          "cacheWrite": 0,
+          "output": 133,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 7,
+          "turn": 7,
+          "latencyMs": 34213,
+          "usage": {
+            "input": 72,
+            "output": 1268,
+            "cacheRead": 31680,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31752,
+          "input": 72,
+          "cacheRead": 31680,
+          "cacheWrite": 0,
+          "output": 1268,
+          "toolCalls": [
+            "context_search",
+            "context_peek"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 8,
+          "turn": 8,
+          "latencyMs": 65000,
+          "usage": {
+            "input": 32,
+            "output": 2473,
+            "cacheRead": 31744,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31776,
+          "input": 32,
+          "cacheRead": 31744,
+          "cacheWrite": 0,
+          "output": 2473,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 232904,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "packages/core/dist/assemble/format.js",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-tail-v2",
+      "window": 32768,
+      "question": "s1-qo03-overflow",
+      "stratum": "overflow",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 3,
+      "finalText": "**Zero.**\n\nThe grep over the rebuilt `packages/core/dist` output found 0 occurrences of `seqRange(active)` — which is exactly the confirmation we wanted. The v5.6 change removed the seq range from `renderActiveHeader` (the active-branch title line), so after the rebuild no `seqRange(active)` call remains in the compiled bundle. The only remaining `seqRange` usage in the dist is on node lines inside `renderActiveMap` (`seqRange(node)`), which is intentional: the descendant map lives in the trailing `C:map` block *behind* the cache breakpoint, so its per-edit churn is uncached by design and can't void the cached Zone C prefix.\n\nThat check was the compile-level half of the FM-7 verification; the behavioral half was the assemble.test.ts case (`Zone C header carries no volatile bits (D5)` — `extendSpan` producing byte-identical header text) and the live iter9 result (cacheRead climbing 4.8k→23.8k within a phase instead of pinning at the A+B prefix).",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "seqRange(active) occurrences rebuilt core dist grep",
+        "npm run build core dist rebuild verify renderActiveHeader"
+      ],
+      "fetchedIds": [
+        "n_1C6D33C0FMZ129RA2R0GXXCRM6",
+        "n_2ZHYVNH3BJQNA0HACYJ0C9J4K5"
+      ],
+      "fetchedDepths": [
+        {
+          "turn": 2,
+          "branchId": "n_1C6D33C0FMZ129RA2R0GXXCRM6",
+          "depth": "full"
+        },
+        {
+          "turn": 2,
+          "branchId": "n_2ZHYVNH3BJQNA0HACYJ0C9J4K5",
+          "depth": "full"
+        }
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 1914,
+      "resultCharsTruncated": 119821,
+      "resultsTruncated": 4,
+      "resultTruncationEstimated": 3,
+      "peakRequestTokens": 31337,
+      "usage": {
+        "input": 37104,
+        "output": 1700,
+        "cacheRead": 52416,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 7864,
+          "usage": {
+            "input": 26227,
+            "output": 128,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 26227,
+          "input": 26227,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 128,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 14765,
+          "usage": {
+            "input": 5459,
+            "output": 635,
+            "cacheRead": 26176,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31635,
+          "input": 5459,
+          "cacheRead": 26176,
+          "cacheWrite": 0,
+          "output": 635,
+          "toolCalls": [
+            "context_fetch",
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [
+            "full",
+            "full"
+          ],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 28173,
+          "usage": {
+            "input": 5418,
+            "output": 937,
+            "cacheRead": 26240,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31658,
+          "input": 5418,
+          "cacheRead": 26240,
+          "cacheWrite": 0,
+          "output": 937,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 51024,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "packages/core/dist/assemble/format.js",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-tail-v2",
+      "window": 32768,
+      "question": "s1-qo03-overflow",
+      "stratum": "overflow",
+      "rep": 5,
+      "status": "stalled",
+      "modelTurns": 4,
+      "finalText": "",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "seqRange(active) occurrences rebuilt core dist file",
+        "grep seqRange dist rebuild occurrences count",
+        "seqRange(active) grep rebuilt dist count occurrences",
+        "Zone C header seqRange removal rebuild dist verify",
+        "seqRange(active) grep occurrences rebuilt dist core build",
+        "verify rebuilt dist seqRange removed Zone C header volatile",
+        "grep seqRange(active) occurrences count rebuilt dist verify header removal",
+        "rebuild packages/core dist seqRange verification grep output"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 2097,
+      "resultCharsTruncated": 159095,
+      "resultsTruncated": 8,
+      "resultTruncationEstimated": 7,
+      "peakRequestTokens": 31165,
+      "usage": {
+        "input": 153,
+        "output": 699,
+        "cacheRead": 121024,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 5906,
+          "usage": {
+            "input": 51,
+            "output": 90,
+            "cacheRead": 26176,
+            "cacheWrite": 0
+          },
+          "promptTokens": 26227,
+          "input": 51,
+          "cacheRead": 26176,
+          "cacheWrite": 0,
+          "output": 90,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 6664,
+          "usage": {
+            "input": 11,
+            "output": 109,
+            "cacheRead": 31616,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31627,
+          "input": 11,
+          "cacheRead": 31616,
+          "cacheWrite": 0,
+          "output": 109,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 7058,
+          "usage": {
+            "input": 34,
+            "output": 123,
+            "cacheRead": 31616,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31650,
+          "input": 34,
+          "cacheRead": 31616,
+          "cacheWrite": 0,
+          "output": 123,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 10186,
+          "usage": {
+            "input": 57,
+            "output": 377,
+            "cacheRead": 31616,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31673,
+          "input": 57,
+          "cacheRead": 31616,
+          "cacheWrite": 0,
+          "output": 377,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 30899,
+      "score": null,
+      "success": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-tail-v2",
+      "window": 32768,
+      "question": "s1-qo04-overflow",
+      "stratum": "overflow",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 3,
+      "finalText": "`packages/core/src/config.ts` — the budgets type/definition is declared there (the recorded citation is config.ts:110, the Zone C water-fill budget of 30,000 tokens; the Zone B 8,000-token budget sits alongside it). The other files in that result hold usages rather than the declaration: `packages/core/src/summarize/summarizer.ts` (maxSummaryTokens = 1024) and `eval/src/loop.ts` (the env-gated selection/tuning knobs).\n\nOne caveat for accuracy: the raw seq-401 tool result itself wasn't retrievable in this context window — the verbatim event trace I have starts at seq 707, and my targeted fetch of the earlier range came back empty. The `packages/core/src/config.ts` path is grounded in the session's recorded file:line citation for the water-fill budget (\"config.ts:110\"), which is the only concrete budget-declaration location in the recorded history, so I'm giving you that rather than a quote I can't verify. If you need the exact type-name and line span from the seq-401 result itself, re-run that grep (`grep -rn \"Budgets\\|budget\" packages/core/src`) and I can read it directly.",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "budget definitions across files Budgets type declared tool result seq 401",
+        "budgets type declaration file path grep budget",
+        "budget definitions across files Budgets type declared config zoneBudget token budget"
+      ],
+      "fetchedIds": [
+        "n_1C6D33C0FMZ129RA2R0GXXCRM6"
+      ],
+      "fetchedDepths": [
+        {
+          "turn": 2,
+          "branchId": "n_1C6D33C0FMZ129RA2R0GXXCRM6",
+          "depth": "index"
+        }
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 1925,
+      "resultCharsTruncated": 75508,
+      "resultsTruncated": 4,
+      "resultTruncationEstimated": 3,
+      "peakRequestTokens": 31368,
+      "usage": {
+        "input": 5570,
+        "output": 5645,
+        "cacheRead": 83904,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 9091,
+          "usage": {
+            "input": 63,
+            "output": 246,
+            "cacheRead": 26176,
+            "cacheWrite": 0
+          },
+          "promptTokens": 26239,
+          "input": 63,
+          "cacheRead": 26176,
+          "cacheWrite": 0,
+          "output": 246,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 62675,
+          "usage": {
+            "input": 5430,
+            "output": 2328,
+            "cacheRead": 26176,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31606,
+          "input": 5430,
+          "cacheRead": 26176,
+          "cacheWrite": 0,
+          "output": 2328,
+          "toolCalls": [
+            "context_search",
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [
+            "index"
+          ],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 92534,
+          "usage": {
+            "input": 77,
+            "output": 3071,
+            "cacheRead": 31552,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31629,
+          "input": 77,
+          "cacheRead": 31552,
+          "cacheWrite": 0,
+          "output": 3071,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 164436,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "eval/src/types.ts",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-tail-v2",
+      "window": 32768,
+      "question": "s1-qo04-overflow",
+      "stratum": "overflow",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 3,
+      "finalText": "The budgets type is declared in **`/Users/danielbyrne/GitHub/rpm/context-tree/packages/core/src/config.ts`**.\n\nThat's the file of record in the seq 401 result: it holds the `Budgets` type declaration itself (including the Zone C water-fill budget default of 30,000 tokens at line 110, with Zone B at 8,000). The other files shown alongside it in that result — `eval/src/loop.ts`, `packages/core/src/summarize/summarizer.ts` (which carries `maxSummaryTokens`), and the assembler modules — only import and consume the budgets; none of them declare the type.\n\nOne caveat worth flagging honestly: my retrieval of that recorded event came back thinner than I'd like (the search ranked the diagnosis-phase node containing it only weakly, and the fetch didn't surface the raw lines), so this answer rests on the session's established facts — config.ts:110 holding the Zone C budget, with the summarizer's `maxSummaryTokens` being a separate setting in `summarizer.ts` rather than part of the `Budgets` type. If you need the exact byte-level contents of seq 401 re-verified, the honest way is to re-fetch that diagnosis-phase node with `depth: 'full'` and read the grep output directly.",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "budget definitions maxSummaryTokens budget type declaration files",
+        "budgets type declared Zone B Zone C token budget"
+      ],
+      "fetchedIds": [
+        "n_0NRDWBV3GE8JVNCNR0RG0ZNXTC"
+      ],
+      "fetchedDepths": [
+        {
+          "turn": 2,
+          "branchId": "n_0NRDWBV3GE8JVNCNR0RG0ZNXTC",
+          "depth": "full"
+        }
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 1891,
+      "resultCharsTruncated": 55635,
+      "resultsTruncated": 3,
+      "resultTruncationEstimated": 2,
+      "peakRequestTokens": 31378,
+      "usage": {
+        "input": 54166,
+        "output": 3935,
+        "cacheRead": 35328,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 7879,
+          "usage": {
+            "input": 26239,
+            "output": 174,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 26239,
+          "input": 26239,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 174,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 41886,
+          "usage": {
+            "input": 27908,
+            "output": 1984,
+            "cacheRead": 3712,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31620,
+          "input": 27908,
+          "cacheRead": 3712,
+          "cacheWrite": 0,
+          "output": 1984,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [
+            "full"
+          ],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 44730,
+          "usage": {
+            "input": 19,
+            "output": 1777,
+            "cacheRead": 31616,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31635,
+          "input": 19,
+          "cacheRead": 31616,
+          "cacheWrite": 0,
+          "output": 1777,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 94685,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "eval/src/types.ts",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-tail-v2",
+      "window": 32768,
+      "question": "s1-qo04-overflow",
+      "stratum": "overflow",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 3,
+      "finalText": "The budgets type is declared in **`/Users/danielbyrne/GitHub/rpm/context-tree/packages/core/src/config.ts`** (repo-relative: `packages/core/src/config.ts`).\n\nIn the seq 401 grep across the several files touching budgets, this is the file that holds the actual type declaration — the same file the session had already cited as the home of the Zone C water-fill budget (config.ts:110, the 30,000-token default; Zone B's 8,000-token budget sits alongside it there). The other files in that result only *reference* or *consume* those budget values (the assembler's water-fill truncation, the eval loop's gate configuration, and the test fixtures) — the declaration itself lives in config.ts.",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "budget definitions Zone B Zone C budget tokens grep several files",
+        "budgets type declared file path budget definitions"
+      ],
+      "fetchedIds": [
+        "n_0NRDWBV3GE8JVNCNR0RG0ZNXTC"
+      ],
+      "fetchedDepths": [
+        {
+          "turn": 2,
+          "branchId": "n_0NRDWBV3GE8JVNCNR0RG0ZNXTC",
+          "depth": "index"
+        }
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 1811,
+      "resultCharsTruncated": 61886,
+      "resultsTruncated": 3,
+      "resultTruncationEstimated": 2,
+      "peakRequestTokens": 31256,
+      "usage": {
+        "input": 23652,
+        "output": 1561,
+        "cacheRead": 65792,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 4646,
+          "usage": {
+            "input": 12863,
+            "output": 149,
+            "cacheRead": 13376,
+            "cacheWrite": 0
+          },
+          "promptTokens": 26239,
+          "input": 12863,
+          "cacheRead": 13376,
+          "cacheWrite": 0,
+          "output": 149,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 9575,
+          "usage": {
+            "input": 5419,
+            "output": 448,
+            "cacheRead": 26176,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31595,
+          "input": 5419,
+          "cacheRead": 26176,
+          "cacheWrite": 0,
+          "output": 448,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [
+            "index"
+          ],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 25077,
+          "usage": {
+            "input": 5370,
+            "output": 964,
+            "cacheRead": 26240,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31610,
+          "input": 5370,
+          "cacheRead": 26240,
+          "cacheWrite": 0,
+          "output": 964,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 39398,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "eval/src/types.ts",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-tail-v2",
+      "window": 32768,
+      "question": "s1-qo04-overflow",
+      "stratum": "overflow",
+      "rep": 4,
+      "status": "stalled",
+      "modelTurns": 5,
+      "finalText": "",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "budget definitions budgets type declared Zone C budget maxSummaryTokens config",
+        "budgets type declaration across files grep budget"
+      ],
+      "fetchedIds": [
+        "n_0NRDWBV3GE8JVNCNR0RG0ZNXTC",
+        "n_0NRDWBV3GE8JVNCNR0RG0ZNXTC",
+        "n_0NRDWBV3GE8JVNCNR0RG0ZNXTC",
+        "n_0NRDWBV3GE8JVNCNR0RG0ZNXTC"
+      ],
+      "fetchedDepths": [
+        {
+          "turn": 2,
+          "branchId": "n_0NRDWBV3GE8JVNCNR0RG0ZNXTC",
+          "depth": "index"
+        },
+        {
+          "turn": 3,
+          "branchId": "n_0NRDWBV3GE8JVNCNR0RG0ZNXTC",
+          "depth": "full"
+        },
+        {
+          "turn": 4,
+          "branchId": "n_0NRDWBV3GE8JVNCNR0RG0ZNXTC",
+          "depth": "full"
+        },
+        {
+          "turn": 5,
+          "branchId": "n_0NRDWBV3GE8JVNCNR0RG0ZNXTC",
+          "depth": "full"
+        }
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 1938,
+      "resultCharsTruncated": 163885,
+      "resultsTruncated": 6,
+      "resultTruncationEstimated": 5,
+      "peakRequestTokens": 31200,
+      "usage": {
+        "input": 5618,
+        "output": 3338,
+        "cacheRead": 147328,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 6827,
+          "usage": {
+            "input": 63,
+            "output": 108,
+            "cacheRead": 26176,
+            "cacheWrite": 0
+          },
+          "promptTokens": 26239,
+          "input": 63,
+          "cacheRead": 26176,
+          "cacheWrite": 0,
+          "output": 108,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 29602,
+          "usage": {
+            "input": 5385,
+            "output": 1208,
+            "cacheRead": 26240,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31625,
+          "input": 5385,
+          "cacheRead": 26240,
+          "cacheWrite": 0,
+          "output": 1208,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [
+            "index"
+          ],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 21426,
+          "usage": {
+            "input": 57,
+            "output": 688,
+            "cacheRead": 31616,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31673,
+          "input": 57,
+          "cacheRead": 31616,
+          "cacheWrite": 0,
+          "output": 688,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [
+            "full"
+          ],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 17968,
+          "usage": {
+            "input": 72,
+            "output": 680,
+            "cacheRead": 31616,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31688,
+          "input": 72,
+          "cacheRead": 31616,
+          "cacheWrite": 0,
+          "output": 680,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [
+            "full"
+          ],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 5,
+          "turn": 5,
+          "latencyMs": 19656,
+          "usage": {
+            "input": 41,
+            "output": 654,
+            "cacheRead": 31680,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31721,
+          "input": 41,
+          "cacheRead": 31680,
+          "cacheWrite": 0,
+          "output": 654,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [
+            "full"
+          ],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 95707,
+      "score": null,
+      "success": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-tail-v2",
+      "window": 32768,
+      "question": "s1-qo04-overflow",
+      "stratum": "overflow",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 5,
+      "finalText": "(invoking tool)",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "budget definitions budgets type declared across files",
+        "seq 401 budget definitions tool result",
+        "budgets type declared maxSummaryTokens zoneC budget config",
+        "grep budget definitions several files Budgets interface type",
+        "budgets type declared grep budget Zone B Zone C 30000 8000 tokens config",
+        "budget definitions across several files tool result seq 401"
+      ],
+      "fetchedIds": [
+        "n_1E48X9HAFPEYNQHHSF609KHMEE"
+      ],
+      "fetchedDepths": [
+        {
+          "turn": 4,
+          "branchId": "n_1E48X9HAFPEYNQHHSF609KHMEE",
+          "depth": "index"
+        }
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 1793,
+      "resultCharsTruncated": 136936,
+      "resultsTruncated": 7,
+      "resultTruncationEstimated": 6,
+      "peakRequestTokens": 31163,
+      "usage": {
+        "input": 33433,
+        "output": 1794,
+        "cacheRead": 119360,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 4542,
+          "usage": {
+            "input": 22527,
+            "output": 131,
+            "cacheRead": 3712,
+            "cacheWrite": 0
+          },
+          "promptTokens": 26239,
+          "input": 22527,
+          "cacheRead": 3712,
+          "cacheWrite": 0,
+          "output": 131,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 14351,
+          "usage": {
+            "input": 5430,
+            "output": 479,
+            "cacheRead": 26176,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31606,
+          "input": 5430,
+          "cacheRead": 26176,
+          "cacheWrite": 0,
+          "output": 479,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 16762,
+          "usage": {
+            "input": 5389,
+            "output": 761,
+            "cacheRead": 26240,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31629,
+          "input": 5389,
+          "cacheRead": 26240,
+          "cacheWrite": 0,
+          "output": 761,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 9534,
+          "usage": {
+            "input": 36,
+            "output": 417,
+            "cacheRead": 31616,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31652,
+          "input": 36,
+          "cacheRead": 31616,
+          "cacheWrite": 0,
+          "output": 417,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [
+            "index"
+          ],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 5,
+          "turn": 5,
+          "latencyMs": 2288,
+          "usage": {
+            "input": 51,
+            "output": 6,
+            "cacheRead": 31616,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31667,
+          "input": 51,
+          "cacheRead": 31616,
+          "cacheWrite": 0,
+          "output": 6,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 47714,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "eval/src/types.ts",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-tail-v2",
+      "window": 32768,
+      "question": "s1-qo06-overflow",
+      "stratum": "overflow",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 9,
+      "finalText": "(invoking tool)",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "JSON_FENCE regex extract JSON object from raw string",
+        "summarizer parse JSON reply fenced code block extraction",
+        "summarizer.ts parseSummaryReply JSON_FENCE",
+        "JSON_FENCE parseSummaryReply summarizer parse JSON reply raw string",
+        "summarizer.ts JSON_FENCE extract JSON object parse summary reply",
+        "JSON_FENCE regex constant extract JSON object from raw string summarizer parse"
+      ],
+      "fetchedIds": [
+        "n_1E48X9HAFPEYNQHHSF609KHMEE",
+        "n_0NRDWBV3GE8JVNCNR0RG0ZNXTC",
+        "n_2KX0BWBV0JE6AAAN8VTXD965R6"
+      ],
+      "fetchedDepths": [
+        {
+          "turn": 4,
+          "branchId": "n_1E48X9HAFPEYNQHHSF609KHMEE",
+          "depth": "index"
+        },
+        {
+          "turn": 6,
+          "branchId": "n_2KX0BWBV0JE6AAAN8VTXD965R6",
+          "depth": "full"
+        }
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 1948,
+      "resultCharsTruncated": 121013,
+      "resultsTruncated": 10,
+      "resultTruncationEstimated": 9,
+      "peakRequestTokens": 31229,
+      "usage": {
+        "input": 28332,
+        "output": 2058,
+        "cacheRead": 251520,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 4424,
+          "usage": {
+            "input": 22530,
+            "output": 123,
+            "cacheRead": 3712,
+            "cacheWrite": 0
+          },
+          "promptTokens": 26242,
+          "input": 22530,
+          "cacheRead": 3712,
+          "cacheWrite": 0,
+          "output": 123,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 7924,
+          "usage": {
+            "input": 5466,
+            "output": 270,
+            "cacheRead": 26176,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31642,
+          "input": 5466,
+          "cacheRead": 26176,
+          "cacheWrite": 0,
+          "output": 270,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 5592,
+          "usage": {
+            "input": 41,
+            "output": 208,
+            "cacheRead": 31616,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31657,
+          "input": 41,
+          "cacheRead": 31616,
+          "cacheWrite": 0,
+          "output": 208,
+          "toolCalls": [
+            "context_search",
+            "context_peek"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 9347,
+          "usage": {
+            "input": 65,
+            "output": 238,
+            "cacheRead": 31616,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31681,
+          "input": 65,
+          "cacheRead": 31616,
+          "cacheWrite": 0,
+          "output": 238,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [
+            "index"
+          ],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 5,
+          "turn": 5,
+          "latencyMs": 19852,
+          "usage": {
+            "input": 16,
+            "output": 727,
+            "cacheRead": 31680,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31696,
+          "input": 16,
+          "cacheRead": 31680,
+          "cacheWrite": 0,
+          "output": 727,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 6,
+          "turn": 6,
+          "latencyMs": 3658,
+          "usage": {
+            "input": 31,
+            "output": 43,
+            "cacheRead": 31680,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31711,
+          "input": 31,
+          "cacheRead": 31680,
+          "cacheWrite": 0,
+          "output": 43,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [
+            "full"
+          ],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 7,
+          "turn": 7,
+          "latencyMs": 10999,
+          "usage": {
+            "input": 46,
+            "output": 306,
+            "cacheRead": 31680,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31726,
+          "input": 46,
+          "cacheRead": 31680,
+          "cacheWrite": 0,
+          "output": 306,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 8,
+          "turn": 8,
+          "latencyMs": 7156,
+          "usage": {
+            "input": 61,
+            "output": 137,
+            "cacheRead": 31680,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31741,
+          "input": 61,
+          "cacheRead": 31680,
+          "cacheWrite": 0,
+          "output": 137,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 9,
+          "turn": 9,
+          "latencyMs": 1988,
+          "usage": {
+            "input": 76,
+            "output": 6,
+            "cacheRead": 31680,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31756,
+          "input": 76,
+          "cacheRead": 31680,
+          "cacheWrite": 0,
+          "output": 6,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 71425,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "extractJsonObject",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-tail-v2",
+      "window": 32768,
+      "question": "s1-qo06-overflow",
+      "stratum": "overflow",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 7,
+      "finalText": "(invoking tool)",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "JSON_FENCE regex extract JSON object from raw string",
+        "JSON_FENCE regex constant extract JSON object from raw string summarizer",
+        "parseSummaryReply JSON fence no-JSON parser summarizer.ts",
+        "JSON_FENCE parseSummaryReply extract JSON from raw reply summarizer.ts",
+        "JSON fence regex extract JSON object function in summarizer parsing model reply",
+        "JSON_FENCE regex parseSummaryReply extract JSON object from raw string summarizer",
+        "JSON_FENCE fence extract JSON object from reply raw string"
+      ],
+      "fetchedIds": [
+        "n_1C6D33C0FMZ129RA2R0GXXCRM6",
+        "n_0NRDWBV3GE8JVNCNR0RG0ZNXTC"
+      ],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 1948,
+      "resultCharsTruncated": 128593,
+      "resultsTruncated": 9,
+      "resultTruncationEstimated": 8,
+      "peakRequestTokens": 31201,
+      "usage": {
+        "input": 287,
+        "output": 1761,
+        "cacheRead": 216064,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 5840,
+          "usage": {
+            "input": 66,
+            "output": 97,
+            "cacheRead": 26176,
+            "cacheWrite": 0
+          },
+          "promptTokens": 26242,
+          "input": 66,
+          "cacheRead": 26176,
+          "cacheWrite": 0,
+          "output": 97,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 13802,
+          "usage": {
+            "input": 18,
+            "output": 469,
+            "cacheRead": 31616,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31634,
+          "input": 18,
+          "cacheRead": 31616,
+          "cacheWrite": 0,
+          "output": 469,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 18467,
+          "usage": {
+            "input": 41,
+            "output": 409,
+            "cacheRead": 31616,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31657,
+          "input": 41,
+          "cacheRead": 31616,
+          "cacheWrite": 0,
+          "output": 409,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 10101,
+          "usage": {
+            "input": 64,
+            "output": 338,
+            "cacheRead": 31616,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31680,
+          "input": 64,
+          "cacheRead": 31616,
+          "cacheWrite": 0,
+          "output": 338,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 5,
+          "turn": 5,
+          "latencyMs": 3270,
+          "usage": {
+            "input": 15,
+            "output": 132,
+            "cacheRead": 31680,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31695,
+          "input": 15,
+          "cacheRead": 31680,
+          "cacheWrite": 0,
+          "output": 132,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 6,
+          "turn": 6,
+          "latencyMs": 5237,
+          "usage": {
+            "input": 30,
+            "output": 160,
+            "cacheRead": 31680,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31710,
+          "input": 30,
+          "cacheRead": 31680,
+          "cacheWrite": 0,
+          "output": 160,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 7,
+          "turn": 7,
+          "latencyMs": 8503,
+          "usage": {
+            "input": 53,
+            "output": 156,
+            "cacheRead": 31680,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31733,
+          "input": 53,
+          "cacheRead": 31680,
+          "cacheWrite": 0,
+          "output": 156,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 65713,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "extractJsonObject",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-tail-v2",
+      "window": 32768,
+      "question": "s1-qo06-overflow",
+      "stratum": "overflow",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 4,
+      "finalText": "**`extractJsonObject`** — defined in `packages/core/src/summarize/summarizer.ts`, immediately after the `JSON_FENCE` regex constant. It takes the raw reply string, locates the fenced (or bare) JSON span, and returns the parsed object; `parseSummaryReply` sits a level above it and is the caller that the FM-1 fix (the `stopReason === 'max_tokens'` budget-doubling retry) routes through before parsing succeeds.",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "JSON_FENCE regex extract JSON object from raw string",
+        "JSON_FENCE summarizer parse reply fence",
+        "summarizer parseSummaryReply JSON_FENCE extract JSON object from raw string",
+        "JSON_FENCE regex constant extractJson fenced JSON parser"
+      ],
+      "fetchedIds": [
+        "n_1C6D33C0FMZ129RA2R0GXXCRM6"
+      ],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 1948,
+      "resultCharsTruncated": 57448,
+      "resultsTruncated": 5,
+      "resultTruncationEstimated": 4,
+      "peakRequestTokens": 31230,
+      "usage": {
+        "input": 141,
+        "output": 1741,
+        "cacheRead": 121088,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 3456,
+          "usage": {
+            "input": 2,
+            "output": 106,
+            "cacheRead": 26240,
+            "cacheWrite": 0
+          },
+          "promptTokens": 26242,
+          "input": 2,
+          "cacheRead": 26240,
+          "cacheWrite": 0,
+          "output": 106,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 16247,
+          "usage": {
+            "input": 26,
+            "output": 671,
+            "cacheRead": 31616,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31642,
+          "input": 26,
+          "cacheRead": 31616,
+          "cacheWrite": 0,
+          "output": 671,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 12747,
+          "usage": {
+            "input": 49,
+            "output": 360,
+            "cacheRead": 31616,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31665,
+          "input": 49,
+          "cacheRead": 31616,
+          "cacheWrite": 0,
+          "output": 360,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 14156,
+          "usage": {
+            "input": 64,
+            "output": 604,
+            "cacheRead": 31616,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31680,
+          "input": 64,
+          "cacheRead": 31616,
+          "cacheWrite": 0,
+          "output": 604,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 46911,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "extractJsonObject",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-tail-v2",
+      "window": 32768,
+      "question": "s1-qo06-overflow",
+      "stratum": "overflow",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 3,
+      "finalText": "(invoking tool)",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "JSON_FENCE regex extract JSON object from raw string",
+        "summarizer parseSummaryReply JSON fence parser function"
+      ],
+      "fetchedIds": [
+        "n_0NRDWBV3GE8JVNCNR0RG0ZNXTC"
+      ],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 1948,
+      "resultCharsTruncated": 29368,
+      "resultsTruncated": 3,
+      "resultTruncationEstimated": 2,
+      "peakRequestTokens": 31103,
+      "usage": {
+        "input": 69,
+        "output": 1072,
+        "cacheRead": 89472,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 5313,
+          "usage": {
+            "input": 2,
+            "output": 166,
+            "cacheRead": 26240,
+            "cacheWrite": 0
+          },
+          "promptTokens": 26242,
+          "input": 2,
+          "cacheRead": 26240,
+          "cacheWrite": 0,
+          "output": 166,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 20020,
+          "usage": {
+            "input": 26,
+            "output": 900,
+            "cacheRead": 31616,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31642,
+          "input": 26,
+          "cacheRead": 31616,
+          "cacheWrite": 0,
+          "output": 900,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 1463,
+          "usage": {
+            "input": 41,
+            "output": 6,
+            "cacheRead": 31616,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31657,
+          "input": 41,
+          "cacheRead": 31616,
+          "cacheWrite": 0,
+          "output": 6,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 26971,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "extractJsonObject",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-tail-v2",
+      "window": 32768,
+      "question": "s1-qo06-overflow",
+      "stratum": "overflow",
+      "rep": 5,
+      "status": "stalled",
+      "modelTurns": 5,
+      "finalText": "",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "JSON_FENCE regex extract JSON object from raw string summarizer parse",
+        "summarizer.ts JSON parsing fence extract object"
+      ],
+      "fetchedIds": [
+        "n_2RJJA09PETFFHGPPV1DGVYKQSQ",
+        "n_2RJJA09PETFFHGPPV1DGVYKQSQ",
+        "n_2RJJA09PETFFHGPPV1DGVYKQSQ",
+        "n_2RJJA09PETFFHGPPV1DGVYKQSQ"
+      ],
+      "fetchedDepths": [
+        {
+          "turn": 5,
+          "branchId": "n_2RJJA09PETFFHGPPV1DGVYKQSQ",
+          "depth": "full"
+        }
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 1955,
+      "resultCharsTruncated": 40849,
+      "resultsTruncated": 6,
+      "resultTruncationEstimated": 5,
+      "peakRequestTokens": 31152,
+      "usage": {
+        "input": 5564,
+        "output": 1057,
+        "cacheRead": 147328,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 6982,
+          "usage": {
+            "input": 2,
+            "output": 281,
+            "cacheRead": 26240,
+            "cacheWrite": 0
+          },
+          "promptTokens": 26242,
+          "input": 2,
+          "cacheRead": 26240,
+          "cacheWrite": 0,
+          "output": 281,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 5090,
+          "usage": {
+            "input": 5400,
+            "output": 210,
+            "cacheRead": 26240,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31640,
+          "input": 5400,
+          "cacheRead": 26240,
+          "cacheWrite": 0,
+          "output": 210,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 3168,
+          "usage": {
+            "input": 39,
+            "output": 123,
+            "cacheRead": 31616,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31655,
+          "input": 39,
+          "cacheRead": 31616,
+          "cacheWrite": 0,
+          "output": 123,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 4623,
+          "usage": {
+            "input": 54,
+            "output": 177,
+            "cacheRead": 31616,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31670,
+          "input": 54,
+          "cacheRead": 31616,
+          "cacheWrite": 0,
+          "output": 177,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 5,
+          "turn": 5,
+          "latencyMs": 7461,
+          "usage": {
+            "input": 69,
+            "output": 266,
+            "cacheRead": 31616,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31685,
+          "input": 69,
+          "cacheRead": 31616,
+          "cacheWrite": 0,
+          "output": 266,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9904,
+            "overBudget": []
+          },
+          "fetchedDepths": [
+            "full"
+          ],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 27509,
+      "score": null,
+      "success": null
     }
   ],
-  "partial": true
+  "partial": false
 }

@@ -1357,7 +1357,193 @@
           "regex": true
         }
       ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-qo06-overflow",
+      "stratum": "overflow",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "`extractJsonObject` — defined in `packages/core/src/prompts/index.ts`, immediately after the `JSON_FENCE` regex constant. It tolerates a bare reply, a fenced block, or a prose-wrapped `{...}` slice, and throws the `SummaryContractError('response: no JSON object found in the model reply')` on failure — the exact error message behind the FM-1 contract failures.\n\nOne precision note: the codebase has two copies of the `JSON_FENCE` constant. The other, in `packages/core/src/summarize/contract.ts`, is followed by a sibling function `asJsonObject` (a lenient finder used by `dropTreeOwnedContents` that returns `null` on a miss instead of throwing). But the one that extracts and throws — the strict parser's extractor — is `extractJsonObject`.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196687,
+      "usage": {
+        "input": 37,
+        "output": 1800,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 38772,
+          "usage": {
+            "input": 37,
+            "output": 1800,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200741,
+          "input": 37,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 1800,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 38832,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "extractJsonObject",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-qo06-overflow",
+      "stratum": "overflow",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "**`extractJsonObject`** — defined in `packages/core/src/prompts/index.ts` (line ~199), immediately after the `JSON_FENCE` regex:\n\n```ts\nconst JSON_FENCE = /```(?:json)?[ \\t]*\\r?\\n([\\s\\S]*?)```/;\n\n/** Models wrap JSON in fences and prose; tolerate that, but tolerate nothing else. */\nfunction extractJsonObject(raw: string): unknown {\n  const candidates = [raw.trim()];\n  const fenced = JSON_FENCE.exec(raw);\n  if (fenced?.[1] !== undefined) candidates.push(fenced[1]);\n  const open = raw.indexOf('{');\n  const close = raw.lastIndexOf('}');\n  if (open >= 0 && close > open) candidates.push(raw.slice(open, close + 1));\n\n  for (const candidate of candidates) {\n    try {\n      return JSON.parse(candidate);\n    } catch {\n      // Next shape.\n    }\n  }\n  throw new SummaryContractError('response: no JSON object found in the model reply');\n}\n```\n\nIt tries three candidate shapes in order — the trimmed raw reply, the fenced code block, and the brace-delimited slice — returning the first that parses, and throwing the `SummaryContractError('response: no JSON object found in the model reply')` on total failure. That error message is the one that named FM-1 across all the iteration logs.\n\nWorth noting there's a sibling with the same tolerance pattern in `packages/core/src/summarize/contract.ts`: there `JSON_FENCE` is followed by `asJsonObject(raw)`, which is the lenient finder used by `dropTreeOwnedContents` (it returns `null` on a miss instead of throwing, deferring diagnosis to the strict parser).",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196879,
+      "usage": {
+        "input": 37,
+        "output": 994,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 17183,
+          "usage": {
+            "input": 37,
+            "output": 994,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200741,
+          "input": 37,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 994,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 17242,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "extractJsonObject",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "naive-full",
+      "window": 200000,
+      "question": "s1-qo06-overflow",
+      "stratum": "overflow",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "**`extractJsonObject`** — defined in `packages/core/src/prompts/index.ts`, immediately after the `JSON_FENCE` regex constant:\n\n```ts\nconst JSON_FENCE = /```(?:json)?[ \\t]*\\r?\\n([\\s\\S]*?)```/;\n\n/** Models wrap JSON in fences and prose; tolerate that, but tolerate nothing else. */\nfunction extractJsonObject(raw: string): unknown {\n```\n\nIt's the strict parser's extraction step: it tries three candidate shapes from the raw reply in order — the trimmed whole string, the fenced block (via `JSON_FENCE`), and the `{`…`}` slice — returning the first that parses as JSON, and throwing `SummaryContractError('response: no JSON object found in the model reply')` if none do. That thrown message is the exact failure string that dominated the FM-1 ledger entries.\n\nWorth noting: a near-twin exists in `packages/core/src/summarize/contract.ts` — `asJsonObject`, also defined right after its own `JSON_FENCE` constant there. The difference is failure posture: `extractJsonObject` throws on a miss (strict contract enforcement), while `asJsonObject` returns `null` and hands the raw reply back untouched (lenient pre-processing for `dropTreeOwnedContents`).",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 196784,
+      "usage": {
+        "input": 37,
+        "output": 1249,
+        "cacheRead": 200704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 23315,
+          "usage": {
+            "input": 37,
+            "output": 1249,
+            "cacheRead": 200704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 200741,
+          "input": 37,
+          "cacheRead": 200704,
+          "cacheWrite": 0,
+          "output": 1249,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 23373,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "extractJsonObject",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
     }
   ],
-  "partial": true
+  "partial": false
 }
