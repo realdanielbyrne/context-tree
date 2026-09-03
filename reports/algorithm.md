@@ -76,7 +76,8 @@ retrieve on demand
   search: rank fingerprint-enriched documents, return coordinates
     when the query contains distinctive terms, grep raw events and merge via RRF
     when regex finds nothing distinctive, a cheap LLM rewrites the query (optional fallback)
-  fetch: raw events, a listing, or the summary
+  fetch: raw events narrowed to the most relevant section when the branch exceeds headroom
+    centers on the query's matching events; band sized to available window space
   peek: a raw excerpt
   annotate: record a note
 ```
@@ -124,6 +125,7 @@ in the portability harness but not the live suite.
 | Summaries don't contain the answer | Confirmed (0/12 answer literals in any summary); raw fetch is for this |
 | No embedder | Beam search fallback — tested |
 | Search ranks wrong branch | Fixed 2026-09-03: fingerprints + grep → 10/12 top-3 (was 2/12) |
+| Tail covers the answerable content (W ≥ answer depth) | **Found 2026-09-03.** The tree adds no value when the raw tail already contains the answer — tool-use overhead (15-20K tokens per question) is a net loss. The tree earns its keep only in the overflow regime: sessions where the trace exceeds the window and answers lie outside the tail. Untested. |
 
 ## DS-STAR dimensions
 
@@ -182,8 +184,12 @@ top-3. *(Report: `reports/metrics/ds-star-search-ranking-report.md`)*
 
 ## Change log
 
-- **2026-09-03** — Search ranking: fingerprints + hybrid grep (10/12 top-3).
-  `reports/metrics/ds-star-search-ranking-report.md`.
+- **2026-09-03 15:10** — Live verification: tree loses to truncate-tail at W=32K-65K.
+  Tool overhead > navigation benefit when the tail covers the answers. Overflow
+  regime untested. Semantic narrowing, forced depth:full, stronger contract
+  validated as infrastructure. `reports/metrics/ds-star-live-verification-report.md`.
+- **2026-09-03 11:30** — Search ranking: fingerprints + hybrid grep + LLM rewriter
+  (11/12 top-3). `reports/metrics/ds-star-search-ranking-report.md`.
 - **2026-09-02 13:20** — DS-STAR tuning pass closed (3 iterations, 17 rejected
   candidates). `reports/metrics/tuning-pass-report.md`.
 - **2026-09-02 12:25** — Per-turn reply allowance implemented (untested live).
