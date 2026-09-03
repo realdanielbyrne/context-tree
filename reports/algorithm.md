@@ -300,7 +300,8 @@ assemble
   Zone C: the active branch's raw detail, to its budget
 
 retrieve on demand
-  search ranks summaries and returns coordinates
+  search ranks summaries and returns coordinates — never summary text,
+    which is already visible in Zone B; duplicating it wastes the window
   fetch returns a branch's raw events, a listing of them, or its summary
   peek returns a raw excerpt; annotate records a note
 ```
@@ -408,6 +409,7 @@ counting its steps. Each row is a condition, how it is checked, and what is know
 | --- | --- | --- |
 | window too small to hold Zone A plus one branch summary | assemble at 8k, 16k, 32k, 64k, 200k and assert each Zone B is a subset of the next larger | **FOUND at 8,192**, and it is the partition's doing rather than the window's: no fold level leaves a single summary body inside the 20% share, though the whole prompt would fit the window. The nesting assertion still passes because a dead cell is reported as dead rather than forced |
 | a leaf larger than the whole window | fetch a branch whose raw span exceeds W | **found, still open**, and now decomposed into two independent causes. Segmentation: two branches exceed 32,768 tokens and four exceed 16,384; the neutral-phase change reduces but does not eliminate them (one and three remain). Rendering: a write's content was emitted twice in retrieval results, six events byte-identical — that cap is now applied, and re-measuring the branch sizes after it is a next step. The listing-then-range path exists and is still untested live |
+| window too small for iterative tool use | run the tree arm at W and check whether the prompt after one search result exceeds the window | **FOUND at 16,384.** Zone A + B is ~5,500 tokens; one search result (even with snippets stripped) adds ~10,500, reaching 16,000 — negative headroom. The model stalls because it has no room to act on what it found. At 32,768 the same sequence leaves ~13,000 tokens of headroom. The tree is not useful below this window; above it, the savings compound quadratically with session length because the prompt stays flat while a baseline's grows with every turn |
 | host model cannot drive tools | one throwaway search-and-answer call before any scored run | rule adopted after a model scored zero everywhere |
 | unknown tool name | segmenter maps it to "other" | tested |
 | tokenizer heuristic drifts from the real count | measure the ratio, refuse above 1.6 | tested in the transplant harness only |

@@ -1,0 +1,3086 @@
+{
+  "budgets": {
+    "window": 32768,
+    "ratio": 0.850896663206653,
+    "slackFraction": 0.1,
+    "zoneCFraction": 0.2,
+    "reply": 1925,
+    "zoneA": 3850,
+    "zoneB": 7701,
+    "zoneC": 7701,
+    "lazy": 13478,
+    "slack": 3850,
+    "K": 30808,
+    "maxReplyTokens": 1638,
+    "rootKeep": 16,
+    "rootLadder": [
+      {
+        "keep": 40,
+        "ok": false,
+        "rootBlockTokens": 6917,
+        "branchesSurviving": 0,
+        "branchSeqRange": null,
+        "overBudget": [],
+        "zoneB": 6917
+      },
+      {
+        "keep": 16,
+        "ok": true,
+        "rootBlockTokens": 6095,
+        "branchesSurviving": 2,
+        "branchSeqRange": {
+          "from": 639,
+          "to": 754
+        },
+        "overBudget": [],
+        "zoneB": 7633
+      }
+    ],
+    "rootKeepOk": true,
+    "rootBlockTokens": 6095,
+    "branchesSurviving": 2,
+    "branchSeqRange": {
+      "from": 639,
+      "to": 754
+    },
+    "overBudget": [],
+    "arm": "tree",
+    "rootSummarySha": "2c7fbe668193766cdd17e3de4b816cdcd0be5e4fcda3d881c2f7a73e76cc8596"
+  },
+  "compactionBuildUsd": null,
+  "compactionSkippedChunks": [],
+  "compaction": null,
+  "rows": [
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4o-mini",
+      "arm": "tree",
+      "window": 32768,
+      "question": "s1-q01-head",
+      "stratum": "head",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "The file that is imported from the path containing \"trace\" is `loop.ts`, located at:\n\n`/Users/danielbyrne/GitHub/rpm/context-tree/eval/src/loop.ts`",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "trace",
+        "testing block ids and token counts"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 13277,
+      "usage": {
+        "input": 2671,
+        "output": 100,
+        "cacheRead": 19072,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1430,
+          "usage": {
+            "input": 117,
+            "output": 57,
+            "cacheRead": 8320,
+            "cacheWrite": 0
+          },
+          "promptTokens": 8437,
+          "input": 117,
+          "cacheRead": 8320,
+          "cacheWrite": 0,
+          "output": 57,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 1169,
+          "usage": {
+            "input": 2554,
+            "output": 43,
+            "cacheRead": 10752,
+            "cacheWrite": 0
+          },
+          "promptTokens": 13306,
+          "input": 2554,
+          "cacheRead": 10752,
+          "cacheWrite": 0,
+          "output": 43,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 2618,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "../src/trace/index.js",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4o-mini",
+      "arm": "tree",
+      "window": 32768,
+      "question": "s1-q01-head",
+      "stratum": "head",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "In the import block that follows the comment about testing block IDs and token counts, the file imported from the path containing \"trace\" is `ct-stats.mjs`, located at:\n\n`/Users/danielbyrne/GitHub/rpm/context-tree/eval/scripts/ct-stats.mjs`.",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "trace",
+        "testing block ids and token counts"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 13295,
+      "usage": {
+        "input": 239,
+        "output": 120,
+        "cacheRead": 21504,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 993,
+          "usage": {
+            "input": 117,
+            "output": 57,
+            "cacheRead": 8320,
+            "cacheWrite": 0
+          },
+          "promptTokens": 8437,
+          "input": 117,
+          "cacheRead": 8320,
+          "cacheWrite": 0,
+          "output": 57,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 1032,
+          "usage": {
+            "input": 122,
+            "output": 63,
+            "cacheRead": 13184,
+            "cacheWrite": 0
+          },
+          "promptTokens": 13306,
+          "input": 122,
+          "cacheRead": 13184,
+          "cacheWrite": 0,
+          "output": 63,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 2041,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "../src/trace/index.js",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4o-mini",
+      "arm": "tree",
+      "window": 32768,
+      "question": "s1-q01-head",
+      "stratum": "head",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "The file imported from the path containing \"trace\" is `ct-stats.mjs`, located at `/Users/danielbyrne/GitHub/rpm/context-tree/eval/scripts/ct-stats.mjs`.",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "trace",
+        "testing block ids and token counts instead of prose"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 13280,
+      "usage": {
+        "input": 242,
+        "output": 105,
+        "cacheRead": 21504,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1052,
+          "usage": {
+            "input": 117,
+            "output": 60,
+            "cacheRead": 8320,
+            "cacheWrite": 0
+          },
+          "promptTokens": 8437,
+          "input": 117,
+          "cacheRead": 8320,
+          "cacheWrite": 0,
+          "output": 60,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 1035,
+          "usage": {
+            "input": 125,
+            "output": 45,
+            "cacheRead": 13184,
+            "cacheWrite": 0
+          },
+          "promptTokens": 13309,
+          "input": 125,
+          "cacheRead": 13184,
+          "cacheWrite": 0,
+          "output": 45,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 2098,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "../src/trace/index.js",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4o-mini",
+      "arm": "tree",
+      "window": 32768,
+      "question": "s1-q01-head",
+      "stratum": "head",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "The imported file from the path containing \"trace\" is `loop.ts`, which is located at the following path: \n\n`/Users/danielbyrne/GitHub/rpm/context-tree/eval/src/loop.ts`.",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "trace",
+        "import"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 13276,
+      "usage": {
+        "input": 3306,
+        "output": 99,
+        "cacheRead": 18432,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1204,
+          "usage": {
+            "input": 117,
+            "output": 52,
+            "cacheRead": 8320,
+            "cacheWrite": 0
+          },
+          "promptTokens": 8437,
+          "input": 117,
+          "cacheRead": 8320,
+          "cacheWrite": 0,
+          "output": 52,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 1483,
+          "usage": {
+            "input": 3189,
+            "output": 47,
+            "cacheRead": 10112,
+            "cacheWrite": 0
+          },
+          "promptTokens": 13301,
+          "input": 3189,
+          "cacheRead": 10112,
+          "cacheWrite": 0,
+          "output": 47,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 2700,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "../src/trace/index.js",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4o-mini",
+      "arm": "tree",
+      "window": 32768,
+      "question": "s1-q01-head",
+      "stratum": "head",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "The file imported from the path containing \"trace\" is `ct-stats.mjs`, located at `/Users/danielbyrne/GitHub/rpm/context-tree/eval/scripts/ct-stats.mjs`.",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "import from the path containing \"trace\"",
+        "testing block ids and token counts instead of prose"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 13297,
+      "usage": {
+        "input": 5128,
+        "output": 112,
+        "cacheRead": 16640,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1560,
+          "usage": {
+            "input": 117,
+            "output": 67,
+            "cacheRead": 8320,
+            "cacheWrite": 0
+          },
+          "promptTokens": 8437,
+          "input": 117,
+          "cacheRead": 8320,
+          "cacheWrite": 0,
+          "output": 67,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 1070,
+          "usage": {
+            "input": 5011,
+            "output": 45,
+            "cacheRead": 8320,
+            "cacheWrite": 0
+          },
+          "promptTokens": 13331,
+          "input": 5011,
+          "cacheRead": 8320,
+          "cacheWrite": 0,
+          "output": 45,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 2642,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "../src/trace/index.js",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4o-mini",
+      "arm": "tree",
+      "window": 32768,
+      "question": "s1-q02-head",
+      "stratum": "head",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 4,
+      "finalText": "In the tool call that read lines 36–80 and 205–260 of `packages/core/test/summarize.test.ts`, the description of the command was as follows:\n\n- \"Index the memory in MEMORY.md\" \n\nThis indicates the operation aimed to update or maintain an index related to the memory state of the experiments or tasks being processed.",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "packages/core/test/summarize.test.ts",
+        "packages/core/test/summarize.test.ts",
+        "executive summary"
+      ],
+      "fetchedIds": [
+        "n_2HAGFANVAQTE91MPR50SBC97DT",
+        "n_2FR05HT5ABQ061NAG0DVSDF6ZH"
+      ],
+      "fetchedDepths": [
+        {
+          "turn": 3,
+          "branchId": "n_2HAGFANVAQTE91MPR50SBC97DT",
+          "depth": "full"
+        },
+        {
+          "turn": 3,
+          "branchId": "n_2FR05HT5ABQ061NAG0DVSDF6ZH",
+          "depth": "full"
+        }
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 40133,
+      "resultsTruncated": 1,
+      "resultTruncationEstimated": 1,
+      "peakRequestTokens": 31140,
+      "usage": {
+        "input": 28853,
+        "output": 307,
+        "cacheRead": 37632,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 2743,
+          "usage": {
+            "input": 122,
+            "output": 25,
+            "cacheRead": 8320,
+            "cacheWrite": 0
+          },
+          "promptTokens": 8442,
+          "input": 122,
+          "cacheRead": 8320,
+          "cacheWrite": 0,
+          "output": 25,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 1366,
+          "usage": {
+            "input": 818,
+            "output": 61,
+            "cacheRead": 10112,
+            "cacheWrite": 0
+          },
+          "promptTokens": 10930,
+          "input": 818,
+          "cacheRead": 10112,
+          "cacheWrite": 0,
+          "output": 61,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 2357,
+          "usage": {
+            "input": 7528,
+            "output": 150,
+            "cacheRead": 8320,
+            "cacheWrite": 0
+          },
+          "promptTokens": 15848,
+          "input": 7528,
+          "cacheRead": 8320,
+          "cacheWrite": 0,
+          "output": 150,
+          "toolCalls": [
+            "context_fetch",
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [
+            "full",
+            "full"
+          ],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 1836,
+          "usage": {
+            "input": 20385,
+            "output": 71,
+            "cacheRead": 10880,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31265,
+          "input": 20385,
+          "cacheRead": 10880,
+          "cacheWrite": 0,
+          "output": 71,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 8398,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Read StubProvider and retry test examples",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4o-mini",
+      "arm": "tree",
+      "window": 32768,
+      "question": "s1-q02-head",
+      "stratum": "head",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 5,
+      "finalText": "In the tool call that read lines 36-80 and 205-260 of `packages/core/test/summarize.test.ts`, the description of the command was \"Read StubProvider and retry test examples.\"",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "packages/core/test/summarize.test.ts",
+        "command",
+        "summarize.test.ts",
+        "command",
+        "command",
+        "summarize"
+      ],
+      "fetchedIds": [
+        "n_2RJJA09PETFFHGPPV1DGVYKQSQ"
+      ],
+      "fetchedDepths": [
+        {
+          "turn": 4,
+          "branchId": "n_2RJJA09PETFFHGPPV1DGVYKQSQ",
+          "depth": "full"
+        }
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 22725,
+      "usage": {
+        "input": 12693,
+        "output": 274,
+        "cacheRead": 61568,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1435,
+          "usage": {
+            "input": 378,
+            "output": 59,
+            "cacheRead": 8064,
+            "cacheWrite": 0
+          },
+          "promptTokens": 8442,
+          "input": 378,
+          "cacheRead": 8064,
+          "cacheWrite": 0,
+          "output": 59,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 1435,
+          "usage": {
+            "input": 112,
+            "output": 56,
+            "cacheRead": 10880,
+            "cacheWrite": 0
+          },
+          "promptTokens": 10992,
+          "input": 112,
+          "cacheRead": 10880,
+          "cacheWrite": 0,
+          "output": 56,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 1506,
+          "usage": {
+            "input": 2664,
+            "output": 54,
+            "cacheRead": 10880,
+            "cacheWrite": 0
+          },
+          "promptTokens": 13544,
+          "input": 2664,
+          "cacheRead": 10880,
+          "cacheWrite": 0,
+          "output": 54,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 1557,
+          "usage": {
+            "input": 4970,
+            "output": 62,
+            "cacheRead": 13440,
+            "cacheWrite": 0
+          },
+          "promptTokens": 18410,
+          "input": 4970,
+          "cacheRead": 13440,
+          "cacheWrite": 0,
+          "output": 62,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [
+            "full"
+          ],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 5,
+          "turn": 5,
+          "latencyMs": 1442,
+          "usage": {
+            "input": 4569,
+            "output": 43,
+            "cacheRead": 18304,
+            "cacheWrite": 0
+          },
+          "promptTokens": 22873,
+          "input": 4569,
+          "cacheRead": 18304,
+          "cacheWrite": 0,
+          "output": 43,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 7440,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "Read StubProvider and retry test examples",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4o-mini",
+      "arm": "tree",
+      "window": 32768,
+      "question": "s1-q02-head",
+      "stratum": "head",
+      "rep": 3,
+      "status": "stalled",
+      "modelTurns": 10,
+      "finalText": "",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "packages/core/test/summarize.test.ts",
+        "summarize.test.ts",
+        "packages/core/test/summarize.test.ts",
+        "packages/core/test/summarize.test.ts",
+        "packages/core/test/summarize.ts",
+        "summarize.test.ts",
+        "packages/core/test/summarize.ts",
+        "packages/core/test/summarize.test.ts",
+        "packages/core/test/summarize.test.ts",
+        "packages/core/test/summarize.test.ts",
+        "packages/core/test/summarize.test.ts"
+      ],
+      "fetchedIds": [
+        "n_2N2BQ792TBTCMS9ZZWVZPK12XT"
+      ],
+      "fetchedDepths": [
+        {
+          "turn": 6,
+          "branchId": "n_2N2BQ792TBTCMS9ZZWVZPK12XT",
+          "depth": "full"
+        }
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 128625,
+      "resultsTruncated": 11,
+      "resultTruncationEstimated": 11,
+      "peakRequestTokens": 31219,
+      "usage": {
+        "input": 66774,
+        "output": 706,
+        "cacheRead": 173056,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1389,
+          "usage": {
+            "input": 122,
+            "output": 25,
+            "cacheRead": 8320,
+            "cacheWrite": 0
+          },
+          "promptTokens": 8442,
+          "input": 122,
+          "cacheRead": 8320,
+          "cacheWrite": 0,
+          "output": 25,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 1367,
+          "usage": {
+            "input": 818,
+            "output": 63,
+            "cacheRead": 10112,
+            "cacheWrite": 0
+          },
+          "promptTokens": 10930,
+          "input": 818,
+          "cacheRead": 10112,
+          "cacheWrite": 0,
+          "output": 63,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 1576,
+          "usage": {
+            "input": 5020,
+            "output": 65,
+            "cacheRead": 10880,
+            "cacheWrite": 0
+          },
+          "promptTokens": 15900,
+          "input": 5020,
+          "cacheRead": 10880,
+          "cacheWrite": 0,
+          "output": 65,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 1136,
+          "usage": {
+            "input": 4995,
+            "output": 62,
+            "cacheRead": 15872,
+            "cacheWrite": 0
+          },
+          "promptTokens": 20867,
+          "input": 4995,
+          "cacheRead": 15872,
+          "cacheWrite": 0,
+          "output": 62,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 5,
+          "turn": 5,
+          "latencyMs": 3613,
+          "usage": {
+            "input": 5100,
+            "output": 339,
+            "cacheRead": 20736,
+            "cacheWrite": 0
+          },
+          "promptTokens": 25836,
+          "input": 5100,
+          "cacheRead": 20736,
+          "cacheWrite": 0,
+          "output": 339,
+          "toolCalls": [
+            "context_peek",
+            "context_peek",
+            "context_peek",
+            "context_peek",
+            "context_peek",
+            "context_peek",
+            "context_peek",
+            "context_peek"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 6,
+          "turn": 6,
+          "latencyMs": 1087,
+          "usage": {
+            "input": 5805,
+            "output": 60,
+            "cacheRead": 25728,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31533,
+          "input": 5805,
+          "cacheRead": 25728,
+          "cacheWrite": 0,
+          "output": 60,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [
+            "full"
+          ],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 7,
+          "turn": 7,
+          "latencyMs": 2003,
+          "usage": {
+            "input": 64,
+            "output": 21,
+            "cacheRead": 31488,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31552,
+          "input": 64,
+          "cacheRead": 31488,
+          "cacheWrite": 0,
+          "output": 21,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 8,
+          "turn": 8,
+          "latencyMs": 1142,
+          "usage": {
+            "input": 23251,
+            "output": 25,
+            "cacheRead": 8320,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31571,
+          "input": 23251,
+          "cacheRead": 8320,
+          "cacheWrite": 0,
+          "output": 25,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 9,
+          "turn": 9,
+          "latencyMs": 1120,
+          "usage": {
+            "input": 21478,
+            "output": 25,
+            "cacheRead": 10112,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31590,
+          "input": 21478,
+          "cacheRead": 10112,
+          "cacheWrite": 0,
+          "output": 25,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 10,
+          "turn": 10,
+          "latencyMs": 1214,
+          "usage": {
+            "input": 121,
+            "output": 21,
+            "cacheRead": 31488,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31609,
+          "input": 121,
+          "cacheRead": 31488,
+          "cacheWrite": 0,
+          "output": 21,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 15807,
+      "score": null,
+      "success": null
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4o-mini",
+      "arm": "tree",
+      "window": 32768,
+      "question": "s1-q02-head",
+      "stratum": "head",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 6,
+      "finalText": "It appears that there is no specific record of the command executed in the tool calls that correspond to the specific lines 36-80 in `packages/core/test/summarize.test.ts`. As the file does not seem to exist in the current context tree, I cannot provide the description from that exact segment. If there's another file or command you would like to inquire about, please let me know!",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "packages/core/test/summarize.test.ts",
+        "summarize.test.ts",
+        "test"
+      ],
+      "fetchedIds": [
+        "n_1E48X9HAFPEYNQHHSF609KHMEE",
+        "n_1C0BDXFHPYAX7N4B5AGK8KB4Q5",
+        "n_2EPMM1V52CJ98NJ5S4AND0CREZ",
+        "n_2FR05HT5ABQ061NAG0DVSDF6ZH",
+        "n_2EPMM1V52CJ98NJ5S4AND0CREZ",
+        "n_2FR05HT5ABQ061NAG0DVSDF6ZH"
+      ],
+      "fetchedDepths": [
+        {
+          "turn": 2,
+          "branchId": "n_1E48X9HAFPEYNQHHSF609KHMEE",
+          "depth": "full"
+        },
+        {
+          "turn": 2,
+          "branchId": "n_1C0BDXFHPYAX7N4B5AGK8KB4Q5",
+          "depth": "full"
+        },
+        {
+          "turn": 4,
+          "branchId": "n_2EPMM1V52CJ98NJ5S4AND0CREZ",
+          "depth": "full"
+        },
+        {
+          "turn": 4,
+          "branchId": "n_2FR05HT5ABQ061NAG0DVSDF6ZH",
+          "depth": "full"
+        },
+        {
+          "turn": 5,
+          "branchId": "n_2EPMM1V52CJ98NJ5S4AND0CREZ",
+          "depth": "full"
+        },
+        {
+          "turn": 5,
+          "branchId": "n_2FR05HT5ABQ061NAG0DVSDF6ZH",
+          "depth": "full"
+        }
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 349691,
+      "resultsTruncated": 4,
+      "resultTruncationEstimated": 4,
+      "peakRequestTokens": 31191,
+      "usage": {
+        "input": 38710,
+        "output": 574,
+        "cacheRead": 93696,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1122,
+          "usage": {
+            "input": 122,
+            "output": 21,
+            "cacheRead": 8320,
+            "cacheWrite": 0
+          },
+          "promptTokens": 8442,
+          "input": 122,
+          "cacheRead": 8320,
+          "cacheWrite": 0,
+          "output": 21,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 2384,
+          "usage": {
+            "input": 10264,
+            "output": 143,
+            "cacheRead": 8320,
+            "cacheWrite": 0
+          },
+          "promptTokens": 18584,
+          "input": 10264,
+          "cacheRead": 8320,
+          "cacheWrite": 0,
+          "output": 143,
+          "toolCalls": [
+            "context_fetch",
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [
+            "full",
+            "full"
+          ],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 2263,
+          "usage": {
+            "input": 41,
+            "output": 56,
+            "cacheRead": 18688,
+            "cacheWrite": 0
+          },
+          "promptTokens": 18729,
+          "input": 41,
+          "cacheRead": 18688,
+          "cacheWrite": 0,
+          "output": 56,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 2542,
+          "usage": {
+            "input": 5041,
+            "output": 137,
+            "cacheRead": 18688,
+            "cacheWrite": 0
+          },
+          "promptTokens": 23729,
+          "input": 5041,
+          "cacheRead": 18688,
+          "cacheWrite": 0,
+          "output": 137,
+          "toolCalls": [
+            "context_fetch",
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [
+            "full",
+            "full"
+          ],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 5,
+          "turn": 5,
+          "latencyMs": 2829,
+          "usage": {
+            "input": 23126,
+            "output": 137,
+            "cacheRead": 8320,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31446,
+          "input": 23126,
+          "cacheRead": 8320,
+          "cacheWrite": 0,
+          "output": 137,
+          "toolCalls": [
+            "context_fetch",
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [
+            "full",
+            "full"
+          ],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 6,
+          "turn": 6,
+          "latencyMs": 1466,
+          "usage": {
+            "input": 116,
+            "output": 80,
+            "cacheRead": 31360,
+            "cacheWrite": 0
+          },
+          "promptTokens": 31476,
+          "input": 116,
+          "cacheRead": 31360,
+          "cacheWrite": 0,
+          "output": 80,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 12757,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Read StubProvider and retry test examples",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4o-mini",
+      "arm": "tree",
+      "window": 32768,
+      "question": "s1-q02-head",
+      "stratum": "head",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 4,
+      "finalText": "I was unable to find the description of the command used in the specified tool calls that read lines 36–80 and 205–260 of `packages/core/test/summarize.test.ts`. It appears that no relevant information or snippets directly related to that command were available in the context or previously fetched results.",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "packages/core/test/summarize.test.ts",
+        "packages/core/test/summarize.test.ts",
+        "description of the command",
+        "packages/core/test/summarize.test.ts:36-80",
+        "packages/core/test/summarize.test.ts:205-260"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 18360,
+      "usage": {
+        "input": 6652,
+        "output": 224,
+        "cacheRead": 44672,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 894,
+          "usage": {
+            "input": 378,
+            "output": 25,
+            "cacheRead": 8064,
+            "cacheWrite": 0
+          },
+          "promptTokens": 8442,
+          "input": 378,
+          "cacheRead": 8064,
+          "cacheWrite": 0,
+          "output": 25,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 1269,
+          "usage": {
+            "input": 818,
+            "output": 62,
+            "cacheRead": 10112,
+            "cacheWrite": 0
+          },
+          "promptTokens": 10930,
+          "input": 818,
+          "cacheRead": 10112,
+          "cacheWrite": 0,
+          "output": 62,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 1209,
+          "usage": {
+            "input": 427,
+            "output": 74,
+            "cacheRead": 13056,
+            "cacheWrite": 0
+          },
+          "promptTokens": 13483,
+          "input": 427,
+          "cacheRead": 13056,
+          "cacheWrite": 0,
+          "output": 74,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 1079,
+          "usage": {
+            "input": 5029,
+            "output": 63,
+            "cacheRead": 13440,
+            "cacheWrite": 0
+          },
+          "promptTokens": 18469,
+          "input": 5029,
+          "cacheRead": 13440,
+          "cacheWrite": 0,
+          "output": 63,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 4498,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Read StubProvider and retry test examples",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4o-mini",
+      "arm": "tree",
+      "window": 32768,
+      "question": "s1-q03-head",
+      "stratum": "head",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "The name of the contract file referenced in the description of the §15 harness agent loop is `tree-vs-transcript.html`.",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "§15 harness agent loop",
+        "contract file"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 17733,
+      "usage": {
+        "input": 5153,
+        "output": 84,
+        "cacheRead": 21120,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 954,
+          "usage": {
+            "input": 363,
+            "output": 57,
+            "cacheRead": 8064,
+            "cacheWrite": 0
+          },
+          "promptTokens": 8427,
+          "input": 363,
+          "cacheRead": 8064,
+          "cacheWrite": 0,
+          "output": 57,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 763,
+          "usage": {
+            "input": 4790,
+            "output": 27,
+            "cacheRead": 13056,
+            "cacheWrite": 0
+          },
+          "promptTokens": 17846,
+          "input": 4790,
+          "cacheRead": 13056,
+          "cacheWrite": 0,
+          "output": 27,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1736,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "implements its own minimal tool-use loop",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4o-mini",
+      "arm": "tree",
+      "window": 32768,
+      "question": "s1-q03-head",
+      "stratum": "head",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "The name of the contract file referenced in the description of the §15 harness agent loop is `eval-v5-lineage-state.md`.",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "§15 harness agent loop",
+        "contract"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 13267,
+      "usage": {
+        "input": 232,
+        "output": 84,
+        "cacheRead": 21504,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1480,
+          "usage": {
+            "input": 107,
+            "output": 56,
+            "cacheRead": 8320,
+            "cacheWrite": 0
+          },
+          "promptTokens": 8427,
+          "input": 107,
+          "cacheRead": 8320,
+          "cacheWrite": 0,
+          "output": 56,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 736,
+          "usage": {
+            "input": 125,
+            "output": 28,
+            "cacheRead": 13184,
+            "cacheWrite": 0
+          },
+          "promptTokens": 13309,
+          "input": 125,
+          "cacheRead": 13184,
+          "cacheWrite": 0,
+          "output": 28,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 2229,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "implements its own minimal tool-use loop",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4o-mini",
+      "arm": "tree",
+      "window": 32768,
+      "question": "s1-q03-head",
+      "stratum": "head",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "The name of the contract file referenced in the description of the §15 harness agent loop is `eval-v5-lineage-state.md`.",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "§15 harness agent loop",
+        "contract file"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 13074,
+      "usage": {
+        "input": 4899,
+        "output": 85,
+        "cacheRead": 16640,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1025,
+          "usage": {
+            "input": 107,
+            "output": 57,
+            "cacheRead": 8320,
+            "cacheWrite": 0
+          },
+          "promptTokens": 8427,
+          "input": 107,
+          "cacheRead": 8320,
+          "cacheWrite": 0,
+          "output": 57,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 815,
+          "usage": {
+            "input": 4792,
+            "output": 28,
+            "cacheRead": 8320,
+            "cacheWrite": 0
+          },
+          "promptTokens": 13112,
+          "input": 4792,
+          "cacheRead": 8320,
+          "cacheWrite": 0,
+          "output": 28,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1859,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "implements its own minimal tool-use loop",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4o-mini",
+      "arm": "tree",
+      "window": 32768,
+      "question": "s1-q03-head",
+      "stratum": "head",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "The contract file referenced in the description of the §15 harness agent loop is named **eval-v5-lineage-state.md**.",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "§15 harness agent loop",
+        "contract file"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 13073,
+      "usage": {
+        "input": 3363,
+        "output": 84,
+        "cacheRead": 18176,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 879,
+          "usage": {
+            "input": 363,
+            "output": 57,
+            "cacheRead": 8064,
+            "cacheWrite": 0
+          },
+          "promptTokens": 8427,
+          "input": 363,
+          "cacheRead": 8064,
+          "cacheWrite": 0,
+          "output": 57,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 1205,
+          "usage": {
+            "input": 3000,
+            "output": 27,
+            "cacheRead": 10112,
+            "cacheWrite": 0
+          },
+          "promptTokens": 13112,
+          "input": 3000,
+          "cacheRead": 10112,
+          "cacheWrite": 0,
+          "output": 27,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 2101,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "implements its own minimal tool-use loop",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4o-mini",
+      "arm": "tree",
+      "window": 32768,
+      "question": "s1-q03-head",
+      "stratum": "head",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "The contract file referenced in the description of the §15 harness agent loop is the `eval-v5-lineage-state.md` file.",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "§15 harness agent loop",
+        "contract"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 13267,
+      "usage": {
+        "input": 232,
+        "output": 84,
+        "cacheRead": 21504,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1379,
+          "usage": {
+            "input": 107,
+            "output": 56,
+            "cacheRead": 8320,
+            "cacheWrite": 0
+          },
+          "promptTokens": 8427,
+          "input": 107,
+          "cacheRead": 8320,
+          "cacheWrite": 0,
+          "output": 56,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 1321,
+          "usage": {
+            "input": 125,
+            "output": 28,
+            "cacheRead": 13184,
+            "cacheWrite": 0
+          },
+          "promptTokens": 13309,
+          "input": 125,
+          "cacheRead": 13184,
+          "cacheWrite": 0,
+          "output": 28,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 2721,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "implements its own minimal tool-use loop",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4o-mini",
+      "arm": "tree",
+      "window": 32768,
+      "question": "s1-q04-tail",
+      "stratum": "tail",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "It seems that there is no specific information regarding the confirmation message after copying `tree-vs-transcript.html` to the scratchpad available in the context. Therefore, I'm unable to provide the exact message echoed for that action. If you need more details, you may need to explore related branches or transcripts where such operations were logged.",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "tree-vs-transcript.html scratchpad confirmation message",
+        "echo confirmation message after copying tree-vs-transcript.html to scratchpad"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 8701,
+      "usage": {
+        "input": 634,
+        "output": 141,
+        "cacheRead": 16384,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1593,
+          "usage": {
+            "input": 368,
+            "output": 74,
+            "cacheRead": 8064,
+            "cacheWrite": 0
+          },
+          "promptTokens": 8432,
+          "input": 368,
+          "cacheRead": 8064,
+          "cacheWrite": 0,
+          "output": 74,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 910,
+          "usage": {
+            "input": 266,
+            "output": 67,
+            "cacheRead": 8320,
+            "cacheWrite": 0
+          },
+          "promptTokens": 8586,
+          "input": 266,
+          "cacheRead": 8320,
+          "cacheWrite": 0,
+          "output": 67,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 2521,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Sync report to artifact publish path",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4o-mini",
+      "arm": "tree",
+      "window": 32768,
+      "question": "s1-q04-tail",
+      "stratum": "tail",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "It appears that there are no records available regarding the message that was echoed to confirm the file transfer after copying `tree-vs-transcript.html` to the scratchpad.",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "copy tree-vs-transcript.html to the scratchpad",
+        "echo message confirm file transfer"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 8661,
+      "usage": {
+        "input": 370,
+        "output": 101,
+        "cacheRead": 16640,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 970,
+          "usage": {
+            "input": 112,
+            "output": 66,
+            "cacheRead": 8320,
+            "cacheWrite": 0
+          },
+          "promptTokens": 8432,
+          "input": 112,
+          "cacheRead": 8320,
+          "cacheWrite": 0,
+          "output": 66,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 733,
+          "usage": {
+            "input": 258,
+            "output": 35,
+            "cacheRead": 8320,
+            "cacheWrite": 0
+          },
+          "promptTokens": 8578,
+          "input": 258,
+          "cacheRead": 8320,
+          "cacheWrite": 0,
+          "output": 35,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1719,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Sync report to artifact publish path",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4o-mini",
+      "arm": "tree",
+      "window": 32768,
+      "question": "s1-q04-tail",
+      "stratum": "tail",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "I could not find any confirmation messages regarding the file transfer of `tree-vs-transcript.html` to the scratchpad. It appears that there may not be an explicit record of this event in the available task history.",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "tree-vs-transcript.html scratchpad echo",
+        "file transfer confirmation"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 8667,
+      "usage": {
+        "input": 622,
+        "output": 107,
+        "cacheRead": 16384,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 973,
+          "usage": {
+            "input": 368,
+            "output": 62,
+            "cacheRead": 8064,
+            "cacheWrite": 0
+          },
+          "promptTokens": 8432,
+          "input": 368,
+          "cacheRead": 8064,
+          "cacheWrite": 0,
+          "output": 62,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 891,
+          "usage": {
+            "input": 254,
+            "output": 45,
+            "cacheRead": 8320,
+            "cacheWrite": 0
+          },
+          "promptTokens": 8574,
+          "input": 254,
+          "cacheRead": 8320,
+          "cacheWrite": 0,
+          "output": 45,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1883,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Sync report to artifact publish path",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4o-mini",
+      "arm": "tree",
+      "window": 32768,
+      "question": "s1-q04-tail",
+      "stratum": "tail",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "I couldn't find the specific message echoed to confirm the file transfer for `tree-vs-transcript.html` after copying it to the scratchpad. It seems there are no relevant entries recorded in the task history regarding this action.",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "tree-vs-transcript.html copy",
+        "echo message after copying tree-vs-transcript.html"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 8673,
+      "usage": {
+        "input": 627,
+        "output": 113,
+        "cacheRead": 16384,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1035,
+          "usage": {
+            "input": 368,
+            "output": 67,
+            "cacheRead": 8064,
+            "cacheWrite": 0
+          },
+          "promptTokens": 8432,
+          "input": 368,
+          "cacheRead": 8064,
+          "cacheWrite": 0,
+          "output": 67,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 944,
+          "usage": {
+            "input": 259,
+            "output": 46,
+            "cacheRead": 8320,
+            "cacheWrite": 0
+          },
+          "promptTokens": 8579,
+          "input": 259,
+          "cacheRead": 8320,
+          "cacheWrite": 0,
+          "output": 46,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1991,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Sync report to artifact publish path",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4o-mini",
+      "arm": "tree",
+      "window": 32768,
+      "question": "s1-q04-tail",
+      "stratum": "tail",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "The search did not return any results regarding the echoed message confirming the file transfer after copying `tree-vs-transcript.html` to the scratchpad. This specific message does not appear to be documented in the available task history.",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "tree-vs-transcript.html",
+        "echoed message confirm file transfer"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 10975,
+      "usage": {
+        "input": 554,
+        "output": 108,
+        "cacheRead": 18816,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 965,
+          "usage": {
+            "input": 368,
+            "output": 62,
+            "cacheRead": 8064,
+            "cacheWrite": 0
+          },
+          "promptTokens": 8432,
+          "input": 368,
+          "cacheRead": 8064,
+          "cacheWrite": 0,
+          "output": 62,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 819,
+          "usage": {
+            "input": 186,
+            "output": 46,
+            "cacheRead": 10752,
+            "cacheWrite": 0
+          },
+          "promptTokens": 10938,
+          "input": 186,
+          "cacheRead": 10752,
+          "cacheWrite": 0,
+          "output": 46,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1800,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Sync report to artifact publish path",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4o-mini",
+      "arm": "tree",
+      "window": 32768,
+      "question": "s1-q05-tail",
+      "stratum": "tail",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 5,
+      "finalText": "The only cache-free point identified for token-level selection was the Zone C header span behavior. Implementing a cache-aware block reordering in Zone C was aimed at preventing the churning descendant map from invalidating the append-only event stream's cache. This approach was referenced in the implementation phase that specifically discussed the reordering and management of cached details while ensuring necessary tokens were retained in an orderly manner.",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "token-level selection viable cache-free point",
+        "token-level selection cache-free point",
+        "token-level selection viable cache-free point",
+        "token-level selection viable cache-free point",
+        "token-level selection",
+        "token-level selection",
+        "cache-free point"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 25554,
+      "usage": {
+        "input": 17665,
+        "output": 288,
+        "cacheRead": 42240,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1087,
+          "usage": {
+            "input": 111,
+            "output": 65,
+            "cacheRead": 8320,
+            "cacheWrite": 0
+          },
+          "promptTokens": 8431,
+          "input": 111,
+          "cacheRead": 8320,
+          "cacheWrite": 0,
+          "output": 65,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 1469,
+          "usage": {
+            "input": 75,
+            "output": 66,
+            "cacheRead": 8448,
+            "cacheWrite": 0
+          },
+          "promptTokens": 8523,
+          "input": 75,
+          "cacheRead": 8448,
+          "cacheWrite": 0,
+          "output": 66,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 1213,
+          "usage": {
+            "input": 167,
+            "output": 21,
+            "cacheRead": 8448,
+            "cacheWrite": 0
+          },
+          "promptTokens": 8615,
+          "input": 167,
+          "cacheRead": 8448,
+          "cacheWrite": 0,
+          "output": 21,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 1453,
+          "usage": {
+            "input": 217,
+            "output": 56,
+            "cacheRead": 8448,
+            "cacheWrite": 0
+          },
+          "promptTokens": 8665,
+          "input": 217,
+          "cacheRead": 8448,
+          "cacheWrite": 0,
+          "output": 56,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 5,
+          "turn": 5,
+          "latencyMs": 1890,
+          "usage": {
+            "input": 17095,
+            "output": 80,
+            "cacheRead": 8576,
+            "cacheWrite": 0
+          },
+          "promptTokens": 25671,
+          "input": 17095,
+          "cacheRead": 8576,
+          "cacheWrite": 0,
+          "output": 80,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 7172,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "DSA on context tokens",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4o-mini",
+      "arm": "tree",
+      "window": 32768,
+      "question": "s1-q05-tail",
+      "stratum": "tail",
+      "rep": 2,
+      "status": "cost_cap",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4o-mini",
+      "arm": "tree",
+      "window": 32768,
+      "question": "s1-q06-tail",
+      "stratum": "tail",
+      "rep": 1,
+      "status": "cost_cap",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4o-mini",
+      "arm": "tree",
+      "window": 32768,
+      "question": "s1-q07-deep",
+      "stratum": "deep",
+      "rep": 1,
+      "status": "cost_cap",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4o-mini",
+      "arm": "tree",
+      "window": 32768,
+      "question": "s1-q08-deep",
+      "stratum": "deep",
+      "rep": 1,
+      "status": "cost_cap",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4o-mini",
+      "arm": "tree",
+      "window": 32768,
+      "question": "s1-q09-deep",
+      "stratum": "deep",
+      "rep": 1,
+      "status": "cost_cap",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4o-mini",
+      "arm": "tree",
+      "window": 32768,
+      "question": "s1-q10-spanning",
+      "stratum": "spanning",
+      "rep": 1,
+      "status": "cost_cap",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4o-mini",
+      "arm": "tree",
+      "window": 32768,
+      "question": "s1-q11-spanning",
+      "stratum": "spanning",
+      "rep": 1,
+      "status": "cost_cap",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4o-mini",
+      "arm": "tree",
+      "window": 32768,
+      "question": "s1-q12-spanning",
+      "stratum": "spanning",
+      "rep": 1,
+      "status": "cost_cap",
+      "score": null
+    }
+  ]
+}

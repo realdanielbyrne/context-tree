@@ -1,0 +1,2228 @@
+{
+  "budgets": {
+    "window": 16384,
+    "ratio": 0.850896663206653,
+    "slackFraction": 0.1,
+    "zoneCFraction": 0.2,
+    "reply": 962,
+    "zoneA": 1925,
+    "zoneB": 3850,
+    "zoneC": 3850,
+    "lazy": 6739,
+    "slack": 1925,
+    "K": 15404,
+    "maxReplyTokens": 819,
+    "rootKeep": 2,
+    "rootLadder": [
+      {
+        "keep": 40,
+        "ok": false,
+        "rootBlockTokens": 6917,
+        "branchesSurviving": 0,
+        "branchSeqRange": null,
+        "overBudget": [
+          "B"
+        ],
+        "zoneB": 6917
+      },
+      {
+        "keep": 16,
+        "ok": false,
+        "rootBlockTokens": 6095,
+        "branchesSurviving": 0,
+        "branchSeqRange": null,
+        "overBudget": [
+          "B"
+        ],
+        "zoneB": 6095
+      },
+      {
+        "keep": 12,
+        "ok": false,
+        "rootBlockTokens": 4771,
+        "branchesSurviving": 0,
+        "branchSeqRange": null,
+        "overBudget": [
+          "B"
+        ],
+        "zoneB": 4771
+      },
+      {
+        "keep": 8,
+        "ok": false,
+        "rootBlockTokens": 3967,
+        "branchesSurviving": 0,
+        "branchSeqRange": null,
+        "overBudget": [
+          "B"
+        ],
+        "zoneB": 3967
+      },
+      {
+        "keep": 6,
+        "ok": false,
+        "rootBlockTokens": 3538,
+        "branchesSurviving": 0,
+        "branchSeqRange": null,
+        "overBudget": [],
+        "zoneB": 3538
+      },
+      {
+        "keep": 4,
+        "ok": false,
+        "rootBlockTokens": 3105,
+        "branchesSurviving": 0,
+        "branchSeqRange": null,
+        "overBudget": [],
+        "zoneB": 3105
+      },
+      {
+        "keep": 2,
+        "ok": true,
+        "rootBlockTokens": 2587,
+        "branchesSurviving": 1,
+        "branchSeqRange": {
+          "from": 732,
+          "to": 754
+        },
+        "overBudget": [],
+        "zoneB": 3623
+      }
+    ],
+    "rootKeepOk": true,
+    "rootBlockTokens": 2587,
+    "branchesSurviving": 1,
+    "branchSeqRange": {
+      "from": 732,
+      "to": 754
+    },
+    "overBudget": [],
+    "arm": "tree",
+    "rootSummarySha": "f80808c3fd62736e439d06ad42b29a6fa694d4ebb6c4397919a62f04bb8e86fc"
+  },
+  "compactionBuildUsd": null,
+  "compactionSkippedChunks": [],
+  "compaction": null,
+  "rows": [
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q01-head",
+      "stratum": "head",
+      "rep": 1,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=818, reasoning_chars=3808) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=818, reasoning_chars=3808) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q01-head",
+      "stratum": "head",
+      "rep": 2,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=817, reasoning_chars=3544) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=817, reasoning_chars=3544) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q01-head",
+      "stratum": "head",
+      "rep": 3,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=814, reasoning_chars=3417) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=814, reasoning_chars=3417) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q01-head",
+      "stratum": "head",
+      "rep": 4,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=814, reasoning_chars=3743) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=814, reasoning_chars=3743) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q01-head",
+      "stratum": "head",
+      "rep": 5,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=818, reasoning_chars=3561) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=818, reasoning_chars=3561) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q02-head",
+      "stratum": "head",
+      "rep": 1,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=817, reasoning_chars=2824) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=817, reasoning_chars=2824) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q02-head",
+      "stratum": "head",
+      "rep": 2,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=819, reasoning_chars=3376) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=819, reasoning_chars=3376) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q02-head",
+      "stratum": "head",
+      "rep": 3,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=816, reasoning_chars=2720) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=816, reasoning_chars=2720) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q02-head",
+      "stratum": "head",
+      "rep": 4,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=815, reasoning_chars=2828) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=815, reasoning_chars=2828) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q02-head",
+      "stratum": "head",
+      "rep": 5,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=818, reasoning_chars=2974) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=818, reasoning_chars=2974) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q03-head",
+      "stratum": "head",
+      "rep": 1,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=815, reasoning_chars=3759) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=815, reasoning_chars=3759) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q03-head",
+      "stratum": "head",
+      "rep": 2,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=817, reasoning_chars=3908) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=817, reasoning_chars=3908) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q03-head",
+      "stratum": "head",
+      "rep": 3,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=818, reasoning_chars=3334) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=818, reasoning_chars=3334) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q03-head",
+      "stratum": "head",
+      "rep": 4,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=817, reasoning_chars=3812) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=817, reasoning_chars=3812) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q03-head",
+      "stratum": "head",
+      "rep": 5,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=819, reasoning_chars=3824) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=819, reasoning_chars=3824) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q04-tail",
+      "stratum": "tail",
+      "rep": 1,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=817, reasoning_chars=3564) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=817, reasoning_chars=3564) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q04-tail",
+      "stratum": "tail",
+      "rep": 2,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=817, reasoning_chars=3202) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=817, reasoning_chars=3202) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q04-tail",
+      "stratum": "tail",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 4,
+      "finalText": "After copying the report into the scratchpad, the agent confirmed the transfer with an `echo` on the same command line as the `cp`. The echoed message was:\n\n**`copied tree-vs-transcript.html to scratchpad`**\n\ni.e., the operation was of the form:\n\n```bash\ncp reports/metrics/tree-vs-transcript.html /private/tmp/claude-501/-Users-danielbyrne",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "copy tree-vs-transcript.html to scratchpad echo confirmation message",
+        "cp scratchpad tree-vs-transcript.html copied echoed message confirmation"
+      ],
+      "fetchedIds": [
+        "n_1BGBV85XX4QTHMYPGFB7YAF1HT"
+      ],
+      "fetchedDepths": [
+        {
+          "turn": 2,
+          "branchId": "n_1BGBV85XX4QTHMYPGFB7YAF1HT",
+          "depth": "full"
+        }
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 3759,
+      "resultCharsTruncated": 73205,
+      "resultsTruncated": 4,
+      "resultTruncationEstimated": 3,
+      "peakRequestTokens": 15638,
+      "usage": {
+        "input": 178,
+        "output": 1358,
+        "cacheRead": 53248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 2527,
+          "usage": {
+            "input": 7,
+            "output": 80,
+            "cacheRead": 5824,
+            "cacheWrite": 0
+          },
+          "promptTokens": 5831,
+          "input": 7,
+          "cacheRead": 5824,
+          "cacheWrite": 0,
+          "output": 80,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 3623,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 5822,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 9288,
+          "usage": {
+            "input": 39,
+            "output": 284,
+            "cacheRead": 15808,
+            "cacheWrite": 0
+          },
+          "promptTokens": 15847,
+          "input": 39,
+          "cacheRead": 15808,
+          "cacheWrite": 0,
+          "output": 284,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 3623,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 5822,
+            "overBudget": []
+          },
+          "fetchedDepths": [
+            "full"
+          ],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 5785,
+          "usage": {
+            "input": 54,
+            "output": 175,
+            "cacheRead": 15808,
+            "cacheWrite": 0
+          },
+          "promptTokens": 15862,
+          "input": 54,
+          "cacheRead": 15808,
+          "cacheWrite": 0,
+          "output": 175,
+          "toolCalls": [
+            "context_peek",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 3623,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 5822,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 20497,
+          "usage": {
+            "input": 78,
+            "output": 819,
+            "cacheRead": 15808,
+            "cacheWrite": 0
+          },
+          "promptTokens": 15886,
+          "input": 78,
+          "cacheRead": 15808,
+          "cacheWrite": 0,
+          "output": 819,
+          "toolCalls": [],
+          "stopReason": "length",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 3623,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 5822,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 38173,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Sync report to artifact publish path",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q04-tail",
+      "stratum": "tail",
+      "rep": 4,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=819, reasoning_chars=3554) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=819, reasoning_chars=3554) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q04-tail",
+      "stratum": "tail",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 4,
+      "finalText": "I wasn't able to recover that detail from the recorded history. What I can establish from the context tree is:\n\n- The scratch",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "copy tree-vs-transcript.html scratchpad echo confirm"
+      ],
+      "fetchedIds": [
+        "n_1BGBV85XX4QTHMYPGFB7YAF1HT"
+      ],
+      "fetchedDepths": [
+        {
+          "turn": 2,
+          "branchId": "n_1BGBV85XX4QTHMYPGFB7YAF1HT",
+          "depth": "full"
+        }
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 3338,
+      "resultCharsTruncated": 76672,
+      "resultsTruncated": 3,
+      "resultTruncationEstimated": 2,
+      "peakRequestTokens": 15569,
+      "usage": {
+        "input": 10139,
+        "output": 1806,
+        "cacheRead": 43264,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 4955,
+          "usage": {
+            "input": 7,
+            "output": 139,
+            "cacheRead": 5824,
+            "cacheWrite": 0
+          },
+          "promptTokens": 5831,
+          "input": 7,
+          "cacheRead": 5824,
+          "cacheWrite": 0,
+          "output": 139,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 3623,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 5822,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 16235,
+          "usage": {
+            "input": 10018,
+            "output": 540,
+            "cacheRead": 5824,
+            "cacheWrite": 0
+          },
+          "promptTokens": 15842,
+          "input": 10018,
+          "cacheRead": 5824,
+          "cacheWrite": 0,
+          "output": 540,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 3623,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 5822,
+            "overBudget": []
+          },
+          "fetchedDepths": [
+            "full"
+          ],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 10891,
+          "usage": {
+            "input": 49,
+            "output": 308,
+            "cacheRead": 15808,
+            "cacheWrite": 0
+          },
+          "promptTokens": 15857,
+          "input": 49,
+          "cacheRead": 15808,
+          "cacheWrite": 0,
+          "output": 308,
+          "toolCalls": [
+            "context_peek"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 3623,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 5822,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 25056,
+          "usage": {
+            "input": 65,
+            "output": 819,
+            "cacheRead": 15808,
+            "cacheWrite": 0
+          },
+          "promptTokens": 15873,
+          "input": 65,
+          "cacheRead": 15808,
+          "cacheWrite": 0,
+          "output": 819,
+          "toolCalls": [],
+          "stopReason": "length",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 3623,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 5822,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 57192,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Sync report to artifact publish path",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q05-tail",
+      "stratum": "tail",
+      "rep": 1,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=817, reasoning_chars=3595) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=817, reasoning_chars=3595) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q05-tail",
+      "stratum": "tail",
+      "rep": 2,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=819, reasoning_chars=3939) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=819, reasoning_chars=3939) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q05-tail",
+      "stratum": "tail",
+      "rep": 3,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=819, reasoning_chars=3688) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=819, reasoning_chars=3688) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q05-tail",
+      "stratum": "tail",
+      "rep": 4,
+      "status": "stalled",
+      "modelTurns": 4,
+      "finalText": "",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "token-level selection viable cache-free point",
+        "DSA selector where token selection is viable cache",
+        "token-level selection viable cache-free point DSA",
+        "where selection can operate without breaking cache token level",
+        "token-level selection viable cache-free tail newest turn DSA granularity",
+        "FM-8 cache-safe selection never fires monotone lock-in where selection remains possible",
+        "token-level selection viable cache-free point in prompt",
+        "DSA token selection only place without breaking cache"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 1545,
+      "resultCharsTruncated": 349500,
+      "resultsTruncated": 8,
+      "resultTruncationEstimated": 7,
+      "peakRequestTokens": 15601,
+      "usage": {
+        "input": 139,
+        "output": 1566,
+        "cacheRead": 53248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 4525,
+          "usage": {
+            "input": 7,
+            "output": 116,
+            "cacheRead": 5824,
+            "cacheWrite": 0
+          },
+          "promptTokens": 5831,
+          "input": 7,
+          "cacheRead": 5824,
+          "cacheWrite": 0,
+          "output": 116,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 3623,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 5822,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 13680,
+          "usage": {
+            "input": 21,
+            "output": 369,
+            "cacheRead": 15808,
+            "cacheWrite": 0
+          },
+          "promptTokens": 15829,
+          "input": 21,
+          "cacheRead": 15808,
+          "cacheWrite": 0,
+          "output": 369,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 3623,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 5822,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 24245,
+          "usage": {
+            "input": 44,
+            "output": 765,
+            "cacheRead": 15808,
+            "cacheWrite": 0
+          },
+          "promptTokens": 15852,
+          "input": 44,
+          "cacheRead": 15808,
+          "cacheWrite": 0,
+          "output": 765,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 3623,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 5822,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 11059,
+          "usage": {
+            "input": 67,
+            "output": 316,
+            "cacheRead": 15808,
+            "cacheWrite": 0
+          },
+          "promptTokens": 15875,
+          "input": 67,
+          "cacheRead": 15808,
+          "cacheWrite": 0,
+          "output": 316,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 3623,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 5822,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 53604,
+      "score": null,
+      "success": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q05-tail",
+      "stratum": "tail",
+      "rep": 5,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=816, reasoning_chars=3816) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=816, reasoning_chars=3816) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q06-tail",
+      "stratum": "tail",
+      "rep": 1,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=819, reasoning_chars=3789) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=819, reasoning_chars=3789) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q06-tail",
+      "stratum": "tail",
+      "rep": 2,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=814, reasoning_chars=3565) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=814, reasoning_chars=3565) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q06-tail",
+      "stratum": "tail",
+      "rep": 3,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=816, reasoning_chars=3088) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=816, reasoning_chars=3088) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q06-tail",
+      "stratum": "tail",
+      "rep": 4,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=819, reasoning_chars=3609) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=819, reasoning_chars=3609) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q06-tail",
+      "stratum": "tail",
+      "rep": 5,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=818, reasoning_chars=3357) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=818, reasoning_chars=3357) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q07-deep",
+      "stratum": "deep",
+      "rep": 1,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=819, reasoning_chars=3451) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=819, reasoning_chars=3451) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q07-deep",
+      "stratum": "deep",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 3,
+      "finalText": "The last fetch came back empty, so I still don't have the file body. The search surfaced the actual file node for `build-multimod-scenario.py` (`n_21Z93XQ3K3N",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "build-multimod-scenario.py build_hidden_test numparse wordwrap generated test script"
+      ],
+      "fetchedIds": [
+        "n_1JNW5D8CNYSATE4X6NV3Z39R81",
+        "n_1C6D33C0FMZ129RA2R0GXXCRM6"
+      ],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 1834,
+      "resultCharsTruncated": 6978,
+      "resultsTruncated": 2,
+      "resultTruncationEstimated": 1,
+      "peakRequestTokens": 15561,
+      "usage": {
+        "input": 10067,
+        "output": 1800,
+        "cacheRead": 17536,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 12603,
+          "usage": {
+            "input": 13,
+            "output": 525,
+            "cacheRead": 5824,
+            "cacheWrite": 0
+          },
+          "promptTokens": 5837,
+          "input": 13,
+          "cacheRead": 5824,
+          "cacheWrite": 0,
+          "output": 525,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 3623,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 5822,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 11802,
+          "usage": {
+            "input": 86,
+            "output": 456,
+            "cacheRead": 5824,
+            "cacheWrite": 0
+          },
+          "promptTokens": 5910,
+          "input": 86,
+          "cacheRead": 5824,
+          "cacheWrite": 0,
+          "output": 456,
+          "toolCalls": [
+            "context_search",
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 3623,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 5822,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 22621,
+          "usage": {
+            "input": 9968,
+            "output": 819,
+            "cacheRead": 5888,
+            "cacheWrite": 0
+          },
+          "promptTokens": 15856,
+          "input": 9968,
+          "cacheRead": 5888,
+          "cacheWrite": 0,
+          "output": 819,
+          "toolCalls": [],
+          "stopReason": "length",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 3623,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 5822,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 47074,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "from dedent import dedent_text",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q07-deep",
+      "stratum": "deep",
+      "rep": 3,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=817, reasoning_chars=3601) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=817, reasoning_chars=3601) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q07-deep",
+      "stratum": "deep",
+      "rep": 4,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=815, reasoning_chars=3670) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=815, reasoning_chars=3670) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q07-deep",
+      "stratum": "deep",
+      "rep": 5,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=815, reasoning_chars=3421) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=815, reasoning_chars=3421) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q08-deep",
+      "stratum": "deep",
+      "rep": 1,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=816, reasoning_chars=3750) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=816, reasoning_chars=3750) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q08-deep",
+      "stratum": "deep",
+      "rep": 2,
+      "status": "stalled",
+      "modelTurns": 4,
+      "finalText": "",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "test path inside the branch invented symbol ghost summary.meta.symbols",
+        "ghost symbol test meta.symbols expected value",
+        "ghost invented symbol test summary.meta.symbols path inside branch",
+        "ghost",
+        "ghost invented symbol test resolves path inside the branch summary.meta.symbols expected value",
+        "summary.meta.symbols ghost test",
+        "ghost invented symbol summary.meta.symbols expected",
+        "test path inside the branch symbols extraction"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 3107,
+      "resultCharsTruncated": 249015,
+      "resultsTruncated": 8,
+      "resultTruncationEstimated": 7,
+      "peakRequestTokens": 15601,
+      "usage": {
+        "input": 185,
+        "output": 1396,
+        "cacheRead": 53248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 7241,
+          "usage": {
+            "input": 17,
+            "output": 97,
+            "cacheRead": 5824,
+            "cacheWrite": 0
+          },
+          "promptTokens": 5841,
+          "input": 17,
+          "cacheRead": 5824,
+          "cacheWrite": 0,
+          "output": 97,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 3623,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 5822,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 9358,
+          "usage": {
+            "input": 33,
+            "output": 285,
+            "cacheRead": 15808,
+            "cacheWrite": 0
+          },
+          "promptTokens": 15841,
+          "input": 33,
+          "cacheRead": 15808,
+          "cacheWrite": 0,
+          "output": 285,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 3623,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 5822,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 21403,
+          "usage": {
+            "input": 56,
+            "output": 637,
+            "cacheRead": 15808,
+            "cacheWrite": 0
+          },
+          "promptTokens": 15864,
+          "input": 56,
+          "cacheRead": 15808,
+          "cacheWrite": 0,
+          "output": 637,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 3623,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 5822,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 10892,
+          "usage": {
+            "input": 79,
+            "output": 377,
+            "cacheRead": 15808,
+            "cacheWrite": 0
+          },
+          "promptTokens": 15887,
+          "input": 79,
+          "cacheRead": 15808,
+          "cacheWrite": 0,
+          "output": 377,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 3623,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 5822,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 49000,
+      "score": null,
+      "success": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q08-deep",
+      "stratum": "deep",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 6,
+      "finalText": "Based on the test code retrieved for the Zone C / descendant-map work (the v5.6 iteration), the test constructs a summary containing an invented symbol `'ghost'` attached to a path that lies inside the branch, and asserts that the symbol survives into the summary metadata.\n\n**The expected value of `summary.meta.symbols` is `['ghost']`** — an array containing exactly the one invented symbol.\n\nThe point of the test is that because the symbol's path resolves to a location inside the branch, the symbol is kept (not filtered out as it would be for a path outside the branch); with no other symbols present, the metadata's symbol list contains just that single entry.",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "test path inside the branch invented symbol ghost summary.meta.symbols expected value",
+        "ghost symbol meta.symbols test",
+        "ghost invented symbol path inside the branch test summary.meta.symbols",
+        "'ghost' symbol test",
+        "test ghost invented symbol path inside the branch summary.meta.symbols",
+        "test path inside the branch invented symbol ghost summary.meta.symbols expected",
+        "ghost symbol path inside branch summary meta.symbols test"
+      ],
+      "fetchedIds": [
+        "n_1C6D33C0FMZ129RA2R0GXXCRM6"
+      ],
+      "fetchedDepths": [
+        {
+          "turn": 3,
+          "branchId": "n_1C6D33C0FMZ129RA2R0GXXCRM6",
+          "depth": "full"
+        }
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 3112,
+      "resultCharsTruncated": 309699,
+      "resultsTruncated": 8,
+      "resultTruncationEstimated": 7,
+      "peakRequestTokens": 15754,
+      "usage": {
+        "input": 260,
+        "output": 1968,
+        "cacheRead": 84992,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 4371,
+          "usage": {
+            "input": 17,
+            "output": 99,
+            "cacheRead": 5824,
+            "cacheWrite": 0
+          },
+          "promptTokens": 5841,
+          "input": 17,
+          "cacheRead": 5824,
+          "cacheWrite": 0,
+          "output": 99,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 3623,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 5822,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 12444,
+          "usage": {
+            "input": 33,
+            "output": 387,
+            "cacheRead": 15808,
+            "cacheWrite": 0
+          },
+          "promptTokens": 15841,
+          "input": 33,
+          "cacheRead": 15808,
+          "cacheWrite": 0,
+          "output": 387,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 3623,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 5822,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 14330,
+          "usage": {
+            "input": 56,
+            "output": 570,
+            "cacheRead": 15808,
+            "cacheWrite": 0
+          },
+          "promptTokens": 15864,
+          "input": 56,
+          "cacheRead": 15808,
+          "cacheWrite": 0,
+          "output": 570,
+          "toolCalls": [
+            "context_search",
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 3623,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 5822,
+            "overBudget": []
+          },
+          "fetchedDepths": [
+            "full"
+          ],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 3992,
+          "usage": {
+            "input": 79,
+            "output": 78,
+            "cacheRead": 15808,
+            "cacheWrite": 0
+          },
+          "promptTokens": 15887,
+          "input": 79,
+          "cacheRead": 15808,
+          "cacheWrite": 0,
+          "output": 78,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 3623,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 5822,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 5,
+          "turn": 5,
+          "latencyMs": 4676,
+          "usage": {
+            "input": 30,
+            "output": 125,
+            "cacheRead": 15872,
+            "cacheWrite": 0
+          },
+          "promptTokens": 15902,
+          "input": 30,
+          "cacheRead": 15872,
+          "cacheWrite": 0,
+          "output": 125,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 3623,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 5822,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 6,
+          "turn": 6,
+          "latencyMs": 21888,
+          "usage": {
+            "input": 45,
+            "output": 709,
+            "cacheRead": 15872,
+            "cacheWrite": 0
+          },
+          "promptTokens": 15917,
+          "input": 45,
+          "cacheRead": 15872,
+          "cacheWrite": 0,
+          "output": 709,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 3623,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 5822,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 61806,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "parseThing",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q08-deep",
+      "stratum": "deep",
+      "rep": 4,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=817, reasoning_chars=2878) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=817, reasoning_chars=2878) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q08-deep",
+      "stratum": "deep",
+      "rep": 5,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=819, reasoning_chars=3718) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=819, reasoning_chars=3718) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q09-deep",
+      "stratum": "deep",
+      "rep": 1,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=816, reasoning_chars=3728) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=816, reasoning_chars=3728) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q09-deep",
+      "stratum": "deep",
+      "rep": 2,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=818, reasoning_chars=3511) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=818, reasoning_chars=3511) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q09-deep",
+      "stratum": "deep",
+      "rep": 3,
+      "status": "stalled",
+      "modelTurns": 4,
+      "finalText": "",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "DEFAULT_TOOL_PHASE export configuration module PhaseType import",
+        "PhaseType imported alongside from contracts/tree.js",
+        "DEFAULT_TOOL_PHASE §11 configuration contracts tree.js import",
+        "config.ts DEFAULT_TOOL_PHASE PhaseType edit",
+        "DEFAULT_TOOL_PHASE §11 configuration contracts/tree.js PhaseType import edit",
+        "§11 configuration module export DEFAULT_TOOL_PHASE",
+        "DEFAULT_TOOL_PHASE §11 configuration module export",
+        "contracts/tree.js PhaseType import type"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 243414,
+      "resultsTruncated": 7,
+      "resultTruncationEstimated": 7,
+      "peakRequestTokens": 15589,
+      "usage": {
+        "input": 10293,
+        "output": 1154,
+        "cacheRead": 43008,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 4420,
+          "usage": {
+            "input": 29,
+            "output": 142,
+            "cacheRead": 5824,
+            "cacheWrite": 0
+          },
+          "promptTokens": 5853,
+          "input": 29,
+          "cacheRead": 5824,
+          "cacheWrite": 0,
+          "output": 142,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 3623,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 5822,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 9776,
+          "usage": {
+            "input": 9969,
+            "output": 368,
+            "cacheRead": 5824,
+            "cacheWrite": 0
+          },
+          "promptTokens": 15793,
+          "input": 9969,
+          "cacheRead": 5824,
+          "cacheWrite": 0,
+          "output": 368,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 3623,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 5822,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 11514,
+          "usage": {
+            "input": 264,
+            "output": 313,
+            "cacheRead": 15552,
+            "cacheWrite": 0
+          },
+          "promptTokens": 15816,
+          "input": 264,
+          "cacheRead": 15552,
+          "cacheWrite": 0,
+          "output": 313,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 3623,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 5822,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 9964,
+          "usage": {
+            "input": 31,
+            "output": 331,
+            "cacheRead": 15808,
+            "cacheWrite": 0
+          },
+          "promptTokens": 15839,
+          "input": 31,
+          "cacheRead": 15808,
+          "cacheWrite": 0,
+          "output": 331,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 3623,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 5822,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 35744,
+      "score": null,
+      "success": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q09-deep",
+      "stratum": "deep",
+      "rep": 4,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=814, reasoning_chars=2931) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=814, reasoning_chars=2931) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q09-deep",
+      "stratum": "deep",
+      "rep": 5,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=818, reasoning_chars=3496) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=818, reasoning_chars=3496) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q10-spanning",
+      "stratum": "spanning",
+      "rep": 1,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=818, reasoning_chars=3677) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=818, reasoning_chars=3677) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q10-spanning",
+      "stratum": "spanning",
+      "rep": 2,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=816, reasoning_chars=3562) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=816, reasoning_chars=3562) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q10-spanning",
+      "stratum": "spanning",
+      "rep": 3,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=819, reasoning_chars=3610) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=819, reasoning_chars=3610) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q10-spanning",
+      "stratum": "spanning",
+      "rep": 4,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=817, reasoning_chars=3690) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=817, reasoning_chars=3690) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q10-spanning",
+      "stratum": "spanning",
+      "rep": 5,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=818, reasoning_chars=3462) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=818, reasoning_chars=3462) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q11-spanning",
+      "stratum": "spanning",
+      "rep": 1,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=819, reasoning_chars=3658) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=819, reasoning_chars=3658) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q11-spanning",
+      "stratum": "spanning",
+      "rep": 2,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=818, reasoning_chars=3363) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=818, reasoning_chars=3363) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q11-spanning",
+      "stratum": "spanning",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 4,
+      "finalText": "(invoking context_search tool)",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "core resolves via dist check cr value",
+        "check whether core package resolves via dist node require resolve",
+        "turn 16 cr cacheRead value command output",
+        "core resolves via dist node -e require check cr",
+        "dist build output verify package resolution turn 16"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 147767,
+      "resultsTruncated": 4,
+      "resultTruncationEstimated": 4,
+      "peakRequestTokens": 15551,
+      "usage": {
+        "input": 10129,
+        "output": 603,
+        "cacheRead": 43136,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 3592,
+          "usage": {
+            "input": 11,
+            "output": 85,
+            "cacheRead": 5824,
+            "cacheWrite": 0
+          },
+          "promptTokens": 5835,
+          "input": 11,
+          "cacheRead": 5824,
+          "cacheWrite": 0,
+          "output": 85,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 3623,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 5822,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 12591,
+          "usage": {
+            "input": 9809,
+            "output": 311,
+            "cacheRead": 5824,
+            "cacheWrite": 0
+          },
+          "promptTokens": 15633,
+          "input": 9809,
+          "cacheRead": 5824,
+          "cacheWrite": 0,
+          "output": 311,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 3623,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 5822,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 7486,
+          "usage": {
+            "input": 271,
+            "output": 199,
+            "cacheRead": 15616,
+            "cacheWrite": 0
+          },
+          "promptTokens": 15887,
+          "input": 271,
+          "cacheRead": 15616,
+          "cacheWrite": 0,
+          "output": 199,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 3623,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 5822,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 1649,
+          "usage": {
+            "input": 38,
+            "output": 8,
+            "cacheRead": 15872,
+            "cacheWrite": 0
+          },
+          "promptTokens": 15910,
+          "input": 38,
+          "cacheRead": 15872,
+          "cacheWrite": 0,
+          "output": 8,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 3623,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 5822,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 25367,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "packages/core/package.json",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "16283",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q11-spanning",
+      "stratum": "spanning",
+      "rep": 4,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=818, reasoning_chars=3475) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=818, reasoning_chars=3475) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q11-spanning",
+      "stratum": "spanning",
+      "rep": 5,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=818, reasoning_chars=3221) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=818, reasoning_chars=3221) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q12-spanning",
+      "stratum": "spanning",
+      "rep": 1,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=818, reasoning_chars=3283) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=818, reasoning_chars=3283) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q12-spanning",
+      "stratum": "spanning",
+      "rep": 2,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=819, reasoning_chars=3183) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=819, reasoning_chars=3183) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q12-spanning",
+      "stratum": "spanning",
+      "rep": 3,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=816, reasoning_chars=3738) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=816, reasoning_chars=3738) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q12-spanning",
+      "stratum": "spanning",
+      "rep": 4,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=819, reasoning_chars=2827) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=819, reasoning_chars=2827) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree",
+      "window": 16384,
+      "question": "s1-q12-spanning",
+      "stratum": "spanning",
+      "rep": 5,
+      "status": "model_call_error",
+      "error": "openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=819, reasoning_chars=3241) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it",
+      "errorHint": null,
+      "errorStack": "ModelCallError: openrouter returned no content and no tool calls (finish_reason=length, completion_tokens=819, reasoning_tokens=819, reasoning_chars=3241) — the completion budget ran out before any answer was emitted; the caller set maxTokens, so only the caller can raise it\n    at fromOpenRouterResponse (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:121:15)\n    at OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:32:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+      "score": null
+    }
+  ]
+}

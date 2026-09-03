@@ -1,0 +1,467 @@
+{
+  "budgets": {
+    "window": 32768,
+    "ratio": 0.850896663206653,
+    "slackFraction": 0.1,
+    "zoneCFraction": 0.2,
+    "reply": 1925,
+    "zoneA": 3850,
+    "zoneB": 7701,
+    "zoneC": 7701,
+    "lazy": 13478,
+    "slack": 3850,
+    "K": 30808,
+    "maxReplyTokens": 1638,
+    "rootKeep": 16,
+    "rootLadder": [
+      {
+        "keep": 40,
+        "ok": false,
+        "rootBlockTokens": 6917,
+        "branchesSurviving": 0,
+        "branchSeqRange": null,
+        "overBudget": [],
+        "zoneB": 6917
+      },
+      {
+        "keep": 16,
+        "ok": true,
+        "rootBlockTokens": 6095,
+        "branchesSurviving": 2,
+        "branchSeqRange": {
+          "from": 639,
+          "to": 754
+        },
+        "overBudget": [],
+        "zoneB": 7633
+      }
+    ],
+    "rootKeepOk": true,
+    "rootBlockTokens": 6095,
+    "branchesSurviving": 2,
+    "branchSeqRange": {
+      "from": 639,
+      "to": 754
+    },
+    "overBudget": [],
+    "arm": "tree",
+    "rootSummarySha": "2c7fbe668193766cdd17e3de4b816cdcd0be5e4fcda3d881c2f7a73e76cc8596"
+  },
+  "compactionBuildUsd": null,
+  "compactionSkippedChunks": [],
+  "compaction": null,
+  "rows": [
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen3.7-flash",
+      "arm": "tree-grep",
+      "window": 32768,
+      "question": "smoke",
+      "stratum": "smoke",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "n_1PPHC64K0QTM0N8JD3RPST4GZ8",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "v6 selector iter7 eviction monotone lock-in DSA retired"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 8586,
+      "usage": {
+        "input": 9244,
+        "output": 177,
+        "cacheRead": 9110,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 2028,
+          "usage": {
+            "input": 9147,
+            "output": 124,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9147,
+          "input": 9147,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 124,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2210,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9843,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 997,
+          "usage": {
+            "input": 97,
+            "output": 53,
+            "cacheRead": 9110,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9207,
+          "input": 97,
+          "cacheRead": 9110,
+          "cacheWrite": 0,
+          "output": 53,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2210,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9843,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 3057,
+      "score": null,
+      "success": null
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen3.7-flash",
+      "arm": "tree-grep",
+      "window": 32768,
+      "question": "smoke",
+      "stratum": "smoke",
+      "rep": 2,
+      "status": "stalled",
+      "modelTurns": 4,
+      "finalText": "",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "v5.6 descendant map relocation FM-7 cache breakpoint",
+        "v5.6 descendant map relocation FM-7 cache breakpoint",
+        "v5.6 descendant map relocation FM-7 cache breakpoint",
+        "v5.6 FM-7 descendant map cache breakpoint relocation iter9"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 8733,
+      "usage": {
+        "input": 502,
+        "output": 487,
+        "cacheRead": 36440,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1366,
+          "usage": {
+            "input": 37,
+            "output": 112,
+            "cacheRead": 9110,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9147,
+          "input": 37,
+          "cacheRead": 9110,
+          "cacheWrite": 0,
+          "output": 112,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2210,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9843,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 1049,
+          "usage": {
+            "input": 96,
+            "output": 71,
+            "cacheRead": 9110,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9206,
+          "input": 96,
+          "cacheRead": 9110,
+          "cacheWrite": 0,
+          "output": 71,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2210,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9843,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 2127,
+          "usage": {
+            "input": 155,
+            "output": 161,
+            "cacheRead": 9110,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9265,
+          "input": 155,
+          "cacheRead": 9110,
+          "cacheWrite": 0,
+          "output": 161,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2210,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9843,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 1598,
+          "usage": {
+            "input": 214,
+            "output": 143,
+            "cacheRead": 9110,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9324,
+          "input": 214,
+          "cacheRead": 9110,
+          "cacheWrite": 0,
+          "output": 143,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2210,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9843,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 6237,
+      "score": null,
+      "success": null
+    },
+    {
+      "scenario": "s1",
+      "model": "qwen/qwen3.7-flash",
+      "arm": "tree-grep",
+      "window": 32768,
+      "question": "smoke",
+      "stratum": "smoke",
+      "rep": 3,
+      "status": "stalled",
+      "modelTurns": 4,
+      "finalText": "",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "v6 selector DSA focus-scoring implementation",
+        "multimod scenario cost variance $0.17–$1.08 USD context-tree arm runs completing successfully",
+        "tree-dsa-v6 focus-scored selector implementation",
+        "tree-dsa-v6 focus-scored selector implementation"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 8734,
+      "usage": {
+        "input": 515,
+        "output": 741,
+        "cacheRead": 36440,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1339,
+          "usage": {
+            "input": 37,
+            "output": 92,
+            "cacheRead": 9110,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9147,
+          "input": 37,
+          "cacheRead": 9110,
+          "cacheWrite": 0,
+          "output": 92,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2210,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9843,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 4102,
+          "usage": {
+            "input": 93,
+            "output": 446,
+            "cacheRead": 9110,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9203,
+          "input": 93,
+          "cacheRead": 9110,
+          "cacheWrite": 0,
+          "output": 446,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2210,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9843,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 1718,
+          "usage": {
+            "input": 164,
+            "output": 156,
+            "cacheRead": 9110,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9274,
+          "input": 164,
+          "cacheRead": 9110,
+          "cacheWrite": 0,
+          "output": 156,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2210,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9843,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 894,
+          "usage": {
+            "input": 221,
+            "output": 47,
+            "cacheRead": 9110,
+            "cacheWrite": 0
+          },
+          "promptTokens": 9331,
+          "input": 221,
+          "cacheRead": 9110,
+          "cacheWrite": 0,
+          "output": 47,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2210,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9843,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 8175,
+      "score": null,
+      "success": null
+    }
+  ]
+}

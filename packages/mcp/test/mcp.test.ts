@@ -437,7 +437,7 @@ describe('context_search', () => {
     expect(data.unavailable).toEqual([]);
   });
 
-  it('a hit carries a 240-char snippet and pointer-only meta, not the full summary body (R8)', async () => {
+  it('a hit carries coordinates and pointer-only meta, no summary text — Zone B already has it (R8)', async () => {
     const fixture = seed();
     const longSummary = 'x'.repeat(500);
     fixture.handle.store.putSummary({
@@ -459,8 +459,7 @@ describe('context_search', () => {
     const hit = data.hits.find((h) => h.node_id === fixture.implementation.id);
     expect(hit).toBeDefined();
     expect(hit).not.toHaveProperty('text');
-    expect(hit?.snippet.length).toBeLessThanOrEqual(240);
-    expect(hit?.snippet).toBe(longSummary.slice(0, 240));
+    expect(hit).not.toHaveProperty('snippet');
     // Pointer fields survive (files is what packages/mcp/test asserts against elsewhere)...
     expect(hit?.meta?.files[0]?.path).toBe('src/pricing.ts');
     expect(hit?.meta?.symbols).toEqual(['price']);

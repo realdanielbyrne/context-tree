@@ -1,0 +1,337 @@
+{
+  "budgets": {
+    "window": 32768,
+    "ratio": 0.850896663206653,
+    "slackFraction": 0.1,
+    "zoneCFraction": 0.2,
+    "reply": 1925,
+    "zoneA": 3850,
+    "zoneB": 7701,
+    "zoneC": 7701,
+    "lazy": 13478,
+    "slack": 3850,
+    "K": 30808,
+    "maxReplyTokens": 1638,
+    "rootKeep": 16,
+    "rootLadder": [
+      {
+        "keep": 40,
+        "ok": false,
+        "rootBlockTokens": 6917,
+        "branchesSurviving": 0,
+        "branchSeqRange": null,
+        "overBudget": [],
+        "zoneB": 6917
+      },
+      {
+        "keep": 16,
+        "ok": true,
+        "rootBlockTokens": 6095,
+        "branchesSurviving": 2,
+        "branchSeqRange": {
+          "from": 639,
+          "to": 754
+        },
+        "overBudget": [],
+        "zoneB": 7633
+      }
+    ],
+    "rootKeepOk": true,
+    "rootBlockTokens": 6095,
+    "branchesSurviving": 2,
+    "branchSeqRange": {
+      "from": 639,
+      "to": 754
+    },
+    "overBudget": [],
+    "arm": "tree",
+    "rootSummarySha": "2c7fbe668193766cdd17e3de4b816cdcd0be5e4fcda3d881c2f7a73e76cc8596"
+  },
+  "compactionBuildUsd": null,
+  "compactionSkippedChunks": [],
+  "compaction": null,
+  "rows": [
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-5-mini",
+      "arm": "tree-slice",
+      "window": 32768,
+      "question": "smoke",
+      "stratum": "smoke",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "n_2WKHMBCXPKYN0V4JHSY3BG3DFQ",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "tree-vs-transcript.html"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 10889,
+      "usage": {
+        "input": 241,
+        "output": 217,
+        "cacheRead": 19072,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 2200,
+          "usage": {
+            "input": 116,
+            "output": 69,
+            "cacheRead": 8320,
+            "cacheWrite": 0
+          },
+          "promptTokens": 8436,
+          "input": 116,
+          "cacheRead": 8320,
+          "cacheWrite": 0,
+          "output": 69,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 2362,
+          "usage": {
+            "input": 125,
+            "output": 148,
+            "cacheRead": 10752,
+            "cacheWrite": 0
+          },
+          "promptTokens": 10877,
+          "input": 125,
+          "cacheRead": 10752,
+          "cacheWrite": 0,
+          "output": 148,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 4579,
+      "score": null,
+      "success": null
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-5-mini",
+      "arm": "tree-slice",
+      "window": 32768,
+      "question": "smoke",
+      "stratum": "smoke",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "n_2WKHMBCXPKYN0V4JHSY3BG3DFQ",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "tree-vs-transcript"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 10888,
+      "usage": {
+        "input": 2672,
+        "output": 267,
+        "cacheRead": 16640,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 2762,
+          "usage": {
+            "input": 116,
+            "output": 132,
+            "cacheRead": 8320,
+            "cacheWrite": 0
+          },
+          "promptTokens": 8436,
+          "input": 116,
+          "cacheRead": 8320,
+          "cacheWrite": 0,
+          "output": 132,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 4062,
+          "usage": {
+            "input": 2556,
+            "output": 135,
+            "cacheRead": 8320,
+            "cacheWrite": 0
+          },
+          "promptTokens": 10876,
+          "input": 2556,
+          "cacheRead": 8320,
+          "cacheWrite": 0,
+          "output": 135,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 6837,
+      "score": null,
+      "success": null
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-5-mini",
+      "arm": "tree-slice",
+      "window": 32768,
+      "question": "smoke",
+      "stratum": "smoke",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 2,
+      "finalText": "n_0NRDWBV3GE8JVNCNR0RG0ZNXTC",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "delivery integrated measurements loops 4–6 iter7 iter8 iter9"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 10582,
+      "usage": {
+        "input": 3034,
+        "output": 272,
+        "cacheRead": 16000,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 6106,
+          "usage": {
+            "input": 756,
+            "output": 142,
+            "cacheRead": 7680,
+            "cacheWrite": 0
+          },
+          "promptTokens": 8436,
+          "input": 756,
+          "cacheRead": 7680,
+          "cacheWrite": 0,
+          "output": 142,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 2413,
+          "usage": {
+            "input": 2278,
+            "output": 130,
+            "cacheRead": 8320,
+            "cacheWrite": 0
+          },
+          "promptTokens": 10598,
+          "input": 2278,
+          "cacheRead": 8320,
+          "cacheWrite": 0,
+          "output": 130,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2199,
+            "zoneB": 7633,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 9832,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 8531,
+      "score": null,
+      "success": null
+    }
+  ]
+}

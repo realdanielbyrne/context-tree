@@ -24,7 +24,7 @@
  * 2 breakpoints) and `threeBp` (`cacheZoneCBreakpoint: true`, this pass's
  * opt-in addition). Each feeds its own persistent `ProviderCacheSimulator`.
  *
- * Usage: node eval/scripts/cache-sweep.mjs [maxTurns]
+ * Usage: node eval/scripts/cache-sweep.mjs [--store=path] [maxTurns]
  */
 import { cpSync, mkdtempSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -47,8 +47,12 @@ import {
 } from '@context-tree/core';
 
 const REPO = fileURLToPath(new URL('../..', import.meta.url));
-const FIXTURE = join(REPO, 'eval/fixtures/transplant/s1', 'store');
-const MAX_TURNS = Number.parseInt(process.argv[2] ?? '', 10) || Number.POSITIVE_INFINITY;
+const storeArg = process.argv.find((a) => a.startsWith('--store='));
+const FIXTURE = storeArg
+  ? join(REPO, storeArg.split('=')[1])
+  : join(REPO, 'eval/fixtures/transplant/s1', 'store');
+const positionalArg = process.argv.slice(2).find((a) => !a.startsWith('--'));
+const MAX_TURNS = positionalArg ? Number.parseInt(positionalArg, 10) : Number.POSITIVE_INFINITY;
 
 const TOOL_SCHEMAS_TEXT = JSON.stringify([
   { name: 'context_fetch', description: 'Fetch full detail for one or more node ids.' },

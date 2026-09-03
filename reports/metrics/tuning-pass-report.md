@@ -352,12 +352,12 @@ This goes first because `replyAllowance` is the only shipped-library behaviour i
 
 We would run this against the frozen session already in the repository rather than building a new long-running scenario for it. That session is already long: 754 events, roughly 196,000 tokens, stored with its hashes pinned. Instead of the twelve isolated question runs it drives today, the harness should walk forward through the trace, assembling the prompt as it stood at each point, computing the allowance there, and asking a live question at intervals. Every arm then sees byte-identical inputs, so the comparison is same-epoch by construction. This needs one harness change first: `transplant.mjs` asks its questions at a single fixed store state today, so an interval-walk mode has to be added before any run.
 
-The three arms vary one thing, the reply limit. `no-limit` sends no `max_tokens` at all, which is today's live default. `fixed-ceiling` restores the removed behaviour and is the control the existing corpus was measured under; the live harness used 8,192 and the portability harness 800, and this run should use 800, because that is the clamp the frozen session's own numbers were produced with. `allowance` passes `BudgetReport.replyAllowance` straight through as `max_tokens`. The rest of the configuration is a list of values, so it is a table.
+The three arms vary one thing, the reply limit. `no-limit` sends no `max_tokens` at all, which is today's live default. `fixed-ceiling` uses the window-derived `maxReplyTokens` from `deriveBudgets`, which is the reply share of W — the same quantity the portability harness used, now a function of the window rather than a constant. `allowance` passes `BudgetReport.replyAllowance` straight through as `max_tokens`. The rest of the configuration is a list of values, so it is a table.
 
 | Setting | Value |
 |---|---|
-| Arms | `no-limit`, `fixed-ceiling` (800), `allowance` |
-| Model | `openai/gpt-3.5-turbo` (OpenRouter) |
+| Arms | `no-limit`, `fixed-ceiling` (window-derived `maxReplyTokens`), `allowance` |
+| Model | a cheap OpenRouter flash model that can call tools at this window: `qwen/qwen3.7-flash`, `z-ai/glm-5.3-flash`, or `deepseek/deepseek-v4-flash` — pick whichever tool-calls reliably at W=16,384 (smoke-test first) |
 | Window | W=16,384 |
 | n | 12 questions × 3 arms × 5 replicates = 180 attempted, one epoch |
 | Switch threshold | `EVAL_LAZY_TOKENS` derived from W, not 30,000 |
@@ -368,7 +368,7 @@ The three arms vary one thing, the reply limit. `no-limit` sends no `max_tokens`
 | Bounds | `--cost-cap-usd` only; no `--max-turns`, no `--time-cap-ms` |
 | Estimated tokens | ≈ 2.4M (180 runs × median 13,107) |
 
-The model and window are not a preference. The mechanism only engages once the prompt approaches the window, and W=16,384 is the smallest window the frozen session is scored at and the only cell where the tree arm completed 60 of 60 runs. Run the same design at W=32,768 on `qwen/qwen-2.5-72b-instruct` only if the small-window cell shows a curve worth confirming. The token estimate assumes a median 13,107 tokens per completed run at this cell, essentially all of it fresh input, since this endpoint bills no cache. Bound spend with the spend cap and let stall detection end a run that will not finish.
+The window is not a preference: the mechanism only engages once the prompt approaches the window, and W=16,384 is the smallest window the frozen session is scored at and the only cell where the tree arm completed 60 of 60 runs. The model should be the cheapest tool-calling model available through OpenRouter, because this experiment measures structural reply behaviour — whether the allowance shapes the reply's length — not model-specific quality. `openai/gpt-3.5-turbo`, which the original design prescribed, was dropped because it cannot call tools effectively; the flash models above are the replacement pool. Run the same design at W=32,768 on `qwen/qwen-2.5-72b-instruct` only if the small-window cell shows a curve worth confirming. The token estimate assumes a median 13,107 tokens per completed run at this cell, essentially all of it fresh input, since these endpoints bill no cache. Bound spend with the spend cap and let stall detection end a run that will not finish.
 
 Four criteria are pre-registered, two of them primary. The first primary criterion is that the `allowance` arm's mean graded score is at or above `fixed-ceiling`'s at every allowance decile, with the baseline on disk being the tree arm's existing W=16,384 cell. The second is that the `allowance` arm completes at least as many runs as `fixed-ceiling`, because the claim is that a session continues where a fixed ceiling would have made the request invalid. Two guards follow. Median run tokens for `allowance` must be no worse than `fixed-ceiling`'s baseline of 13,107 (n=60 completed, verified for this report), and the fraction of replies that stop at the allowance rather than at the model's own stopping point is recorded per arm as a diagnostic rather than as a criterion.
 
@@ -378,7 +378,7 @@ One limit of this design matters enough to state before anyone runs it. A frozen
 
 ```bash
 node eval/scripts/transplant.mjs --scenario s1 --window 16384 \
-  --model openai/gpt-3.5-turbo --arms tree \
+  --model qwen/qwen3.7-flash --provider openrouter --arms tree \
   --reply-mode no-limit,fixed-ceiling,allowance --walk-intervals 12 --reps 5 \
   --cost-cap-usd <cap>
 # --reply-mode and --walk-intervals do not exist yet; adding them is the prerequisite.
@@ -461,17 +461,17 @@ The two arms are `summary-default`, which is today's behaviour, against `raw-def
 | Setting | Value |
 |---|---|
 | Arms | `summary-default` (today) against `raw-default` |
-| Models and windows | `qwen/qwen-2.5-72b-instruct` at W=32,768; `openai/gpt-3.5-turbo` at W=16,384 |
+| Models and windows | `qwen/qwen-2.5-72b-instruct` at W=32,768; a cheap flash model (see Step 1's model note) at W=16,384 |
 | n | 12 questions × 5 replicates × 2 arms per window = 240 attempted |
 | Estimated tokens | ≈ 6.1M (240 runs at the two cells' medians, 13,107 and 37,513) |
 
 Those are the frozen session's own cells, which is why the baselines are already on disk. The criterion is pre-registered: successes across the 120 searched-row population rise from 4 to at least 12, a threefold lift chosen because below that no affordable width or depth experiment discriminates, with no question type falling below its current mean and no median run-token rise above 1.5× the paired baseline cell. If successes stay under 12, the retrieval problem is not the fetch default, and the width and depth dimensions should be recorded as closed by blockage rather than pursued.
 
-### Step 7 — Port the derived budgets into the live suite (zero runs to decide it)
+### Step 7 — Wire the window through and delete the absolute literals (zero runs to decide it)
 
-This goes seventh because it is a defect fix rather than an experiment, and it is the audit's top recommendation. Until it lands, no comparison of switch policies measures the policy that would actually ship: the live suite's switch point, Zone B allowance and Zone C allowance are the absolute literals 30,000, 8,000 and 30,000, and its fold level is the constant 40, while the derivation already exists in `packages/core/src/assemble/budgets.ts`. Delete the absolutes, derive them from W with the switch equal to the Zone C share, and port the fold-ladder derivation, so that the live suite stops using a constant known to render no body at all at W=32,768 on the one store that has been measured. We rank it below the experiments because it changes no measurement on its own, and above nothing, because it is a prerequisite for any future switch-fraction work.
+This goes seventh because it is a defect fix rather than an experiment, and it is the audit's top recommendation. Until it lands, no comparison of switch policies measures the policy that would actually ship: the live suite's switch point, Zone B allowance and Zone C allowance are the absolute literals 30,000, 8,000 and 30,000, and its fold level is the constant 40, while the window the host actually reports is never consulted. The functions that should replace them already exist in `packages/core/src/assemble/budgets.ts`, but the correct wiring is not "derive from W with fixed fractions." The zone partition is itself a budget — one that this pass showed manufactures results (§5.1) — and the algorithm document records "delete the partition" as the candidate. The correct sequence is: pass the host's window through to the assembler; fit Zone B against the actual remainder after A, C and the reply reservation are placed, using `zoneBRemainder`; set the reply limit per turn from what the window has left after the assembled prompt, using `replyAllowance`; and keep `ZONE_FRACTIONS` only as the fallback for a caller that supplies no window. That way the assembler works from what the window actually has left, not from a share of it. We rank this step below the experiments because it changes no measurement on its own, and above nothing, because it is a prerequisite for any future switch-fraction work.
 
-The criterion is that a run at ten times the window produces ten times each allowance (a test already asserts this for the library function), that the live suite's `results.json` records a derived switch equal to its Zone C share, and that the existing 91 eval tests and 599 package tests stay green.
+The criterion is that the live suite's `results.json` records a switch point equal to the Zone C share of W, that `zoneBRemainder` reports a non-negative number at every window the structural gates test, and that the existing 91 eval tests and 599 package tests stay green.
 
 ### Step 8 — A second store, and only then the width-cost replicate
 

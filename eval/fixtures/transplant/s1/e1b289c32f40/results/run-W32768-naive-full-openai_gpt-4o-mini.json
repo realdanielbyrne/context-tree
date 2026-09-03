@@ -53,16 +53,16 @@
   "rows": [
     {
       "scenario": "s1",
-      "model": "qwen/qwen-2.5-72b-instruct",
+      "model": "openai/gpt-4o-mini",
       "arm": "naive-full",
       "window": 32768,
       "question": "s1-q01-head",
       "stratum": "head",
       "rep": 1,
       "status": "model_call_error",
-      "error": "openrouter chat.completions.create failed after 1 attempt(s): 400 This endpoint's maximum context length is 32768 tokens. However, you requested about 172349 tokens (170711 of text input, 1638 in the output). Please reduce the length of either one, or use the context-compression plugin to compress your prompt automatically.",
+      "error": "openrouter chat.completions.create failed after 1 attempt(s): 400 This endpoint's maximum context length is 128000 tokens. However, you requested about 170691 tokens (170691 of text input). Please reduce the length of either one, or use the context-compression plugin to compress your prompt automatically.",
       "errorHint": null,
-      "errorStack": "ModelCallError: openrouter chat.completions.create failed after 1 attempt(s): 400 This endpoint's maximum context length is 32768 tokens. However, you requested about 172349 tokens (170711 of text input, 1638 in the output). Please reduce the length of either one, or use the context-compression plugin to compress your prompt automatically.\n    at withRetry (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/retry.js:72:23)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:28:26)",
+      "errorStack": "ModelCallError: openrouter chat.completions.create failed after 1 attempt(s): 400 This endpoint's maximum context length is 128000 tokens. However, you requested about 170691 tokens (170691 of text input). Please reduce the length of either one, or use the context-compression plugin to compress your prompt automatically.\n    at withRetry (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/retry.js:72:23)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async OpenRouterProvider.complete (file:///Users/danielbyrne/GitHub/rpm/context-tree/packages/core/dist/models/openrouter.js:28:26)",
       "score": null
     }
   ]

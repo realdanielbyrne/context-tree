@@ -989,13 +989,13 @@ async function runTreeArm(
           `[tree-dsa] turn ${turnIndex}: ${keepBranches === undefined ? `all ${total} branches (within k)` : `kept ${keepBranches.size}/${total} branches`}\n`,
         );
       }
-      const prompt = assembler.assemble({
+      let prompt = assembler.assemble({
         // v5.7 (EVAL_NO_ATOOLS=1): the schemas already ship as the API `tools`
         // param on every request — the Zone A text copy is a 1.1k-token/turn
         // duplicate (analyzer-verified). Deleting it is pure prefix diet.
         ...(process.env.EVAL_NO_ATOOLS === '1' ? {} : { toolSchemasText: TREE_ZONE_A_TOOL_SCHEMAS_TEXT }),
         // appendEvent re-ingests the whole log each turn, and the segmenter ends
-        // every trace by closing all phases and the task node — so openPhase()
+        // every trace by closing phases and the task node — so openPhase()
         // is ALWAYS null here and the assembler would emit an empty Zone C (the
         // investigate-1 root cause: the model never saw its own tool results and
         // looped on stale summaries). Zone C must not vanish: expand the root,
@@ -1011,6 +1011,24 @@ async function runTreeArm(
         // per turn (measured: sw-6-ripple cacheWrite 162k vs native 20k).
         ...(belowLazyK ? { zoneCBudget: Number.POSITIVE_INFINITY } : {}),
       });
+
+      // Same-turn lazy gate check (Step 4): check the candidate prompt's
+      // heuristic token count BEFORE sending, not the previous turn's billed
+      // tokens. The heuristic over-counts by ~18% on this corpus, so the gate
+      // fires slightly early — the correct direction (a smaller overshoot).
+      if (belowLazyK && !lazyCrossed && lazyTokens > 0) {
+        const candidateTokens = prompt.budgets.total;
+        if (candidateTokens >= lazyTokens) {
+          lazyCrossed = true;
+          process.stderr.write(`[eval] lazy gate crossed at turn ${turnIndex}: ${candidateTokens} >= ${lazyTokens} (candidate prompt)\n`);
+          prompt = assembler.assemble({
+            ...(process.env.EVAL_NO_ATOOLS === '1' ? {} : { toolSchemasText: TREE_ZONE_A_TOOL_SCHEMAS_TEXT }),
+            activeNodeId: handle.store.openPhase()?.id ?? latestBranchId ?? rootIdForZoneC,
+            selection: keepBranches === undefined ? undefined : { keepBranches },
+          });
+        }
+      }
+
       const request =
         process.env.EVAL_ZONEC_CACHE === '1'
           ? toZoneCCachedRequest(prompt, args.options.model, {
@@ -1033,10 +1051,6 @@ async function runTreeArm(
       args.turns.push(record);
       Object.assign(args.usage, addTotals(args.usage, result.usage));
       lastPromptTokens = result.usage.input + result.usage.cacheRead + result.usage.cacheWrite;
-      if (belowLazyK && !belowLazyBudget()) {
-        lazyCrossed = true;
-        process.stderr.write(`[eval] lazy gate crossed at turn ${turnIndex}: ${lastPromptTokens} >= ${lazyTokens}\n`);
-      }
 
       const openBefore = handle.store.openPhase()?.id ?? null;
       const assistantEvent = appendTo(handle, {

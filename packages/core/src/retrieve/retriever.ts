@@ -326,6 +326,65 @@ export class TreeRetriever {
     return { embedded, skipped, embedderAvailable: true };
   }
 
+  /**
+   * Text search over raw event blobs — the fallback when summary-based search
+   * ranks the correct branch too low. Scans L0 events, reads each blob
+   * through L2, and returns the branches whose events contain the query as a
+   * substring. Zero model calls, deterministic, offline-safe.
+   */
+  grepEvents(query: string, options: TreeSearchOptions = {}): TreeSearchResult {
+    const trace = this.requireTrace('grepEvents');
+    const limit = normalizeLimit(options.limit);
+    const lowerQuery = query.toLowerCase();
+
+    const nodes = this.store.nodesInCreationOrder();
+    const nodeById = new Map(nodes.map((n) => [n.id, n]));
+    const childrenOf = new Map<NodeId | null, TreeNode[]>();
+    for (const node of nodes) {
+      const siblings = childrenOf.get(node.parent_id);
+      if (siblings === undefined) childrenOf.set(node.parent_id, [node]);
+      else siblings.push(node);
+    }
+
+    const branchHits = new Map<NodeId, { count: number; firstSeq: number }>();
+    for (const event of trace.read({})) {
+      const refs: string[] = [];
+      const record = event as unknown as Record<string, unknown>;
+      for (const field of ['blob', 'args_blob', 'output_blob']) {
+        const ref = record[field];
+        if (typeof ref === 'string') refs.push(ref);
+      }
+      for (const ref of refs) {
+        const text = this.blobs.getTextPrefix(ref, 4096);
+        if (text.toLowerCase().includes(lowerQuery)) {
+          for (const node of nodes) {
+            const span = nodeSpan(node);
+            if (span !== null && span.start <= event.seq && event.seq <= span.end && node.kind === 'phase') {
+              const existing = branchHits.get(node.id);
+              if (existing === undefined) {
+                branchHits.set(node.id, { count: 1, firstSeq: event.seq });
+              } else {
+                existing.count += 1;
+              }
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    const hits: SummaryHit[] = [];
+    for (const [nodeId, { count }] of branchHits) {
+      const node = nodeById.get(nodeId);
+      if (node === undefined) continue;
+      if (options.kind !== undefined && node.kind !== options.kind) continue;
+      const summary = this.store.currentSummary(node.id);
+      hits.push(toHit(node, summary, count));
+    }
+    hits.sort((a, b) => b.score - a.score);
+    return { hits: hits.slice(0, limit), path: 'beam' };
+  }
+
   private requireNode(id: NodeId): TreeNode {
     const node = this.store.getNode(id);
     if (node === null) throw new StoreInvariantError(`unknown node ${id}`);

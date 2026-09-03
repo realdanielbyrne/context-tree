@@ -35,15 +35,13 @@ export const CONTEXT_SEARCH = 'context_search';
  */
 const TREE_PROVIDER = 'tree';
 
-/** R8: a hit's snippet length — the same 240 `toCandidate` already computes below. */
-const SNIPPET_CHARS = 240;
 
 export const CONTEXT_SEARCH_DESCRIPTION =
   'Rank this task\'s branch summaries against a query and return their node ids and pointers. ' +
   'Reach for it when you know WHAT you need but not WHICH branch it happened in — before re-deriving ' +
   'a decision, re-reading a file another phase already changed, or re-answering an open question. ' +
-  'It searches summaries, never raw turns, and each hit carries a short snippet, not the summary body: ' +
-  'the content is one context_fetch away.';
+  'It returns coordinates (node id, title, score, meta pointers), not summary text — the summaries ' +
+  'are already in your prompt. The content behind a hit is one context_fetch away.';
 
 const shape = {
   query: z.string().min(1).describe('What you are looking for, in words. Matched against branch summaries.'),
@@ -76,8 +74,6 @@ export interface SearchHitPayload {
   score: number;
   /** Pointer fields only (R8) — the full §8 metadata is one context_fetch away. */
   meta: SearchHitMeta | null;
-  /** First 240 chars of the summary — enough to judge relevance, not a duplicate of Zone B (R8). */
-  snippet: string;
 }
 
 export interface ContextSearchData {
@@ -110,7 +106,6 @@ function toHitPayload(hit: SummaryHit): SearchHitPayload {
     summary_version: hit.version,
     score: hit.score,
     meta: toHitMeta(hit.meta),
-    snippet: hit.text.slice(0, SNIPPET_CHARS),
   };
 }
 

@@ -1,0 +1,5748 @@
+{
+  "budgets": {
+    "window": 32768,
+    "ratio": 0.850896663206653,
+    "slackFraction": 0.1,
+    "zoneCFraction": 0.2,
+    "reply": 1925,
+    "zoneA": 3850,
+    "zoneB": 7701,
+    "zoneC": 7701,
+    "lazy": 13478,
+    "slack": 3850,
+    "K": 30808,
+    "maxReplyTokens": 1638,
+    "rootKeep": 16,
+    "rootLadder": [
+      {
+        "keep": 40,
+        "ok": false,
+        "rootBlockTokens": 6917,
+        "branchesSurviving": 0,
+        "branchSeqRange": null,
+        "overBudget": [],
+        "zoneB": 6917
+      },
+      {
+        "keep": 16,
+        "ok": true,
+        "rootBlockTokens": 6095,
+        "branchesSurviving": 2,
+        "branchSeqRange": {
+          "from": 639,
+          "to": 754
+        },
+        "overBudget": [],
+        "zoneB": 7633
+      }
+    ],
+    "rootKeepOk": true,
+    "rootBlockTokens": 6095,
+    "branchesSurviving": 2,
+    "branchSeqRange": {
+      "from": 639,
+      "to": 754
+    },
+    "overBudget": [],
+    "arm": "tree",
+    "rootSummarySha": "2c7fbe668193766cdd17e3de4b816cdcd0be5e4fcda3d881c2f7a73e76cc8596"
+  },
+  "compactionBuildUsd": 0.328641,
+  "compactionSkippedChunks": [
+    {
+      "chunk": 14,
+      "of": 14,
+      "chars": 427
+    }
+  ],
+  "compaction": {
+    "usd": 0.328641,
+    "calls": 15,
+    "entries": [
+      {
+        "model": "anthropic/claude-haiku-4.5",
+        "calls": 15,
+        "usage": {
+          "input": 261301,
+          "output": 13468,
+          "cacheRead": 0,
+          "cacheWrite": 0
+        },
+        "usd": 0.328641
+      }
+    ],
+    "bucket": "compaction:W32768"
+  },
+  "rows": [
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q01-head",
+      "stratum": "head",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The file imported from the path containing \"trace\" in the block that follows the comment about testing block ids and token counts instead of prose is:\n\n`packages/core/test/trace.ts`",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21593,
+      "usage": {
+        "input": 21482,
+        "output": 38,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1803,
+          "usage": {
+            "input": 21482,
+            "output": 38,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21482,
+          "input": 21482,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 38,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1822,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "../src/trace/index.js",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q01-head",
+      "stratum": "head",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The file imported from the path containing \"trace\" in that import block is:\n\n`packages/core/src/trace.ts`",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21580,
+      "usage": {
+        "input": 234,
+        "output": 25,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1751,
+          "usage": {
+            "input": 234,
+            "output": 25,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21482,
+          "input": 234,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 25,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1760,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "../src/trace/index.js",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q01-head",
+      "stratum": "head",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The file imported from the path containing \"trace\" is `packages/core/test/e2e.test.ts`.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21577,
+      "usage": {
+        "input": 234,
+        "output": 22,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1893,
+          "usage": {
+            "input": 234,
+            "output": 22,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21482,
+          "input": 234,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 22,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1899,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "../src/trace/index.js",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q01-head",
+      "stratum": "head",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The import in that block is from the file:\n\n`packages/core/src/tests/trace.test.ts`",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21576,
+      "usage": {
+        "input": 234,
+        "output": 21,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1017,
+          "usage": {
+            "input": 234,
+            "output": 21,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21482,
+          "input": 234,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 21,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1023,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "../src/trace/index.js",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q01-head",
+      "stratum": "head",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The file imported from the path containing \"trace\" in the import block following the comment about testing block ids and token counts is:\n\n```typescript\nimport { readTraceJson } from '../../trace/index.js'\n```",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21598,
+      "usage": {
+        "input": 234,
+        "output": 43,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1145,
+          "usage": {
+            "input": 234,
+            "output": 43,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21482,
+          "input": 234,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 43,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1151,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "../src/trace/index.js",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q02-head",
+      "stratum": "head",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The description of the command that read lines 36-80 and 205-260 of `packages/core/test/summarize.test.ts` was \"Summarizer §8 truncation retry behavior\".",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21603,
+      "usage": {
+        "input": 239,
+        "output": 41,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1195,
+          "usage": {
+            "input": 239,
+            "output": 41,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21487,
+          "input": 239,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 41,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1203,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Read StubProvider and retry test examples",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q02-head",
+      "stratum": "head",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The description of the command that read lines 36-80 and 205-260 of `packages/core/test/summarize.test.ts` was: \"Show §8 truncation retry tests + tokenizer delta tests\".",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21606,
+      "usage": {
+        "input": 111,
+        "output": 44,
+        "cacheRead": 21376,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1469,
+          "usage": {
+            "input": 111,
+            "output": 44,
+            "cacheRead": 21376,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21487,
+          "input": 111,
+          "cacheRead": 21376,
+          "cacheWrite": 0,
+          "output": 44,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1474,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Read StubProvider and retry test examples",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q02-head",
+      "stratum": "head",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The description of the command was: \"Summarizer §8 edge truncate retry test\"",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21580,
+      "usage": {
+        "input": 111,
+        "output": 19,
+        "cacheRead": 21376,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 848,
+          "usage": {
+            "input": 111,
+            "output": 19,
+            "cacheRead": 21376,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21487,
+          "input": 111,
+          "cacheRead": 21376,
+          "cacheWrite": 0,
+          "output": 19,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 853,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Read StubProvider and retry test examples",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q02-head",
+      "stratum": "head",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The description of the command was: \"Query one echo to '\"expected\"'; new §8 > maxTokens retry\".",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21585,
+      "usage": {
+        "input": 111,
+        "output": 25,
+        "cacheRead": 21376,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1001,
+          "usage": {
+            "input": 111,
+            "output": 25,
+            "cacheRead": 21376,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21487,
+          "input": 111,
+          "cacheRead": 21376,
+          "cacheWrite": 0,
+          "output": 25,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1010,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Read StubProvider and retry test examples",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q02-head",
+      "stratum": "head",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The description of that command was: \"Summarizer tests snippet (dry run test snapshot)\".",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21581,
+      "usage": {
+        "input": 111,
+        "output": 21,
+        "cacheRead": 21376,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1600,
+          "usage": {
+            "input": 111,
+            "output": 21,
+            "cacheRead": 21376,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21487,
+          "input": 111,
+          "cacheRead": 21376,
+          "cacheWrite": 0,
+          "output": 21,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1605,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Read StubProvider and retry test examples",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q03-head",
+      "stratum": "head",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The contract file referenced is named \"eval-contract.md\".",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21558,
+      "usage": {
+        "input": 1120,
+        "output": 12,
+        "cacheRead": 20352,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 945,
+          "usage": {
+            "input": 1120,
+            "output": 12,
+            "cacheRead": 20352,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21472,
+          "input": 1120,
+          "cacheRead": 20352,
+          "cacheWrite": 0,
+          "output": 12,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 953,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "implements its own minimal tool-use loop",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q03-head",
+      "stratum": "head",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The name of the contract file referenced is `eval/results/suite-final`.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21561,
+      "usage": {
+        "input": 224,
+        "output": 16,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1004,
+          "usage": {
+            "input": 224,
+            "output": 16,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21472,
+          "input": 224,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 16,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1009,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "implements its own minimal tool-use loop",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q03-head",
+      "stratum": "head",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The contract file referenced in the description of the §15 harness agent loop is named `agents-last-exam.jsonl`.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21570,
+      "usage": {
+        "input": 224,
+        "output": 25,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1006,
+          "usage": {
+            "input": 224,
+            "output": 25,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21472,
+          "input": 224,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 25,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1012,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "implements its own minimal tool-use loop",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q03-head",
+      "stratum": "head",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The contract file referenced is named \"contracts/explain.json\".",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21558,
+      "usage": {
+        "input": 224,
+        "output": 13,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1559,
+          "usage": {
+            "input": 224,
+            "output": 13,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21472,
+          "input": 224,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 13,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1563,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "implements its own minimal tool-use loop",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q03-head",
+      "stratum": "head",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The contract file referenced is named `eval/src/contracts/agent-loop.ts`.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21562,
+      "usage": {
+        "input": 224,
+        "output": 16,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1926,
+          "usage": {
+            "input": 224,
+            "output": 16,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21472,
+          "input": 224,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 16,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1938,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "implements its own minimal tool-use loop",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q04-tail",
+      "stratum": "tail",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "synced",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21552,
+      "usage": {
+        "input": 229,
+        "output": 3,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1831,
+          "usage": {
+            "input": 229,
+            "output": 3,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21477,
+          "input": 229,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 3,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1837,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Sync report to artifact publish path",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q04-tail",
+      "stratum": "tail",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The message echoed was \"synced\".",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21558,
+      "usage": {
+        "input": 229,
+        "output": 9,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1268,
+          "usage": {
+            "input": 229,
+            "output": 9,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21477,
+          "input": 229,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 9,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1273,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Sync report to artifact publish path",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q04-tail",
+      "stratum": "tail",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The message echoed was: \"synced\"",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21559,
+      "usage": {
+        "input": 21477,
+        "output": 10,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 5947,
+          "usage": {
+            "input": 21477,
+            "output": 10,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21477,
+          "input": 21477,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 10,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 5954,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Sync report to artifact publish path",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q04-tail",
+      "stratum": "tail",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The message echoed was:  \nsynced",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21558,
+      "usage": {
+        "input": 229,
+        "output": 9,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 803,
+          "usage": {
+            "input": 229,
+            "output": 9,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21477,
+          "input": 229,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 9,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 807,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Sync report to artifact publish path",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q04-tail",
+      "stratum": "tail",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "synced",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21552,
+      "usage": {
+        "input": 229,
+        "output": 3,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1015,
+          "usage": {
+            "input": 229,
+            "output": 3,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21477,
+          "input": 229,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 3,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1024,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Sync report to artifact publish path",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q05-tail",
+      "stratum": "tail",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The only cache-free point identified for token-level selection is **write time**, specifically as a one-shot selection *at a phase close*, appending to the prefix. This is the legitimate home for token-level DSA: extracting which raw lines/tokens survive into a branch's summary during summarization, not per-turn attention emulation.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21615,
+      "usage": {
+        "input": 228,
+        "output": 68,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1216,
+          "usage": {
+            "input": 228,
+            "output": 68,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21476,
+          "input": 228,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 68,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1222,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "DSA on context tokens",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q05-tail",
+      "stratum": "tail",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The only cache-free point identified for token-level selection is **write time**—specifically, selection that happens once at a phase close, appending to the prefix (known as summarize-on-close). This one-shot compression at epoch boundaries is viable because it costs no cache; token-level selection done per turn would incur cache churn and void the prefix cache.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21620,
+      "usage": {
+        "input": 228,
+        "output": 72,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1495,
+          "usage": {
+            "input": 228,
+            "output": 72,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21476,
+          "input": 228,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 72,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1501,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "DSA on context tokens",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q05-tail",
+      "stratum": "tail",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The only cache-free point identified for token-level selection is **write time**—selection that happens once, at a phase close, appending to the prefix. This is exemplified by \"summarize-on-close,\" where selection is done once as a one-shot compression at epoch boundaries, costing no cache because it does not rewrite or mutate the cached prefix incrementally per turn.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21625,
+      "usage": {
+        "input": 228,
+        "output": 77,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1544,
+          "usage": {
+            "input": 228,
+            "output": 77,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21476,
+          "input": 228,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 77,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1550,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "DSA on context tokens",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q05-tail",
+      "stratum": "tail",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The only cache-free point identified for token-level selection is **write time**, specifically at a phase close, when appending to the prefix. This means selection happens once at the summarizer stage (summarize-on-close), incurring no cache cost because it is a one-shot compression at epoch boundaries rather than a per-turn attention emulation.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21617,
+      "usage": {
+        "input": 228,
+        "output": 70,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1441,
+          "usage": {
+            "input": 228,
+            "output": 70,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21476,
+          "input": 228,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 70,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1450,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "DSA on context tokens",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q05-tail",
+      "stratum": "tail",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The only cache-free point identified for token-level selection (DSA on tokens) is **write time—once per phase close, appending to the prefix**. This means token selection done as one-shot compression during summarization at epoch boundaries, not as per-turn attention emulation or by rewriting the cached prefix.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21610,
+      "usage": {
+        "input": 228,
+        "output": 64,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1570,
+          "usage": {
+            "input": 228,
+            "output": 64,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21476,
+          "input": 228,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 64,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1575,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "DSA on context tokens",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q06-tail",
+      "stratum": "tail",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The comment is:  \n\"Callers that cache Zone C must keep it after their moving breakpoint.\"",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21584,
+      "usage": {
+        "input": 242,
+        "output": 21,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 912,
+          "usage": {
+            "input": 242,
+            "output": 21,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21490,
+          "input": 242,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 21,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 918,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "Callers that cache Zone C must keep it after their moving breakpoint.",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q06-tail",
+      "stratum": "tail",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The comment is:\n\n\"Callers that cache Zone C must keep it after their moving breakpoint.\"",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21583,
+      "usage": {
+        "input": 114,
+        "output": 20,
+        "cacheRead": 21376,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 933,
+          "usage": {
+            "input": 114,
+            "output": 20,
+            "cacheRead": 21376,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21490,
+          "input": 114,
+          "cacheRead": 21376,
+          "cacheWrite": 0,
+          "output": 20,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 939,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "Callers that cache Zone C must keep it after their moving breakpoint.",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q06-tail",
+      "stratum": "tail",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The comment is: \n\"Callers that cache Zone C must keep it after their moving breakpoint.\"",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21584,
+      "usage": {
+        "input": 114,
+        "output": 21,
+        "cacheRead": 21376,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 978,
+          "usage": {
+            "input": 114,
+            "output": 21,
+            "cacheRead": 21376,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21490,
+          "input": 114,
+          "cacheRead": 21376,
+          "cacheWrite": 0,
+          "output": 21,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 985,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "Callers that cache Zone C must keep it after their moving breakpoint.",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q06-tail",
+      "stratum": "tail",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The comment is:  \n\"Callers that cache Zone C must keep it after their moving breakpoint.\"",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21584,
+      "usage": {
+        "input": 114,
+        "output": 21,
+        "cacheRead": 21376,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 985,
+          "usage": {
+            "input": 114,
+            "output": 21,
+            "cacheRead": 21376,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21490,
+          "input": 114,
+          "cacheRead": 21376,
+          "cacheWrite": 0,
+          "output": 21,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 993,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "Callers that cache Zone C must keep it after their moving breakpoint.",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q06-tail",
+      "stratum": "tail",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The comment is:\n\n\"Callers that cache Zone C must keep it after their moving breakpoint.\"",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21583,
+      "usage": {
+        "input": 114,
+        "output": 20,
+        "cacheRead": 21376,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1494,
+          "usage": {
+            "input": 114,
+            "output": 20,
+            "cacheRead": 21376,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21490,
+          "input": 114,
+          "cacheRead": 21376,
+          "cacheWrite": 0,
+          "output": 20,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1501,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "Callers that cache Zone C must keep it after their moving breakpoint.",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q07-deep",
+      "stratum": "deep",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The module imported right before `from wordwrap import wrap_text` is `warnings`.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21573,
+      "usage": {
+        "input": 1129,
+        "output": 18,
+        "cacheRead": 20352,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 949,
+          "usage": {
+            "input": 1129,
+            "output": 18,
+            "cacheRead": 20352,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21481,
+          "input": 1129,
+          "cacheRead": 20352,
+          "cacheWrite": 0,
+          "output": 18,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 955,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "from dedent import dedent_text",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q07-deep",
+      "stratum": "deep",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The module imported right before `from wordwrap import wrap_text` is `from math import acos`.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21576,
+      "usage": {
+        "input": 233,
+        "output": 21,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 892,
+          "usage": {
+            "input": 233,
+            "output": 21,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21481,
+          "input": 233,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 21,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 900,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "from dedent import dedent_text",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q07-deep",
+      "stratum": "deep",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The module imported right before `from wordwrap import wrap_text` is `pytest`.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21573,
+      "usage": {
+        "input": 233,
+        "output": 18,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1044,
+          "usage": {
+            "input": 233,
+            "output": 18,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21481,
+          "input": 233,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 18,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1050,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "from dedent import dedent_text",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q07-deep",
+      "stratum": "deep",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The module imported right before `from wordwrap import wrap_text` in the generated test script is `import StringIO`.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21579,
+      "usage": {
+        "input": 233,
+        "output": 25,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 961,
+          "usage": {
+            "input": 233,
+            "output": 25,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21481,
+          "input": 233,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 25,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 965,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "from dedent import dedent_text",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q07-deep",
+      "stratum": "deep",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The module imported right before `from wordwrap import wrap_text` after the `numparse` test cases is `from datetime import datetime`.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21585,
+      "usage": {
+        "input": 233,
+        "output": 29,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 932,
+          "usage": {
+            "input": 233,
+            "output": 29,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21481,
+          "input": 233,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 29,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 936,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "from dedent import dedent_text",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q08-deep",
+      "stratum": "deep",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The expected value of `summary.meta.symbols` in that test is an array containing the single symbol `'ghost'`. In other words:\n\n```js\nsummary.meta.symbols === ['ghost']\n```",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21600,
+      "usage": {
+        "input": 238,
+        "output": 41,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1332,
+          "usage": {
+            "input": 238,
+            "output": 41,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21486,
+          "input": 238,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 41,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1341,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "parseThing",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q08-deep",
+      "stratum": "deep",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The expected value of `summary.meta.symbols` in that test is:\n\n```js\n{ foo: 'namespace', bar: 'extern', ghost: 'ghost' }\n```",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21596,
+      "usage": {
+        "input": 238,
+        "output": 37,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1206,
+          "usage": {
+            "input": 238,
+            "output": 37,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21486,
+          "input": 238,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 37,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1211,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "parseThing",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q08-deep",
+      "stratum": "deep",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The expected value of `summary.meta.symbols` in that test is an array containing the single string symbol `['ghost']`.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21586,
+      "usage": {
+        "input": 238,
+        "output": 27,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 995,
+          "usage": {
+            "input": 238,
+            "output": 27,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21486,
+          "input": 238,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 27,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1005,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "parseThing",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q08-deep",
+      "stratum": "deep",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The expected value of `summary.meta.symbols` in that test is:\n\n```js\n[\n  \"root\",\n  \"root/amended\",\n  \"root/amended/deps\",\n  \"root/amended/ghost\"\n]\n```",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21607,
+      "usage": {
+        "input": 238,
+        "output": 48,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1334,
+          "usage": {
+            "input": 238,
+            "output": 48,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21486,
+          "input": 238,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 48,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1342,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "parseThing",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q08-deep",
+      "stratum": "deep",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The expected value of `summary.meta.symbols` in that test is:\n\n```js\nnew Set(['ghost'])\n```",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21584,
+      "usage": {
+        "input": 238,
+        "output": 25,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1139,
+          "usage": {
+            "input": 238,
+            "output": 25,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21486,
+          "input": 238,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 25,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1145,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "parseThing",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q09-deep",
+      "stratum": "deep",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The type imported alongside `PhaseType` from `'./contracts/tree.js'` is `CandidateName`.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21593,
+      "usage": {
+        "input": 250,
+        "output": 22,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 915,
+          "usage": {
+            "input": 250,
+            "output": 22,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21498,
+          "input": 250,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 22,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 922,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "PHASE_TYPES",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q09-deep",
+      "stratum": "deep",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The type imported alongside `PhaseType` from `'./contracts/tree.js'` is `AssembledPrompt`.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21594,
+      "usage": {
+        "input": 21498,
+        "output": 24,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1851,
+          "usage": {
+            "input": 21498,
+            "output": 24,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21498,
+          "input": 21498,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 24,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1858,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "PHASE_TYPES",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q09-deep",
+      "stratum": "deep",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The type imported alongside `PhaseType` is `ArmadilloProtocol`.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21587,
+      "usage": {
+        "input": 250,
+        "output": 16,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 3675,
+          "usage": {
+            "input": 250,
+            "output": 16,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21498,
+          "input": 250,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 16,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 3683,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "PHASE_TYPES",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q09-deep",
+      "stratum": "deep",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The name of the type imported alongside `PhaseType` from `'./contracts/tree.js'` is `AssembledPrompt`.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21597,
+      "usage": {
+        "input": 122,
+        "output": 27,
+        "cacheRead": 21376,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 992,
+          "usage": {
+            "input": 122,
+            "output": 27,
+            "cacheRead": 21376,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21498,
+          "input": 122,
+          "cacheRead": 21376,
+          "cacheWrite": 0,
+          "output": 27,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 999,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "PHASE_TYPES",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q09-deep",
+      "stratum": "deep",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The type imported alongside `PhaseType` from `'./contracts/tree.js'` was `SubPhaseType`.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21594,
+      "usage": {
+        "input": 122,
+        "output": 23,
+        "cacheRead": 21376,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1822,
+          "usage": {
+            "input": 122,
+            "output": 23,
+            "cacheRead": 21376,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21498,
+          "input": 122,
+          "cacheRead": 21376,
+          "cacheWrite": 0,
+          "output": 23,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1827,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "PHASE_TYPES",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q10-spanning",
+      "stratum": "spanning",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The path of the file in the replyBody that contains the invented symbol 'ghost' when verifying tree-sitter spans is:\n\n`/Users/danielbyrne/GitHub/rpm/context-tree/memory/integration-ghost.md`",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21608,
+      "usage": {
+        "input": 1136,
+        "output": 49,
+        "cacheRead": 20352,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1274,
+          "usage": {
+            "input": 1136,
+            "output": 49,
+            "cacheRead": 20352,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21488,
+          "input": 1136,
+          "cacheRead": 20352,
+          "cacheWrite": 0,
+          "output": 49,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1280,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "../src/render/index.js",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "src/a.ts",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q10-spanning",
+      "stratum": "spanning",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The file path in the replyBody containing the invented symbol 'ghost' when verifying tree-sitter spans storage is:\n\n`packages/core/test/e2e.test.ts`",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21595,
+      "usage": {
+        "input": 1136,
+        "output": 34,
+        "cacheRead": 20352,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1208,
+          "usage": {
+            "input": 1136,
+            "output": 34,
+            "cacheRead": 20352,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21488,
+          "input": 1136,
+          "cacheRead": 20352,
+          "cacheWrite": 0,
+          "output": 34,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1215,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "../src/render/index.js",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "src/a.ts",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q10-spanning",
+      "stratum": "spanning",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The file path in the replyBody containing the invented symbol \"ghost\" when verifying that tree-sitter spans are stored instead of the model's is:\n\n`test/fixtures/ghost.ts`",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21599,
+      "usage": {
+        "input": 112,
+        "output": 39,
+        "cacheRead": 21376,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1121,
+          "usage": {
+            "input": 112,
+            "output": 39,
+            "cacheRead": 21376,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21488,
+          "input": 112,
+          "cacheRead": 21376,
+          "cacheWrite": 0,
+          "output": 39,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1129,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "../src/render/index.js",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "src/a.ts",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q10-spanning",
+      "stratum": "spanning",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The invented symbol \"ghost\" appears in the file path under `packages/core/test/assemble.test.ts` in the describe block named `'Zone C header carries no volatile bits (D5)'`. This test verifies that tree-sitter spans are stored instead of the model's.\n\nSpecifically, the path is:\n`packages/core/test/assemble.test.ts`\n\nWithin this test file, it verifies the extended span property for Zone C header blocks including the invented symbol `ghost`.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21656,
+      "usage": {
+        "input": 112,
+        "output": 95,
+        "cacheRead": 21376,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 2290,
+          "usage": {
+            "input": 112,
+            "output": 95,
+            "cacheRead": 21376,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21488,
+          "input": 112,
+          "cacheRead": 21376,
+          "cacheWrite": 0,
+          "output": 95,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 2297,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "../src/render/index.js",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "src/a.ts",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q10-spanning",
+      "stratum": "spanning",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The file path containing the invented symbol 'ghost' in the replyBody is:\n\n`packages/core/test/assemble.test.ts`",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21587,
+      "usage": {
+        "input": 112,
+        "output": 26,
+        "cacheRead": 21376,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1138,
+          "usage": {
+            "input": 112,
+            "output": 26,
+            "cacheRead": 21376,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21488,
+          "input": 112,
+          "cacheRead": 21376,
+          "cacheWrite": 0,
+          "output": 26,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1146,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "../src/render/index.js",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "src/a.ts",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q11-spanning",
+      "stratum": "spanning",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The record does not contain the exact \"cr\" value at the end of turn 16 from the output of the command that checked whether core resolves via dist.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21586,
+      "usage": {
+        "input": 1128,
+        "output": 33,
+        "cacheRead": 20352,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1229,
+          "usage": {
+            "input": 1128,
+            "output": 33,
+            "cacheRead": 20352,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21480,
+          "input": 1128,
+          "cacheRead": 20352,
+          "cacheWrite": 0,
+          "output": 33,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1235,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "packages/core/package.json",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "16283",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q11-spanning",
+      "stratum": "spanning",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The specific \"cr\" (cacheRead) value at the end of turn 16 from the core resolution output is not included in the session record. The record contains references to cacheRead climbing values like 4,788 to 23,794 within a phase and measurements of cacheRead and cacheWrite across turns, but no explicit \"cr\" value specifically for turn 16 is provided.\n\nTherefore, the exact \"cr\" value at turn 16 is not available in the session history.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21652,
+      "usage": {
+        "input": 232,
+        "output": 99,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 2433,
+          "usage": {
+            "input": 232,
+            "output": 99,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21480,
+          "input": 232,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 99,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 2440,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "packages/core/package.json",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "16283",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q11-spanning",
+      "stratum": "spanning",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The exact \"cr\" (cacheRead) value at the end of turn 16 is not explicitly given in the provided session history or command outputs. The record includes general references and explanations about cacheRead behavior in various runs, such as iter8-rep1’s cacheRead values at turns 9–18, but does not provide the specific value for turn 16 or the output from that particular command.\n\nTherefore, the session record does not contain the specific \"cr\" value at the end of turn 16.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21658,
+      "usage": {
+        "input": 232,
+        "output": 105,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1856,
+          "usage": {
+            "input": 232,
+            "output": 105,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21480,
+          "input": 232,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 105,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1861,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "packages/core/package.json",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "16283",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q11-spanning",
+      "stratum": "spanning",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The value of \"cr\" (cacheRead) at the end of turn 16, as seen in the iter7 or iter8 rep2 logs analyzed in this session, was approximately 6,568. This came from the diagnosis of FM-7, iter8-rep1's per-turn table showing cacheRead freezing around 6,568 at turns 9–18 before the cacheWrite escalated, indicating churn.\n\nThis specific numeric value (cr = 6,568) at turn 16 is explicitly mentioned in the explanation of FM-7 behavior during the iter8 replicate analysis.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21673,
+      "usage": {
+        "input": 232,
+        "output": 121,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 2722,
+          "usage": {
+            "input": 232,
+            "output": 121,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21480,
+          "input": 232,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 121,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 2729,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "packages/core/package.json",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "16283",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q11-spanning",
+      "stratum": "spanning",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The record does not contain the specific \"cr\" (cacheRead) value at the end of turn 16 from that command’s output. Therefore, I cannot provide that exact value.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21591,
+      "usage": {
+        "input": 232,
+        "output": 38,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1181,
+          "usage": {
+            "input": 232,
+            "output": 38,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21480,
+          "input": 232,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 38,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1185,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "packages/core/package.json",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "16283",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q12-spanning",
+      "stratum": "spanning",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The `cr` value at the turn where `cw` was 568 is 5494.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21576,
+      "usage": {
+        "input": 234,
+        "output": 21,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 2195,
+          "usage": {
+            "input": 234,
+            "output": 21,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21482,
+          "input": 234,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 21,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 2202,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "12529",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "systemChars",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q12-spanning",
+      "stratum": "spanning",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The value of `cr` when `cw` was 568 is 64989. This corresponds to the entry:\n\n{\"turn\":12,\"cost\":0.0673,\"ok\":true,\"cw\":568,\"cr\":64989,\"inp\":924,\"tot\":66597}",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21614,
+      "usage": {
+        "input": 21482,
+        "output": 59,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 3813,
+          "usage": {
+            "input": 21482,
+            "output": 59,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21482,
+          "input": 21482,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 59,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 3823,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "12529",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "systemChars",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q12-spanning",
+      "stratum": "spanning",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The `cr` value at the turn where `cw` was 568 is 1212.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21576,
+      "usage": {
+        "input": 234,
+        "output": 21,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 922,
+          "usage": {
+            "input": 234,
+            "output": 21,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21482,
+          "input": 234,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 21,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 930,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "12529",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "systemChars",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q12-spanning",
+      "stratum": "spanning",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The value of `cr` when `cw` was 568 is 13510 (at turn 8).",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21579,
+      "usage": {
+        "input": 234,
+        "output": 24,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1094,
+          "usage": {
+            "input": 234,
+            "output": 24,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21482,
+          "input": 234,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 24,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1102,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "12529",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "systemChars",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "truncate-tail",
+      "window": 32768,
+      "question": "s1-q12-spanning",
+      "stratum": "spanning",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "In `tool_result for seq 690`, the entry with `cw` equal to 568 is:\n\n```json\n{\"cr\":31770,\"cw\":568,\"inp\":0,\"tot\":32318}\n```\n\nSo the value of `cr` at the turn where `cw` was 568 is **31770**.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 21624,
+      "usage": {
+        "input": 234,
+        "output": 69,
+        "cacheRead": 21248,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1723,
+          "usage": {
+            "input": 234,
+            "output": 69,
+            "cacheRead": 21248,
+            "cacheWrite": 0
+          },
+          "promptTokens": 21482,
+          "input": 234,
+          "cacheRead": 21248,
+          "cacheWrite": 0,
+          "output": 69,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1729,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "12529",
+          "exact_match": false,
+          "regex": false
+        },
+        {
+          "literal": "systemChars",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q01-head",
+      "stratum": "head",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The file imported from the path containing \"trace\" in that import block is:  \n`packages/core/src/assemble/trace.ts`",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 12609,
+      "usage": {
+        "input": 12612,
+        "output": 28,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1407,
+          "usage": {
+            "input": 12612,
+            "output": 28,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12612,
+          "input": 12612,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 28,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1413,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "../src/trace/index.js",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q01-head",
+      "stratum": "head",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The file imported from the path containing \"trace\" is:\n\n`packages/core/test/trace.test.ts`",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 12603,
+      "usage": {
+        "input": 196,
+        "output": 22,
+        "cacheRead": 12416,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 985,
+          "usage": {
+            "input": 196,
+            "output": 22,
+            "cacheRead": 12416,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12612,
+          "input": 196,
+          "cacheRead": 12416,
+          "cacheWrite": 0,
+          "output": 22,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 989,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "../src/trace/index.js",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q01-head",
+      "stratum": "head",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The file imported from the path containing \"trace\" in that import block is `packages/core/src/assemble/trace.ts`.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 12607,
+      "usage": {
+        "input": 196,
+        "output": 26,
+        "cacheRead": 12416,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 957,
+          "usage": {
+            "input": 196,
+            "output": 26,
+            "cacheRead": 12416,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12612,
+          "input": 196,
+          "cacheRead": 12416,
+          "cacheWrite": 0,
+          "output": 26,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 959,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "../src/trace/index.js",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q01-head",
+      "stratum": "head",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The file imported from the path containing \"trace\" in that import block is:\n\n`./trace/invariants.js`",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 12605,
+      "usage": {
+        "input": 196,
+        "output": 24,
+        "cacheRead": 12416,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1047,
+          "usage": {
+            "input": 196,
+            "output": 24,
+            "cacheRead": 12416,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12612,
+          "input": 196,
+          "cacheRead": 12416,
+          "cacheWrite": 0,
+          "output": 24,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1051,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "../src/trace/index.js",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q01-head",
+      "stratum": "head",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The file imported from the path containing \"trace\" is `trace.js`.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 12597,
+      "usage": {
+        "input": 12612,
+        "output": 16,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1353,
+          "usage": {
+            "input": 12612,
+            "output": 16,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12612,
+          "input": 12612,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "output": 16,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1355,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "../src/trace/index.js",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q02-head",
+      "stratum": "head",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The description of the command was: \"Check fix for FM-1 truncation retry rewrite (§8): e2e with a local TruncatingProvider and a completion instance.\"",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 12625,
+      "usage": {
+        "input": 201,
+        "output": 37,
+        "cacheRead": 12416,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1156,
+          "usage": {
+            "input": 201,
+            "output": 37,
+            "cacheRead": 12416,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12617,
+          "input": 201,
+          "cacheRead": 12416,
+          "cacheWrite": 0,
+          "output": 37,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1159,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Read StubProvider and retry test examples",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q02-head",
+      "stratum": "head",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The description of the command was: \"Zone C detail index test, sequential lines and omega span length.\"",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 12609,
+      "usage": {
+        "input": 201,
+        "output": 22,
+        "cacheRead": 12416,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1368,
+          "usage": {
+            "input": 201,
+            "output": 22,
+            "cacheRead": 12416,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12617,
+          "input": 201,
+          "cacheRead": 12416,
+          "cacheWrite": 0,
+          "output": 22,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1373,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Read StubProvider and retry test examples",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q02-head",
+      "stratum": "head",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The description of the command that read lines 36-80 and 205-260 of `packages/core/test/summarize.test.ts` was:\n\n\"Read tests covering §8 truncation retry, failure, and root-cause report; plus the bifurcation prune test and the write upgrade log\"",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 12650,
+      "usage": {
+        "input": 201,
+        "output": 62,
+        "cacheRead": 12416,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1561,
+          "usage": {
+            "input": 201,
+            "output": 62,
+            "cacheRead": 12416,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12617,
+          "input": 201,
+          "cacheRead": 12416,
+          "cacheWrite": 0,
+          "output": 62,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1567,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Read StubProvider and retry test examples",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q02-head",
+      "stratum": "head",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The description of that command was: \"Zone C boundary, summarizer fetch epoch rewrite driver\"",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 12607,
+      "usage": {
+        "input": 201,
+        "output": 20,
+        "cacheRead": 12416,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1294,
+          "usage": {
+            "input": 201,
+            "output": 20,
+            "cacheRead": 12416,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12617,
+          "input": 201,
+          "cacheRead": 12416,
+          "cacheWrite": 0,
+          "output": 20,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1296,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Read StubProvider and retry test examples",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q02-head",
+      "stratum": "head",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The description of the command that read lines 36-80 and 205-260 of `packages/core/test/summarize.test.ts` was:\n\n\"Currying-ready unit tests for summarization, including §8 trunc retry, err-check, and edge cases\"",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 12642,
+      "usage": {
+        "input": 201,
+        "output": 54,
+        "cacheRead": 12416,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1356,
+          "usage": {
+            "input": 201,
+            "output": 54,
+            "cacheRead": 12416,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12617,
+          "input": 201,
+          "cacheRead": 12416,
+          "cacheWrite": 0,
+          "output": 54,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1359,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Read StubProvider and retry test examples",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q03-head",
+      "stratum": "head",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The contract file referenced in the description of the §15 harness agent loop is named `agents-last-exam.jsonl`.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 12596,
+      "usage": {
+        "input": 186,
+        "output": 25,
+        "cacheRead": 12416,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1767,
+          "usage": {
+            "input": 186,
+            "output": 25,
+            "cacheRead": 12416,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12602,
+          "input": 186,
+          "cacheRead": 12416,
+          "cacheWrite": 0,
+          "output": 25,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1772,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "implements its own minimal tool-use loop",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q03-head",
+      "stratum": "head",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The contract file referenced in the description of the §15 harness agent loop is named **\"agents-last-exam.jsonl\"**.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 12599,
+      "usage": {
+        "input": 186,
+        "output": 28,
+        "cacheRead": 12416,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1062,
+          "usage": {
+            "input": 186,
+            "output": 28,
+            "cacheRead": 12416,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12602,
+          "input": 186,
+          "cacheRead": 12416,
+          "cacheWrite": 0,
+          "output": 28,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1066,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "implements its own minimal tool-use loop",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q03-head",
+      "stratum": "head",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The contract file referenced in the description of the §15 harness agent loop is named **\"agents-last-exam.jsonl\"**.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 12599,
+      "usage": {
+        "input": 186,
+        "output": 28,
+        "cacheRead": 12416,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 990,
+          "usage": {
+            "input": 186,
+            "output": 28,
+            "cacheRead": 12416,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12602,
+          "input": 186,
+          "cacheRead": 12416,
+          "cacheWrite": 0,
+          "output": 28,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 994,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "implements its own minimal tool-use loop",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q03-head",
+      "stratum": "head",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The contract file referenced is named `contracts/v15/multimod/v15-multimod-7base-pinned.txt`.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 12598,
+      "usage": {
+        "input": 186,
+        "output": 28,
+        "cacheRead": 12416,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1058,
+          "usage": {
+            "input": 186,
+            "output": 28,
+            "cacheRead": 12416,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12602,
+          "input": 186,
+          "cacheRead": 12416,
+          "cacheWrite": 0,
+          "output": 28,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1061,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "implements its own minimal tool-use loop",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q03-head",
+      "stratum": "head",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The contract file referenced in the description of the §15 harness agent loop is named \"agents-last-exam.jsonl\".",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 12596,
+      "usage": {
+        "input": 186,
+        "output": 25,
+        "cacheRead": 12416,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1318,
+          "usage": {
+            "input": 186,
+            "output": 25,
+            "cacheRead": 12416,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12602,
+          "input": 186,
+          "cacheRead": 12416,
+          "cacheWrite": 0,
+          "output": 25,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1323,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "implements its own minimal tool-use loop",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q04-tail",
+      "stratum": "tail",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The message echoed was: \"synced\"",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 12585,
+      "usage": {
+        "input": 191,
+        "output": 10,
+        "cacheRead": 12416,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1261,
+          "usage": {
+            "input": 191,
+            "output": 10,
+            "cacheRead": 12416,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12607,
+          "input": 191,
+          "cacheRead": 12416,
+          "cacheWrite": 0,
+          "output": 10,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1266,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Sync report to artifact publish path",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q04-tail",
+      "stratum": "tail",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The message echoed was: \"synced\"",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 12585,
+      "usage": {
+        "input": 191,
+        "output": 10,
+        "cacheRead": 12416,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 899,
+          "usage": {
+            "input": 191,
+            "output": 10,
+            "cacheRead": 12416,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12607,
+          "input": 191,
+          "cacheRead": 12416,
+          "cacheWrite": 0,
+          "output": 10,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 904,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Sync report to artifact publish path",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q04-tail",
+      "stratum": "tail",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The message echoed after copying `tree-vs-transcript.html` to the scratchpad was:\n\n```\nsynced\n```",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 12600,
+      "usage": {
+        "input": 191,
+        "output": 26,
+        "cacheRead": 12416,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1058,
+          "usage": {
+            "input": 191,
+            "output": 26,
+            "cacheRead": 12416,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12607,
+          "input": 191,
+          "cacheRead": 12416,
+          "cacheWrite": 0,
+          "output": 26,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1062,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Sync report to artifact publish path",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q04-tail",
+      "stratum": "tail",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The message echoed to confirm the file transfer was:  \nsynced",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 12589,
+      "usage": {
+        "input": 191,
+        "output": 14,
+        "cacheRead": 12416,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1580,
+          "usage": {
+            "input": 191,
+            "output": 14,
+            "cacheRead": 12416,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12607,
+          "input": 191,
+          "cacheRead": 12416,
+          "cacheWrite": 0,
+          "output": 14,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1585,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Sync report to artifact publish path",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q04-tail",
+      "stratum": "tail",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The echoed message was: synced",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 12582,
+      "usage": {
+        "input": 191,
+        "output": 7,
+        "cacheRead": 12416,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 723,
+          "usage": {
+            "input": 191,
+            "output": 7,
+            "cacheRead": 12416,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12607,
+          "input": 191,
+          "cacheRead": 12416,
+          "cacheWrite": 0,
+          "output": 7,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 726,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "Sync report to artifact publish path",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q05-tail",
+      "stratum": "tail",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The only cache-free point identified for token-level selection is **write time**, specifically at a phase close where selection happens once, appending to the prefix without incurring cache churn. This is exemplified by summarize-on-close, where one-shot compression or extractive scoring of which raw lines/tokens survive into a branch's summary occurs.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 12642,
+      "usage": {
+        "input": 190,
+        "output": 68,
+        "cacheRead": 12416,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1945,
+          "usage": {
+            "input": 190,
+            "output": 68,
+            "cacheRead": 12416,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12606,
+          "input": 190,
+          "cacheRead": 12416,
+          "cacheWrite": 0,
+          "output": 68,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1950,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "DSA on context tokens",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q05-tail",
+      "stratum": "tail",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The only cache-free point identified for token-level selection is **write time**, specifically at a phase close, appending to the prefix. This corresponds to selection happening once, such as during summarize-on-close—one-shot compression at epoch boundaries, not per-turn attention emulation.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 12628,
+      "usage": {
+        "input": 190,
+        "output": 56,
+        "cacheRead": 12416,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1451,
+          "usage": {
+            "input": 190,
+            "output": 56,
+            "cacheRead": 12416,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12606,
+          "input": 190,
+          "cacheRead": 12416,
+          "cacheWrite": 0,
+          "output": 56,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1457,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "DSA on context tokens",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q05-tail",
+      "stratum": "tail",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The only cache-free point identified for token-level selection is **write time, at a phase close, when appending to the prefix**. This means selection happens once and appends to the prefix without causing cache churn. In the design, this corresponds to the summarize-on-close process, where extractive scoring determines which raw lines or tokens survive into a branch's summary. Token-level selection is viable here because it doesn't rewrite the cached prefix per turn and thus does not invalidate the byte-prefix cache.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 12675,
+      "usage": {
+        "input": 190,
+        "output": 100,
+        "cacheRead": 12416,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1855,
+          "usage": {
+            "input": 190,
+            "output": 100,
+            "cacheRead": 12416,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12606,
+          "input": 190,
+          "cacheRead": 12416,
+          "cacheWrite": 0,
+          "output": 100,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1862,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "DSA on context tokens",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q05-tail",
+      "stratum": "tail",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The only cache-free point identified for token-level selection (DSA on tokens) is write time, specifically *once at a phase close, appending to the prefix*. This means selection that happens once when ingesting or summarizing at an epoch boundary, rather than per turn.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 12630,
+      "usage": {
+        "input": 190,
+        "output": 57,
+        "cacheRead": 12416,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1287,
+          "usage": {
+            "input": 190,
+            "output": 57,
+            "cacheRead": 12416,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12606,
+          "input": 190,
+          "cacheRead": 12416,
+          "cacheWrite": 0,
+          "output": 57,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1291,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "DSA on context tokens",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q05-tail",
+      "stratum": "tail",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The only cache-free point identified for token-level selection is **write time**, specifically \"once, at a phase close, appending to the prefix\"—this is the summarize-on-close stage where extractive scoring decides which raw lines/tokens survive into a branch's summary or into the Zone C window. Token-level selection done this way costs no cache write churn, unlike per-turn token-level selection which rewrites cached prefixes and breaks the cache.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 12663,
+      "usage": {
+        "input": 190,
+        "output": 90,
+        "cacheRead": 12416,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1680,
+          "usage": {
+            "input": 190,
+            "output": 90,
+            "cacheRead": 12416,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12606,
+          "input": 190,
+          "cacheRead": 12416,
+          "cacheWrite": 0,
+          "output": 90,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1686,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "DSA on context tokens",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q06-tail",
+      "stratum": "tail",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The comment is:\n\n\"Callers that cache Zone C must keep it after their moving breakpoint.\"",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 12609,
+      "usage": {
+        "input": 204,
+        "output": 20,
+        "cacheRead": 12416,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 923,
+          "usage": {
+            "input": 204,
+            "output": 20,
+            "cacheRead": 12416,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12620,
+          "input": 204,
+          "cacheRead": 12416,
+          "cacheWrite": 0,
+          "output": 20,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 925,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "Callers that cache Zone C must keep it after their moving breakpoint.",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q06-tail",
+      "stratum": "tail",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The comment is:  \n\"Callers that cache Zone C must keep it after their moving breakpoint.\"",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 12610,
+      "usage": {
+        "input": 204,
+        "output": 21,
+        "cacheRead": 12416,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1488,
+          "usage": {
+            "input": 204,
+            "output": 21,
+            "cacheRead": 12416,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12620,
+          "input": 204,
+          "cacheRead": 12416,
+          "cacheWrite": 0,
+          "output": 21,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1492,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "Callers that cache Zone C must keep it after their moving breakpoint.",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q06-tail",
+      "stratum": "tail",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The comment says:  \n\"Callers that cache Zone C must keep it after their moving breakpoint.\"",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 12610,
+      "usage": {
+        "input": 204,
+        "output": 21,
+        "cacheRead": 12416,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 1022,
+          "usage": {
+            "input": 204,
+            "output": 21,
+            "cacheRead": 12416,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12620,
+          "input": 204,
+          "cacheRead": 12416,
+          "cacheWrite": 0,
+          "output": 21,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 1026,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "Callers that cache Zone C must keep it after their moving breakpoint.",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q06-tail",
+      "stratum": "tail",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The comment is:\n\n\"Callers that cache Zone C must keep it after their moving breakpoint.\"",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 12609,
+      "usage": {
+        "input": 204,
+        "output": 20,
+        "cacheRead": 12416,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 849,
+          "usage": {
+            "input": 204,
+            "output": 20,
+            "cacheRead": 12416,
+            "cacheWrite": 0
+          },
+          "promptTokens": 12620,
+          "input": 204,
+          "cacheRead": 12416,
+          "cacheWrite": 0,
+          "output": 20,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": null,
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 855,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "Callers that cache Zone C must keep it after their moving breakpoint.",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q06-tail",
+      "stratum": "tail",
+      "rep": 5,
+      "status": "cost_cap",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q07-deep",
+      "stratum": "deep",
+      "rep": 1,
+      "status": "cost_cap",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q08-deep",
+      "stratum": "deep",
+      "rep": 1,
+      "status": "cost_cap",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q09-deep",
+      "stratum": "deep",
+      "rep": 1,
+      "status": "cost_cap",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q10-spanning",
+      "stratum": "spanning",
+      "rep": 1,
+      "status": "cost_cap",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q11-spanning",
+      "stratum": "spanning",
+      "rep": 1,
+      "status": "cost_cap",
+      "score": null
+    },
+    {
+      "scenario": "s1",
+      "model": "openai/gpt-4.1-mini",
+      "arm": "compact-rolling",
+      "window": 32768,
+      "question": "s1-q12-spanning",
+      "stratum": "spanning",
+      "rep": 1,
+      "status": "cost_cap",
+      "score": null
+    }
+  ]
+}
