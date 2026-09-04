@@ -28,6 +28,7 @@ import {
   selfRetrieval,
   capToolResult,
   compactionSummaryValid,
+  coordinateSearchData,
   questionTextValid,
   requestTokens,
   runOneReplicate,
@@ -494,11 +495,42 @@ describe('R6 ablation — tree vs tree-wide', () => {
     expect(TREE_ARMS).toContain('tree');
     expect(TREE_ARMS).toContain('tree-wide');
     expect(TREE_ARMS).toContain('tree-center-filename');
+    expect(TREE_ARMS).toContain('tree-search-coordinates');
     expect(TREE_ARMS).not.toContain('truncate-tail');
     expect(TREE_ARMS).not.toContain('compact-rolling');
     expect(ARM_IDS).toContain('tree-wide');
     expect(ARM_IDS).toContain('tree-center-filename');
+    expect(ARM_IDS).toContain('tree-search-coordinates');
     expect(ladderFor('tree-center-filename')).toEqual(ladderFor('tree-tail-v2'));
+    expect(ladderFor('tree-search-coordinates')).toEqual(ladderFor('tree-center-filename'));
+  });
+});
+
+describe('DS-STAR all-rank search-coordinate projection', () => {
+  it('preserves every hit order and score while removing rich duplicate views', () => {
+    const data = {
+      query: 'needle', path: 'beam', fallback: null, provenance: [], unavailable: [],
+      hits: [
+        { node_id: 'n2', kind: 'phase', title: 'second', phase_type: 'diagnosis', path: null, summary_version: 4, score: 2, meta: { files: [{ path: '/large' }] } },
+        { node_id: 'n1', kind: 'file', title: 'first', phase_type: null, path: '/a.ts', summary_version: 7, score: 1, meta: { symbols: ['huge'] } },
+      ],
+      candidates: [{ node_id: 'n2', score: 2, provider: 'tree', tier: 'fuzzy', snippet: 'duplicate prose' }],
+    };
+    const projected = coordinateSearchData(data);
+    expect(projected.hits).toEqual([
+      { node_id: 'n2', kind: 'phase', title: 'second', phase_type: 'diagnosis', path: null, score: 2 },
+      { node_id: 'n1', kind: 'file', title: 'first', phase_type: null, path: '/a.ts', score: 1 },
+    ]);
+    expect(projected.candidates).toEqual([]);
+    expect(projected.query).toBe('needle');
+    expect(projected.path).toBe('beam');
+    expect(data.hits[0].meta.files[0].path).toBe('/large');
+  });
+
+  it('handles an empty upstream result without inventing rows', () => {
+    expect(coordinateSearchData({ hits: [], candidates: [], query: 'none' })).toEqual({
+      hits: [], candidates: [], query: 'none',
+    });
   });
 });
 

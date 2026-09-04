@@ -227,6 +227,10 @@ export const ARM_IDS = Object.freeze([
   // within-branch centring recognizes bare dotted filenames. Search ranking
   // remains on the legacy extractor so this arm changes one stage only.
   'tree-center-filename',
+  // DS-STAR delivery iteration 2: keep the filename-centred fetch path, but
+  // expose one compact coordinate view of every ranked search hit instead of
+  // duplicating rich tree metadata across `hits` and `candidates`.
+  'tree-search-coordinates',
   // DS-STAR iter 2: tree-tail without tools. Eliminates stall failure mode
   // while keeping Zone B summaries as passive context alongside raw events.
   'tree-tail-static',
@@ -527,6 +531,7 @@ export const TREE_ARMS = Object.freeze([
   'tree-grep',
   'tree-tail-v2',
   'tree-center-filename',
+  'tree-search-coordinates',
   'tree-tail-static',
   'tree-tail-headline',
   'tree-oracle',
@@ -1444,7 +1449,7 @@ const TOOL_SCHEMAS_TEXT = JSON.stringify(CONTEXT_TOOL_SCHEMAS);
  * | `tree-verbatim`| Zone A policy text only (Step 4, Graft 1)     | legacy  | v3       |
  * | `tree-semantic`| search ranks by meaning, not lexical (Step 5) | legacy  | v1       |
  */
-const LEGACY_SURFACE_ARMS = new Set(['tree', 'tree-wide', 'tree-static', 'tree-verbatim', 'tree-semantic', 'tree-tail', 'tree-tail-v2', 'tree-center-filename', 'tree-tail-static', 'tree-tail-headline', 'tree-oracle', 'tree-escalate', 'tree-hit-keywords']);
+const LEGACY_SURFACE_ARMS = new Set(['tree', 'tree-wide', 'tree-static', 'tree-verbatim', 'tree-semantic', 'tree-tail', 'tree-tail-v2', 'tree-center-filename', 'tree-search-coordinates', 'tree-tail-static', 'tree-tail-headline', 'tree-oracle', 'tree-escalate', 'tree-hit-keywords']);
 /**
  * The share of one turn's live headroom a search result may occupy. Search
  * locates; fetch is what carries content, so a result list that eats the space
@@ -1453,7 +1458,7 @@ const LEGACY_SURFACE_ARMS = new Set(['tree', 'tree-wide', 'tree-static', 'tree-v
  */
 const SEARCH_RESULT_HEADROOM_SHARE = 0.25;
 /** Arms whose fetch is a raw, narrowed L0 replay sized by the live headroom. */
-const RAW_NARROWED_FETCH_ARMS = new Set(['tree-tail-v2', 'tree-center-filename', 'tree-oracle', 'tree-escalate', 'tree-hit-keywords']);
+const RAW_NARROWED_FETCH_ARMS = new Set(['tree-tail-v2', 'tree-center-filename', 'tree-search-coordinates', 'tree-oracle', 'tree-escalate', 'tree-hit-keywords']);
 
 /**
  * Tokens shorter than this decide nothing and match everything. UNVALIDATED —
@@ -1530,6 +1535,28 @@ async function legacySearchHits(ctx, input) {
     meta: hit.meta,
     text: hit.text,
   }));
+}
+
+/**
+ * One canonical, all-rank coordinate view for a search result. The ranker has
+ * already searched its configured pool; this projection never changes which
+ * rows exist, their order, or their scores. It only removes the large pointer
+ * metadata and the duplicate tree-candidate rendering that consumed the
+ * append budget before a fetch could run.
+ */
+export function coordinateSearchData(data) {
+  return {
+    ...data,
+    hits: (data.hits ?? []).map((hit) => ({
+      node_id: hit.node_id,
+      kind: hit.kind,
+      title: hit.title,
+      phase_type: hit.phase_type,
+      path: hit.path,
+      score: hit.score,
+    })),
+    candidates: [],
+  };
 }
 
 /**
@@ -1661,6 +1688,23 @@ export function handlersForArm(arm) {
           // what the first version of this arm did.
           ctx._hitKeywordK = [...(ctx._hitKeywordK ?? []), chosen];
           return { ok: true, data: { ...outcome.data, hits } };
+        }
+        if (arm === 'tree-search-coordinates') {
+          const outcome = await HANDLERS[CONTEXT_SEARCH](ctx, input);
+          if (!outcome.ok) return outcome;
+          const data = coordinateSearchData(outcome.data);
+          const wanted = new Set(ctx._oracleNodeIds ?? []);
+          const visibleHitIds = data.hits.map((hit) => hit.node_id);
+          const answerIndex = visibleHitIds.findIndex((nodeId) => wanted.has(nodeId));
+          ctx._searchObservations = [...(ctx._searchObservations ?? []), {
+            searchResultView: 'all-rank-coordinates',
+            availableHitIds: outcome.data.hits.map((hit) => hit.node_id),
+            visibleHitIds,
+            availableCandidateIds: outcome.data.candidates.map((candidate) => candidate.node_id),
+            visibleCandidateIds: [],
+            answerVisibleRank: answerIndex < 0 ? null : answerIndex + 1,
+          }];
+          return { ...outcome, data };
         }
         if (arm !== 'tree-escalate') return HANDLERS[CONTEXT_SEARCH](ctx, input);
         // Escalating search. Rank is whatever the retriever says; the change is
@@ -3698,6 +3742,7 @@ export async function buildArm(scenario, arm, budgets, artifacts) {
     }
     case 'tree-tail-v2':
     case 'tree-center-filename':
+    case 'tree-search-coordinates':
     case 'tree-oracle':
     case 'tree-escalate':
     case 'tree-hit-keywords':
@@ -3710,7 +3755,7 @@ export async function buildArm(scenario, arm, budgets, artifacts) {
       const withTools = arm !== 'tree-tail-static';
       const { assembler, prompt } = buildTreePrompt(scenario, budgets, { withTools, systemText: treeSystemTextFor('tree') });
       // Keyword headlines for all tool-bearing arms: replace prose with fingerprints.
-      if (arm === 'tree-tail-v2' || arm === 'tree-center-filename' || arm === 'tree-tail-headline' || arm === 'tree-oracle' || arm === 'tree-escalate' || arm === 'tree-hit-keywords') {
+      if (arm === 'tree-tail-v2' || arm === 'tree-center-filename' || arm === 'tree-search-coordinates' || arm === 'tree-tail-headline' || arm === 'tree-oracle' || arm === 'tree-escalate' || arm === 'tree-hit-keywords') {
         // Keyword-list headlines: replace prose with fingerprints extracted from
         // raw events. Each headline = heading + metadata lines + keyword fingerprints.
         // No first-sentence prose — the keywords ARE the headline.
@@ -3960,6 +4005,7 @@ export async function runOneReplicate(
       let exactHeadroom = null;
       let heuristicHeadroom = null;
       const observationStart = built.toolCtx?._fetchObservations?.length ?? 0;
+      const searchObservationStart = built.toolCtx?._searchObservations?.length ?? 0;
       if (call.name === ANNOTATE) {
         annotateRefused += 1;
         outcome = FROZEN_ANNOTATE_REFUSAL;
@@ -4020,6 +4066,9 @@ export async function runOneReplicate(
       const fetchObservation = call.name === CONTEXT_FETCH
         ? built.toolCtx?._fetchObservations?.slice(observationStart).at(-1) ?? null
         : null;
+      const searchObservation = call.name === CONTEXT_SEARCH
+        ? built.toolCtx?._searchObservations?.slice(searchObservationStart).at(-1) ?? null
+        : null;
       const hitIds = call.name === CONTEXT_SEARCH && outcome.ok && Array.isArray(outcome.data?.hits)
         ? outcome.data.hits.map((hit) => hit.node_id).filter((id) => typeof id === 'string')
         : [];
@@ -4029,6 +4078,12 @@ export async function runOneReplicate(
         name: call.name,
         input: call.input,
         hitIds,
+        searchResultView: searchObservation?.searchResultView ?? null,
+        availableHitIds: searchObservation?.availableHitIds ?? hitIds,
+        visibleHitIds: searchObservation?.visibleHitIds ?? hitIds,
+        availableCandidateIds: searchObservation?.availableCandidateIds ?? [],
+        visibleCandidateIds: searchObservation?.visibleCandidateIds ?? [],
+        answerVisibleRank: searchObservation?.answerVisibleRank ?? null,
         headroom: exactHeadroom,
         exactHeadroom,
         heuristicHeadroom,
@@ -4127,11 +4182,11 @@ async function runArms(scenario, options) {
   if (requestedCenterMode !== undefined && arms.length !== 1) {
     throw new Error('--retrieval-center-fingerprint-mode is a single-arm diagnostic; use tree-center-filename in paired batches');
   }
-  if (requestedCenterMode === 'bare-filename' && arms[0] !== 'tree-center-filename') {
-    throw new Error('bare-filename mode requires --arm tree-center-filename');
+  if (requestedCenterMode === 'bare-filename' && !['tree-center-filename', 'tree-search-coordinates'].includes(arms[0])) {
+    throw new Error('bare-filename mode requires --arm tree-center-filename or tree-search-coordinates');
   }
-  if (requestedCenterMode === 'legacy' && arms[0] === 'tree-center-filename') {
-    throw new Error('tree-center-filename requires bare-filename mode');
+  if (requestedCenterMode === 'legacy' && ['tree-center-filename', 'tree-search-coordinates'].includes(arms[0])) {
+    throw new Error(`${arms[0]} requires bare-filename mode`);
   }
   const reps = Number.parseInt(options.reps ?? String(REPS), 10);
   const meters = new Map();
@@ -4200,9 +4255,11 @@ async function runArms(scenario, options) {
   const questionsTag = options.questionsFile !== undefined ? `-${options.questionsFile.replace(/\.json$/, '')}` : '';
   const code = codeFingerprint();
   const codeKey = sha256(JSON.stringify(code)).slice(0, 12);
-  const candidateKey = arms.includes('tree-center-filename')
-    ? 'retrieval-center-fingerprint-mode:bare-filename'
-    : null;
+  const iteration1CandidateKey = 'retrieval-center-fingerprint-mode:bare-filename';
+  const iteration2CandidateKey = 'search-result-view:all-rank-coordinates@center-bare-filename';
+  const candidateKey = arms.includes('tree-search-coordinates')
+    ? iteration2CandidateKey
+    : arms.includes('tree-center-filename') ? iteration1CandidateKey : null;
   const identity = {
     questionPath: questionsPath,
     questionSha,
@@ -4250,10 +4307,10 @@ async function runArms(scenario, options) {
           trace: scenario.trace,
           rewrite: buildQueryRewriter(),
           retrievalCenterFingerprintMode:
-            requestedCenterMode ?? (arm === 'tree-center-filename' ? 'bare-filename' : 'legacy'),
+            requestedCenterMode ?? (['tree-center-filename', 'tree-search-coordinates'].includes(arm) ? 'bare-filename' : 'legacy'),
           observeFetch: (observation) => observedCtx?._fetchObservations?.push(observation),
         });
-        observedCtx = { ...toolCtxBase, retriever: armRetriever, _fetchObservations: [] };
+        observedCtx = { ...toolCtxBase, retriever: armRetriever, _fetchObservations: [], _searchObservations: [] };
         armToolCtx = observedCtx;
       }
       // Pass headroom to toolCtx so narrowing-aware fetch can size its band.
@@ -4327,8 +4384,10 @@ async function runArms(scenario, options) {
               question: question.id,
               stratum: question.stratum,
               rep,
-              candidateKey: arm === 'tree-center-filename' ? candidateKey : null,
-              retrievalCenterFingerprintMode: arm === 'tree-center-filename' ? 'bare-filename' : 'legacy',
+              candidateKey: arm === 'tree-search-coordinates'
+                ? iteration2CandidateKey
+                : arm === 'tree-center-filename' ? iteration1CandidateKey : null,
+              retrievalCenterFingerprintMode: ['tree-center-filename', 'tree-search-coordinates'].includes(arm) ? 'bare-filename' : 'legacy',
               ...r,
               ...grade,
             });

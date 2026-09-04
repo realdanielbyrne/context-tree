@@ -1,0 +1,582 @@
+{
+  "status": "PASS",
+  "input": "/Users/danielbyrne/GitHub/rpm/context-tree/eval/fixtures/transplant/s1/e1b289c32f40/results/run-W65536-truncate-tail+tree-tail-v2+tree-center-filename-questions-deep-q9ebc3150-cb2b5adc512bc-n5-z-ai_glm-5.3-flash.json",
+  "questions": "/Users/danielbyrne/GitHub/rpm/context-tree/eval/fixtures/transplant/s1/e1b289c32f40/questions-deep.json",
+  "gates": [
+    {
+      "id": "NC20-epoch-input",
+      "status": "PASS",
+      "detail": "frozen 75-row iteration-1 cell is complete",
+      "evidence": {
+        "questionSha": "9ebc3150d54dadf0c31bdbce1990cb66d4653a6688d0bccf1befd6662ef85abc",
+        "rows": 75,
+        "identity": {
+          "questionPath": "/Users/danielbyrne/GitHub/rpm/context-tree/eval/fixtures/transplant/s1/e1b289c32f40/questions-deep.json",
+          "questionSha": "9ebc3150d54dadf0c31bdbce1990cb66d4653a6688d0bccf1befd6662ef85abc",
+          "traceSha": "e1b289c32f406908906411a524928c15efb79b1b047fb3f82dfc4f0c7da76044",
+          "storeSha": "cd2796f7ce01e566d10502f63b6d828e24dad15a66c7417b09f3269e1bdfeaea",
+          "configSha": "67f8f9a0e12672a46146734ca43f2f64427cf3b5ad2bf8a76048cf350ef01769",
+          "rootSha": "1eb0306cee54159eec2c5b9983e91e1d70020b5fa4e169d364c0a9aeb4074a6d",
+          "gitSha": "16902c34bf72",
+          "code": {
+            "git": "16902c34bf72",
+            "retriever": "8cf1bccf888f",
+            "retrieverRuntime": "e0a2a4b04188",
+            "transplant": "d29afdd04381"
+          },
+          "codeKey": "b2b5adc512bc",
+          "effectiveConfig": {
+            "root": "/var/folders/3_/kcbph89919vfvjqv_x4d9msr0000gn/T/ct-transplant-s1-UPwD6A/store",
+            "leafModel": "claude-haiku-4-5-20251001",
+            "rootModel": "claude-sonnet-5",
+            "judgeModel": "claude-opus-5",
+            "embedModel": "text-embedding-3-small",
+            "provider": "anthropic",
+            "mode": "tool-backend",
+            "toolPhase": {
+              "edit_file": "implementation",
+              "write_file": "implementation",
+              "Edit": "implementation",
+              "Write": "implementation",
+              "NotebookEdit": "implementation",
+              "apply_patch": "implementation",
+              "run_tests": "verification",
+              "Test": "verification",
+              "read_file": "diagnosis",
+              "Read": "diagnosis",
+              "Grep": "diagnosis",
+              "Glob": "diagnosis",
+              "search_code": "diagnosis",
+              "create_ticket": "delivery",
+              "push_pr": "delivery",
+              "open_pr": "delivery",
+              "post_comment": "review",
+              "reply_comment": "review",
+              "run_command": "other",
+              "Bash": "other",
+              "Task": "delivery",
+              "Agent": "delivery",
+              "Artifact": "delivery",
+              "WebFetch": "diagnosis",
+              "mcp__claude-in-chrome__navigate": "diagnosis",
+              "mcp__claude-in-chrome__tabs_context_mcp": "diagnosis",
+              "Skill": "other",
+              "ToolSearch": "other"
+            },
+            "neutralPhases": [
+              "other"
+            ],
+            "fileTools": [
+              "edit_file",
+              "write_file",
+              "Edit",
+              "Write",
+              "NotebookEdit",
+              "apply_patch"
+            ],
+            "languages": {
+              ".ts": "typescript",
+              ".tsx": "tsx",
+              ".mts": "typescript",
+              ".cts": "typescript",
+              ".js": "javascript",
+              ".jsx": "javascript",
+              ".mjs": "javascript",
+              ".cjs": "javascript",
+              ".py": "python",
+              ".go": "go"
+            },
+            "budgets": {
+              "zoneB": 8000,
+              "zoneC": 30000
+            },
+            "rootKeep": 40,
+            "summarize": {
+              "concurrency": 8,
+              "maxSummaryTokens": 1024
+            },
+            "retrieval": {
+              "providers": [
+                "graft",
+                "serena",
+                "augment",
+                "vector",
+                "grep"
+              ],
+              "limit": 20
+            },
+            "costCapUsd": null,
+            "taskTitle": "task"
+          },
+          "modelResolved": [
+            "z-ai/glm-5.3-flash"
+          ],
+          "invocation": {
+            "window": 65536,
+            "arms": [
+              "truncate-tail",
+              "tree-tail-v2",
+              "tree-center-filename"
+            ],
+            "reps": 5,
+            "questionsFile": "questions-deep.json",
+            "stratum": null,
+            "replyMode": null
+          },
+          "candidateKey": "retrieval-center-fingerprint-mode:bare-filename"
+        }
+      }
+    },
+    {
+      "id": "NC21-live-rank-audit",
+      "status": "PASS",
+      "detail": "audited 23 nonempty first searches; two provider-error rows have no telemetry",
+      "evidence": {
+        "rankRows": [
+          {
+            "question": "s1-qo01-overflow",
+            "rep": 1,
+            "query": "ProviderCacheSimulator ExactTokenizer bytes-v0 serialized segments heuristic",
+            "target": [
+              "n_1E48X9HAFPEYNQHHSF609KHMEE"
+            ],
+            "returned": 20,
+            "rank": 1
+          },
+          {
+            "question": "s1-qo01-overflow",
+            "rep": 2,
+            "query": "ProviderCacheSimulator ExactTokenizer bytes-v0 serialized segments heuristic test",
+            "target": [
+              "n_1E48X9HAFPEYNQHHSF609KHMEE"
+            ],
+            "returned": 20,
+            "rank": 1
+          },
+          {
+            "question": "s1-qo01-overflow",
+            "rep": 3,
+            "query": "ProviderCacheSimulator ExactTokenizer bytes-v0 serialized segments heuristic test",
+            "target": [
+              "n_1E48X9HAFPEYNQHHSF609KHMEE"
+            ],
+            "returned": 20,
+            "rank": 1
+          },
+          {
+            "question": "s1-qo01-overflow",
+            "rep": 4,
+            "query": "ProviderCacheSimulator ExactTokenizer bytes-v0 serialized segments heuristic",
+            "target": [
+              "n_1E48X9HAFPEYNQHHSF609KHMEE"
+            ],
+            "returned": 20,
+            "rank": 1
+          },
+          {
+            "question": "s1-qo01-overflow",
+            "rep": 5,
+            "query": "ProviderCacheSimulator ExactTokenizer bytes-v0 serialized segments heuristic",
+            "target": [
+              "n_1E48X9HAFPEYNQHHSF609KHMEE"
+            ],
+            "returned": 20,
+            "rank": 1
+          },
+          {
+            "question": "s1-qo02-overflow",
+            "rep": 2,
+            "query": "armArgs deadlineMs options construction",
+            "target": [
+              "n_1JNW5D8CNYSATE4X6NV3Z39R81"
+            ],
+            "returned": 20,
+            "rank": 2
+          },
+          {
+            "question": "s1-qo02-overflow",
+            "rep": 3,
+            "query": "armArgs deadlineMs options",
+            "target": [
+              "n_1JNW5D8CNYSATE4X6NV3Z39R81"
+            ],
+            "returned": 20,
+            "rank": 2
+          },
+          {
+            "question": "s1-qo02-overflow",
+            "rep": 4,
+            "query": "armArgs deadlineMs options",
+            "target": [
+              "n_1JNW5D8CNYSATE4X6NV3Z39R81"
+            ],
+            "returned": 20,
+            "rank": 2
+          },
+          {
+            "question": "s1-qo02-overflow",
+            "rep": 5,
+            "query": "armArgs deadlineMs options construction",
+            "target": [
+              "n_1JNW5D8CNYSATE4X6NV3Z39R81"
+            ],
+            "returned": 20,
+            "rank": 2
+          },
+          {
+            "question": "s1-qo03-overflow",
+            "rep": 1,
+            "query": "bash command all-runs.json extract per-turn inputs iter5 iter6 description",
+            "target": [
+              "n_1F6E3RF111CVYDQ7MA643CRGBC"
+            ],
+            "returned": 20,
+            "rank": 7
+          },
+          {
+            "question": "s1-qo03-overflow",
+            "rep": 2,
+            "query": "all-runs.json bash command extract per-turn inputs iter5 iter6",
+            "target": [
+              "n_1F6E3RF111CVYDQ7MA643CRGBC"
+            ],
+            "returned": 20,
+            "rank": 7
+          },
+          {
+            "question": "s1-qo03-overflow",
+            "rep": 3,
+            "query": "all-runs.json per-turn input extraction iter5 iter6 python",
+            "target": [
+              "n_1F6E3RF111CVYDQ7MA643CRGBC"
+            ],
+            "returned": 20,
+            "rank": 7
+          },
+          {
+            "question": "s1-qo03-overflow",
+            "rep": 4,
+            "query": "all-runs.json extract per-turn inputs iter5 iter6 bash command description",
+            "target": [
+              "n_1F6E3RF111CVYDQ7MA643CRGBC"
+            ],
+            "returned": 20,
+            "rank": 7
+          },
+          {
+            "question": "s1-qo03-overflow",
+            "rep": 5,
+            "query": "all-runs.json extract per-turn inputs iter5 iter6",
+            "target": [
+              "n_1F6E3RF111CVYDQ7MA643CRGBC"
+            ],
+            "returned": 20,
+            "rank": 7
+          },
+          {
+            "question": "s1-qo04-overflow",
+            "rep": 1,
+            "query": "concatenate sw-1-jsonc.jsonl.bak agents-last-exam.jsonl single JSONL file",
+            "target": [
+              "n_1E48X9HAFPEYNQHHSF609KHMEE"
+            ],
+            "returned": 20,
+            "rank": 1
+          },
+          {
+            "question": "s1-qo04-overflow",
+            "rep": 3,
+            "query": "concatenate sw-1-jsonc.jsonl.bak agents-last-exam.jsonl single JSONL file cat",
+            "target": [
+              "n_1E48X9HAFPEYNQHHSF609KHMEE"
+            ],
+            "returned": 20,
+            "rank": 1
+          },
+          {
+            "question": "s1-qo04-overflow",
+            "rep": 4,
+            "query": "concatenate sw-1-jsonc.jsonl.bak agents-last-exam.jsonl into single JSONL",
+            "target": [
+              "n_1E48X9HAFPEYNQHHSF609KHMEE"
+            ],
+            "returned": 20,
+            "rank": 1
+          },
+          {
+            "question": "s1-qo04-overflow",
+            "rep": 5,
+            "query": "sw-1-jsonc.jsonl.bak agents-last-exam.jsonl concatenated single JSONL file",
+            "target": [
+              "n_1E48X9HAFPEYNQHHSF609KHMEE"
+            ],
+            "returned": 20,
+            "rank": 1
+          },
+          {
+            "question": "s1-qo05-overflow",
+            "rep": 1,
+            "query": "pnpm build followed by vitest run specific test files",
+            "target": [
+              "n_1E48X9HAFPEYNQHHSF609KHMEE"
+            ],
+            "returned": 20,
+            "rank": 1
+          },
+          {
+            "question": "s1-qo05-overflow",
+            "rep": 2,
+            "query": "pnpm build then vitest run specific test files bash command description",
+            "target": [
+              "n_1E48X9HAFPEYNQHHSF609KHMEE"
+            ],
+            "returned": 20,
+            "rank": 1
+          },
+          {
+            "question": "s1-qo05-overflow",
+            "rep": 3,
+            "query": "pnpm build then vitest run specific test files bash command description",
+            "target": [
+              "n_1E48X9HAFPEYNQHHSF609KHMEE"
+            ],
+            "returned": 20,
+            "rank": 1
+          },
+          {
+            "question": "s1-qo05-overflow",
+            "rep": 4,
+            "query": "pnpm build then vitest run specific test files bash command description",
+            "target": [
+              "n_1E48X9HAFPEYNQHHSF609KHMEE"
+            ],
+            "returned": 20,
+            "rank": 1
+          },
+          {
+            "question": "s1-qo05-overflow",
+            "rep": 5,
+            "query": "pnpm build vitest run specific test files bash command",
+            "target": [
+              "n_1E48X9HAFPEYNQHHSF609KHMEE"
+            ],
+            "returned": 20,
+            "rank": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "NC22-one-change-parity",
+      "status": "PASS",
+      "detail": "underlying IDs/order/scores are unchanged by projection",
+      "evidence": {
+        "calls": 63
+      }
+    },
+    {
+      "id": "NC23-coordinate-serialization",
+      "status": "PASS",
+      "detail": "all upstream ranks remain visible and positive-headroom responses fit",
+      "evidence": {
+        "calls": 63,
+        "tokens": {
+          "min": 1194,
+          "median": 1274,
+          "max": 1402
+        },
+        "qo03": {
+          "question": "s1-qo03-overflow",
+          "rep": 1,
+          "query": "bash command all-runs.json extract per-turn inputs iter5 iter6 description",
+          "upstream": 20,
+          "visible": 20,
+          "tokens": 1198,
+          "headroom": 7906,
+          "firstSearch": true,
+          "same": true
+        }
+      }
+    },
+    {
+      "id": "NC24-ordered-headroom-replay",
+      "status": "PASS",
+      "detail": "compact searches leave the existing centered fetch answer-bearing",
+      "evidence": {
+        "qo04": [
+          {
+            "question": "s1-qo04-overflow",
+            "rep": 1,
+            "delivered": true,
+            "targetFetch": {
+              "headroom": 5407,
+              "centerSeq": 218,
+              "tokens": 5407,
+              "delivered": true
+            },
+            "calls": [
+              {
+                "name": "context_search",
+                "headroom": 7897,
+                "tokens": 1245,
+                "centerSeq": null,
+                "delivered": false
+              },
+              {
+                "name": "context_search",
+                "headroom": 6642,
+                "tokens": 1217,
+                "centerSeq": null,
+                "delivered": false
+              },
+              {
+                "name": "context_fetch",
+                "headroom": 5407,
+                "tokens": 5407,
+                "centerSeq": 218,
+                "delivered": true
+              }
+            ]
+          },
+          {
+            "question": "s1-qo04-overflow",
+            "rep": 3,
+            "delivered": true,
+            "targetFetch": {
+              "headroom": 5407,
+              "centerSeq": 218,
+              "tokens": 5407,
+              "delivered": true
+            },
+            "calls": [
+              {
+                "name": "context_search",
+                "headroom": 7897,
+                "tokens": 1246,
+                "centerSeq": null,
+                "delivered": false
+              },
+              {
+                "name": "context_search",
+                "headroom": 6641,
+                "tokens": 1216,
+                "centerSeq": null,
+                "delivered": false
+              },
+              {
+                "name": "context_fetch",
+                "headroom": 5407,
+                "tokens": 5407,
+                "centerSeq": 218,
+                "delivered": true
+              }
+            ]
+          },
+          {
+            "question": "s1-qo04-overflow",
+            "rep": 4,
+            "delivered": true,
+            "targetFetch": {
+              "headroom": 6634,
+              "centerSeq": 218,
+              "tokens": 6634,
+              "delivered": true
+            },
+            "calls": [
+              {
+                "name": "context_search",
+                "headroom": 7897,
+                "tokens": 1245,
+                "centerSeq": null,
+                "delivered": false
+              },
+              {
+                "name": "context_fetch",
+                "headroom": 6634,
+                "tokens": 6634,
+                "centerSeq": 218,
+                "delivered": true
+              }
+            ]
+          },
+          {
+            "question": "s1-qo04-overflow",
+            "rep": 5,
+            "delivered": true,
+            "targetFetch": {
+              "headroom": 5408,
+              "centerSeq": 218,
+              "tokens": 5408,
+              "delivered": true
+            },
+            "calls": [
+              {
+                "name": "context_search",
+                "headroom": 7897,
+                "tokens": 1245,
+                "centerSeq": null,
+                "delivered": false
+              },
+              {
+                "name": "context_search",
+                "headroom": 6642,
+                "tokens": 1216,
+                "centerSeq": null,
+                "delivered": false
+              },
+              {
+                "name": "context_fetch",
+                "headroom": 5408,
+                "tokens": 5408,
+                "centerSeq": 218,
+                "delivered": true
+              },
+              {
+                "name": "context_fetch",
+                "headroom": -19,
+                "tokens": 0,
+                "centerSeq": 218,
+                "delivered": false
+              },
+              {
+                "name": "context_search",
+                "headroom": -38,
+                "tokens": 0,
+                "centerSeq": null,
+                "delivered": false
+              },
+              {
+                "name": "context_fetch",
+                "headroom": -57,
+                "tokens": 0,
+                "centerSeq": 55,
+                "delivered": false
+              }
+            ]
+          }
+        ],
+        "qo03Delivered": 5
+      }
+    },
+    {
+      "id": "NC25-boundaries",
+      "status": "PASS",
+      "detail": "empty/null/duplicate-view projection boundaries are deterministic",
+      "evidence": {}
+    },
+    {
+      "id": "NC26-instrument-provenance",
+      "status": "PASS",
+      "detail": "fixture truth is absent from model-visible JSON and replay delivery is post-cap",
+      "evidence": {}
+    },
+    {
+      "id": "NC27-live-readiness",
+      "status": "PASS",
+      "detail": "authorized",
+      "evidence": {
+        "command": "node eval/scripts/transplant.mjs --phase run --scenario s1 --window 65536 --arm truncate-tail,tree-center-filename,tree-search-coordinates --model z-ai/glm-5.3-flash --reps 5 --questions-file questions-deep.json"
+      }
+    }
+  ]
+}
