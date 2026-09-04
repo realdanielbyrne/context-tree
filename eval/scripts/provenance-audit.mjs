@@ -239,6 +239,7 @@ async function main() {
         nulled: 0,
         unverifiable: 0,
         unearned: 0,
+        earnedPrompt: 0,
         fetchedNotDelivered: 0,
         phantomRows: 0,
       };
@@ -248,6 +249,7 @@ async function main() {
       if (row.score === 1 && row.auditedScore === null) cell.nulled += 1;
       if (row.verdict === 'unverifiable') cell.unverifiable += 1;
       if (row.verdict === 'unearned') cell.unearned += 1;
+      if (row.verdict === 'earned-prompt') cell.earnedPrompt += 1;
       if (row.delivered === false) cell.fetchedNotDelivered += 1;
       if (row.phantomSeqs.length > 0) cell.phantomRows += 1;
       cells.set(key, cell);
@@ -258,13 +260,14 @@ async function main() {
     );
 
     process.stdout.write(`provenance audit — ${scenarioId}, trace max seq ${maxSeq}, ${files.length} result files, ${rows.length} rows\n\n`);
-    process.stdout.write('set      W        arm                  n   before  after  nulled  unverif  unearned  phantom\n');
-    process.stdout.write('-------- -------- -------------------- --- ------- ------ ------- -------- --------- -------\n');
+    process.stdout.write('set      W        arm                  n   before  after  nulled  unverif  unearned  noRetrv  phantom\n');
+    process.stdout.write('-------- -------- -------------------- --- ------- ------ ------- -------- --------- ------- -------\n');
     for (const c of ordered) {
       process.stdout.write(
         `${c.set.padEnd(8)} ${String(c.window).padEnd(8)} ${c.arm.padEnd(20)} ${String(c.n).padStart(3)} ` +
           `${`${c.before}/${c.n}`.padStart(7)} ${`${c.after}/${c.n}`.padStart(6)} ${String(c.nulled).padStart(7)} ` +
-          `${String(c.unverifiable).padStart(8)} ${String(c.unearned).padStart(9)} ${String(c.phantomRows).padStart(7)}\n`,
+          `${String(c.unverifiable).padStart(8)} ${String(c.unearned).padStart(9)} ` +
+          `${`${c.earnedPrompt}/${c.before}`.padStart(7)} ${String(c.phantomRows).padStart(7)}\n`,
       );
     }
 

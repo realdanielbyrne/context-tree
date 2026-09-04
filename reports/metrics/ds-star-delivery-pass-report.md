@@ -10,10 +10,11 @@ lived *after* retrieval, in the model's ability to extract an answer it had been
 pass asked why an oracle is not perfect, and found that it had never been an oracle: the
 correct branch is a coordinate, and the payload is a band narrowed to roughly 6,600 tokens of
 live headroom out of a branch of 56,973. For one of the five questions no query the model
-issued ever centred that band on the answer — 0 of 5 delivered, 0 of 5 scored — so five of the
-twelve lost points are content that never arrived. Running the missing real-search cell
-decomposes the live pipeline into three buckets that sum: 7-9 points lost selecting the
-branch, 4 delivering it, 5 extracting from it. Selection turned out to be the largest and the least
+issued ever centred that band on the answer — 0 of 30 recorded runs delivered — so at least
+five of the twelve lost points are content that never arrived. Running the missing
+real-search cell splits the live loss at the delivery boundary: of 18 points lost against
+ground truth, 13 are payloads that never carried the answer and 5 are payloads that did and
+still failed. Selection turned out to be the largest and the least
 expected, because the offline ranker is nearly perfect on this set — 5 of 5 in the top three,
 4 of 5 at rank one — while the model fetches the correct branch on only 16-18 of 25 runs. The
 cause is that a search hit renders without the evidence it was ranked on: the correct branch
@@ -84,7 +85,8 @@ only reaches YES at 64,000, where the band is essentially the whole 56,973-token
 is **mis-centred, not starved** — growing the budget does not reach it, so the fix is where
 the band centres.
 
-For qo04 no query the model issued ever centred the band on the answer. Five of the
+For qo04 no query the model issued ever centred the band on the answer at any live
+headroom. Five of the
 oracle's twelve lost points are content that never arrived. The remaining seven are
 post-retrieval loss — with one caveat that cuts in a single direction: the gate measures
 what the RETRIEVER returned, not what survived the append cap that re-cuts it downstream.
@@ -96,9 +98,10 @@ ceiling, not a retrieval ceiling.
 
 One further inversion falls out of the same rows. Perfect selection *increases*
 truncation. A one-hit search leaves more headroom, the fetch asks for a wider band, the
-band overruns the real BPE count and the append cap fires: the oracle sheds 3,535–4,431
-tokens per run on its failing question, while `tree-tail-v2`, whose 20-hit list leaves
-less room, sheds 0–280. The arm with the better retrieval has the worse delivery.
+band overruns the real BPE count and the append cap fires: on qo02 the oracle sheds
+0–4,431 tokens per run, four of the five runs above 3,500, while `tree-tail-v2`, whose
+20-hit list leaves less room, sheds 0–280 across the cell. The arm with the better
+retrieval has the worse delivery.
 
 ## 3 The instrument had to be repaired first
 
@@ -126,7 +129,8 @@ wrong answer. It reproduces the previous pass's hand-found artifacts mechanicall
 |---|---|---|
 | overflow W=65,536 `truncate-tail` | 4/25 | **0/25** |
 | overflow W=32,768 `tree-tail-v2` | 1/25 | **0/25** |
-| all cells | 183/450 | 178/450 |
+| all cells, before this pass's three deep batches | 183/450 | 178/450 |
+| all cells, as the script reports today | 200/525 | 195/525 |
 
 Zero rows were unverifiable. Two rows cite sequence numbers that do not exist in a
 754-event trace, one of them a scored zero — the same fabrication in a wrong answer, which
@@ -180,56 +184,91 @@ which retired the ranking half of the routing candidate that the previous pass h
 first, before a dollar was spent on it.
 
 `tree-tail-v2` on the deep set was one un-run cell that the previous report identified and
-did not execute; it costs $0.146 and closes the split permanently. With it, the live
-pipeline decomposes into three stages that sum:
+did not execute; it cost $0.152 and closes the split permanently. Three checks run over
+that cell by `eval/scripts/pipeline-decomposition.mjs`, which exists because an adversarial
+recount of an earlier draft could not reproduce the middle number under any of five
+reasonable definitions — the definition had never been written down. It now lives in code:
 
-| stage | runs reaching it | points lost here |
-|---|---|---|
-| searched and fetched the **correct branch** | 16/25 | **9 — selection** |
-| the delivered band **carried the answer** | 12/25 | **4 — delivery** |
-| the run **scored** | 7/25 | **5 — extraction** |
-| ground truth (`naive-full`) | 25/25 | — |
+- **SELECTED** — the run fetched the question's own source branch.
+- **DELIVERED** — the payload the run actually *received* carried the answer literal.
+  Every branch the run fetched is replayed through the same call the handler makes,
+  `fetchBranch(id, {depth:'full', maxTokens: liveHeadroom / ratio, query})`. Any fetched
+  branch counts: a run that found the literal in some other branch was still served it.
+- **SCORED** — as recorded by the grader, provenance-audited.
 
-Selection is the largest bucket, delivery the smallest, extraction between them. That is
-the opposite ordering from the overflow set, where perfect ranking recovered 19 of 21
-points.
+| check | `tree-tail-v2`, deep, W=65,536 |
+|---|---|
+| SELECTED | 16/25 |
+| DELIVERED | 12/25 |
+| SCORED | 7/25 |
+| ground truth (`naive-full`, W=200,000) | 25/25 |
 
-**Two batches, and the error bar they give.** This decomposition is computed on
+**These are three independent checks, not a funnel, and an earlier draft was wrong to
+present them as one.** They are not nested: on qo01 the arm selected the correct branch on
+3 runs but was delivered the answer on 4, because a different branch it fetched also
+contained the literal. Subtracting one from the next therefore does not decompose anything.
+
+What *is* arithmetically exact is a two-way split at the delivery boundary. Of the 18 points
+lost against ground truth:
+
+- **13 were lost at or before delivery** — the payload never contained the answer (25 − 12).
+- **5 were lost after delivery** — the payload contained the answer and the run still failed
+  (12 − 7).
+
+So roughly **72% of the live loss is retrieval reaching the model with the wrong bytes, and
+28% is the model failing on the right ones.** Selection is a sub-diagnosis of the first
+group rather than a separate bucket: 9 of the 25 runs never fetched the correct branch at
+all. The purest case is qo04, which selected 5/5 and delivered 0/5 — the branch was found
+every single time and the answer never arrived.
+
+**Two batches, and the error bar they give.** The figures above come from
 `run-W65536-tree-tail-v2-questions-deep-*.json`. The arm ran again later as the baseline
-half of §6's paired batch, and scored **7/25 again** — but with **18/25** selection rather
-than 16/25. Same arm, same window, same store, same model, two independent epochs. So the
-selection figure carries a run-to-run spread of about ±2 on a 25-run cell and the selection
-bucket is properly "7 to 9 points", not a hard 9; the score is the more stable of the two.
-Where this report compares selection between arms it uses the paired batch, in which both
-arms ran in one invocation and the comparison is within-epoch. Both figures are correct for
-the batch they come from, and neither should be quoted without it.
+half of §6's paired batch and scored **7/25 again**, with 18/25 selected and 14/25
+delivered. Same arm, window, store and model, two independent epochs: score is stable, the
+retrieval counts carry a spread of about ±2 on a 25-run cell. Where this report compares
+arms it uses the paired batch, in which both ran in one invocation. Neither set of figures
+should be quoted without its batch.
+
+**A result that does not fit the story, recorded rather than smoothed.** If the oracle's
+residual is delivery, and delivery is bounded by headroom, then widening the window should
+help — headroom grows with W. The deep oracle instead goes **13/25 at W=65,536, 15/25 at
+W=98,304, and 10/25 at W=131,072**, and the audit confirms none of those successes came
+from the prompt rather than retrieval (0 no-retrieval at every deep window). The dip at the
+widest window is unexplained. It is within the run-to-run spread that five clustered
+questions produce, but it is counter-evidence to a monotone delivery story and it is
+reported as such. The same table also carries `truncate-tail` at **0/25** on the deep set at
+W=131,072 — the same-store head-to-head that establishes these answers are genuinely out of
+the baseline's reach at every window tested.
 
 ## 5 Why the model does not use a good ranker
 
 The obvious explanation for 16–18/25 selection against 4/5 offline rank-1 is that the
 model's own reformulated query ranks worse than the question text does. It does not: on the
-deep set the two agree almost exactly, ranks 1, 2, 6, 1, 1 against 1, 2, 3, 1, 1. The check
+deep set the two agree almost exactly, ranks 1, 2, 7, 1, 1 against 1, 2, 3, 1, 1. The check
 took two minutes and the conclusion reverses without it.
 
 The real reason is visible the moment the hit list is rendered. For qo02 — *"When
 constructing the `armArgs` object, which property from `options` is used to set
 `deadlineMs`?"* — the correct branch is ranked **second**, and the model fetched the hit
-at rank 9 or 10 on **five runs of five**. Here is what it was shown:
+at rank 10 or 11 on **five runs of five** in the first deep batch. Here is what it was
+shown:
 
 ```
 # 1 score=0.033 phase/implementation "implementation"     files=…build-multimod-scenario.py  symbols=build_hidden_test,case,…
 # 2 score=0.033 phase/diagnosis      "diagnosis"          files=-  symbols=-        <-- CORRECT
 # 3 score=0.024 phase/diagnosis      "diagnosis (4)"      files=-  symbols=-
 …
-# 9 score=0.014 file/-               "build-multimod-scenario.py"                   <-- model picked
-#10 score=0.014 file/-               "loop.ts"                                      <-- model picked
+# 9 score=0.014 task/-               "task"
+#10 score=0.014 file/-               "build-multimod-scenario.py"                   <-- model fetched
+#11 score=0.014 file/-               "loop.ts"                                      <-- model fetched
 ```
 
 The correct hit renders as the word `diagnosis` and nothing else. A phase hit carries its
 title, kind, and whatever `meta.files` / `meta.symbols` its summary happened to record —
 for a phase node, routinely nothing. Asked where `armArgs` sets `deadlineMs`, and offered
 `diagnosis` against `loop.ts`, the model picks `loop.ts`. That is the rational choice on
-the evidence displayed.
+the evidence displayed. (In the later paired batch three of five qo02 runs fetched the
+rank-1 phase hit instead, so five-of-five is a property of the first batch, not a constant.)
 
 The evidence it was **not** shown is the evidence the ranking was computed from. That
 branch carries 425 extracted fingerprints, `ArmArgs`, `r.options` and `deadlineMs` among
@@ -259,9 +298,11 @@ Budgeting the keywords to the **search-result headroom share** made the arm byte
 its own baseline. The bare 20-hit list is 5,203 tokens against a 1,649-token quarter-share, so
 no keyword count ever fit and the handler returned the baseline list unchanged. Budgeted
 against the whole live headroom — the budget the append cap actually enforces, which is rule 5
-— the binary search settles on 16 keywords per hit and the list grows from 5,203 to 5,377
-tokens. A `hitKeywordK` field records the count per search call, so a null result cannot be
-confused with a mechanism that never fired.
+— the list grows from 5,203 to 5,377 tokens at 16 keywords per hit. A `hitKeywordK` field
+records the count per search call, so a null result cannot be confused with a mechanism that
+never fired; live it ranged from 0 to 52 with a median of 16 across 38 search calls, 13 of
+which attached none because by then the headroom was spent. So the mechanism fired on every
+*run* but on 25 of 38 *calls* — a distinction §8's own telemetry lesson demands be stated.
 
 Both arms then ran in one invocation, same epoch, same store, n=5 per question.
 
@@ -269,6 +310,10 @@ Both arms then ran in one invocation, same epoch, same store, n=5 per question.
 |---|---|---|
 | score (provenance-audited) | 3/25 | 7/25 |
 | **correct branch fetched** | **18/25** | **18/25** |
+| payload delivered the answer | 16/25 | 14/25 |
+| `context_search` calls | 38 | 63 |
+| **`context_fetch` calls** | **68** | **46** |
+| model turns | 114 | 106 |
 | input tokens, whole cell | 609,073 | 460,389 |
 | stalls | 4 | 2 |
 | tokens truncated, whole cell | 1,050 | 326 |
@@ -279,18 +324,23 @@ pre-registered primary bar was selection ≥ 21/25 and the arm delivered the bas
 number. On qo02, the question the intervention was designed around, selection moved from 0/5
 to 1/5 — which at n=5 is nothing.
 
-The score difference is not significant either: 3/25 against 7/25 is p≈0.30 by Fisher exact,
+The score difference is not significant either: 3/25 against 7/25 is p=0.289 by Fisher exact,
 and the 25 are five questions × five replicates, so the effective sample is nearer five. What
-*is* robust is the effort. The arm spent **32% more input tokens** and doubled the stalls, and
-the clearest single row is qo03: both arms fetched the correct branch on 5 of 5 runs, the
-baseline answered in 3 turns and scored 4/5, and the keyword arm took 5, 3, 7, 9 and 4 turns
-and scored 0/5.
+*is* robust is the effort, and the table says precisely where it went. Turns rose only 7.5%
+(114 against 106), nowhere near the 32% token growth, and the enriched hit list itself is
+worth 174 tokens. **The cost is in fetches.** The arm searched 40% *less* (38 calls against
+63) and fetched 48% *more* (68 against 46), and a fetch carries a branch payload where a
+search carries a hit list.
 
-The mechanism of the regression is legible in that row. Extra keywords are extra leads, and the
-model follows them. Making the correct hit legible does not make the model choose it; it makes
+That is the mechanism, and it is not the one an earlier draft asserted from turn counts.
+Keywords in the hit list gave the model enough apparent evidence to stop searching and start
+committing to branches — so it opened more of them, each one expensive, and still did not
+select better. Extra legible leads are leads the model follows. The clearest single row is
+qo03: both arms fetched the correct branch on 5 of 5 runs, the baseline took 3, 3, 3, 6 and 3
+turns and scored 4/5, and the keyword arm took 5, 3, 7, 9 and 4 turns and scored 0/5. Making the correct hit legible does not make the model choose it; it makes
 the model look further. The diagnosis in §5 survives as a description of what the baseline
 does — the correct hit really does render as the bare word `diagnosis`, and the model really
-does take rank 9 or 10 five times out of five — but the causal step from that observation to
+does take a rank-10 or rank-11 hit five times out of five in that batch — but the causal step from that observation to
 "therefore show it the keywords" is refuted. The arm is retained in the harness, marked
 rejected, so the negative result stays reproducible.
 
@@ -317,8 +367,8 @@ epochs, which is what makes the comparison above worth anything.
   so no keyword count ever fit and the handler returned the baseline list unchanged. The
   budget must be the whole live headroom, which is what the append cap actually enforces.
 - **Zone B headline slab pollution** — checked and not present. The fingerprint set is
-  insertion-ordered with paths first, so only 1 of 21 headlines contains a slab, worth 9
-  tokens. The defect bites only where entries are ranked by overlap.
+  insertion-ordered with paths first, so only 1 of 21 headlines contains a slab, worth 10
+  heuristic tokens (11 in cl100k). The defect bites only where entries are ranked by overlap.
 
 ## 8 What was learned, as distinct from what was decided
 
@@ -365,7 +415,8 @@ All paths relative to the repository root.
 
 | Path | What it is |
 |---|---|
-| `eval/scripts/provenance-audit.mjs` | Re-scores every run against what it could have seen; nulls unearned successes; reports per-cell decay |
+| `eval/scripts/provenance-audit.mjs` | Re-scores every run against what it could have seen; nulls unearned successes; prints per-cell decay (`noRetrv`) and flags successes whose SERVED band lacked the literal |
+| `eval/scripts/pipeline-decomposition.mjs` | The selected / delivered / scored counts in §4, computed under a definition that lives in code rather than in prose |
 | `eval/scripts/delivery-killgate.mjs` | Replays each run's own queries through the real narrowing path at live headrooms; asks whether the answer is delivered at all |
 | `eval/scripts/rank-killgate.mjs` | Parameterized over question sets; bar is a fraction of the set, not a count |
 | `eval/scripts/transplant.mjs` | `tree-hit-keywords` arm; `answeringUsd` and `code` fingerprint in every result header; `openScenario`/`budgetsFor`/`buildArm`/`measureRatio` exported for the audit |
@@ -391,6 +442,20 @@ Everything below assumes a fresh agent with no memory of this pass. Run from the
 root. Live batches need `set -a && . ./.env && set +a` first (the harness reads
 `OPENROUTER_API_KEY`); every gate below is zero-token and needs no key.
 
+**Result files are overwritten in place, and nothing warns you.** The output name is
+`run-W<window>-<arms joined by +><questions tag>-<model>.json` (`transplant.mjs:4105`);
+there is no output-name flag for `--phase run` — `--out` is honoured only by
+`--phase prep-overflow`. So re-running an arm at the same window on the same question set
+**destroys the baseline this report is computed on**, and a sweep over a parameter that is
+not in the filename writes the same path once per cell. Before any live batch:
+
+```bash
+mkdir -p eval/fixtures/transplant/s1/e1b289c32f40/results/_baseline-2026-09-03
+cp eval/fixtures/transplant/s1/e1b289c32f40/results/run-W*-questions-deep-*.json \
+   eval/fixtures/transplant/s1/e1b289c32f40/results/_baseline-2026-09-03/
+```
+(The gates read `run-W*` at the top level, so a subdirectory is ignored by them.)
+
 **Standing constraints.** Invoke the `ds-star` skill before starting an item — these are
 all Mode 1, each has a metric and a same-epoch baseline here. One measurable change per
 arm. Pre-register the win criterion before the batch and do not soften it after. Judge a
@@ -404,6 +469,7 @@ npx vitest run                                          # expect 966 passed, 9 s
 node eval/scripts/provenance-audit.mjs                  # expect 200 -> 195; 6 fetched-not-delivered
 node eval/scripts/delivery-killgate.mjs questions-deep.json   # expect DELIVERED 115/145, qo04 0/30
 node eval/scripts/rank-killgate.mjs --all               # expect 10/12, 3/5, 5/5 top-3
+node eval/scripts/pipeline-decomposition.mjs           # expect 16 / 12 / 7 for tree-tail-v2
 ```
 
 **Same-epoch baselines.** All at W=65,536 on `questions-deep.json`, GLM 5.3 Flash, n=5 per
@@ -431,9 +497,13 @@ handler as `lastSearchQuery`.
 
 Two candidates, whichever the diagnosis supports — centre on the highest-scoring event
 rather than the first match, or return several disjoint bands rather than one contiguous
-one. **Pre-registered gate, in the units `delivery-killgate.mjs` already prints: qo04 goes
-from 0/30 runs delivered to ≥ 25/30, and the total from 115/145 to ≥ 140/145, with no
-question regressing.** Zero tokens; clear it before any live spend. Then one 25-run confirmation cell against the 7/25 baseline:
+one. **Pre-registered gate, per question so the denominator cannot drift** (the 145-run total
+moves the moment you add a batch): **qo04 goes from 0/N runs delivered to ≥ 5/6 of N, and
+no other question regresses**, both read off `delivery-killgate.mjs`'s per-question column.
+Zero tokens; clear it before any live spend.
+
+Then one 25-run confirmation cell against the 7/25 baseline — **copy the baseline aside
+first, this command overwrites it**:
 ```bash
 node eval/scripts/transplant.mjs --phase run --scenario s1 --window 65536 \
   --arm tree-tail-v2 --model z-ai/glm-5.3-flash --reps 5 --questions-file questions-deep.json
@@ -451,16 +521,15 @@ you if you get it wrong.** `parseArgs` (`transplant.mjs:4426`) accepts any unkno
 silently: `--retrieval-limit 5` parses into `options.retrievalLimit`, nothing reads it, and
 the sweep returns identical numbers at every setting. That reads as "hit-list size does not
 matter", which would be a false negative produced by a command that appears to work. Wire
-it in two places — thread the option to `ctx.config.retrieval.limit`, which the
-`CONTEXT_SEARCH` handler reads at `transplant.mjs:1443`, and record the value on the row
-next to `hitKeywordK` so the sweep is reconstructable. Verify before the batch:
+it in three places — thread the option to `ctx.config.retrieval.limit`, which the
+`CONTEXT_SEARCH` handlers read at `transplant.mjs:1514, 1563 and 1669`; record the value on
+the row next to `hitKeywordK`; and **add it to the output filename at `transplant.mjs:4105`,
+or every cell of the sweep overwrites the last.**
 
-```bash
-# must print a DIFFERENT hit count per limit; if identical, the flag is not wired
-TRANSPLANT_SMOKE=1 node eval/scripts/transplant.mjs --phase run --scenario s1 \
-  --window 65536 --arm tree-tail-v2 --model z-ai/glm-5.3-flash --retrieval-limit 3
-```
-(That smoke command does spend a few cents — it makes real model calls.) Then:
+Verify the wiring with zero tokens rather than a smoke run — `--phase run` prints no hit
+count, so there is nothing to read there. Assert it directly instead: call the arm's
+`CONTEXT_SEARCH` handler through `handlersForArm('tree-tail-v2')` with a stub `ctx` whose
+`config.retrieval.limit` you vary, and check `data.hits.length` changes. Then:
 ```bash
 node eval/scripts/transplant.mjs --phase run --scenario s1 --window 65536 \
   --arm tree-tail-v2 --model z-ai/glm-5.3-flash --reps 5 \
@@ -473,14 +542,19 @@ the sweet spot, do not pick a bound.
 
 ### 11.3 Cap the oversized branch — zero tokens to gate
 
-Three of five deep questions live in one 56,973-token branch, 77× the median.
+Three of five deep questions live in one 56,973-token branch — 6.3× the median over all 46
+replayable branches (8,999 tokens) and 6.7× the median over the 21 phase branches (8,497).
 `reports/metrics/tuning-branch-depth.md` records a cap that does not bind here. A branch
 that cannot be read at the window it is served at is a segmentation defect, and fixing it
-helps every arm at once instead of one query at a time. Re-segment with
-`eval/scripts/resegment.mjs`, then report the new size distribution and re-run
-`delivery-killgate.mjs`. Note this changes L1 and therefore the epoch: every live baseline
-above must be re-run afterwards, so schedule it before 11.1 and 11.2 or after both, never
-between.
+helps every arm at once instead of one query at a time.
+
+`eval/scripts/resegment.mjs` **reports** candidate segmentations and takes no arguments — it
+runs against a COPY and never writes the fixture, so running it and then re-running
+`delivery-killgate.mjs` returns byte-identical numbers and proves nothing. Use it to choose
+a segmentation; then the actual work is a step that does not exist yet: re-derive the
+fixture's L1 from L0 under the new rule and rebuild the store. That is legitimate — L1 is
+rebuildable by design — but it changes the epoch, so every live baseline in this report must
+be re-run afterwards. Schedule it before 11.1 and 11.2, or after both, never between.
 
 ### 11.4 `tree-route`, on its payload argument only — deferred behind 11.1
 
