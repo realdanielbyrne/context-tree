@@ -110,6 +110,8 @@ Every value that affects behaviour, classified by rule 2.
 | heuristic-to-tokenizer ratio | **derived** (0.851 on this corpus) | measured per corpus, refuses above 1.6 |
 | root keep (fold level) | **derived** in portability harness; **unvalidated** constant in live | largest rung whose Zone B fits |
 | search result limit | **unvalidated** (20) | W and per-hit payload size |
+| hit keyword count | **derived** (the most the live headroom affords, binary-searched on rendered bytes) — but the feature it serves is **retired**, see the ledger | the live headroom that turn — rule 5 |
+| keyword minimum token length | **unvalidated** (3); retired with the feature | below it a token matches everything |
 | fetch narrowing budget | **derived** on the primary path (live headroom at the moment of append, per call); the fallback `(_headroom ?? 20000)/2` **survives and is still a defect** | the request as it stands that turn — rule 5 |
 | search-result headroom share | **unvalidated** (0.25) | share of live headroom a result list may take before it starves the fetch |
 | narrowing band size | **derived** (grown outward from the relevance centre under a real token count) | measurement, not an average — replaced a chars×0.85 estimate |
@@ -149,9 +151,15 @@ derivation owed.
 | No embedder | Beam search fallback — tested |
 | Search ranks wrong branch | Fixed 2026-09-03: fingerprints + grep → 10/12 top-3 (was 2/12) |
 | Tail covers the answerable content (W ≥ answer depth) | **Found 2026-09-03.** The tree adds no value when the raw tail already contains the answer — tool-use overhead (15-20K tokens per question) is a net loss. The tree earns its keep only in the overflow regime: sessions where the trace exceeds the window and answers lie outside the tail. |
-| Overflow regime, ranking made perfect | **Measured 2026-09-03, and the split depends on the question set.** On the set with all three arms at one epoch, perfect ranking recovers 19 of the 21 points the real-search arm loses (2/25 → 21/25 against 23/25 ground truth), so ranking-to-selection dominates and ~8% of the gap is post-retrieval. On a deeper set, perfect ranking reaches only 13/25 against 25/25 — but no real-search arm was run there, so that gap cannot be split. Do not quote a single figure. |
+| Overflow regime, ranking made perfect | **Measured 2026-09-03, and the split depends on the question set.** On the overflow set, perfect branch ranking recovers 19 of the 21 points the real-search arm loses (2/25 → 21/25 against 23/25 ground truth). On the deep set it reaches 13/25 against 25/25 with real search at 7/25. Do not quote a single figure. |
+| A branch larger than the window | **The oracle is not a retrieval oracle.** Handing over the right branch hands over a *coordinate*; the payload is a band `fetchBranch` grows around the query's matching events, and on the measured store three of five deep questions live in one 56,973-token branch read at ~8,000 tokens of live headroom. Whether the band contains the answer is a property of the query, not the ranking: for one question no query the model issued ever centred it, 0/5, which is 5 of the oracle's 12 lost points. Measure delivery separately from ranking (`delivery-killgate.mjs`). |
+| Perfect selection with large headroom | **Worse than imperfect selection.** A one-hit search leaves more headroom, so the fetch asks for a wider band, overruns the real BPE count and the append cap fires: the oracle sheds 3,535-4,431 tokens per run on its failing question while the real-search arm, whose 20-hit list leaves less room, sheds 0-280. Truncation is anti-correlated with hit-list size and correlated with failure. |
+| A search hit rendered without the evidence it was ranked on | **Found 2026-09-03 pm; the obvious repair is refuted.** A phase hit carries title, kind and whatever `meta.files`/`meta.symbols` its summary recorded — routinely nothing — so the correct branch renders as `phase/diagnosis "diagnosis"` while a distractor renders as `file "loop.ts"`. The ranker scored that branch on 425 extracted fingerprints, `deadlineMs` among them, none of which reach the model. It then fetched the rank-9/10 hit on 5 of 5 runs. Live branch selection is 16-18/25 where the offline ranker is 5/5 top-3 and 4/5 rank-1. But attaching the matching fingerprints to each hit (`tree-hit-keywords`) left selection at 18/25 against the baseline's 18/25 and cost 32% more input tokens: **more legible leads are leads the model follows**. The observation stands; the repair does not. |
+| More candidate information in a search result | **Costs effort, buys no selection.** Measured twice now in opposite directions: enriching hits raised input tokens 32% and doubled stalls at identical selection; the escalating arm's larger lists raised truncation. Shrinking the list is the untested direction — the oracle's one-hit result selects perfectly. `retrieval.limit` (20) remains unvalidated. |
+| Fingerprint cache used as a keyword list | **Not one.** 72 of one branch's 425 entries carry whitespace and the largest is 4,998 characters of raw source. Any consumer ranking by token overlap sorts those slabs above every identifier. Rank by the fraction of a fingerprint's own tokens the query accounts for, and drop whitespace-bearing entries. The extractor defect is unfixed. |
 | An overflow question set at a wider W than it was cut for | **Invalid.** The truncation boundary is non-increasing in W, so a set cut at W₁ stops testing overflow above W₁ — answers fall into the tail and median turns drop to 1 (the model stops calling tools). Re-cut per claim window. |
-| Exact-match grading against a fluent model | **Gameable.** Observed: a fabricated transcript citing seq 755-757 in a 754-event trace, and a correct refusal that named the answer string in a suggested command. Scores need a provenance check. |
+| Exact-match grading against a fluent model | **Gameable, and now audited.** Observed: a fabricated transcript citing seq 755-757 in a 754-event trace, and a correct refusal that named the answer string in a suggested command. `provenance-audit.mjs` re-scores every row against what the run could have seen and nulls what it could not: 183 → 178 successes, and `truncate-tail` on the overflow set falls to 0/25 at every window. Run it before quoting any score. |
+| A ranker measured on the question text | Not the ranker the model uses. The offline gate ranked `q.question`; the model issues its own reformulated query. On the deep set the two agree (ranks 1,2,6,1,1 against 1,2,3,1,1), so reformulation is NOT the loss here — but the check is two minutes and the conclusion reverses without it. |
 | Facet index with high-cardinality key | Cheap-unit economics fail. 66 file / 311 command entries cost 2.7K / 7.5K tokens; 3,969 line entries cost 77K — as much as the content, so "return more candidates" is unavailable and ranking binds again. |
 | Fusing indexes with disjoint coverage | **Harmful.** RRF across four indexes scores 6/17 where routing to the best single index scores 9/17; answers already found are demoted (rank 3→12, 7→25). Fuse rankers over one index, route across indexes. |
 | A stratum's claimed invariant, read from its comment | **Not an invariant.** `head` was documented as "provably outside the baseline's view"; it is only outside the tail at the K it was cut for. Re-test the property at every parameter value it is used at. Comment corrected 2026-09-03. |
@@ -218,11 +226,15 @@ candidate — embeddings, KNN, autoencoder latents, learned ranking — at the s
 - **Delete Zone C fallback chain**: first branch never fires.
 - **Third cache breakpoint as default**: −39.8% offline, gated on second scenario.
 - **Route, don't fuse, across indexes**: 9/17 vs 6/17 top-10. Measured offline;
-  the `tree-route` arm is specified but unbuilt.
+  the `tree-route` arm is specified but unbuilt. Its RANKING argument is retired for
+  the deep set (offline ranking there is already 5/5 top-3); only its payload
+  argument survives, and that is a delivery fix competing with the band repair.
 - **One-cut narrowing**: band grown under a real token count to the live
   headroom. Offline 20/20 fits (was 19/20), 19/20 carries the answer (was 17/20),
   bands 2-5x wider. Landed in code; live score unchanged — a different bucket binds.
-- **Retired**: Zone C pre-fill, completion nudge, contract section trim,
+- **Retired**: hit keywords (`tree-hit-keywords`: selection 18/25 vs the baseline's own
+  18/25, +32% input tokens, 2x stalls — the mechanism fired on 25/25 runs and moved
+  nothing it was built to move), Zone C pre-fill, completion nudge, contract section trim,
   escalating search (4/25 vs 2/25, ~1 SE), embeddings/KNN/autoencoder over lines
   (retired unspent — 11/17 absent caps every ranker at 6/17), learned ranking
   (17 labels; breaks the rebuild invariant).
@@ -239,6 +251,20 @@ candidate — embeddings, KNN, autoencoder latents, learned ranking — at the s
 
 ## Change log
 
+- **2026-09-03 21:10** — Delivery pass (3 iterations). The oracle is a BRANCH-RANKING
+  ceiling, not a retrieval ceiling: it hands over a coordinate, and the payload is a band
+  narrowed to ~6,600 tokens of a 56,973-token branch. One deep question is never delivered
+  at any budget (0/5), so 5 of the oracle's 12 lost points are content that never arrived.
+  The missing real-search cell was run and the live pipeline now decomposes into three
+  buckets that sum: 9 points selection, 4 delivery, 5 extraction. Selection is the largest
+  even though the offline ranker is 5/5 top-3 and 4/5 rank-1 on that set — the model
+  chooses without the ranker's evidence, taking a rank-9/10 hit 5 times of 5. Showing it
+  that evidence (`tree-hit-keywords`) was pre-registered and REFUTED: selection 18/25
+  against the baseline's own 18/25, +32% input tokens, 2x stalls. Instrument work landed
+  first: suite green (966/9 skipped/0 failed), `provenance-audit.mjs` (183 -> 178
+  successes; `truncate-tail` overflow to 0/25), `delivery-killgate.mjs`, `rank-killgate.mjs`
+  parameterized, and `answeringUsd` + a code fingerprint in every result header.
+  `reports/metrics/ds-star-delivery-pass-report.md`.
 - **2026-09-03 20:00** — Multi-index pass (4 iterations). Rules 5 and 6 added.
   Oracle probe: perfect ranking recovers 19 of 21 lost points on the set with all
   three arms (2/25 → 21/25 vs 23/25 ground truth), so ranking-to-selection

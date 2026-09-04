@@ -250,6 +250,32 @@ export const ARM_IDS = Object.freeze([
   // unchanged; what changes is that a second look costs the model new
   // information instead of the same information.
   'tree-escalate',
+  // The oracle's residual, traced. On the deep set the ranker puts the right
+  // branch at rank 1-2 for four of five questions, and the model fetches it on
+  // only 16 of 25 runs. The reason is visible the moment the hit list is
+  // rendered: a phase hit carries `title`, `kind` and whatever `meta.files` /
+  // `meta.symbols` its summary happened to record, and for the branch that
+  // matters those are EMPTY — it reads as `phase/diagnosis "diagnosis"`, a
+  // label with no content, sitting above hits that read as `file "loop.ts"`.
+  // The ranker scored that branch on 425 extracted fingerprints, `armArgs` and
+  // `options` among them, and none of them reach the model. So the model is
+  // asked to choose without the evidence the ranking was made from, and it
+  // reliably chooses the hit that at least names something.
+  //
+  // The ONE variable against `tree-tail-v2`: each hit carries the fingerprints
+  // of that node which MATCH the query. Ranking, limit, contract, fetch,
+  // narrowing and the append cap are untouched.
+  //
+  // REJECTED 2026-09-03, retained so the negative result stays reproducible.
+  // The mechanism fired on 25 of 25 runs (`hitKeywordK` median 16) and changed
+  // selection not at all: 18/25 correct branches against the baseline's 18/25,
+  // in the same batch. What it did change is effort — 609,073 input tokens
+  // against 460,389 (+32%), 4 stalls against 2, and on the one question the
+  // baseline answered reliably it went from 3 turns and 4/5 to 5-9 turns and
+  // 0/5 while still fetching the right branch every time. Extra legible leads
+  // are leads the model follows; the diagnosis that the correct hit renders
+  // illegibly is sound, and making it legible is not the repair.
+  'tree-hit-keywords',
 ]);
 
 /** Arms whose MEAN enters the primary verdict. `naive-full` is a precondition. */
@@ -499,6 +525,7 @@ export const TREE_ARMS = Object.freeze([
   'tree-tail-headline',
   'tree-oracle',
   'tree-escalate',
+  'tree-hit-keywords',
 ]);
 
 export function ladderFor(arm) {
@@ -1411,7 +1438,7 @@ const TOOL_SCHEMAS_TEXT = JSON.stringify(CONTEXT_TOOL_SCHEMAS);
  * | `tree-verbatim`| Zone A policy text only (Step 4, Graft 1)     | legacy  | v3       |
  * | `tree-semantic`| search ranks by meaning, not lexical (Step 5) | legacy  | v1       |
  */
-const LEGACY_SURFACE_ARMS = new Set(['tree', 'tree-wide', 'tree-static', 'tree-verbatim', 'tree-semantic', 'tree-tail', 'tree-tail-v2', 'tree-tail-static', 'tree-tail-headline', 'tree-oracle', 'tree-escalate']);
+const LEGACY_SURFACE_ARMS = new Set(['tree', 'tree-wide', 'tree-static', 'tree-verbatim', 'tree-semantic', 'tree-tail', 'tree-tail-v2', 'tree-tail-static', 'tree-tail-headline', 'tree-oracle', 'tree-escalate', 'tree-hit-keywords']);
 /**
  * The share of one turn's live headroom a search result may occupy. Search
  * locates; fetch is what carries content, so a result list that eats the space
@@ -1420,7 +1447,62 @@ const LEGACY_SURFACE_ARMS = new Set(['tree', 'tree-wide', 'tree-static', 'tree-v
  */
 const SEARCH_RESULT_HEADROOM_SHARE = 0.25;
 /** Arms whose fetch is a raw, narrowed L0 replay sized by the live headroom. */
-const RAW_NARROWED_FETCH_ARMS = new Set(['tree-tail-v2', 'tree-oracle', 'tree-escalate']);
+const RAW_NARROWED_FETCH_ARMS = new Set(['tree-tail-v2', 'tree-oracle', 'tree-escalate', 'tree-hit-keywords']);
+
+/** Tokens shorter than this decide nothing and match everything. */
+const KEYWORD_MIN_TOKEN = 3;
+
+const tokensOf = (text) =>
+  new Set(
+    String(text)
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((token) => token.length >= KEYWORD_MIN_TOKEN),
+  );
+
+/**
+ * The retriever builds its fingerprint index lazily on first search; a warmup
+ * query is how the Zone B headline path reaches it too.
+ */
+function fingerprintCacheOf(retriever) {
+  if (retriever.fingerprintCache === undefined) retriever.beamSearch('warmup', { limit: 1 });
+  return retriever.fingerprintCache ?? new Map();
+}
+
+/**
+ * A node's fingerprints that share tokens with the query, ranked for DISPLAY.
+ *
+ * Two things make ranking by raw overlap wrong here. The cache is not the clean
+ * keyword set the term implies — on the measured store one branch holds 425
+ * entries of which 72 carry whitespace and the largest is 4,998 characters of
+ * raw source — and a slab that size contains more query tokens than any
+ * identifier does, so raw overlap sorts the slabs to the top and buries
+ * `deadlineMs` beneath them. Whitespace-bearing entries are dropped because a
+ * fingerprint is defined as a path, identifier or symbol; the rest are ranked
+ * by the FRACTION of their own tokens the query accounts for, so a fingerprint
+ * that is entirely the thing being asked about outranks a long path that
+ * mentions it once. Ties break toward the shorter, more specific entry.
+ *
+ * (That the cache holds raw slabs at all is an extractor defect, not a display
+ * one; it is filtered here and left recorded rather than fixed in passing.)
+ */
+function matchedFingerprints(fingerprints, nodeId, queryTokens) {
+  const own = fingerprints.get(nodeId);
+  if (own === undefined) return [];
+  const scored = [];
+  for (const fingerprint of own) {
+    if (/\s/.test(fingerprint)) continue;
+    const tokens = tokensOf(fingerprint);
+    if (tokens.size === 0) continue;
+    let overlap = 0;
+    for (const token of tokens) if (queryTokens.has(token)) overlap += 1;
+    if (overlap > 0) scored.push({ fingerprint, density: overlap / tokens.size, overlap });
+  }
+  scored.sort(
+    (a, b) => b.density - a.density || b.overlap - a.overlap || a.fingerprint.length - b.fingerprint.length,
+  );
+  return scored.map((entry) => entry.fingerprint);
+}
 
 /** The pre-Step-3 hit shape (full `text`, full `meta`), off the SAME ranked hits `contextSearch` used. */
 async function legacySearchHits(ctx, input) {
@@ -1521,6 +1603,53 @@ export function handlersForArm(arm) {
             }];
           });
           return { ok: true, data: { query: input?.query, path: 'oracle', fallback: null, hits, candidates: [], provenance: [], unavailable: [] } };
+        }
+        // Show the model what the ranker ranked on. A phase hit otherwise
+        // renders as its title and whatever `meta.files`/`meta.symbols` the
+        // summarizer happened to record, which for a phase node is routinely
+        // nothing at all — so the model chooses between a hit reading
+        // `phase/diagnosis "diagnosis"` and one reading `file "loop.ts"` and
+        // picks the one that names something, however it was ranked. The
+        // fingerprints are already extracted, already cached, and are the exact
+        // evidence the score was computed from; only the MATCHING ones are
+        // attached, so a 967-fingerprint branch costs a line, not a page.
+        if (arm === 'tree-hit-keywords') {
+          const outcome = await HANDLERS[CONTEXT_SEARCH](ctx, input);
+          if (!outcome.ok || !Array.isArray(outcome.data?.hits)) return outcome;
+          const fingerprints = fingerprintCacheOf(ctx.retriever);
+          const queryTokens = tokensOf(input?.query ?? '');
+          const ranked = outcome.data.hits.map((hit) => matchedFingerprints(fingerprints, hit.node_id, queryTokens));
+          // How many per hit is not a choice to make in advance: take the most
+          // that fits, measured on the rendered bytes in the tokenizer the
+          // provider bills. The budget is the WHOLE live headroom, not a share
+          // of it — rule 5, narrow to the budget the appending caller will
+          // actually enforce. A share of it is what made the first version of
+          // this arm a silent no-op: the bare 20-hit list is already 5,203
+          // tokens against a 1,649-token quarter-share, so no keyword count
+          // ever fit and the handler returned the baseline list unchanged.
+          const budget = Math.max(0, ctx._liveHeadroom ?? 0);
+          const render = (k) =>
+            outcome.data.hits.map((hit, i) => (k > 0 && ranked[i].length > 0 ? { ...hit, keywords: ranked[i].slice(0, k) } : hit));
+          let hits = outcome.data.hits;
+          let chosen = 0;
+          let low = 1;
+          let high = ranked.reduce((m, list) => Math.max(m, list.length), 0);
+          while (low <= high) {
+            const k = Math.floor((low + high) / 2);
+            const candidate = render(k);
+            if (exact.count(JSON.stringify(candidate)) <= budget) {
+              hits = candidate;
+              chosen = k;
+              low = k + 1;
+            } else {
+              high = k - 1;
+            }
+          }
+          // The mechanism has to be visible in the row, or a null result cannot
+          // be told apart from a mechanism that never fired — which is exactly
+          // what the first version of this arm did.
+          ctx._hitKeywordK = [...(ctx._hitKeywordK ?? []), chosen];
+          return { ok: true, data: { ...outcome.data, hits } };
         }
         if (arm !== 'tree-escalate') return HANDLERS[CONTEXT_SEARCH](ctx, input);
         // Escalating search. Rank is whatever the retriever says; the change is
@@ -3537,6 +3666,7 @@ export async function buildArm(scenario, arm, budgets, artifacts) {
     case 'tree-tail-v2':
     case 'tree-oracle':
     case 'tree-escalate':
+    case 'tree-hit-keywords':
     case 'tree-tail-static':
     case 'tree-tail-headline': {
       // DS-STAR search-ranking epoch: tree prompt + raw recent events.
@@ -3546,7 +3676,7 @@ export async function buildArm(scenario, arm, budgets, artifacts) {
       const withTools = arm !== 'tree-tail-static';
       const { assembler, prompt } = buildTreePrompt(scenario, budgets, { withTools, systemText: treeSystemTextFor('tree') });
       // Keyword headlines for all tool-bearing arms: replace prose with fingerprints.
-      if (arm === 'tree-tail-v2' || arm === 'tree-tail-headline' || arm === 'tree-oracle' || arm === 'tree-escalate') {
+      if (arm === 'tree-tail-v2' || arm === 'tree-tail-headline' || arm === 'tree-oracle' || arm === 'tree-escalate' || arm === 'tree-hit-keywords') {
         // Keyword-list headlines: replace prose with fingerprints extracted from
         // raw events. Each headline = heading + metadata lines + keyword fingerprints.
         // No first-sentence prose — the keywords ARE the headline.
@@ -3677,7 +3807,10 @@ export async function runOneReplicate(scenario, built, question, model, provider
   // Per-REPLICATE search state. The handler closures are built once per arm,
   // so anything they remember would otherwise leak across runs and make a
   // replicate depend on the one before it.
-  if (built.toolCtx !== undefined) built.toolCtx._searchState = { seen: new Set(), calls: 0 };
+  if (built.toolCtx !== undefined) {
+    built.toolCtx._searchState = { seen: new Set(), calls: 0 };
+    built.toolCtx._hitKeywordK = [];
+  }
   /**
    * One record per model call, `TurnRecord`-shaped (`eval/src/types.ts`) plus
    * the derived `promptTokens` and zone budget decomposition. This is the
@@ -3862,6 +3995,9 @@ export async function runOneReplicate(scenario, built, question, model, provider
     searchQueries,
     fetchedIds,
     fetchedDepths, // Instrumentation: depth argument for each context_fetch call
+    // Keywords attached per hit, per search call. All-zero means the mechanism
+    // never fired and the arm ran as its own baseline.
+    hitKeywordK: built.toolCtx?._hitKeywordK ?? [],
     annotateRefused,
     resultTokensTruncated,
     resultCharsTruncated,
