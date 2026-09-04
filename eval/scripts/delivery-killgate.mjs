@@ -153,8 +153,10 @@ function main() {
         `${cells.map((hit) => (hit ? '  YES' : '   --')).join(' ')}`,
     );
   }
-  console.log('\nA row that is `--` at 64k is mis-centred, not starved: growing the budget');
-  console.log('will not reach it, so the fix is where the band centres.');
+  console.log('\nA row still `--` at a budget near the branch size is mis-centred, not');
+  console.log('starved: at that point the band is essentially the whole branch, so a YES');
+  console.log('there says nothing about centring. Read the LOW columns — a row that is');
+  console.log('`--` at every budget a live run actually gets is the one to fix.');
 
   store.close();
   process.exitCode = deliveredRuns === totalRuns ? 0 : 1;

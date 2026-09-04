@@ -85,16 +85,24 @@ function main() {
     const maxTokens = live === null || typeof ratio !== 'number' ? null : Math.floor(live / ratio);
 
     const selected = fetched.some((id) => want.has(id));
-    const deliveredBy = (query) =>
-      maxTokens === null ? null : fetched.some((id) => carries(id, maxTokens, query ?? '', question));
-    const first = deliveredBy(queries[0]);
-    const last = deliveredBy(queries[queries.length - 1]);
+    const deliveredBy = (query, ids) =>
+      maxTokens === null ? null : ids.some((id) => carries(id, maxTokens, query ?? '', question));
+    const first = deliveredBy(queries[0], fetched);
+    const last = deliveredBy(queries[queries.length - 1], fetched);
+    // The same question asked strictly: only the question's OWN branch counts. The
+    // loose rule credits a run that found the literal in some other branch, which is
+    // fair to the run and inflates the delivery bucket; the strict rule is the one
+    // that isolates this question's retrieval. Both are printed because the split
+    // between "retrieval delivered the wrong bytes" and "the model failed on the
+    // right ones" moves with the choice, and a report that quotes one owes the other.
+    const strict = deliveredBy(queries[0], fetched.filter((id) => want.has(id)));
 
-    const arm = arms.get(row.arm) ?? { n: 0, selected: 0, dFirst: 0, dLast: 0, scored: 0, perQ: new Map() };
+    const arm = arms.get(row.arm) ?? { n: 0, selected: 0, dFirst: 0, dLast: 0, dStrict: 0, scored: 0, perQ: new Map() };
     arm.n += 1;
     if (selected) arm.selected += 1;
     if (first === true) arm.dFirst += 1;
     if (last === true) arm.dLast += 1;
+    if (strict === true) arm.dStrict += 1;
     if (row.score === 1) arm.scored += 1;
     const key = row.question.replace('s1-', '').replace('-overflow', '');
     const q = arm.perQ.get(key) ?? { n: 0, selected: 0, delivered: 0, scored: 0 };
@@ -111,8 +119,11 @@ function main() {
   for (const [name, arm] of arms) {
     console.log(`${name}  (n=${arm.n})`);
     console.log(`  SELECTED  fetched the question's own branch      ${arm.selected}/${arm.n}`);
-    console.log(`  DELIVERED payload received carried the literal   ${arm.dFirst}/${arm.n} (first query)  ${arm.dLast}/${arm.n} (last query)`);
+    console.log(`  DELIVERED payload received carried the literal   ${arm.dFirst}/${arm.n} (any fetched branch)  ${arm.dLast}/${arm.n} (last query)`);
+    console.log(`  DELIVERED strictly, own branch only              ${arm.dStrict}/${arm.n}`);
     console.log(`  SCORED                                           ${arm.scored}/${arm.n}`);
+    console.log(`  split at the delivery boundary: ${arm.n - arm.dFirst} lost at/before delivery, ${arm.dFirst - arm.scored} after` +
+      `  (strict: ${arm.n - arm.dStrict} / ${arm.dStrict - arm.scored})`);
     console.log(`  per question (selected | delivered | scored):`);
     for (const key of [...arm.perQ.keys()].sort()) {
       const q = arm.perQ.get(key);
