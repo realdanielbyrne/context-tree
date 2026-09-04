@@ -1449,7 +1449,12 @@ const SEARCH_RESULT_HEADROOM_SHARE = 0.25;
 /** Arms whose fetch is a raw, narrowed L0 replay sized by the live headroom. */
 const RAW_NARROWED_FETCH_ARMS = new Set(['tree-tail-v2', 'tree-oracle', 'tree-escalate', 'tree-hit-keywords']);
 
-/** Tokens shorter than this decide nothing and match everything. */
+/**
+ * Tokens shorter than this decide nothing and match everything. UNVALIDATED —
+ * fitted on one store, one tokenizer, one model, and never shown to hold off
+ * that host. It stays out of `reports/algorithm.md`'s parameter table because
+ * the arm it serves is retired; do not promote either without a derivation.
+ */
 const KEYWORD_MIN_TOKEN = 3;
 
 const tokensOf = (text) =>

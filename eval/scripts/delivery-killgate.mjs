@@ -38,27 +38,42 @@ const REPO = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const SCENARIO = join(REPO, 'eval/fixtures/transplant/s1');
 const ARTIFACTS = join(SCENARIO, 'e1b289c32f40');
 /**
- * Headrooms a fetch actually sees. The low end is the measured live p90 at
- * W=32,768 (~5,350) and W=65,536 (~8,100); the high end is past the largest
- * branch on this store, so every question is guaranteed to flip somewhere and
- * the flip point is the reportable number.
+ * Headrooms a fetch is swept over. The high end is past the largest branch on
+ * this store, so a question that never flips anywhere is undeliverable for a
+ * reason other than size. The headroom the LIVE path actually produces is not
+ * one of these — it is derived per result file from what the runs recorded, so
+ * this gate cannot repeat the mistake the narrowing gate made of sweeping an
+ * axis the live path never occupies.
  */
 const HEADROOMS = [4_000, 6_000, 8_000, 12_000, 16_000, 24_000, 40_000, 64_000];
 
-function loadRecordedQueries(setName) {
+/**
+ * One entry per RUN, not per distinct query string. Pooling distinct queries and
+ * asking whether ANY of them delivers is the flattering reading and it answers a
+ * question nobody has: what matters is how often a run's own first query put the
+ * answer in the band. Keeping runs separate is what makes the delivery rate
+ * comparable to the live score, run for run.
+ */
+function loadRecordedRuns(setName) {
   const dir = join(ARTIFACTS, 'results');
   const suffix = `-${setName.replace(/\.json$/, '')}-`;
   const byQuestion = new Map();
   if (!existsSync(dir)) return byQuestion;
   for (const file of readdirSync(dir)) {
     if (!file.startsWith('run-W') || !file.includes(suffix)) continue;
-    for (const row of JSON.parse(readFileSync(join(dir, file), 'utf8')).rows ?? []) {
-      for (const query of row.searchQueries ?? []) {
-        if (typeof query !== 'string' || query.length === 0) continue;
-        const list = byQuestion.get(row.question) ?? [];
-        if (!list.includes(query)) list.push(query);
-        byQuestion.set(row.question, list);
-      }
+    const payload = JSON.parse(readFileSync(join(dir, file), 'utf8'));
+    // The headroom this file's runs actually had, from the file's own budgets and
+    // the prompt its first turn sent — never a constant typed in here.
+    const window = payload.budgets?.window ?? null;
+    const reply = payload.budgets?.maxReplyTokens ?? 0;
+    for (const row of payload.rows ?? []) {
+      const query = (row.searchQueries ?? []).find((q) => typeof q === 'string' && q.length > 0);
+      if (query === undefined) continue;
+      const prompt = row.turns?.[0]?.promptTokens ?? null;
+      const headroom = window !== null && prompt !== null ? Math.max(0, window - prompt - reply) : null;
+      const list = byQuestion.get(row.question) ?? [];
+      list.push({ arm: row.arm, rep: row.rep, query, headroom, scored: row.score === 1 });
+      byQuestion.set(row.question, list);
     }
   }
   return byQuestion;
@@ -68,7 +83,7 @@ function main() {
   const argv = process.argv.slice(2);
   const setName = argv.find((a) => !a.startsWith('--')) ?? 'questions-deep.json';
   const questions = JSON.parse(readFileSync(join(ARTIFACTS, setName), 'utf8')).questions;
-  const recorded = loadRecordedQueries(setName);
+  const recorded = loadRecordedRuns(setName);
 
   const paths = storePaths(join(SCENARIO, 'store'));
   const store = openStore(paths.db);
@@ -77,49 +92,72 @@ function main() {
   const retriever = new TreeRetriever({ store, blobs, trace });
   const tokenizer = new HeuristicTokenizer();
 
+  const carries = (nodeId, literal, maxTokens, query) => {
+    const out = retriever.fetchBranch(nodeId, { depth: 'full', maxTokens, query });
+    return (out?.text ?? '').includes(literal);
+  };
+
   console.log(`\n=== DELIVERY GATE — ${setName} ===`);
   console.log('Does the fetch, narrowed to a live headroom, still contain the answer?\n');
-  console.log(
-    `${'question'.padEnd(8)} ${'branch'.padEnd(7)} ${'branchTok'.padStart(9)} ${'answerAt'.padStart(8)}  ` +
-      `${HEADROOMS.map((h) => `${h / 1000}k`.padStart(5)).join(' ')}   queries`,
-  );
 
-  let deliveredAtLive = 0;
-  const LIVE = 8_000;
+  // Part 1: the live reading. Each recorded run, its own first query, its own headroom.
+  console.log('PER RUN, at the headroom that run actually had:\n');
+  console.log(`${'question'.padEnd(8)} ${'branch'.padEnd(7)} ${'branchTok'.padStart(9)} ${'answerAt'.padStart(8)} ${'delivered'.padStart(10)} ${'scored'.padStart(7)}  medHeadroom`);
+  let deliveredRuns = 0;
+  let totalRuns = 0;
+  let undelivered = [];
   for (const question of questions) {
     const literal = question.answer_literals[0];
-    const queries = recorded.get(question.id) ?? [question.question];
+    const runs = recorded.get(question.id) ?? [];
     const whole = retriever.fetchBranch(question.node_id, { depth: 'full' });
     const wholeText = whole?.text ?? '';
     const at = wholeText.indexOf(literal);
     const answerAt = at < 0 ? '--' : `${((at / wholeText.length) * 100).toFixed(0)}%`;
-
-    // A question is delivered at a headroom if ANY query the model issued
-    // produces a band containing the answer — the most generous reading, so a
-    // failure here is not an artifact of picking the worst query.
-    const cells = HEADROOMS.map((headroom) => {
-      const hit = queries.some((query) => {
-        const out = retriever.fetchBranch(question.node_id, { depth: 'full', maxTokens: headroom, query });
-        return (out?.text ?? '').includes(literal);
-      });
-      return hit;
-    });
-    if (cells[HEADROOMS.indexOf(LIVE)] === true) deliveredAtLive += 1;
-
+    let ok = 0;
+    let scored = 0;
+    const heads = [];
+    for (const run of runs) {
+      if (run.headroom === null) continue;
+      heads.push(run.headroom);
+      if (carries(question.node_id, literal, run.headroom, run.query)) ok += 1;
+      if (run.scored) scored += 1;
+    }
+    const n = heads.length;
+    deliveredRuns += ok;
+    totalRuns += n;
+    if (n > 0 && ok === 0) undelivered.push(question.id);
+    const sorted = [...heads].sort((a, b) => a - b);
+    const medHead = n === 0 ? '--' : String(sorted[Math.floor(n / 2)]);
     console.log(
       `${question.id.replace('s1-', '').replace('-overflow', '').padEnd(8)} ` +
-        `${question.node_id.slice(-6).padEnd(7)} ${String(tokenizer.count(wholeText)).padStart(9)} ${answerAt.padStart(8)}  ` +
-        `${cells.map((hit) => (hit ? '  YES' : '   --')).join(' ')}   ${queries.length}`,
+        `${question.node_id.slice(-6).padEnd(7)} ${String(tokenizer.count(wholeText)).padStart(9)} ${answerAt.padStart(8)} ` +
+        `${`${ok}/${n}`.padStart(10)} ${`${scored}/${n}`.padStart(7)}  ${medHead}`,
     );
   }
+  console.log(`\nDELIVERED: ${deliveredRuns}/${totalRuns} runs received the answer in the band.`);
+  if (undelivered.length > 0) {
+    console.log(`UNDELIVERABLE at every recorded run: ${undelivered.join(', ')}`);
+    console.log('A question that is not delivered cannot be answered from retrieval at any');
+    console.log('ranking, so its live score measures the band, not the model.');
+  }
 
-  console.log(
-    `\ndelivered at the live headroom (${LIVE} tokens): ${deliveredAtLive}/${questions.length}\n` +
-      'A question that is not delivered cannot be answered from retrieval at any ranking,\n' +
-      'so its live score measures the band, not the model.',
-  );
+  // Part 2: the sweep, to separate "band too small" from "band in the wrong place".
+  console.log('\nBY BUDGET, best case over every query the question ever drew:\n');
+  console.log(`${'question'.padEnd(8)}  ${HEADROOMS.map((h) => `${h / 1000}k`.padStart(5)).join(' ')}`);
+  for (const question of questions) {
+    const literal = question.answer_literals[0];
+    const queries = [...new Set((recorded.get(question.id) ?? []).map((r) => r.query))];
+    const cells = HEADROOMS.map((headroom) => queries.some((query) => carries(question.node_id, literal, headroom, query)));
+    console.log(
+      `${question.id.replace('s1-', '').replace('-overflow', '').padEnd(8)}  ` +
+        `${cells.map((hit) => (hit ? '  YES' : '   --')).join(' ')}`,
+    );
+  }
+  console.log('\nA row that is `--` at 64k is mis-centred, not starved: growing the budget');
+  console.log('will not reach it, so the fix is where the band centres.');
+
   store.close();
-  process.exitCode = deliveredAtLive === questions.length ? 0 : 1;
+  process.exitCode = deliveredRuns === totalRuns ? 0 : 1;
 }
 
 main();

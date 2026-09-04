@@ -128,6 +128,36 @@ async function main() {
       return replayCache.get(branchId);
     };
 
+    /**
+     * The band the run was actually SERVED, as opposed to the branch it named.
+     * `earned-fetch` above replays the whole branch, which is the weaker test and
+     * passes a row whose delivered payload never contained the literal — observed
+     * on a W=131,072 oracle run that scored on a question no band ever delivered.
+     * Reconstructed from the run's own budgets the way the handler sizes it
+     * (`_liveHeadroomHeuristic` = live headroom / ratio), using turn 1, which has
+     * the most headroom of any turn and so is the most generous reading. This is
+     * approximate — later turns are tighter and the append cap re-cuts afterwards —
+     * so it is REPORTED, never used to null a row.
+     */
+    const deliveredText = (branchId, row, budgets) => {
+      const window = budgets?.window;
+      const prompt = row.turns?.[0]?.promptTokens;
+      const ratio = budgets?.ratio;
+      if (typeof window !== 'number' || typeof prompt !== 'number' || typeof ratio !== 'number') return null;
+      const live = Math.max(0, window - prompt - (budgets.maxReplyTokens ?? 0));
+      const query = (row.searchQueries ?? []).find((q) => typeof q === 'string' && q.length > 0) ?? '';
+      try {
+        const outcome = retriever.fetchBranch(branchId, {
+          depth: 'full',
+          maxTokens: Math.floor(live / ratio),
+          query,
+        });
+        return outcome?.text ?? '';
+      } catch {
+        return null;
+      }
+    };
+
     const promptCache = new Map();
     const promptText = async (arm, window) => {
       const key = `${arm}@${window}`;
@@ -162,11 +192,20 @@ async function main() {
         const phantom = cited.filter((seq) => seq > maxSeq || seq < 1);
 
         let verdict = null;
+        // `earned-fetch` asks whether the BRANCH held the literal. `delivered` asks the
+        // stricter question — whether the band the run was actually served held it. A row
+        // that is earned-fetch but not delivered scored on content it plausibly never saw;
+        // it is reported, not nulled, because the headroom is reconstructed rather than
+        // recorded.
+        let delivered = null;
         if (row.score === 1) {
           const fetched = (row.fetchedIds ?? []).filter((id) => typeof id === 'string');
           if (gradeAnswer(await promptText(row.arm, window), question).success) verdict = 'earned-prompt';
-          else if (fetched.some((id) => gradeAnswer(replay(id), question).success)) verdict = 'earned-fetch';
-          else if (row.searched === true && fetched.length === 0) verdict = 'unverifiable';
+          else if (fetched.some((id) => gradeAnswer(replay(id), question).success)) {
+            verdict = 'earned-fetch';
+            const bands = fetched.map((id) => deliveredText(id, row, payload.budgets)).filter((t) => t !== null);
+            delivered = bands.length === 0 ? null : bands.some((text) => gradeAnswer(text, question).success);
+          } else if (row.searched === true && fetched.length === 0) verdict = 'unverifiable';
           else verdict = 'unearned';
         }
 
@@ -179,6 +218,7 @@ async function main() {
           rep: row.rep,
           score: row.score,
           verdict,
+          delivered,
           phantomSeqs: phantom,
           auditedScore: verdict === 'unearned' || verdict === 'unverifiable' ? null : row.score,
         });
@@ -199,6 +239,7 @@ async function main() {
         nulled: 0,
         unverifiable: 0,
         unearned: 0,
+        fetchedNotDelivered: 0,
         phantomRows: 0,
       };
       cell.n += 1;
@@ -207,6 +248,7 @@ async function main() {
       if (row.score === 1 && row.auditedScore === null) cell.nulled += 1;
       if (row.verdict === 'unverifiable') cell.unverifiable += 1;
       if (row.verdict === 'unearned') cell.unearned += 1;
+      if (row.delivered === false) cell.fetchedNotDelivered += 1;
       if (row.phantomSeqs.length > 0) cell.phantomRows += 1;
       cells.set(key, cell);
     }
@@ -241,11 +283,13 @@ async function main() {
       scoredAfter: rows.filter((r) => r.auditedScore === 1).length,
       unearned: rows.filter((r) => r.verdict === 'unearned').length,
       unverifiable: rows.filter((r) => r.verdict === 'unverifiable').length,
+      fetchedNotDelivered: rows.filter((r) => r.delivered === false).length,
       phantomRows: rows.filter((r) => r.phantomSeqs.length > 0).length,
     };
     process.stdout.write(
       `\ntotal successes ${totals.scoredBefore} -> ${totals.scoredAfter} after audit ` +
-        `(${totals.unearned} unearned, ${totals.unverifiable} unverifiable, ${totals.phantomRows} rows cite an absent seq)\n`,
+        `(${totals.unearned} unearned, ${totals.unverifiable} unverifiable, ${totals.phantomRows} rows cite an absent seq)\n` +
+        `of the earned-fetch successes, ${totals.fetchedNotDelivered} scored on a branch whose SERVED band did not carry the literal\n`,
     );
 
     if (jsonOut !== null) {
