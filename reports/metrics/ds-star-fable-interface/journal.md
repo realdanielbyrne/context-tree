@@ -249,3 +249,27 @@ Full suite after port: 977 passed, 9 skipped. `pnpm build` emits core/mcp/cli; t
 to the arm on the offline gate, but a same-batch live confirmation (`tree-center-filename` vs
 `tree-snippet-hits`, W=131,072, n=5, ~$0.30) is the honest next step before any claim that the
 shipped library scores 15/25.
+
+## Live confirmation of the shipped library (launched 16:15, user: "run it")
+
+Same cell as iteration 3, new code epoch (543e679): `tree-center-filename` (branchSearch, the
+pre-port surface) vs `tree-snippet-hits` (= the library's `context_search` as shipped), W=131,072,
+deep set, n=5, GLM 5.3 Flash. Pre-registered: the library arm reproduces iteration 3 within noise —
+snippet-hits − center-filename ≥ +4/25; all successes with zero fetches; qo01/qo03/qo04 ≥ 4/5 each.
+A shortfall would point at the two port changes (most-specific attribution; meta removed).
+Command: `node eval/scripts/transplant.mjs --phase run --scenario s1 --window 131072 --arm tree-center-filename,tree-snippet-hits --questions-file questions-deep.json --reps 5 --model z-ai/glm-5.3-flash`
+
+**Result (16:48; $0.347; file `results/run-W131072-tree-center-filename+tree-snippet-hits-questions-deep-q9ebc3150-cefc5ddcbf54b-n5-z-ai_glm-5.3-flash.json`, code 543e679):**
+center-filename 6/25 (0,0,5,1,0), snippet-hits (library) **15/25** (5,0,5,5,0); 25/25 completed in both
+arms (no provider failures this batch); median turns 3 vs 2; wins with zero fetches 0 vs 15; uncached
+input 448,828 vs 209,419; cache-read 10,147,776 vs 8,524,928. Provenance audit: 30/30 snippet-hits
+successes earned across the two batches. Pre-registered criterion (≥ +4, all wins fetch-free,
+qo01/qo03/qo04 ≥ 4/5): met; exact reproduction of iteration 3. The shipped library scores what the
+harness arm scored.
+
+**Design gap raised by the user (16:51):** the harness builds the prompt once and appends every
+tool result; nothing re-evaluates the window per turn, so headroom is spent by the second or third
+result and the append cap truncates the newest one (qo02: third search cut to 95 tokens). The
+shipped assembler only rewrites Zone C at phase boundaries. Open item: an elastic tail — recompute
+the raw-tail boundary each turn as W − (A + B + appended results + reply), so retrieved detail
+displaces passive recency; measure the cache cost of rewriting the tail block.

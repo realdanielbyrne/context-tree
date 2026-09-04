@@ -314,8 +314,11 @@ confirmed, event-snippet hits measured and not yet default.
 - **One store, one model, one window.** Every live number is GLM 5.3 Flash on the s1 trace at
   W = 131,072 with n = 5. The claude.ai probe was Sonnet 5 on one 8-turn chat with n = 1 per
   question. Nothing here is proven on a second trace, a second model, or a second window.
-- **The library, live.** `packages/mcp`'s `context_search` was ported to event hits after the
-  pass closed (open item 5); it reproduces the arm on the offline gate but has not been run live.
+- **Per-turn window management.** The harness builds the prompt once and appends every tool
+  result; nothing displaces passive tail events as retrieved detail arrives, so headroom is gone
+  by the second or third result and the append cap truncates the newest (qo02's third search was
+  cut to 95 tokens). The shipped assembler rewrites Zone C only at phase boundaries. Untested:
+  an elastic tail that recomputes its boundary each turn, and its cache cost.
 - **The constants.** 5 hits and 1,000 characters were never swept; qo02 shows the excerpt window
   can miss a literal in a correctly ranked event.
 - **The system prompt as bytes.** The realistic host was modeled by reducing W, which is exact
@@ -359,6 +362,13 @@ preregistration.
 
 Ordered by information gained per unit of effort.
 
+0. **Elastic tail (per-turn window management).** Recompute the raw-tail boundary every turn as
+   W − (Zone A + Zone B + appended results + reply), so a fetched or searched result displaces the
+   oldest tail events instead of being truncated. Zero-token gate first: replay the recorded runs
+   and count how many appended results would have arrived whole. Then one live pair at
+   W = 131,072 (~$0.35) measuring score, turns, and cache-read tokens, since rewriting the tail
+   block invalidates its cache each turn it moves. This is the mechanism behind every "headroom
+   spent" failure in this report.
 1. **Sweep the two host constants offline** (zero live tokens, ~1 hour). Re-run
    `snippet-hits-killgate.mjs` over k ∈ {3, 5, 8} and excerpt ∈ {500, 1,000, 2,000} on the 56
    recorded queries; report literal-in-excerpt rate and payload tokens per cell. The excerpt size
@@ -380,8 +390,10 @@ Ordered by information gained per unit of effort.
    host values). The port surfaced two defects the harness arm had hidden: shared events must be
    attributed to their most specific branch but ordered by the best containing rank, and pointer
    meta on an event hit re-inflates the payload (three queries reached 4,666-6,136 tokens until it
-   was removed). The offline gate reproduces the arm (48/56, 53/56). Owed: one same-batch live
-   confirmation of the shipped library at W = 131,072 (~$0.30) before quoting 15/25 for it.
+   was removed). The offline gate reproduces the arm (48/56, 53/56), and a same-batch live confirmation at
+   16:48 reproduced iteration 3 exactly: library 15/25 vs 6/25, all 15 wins with zero fetches,
+   25/25 completed in both arms, 30/30 earned across both batches
+   (`results/run-W131072-tree-center-filename+tree-snippet-hits-…-cefc5ddcbf54b-…json`).
 6. **The system prompt as bytes** (~43 lines in the harness per analyzer A4, one batch ~$0.5):
    prepend a realistic operator prompt and raise W by its size; the control arm is the same
    size of inert text. This is the only way to learn whether the pad's content, not just its
