@@ -4,11 +4,17 @@ The reference a DS-STAR pass scores against and a new host ports from.
 A change to the algorithm and a change to this page happen together.
 
 The goal: simple, repeatable, translatable to a model and harness it has
-never seen. Six rules follow from that.
+never seen. Seven rules follow from that.
 
-**1. No budgets or caps** on turns, wall-clock, or reply length. Each is
-a guess about work nobody has measured. Bound the actual resource: spend
-is bounded by a cost cap; non-progress (stall detection) ends a stuck run.
+**1. No budgets or caps on the model's freedom to work** — turns,
+wall-clock, or reply length. Each is a guess about work nobody has
+measured. Bound the actual resource instead: spend by a cost cap,
+non-progress by stall detection. Two caveats the page owes: sizing
+content to the WINDOW is not this (Zone budgets and the append cap are
+arithmetic, not guesses), and the rule is not yet kept — the summarizer
+caps its own reply at 1,024 tokens, two provider timeouts are wall-clock
+ceilings, and `costCapUsd` ships as `null`, so the mechanism this rule
+substitutes for the ceilings it removed is off by default.
 
 **2. A hardcoded value is a defect** unless shown to hold across models
 and harnesses. The test is not whether something is a constant — some
@@ -26,16 +32,28 @@ established by measurement, not chosen because it reads as reasonable.
 **5. Truncate once, where the answer's location is known.** Two cuts in
 one path means the second one, which does not know what the first was
 protecting, discards it. A caller that narrows content must narrow to the
-budget the appending caller will actually enforce. Measured: a
-relevance-centred band re-cut front-first by an append cap loses the
-section it was centred on (`ds-star-multi-index-report.md` §5).
+budget the appending caller will actually enforce. Measured: an append
+cap keeps the head and drops the tail, so a relevance-centred band that
+arrives over budget loses the very section it was centred on
+(`ds-star-multi-index-report.md` §5).
 
-**6. The indexed unit is worth more than the ranking over it.** Shrinking
-a retrieval unit from a branch replay to a line saved 7,600–15,600 tokens
-per question on the measured store; perfecting the rank inside a cheap
-index was worth ~200. Before tuning relevance, ask what the unit costs.
-This is a token-cost ratio measured offline — no facet index has yet been
-put in front of an answering model, so the accuracy gain is inferred.
+**6. Ask what the retrieval unit costs before tuning the ranking over
+it.** A ranker can only reorder what the unit already decided you will
+pay for, so the unit is the first thing to size. The measured ratio that
+prompted this rule is large but is one store, offline, with the accuracy
+half inferred rather than measured — it lives in the multi-index
+dimension entry below, not here, because a comparative figure nobody has
+reproduced off its own host is not a rule.
+
+**7. A coordinate is not a payload.** A stage that hands the next one a
+reference — a branch id, a span, a file path — has delivered nothing
+until the bytes arrive, so verify at the payload, never at the handoff.
+Measured: an oracle that made branch selection perfect by construction
+delivered the answer on 0 of 5 runs of one question, because a
+57,000-token branch was read through 6,600 tokens of headroom and no
+query the model issued ever centred the band. The corollary for probes:
+replacing a stage by fiat bounds that stage only, so write down what it
+hands to the next one and check the next one received it.
 
 Terms. **L0**: append-only event log. **L2**: content-addressed payload
 store. **L1**: the tree (nodes pointing into L0 by sequence range, with
@@ -87,10 +105,9 @@ assemble
   fill remaining headroom with raw recent events from the trace tail
 
 retrieve on demand
-  search: route to ONE index, then rank within it, return coordinates
-    indexes are axes over the same L0, keyed on fields events already carry:
-      branch (phase), file, command (tool + head), symbol, output line
-    rank fingerprint-enriched documents; grep raw events and merge via RRF
+  search: rank branch summaries enriched with fingerprints, return coordinates
+    grep raw events for the query's literals; a grep hit REORDERS a branch the
+      lexical pass already found — it cannot introduce one (see note)
     when regex finds nothing distinctive, a cheap LLM rewrites the query (optional fallback)
   fetch: raw events narrowed ONCE, by the caller that knows where the answer sits
     centers on the query's matching events; band grown outward under a real
@@ -98,35 +115,60 @@ retrieve on demand
   peek: a raw excerpt
   annotate: record a note
 
-append a result
+append a result                                    [harness-only today, see note]
   results land in the transcript tail, never in the cached prefix
   cap the appended result to the headroom left THIS turn, measured, not estimated
-  a result that arrives over budget is cut front-first and loses its relevance centre
+  the cap KEEPS THE HEAD and drops the tail, so a band centred on the answer
+    loses the answer if it arrives over budget
 ```
+
+**Two notes a porting host needs before implementing the block above.**
+
+*What is shipped and what is not.* Everything under `ingest`, `decide`, `assemble` and
+`retrieve` is in `packages/`. The `append a result` stanza is **not**: `appendHeadroom` and
+`capToolResult` live only in `eval/scripts/transplant.mjs`, so a host gets no library support
+for them and must implement the cap itself. It is written here because rule 5 depends on it
+and because a host that omits it will silently re-cut its own narrowed payloads. Multi-index
+routing is **not shipped either** — facet indexes exist only as offline gates, and the
+`tree-route` arm is specified and unbuilt; it lives under Candidates, not here.
+
+*The grep merge is not RRF.* `mergeWithGrep` adds `count / maxGrepScore / (RRF_K + 1)` to
+nodes the lexical pass already returned and skips any node it did not
+(`retriever.ts:653-670`). So the grep pass is a re-ranker over the lexical candidate set, not
+a fusion of two retrievers, and its constant carries none of RRF's justification. Naming it
+RRF overstated what it does; the behaviour is unchanged and the name in Tier 2 is now
+qualified.
 
 ## Tier 2 — parameters
 
-Every value that affects behaviour, classified by rule 2.
+Every value that affects behaviour in the SHIPPED library, classified by rule 2, plus the
+harness values Tier 1 depends on (marked *harness*). It is not yet complete — the summarizer
+and provider timeouts below were absent until 2026-09-03 and more may be — so treat a value
+found in code and missing here as a defect in this table, not a licence.
 
 | Value | State | Derives from |
 |---|---|---|
 | switch point | **unvalidated** live (absolute 30k); target: Zone C fraction of W | W × zone fraction |
-| zone fractions (A .10, B .20, C .20, slack .10) | **unvalidated** as values; **derived** from W in one place | measurement — rule 4 |
+| zone fractions (A .10, B .20, C .20, reply .05, slack .10, lazy .35) | **unvalidated** as values; **derived** from W in one place. The sweep that would rank them measures its own lower bound, so rule 4 is owed here and unpaid | measurement — rule 4, unpaid |
 | heuristic-to-tokenizer ratio | **derived** (0.851 on this corpus) | measured per corpus, refuses above 1.6 |
 | root keep (fold level) | **derived** in portability harness; **unvalidated** constant in live | largest rung whose Zone B fits |
 | search result limit | **unvalidated**, and there are TWO defaults: config `limit: 20`, retriever `DEFAULT_LIMIT = 8` | W and per-hit payload size |
-| RRF constant | **unvalidated** (60, the literature default) — governs search/grep merge order | never swept on any store |
-| query fingerprint minimum length | **unvalidated** (3) — decides which query terms are grepped at all | below it a token matches everything |
-| fetch narrowing budget | **derived** on the primary path (live headroom at the moment of append, per call); the fallback `(_headroom ?? 20000)/2` **survives and is still a defect** | the request as it stands that turn — rule 5 |
+| grep re-rank constant | **unvalidated** (60). Named `RRF_K`, but the pass is a re-ranker over the lexical candidate set, not a fusion, so the RRF literature does not justify it | never swept on any store |
+| query fingerprint minimum length | **unvalidated**, and it is three literals not one: `add()` enforces 3, `QUOTED_Q` hardcodes `{3,}`, `UPPER_SNAKE_Q` is effectively 4 | below it a token matches everything |
+| fetch narrowing budget | **derived** on the primary path (live headroom at the moment of append, per call). TWO `?? 20000` fallbacks survive and are still defects — the halved one that computes the budget, and the one that feeds it | the request as it stands that turn — rule 5 |
 | narrowing band size | **derived** (grown outward from the relevance centre under a real token count), but converts heuristic→BPE by the measured ratio and so over-budgets ~17% on code-dense content — fix identified, unshipped | measurement, not an average |
-| peek / snippet sizes | **unvalidated** (5 different literals, mutually inconsistent) | one shared value sized to available room |
+| peek / snippet sizes | **unvalidated** (6 literals: peek 800, two snippets at 240, hydrate-peek 2,000, and two summarizer INPUT byte caps at 4,096 / 1,024 that answer a different question and should not share a value) | sized to available room |
+| summarizer reply cap | **unvalidated** (`maxSummaryTokens` 1,024) — a cap on reply length, which rule 1 forbids | the model — rule 3 |
+| summarizer concurrency | **host** (8) — never measured | rate limit |
+| search / provider timeout | **unvalidated** (20,000 ms, twice) — a wall-clock ceiling, which the last row of this table calls "removed" | the provider |
+| search-result headroom share | **unvalidated** (0.25, *harness*) — restored: the constant still runs in `tree-escalate` even though that arm is retired | share of live headroom a result list may take |
+| keyword minimum token length | **unvalidated** (3, *harness*) — restored on the same grounds | below it a token matches everything |
 | edit-argument cap | **derived on one store** (512 bytes when post-state exists); cross-host unvalidated | both alternatives measured |
 | reply allowance | **derived** (`window − prompt`, per turn) | arithmetic, untested live |
-| reply headroom | **derived** (model's reported max, or measured; fraction as fallback) | the model — rule 3 |
-| tool-to-phase map | **host** (8 entries; unknown → "other") | the harness |
-| leaf summarizer model / concurrency | **host** | cost tiering / rate limit |
+| reply headroom | **derived** when the host reports a max or one is measured; the fallback is `ZONE_FRACTIONS.reply` = 0.05, which the code's own comment calls "a guess in exactly the way rule 2 forbids" — so **unvalidated** whenever the fallback fires | the model — rule 3 |
+| tool-to-phase map | **host**. The library default `DEFAULT_TOOL_PHASE` has **20** entries; the 8 is this repository's own override. Unknown → "other" | the harness |
 | contract version | **host** (v1 default, v2/v3 registered) | the model |
-| turn / wall-clock ceiling | **removed** | — |
+| turn / wall-clock ceiling | **removed** from the loop; two 20,000 ms provider timeouts remain (row above) | — |
 
 The window (W) is host-supplied and user-configurable. A host that wants lower
 cost and latency sets a smaller W; the tree compensates through search and
@@ -135,11 +177,17 @@ optimal W for a given session — the smallest window that achieves parity with
 full-context performance — is the measurement the live verification step exists
 to produce.
 
-Open defects: every row above marked **unvalidated**, plus three shipped
-constants that had never been listed here at all until 2026-09-03 — the RRF
-constant, the query-fingerprint minimum length, and the retriever's second
-search-limit default. Three rows (switch point, zone fractions, root keep)
-have a derivation in the portability harness but not in the live suite.
+Open defects: every row marked **unvalidated** — nine of them, six with a
+"Derives from" that describes what the value *should* come from rather than what
+produces it today. Three (switch point, zone fractions, root keep) have carried
+that label since 2026-09-02 and have a derivation in the portability harness but
+not in the live suite.
+
+**The count has only ever gone up.** Four passes have added defect labels to this
+table and retired none, which makes it a backlog rather than an audit. Rule 4 —
+prefer the sweet spot to a bound — currently has **zero instances** anywhere on
+this page: no value here was set by finding one. Retiring one row per pass, by
+measurement, would be worth more than another boundary condition.
 
 ## Boundary conditions
 
@@ -213,8 +261,9 @@ top-3. Offline only — the live score did not move, because the unit being rank
 was the binding constraint, not the rank.
 *(Report: `reports/metrics/ds-star-search-ranking-report.md`)*
 
-**Index granularity and routing.** The unit dominates the ranking by tens to one
-in offline token cost (38:1-78:1). A
+**Index granularity and routing.** The figure rule 6 used to carry lives here: the unit
+dominates the ranking by tens to one in offline token cost (38:1-78:1) — one store,
+offline, accuracy half inferred, never reproduced on another host. A
 branch replay is 26KB with the answer on one line; a command-facet entry is 40
 tokens, and a top-10 slice costs 272-440 tokens against 8-16K for a narrowed
 replay. Several indexes raise coverage (5-6/17 → 9/17) but only under routing;
@@ -224,7 +273,11 @@ coverage: 6/17 answers exist in no index, which retires every ranker-side
 candidate — embeddings, KNN, autoencoder latents, learned ranking — at the same
 6/17. *(Report: `reports/metrics/ds-star-multi-index-report.md`)*
 
-## Candidates with a verdict, not yet in force
+## Candidates with a verdict
+
+Three states are listed together below and the labels distinguish them: **landed in code**
+(shipped, running now), unmarked (measured, not yet default), and **Retired** (refuted, kept
+so the negative result is not rebuilt).
 
 - **Fingerprint-enriched search + hybrid grep**: 2/12 → 10/12 top-3 for the shipped
   deterministic ranker (11/12 required a MOCKED query rewriter, never a live one).
@@ -261,15 +314,24 @@ candidate — embeddings, KNN, autoencoder latents, learned ranking — at the s
 
 ## Change log
 
-- **2026-09-03 21:10** — Delivery pass (3 iterations). The oracle is a branch-ranking
-  ceiling, not a retrieval one: it returns a coordinate, and the payload is a band, so a
-  branch can be ranked first, fetched, and still deliver nothing. Live loss splits three
-  ways — selection, delivery, extraction — with selection binding despite near-perfect
-  offline ranking, because hits render without the fingerprints they were ranked on.
-  Attaching them (`tree-hit-keywords`) is REFUTED: no selection change, more tokens.
-  Append/re-cut added to Tier 1; three shipped constants added to Tier 2 (RRF constant,
-  query-fingerprint minimum length, the retriever's second search-limit default);
-  measurement hazards split out of the boundary table.
+- **2026-09-03 21:10** — Delivery pass (3 iterations). **No algorithm change: `git diff`
+  over `packages/` for this entire pass is empty.** The candidate was refuted and nothing
+  was defaulted, so every edit below is a learned fact, a correction, or behaviour that
+  already ran and had never been written down.
+  - **Rule added.** 7, a coordinate is not a payload — earned by an oracle that made
+    branch selection perfect and delivered the answer 0 of 5 times on one question.
+  - **Rule corrected.** 6 keeps its imperative and loses its n=1 ratio to the dimension
+    entry. 5 said "cut front-first", which parses backwards — the cap keeps the head.
+    1 now states what it means and admits it is not yet kept.
+  - **Previously-undocumented behaviour written down.** The append/re-cut stanza (and
+    marked harness-only, because it is not in `packages/`); the grep pass re-ranks the
+    lexical candidate set rather than fusing with it, so it is not RRF; multi-index
+    routing marked unbuilt rather than described as the loop.
+  - **Tier 2 corrections.** Six previously-unlisted constants added, two restored that a
+    mid-pass edit had wrongly deleted while their code still ran, `DEFAULT_TOOL_PHASE`
+    corrected from 8 to 20, peek literals from 5 to 6, `edit-argument cap` downgraded
+    from validated to one-store.
+  - Measurement hazards split out of the boundary table.
   `reports/metrics/ds-star-delivery-pass-report.md`.
 - **2026-09-03 20:00** — Multi-index pass (4 iterations). Rules 5 and 6 added.
   Oracle probe: perfect ranking recovers 19 of 21 lost points on the set with all
