@@ -717,3 +717,86 @@ describe('the edit-argument cap holds in the retrieval renderer too (2026-09-02)
     expect(fetched.text.length).toBeLessThan(body.length * 2);
   });
 });
+
+describe('bare-filename centring candidate', () => {
+  it('centres on the later event naming both files without changing branch search order', () => {
+    const f = fixture();
+    const early = f.trace.append(toolCall({
+      tool: 'Bash',
+      blob: f.blobs.put('JSONL agents-last-exam.jsonl'),
+      args_blob: f.blobs.put('JSONL agents-last-exam.jsonl'),
+    }));
+    f.trace.append(assistantMessage(f.blobs.put('x'.repeat(4_000))));
+    const answer = f.trace.append(toolCall({
+      tool: 'Bash',
+      args_blob: f.blobs.put(
+        'cat sw-1-jsonc.jsonl.bak agents-last-exam.jsonl; description=Build two-task suite file and validate rows; JSONL',
+      ),
+    }));
+    const node = f.store.insertNode({
+      parent_id: f.store.root()?.id ?? null,
+      kind: 'phase',
+      title: 'filename centring',
+      phase_type: 'implementation',
+      span_start_seq: early.seq,
+      span_end_seq: answer.seq,
+      status: 'closed',
+    });
+
+    const legacyDiagnostics: Array<{ centerSeq: number | null }> = [];
+    const candidateDiagnostics: Array<{ centerSeq: number | null; terms: Array<{ value: string }> }> = [];
+    const legacy = new TreeRetriever({
+      store: f.store,
+      blobs: f.blobs,
+      trace: f.trace,
+      observeFetch: (diagnostic) => legacyDiagnostics.push(diagnostic),
+    });
+    const candidate = new TreeRetriever({
+      store: f.store,
+      blobs: f.blobs,
+      trace: f.trace,
+      retrievalCenterFingerprintMode: 'bare-filename',
+      observeFetch: (diagnostic) => candidateDiagnostics.push(diagnostic),
+    });
+    const query = 'concatenate sw-1-jsonc.jsonl.bak agents-last-exam.jsonl into one JSONL file';
+
+    const legacyResult = legacy.fetchBranch(node.id, { depth: 'full', maxTokens: 80, query });
+    const candidateResult = candidate.fetchBranch(node.id, { depth: 'full', maxTokens: 80, query });
+
+    expect(legacyDiagnostics.at(-1)?.centerSeq).toBe(early.seq);
+    expect(candidateDiagnostics.at(-1)?.centerSeq).toBe(answer.seq);
+    expect(candidateDiagnostics.at(-1)?.terms.map((term) => term.value)).toEqual([
+      'sw-1-jsonc.jsonl.bak',
+      'agents-last-exam.jsonl',
+      'JSONL',
+    ]);
+    expect(legacyResult.text).not.toContain('Build two-task suite file and validate rows');
+    expect(candidateResult.text).toContain('Build two-task suite file and validate rows');
+    expect(legacy.beamSearch(query).hits.map((hit) => hit.nodeId)).toEqual(
+      candidate.beamSearch(query).hits.map((hit) => hit.nodeId),
+    );
+  });
+
+  it('does not double-count a quoted name or a basename already covered by a path', () => {
+    const f = fixture();
+    const diagnostics: Array<{ terms: Array<{ value: string; source: string }> }> = [];
+    const candidate = new TreeRetriever({
+      store: f.store,
+      blobs: f.blobs,
+      trace: f.trace,
+      retrievalCenterFingerprintMode: 'bare-filename',
+      observeFetch: (diagnostic) => diagnostics.push(diagnostic),
+    });
+    candidate.fetchBranch(f.nodes.p2.id, {
+      depth: 'full',
+      maxTokens: 1,
+      query: '`pricing.ts` and src/pricing.ts plus archive.tar.gz',
+    });
+
+    const terms = diagnostics.at(-1)?.terms ?? [];
+    expect(terms.filter((term) => term.value === 'pricing.ts')).toHaveLength(1);
+    expect(terms.filter((term) => term.value === 'src/pricing.ts')).toHaveLength(1);
+    expect(terms.filter((term) => term.value === 'archive.tar.gz')).toHaveLength(1);
+    expect(terms.find((term) => term.value === 'archive.tar.gz')?.source).toBe('bare-filename');
+  });
+});

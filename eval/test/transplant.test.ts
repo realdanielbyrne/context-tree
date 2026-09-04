@@ -493,9 +493,12 @@ describe('R6 ablation — tree vs tree-wide', () => {
   it('keeps every tree-shaped arm in the pin set, and no baseline in it', () => {
     expect(TREE_ARMS).toContain('tree');
     expect(TREE_ARMS).toContain('tree-wide');
+    expect(TREE_ARMS).toContain('tree-center-filename');
     expect(TREE_ARMS).not.toContain('truncate-tail');
     expect(TREE_ARMS).not.toContain('compact-rolling');
     expect(ARM_IDS).toContain('tree-wide');
+    expect(ARM_IDS).toContain('tree-center-filename');
+    expect(ladderFor('tree-center-filename')).toEqual(ladderFor('tree-tail-v2'));
   });
 });
 

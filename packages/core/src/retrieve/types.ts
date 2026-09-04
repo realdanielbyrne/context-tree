@@ -24,6 +24,23 @@ export type SummaryEmbedder = (texts: readonly string[]) => Promise<Float32Array
  */
 export type QueryRewriter = (query: string) => Promise<string[]>;
 
+/** Candidate policy for terms used only to centre an oversized branch read. */
+export type RetrievalCenterFingerprintMode = 'legacy' | 'bare-filename';
+
+/** Harness-only observation of a fetch decision. Never enters the tool payload. */
+export interface FetchDiagnostic {
+  nodeId: NodeId;
+  depth: 'summary' | 'index' | 'full';
+  strategy: 'summary' | 'index' | 'fits' | 'no-query' | 'no-center' | 'centered';
+  centerSeq: number | null;
+  terms: Array<{ value: string; source: 'legacy' | 'bare-filename' | 'fallback'; weight: number }>;
+  scores: Array<{ seq: number; score: number }>;
+  inputSpans: SeqSpan[];
+  returnedSpans: SeqSpan[];
+  maxTokens: number | null;
+  renderedTokens: number;
+}
+
 /** Which mechanism produced a result set. §15's eval attributes recall per path. */
 export type SearchPath = 'vector' | 'beam';
 

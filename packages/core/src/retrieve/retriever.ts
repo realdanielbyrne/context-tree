@@ -27,8 +27,10 @@ import { buildLexicalIndex, extractFingerprints, lexicalScore, summaryDocument, 
 import type {
   EmbedSummariesResult,
   FetchBranchOptions,
+  FetchDiagnostic,
   FetchedBranch,
   QueryRewriter,
+  RetrievalCenterFingerprintMode,
   SummaryEmbedder,
   SummaryHit,
   TreeSearchOptions,
@@ -63,6 +65,20 @@ export interface TreeRetrieverDeps {
    * so an oversized band still had to be re-cut downstream.
    */
   tokenizer?: Tokenizer;
+  /** Changes only query terms used inside `findRelevantCenter`; search ranking is untouched. */
+  retrievalCenterFingerprintMode?: RetrievalCenterFingerprintMode;
+  /** Harness-only diagnostics. Observations never alter model-visible fetch bytes. */
+  observeFetch?: (diagnostic: FetchDiagnostic) => void;
+}
+
+interface CenterResult {
+  centerSeq: number | null;
+  terms: FetchDiagnostic['terms'];
+  scores: FetchDiagnostic['scores'];
+}
+
+function emptyCenterResult(): CenterResult {
+  return { centerSeq: null, terms: [], scores: [] };
 }
 
 const DEFAULT_LIMIT = 8;
@@ -87,6 +103,8 @@ export class TreeRetriever {
   private readonly embed: SummaryEmbedder | undefined;
   private readonly rewrite: QueryRewriter | undefined;
   private readonly tokenizer: Tokenizer;
+  private readonly retrievalCenterFingerprintMode: RetrievalCenterFingerprintMode;
+  private readonly observeFetch: ((diagnostic: FetchDiagnostic) => void) | undefined;
   private fingerprintCache: Map<NodeId, Set<string>> | null = null;
 
   constructor(deps: TreeRetrieverDeps) {
@@ -96,6 +114,8 @@ export class TreeRetriever {
     this.embed = deps.embed;
     this.rewrite = deps.rewrite;
     this.tokenizer = deps.tokenizer ?? new HeuristicTokenizer();
+    this.retrievalCenterFingerprintMode = deps.retrievalCenterFingerprintMode ?? 'legacy';
+    this.observeFetch = deps.observeFetch;
   }
 
   /**
@@ -294,7 +314,7 @@ export class TreeRetriever {
     };
 
     if (depth === 'summary') {
-      return {
+      const result = {
         ...base,
         // Several nodes only happens when one path was touched by more than one
         // phase under this branch; label them so the merge is not ambiguous.
@@ -307,6 +327,12 @@ export class TreeRetriever {
         spans: [],
         events: 0,
       };
+      this.observeFetch?.({
+        nodeId: branch.id, depth, strategy: 'summary', centerSeq: null, terms: [], scores: [],
+        inputSpans: [], returnedSpans: [], maxTokens: options.maxTokens ?? null,
+        renderedTokens: this.tokenizer.count(result.text),
+      });
+      return result;
     }
 
     const rawSpans = mergeSpans(
@@ -330,14 +356,17 @@ export class TreeRetriever {
     // on. Growing under a real token count makes this the ONLY cut: what comes
     // back is guaranteed to be within budget, so no downstream cap has anything
     // left to take.
+    let center = emptyCenterResult();
+    let strategy: FetchDiagnostic['strategy'] = options.query === undefined ? 'no-query' : 'fits';
     if (options.maxTokens !== undefined && options.query !== undefined && depth !== 'index' && this.trace !== undefined) {
       const fullSpans = clampSpans(rawSpans, from, to);
       const fullRendered = renderSpans(this.trace, this.blobs, fullSpans);
       if (this.tokenizer.count(fullRendered.text) > options.maxTokens) {
-        const centerSeq = this.findRelevantCenter(options.query, fullSpans);
-        if (centerSeq !== null) {
+        center = this.findRelevantCenter(options.query, fullSpans);
+        strategy = center.centerSeq === null ? 'no-center' : 'centered';
+        if (center.centerSeq !== null) {
           const allEvents = [...this.trace.read({ from: fullSpans[0]?.start, to: fullSpans[fullSpans.length - 1]?.end })];
-          const centerIdx = Math.max(0, allEvents.findIndex((e) => e.seq >= centerSeq));
+          const centerIdx = Math.max(0, allEvents.findIndex((e) => e.seq >= center.centerSeq!));
           const fits = (startIdx: number, endIdx: number): boolean => {
             const span = clampSpans(rawSpans, allEvents[startIdx]!.seq, allEvents[endIdx]!.seq);
             return this.tokenizer.count(renderSpans(this.trace!, this.blobs, span).text) <= options.maxTokens!;
@@ -370,11 +399,24 @@ export class TreeRetriever {
 
     if (depth === 'index') {
       const rendered = renderIndex(this.requireTrace("fetchBranch depth:'index'"), this.blobs, spans);
-      return { ...base, text: rendered.text, spans, events: rendered.events };
+      const result = { ...base, text: rendered.text, spans, events: rendered.events };
+      this.observeFetch?.({
+        nodeId: branch.id, depth, strategy: 'index', centerSeq: null, terms: [], scores: [],
+        inputSpans: rawSpans, returnedSpans: spans, maxTokens: options.maxTokens ?? null,
+        renderedTokens: this.tokenizer.count(rendered.text),
+      });
+      return result;
     }
 
     const rendered = renderSpans(this.requireTrace("fetchBranch depth:'full'"), this.blobs, spans);
-    return { ...base, text: rendered.text, spans, events: rendered.events };
+    const result = { ...base, text: rendered.text, spans, events: rendered.events };
+    this.observeFetch?.({
+      nodeId: branch.id, depth, strategy, centerSeq: center.centerSeq,
+      terms: center.terms, scores: center.scores, inputSpans: rawSpans,
+      returnedSpans: spans, maxTokens: options.maxTokens ?? null,
+      renderedTokens: this.tokenizer.count(rendered.text),
+    });
+    return result;
   }
 
   /**
@@ -529,9 +571,17 @@ export class TreeRetriever {
    * answer (estimated by weighting later events slightly — answers tend to be
    * specific content produced deeper in the branch).
    */
-  private findRelevantCenter(query: string, spans: readonly SeqSpan[]): number | null {
-    if (this.trace === undefined) return null;
-    let terms = extractQueryFingerprints(query);
+  private findRelevantCenter(query: string, spans: readonly SeqSpan[]): CenterResult {
+    if (this.trace === undefined) return emptyCenterResult();
+    const legacyTerms = extractQueryFingerprints(query);
+    const bareFilenames = this.retrievalCenterFingerprintMode === 'bare-filename'
+      ? extractBareFilenames(query, legacyTerms)
+      : [];
+    let terms = [...bareFilenames, ...legacyTerms];
+    let sources = new Map<string, 'legacy' | 'bare-filename' | 'fallback'>([
+      ...bareFilenames.map((term) => [term, 'bare-filename'] as const),
+      ...legacyTerms.map((term) => [term, 'legacy'] as const),
+    ]);
     // Fallback: split the query into significant words (4+ chars) for substring matching.
     // This handles natural-language queries with no distinctive identifiers.
     if (terms.length === 0) {
@@ -542,13 +592,18 @@ export class TreeRetriever {
       terms = query.split(/\s+/)
         .map(w => w.replace(/[^a-zA-Z0-9_-]/g, ''))
         .filter(w => w.length >= 4 && !STOP.has(w.toLowerCase()));
+      sources = new Map(terms.map((term) => [term, 'fallback'] as const));
     }
-    if (terms.length === 0) return null;
+    if (terms.length === 0) return emptyCenterResult();
 
     // Weight terms by specificity: earlier in the extraction order = more specific
     // (backtick-quoted first, then file paths, then identifiers)
     const termWeight = new Map<string, number>();
-    terms.forEach((t, i) => termWeight.set(t.toLowerCase(), terms.length - i));
+    legacyTerms.forEach((t, i) => termWeight.set(t.toLowerCase(), legacyTerms.length - i));
+    bareFilenames.forEach((t, i) => termWeight.set(t.toLowerCase(), legacyTerms.length + bareFilenames.length - i));
+    if (legacyTerms.length === 0 && bareFilenames.length === 0) {
+      terms.forEach((t, i) => termWeight.set(t.toLowerCase(), terms.length - i));
+    }
 
     const hits = new Map<number, number>(); // seq -> weighted score
     for (const span of spans) {
@@ -567,7 +622,12 @@ export class TreeRetriever {
         }
       }
     }
-    if (hits.size === 0) return null;
+    const observedTerms = terms.map((value) => ({
+      value,
+      source: sources.get(value) ?? 'legacy',
+      weight: termWeight.get(value.toLowerCase()) ?? 1,
+    }));
+    if (hits.size === 0) return { centerSeq: null, terms: observedTerms, scores: [] };
     // Pick the LAST event at the highest score — the answer is typically in the
     // specific action event, not the earlier discussion that mentions the same terms.
     let bestSeq = 0;
@@ -578,7 +638,11 @@ export class TreeRetriever {
         bestScore = score;
       }
     }
-    return bestSeq;
+    return {
+      centerSeq: bestSeq,
+      terms: observedTerms,
+      scores: [...hits].map(([seq, score]) => ({ seq, score })).sort((a, b) => b.score - a.score || b.seq - a.seq),
+    };
   }
 
   private requireNode(id: NodeId): TreeNode {
@@ -626,6 +690,7 @@ function asPath(value: unknown): string | undefined {
 const BACKTICK_Q = /`([^`]+)`/g;
 const QUOTED_Q = /['"]([^'"]{3,})['"]/g;
 const FILE_PATH_Q = /[\w\-.]+(?:\/[\w\-.]+)+/g;
+const BARE_FILENAME_Q = /\b[\w-]+(?:\.[\w-]+)+\b/g;
 const CAMEL_Q = /\b[a-z][a-zA-Z0-9]*[A-Z][a-zA-Z0-9]*\b/g;
 const PASCAL_Q = /\b[A-Z][a-z]+(?:[A-Z][a-z]+)+\b/g;
 const UPPER_SNAKE_Q = /\b[A-Z][A-Z0-9_]{3,}\b/g;
@@ -645,6 +710,27 @@ function extractQueryFingerprints(query: string): string[] {
   for (const m of query.matchAll(CAMEL_Q)) add(m[0]);
   for (const m of query.matchAll(PASCAL_Q)) add(m[0]);
   for (const m of query.matchAll(UPPER_SNAKE_Q)) add(m[0]);
+  return result;
+}
+
+/**
+ * Extra centring-only terms for queries that name files without a slash.
+ * Search keeps using `extractQueryFingerprints`, so this candidate cannot move
+ * branch rank. Names already represented by a path or quoted term are omitted
+ * to avoid awarding the same evidence twice.
+ */
+function extractBareFilenames(query: string, legacyTerms: readonly string[]): string[] {
+  const covered = legacyTerms.map((term) => term.toLowerCase());
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const match of query.matchAll(BARE_FILENAME_Q)) {
+    const value = match[0];
+    const lower = value.toLowerCase();
+    if (seen.has(lower)) continue;
+    if (covered.some((term) => term === lower || term.endsWith(`/${lower}`))) continue;
+    seen.add(lower);
+    result.push(value);
+  }
   return result;
 }
 

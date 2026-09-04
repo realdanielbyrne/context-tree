@@ -223,6 +223,10 @@ export const ARM_IDS = Object.freeze([
   // the remaining headroom. The ONE variable vs `tree`: raw tail events in the
   // prompt. Same handlers, same contract, same rootKeep.
   'tree-tail-v2',
+  // DS-STAR delivery iteration 1: identical to tree-tail-v2 except that
+  // within-branch centring recognizes bare dotted filenames. Search ranking
+  // remains on the legacy extractor so this arm changes one stage only.
+  'tree-center-filename',
   // DS-STAR iter 2: tree-tail without tools. Eliminates stall failure mode
   // while keeping Zone B summaries as passive context alongside raw events.
   'tree-tail-static',
@@ -332,6 +336,7 @@ function codeFingerprint() {
   return {
     git,
     retriever: hashOf('packages/core/src/retrieve/retriever.ts'),
+    retrieverRuntime: hashOf('packages/core/dist/retrieve/retriever.js'),
     transplant: hashOf('eval/scripts/transplant.mjs'),
   };
 }
@@ -521,6 +526,7 @@ export const TREE_ARMS = Object.freeze([
   'tree-semantic',
   'tree-grep',
   'tree-tail-v2',
+  'tree-center-filename',
   'tree-tail-static',
   'tree-tail-headline',
   'tree-oracle',
@@ -1438,7 +1444,7 @@ const TOOL_SCHEMAS_TEXT = JSON.stringify(CONTEXT_TOOL_SCHEMAS);
  * | `tree-verbatim`| Zone A policy text only (Step 4, Graft 1)     | legacy  | v3       |
  * | `tree-semantic`| search ranks by meaning, not lexical (Step 5) | legacy  | v1       |
  */
-const LEGACY_SURFACE_ARMS = new Set(['tree', 'tree-wide', 'tree-static', 'tree-verbatim', 'tree-semantic', 'tree-tail', 'tree-tail-v2', 'tree-tail-static', 'tree-tail-headline', 'tree-oracle', 'tree-escalate', 'tree-hit-keywords']);
+const LEGACY_SURFACE_ARMS = new Set(['tree', 'tree-wide', 'tree-static', 'tree-verbatim', 'tree-semantic', 'tree-tail', 'tree-tail-v2', 'tree-center-filename', 'tree-tail-static', 'tree-tail-headline', 'tree-oracle', 'tree-escalate', 'tree-hit-keywords']);
 /**
  * The share of one turn's live headroom a search result may occupy. Search
  * locates; fetch is what carries content, so a result list that eats the space
@@ -1447,7 +1453,7 @@ const LEGACY_SURFACE_ARMS = new Set(['tree', 'tree-wide', 'tree-static', 'tree-v
  */
 const SEARCH_RESULT_HEADROOM_SHARE = 0.25;
 /** Arms whose fetch is a raw, narrowed L0 replay sized by the live headroom. */
-const RAW_NARROWED_FETCH_ARMS = new Set(['tree-tail-v2', 'tree-oracle', 'tree-escalate', 'tree-hit-keywords']);
+const RAW_NARROWED_FETCH_ARMS = new Set(['tree-tail-v2', 'tree-center-filename', 'tree-oracle', 'tree-escalate', 'tree-hit-keywords']);
 
 /**
  * Tokens shorter than this decide nothing and match everything. UNVALIDATED —
@@ -2108,7 +2114,7 @@ async function checkG6SemanticRankOffline(scenario, questions, lexicalRows) {
 export async function checkG7ToolCallLogging() {
   const NODE = 'n_g7_probe';
   const LITERAL = 'sentinel_g7_9182';
-  const budgets = { window: 32_768, maxReplyTokens: 800, zoneC: 4_096 };
+  const budgets = { window: 32_768, maxReplyTokens: 800, zoneC: 4_096, ratio: 1 };
   const built = {
     system: 'g7 system',
     messages: [{ role: 'user', content: 'g7 context' }],
@@ -2150,7 +2156,16 @@ export async function checkG7ToolCallLogging() {
       return { text: 'done', model: request.model, usage, toolCalls: [], stopReason: 'end_turn' };
     },
   };
-  const r = await runOneReplicate(null, built, 'g7 question', 'g7-model', fullProvider, budgets, [LITERAL]);
+  const r = await runOneReplicate(
+    null,
+    built,
+    'G7 records a complete search and full fetch call',
+    'g7-model',
+    fullProvider,
+    budgets,
+    'fixed-ceiling',
+    [LITERAL],
+  );
 
   const problems = [];
   if (r.toolCalls?.length !== 2) problems.push(`expected 2 logged tool calls, got ${r.toolCalls?.length}`);
@@ -2158,6 +2173,9 @@ export async function checkG7ToolCallLogging() {
   if (c1?.input?.query !== 'g7 probe') problems.push('call.input was not logged verbatim for the search call');
   if (!Array.isArray(c1?.hitIds) || c1.hitIds[0] !== NODE) problems.push('hitIds was not populated for a search call');
   if (typeof c1?.headroom !== 'number' || typeof c2?.headroom !== 'number') problems.push('headroom was not recorded per append');
+  if (typeof c1?.heuristicHeadroom !== 'number' || typeof c2?.heuristicHeadroom !== 'number') {
+    problems.push('heuristicHeadroom was not recorded per append');
+  }
   if (r.searchQueries.join(',') !== 'g7 probe' || r.fetchedIds.join(',') !== NODE) {
     problems.push('derived searchQueries/fetchedIds do not match the replayed fixture');
   }
@@ -2182,7 +2200,16 @@ export async function checkG7ToolCallLogging() {
       return { text: 'done', model: request.model, usage, toolCalls: [], stopReason: 'end_turn' };
     },
   };
-  const r2 = await runOneReplicate(null, built, 'g7 question 2', 'g7-model', summaryOnlyProvider, budgets, [LITERAL]);
+  const r2 = await runOneReplicate(
+    null,
+    built,
+    'G7 records a complete summary-only fetch call',
+    'g7-model',
+    summaryOnlyProvider,
+    budgets,
+    'fixed-ceiling',
+    [LITERAL],
+  );
   if (r2.literalInToolResult !== false) problems.push('literalInToolResult was true for a depth:"summary"-only fetch of the same branch');
   if (r.zoneCTokens !== budgets.zoneC) problems.push('zoneCTokens on the row did not carry deriveBudgets\' zoneC');
 
@@ -2191,6 +2218,7 @@ export async function checkG7ToolCallLogging() {
         'G7-tool-call-logging',
         'mocked loop: call.input verbatim, hitIds populated, headroom recorded per append, searchQueries/' +
           'fetchedIds derived correctly, literalInToolResult splits full-depth from summary-depth fetches',
+        { sample: r.toolCalls, summarySample: r2.toolCalls },
       )
     : fail('G7-tool-call-logging', problems.join('; '));
 }
@@ -3669,6 +3697,7 @@ export async function buildArm(scenario, arm, budgets, artifacts) {
       return { system: FLAT_SYSTEM, context, tools: [], meta: { chunks: artifact.chunks } };
     }
     case 'tree-tail-v2':
+    case 'tree-center-filename':
     case 'tree-oracle':
     case 'tree-escalate':
     case 'tree-hit-keywords':
@@ -3681,7 +3710,7 @@ export async function buildArm(scenario, arm, budgets, artifacts) {
       const withTools = arm !== 'tree-tail-static';
       const { assembler, prompt } = buildTreePrompt(scenario, budgets, { withTools, systemText: treeSystemTextFor('tree') });
       // Keyword headlines for all tool-bearing arms: replace prose with fingerprints.
-      if (arm === 'tree-tail-v2' || arm === 'tree-tail-headline' || arm === 'tree-oracle' || arm === 'tree-escalate' || arm === 'tree-hit-keywords') {
+      if (arm === 'tree-tail-v2' || arm === 'tree-center-filename' || arm === 'tree-tail-headline' || arm === 'tree-oracle' || arm === 'tree-escalate' || arm === 'tree-hit-keywords') {
         // Keyword-list headlines: replace prose with fingerprints extracted from
         // raw events. Each headline = heading + metadata lines + keyword fingerprints.
         // No first-sentence prose — the keywords ARE the headline.
@@ -3793,7 +3822,16 @@ export async function buildArm(scenario, arm, budgets, artifacts) {
 const SMOKE_QUESTION =
   'Before answering anything else, call context_search once with a query of your choice, then reply with the id of the first result.';
 
-export async function runOneReplicate(scenario, built, question, model, provider, budgets, replyMode = 'fixed-ceiling') {
+export async function runOneReplicate(
+  scenario,
+  built,
+  question,
+  model,
+  provider,
+  budgets,
+  replyMode = 'fixed-ceiling',
+  answerLiterals = [],
+) {
   // Last line of defence. 180 scored runs once asked two models the empty
   // string and dutifully recorded 0/1 for the small talk that came back; a run
   // that cannot state its own question is not a data point.
@@ -3809,12 +3847,14 @@ export async function runOneReplicate(scenario, built, question, model, provider
   const searchQueries = [];
   const fetchedIds = [];
   const fetchedDepths = []; // Record depth argument for each context_fetch
+  const toolCalls = [];
   // Per-REPLICATE search state. The handler closures are built once per arm,
   // so anything they remember would otherwise leak across runs and make a
   // replicate depend on the one before it.
   if (built.toolCtx !== undefined) {
     built.toolCtx._searchState = { seen: new Set(), calls: 0 };
     built.toolCtx._hitKeywordK = [];
+    built.toolCtx._fetchObservations = [];
   }
   /**
    * One record per model call, `TurnRecord`-shaped (`eval/src/types.ts`) plus
@@ -3905,7 +3945,9 @@ export async function runOneReplicate(scenario, built, question, model, provider
     }
     // Track depths for context_fetch calls in this turn
     const turnFetchedDepths = [];
+    let callIndex = 0;
     for (const call of result.toolCalls) {
+      callIndex += 1;
       if (call.name === CONTEXT_SEARCH && typeof call.input.query === 'string') searchQueries.push(call.input.query);
       if (call.name === CONTEXT_FETCH && typeof call.input.branch_id === 'string') {
         fetchedIds.push(call.input.branch_id);
@@ -3915,6 +3957,9 @@ export async function runOneReplicate(scenario, built, question, model, provider
         }
       }
       let outcome;
+      let exactHeadroom = null;
+      let heuristicHeadroom = null;
+      const observationStart = built.toolCtx?._fetchObservations?.length ?? 0;
       if (call.name === ANNOTATE) {
         annotateRefused += 1;
         outcome = FROZEN_ANNOTATE_REFUSAL;
@@ -3933,11 +3978,13 @@ export async function runOneReplicate(scenario, built, question, model, provider
             maxReplyTokens: budgets.maxReplyTokens,
           });
           built.toolCtx._liveHeadroom = live;
+          exactHeadroom = live;
           // The retriever counts in heuristic tokens; this budget is in the
           // tokenizer the provider bills. Same conversion the zone budgets use
           // (D19): a heuristic count H bills at ~H*ratio, so H may be as large
           // as live/ratio and still fit.
           built.toolCtx._liveHeadroomHeuristic = Math.floor(live / budgets.ratio);
+          heuristicHeadroom = built.toolCtx._liveHeadroomHeuristic;
         }
         // `built.handlers` defaults to the real MCP table; overridable so the
         // window-cap path can be driven with a synthetic oversized result.
@@ -3970,6 +4017,37 @@ export async function runOneReplicate(scenario, built, question, model, provider
         window: budgets.window,
         maxReplyTokens: budgets.maxReplyTokens,
       });
+      const fetchObservation = call.name === CONTEXT_FETCH
+        ? built.toolCtx?._fetchObservations?.slice(observationStart).at(-1) ?? null
+        : null;
+      const hitIds = call.name === CONTEXT_SEARCH && outcome.ok && Array.isArray(outcome.data?.hits)
+        ? outcome.data.hits.map((hit) => hit.node_id).filter((id) => typeof id === 'string')
+        : [];
+      toolCalls.push({
+        turn,
+        callIndex,
+        name: call.name,
+        input: call.input,
+        hitIds,
+        headroom: exactHeadroom,
+        exactHeadroom,
+        heuristicHeadroom,
+        searchQueryAtFetch: call.name === CONTEXT_FETCH ? searchQueries.at(-1) ?? '' : null,
+        branchId: call.name === CONTEXT_FETCH && typeof call.input.branch_id === 'string' ? call.input.branch_id : null,
+        narrowingStrategy: fetchObservation?.strategy ?? null,
+        centerSeq: fetchObservation?.centerSeq ?? null,
+        centeringTerms: fetchObservation?.terms ?? [],
+        centerScores: fetchObservation?.scores ?? [],
+        returnedSpans: fetchObservation?.returnedSpans ?? outcome.data?.spans ?? [],
+        beforeChars: text.length,
+        beforeTokens: capped.before,
+        beforeTokensExact: capped.beforeExact,
+        afterChars: capped.text.length,
+        afterTokens: capped.after,
+        droppedChars: capped.droppedChars,
+        droppedTokens: capped.truncated,
+        answerLiteralPresentAfterCap: answerLiterals.some((literal) => capped.text.includes(literal)),
+      });
       if (capped.droppedChars > 0) {
         resultsTruncated += 1;
         resultCharsTruncated += capped.droppedChars;
@@ -4000,6 +4078,9 @@ export async function runOneReplicate(scenario, built, question, model, provider
     searchQueries,
     fetchedIds,
     fetchedDepths, // Instrumentation: depth argument for each context_fetch call
+    toolCalls,
+    literalInToolResult: toolCalls.some((call) => call.answerLiteralPresentAfterCap),
+    zoneCTokens: budgets.zoneC ?? null,
     // Keywords attached per hit, per search call. All-zero means the mechanism
     // never fired and the arm ran as its own baseline.
     hitKeywordK: built.toolCtx?._hitKeywordK ?? [],
@@ -4036,10 +4117,27 @@ async function runArms(scenario, options) {
 
   const models = options.model === undefined ? [...MODELS] : [options.model];
   const arms = options.arm === undefined ? [...SCORED_ARMS] : options.arm.split(',').map((s) => s.trim());
+  for (const arm of arms) {
+    if (!ARM_IDS.includes(arm)) throw new Error(`unknown arm ${JSON.stringify(arm)} — known: ${ARM_IDS.join(', ')}`);
+  }
+  const requestedCenterMode = options.retrievalCenterFingerprintMode;
+  if (requestedCenterMode !== undefined && !['legacy', 'bare-filename'].includes(requestedCenterMode)) {
+    throw new Error('--retrieval-center-fingerprint-mode must be legacy or bare-filename');
+  }
+  if (requestedCenterMode !== undefined && arms.length !== 1) {
+    throw new Error('--retrieval-center-fingerprint-mode is a single-arm diagnostic; use tree-center-filename in paired batches');
+  }
+  if (requestedCenterMode === 'bare-filename' && arms[0] !== 'tree-center-filename') {
+    throw new Error('bare-filename mode requires --arm tree-center-filename');
+  }
+  if (requestedCenterMode === 'legacy' && arms[0] === 'tree-center-filename') {
+    throw new Error('tree-center-filename requires bare-filename mode');
+  }
   const reps = Number.parseInt(options.reps ?? String(REPS), 10);
   const meters = new Map();
 
   const questionsPath = join(scenario.artifacts, options.questionsFile ?? 'questions.json');
+  const questionSha = smoke ? sha256(SMOKE_QUESTION) : sha256File(questionsPath);
   let questions;
   if (smoke) {
     questions = [{ id: 'smoke', stratum: 'smoke', question: SMOKE_QUESTION, answer_literals: [], answer_regexes: [], node_id: null }];
@@ -4064,11 +4162,9 @@ async function runArms(scenario, options) {
     }
   }
 
-  const retriever = new TreeRetriever({ store: scenario.store, blobs: scenario.blobs, trace: scenario.trace });
-  const toolCtx = {
+  const toolCtxBase = {
     config: scenario.config,
     handle: { config: scenario.config, paths: scenario.paths, trace: scenario.trace, blobs: scenario.blobs, store: scenario.store, close() {} },
-    retriever,
   };
 
   // Step 4 is an EXPLICIT step, not a side effect of the first compact-rolling
@@ -4102,7 +4198,28 @@ async function runArms(scenario, options) {
   mkdirSync(out, { recursive: true });
   const replyTag = options.replyMode !== undefined ? `-reply-${options.replyMode}` : '';
   const questionsTag = options.questionsFile !== undefined ? `-${options.questionsFile.replace(/\.json$/, '')}` : '';
-  const name = `${smoke ? 'smoke' : 'run'}-W${window}-${arms.join('+')}${replyTag}${questionsTag}-${models.map((m) => m.replaceAll('/', '_')).join('+')}.json`;
+  const code = codeFingerprint();
+  const codeKey = sha256(JSON.stringify(code)).slice(0, 12);
+  const candidateKey = arms.includes('tree-center-filename')
+    ? 'retrieval-center-fingerprint-mode:bare-filename'
+    : null;
+  const identity = {
+    questionPath: questionsPath,
+    questionSha,
+    traceSha: manifest.trace?.sha256 ?? null,
+    storeSha: manifest.store?.node_dump_sha256 ?? null,
+    configSha: manifest.config?.sha256 ?? null,
+    rootSha: manifest.root_by_window?.[String(window)]?.tree?.rootSummarySha ?? null,
+    gitSha: code.git,
+    code,
+    codeKey,
+    effectiveConfig: scenario.config,
+    modelResolved: models,
+    invocation: { window, arms, reps, questionsFile: options.questionsFile ?? 'questions.json', stratum: options.stratum ?? null, replyMode: options.replyMode ?? null },
+    candidateKey,
+  };
+  const identityTag = `-q${questionSha.slice(0, 8)}-c${codeKey}-n${reps}`;
+  const name = `${smoke ? 'smoke' : 'run'}-W${window}-${arms.join('+')}${replyTag}${questionsTag}${identityTag}-${models.map((m) => m.replaceAll('/', '_')).join('+')}.json`;
 
   const rows = [];
   for (const model of models) {
@@ -4124,9 +4241,24 @@ async function runArms(scenario, options) {
       // `toolCtx` first so an arm that builds its OWN context (tree-semantic,
       // whose store copy carries L3) overrides it rather than being clobbered.
       const armResult = await buildArm(scenario, arm, armBudgets, artifacts);
+      let armToolCtx = armResult.toolCtx;
+      if (armToolCtx === undefined) {
+        let observedCtx;
+        const armRetriever = new TreeRetriever({
+          store: scenario.store,
+          blobs: scenario.blobs,
+          trace: scenario.trace,
+          rewrite: buildQueryRewriter(),
+          retrievalCenterFingerprintMode:
+            requestedCenterMode ?? (arm === 'tree-center-filename' ? 'bare-filename' : 'legacy'),
+          observeFetch: (observation) => observedCtx?._fetchObservations?.push(observation),
+        });
+        observedCtx = { ...toolCtxBase, retriever: armRetriever, _fetchObservations: [] };
+        armToolCtx = observedCtx;
+      }
       // Pass headroom to toolCtx so narrowing-aware fetch can size its band.
-      const armToolCtx = { ...toolCtx, _headroom: armResult.meta?.headroom ?? 20000 };
-      const built = { toolCtx: armToolCtx, ...armResult };
+      armToolCtx._headroom = armResult.meta?.headroom ?? 20000;
+      const built = { ...armResult, toolCtx: armToolCtx };
       const n = smoke ? SMOKE_N : questions[0]?.exploratory === true ? SPANNING_REPS : reps;
       // `naive-full` at small windows is a PRECONDITION (context-death evidence).
       // At windows large enough to hold the trace, run all questions and reps so
@@ -4148,7 +4280,16 @@ async function runArms(scenario, options) {
             let r;
             for (let attempt = 1; attempt <= 2; attempt += 1) {
               try {
-                r = await runOneReplicate(scenario, built, question.question, model, provider, armBudgets, replyMode);
+                r = await runOneReplicate(
+                  scenario,
+                  built,
+                  question.question,
+                  model,
+                  provider,
+                  armBudgets,
+                  replyMode,
+                  question.answer_literals,
+                );
                 break;
               } catch (error) {
                 // A malformed provider body is transient and costs the run;
@@ -4178,7 +4319,19 @@ async function runArms(scenario, options) {
               smoke || question.answer_literals.length === 0 || !gradable
                 ? { score: null, success: null }
                 : gradeAnswer(r.finalText, question);
-            rows.push({ scenario: scenario.id, model, arm, window, question: question.id, stratum: question.stratum, rep, ...r, ...grade });
+            rows.push({
+              scenario: scenario.id,
+              model,
+              arm,
+              window,
+              question: question.id,
+              stratum: question.stratum,
+              rep,
+              candidateKey: arm === 'tree-center-filename' ? candidateKey : null,
+              retrievalCenterFingerprintMode: arm === 'tree-center-filename' ? 'bare-filename' : 'legacy',
+              ...r,
+              ...grade,
+            });
             console.log(
               `  ${arm}/${model}/${question.id}#${rep}: ${r.status} turns=${r.modelTurns} searched=${r.searched} fetched=${r.fetched} ` +
                 `score=${grade.score ?? '-'} tok=${r.usage.input + r.usage.output} req=${r.peakRequestTokens} ` +
@@ -4187,7 +4340,7 @@ async function runArms(scenario, options) {
             // Incremental write so progress is visible and a failing run can be killed early.
             writeFileSync(
               join(out, name),
-              `${JSON.stringify({ budgets, code: codeFingerprint(), answeringUsd: answeringSpend(meters), compactionBuildUsd, compactionSkippedChunks, compaction: artifacts.compaction?.build ?? null, rows, partial: true }, null, 2)}\n`,
+              `${JSON.stringify({ identity, budgets, code, answeringUsd: answeringSpend(meters), compactionBuildUsd, compactionSkippedChunks, compaction: artifacts.compaction?.build ?? null, rows, partial: true }, null, 2)}\n`,
             );
           } catch (error) {
             if (error instanceof CostCapExceededError) {
@@ -4234,7 +4387,7 @@ async function runArms(scenario, options) {
   const truncatedRuns = rows.filter((r) => (r.resultsTruncated ?? 0) > 0).length;
   writeFileSync(
     join(out, name),
-    `${JSON.stringify({ budgets, code: codeFingerprint(), answeringUsd: answeringSpend(meters), compactionBuildUsd, compactionSkippedChunks, compaction: artifacts.compaction?.build ?? null, rows, partial: false }, null, 2)}\n`,
+    `${JSON.stringify({ identity, budgets, code, answeringUsd: answeringSpend(meters), compactionBuildUsd, compactionSkippedChunks, compaction: artifacts.compaction?.build ?? null, rows, partial: false }, null, 2)}\n`,
   );
   console.log(
     `\nwrote ${join(out, name)}; answering spend ${[...meters]

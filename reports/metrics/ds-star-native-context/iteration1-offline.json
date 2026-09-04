@@ -1,0 +1,118 @@
+{
+  "gate": "NC2/NC3-bare-filename-centering",
+  "status": "PASS",
+  "scope": "conditional centring/delivery ceiling; known correct branch; pre-append-cap",
+  "input": "/Users/danielbyrne/GitHub/rpm/context-tree/eval/fixtures/transplant/s1/e1b289c32f40/results/run-W65536-tree-tail-v2-questions-deep-z-ai_glm-5.3-flash.json",
+  "questionPath": "/Users/danielbyrne/GitHub/rpm/context-tree/eval/fixtures/transplant/s1/e1b289c32f40/questions-deep.json",
+  "rows": 25,
+  "summary": [
+    {
+      "question": "s1-qo01-overflow",
+      "n": 5,
+      "legacyDelivered": 5,
+      "candidateDelivered": 5,
+      "mechanismFired": 0,
+      "candidateCenteredOnAnswer": 5,
+      "headroomBreaches": 0
+    },
+    {
+      "question": "s1-qo02-overflow",
+      "n": 5,
+      "legacyDelivered": 0,
+      "candidateDelivered": 0,
+      "mechanismFired": 0,
+      "candidateCenteredOnAnswer": 5,
+      "headroomBreaches": 0
+    },
+    {
+      "question": "s1-qo03-overflow",
+      "n": 5,
+      "legacyDelivered": 5,
+      "candidateDelivered": 5,
+      "mechanismFired": 0,
+      "candidateCenteredOnAnswer": 0,
+      "headroomBreaches": 0
+    },
+    {
+      "question": "s1-qo04-overflow",
+      "n": 5,
+      "legacyDelivered": 0,
+      "candidateDelivered": 5,
+      "mechanismFired": 5,
+      "candidateCenteredOnAnswer": 5,
+      "headroomBreaches": 0
+    },
+    {
+      "question": "s1-qo05-overflow",
+      "n": 5,
+      "legacyDelivered": 5,
+      "candidateDelivered": 5,
+      "mechanismFired": 0,
+      "candidateCenteredOnAnswer": 5,
+      "headroomBreaches": 0
+    }
+  ],
+  "sample": {
+    "question": "s1-qo04-overflow",
+    "rep": 1,
+    "answerSeq": 218,
+    "legacy": {
+      "query": "concatenate sw-1-jsonc.jsonl.bak agents-last-exam.jsonl single JSONL cat",
+      "exactHeadroom": 6609,
+      "heuristicHeadroom": 7767,
+      "centerSeq": 55,
+      "centeringTerms": [
+        {
+          "value": "JSONL",
+          "source": "legacy",
+          "weight": 1
+        }
+      ],
+      "spans": [
+        {
+          "start": 55,
+          "end": 80
+        }
+      ],
+      "renderedTokens": 7737,
+      "preCapDelivered": false,
+      "servedTokens": 6609,
+      "delivered": false,
+      "excerpt": null
+    },
+    "candidate": {
+      "query": "concatenate sw-1-jsonc.jsonl.bak agents-last-exam.jsonl single JSONL cat",
+      "exactHeadroom": 6609,
+      "heuristicHeadroom": 7767,
+      "centerSeq": 218,
+      "centeringTerms": [
+        {
+          "value": "sw-1-jsonc.jsonl.bak",
+          "source": "bare-filename",
+          "weight": 3
+        },
+        {
+          "value": "agents-last-exam.jsonl",
+          "source": "bare-filename",
+          "weight": 2
+        },
+        {
+          "value": "JSONL",
+          "source": "legacy",
+          "weight": 1
+        }
+      ],
+      "spans": [
+        {
+          "start": 200,
+          "end": 235
+        }
+      ],
+      "renderedTokens": 7707,
+      "preCapDelivered": true,
+      "servedTokens": 6609,
+      "delivered": true,
+      "excerpt": "id'], 'files:', len(row['files']), 'judge_files:', len(row['judge_files']))\\\\\\\"\\\",\\\"description\\\":\\\"Build two-task suite file and validate rows\\\"}\\n\\n[219] tool_result(call=218)\\n       2 /private/tmp/claude-501/-Users-danielbyrne-GitHub-rpm-c"
+    }
+  }
+}
