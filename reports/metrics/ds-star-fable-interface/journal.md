@@ -1,0 +1,223 @@
+# DS-STAR pass journal — Fable 5.1 retrieval interface vs context-tree
+
+Started 2026-09-04 08:53 CDT. Mode 1 (improvement loop). Router: main session. All roles on
+`claude-opus-4-6[1m]` via the Workflow tool (user directive 08:59; the Agent tool's `model`
+override cannot express that id, and a project agent type written mid-session is not loaded
+until restart — `.claude/agents/ds-star-role.md` exists for future sessions).
+
+## Iteration 0 — orientation (main loop, zero live tokens)
+
+- Leaked Claude Fable 5.1 system prompt (CL4R1T4S, fetched 08:54): 274,608 characters in the
+  markdown body, **60,903 cl100k tokens** (gpt-tokenizer `countTokens`, the harness's exact
+  tokenizer; 4.51 chars/token). The user's 270,000-character figure is confirmed. Anthropic's
+  own tokenizer is not available here; the cl100k count is the pad size the harness can use.
+- The `past_chats_tools` section and the three tool schemas are quoted verbatim in
+  `fable-5.1-past-chats-tools.md`. Interface facts: `conversation_search` default 5 hits, max
+  10, each a snippet with a `page_token`; `read_conversation` opens AT the hit, `max_turns`
+  default 20 / max 50, next/prev tokens; guidance: content-noun queries, open one or two chats
+  per question, read once, page only when the answer is visibly cut off.
+- These tools are claude.ai server-side. They are not callable from this repository and are
+  not open source; the ranking internals are unobservable. The interface (unit, k, hit
+  content, addressing, read sizing, guidance) is fully observable and is what this pass ports.
+- Prior pass (`ds-star-search-centering-and-payload-report.md`): at W=65,536 the tree's first
+  tool turn arrives near 62k tokens with ~7.9k headroom; a 20-hit search cost 6.1-7.3k of it.
+  Its proposed next experiment: naive-full + tree-search-coordinates at W ≥ 200,000.
+
+## Workflow run wf_3e5b3179-6c0 (analyze → plan → judge)
+
+Launched 09:03. Four analyzer lenses (a1 interface delta, a2 regime arithmetic, a3 prior-pass
+audit, a4 harness feasibility), three planners (published alternative, regime first, null
+hypothesis), one judge. Outputs land as sibling files in this directory.
+
+## Iteration 0b — probing Anthropic's tools live in claude.ai (09:14-09:35)
+
+Correction to the 09:08 statement: the tools ARE callable, in claude.ai web/desktop/mobile on
+paid plans (support article 11817273), not from Claude Code. Driven through the Claude-in-Chrome
+extension against the user's own account and one of the user's own chats (their suggestion;
+avoids the seeding question). Full log: `claude-ai-probe-answer-key.md`. Headline: 4/5 literal
+questions correct in one turn with one search and zero reads; 5 hits per search, 1-2 summaries +
+3-4 chunks of ~200-300 words each; the one miss was a summary-paraphrase answer to a literal the
+returned chunks did not cover; the second hop the model reaches for is a scoped re-search, not a
+page read. The internal API (`/api/organizations/...`) was blocked by the permission classifier,
+so per-hit structure is the model's self-report, not observed bytes.
+
+## Kill gate KG-1 — question-set validity per effective window (exact, main loop, 09:40)
+
+`truncationBoundarySeq` on the real L0/L2 with `deriveBudgets(W, 0.8509).K` (command in this
+entry's commit; A2's linear approximation was 31-87 seq high, direction conservative):
+
+| effective W | K (heur) | tail boundary seq | deep valid | overflow valid |
+|---|---|---|---|---|
+| 65,536 | 61,616 | 523 | 5/5 | 5/5 |
+| 98,304 | 92,424 | 376 | 5/5 | 2/5 |
+| 130,000 (= 200k host − 70k pad) | 122,224 | 271 | **5/5** | 1/5 |
+| 131,072 | 123,232 | 268 | 5/5 | 1/5 |
+| 163,840 | 154,040 | 244 | 4/5 (seq 264 decays) | 1/5 |
+| 200,000 | 188,037 | 108 | **1/5** | 0/5 |
+| 270,000 | 253,850 | 1 | 0/5 | 0/5 |
+
+Consequence: on the s1 trace, `questions-deep.json` is a valid overflow instrument only up to an
+effective window of about 150k. "W=200,000 with no pad" — the prior report's proposed next
+experiment — is NOT an overflow test on this trace (4 of 5 answers sit in truncate-tail's tail).
+The realistic-host cell is effective W = 130,000 (a 200k window carrying a 61-70k system
+prompt), where the deep set is fully valid and the first tool turn has ~18k tokens of headroom
+(A2 §2) instead of ~8-9k at W=65,536.
+
+## Iteration 1 — regime shift, preregistered 09:47 (before the batch started)
+
+All three planners (`plan-*.md`) put the same item first: no code change, effective window
+130,000, arms {truncate-tail, tree-tail-v2, tree-search-coordinates}, `questions-deep.json`,
+n=5, `z-ai/glm-5.3-flash`. Kill gates: KG-1 validity 5/5 (exact, above); KG-2 headroom at
+first tool turn ≈ 18.3k > 1.4k search + a 6k fetch band (A2 §2); KG-3 not a dead cell.
+
+Command:
+`node eval/scripts/transplant.mjs --phase run --scenario s1 --window 130000 --arm truncate-tail,tree-tail-v2,tree-search-coordinates --questions-file questions-deep.json --reps 5 --model z-ai/glm-5.3-flash`
+
+Pre-registered, all on the deep stratum (the only stratum; nothing exploratory):
+- Precondition: truncate-tail = 0/25 (the set is still overflow at this window; if it scores,
+  the instrument decayed and the cell is void).
+- H1 starvation: tree-tail-v2 at 130k ≥ 5/25 (its 65k score is 1/25; +4 is the threshold the
+  prior pass used). Below that, headroom was not the binding constraint.
+- H2 compact search: tree-search-coordinates − tree-tail-v2 ≥ +4/25 in this same batch. Else
+  the compact list is bucket-inert at this headroom (report as such, not as a loss).
+- Mechanism fields to read before any verdict: per-row `toolCalls[].afterChars > 0` rate,
+  `answerLiteralPresentAfterCap`, `resultTokensTruncated`, median turns, input tokens; then
+  `provenance-audit.mjs` on the result file.
+- Escalation: if H1 or H2 lands within ±2 of its threshold, raise n to 10 for all three arms
+  once; no further escalation.
+
+**Amendment 09:52, before any row ran:** the harness rejects windows off the manifest ladder
+(`--window must be one of 16384 … 1000000`, transplant.mjs:4159), and `root_by_window` only
+carries folds for ladder windows. Cell moved from 130,000 to **131,072** (deep 5/5 valid, boundary
+268; models a 200k host with a 69k system prompt). Thresholds unchanged. Command:
+`node eval/scripts/transplant.mjs --phase run --scenario s1 --window 131072 --arm truncate-tail,tree-tail-v2,tree-search-coordinates --questions-file questions-deep.json --reps 5 --model z-ai/glm-5.3-flash`
+
+## Iteration 1 — result (batch finished 10:22; $0.458; 75 rows; file
+`results/run-W131072-truncate-tail+tree-tail-v2+tree-search-coordinates-questions-deep-q9ebc3150-cbb15b5961243-n5-z-ai_glm-5.3-flash.json`, code 4f141fe)
+
+| arm | exact match | completed / model_call_error / stalled / turn_cap | per question (qo01..qo05) | median turns | median input tok |
+|---|---|---|---|---|---|
+| truncate-tail | **0/25** | 22 / 0 / 0 / 3 | 0,0,0,0,0 | 1 | 4,188 |
+| tree-tail-v2 | **5/25** (was 1/25 at 65k) | 19 / 6 / 0 / 0 | 0,0,**5**,0,0 | 3 | 31,508 |
+| tree-search-coordinates | **5/25** (first live rows ever) | 18 / 5 / 2 / 0 | 1,0,0,**4**,0 | 3 | 23,430 |
+
+Provenance audit: 10/10 successes earned, 0 needing no retrieval. Precondition holds (tail 0/25).
+H1 (starvation) met exactly at threshold: 5/25 ≥ 5/25. H2 (compact search vs tail-v2) = +0 on the
+headline — but the composition differs completely, and the arm carries TWO variables against
+tail-v2 (compact hit list AND bare-filename centering), so H2 is unattributable as run.
+
+Mechanisms read from `toolCalls[]`:
+- **qo04 (57.9k-char branch): centering, enabled by headroom.** tail-v2 centred at seq 55/93/115
+  (legacy extractor) and the literal was absent after the cap in every fetch; coordinates centred
+  at **218** in 4/4 fetches, delivered ~49.7k chars (band ≈ 12k tokens), literal present, 4/5
+  scored. At 65k the same centring delivered nothing (prior pass). Attribution: centring × headroom.
+- **qo03 (rank 7): display regression.** Full-surface hits → correct branch fetched FIRST 5/5.
+  Compact coordinates (no `meta.files/symbols`) → a distractor fetched first 5/5; the correct
+  branch was reached only after the headroom was spent (later fetches 0 chars). Stripping the
+  metadata made the rank-7 hit illegible. This is `search-hit-display-not-ranking` in reverse.
+- **qo05: instrument defect — distractor decay.** 9/10 tree rows never called a tool and answered
+  "Build, test, and check suite status" from seq 329, a near-duplicate pnpm-build-then-vitest
+  command that sits INSIDE the tail at this window (boundary 268) but outside it at 65k (523).
+  The literal-uniqueness gate checks the answer string, not the question's referent. New hazard.
+- **qo02: wrong branch** (2 completed rows fetched a distractor, 34k/27k chars delivered).
+- **qo01: mostly provider failure**; one coordinates row fetched correctly and scored.
+- **Provider hazard:** 11/50 tree rows `model_call_error` ("openrouter returned no content and no
+  tool calls, finish_reason=stop, completion_tokens≈3") at ~105-125k-token prompts on GLM 5.3
+  Flash, all on qo01/qo02. Unconditional scores keep them in the denominator; conditional on
+  completed: tail-v2 5/19, coordinates 5/18.
+
+Route: split verdict → **ablation** (10:31): `tree-center-filename` at W=131,072, n=5, same code
+epoch (full-surface hits + bare-filename centring). Isolates display against coordinates and
+centring against tail-v2. Pre-registered: if center-filename ≥ 8/25 with qo03 ≥ 4/5 and qo04 ≥
+3/5, the compact display is refuted for selection and centring is confirmed as the qo04 mechanism.
+
+## Iteration 3 — candidate built and gated (10:55), preregistered before its batch
+
+Candidate `tree-snippet-hits` (eval/scripts/transplant.mjs: `snippetHitsFor`, `excerptAround`,
+`SNIPPET_HIT_COUNT = 5`, `SNIPPET_CHARS = 1000`; handler branch in `handlersForArm`; tool
+description addendum in `toolSchemasForArm`; telemetry `excerptChars`, `excerptHits`,
+`answerLiteralInExcerpts`). ONE variable against `tree-center-filename`: the search UNIT. The
+ranker still ranks the same 20 branches; the model is shown the 5 best-matching EVENTS across
+them (scored by the retriever's own `findRelevantCenter`), each with its `seq` and a 1,000-char
+excerpt of its own text. Both constants are taken from the observed claude.ai interface
+(5 hits; ~200-360-word chunks), per algorithm.md rule 3, and are unvalidated on this host.
+
+Kill gate `eval/scripts/snippet-hits-killgate.mjs` (zero live tokens; replays the 56 distinct
+queries the model issued in the iteration-1 cell): NS1 excerpt survives the strip — PASS on 56/56;
+NS2 payload < ¼ of the 18.3k headroom — PASS (median 1,693 tokens, max 1,926); NS3 mechanism fires
+on every query — PASS. Report-only: **answer literal inside an excerpt on 48/56 queries; answer
+branch visible 49/56; answer EVENT visible 53/56.** qo02's literal (`timeCapMs`) is in none of its
+excerpts (event visible at rank 2, literal outside the 1,000-char window); qo05's top hit is seq
+193 with the exact description. Sample excerpts printed by the gate.
+
+Batch (after iteration 2 finishes, so the provider is not hit by two batches):
+`node eval/scripts/transplant.mjs --phase run --scenario s1 --window 131072 --arm tree-center-filename,tree-snippet-hits --questions-file questions-deep.json --reps 5 --model z-ai/glm-5.3-flash`
+`tree-center-filename` re-runs in the same batch because the code fingerprint changed (new epoch).
+Pre-registered: primary — snippet-hits − center-filename ≥ +4/25 exact match. Mechanism —
+`answerLiteralInExcerpts` true on the first search for the questions the gate predicts (qo01, qo03,
+qo04, qo05), fewer median turns and fewer fetches than center-filename. Exploratory — qo05 (the
+never-searched defect is upstream of search; a snippet cannot help a run that never searches) and
+qo02 (literal not in excerpts offline). Escalation: if within ±2 of threshold, raise n to 10 for
+both arms once.
+- 11:00 iteration-3 batch launched concurrently with the still-running iteration-2 batch (both single-request sequential loops; separate result files by code fingerprint).
+
+**Provider-failure signature (11:05).** Every `model_call_error` in iterations 1-3 so far reads
+`finish_reason=stop, completion_tokens=N, reasoning_tokens=R` with N − R ≈ 40-60 tokens, empty
+`content`, no `tool_calls` (`packages/core/src/models/openrouter.ts:187`). Not a budget cut
+(finish_reason is `stop`, no maxTokens set). GLM 5.3 Flash appears to emit a tool call that
+OpenRouter does not surface in `tool_calls` at 105-125k-token prompts; the raw body is not logged
+so this cannot be confirmed. Harness open item, deliberately NOT fixed mid-pass (it would shift the
+epoch): retry once on this signature and persist the raw choice for diagnosis. Rows stay in the
+denominator; completed-conditional scores are reported alongside.
+
+## Iteration 2 — ablation result (batch finished 10:55; $0.211; 25 rows; file
+`results/run-W131072-tree-center-filename-questions-deep-q9ebc3150-cbb15b5961243-n5-z-ai_glm-5.3-flash.json`, code 4f141fe — same epoch as iteration 1)
+
+| arm (W=131,072, deep, n=5) | raw | after provenance audit | qo01 qo02 qo03 qo04 qo05 | completed / provider error | median turns | median input |
+|---|---|---|---|---|---|---|
+| tree-tail-v2 (iter 1) | 5/25 | 5/25 | 0 0 5 0 0 | 19 / 6 | 3 | 31,508 |
+| tree-search-coordinates (iter 1) | 5/25 | 5/25 | 1 0 0 4 0 | 18 / 5 (+2 stalled) | 3 | 23,430 |
+| **tree-center-filename** | 9/25 | **8/25** | 0 1→0 5 3 0 | 21 / 4 | 3 | 26,835 |
+
+Nulled: qo02 rep 5 scored `timeCapMs` with no fetch carrying the literal (first fetch wrong
+branch, 11,122 chars; later fetches 757 and 0 chars) — a guess, not a retrieval; the audit's
+"earned" rule removed it. Pre-registered criterion (≥ 8/25 with qo03 ≥ 4/5 and qo04 ≥ 3/5): **met,
+at the threshold**.
+
+Attribution now closes: full-surface hits + bare-filename centring holds qo03 (5/5, first fetch
+correct 5/5, 10,515 chars, no cut) AND takes qo04 (3/5; the two misses were one run whose query
+centred at 55 and one that centred at 218 but had spent its headroom on a second search — 8,688
+chars arrived, literal cut). The compact coordinate list cost qo03 outright (iteration 1) and is
+**retired as the default display** for the shipped arm; the bare-filename centring is confirmed
+and stays. qo05 remains 0/5 with 0 tool calls in 5/5 runs (distractor decay, instrument).
+qo01: correct branch fetched in one run but every fetch returned ≤149 chars before the cap —
+the branch's rendered events are tiny (tool_result excerpts) and the model kept re-searching;
+open. Provider failures 4/25.
+
+## Iteration 3 — result (batch finished 11:06; $0.299; 50 rows; file
+`results/run-W131072-tree-center-filename+tree-snippet-hits-questions-deep-q9ebc3150-cd956c49f5ef4-n5-z-ai_glm-5.3-flash.json`, code 4f141fe + uncommitted harness edit → new codeKey cd956c49f5ef4)
+
+| arm (W=131,072, deep, n=5, same batch) | earned | qo01 qo02 qo03 qo04 qo05 | completed / provider error / stalled | median turns | median input tok | total input tok | mean fetches | mean searches |
+|---|---|---|---|---|---|---|---|---|
+| tree-center-filename (baseline, rerun) | **6/25** | 0 0 5 1 0 | 19 / 4 / 2 | 3 | 24,596 | 698,680 | 1.42 | 1.63 |
+| **tree-snippet-hits** | **15/25** | **5** 0 **5** **5** 0 | 21 / 4 / 0 | **2** | **10,214** | **318,449** | **0.05** | 1.14 |
+
+Pre-registered primary (≥ +4/25): **+9, met.** Mechanism: `answerLiteralInExcerpts` true on the
+first search in 12/15 scoring runs and on a second search in the other 3 (qo04 reps 1, 3, 4, whose
+first query matched no event); **all 15 successes were answered with zero fetches** — the hit list
+was the payload. Turns 2 vs 3; fetches 0.05 vs 1.42 per run; input tokens −54%. qo02 0/5 (4 provider
+errors; the one completed run's excerpts lacked `timeCapMs`, as the offline gate predicted). qo05
+0/5 with 0 tool calls in 5/5 runs (instrument, unchanged). Baseline variance: center-filename fell
+from 8/25 (iteration 2) to 6/25 here (qo04 3/5 → 1/5, two stalls), same code path; n=5 noise on a
+question whose delivery sits at the cap edge.
+
+**Instrument fix, made and re-run before believing the number (11:12):** `provenance-audit.mjs`
+only credited literals served by the prompt or by a FETCHED branch, so it marked all 15 as
+"unverifiable". Added `earned-search` — the literal present in an appended, capped search result,
+read from the recorded `answerLiteralPresentAfterCap` on `context_search` calls (recorded, not
+reconstructed). Re-audit: snippet-hits 15/25 → 15/25, 0 unverifiable; no other arm's number moved;
+corpus total 245 → 239 (6 unearned, none in this arm).
+
+Route: clean win on its bucket (delivery via the hit) and on the headline; the pass's three
+iterations are spent. Stop, report. Promotion to the library default is a decision for the
+checkpoint, not the loop; the arm is harness-only (`transplant.mjs`) and `packages/` is unchanged.

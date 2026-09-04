@@ -9,6 +9,9 @@ first corrected within-branch centering for bare filenames. The second removed r
 oversized search-result data while preserving the full ranking. Neither change has been
 promoted to production behavior.
 
+All five tree-arm successes in the completed cell occurred on qo03, whose 813-token answer branch
+fits through the residual headroom; the other four questions scored 0 across all 50 tree runs.
+
 The completed live cell showed that search ranking and centering can be correct while the
 fetch still delivers zero bytes: a 20-hit search response consumed 77--92% of the space
 available for tool results. The compact-search candidate reduces representative responses
@@ -25,7 +28,7 @@ and the improved tree at W=200,000 or higher.
 This was a DS-STAR Mode 1 pass on the frozen `s1` deep-overflow fixture using
 `z-ai/glm-5.3-flash`. Fresh analysis, planning, judging and verification roles separated
 measurement from implementation. Candidate behavior and win thresholds were preregistered;
-stalls and provider errors remained in the unconditional denominator.
+stalls and model_call_errors remained in the unconditional denominator.
 
 The pass followed two failure buckets:
 
@@ -44,7 +47,7 @@ centering. Branch ranking remains byte-identical.
 Offline replay moved qo04 delivery from 0/5 to 5/5. The completed live cell was collision
 proof and contained 75 scheduled rows with `partial:false`:
 
-| arm | unconditional exact match | completed | stalled | provider error | delivered literals |
+| arm | unconditional exact match | completed | stalled | model_call_error | delivered literals |
 |---|---:|---:|---:|---:|---:|
 | `truncate-tail` | 0/25 | 25 | 0 | 0 | 0 |
 | `tree-tail-v2` | 1/25 | 21 | 3 | 1 | 1 |
@@ -53,7 +56,8 @@ proof and contained 75 scheduled rows with `partial:false`:
 The +3/25 improvement missed the preregistered +4 threshold, and qo04 remained 0/5. All
 four candidate successes occurred on qo03, where the centering change did not fire. The
 candidate therefore did not win and was not escalated. The provenance audit left all four
-successes earned.
+successes earned. The three `tree-tail-v2` stalls (all qo03) are documented in
+`reports/metrics/ds-star-native-context/analyzer-iteration2-telemetry.md`.
 
 Completed result:
 
@@ -108,7 +112,8 @@ is retained for audit with `partial:true`:
 - 27/75 scheduled rows were written;
 - `truncate-tail`: 25 rows, 0 successes;
 - `tree-center-filename`: 2 rows, 0 successes;
-- `tree-search-coordinates`: 0 rows;
+- `tree-search-coordinates`: 0 rows — the partial cell therefore contains no evidence at all for the
+  candidate arm (25 truncate-tail + 2 tree-center-filename rows only);
 - recorded spend: $0.05677.
 
 It is invalid for comparing arms and contributes no efficacy evidence.
@@ -125,7 +130,9 @@ retrieval traffic. The raw-tail proxy's 0/25 result is therefore a constrained-w
 result, not a fair full-native verdict.
 
 Historical `naive-full` at W=200,000 scored 25/25, but it is not a same-epoch control for
-these changes. Superiority to native context remains unproven until both systems run in one
+these changes. It also ran above budget: the 196,385-token transcript plus system text and reply
+exceeds 200,000, and the score depends on the provider having accepted the overrun
+(`peakRequestTokens` 196,575-196,804, `usage.input` 200,759). Superiority to native context remains unproven until both systems run in one
 floor-safe, equal-n batch.
 
 ## 7 Code and verification state
@@ -163,3 +170,5 @@ n. Include `tree-center-filename` only if attribution to compact search is still
 Pre-register both an absolute performance floor and superiority to same-epoch native, and
 report literal delivery separately from exact-match answering. Repeat on a second scenario
 before making a general claim.
+
+*Corrected 2026-09-04 by the Fable-interface pass after an adversarial re-derivation of every figure above (`reports/metrics/ds-star-fable-interface/analyzer-a3-prior-audit.md`): status label, success concentration, stall cross-reference, partial-cell row count, and the naive-full budget note. All numeric claims reproduced.*

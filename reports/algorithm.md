@@ -109,6 +109,9 @@ retrieve on demand
     grep raw events for the query's literals; a grep hit REORDERS a branch the
       lexical pass already found — it cannot introduce one (see note)
     when regex finds nothing distinctive, a cheap LLM rewrites the query (optional fallback)
+    MEASURED, NOT YET DEFAULT [harness arm `tree-snippet-hits`, see note]: keep the branch
+      ranking, but return the k best-matching EVENTS across the ranked branches, each with
+      its seq and an excerpt of its own text — a hit is a payload; fetch only when it is not
   fetch: raw events narrowed ONCE, by the caller that knows where the answer sits
     centers on the query's matching events; band grown outward under a real
     token count until the next event would not fit the live headroom
@@ -132,6 +135,13 @@ and because a host that omits it will silently re-cut its own narrowed payloads.
 routing is **not shipped either** — facet indexes exist only as offline gates, and the
 `tree-route` arm is specified and unbuilt; it lives under Candidates, not here.
 
+*The event-snippet search is harness-only.* `snippetHitsFor` / `excerptAround` live in
+`eval/scripts/transplant.mjs`; `packages/mcp`'s `context_search` still returns branch coordinates.
+Measured 2026-09-04 at W=131,072 on GLM 5.3 Flash, n=5, one store: 15/25 against 6/25 for the
+same stack with coordinate hits, in one batch, every success answered with zero fetches, −54%
+input tokens (`ds-star-fable-interface-report.md` §7). Promotion to the library default is the
+first open item of that report; it is not done, so Tier 1 above still describes what ships.
+
 *The grep merge is not RRF.* `mergeWithGrep` adds `count / maxGrepScore / (RRF_K + 1)` to
 nodes the lexical pass already returned and skips any node it did not
 (`retriever.ts:653-670`). So the grep pass is a re-ranker over the lexical candidate set, not
@@ -152,7 +162,9 @@ found in code and missing here as a defect in this table, not a licence.
 | zone fractions (A .10, B .20, C .20, reply .05, slack .10, lazy .35) | **unvalidated** as values; **derived** from W in one place. The sweep that would rank them measures its own lower bound, so rule 4 is owed here and unpaid | measurement — rule 4, unpaid |
 | heuristic-to-tokenizer ratio | **derived** (0.851 on this corpus) | measured per corpus, refuses above 1.6 |
 | root keep (fold level) | **derived** in portability harness; **unvalidated** constant in live | largest rung whose Zone B fits |
-| search result limit | **unvalidated**, and there are TWO defaults: config `limit: 20`, retriever `DEFAULT_LIMIT = 8` | W and per-hit payload size |
+| search result limit | **unvalidated**, and there are TWO defaults: config `limit: 20`, retriever `DEFAULT_LIMIT = 8`. Measured 2026-09-04: the all-rank COMPACT list (coordinates only) is **retired as a display** — it freed ~5k tokens per search and cost the one question the model could otherwise select (qo03 5/5 → 0/5 at W=131,072) | W and per-hit payload size |
+| snippet hit count (`SNIPPET_HIT_COUNT`) | **host** (5, *harness*) — taken from the published claude.ai interface (default 5, max 10), per rule 3; unvalidated here (never swept) | the published interface; should derive from headroom ÷ excerpt cost |
+| snippet excerpt size (`SNIPPET_CHARS`) | **host** (1,000 chars, *harness*) — the observed ~200-360-word chunk of the published interface; unvalidated here. Known miss: a literal outside the window (qo02) | the published interface; should derive from the event's matched span |
 | grep re-rank constant | **unvalidated** (60). Named `RRF_K`, but the pass is a re-ranker over the lexical candidate set, not a fusion, so the RRF literature does not justify it | never swept on any store |
 | query fingerprint minimum length | **unvalidated**, and it is three literals not one: `add()` enforces 3, `QUOTED_Q` hardcodes `{3,}`, `UPPER_SNAKE_Q` is effectively 4 | below it a token matches everything |
 | fetch narrowing budget | **derived** on the primary path (live headroom at the moment of append, per call). TWO `?? 20000` fallbacks survive and are still defects — the halved one that computes the budget, and the one that feeds it | the request as it stands that turn — rule 5 |
@@ -165,6 +177,7 @@ found in code and missing here as a defect in this table, not a licence.
 | keyword minimum token length | **unvalidated** (3, *harness*) — restored on the same grounds | below it a token matches everything |
 | edit-argument cap | **derived on one store** (512 bytes when post-state exists); cross-host unvalidated | both alternatives measured |
 | reply allowance | **derived** (`window − prompt`, per turn) | arithmetic, untested live |
+| window below the host's own system prompt | **boundary** — a 60,903-token production system prompt (Fable 5.1, measured) makes W ≤ 65,536 a cell no real host occupies; the eval's small windows were starving the model, not measuring the algorithm | the host's prompt size, measured, subtracted from W |
 | reply headroom | **derived** when the host reports a max or one is measured; the fallback is `ZONE_FRACTIONS.reply` = 0.05, which the code's own comment calls "a guess in exactly the way rule 2 forbids" — so **unvalidated** whenever the fallback fires | the model — rule 3 |
 | tool-to-phase map | **host**. The library default `DEFAULT_TOOL_PHASE` has **20** entries; the 8 is this repository's own override. Unknown → "other" | the harness |
 | contract version | **host** (v1 default, v2/v3 registered) | the model |
@@ -201,8 +214,10 @@ measurement, would be worth more than another boundary condition.
 | Trace with 0 or 1 branches | Fold and assembly no-op — tested |
 | Summaries don't contain the answer | Confirmed (0/12 answer literals in any summary); raw fetch is for this |
 | No embedder | Beam search fallback — tested |
-| Search ranks wrong branch | Fingerprints + grep raised offline top-3 sharply, but the rate is set-dependent (10/12, 3/5, 5/5 on the three sets) and the live score did not move. Not "fixed". |
-| Tail covers the answerable content (W ≥ answer depth) | **Found 2026-09-03.** The tree adds no value when the raw tail already contains the answer — tool-use overhead (15-20K tokens per question) is a net loss. The tree earns its keep only in the overflow regime: sessions where the trace exceeds the window and answers lie outside the tail. |
+| Search ranks wrong branch | Fingerprints + grep raised offline top-3 sharply, but the rate is set-dependent (10/12, 3/5, 5/5 on the three sets) and the live score did not move. Not "fixed". Ranking was never the deep set's constraint: with the same ranks, selection went 5/5 → 0/5 on a display change alone (see "label vs payload"). |
+| Tail covers the answerable content (W ≥ answer depth) | **Found 2026-09-03.** The tree adds no value when the raw tail already contains the answer — tool-use overhead (15-20K tokens per question) is a net loss. The tree earns its keep only in the overflow regime: sessions where the trace exceeds the window and answers lie outside the tail. Measured 2026-09-04 on this store: the deep set is overflow up to an effective W ≈ 150k (5/5 at 131,072; 1/5 at 200,000; 0/5 at 270,000). |
+| Headroom at the first tool turn | ~8-9k tokens at W=65,536 versus ~18k at W=131,072 (A2). At the smaller figure a 20-hit full-surface search list (6-7k) leaves nothing for a fetch; at the larger one two such searches still exhaust it (qo01, iteration 2). The list's cost, not the window, is what binds. |
+| A search hit as a label vs as a payload | **Measured both ways 2026-09-04 at W=131,072.** Full-surface hits select the rank-7 branch first 5/5 and spend ~6.5k tokens per search; compact coordinates spend ~1.3k and select a distractor 5/5; event excerpts (~1.7k, content included) answered 15/25 with zero fetches. The unit the model is shown decides selection AND delivery. |
 | Overflow regime, ranking made perfect | Recovers most of the loss on one question set and under half on another. Set-dependent; no single figure ports. |
 | A branch larger than W | Fetch returns a band, not the branch. Whether the band holds the answer depends on the query, not the rank — a branch can be ranked first, fetched, and still deliver nothing. Gate: `delivery-killgate.mjs`. |
 | Perfect selection, large headroom | Fewer hits leave more headroom, so the fetch requests a wider band, overruns, and the append cap re-cuts it. Truncation is anti-correlated with hit-list size. |
@@ -219,7 +234,10 @@ them; a DS-STAR pass cannot. Full analysis lives in the reports.
 
 | Hazard | State |
 |---|---|
-| An overflow question set at a wider W than it was cut for | Invalid above W₁. The truncation boundary is non-increasing in W, so answers fall into the tail. Re-cut per claim window. |
+| An overflow question set at a wider W than it was cut for | Invalid above W₁. The truncation boundary is non-increasing in W, so answers fall into the tail. Re-cut per claim window. Exact boundaries for this store: seq 523 / 268 / 108 / 1 at W = 65,536 / 131,072 / 200,000 / 270,000. |
+| Distractor decay | **Found 2026-09-04.** A question whose REFERENT is not unique (qo05: "the bash command that ran pnpm build then vitest") acquires a competing answer inside the tail as W widens (seq 329 enters the tail at 131,072); the model answers it in 1 turn without searching, 14/15 tree runs across three arms. The literal-uniqueness gate checks the answer string, not the referent. Gate the referent per claim window. |
+| A provenance audit that knows only some payload channels | A new arm that delivers the literal through a channel the audit does not read (search excerpts) is scored `unverifiable` en bloc — 15/15 here — and looks like fabrication. Extend the audit before reading the number; use recorded per-call fields, never reconstruction. |
+| A provider that ends a turn with reasoning and no message | 11/50, 4/25, 4/25 rows across three batches on GLM 5.3 Flash at 105-125k-token prompts: `finish_reason=stop`, reasoning tokens spent, empty content, no tool call. Kept in the denominator; report completed-conditional alongside. Unfixed (a retry would shift the epoch). |
 | Exact-match grading against a fluent model | Gameable — fabricated citations, answer strings inside refusals. Audit provenance before quoting a score. |
 | A ranker measured on the question text | Not the query the model sends. Measure the rank under the model's own query. |
 | A stratum's claimed invariant, read from its comment | Not an invariant. Re-test the property at every parameter value it is used at. |
@@ -284,7 +302,16 @@ so the negative result is not rebuilt).
   Landed in code; live-verified 2026-09-03 and the live score did not move.
 - **Raw by default**: fetch returns raw events, not summaries. None of 12
   answer literals is in any summary.
-- **Search hits as coordinates**: payload 9,673 → 4,898 tokens.
+- **Search hits as coordinates**: payload 9,673 → 4,898 tokens. **Retired as a display
+  2026-09-04**: at W=131,072 the all-rank compact list scored 5/25 against 8/25 for full-surface
+  hits with the same centring, losing qo03 5/5 → 0/5 by selecting a distractor first 5/5.
+- **Bare-filename centring** (`retrievalCenterFingerprintMode: 'bare-filename'`): confirmed live
+  2026-09-04 at W=131,072 — qo04 0/5 → 3-5/5 across three arms, band centred at seq 218 in 12/12
+  scoring fetches; the prior pass could not credit it because its bands were capped away at 65k.
+- **Event-snippet hits** (`tree-snippet-hits`, the published-alternative port): **15/25 vs 6/25**
+  in one batch (n=5, GLM 5.3 Flash, W=131,072, deep set), 15/15 successes with zero fetches,
+  median 2 turns, −54% input tokens. Measured, not default; library port pending. Two host
+  constants (5 hits, 1,000 chars) from the published interface, unvalidated here.
 - **Contract v3**: one rule replaced, one removed.
 - **One budget derivation**: delete the live suite's absolute switch point.
 - **Delete Zone C fallback chain**: first branch never fires.
@@ -311,8 +338,20 @@ so the negative result is not rebuilt).
 | 2026-09-02 | Character estimate → model's reported count; latch added; frequency cache rule → formula; monotone curve closes the allocation question; edit-argument cap shared from one constant; zone budgets derived from window in one place; reply allowance per turn; turn/wall-clock ceilings removed |
 | 2026-09-03 | Fingerprint extraction + hybrid grep in search; algorithm pseudocode updated |
 | 2026-09-03 pm | Two cuts in the fetch path collapsed to one; a chars-vs-tokens magic number (×0.85) replaced by an injected tokenizer; the halved build-time narrowing budget replaced by the live per-call headroom |
+| 2026-09-04 | Compact coordinate display retired; the search UNIT changed from branch to event in the measured arm, which removes the second stage for most questions (fetches 1.42 → 0.05 per run) — one stanza does the work two did |
 
 ## Change log
+
+- **2026-09-04 11:20** — Fable-interface pass (3 iterations, `ds-star-fable-interface-report.md`).
+  **No change under `packages/`;** the measured arm is harness-only. Regime: the production Fable 5.1
+  system prompt is 60,903 tokens, so W ≤ 65,536 was a starvation cell; the valid cell on this store
+  is W=131,072, where truncate-tail stays 0/25 and the shipped stack goes 1/25 → 5/25. Ablation:
+  bare-filename centring confirmed (qo04), compact coordinate display retired (qo03). Published
+  alternative ported as event-snippet hits: 15/25 vs 6/25 same batch, zero fetches, −54% tokens.
+  Tier 1 gains a MEASURED variant line; Tier 2 gains three rows (two host constants from the
+  published interface, one boundary); boundary table +2 rows, hazards +4 rows (distractor decay,
+  audit channel blindness, provider empty turns, exact boundaries). Provenance audit extended with
+  `earned-search`. Prior report corrected in five places.
 
 - **2026-09-03 21:10** — Delivery pass (3 iterations). **No algorithm change: `git diff`
   over `packages/` for this entire pass is empty.** The candidate was refuted and nothing

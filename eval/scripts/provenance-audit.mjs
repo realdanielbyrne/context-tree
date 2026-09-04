@@ -200,8 +200,20 @@ async function main() {
         let delivered = null;
         if (row.score === 1) {
           const fetched = (row.fetchedIds ?? []).filter((id) => typeof id === 'string');
+          // `earned-search`: the literal was inside a SEARCH result as appended after the
+          // cap. `tree-snippet-hits` (DS-STAR Fable-interface pass) returns event excerpts
+          // in the hit list, so a run can be served the literal without ever fetching; the
+          // harness records `answerLiteralPresentAfterCap` per tool call, search calls
+          // included, so this is recorded, not reconstructed. Checked after `earned-prompt`
+          // so the no-retrieval count keeps its meaning.
+          const searchServed = (row.toolCalls ?? []).some(
+            (call) => call?.name === 'context_search' && call.answerLiteralPresentAfterCap === true,
+          );
           if (gradeAnswer(await promptText(row.arm, window), question).success) verdict = 'earned-prompt';
-          else if (fetched.some((id) => gradeAnswer(replay(id), question).success)) {
+          else if (searchServed) {
+            verdict = 'earned-search';
+            delivered = true;
+          } else if (fetched.some((id) => gradeAnswer(replay(id), question).success)) {
             verdict = 'earned-fetch';
             const bands = fetched.map((id) => deliveredText(id, row, payload.budgets)).filter((t) => t !== null);
             delivered = bands.length === 0 ? null : bands.some((text) => gradeAnswer(text, question).success);
@@ -285,6 +297,7 @@ async function main() {
       scoredBefore: rows.filter((r) => r.score === 1).length,
       scoredAfter: rows.filter((r) => r.auditedScore === 1).length,
       unearned: rows.filter((r) => r.verdict === 'unearned').length,
+      earnedSearch: rows.filter((r) => r.verdict === 'earned-search').length,
       unverifiable: rows.filter((r) => r.verdict === 'unverifiable').length,
       fetchedNotDelivered: rows.filter((r) => r.delivered === false).length,
       phantomRows: rows.filter((r) => r.phantomSeqs.length > 0).length,
@@ -292,7 +305,8 @@ async function main() {
     process.stdout.write(
       `\ntotal successes ${totals.scoredBefore} -> ${totals.scoredAfter} after audit ` +
         `(${totals.unearned} unearned, ${totals.unverifiable} unverifiable, ${totals.phantomRows} rows cite an absent seq)\n` +
-        `of the earned-fetch successes, ${totals.fetchedNotDelivered} scored on a branch whose SERVED band did not carry the literal\n`,
+        `of the earned-fetch successes, ${totals.fetchedNotDelivered} scored on a branch whose SERVED band did not carry the literal\n` +
+        `${totals.earnedSearch} successes were served the literal inside a search result (earned-search)\n`,
     );
 
     if (jsonOut !== null) {
