@@ -98,7 +98,7 @@ const FIXTURES = join(REPO, 'eval/fixtures/transplant');
 
 // ── the frozen constants of the experiment ───────────────────────────────
 /** Verbatim from the verdict's Step 3. `W` is reported as given, never rounded. */
-export const WINDOWS = Object.freeze([16_384, 32_768, 65_536, 200_000, 1_000_000]);
+export const WINDOWS = Object.freeze([16_384, 32_768, 65_536, 98_304, 131_072, 163_840, 200_000, 1_000_000]);
 /** Graft 3's portability sweep. 200k is the published 200,000-token class. */
 export const NESTING_WINDOWS = Object.freeze([8_192, 16_384, 32_768, 65_536, 200_000]);
 /** D19 fractions of W. They sum to 1.00; each is divided by the measured ratio. */
@@ -229,6 +229,26 @@ export const ARM_IDS = Object.freeze([
   // pointers, ~80% smaller). Tests episodic-index hypothesis: summaries as topic
   // markers, not content paraphrases. No tools.
   'tree-tail-headline',
+  // The ceiling probe. Identical to `tree-tail-v2` except `context_search`
+  // returns the question's OWN source branch as the top hit — retrieval made
+  // perfect by fiat. It answers the one question that decides whether ranking
+  // and truncation work is worth doing at all: given the right branch, handed
+  // over on the first call, does the model produce the right answer? A score
+  // here is the ceiling every real retrieval path is working toward; a zero
+  // here means the bottleneck is downstream of retrieval and no amount of
+  // search or narrowing work can pay off. NEVER a scored arm — it cheats by
+  // construction, and its number is a diagnostic, not a result.
+  'tree-oracle',
+  // The oracle showed ranking is the binding constraint: handed the right
+  // branch, the model answers at roughly the full-context rate; left to its own
+  // search it thrashes — reformulating a near-identical query and being handed
+  // back a near-identical list, five to eight turns of it. This arm changes ONE
+  // thing against `tree-tail-v2`: a repeated search inside one run returns the
+  // NEXT group of unseen candidates rather than the same group again, and the
+  // group grows to fill the live headroom when there is room for it. Rank is
+  // unchanged; what changes is that a second look costs the model new
+  // information instead of the same information.
+  'tree-escalate',
 ]);
 
 /** Arms whose MEAN enters the primary verdict. `naive-full` is a precondition. */
@@ -308,10 +328,20 @@ export function requestTokens({ system, messages, tools = [] }, tokenizer = exac
  * zone or a budget — a truncated result is visibly marked (core's elision), so
  * a model that lost detail can see that it did and search again.
  */
-export function capToolResult({ text, prefix, system, messages, tools, window, maxReplyTokens }, tokenizer = exact) {
+/**
+ * The headroom one appended tool result has, in the tokenizer the provider
+ * bills. Extracted so a handler can narrow to the SAME number this function
+ * would cut at: when the retriever's relevance-aware cut is sized by the real
+ * remaining space, `capToolResult` finds nothing left to take, and the double
+ * truncation — a relevance-centred band re-cut front-first — cannot happen.
+ */
+export function appendHeadroom({ prefix, system, messages, tools, window, maxReplyTokens }, tokenizer = exact) {
   const spent = requestTokens({ system, messages, tools }, tokenizer);
-  const headroom =
-    window - spent - maxReplyTokens - REQUEST_MARGIN_TOKENS - tokenizer.count(prefix) - MESSAGE_OVERHEAD_TOKENS;
+  return window - spent - maxReplyTokens - REQUEST_MARGIN_TOKENS - tokenizer.count(prefix) - MESSAGE_OVERHEAD_TOKENS;
+}
+
+export function capToolResult({ text, prefix, system, messages, tools, window, maxReplyTokens }, tokenizer = exact) {
+  const headroom = appendHeadroom({ prefix, system, messages, tools, window, maxReplyTokens }, tokenizer);
   if (headroom <= 0) {
     return { text: '', before: null, after: 0, truncated: null, beforeExact: false, droppedChars: text.length, headroom };
   }
@@ -440,6 +470,8 @@ export const TREE_ARMS = Object.freeze([
   'tree-tail-v2',
   'tree-tail-static',
   'tree-tail-headline',
+  'tree-oracle',
+  'tree-escalate',
 ]);
 
 export function ladderFor(arm) {
@@ -1341,7 +1373,16 @@ const TOOL_SCHEMAS_TEXT = JSON.stringify(CONTEXT_TOOL_SCHEMAS);
  * | `tree-verbatim`| Zone A policy text only (Step 4, Graft 1)     | legacy  | v3       |
  * | `tree-semantic`| search ranks by meaning, not lexical (Step 5) | legacy  | v1       |
  */
-const LEGACY_SURFACE_ARMS = new Set(['tree', 'tree-wide', 'tree-static', 'tree-verbatim', 'tree-semantic', 'tree-tail', 'tree-tail-v2', 'tree-tail-static', 'tree-tail-headline']);
+const LEGACY_SURFACE_ARMS = new Set(['tree', 'tree-wide', 'tree-static', 'tree-verbatim', 'tree-semantic', 'tree-tail', 'tree-tail-v2', 'tree-tail-static', 'tree-tail-headline', 'tree-oracle', 'tree-escalate']);
+/**
+ * The share of one turn's live headroom a search result may occupy. Search
+ * locates; fetch is what carries content, so a result list that eats the space
+ * the fetch needs defeats its own purpose. A quarter leaves the fetch three
+ * times what the list costs.
+ */
+const SEARCH_RESULT_HEADROOM_SHARE = 0.25;
+/** Arms whose fetch is a raw, narrowed L0 replay sized by the live headroom. */
+const RAW_NARROWED_FETCH_ARMS = new Set(['tree-tail-v2', 'tree-oracle', 'tree-escalate']);
 
 /** The pre-Step-3 hit shape (full `text`, full `meta`), off the SAME ranked hits `contextSearch` used. */
 async function legacySearchHits(ctx, input) {
@@ -1374,7 +1415,7 @@ async function legacySearchHits(ctx, input) {
  * to fit the window). Other arms keep the standard schemas.
  */
 function toolSchemasForArm(arm) {
-  if (arm === 'tree-tail-v2') {
+  if (RAW_NARROWED_FETCH_ARMS.has(arm)) {
     return CONTEXT_TOOL_SCHEMAS.map((tool) => {
       if (tool.name !== CONTEXT_FETCH) return tool;
       const params = { ...tool.inputSchema };
@@ -1413,22 +1454,84 @@ export function handlersForArm(arm) {
   if (!LEGACY_SURFACE_ARMS.has(arm)) return HANDLERS;
   // tree-tail-v2: raw fetch with semantic narrowing (not summary-only).
   // Track the last search query so fetch can use it to center the narrowing band.
-  if (arm === 'tree-tail-v2') {
+  if (RAW_NARROWED_FETCH_ARMS.has(arm)) {
     let lastSearchQuery = '';
     return {
       ...HANDLERS,
       [CONTEXT_SEARCH]: async (ctx, input) => {
         lastSearchQuery = input?.query ?? '';
-        return HANDLERS[CONTEXT_SEARCH](ctx, input);
+        // The oracle: hand back the question's own source branch, ranked first,
+        // and nothing else. `_oracleNodeIds` is set per question by the runner.
+        // Everything downstream — fetch, narrowing, the append cap, the
+        // contract — is byte-identical to `tree-tail-v2`, so the ONLY variable
+        // is whether ranking found the branch.
+        if (arm === 'tree-oracle') {
+          const ids = ctx._oracleNodeIds ?? [];
+          const hits = ids.flatMap((nodeId) => {
+            const node = ctx.handle.store.getNode(nodeId);
+            if (node === null || node === undefined) return [];
+            const summary = ctx.handle.store.currentSummary(nodeId);
+            return [{
+              node_id: nodeId,
+              kind: node.kind,
+              title: node.title,
+              phase_type: node.phase_type ?? null,
+              path: typeof node.meta_json?.path === 'string' ? node.meta_json.path : null,
+              summary_version: summary?.version ?? null,
+              score: 1,
+              meta: summary?.meta ?? null,
+            }];
+          });
+          return { ok: true, data: { query: input?.query, path: 'oracle', fallback: null, hits, candidates: [], provenance: [], unavailable: [] } };
+        }
+        if (arm !== 'tree-escalate') return HANDLERS[CONTEXT_SEARCH](ctx, input);
+        // Escalating search. Rank is whatever the retriever says; the change is
+        // that the Nth search in a run returns the Nth group of UNSEEN
+        // candidates. Group size is derived, never fixed: hits are admitted
+        // while their measured rendered cost stays inside the share of the live
+        // headroom a search result is allowed, floored at one so a search
+        // always answers with something.
+        const state = ctx._searchState ?? { seen: new Set(), calls: 0 };
+        ctx._searchState = state;
+        state.calls += 1;
+        const base = ctx.config.retrieval.limit;
+        // Deep enough that later groups exist to escalate INTO: without this the
+        // second search re-ranks the same `base` rows and escalation is a no-op.
+        const outcome = await HANDLERS[CONTEXT_SEARCH](ctx, { ...(input ?? {}), limit: base * 4 });
+        if (!outcome.ok || !Array.isArray(outcome.data?.hits)) return outcome;
+        const unseen = outcome.data.hits.filter((hit) => !state.seen.has(hit.node_id));
+        const budget = Math.max(0, Math.floor((ctx._liveHeadroom ?? 0) * SEARCH_RESULT_HEADROOM_SHARE));
+        const group = [];
+        let spent = 0;
+        for (const hit of unseen) {
+          const cost = exact.count(JSON.stringify(hit));
+          if (group.length > 0 && spent + cost > budget) break;
+          group.push(hit);
+          spent += cost;
+          if (group.length === base * 2) break;
+        }
+        for (const hit of group) state.seen.add(hit.node_id);
+        return {
+          ok: true,
+          data: {
+            ...outcome.data,
+            hits: group,
+            // The model cannot tell an exhausted index from a narrow one
+            // unless it is told which it is looking at.
+            escalation: { call: state.calls, returned: group.length, already_seen: state.seen.size - group.length, more_available: unseen.length > group.length },
+          },
+        };
       },
       [CONTEXT_FETCH]: async (ctx, input) => {
         const args = input ?? {};
         const branchId = args.branch_id;
         if (!branchId) return { ok: false, error: { message: 'branch_id is required' } };
         try {
-          // Use half the initial headroom — search results and prior turns
-          // consume the other half, so the fetch result must fit what remains.
-          const headroom = Math.floor((ctx._headroom ?? 20000) / 2);
+          // The real space left THIS turn, not half of a build-time estimate.
+          // `_liveHeadroomHeuristic` is set per tool call by the turn loop, so
+          // the retriever's relevance-centred cut is sized by exactly what the
+          // append path would otherwise take back.
+          const headroom = ctx._liveHeadroomHeuristic ?? Math.floor((ctx._headroom ?? 20000) / 2);
           const fetched = ctx.retriever.fetchBranch(branchId, {
             depth: 'full',
             file: args.file,
@@ -3084,7 +3187,7 @@ async function runPrepOverflow(scenario, options) {
         discarded.map((d) => `  ${JSON.stringify(d.literal)}: ${d.why}`).join('\n'),
     );
   }
-  const outPath = join(scenario.artifacts, 'questions-overflow.json');
+  const outPath = join(scenario.artifacts, options.out ?? 'questions-overflow.json');
   const outFile = { scenario: scenario.id, trace_sha256: scenario.traceSha, paraphraser: PARAPHRASE_MODEL, ref_window: refWindow, boundary_seq: boundary, K: budgets.K, questions: kept, rejected: discarded };
   writeFileSync(outPath, `${JSON.stringify(outFile, null, 2)}\n`);
   console.log(`\nkept ${kept.length}/${selected.length} overflow questions -> ${outPath} (paraphrase spend $${meter.totalUsd().toFixed(4)})`);
@@ -3370,6 +3473,8 @@ async function buildArm(scenario, arm, budgets, artifacts) {
       return { system: FLAT_SYSTEM, context, tools: [], meta: { chunks: artifact.chunks } };
     }
     case 'tree-tail-v2':
+    case 'tree-oracle':
+    case 'tree-escalate':
     case 'tree-tail-static':
     case 'tree-tail-headline': {
       // DS-STAR search-ranking epoch: tree prompt + raw recent events.
@@ -3379,7 +3484,7 @@ async function buildArm(scenario, arm, budgets, artifacts) {
       const withTools = arm !== 'tree-tail-static';
       const { assembler, prompt } = buildTreePrompt(scenario, budgets, { withTools, systemText: treeSystemTextFor('tree') });
       // Keyword headlines for all tool-bearing arms: replace prose with fingerprints.
-      if (arm === 'tree-tail-v2' || arm === 'tree-tail-headline') {
+      if (arm === 'tree-tail-v2' || arm === 'tree-tail-headline' || arm === 'tree-oracle' || arm === 'tree-escalate') {
         // Keyword-list headlines: replace prose with fingerprints extracted from
         // raw events. Each headline = heading + metadata lines + keyword fingerprints.
         // No first-sentence prose — the keywords ARE the headline.
@@ -3507,6 +3612,10 @@ export async function runOneReplicate(scenario, built, question, model, provider
   const searchQueries = [];
   const fetchedIds = [];
   const fetchedDepths = []; // Record depth argument for each context_fetch
+  // Per-REPLICATE search state. The handler closures are built once per arm,
+  // so anything they remember would otherwise leak across runs and make a
+  // replicate depend on the one before it.
+  if (built.toolCtx !== undefined) built.toolCtx._searchState = { seen: new Set(), calls: 0 };
   /**
    * One record per model call, `TurnRecord`-shaped (`eval/src/types.ts`) plus
    * the derived `promptTokens` and zone budget decomposition. This is the
@@ -3610,6 +3719,26 @@ export async function runOneReplicate(scenario, built, question, model, provider
         annotateRefused += 1;
         outcome = FROZEN_ANNOTATE_REFUSAL;
       } else {
+        // The space this result will actually have, computed against the
+        // conversation as it stands THIS turn — not the build-time estimate the
+        // narrowing used to divide by two and hope. A handler that narrows to
+        // this number is the only cut in the path.
+        if (built.toolCtx !== undefined) {
+          const live = appendHeadroom({
+            prefix: `[tool_result ${call.name}] `,
+            system: built.system,
+            messages,
+            tools: built.tools,
+            window: budgets.window,
+            maxReplyTokens: budgets.maxReplyTokens,
+          });
+          built.toolCtx._liveHeadroom = live;
+          // The retriever counts in heuristic tokens; this budget is in the
+          // tokenizer the provider bills. Same conversion the zone budgets use
+          // (D19): a heuristic count H bills at ~H*ratio, so H may be as large
+          // as live/ratio and still fit.
+          built.toolCtx._liveHeadroomHeuristic = Math.floor(live / budgets.ratio);
+        }
         // `built.handlers` defaults to the real MCP table; overridable so the
         // window-cap path can be driven with a synthetic oversized result.
         const handler = (built.handlers ?? HANDLERS)[call.name];
@@ -3808,6 +3937,9 @@ async function runArms(scenario, options) {
       // empty completions — the exact bug this experiment is measuring.
       const replyMode = TREE_ARMS.includes(arm) ? (options.replyMode ?? 'no-limit') : 'no-limit';
       for (const question of armQuestions) {
+        // The oracle arm's search returns THIS question's source branch. Set
+        // per question, never read by any other arm.
+        built.toolCtx._oracleNodeIds = question.node_ids ?? (question.node_id == null ? [] : [question.node_id]);
         for (let rep = 1; rep <= armReps; rep += 1) {
           try {
             let r;

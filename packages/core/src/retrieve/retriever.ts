@@ -15,11 +15,13 @@ import type {
   NodeId,
   NodeSummary,
   SeqSpan,
+  Tokenizer,
   TraceLog,
   TreeNode,
   TreeStore,
 } from '../contracts/index.js';
 import { ContextTreeError, StoreInvariantError } from '../contracts/index.js';
+import { HeuristicTokenizer } from '../tokens/index.js';
 import { clampSpans, mergeSpans, nodeSpan, payloadRef, renderIndex, renderSpans } from './detail.js';
 import { buildLexicalIndex, extractFingerprints, lexicalScore, summaryDocument, uniqueTerms } from './lexical.js';
 import type {
@@ -51,6 +53,16 @@ export interface TreeRetrieverDeps {
    * from natural language. Optional; absent means regex-only extraction.
    */
   rewrite?: QueryRewriter;
+  /**
+   * Counts the tokens the narrowing band is budgeted in. Optional; absent
+   * means `HeuristicTokenizer`. It exists because the band used to be sized
+   * by `text.length * 0.85` — a heuristic->BPE ratio applied to CHARACTERS,
+   * which overstates tokens by ~3.4x (the heuristic charges ~1 token per 4
+   * characters). That made every band ~3.4x narrower than the budget allowed,
+   * discarding relevant events for no reason, and left the true fit unverified
+   * so an oversized band still had to be re-cut downstream.
+   */
+  tokenizer?: Tokenizer;
 }
 
 const DEFAULT_LIMIT = 8;
@@ -74,6 +86,7 @@ export class TreeRetriever {
   private readonly trace: TraceLog | undefined;
   private readonly embed: SummaryEmbedder | undefined;
   private readonly rewrite: QueryRewriter | undefined;
+  private readonly tokenizer: Tokenizer;
   private fingerprintCache: Map<NodeId, Set<string>> | null = null;
 
   constructor(deps: TreeRetrieverDeps) {
@@ -82,6 +95,7 @@ export class TreeRetriever {
     this.trace = deps.trace;
     this.embed = deps.embed;
     this.rewrite = deps.rewrite;
+    this.tokenizer = deps.tokenizer ?? new HeuristicTokenizer();
   }
 
   /**
@@ -304,22 +318,48 @@ export class TreeRetriever {
     let { from, to } = options;
 
     // Semantic narrowing: when the branch exceeds the token budget and a query
-    // is provided, center the result on the most relevant section.
+    // is provided, center the result on the most relevant section and grow the
+    // band outward from there until the next event would not fit.
+    //
+    // The band is MEASURED, not estimated. It used to be sized from an average
+    // tokens-per-event over an inflated total, which is wrong twice: the
+    // average misprices a band whose events are bigger or smaller than typical,
+    // and nothing checked that the result actually fit — so an oversized band
+    // was re-cut by whatever appended it, front-first and blind to relevance,
+    // which is exactly how a centered excerpt loses the section it was centered
+    // on. Growing under a real token count makes this the ONLY cut: what comes
+    // back is guaranteed to be within budget, so no downstream cap has anything
+    // left to take.
     if (options.maxTokens !== undefined && options.query !== undefined && depth !== 'index' && this.trace !== undefined) {
       const fullSpans = clampSpans(rawSpans, from, to);
       const fullRendered = renderSpans(this.trace, this.blobs, fullSpans);
-      const fullTokens = fullRendered.text.length * 0.85; // heuristic ratio
-      if (fullTokens > options.maxTokens) {
+      if (this.tokenizer.count(fullRendered.text) > options.maxTokens) {
         const centerSeq = this.findRelevantCenter(options.query, fullSpans);
         if (centerSeq !== null) {
           const allEvents = [...this.trace.read({ from: fullSpans[0]?.start, to: fullSpans[fullSpans.length - 1]?.end })];
-          const centerIdx = allEvents.findIndex(e => e.seq >= centerSeq);
-          // Size the band: estimate events per token, compute how many events fit
-          const tokPerEvent = fullTokens / Math.max(allEvents.length, 1);
-          const bandEvents = Math.max(3, Math.floor(options.maxTokens / tokPerEvent));
-          const halfBand = Math.floor(bandEvents / 2);
-          const startIdx = Math.max(0, centerIdx - halfBand);
-          const endIdx = Math.min(allEvents.length - 1, centerIdx + halfBand);
+          const centerIdx = Math.max(0, allEvents.findIndex((e) => e.seq >= centerSeq));
+          const fits = (startIdx: number, endIdx: number): boolean => {
+            const span = clampSpans(rawSpans, allEvents[startIdx]!.seq, allEvents[endIdx]!.seq);
+            return this.tokenizer.count(renderSpans(this.trace!, this.blobs, span).text) <= options.maxTokens!;
+          };
+          let startIdx = centerIdx;
+          let endIdx = centerIdx;
+          // The centre event alone can exceed the budget. Keep it anyway: a
+          // caller that asked for the most relevant section gets it, and the
+          // append path marks the elision rather than silently returning a
+          // band that excludes the very event the query matched.
+          let grew = true;
+          while (grew) {
+            grew = false;
+            if (endIdx + 1 < allEvents.length && fits(startIdx, endIdx + 1)) {
+              endIdx += 1;
+              grew = true;
+            }
+            if (startIdx > 0 && fits(startIdx - 1, endIdx)) {
+              startIdx -= 1;
+              grew = true;
+            }
+          }
           from = allEvents[startIdx]!.seq;
           to = allEvents[endIdx]!.seq;
         }

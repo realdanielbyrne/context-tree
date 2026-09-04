@@ -4,7 +4,7 @@ The reference a DS-STAR pass scores against and a new host ports from.
 A change to the algorithm and a change to this page happen together.
 
 The goal: simple, repeatable, translatable to a model and harness it has
-never seen. Four rules follow from that.
+never seen. Six rules follow from that.
 
 **1. No budgets or caps** on turns, wall-clock, or reply length. Each is
 a guess about work nobody has measured. Bound the actual resource: spend
@@ -22,6 +22,18 @@ instead of inheriting a number from a machine it never saw.
 **4. Prefer finding the sweet spot to picking a bound.** Where a value
 trades off against metrics, the answer is the setting that wins —
 established by measurement, not chosen because it reads as reasonable.
+
+**5. Truncate once, where the answer's location is known.** Two cuts in
+one path means the second one, which does not know what the first was
+protecting, discards it. A caller that narrows content must narrow to the
+budget the appending caller will actually enforce. Measured: a
+relevance-centred band re-cut front-first by an append cap loses the
+section it was centred on (`ds-star-multi-index-report.md` §5).
+
+**6. The indexed unit is worth more than the ranking over it.** Shrinking
+a retrieval unit from a branch replay to a line was worth ~15,000 tokens
+per question on the measured store; perfecting the rank inside a cheap
+index was worth ~200. Before tuning relevance, ask what the unit costs.
 
 Terms. **L0**: append-only event log. **L2**: content-addressed payload
 store. **L1**: the tree (nodes pointing into L0 by sequence range, with
@@ -73,11 +85,14 @@ assemble
   fill remaining headroom with raw recent events from the trace tail
 
 retrieve on demand
-  search: rank fingerprint-enriched documents, return coordinates
-    when the query contains distinctive terms, grep raw events and merge via RRF
+  search: route to ONE index, then rank within it, return coordinates
+    indexes are axes over the same L0, keyed on fields events already carry:
+      branch (phase), file, command (tool + head), symbol, output line
+    rank fingerprint-enriched documents; grep raw events and merge via RRF
     when regex finds nothing distinctive, a cheap LLM rewrites the query (optional fallback)
-  fetch: raw events narrowed to the most relevant section when the branch exceeds headroom
-    centers on the query's matching events; band sized to available window space
+  fetch: raw events narrowed ONCE, by the caller that knows where the answer sits
+    centers on the query's matching events; band grown outward under a real
+    token count until the next event would not fit the live headroom
   peek: a raw excerpt
   annotate: record a note
 ```
@@ -93,6 +108,9 @@ Every value that affects behaviour, classified by rule 2.
 | heuristic-to-tokenizer ratio | **derived** (0.851 on this corpus) | measured per corpus, refuses above 1.6 |
 | root keep (fold level) | **derived** in portability harness; **unvalidated** constant in live | largest rung whose Zone B fits |
 | search result limit | **unvalidated** (20) | W and per-hit payload size |
+| fetch narrowing budget | **derived** (live headroom at the moment of append, per call) | the request as it stands that turn — rule 5 |
+| search-result headroom share | **unvalidated** (0.25) | share of live headroom a result list may take before it starves the fetch |
+| narrowing band size | **derived** (grown outward from the relevance centre under a real token count) | measurement, not an average — replaced a chars×0.85 estimate |
 | peek / snippet sizes | **unvalidated** (5 different literals, mutually inconsistent) | one shared value sized to available room |
 | edit-argument cap | **validated** (512 bytes when post-state exists) | both alternatives measured |
 | reply allowance | **derived** (`window − prompt`, per turn) | arithmetic, untested live |
@@ -109,8 +127,11 @@ optimal W for a given session — the smallest window that achieves parity with
 full-context performance — is the measurement the live verification step exists
 to produce.
 
-Open defects: seven unvalidated values, four of which already have derivations
-in the portability harness but not the live suite.
+Open defects: 6 unvalidated values, four of which already have derivations
+in the portability harness but not the live suite. The two added this pass
+(search-result headroom share, and the band-growth policy's reliance on the
+measured ratio) are both from the multi-index pass and both have a stated
+derivation owed.
 
 ## Boundary conditions
 
@@ -125,7 +146,13 @@ in the portability harness but not the live suite.
 | Summaries don't contain the answer | Confirmed (0/12 answer literals in any summary); raw fetch is for this |
 | No embedder | Beam search fallback — tested |
 | Search ranks wrong branch | Fixed 2026-09-03: fingerprints + grep → 10/12 top-3 (was 2/12) |
-| Tail covers the answerable content (W ≥ answer depth) | **Found 2026-09-03.** The tree adds no value when the raw tail already contains the answer — tool-use overhead (15-20K tokens per question) is a net loss. The tree earns its keep only in the overflow regime: sessions where the trace exceeds the window and answers lie outside the tail. Untested. |
+| Tail covers the answerable content (W ≥ answer depth) | **Found 2026-09-03.** The tree adds no value when the raw tail already contains the answer — tool-use overhead (15-20K tokens per question) is a net loss. The tree earns its keep only in the overflow regime: sessions where the trace exceeds the window and answers lie outside the tail. |
+| Overflow regime, ranking made perfect | **Measured 2026-09-03.** Handed the correct branch on the first call, the model still scores 13/25 where full context scores 25/25. Roughly half the loss is downstream of retrieval: payload density, not location. |
+| An overflow question set at a wider W than it was cut for | **Invalid.** The truncation boundary is non-increasing in W, so a set cut at W₁ stops testing overflow above W₁ — answers fall into the tail and median turns drop to 1 (the model stops calling tools). Re-cut per claim window. |
+| Exact-match grading against a fluent model | **Gameable.** Observed: a fabricated transcript citing seq 755-757 in a 754-event trace, and a correct refusal that named the answer string in a suggested command. Scores need a provenance check. |
+| Facet index with high-cardinality key | Cheap-unit economics fail. 66 file / 311 command entries cost 2.7K / 7.5K tokens; 3,969 line entries cost 77K — as much as the content, so "return more candidates" is unavailable and ranking binds again. |
+| Fusing indexes with disjoint coverage | **Harmful.** RRF across four indexes scores 6/17 where routing to the best single index scores 9/17; answers already found are demoted (rank 3→12, 7→25). Fuse rankers over one index, route across indexes. |
+| Fact needing two literals from two places | No single-entry index can serve it. Three of 17 questions; needs a join or an explicit second hop. Open. |
 
 ## DS-STAR dimensions
 
@@ -158,7 +185,19 @@ default flip, gated on second scenario. *(Report: `reports/metrics/tuning-cachin
 
 **Search ranking.** Summaries don't contain the identifiers queries reference.
 Fingerprints (extracted from raw events) + hybrid grep fix this: 2/12 → 10/12
-top-3. *(Report: `reports/metrics/ds-star-search-ranking-report.md`)*
+top-3. Offline only — the live score did not move, because the unit being ranked
+was the binding constraint, not the rank.
+*(Report: `reports/metrics/ds-star-search-ranking-report.md`)*
+
+**Index granularity and routing.** The unit dominates the ranking by ~75:1. A
+branch replay is 26KB with the answer on one line; a command-facet entry is 40
+tokens, and a top-10 slice costs 272-440 tokens against 8-16K for a narrowed
+replay. Several indexes raise coverage (5-6/17 → 9/17) but only under routing;
+fusion drops it to 6/17. Ranking within a cheap index is near-optimal already
+(C1' places 5 of the 6 retrievable questions in the top 10). The ceiling is
+coverage: 6/17 answers exist in no index, which retires every ranker-side
+candidate — embeddings, KNN, autoencoder latents, learned ranking — at the same
+6/17. *(Report: `reports/metrics/ds-star-multi-index-report.md`)*
 
 ## Candidates with a verdict, not yet in force
 
@@ -171,7 +210,15 @@ top-3. *(Report: `reports/metrics/ds-star-search-ranking-report.md`)*
 - **One budget derivation**: delete the live suite's absolute switch point.
 - **Delete Zone C fallback chain**: first branch never fires.
 - **Third cache breakpoint as default**: −39.8% offline, gated on second scenario.
-- **Retired**: Zone C pre-fill, completion nudge, contract section trim.
+- **Route, don't fuse, across indexes**: 9/17 vs 6/17 top-10. Measured offline;
+  the `tree-route` arm is specified but unbuilt.
+- **One-cut narrowing**: band grown under a real token count to the live
+  headroom. Offline 20/20 fits (was 19/20), 19/20 carries the answer (was 17/20),
+  bands 2-5x wider. Landed in code; live score unchanged — a different bucket binds.
+- **Retired**: Zone C pre-fill, completion nudge, contract section trim,
+  escalating search (4/25 vs 2/25, ~1 SE), embeddings/KNN/autoencoder over lines
+  (retired unspent — 11/17 absent caps every ranker at 6/17), learned ranking
+  (17 labels; breaks the rebuild invariant).
 
 ## Simplification ledger
 
@@ -181,9 +228,17 @@ top-3. *(Report: `reports/metrics/ds-star-search-ranking-report.md`)*
 | Loop 9 | Transplant harness derives budgets from W |
 | 2026-09-02 | Character estimate → model's reported count; latch added; frequency cache rule → formula; monotone curve closes the allocation question; edit-argument cap shared from one constant; zone budgets derived from window in one place; reply allowance per turn; turn/wall-clock ceilings removed |
 | 2026-09-03 | Fingerprint extraction + hybrid grep in search; algorithm pseudocode updated |
+| 2026-09-03 pm | Two cuts in the fetch path collapsed to one; a chars-vs-tokens magic number (×0.85) replaced by an injected tokenizer; the halved build-time narrowing budget replaced by the live per-call headroom |
 
 ## Change log
 
+- **2026-09-03 19:30** — Multi-index pass (4 iterations). Rules 5 and 6 added.
+  Oracle probe: perfect ranking scores 13/25 against 25/25 full context, so half
+  the loss is post-retrieval density. The unit beats the ranking ~75:1. Routing
+  across indexes beats fusion 9/17 vs 6/17. Grading found gameable by fabrication
+  — provenance check owed before any further tuning. `prep-overflow` phase and two
+  new question sets; the prior `head` stratum did not test the overflow regime.
+  `reports/metrics/ds-star-multi-index-report.md`.
 - **2026-09-03 15:10** — Live verification: tree loses to truncate-tail at W=32K-65K.
   Tool overhead > navigation benefit when the tail covers the answers. Overflow
   regime untested. Semantic narrowing, forced depth:full, stronger contract

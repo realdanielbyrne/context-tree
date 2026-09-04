@@ -2,12 +2,12 @@
   "scenario": "s1",
   "trace_sha256": "e1b289c32f406908906411a524928c15efb79b1b047fb3f82dfc4f0c7da76044",
   "ratio": 0.850896663206653,
-  "ref_window": 65536,
-  "boundary_seq": 523,
-  "K": 61616,
+  "ref_window": 200000,
+  "boundary_seq": 108,
+  "K": 188037,
   "counts": {
     "once_only": 509,
-    "overflow_pool": 328
+    "overflow_pool": 82
   },
   "selected": [
     {
@@ -17,131 +17,17 @@
       "node_ids": [
         "n_1E48X9HAFPEYNQHHSF609KHMEE"
       ],
-      "seq": 151,
+      "seq": 107,
       "kind": "ident",
       "answer_literals": [
-        "tokenizerId"
+        "toBeGreaterThanOrEqual"
       ],
       "answer_regexes": [
-        "(?<![\\w])tokenizerId(?![\\w])"
+        "(?<![\\w])toBeGreaterThanOrEqual(?![\\w])"
       ],
-      "source_context": "_result for seq 150 (seq 151)\n99:    trace.append({ type: 'user_message', ts: TS, blob: blobs.put(`please ${spec.title}`) });\n100:    trace.append({ type: 'assistant_message', ts: TS, blob: blobs.put(`starting ${spec.title}`) });\n101:    trace.append({\n185:  it('is byte-identical across a config-identical re-assemble and is read from cache on the second submission, which is the only evidence the frozen prefix is actually earning anything', () => {\n215:    const bytes = new ProviderCacheSimulator({\n216:      tokenizer: new ExactTokenizer('bytes-v0', (text) => text.length),\n220:    expect(bytes.tokenizerId).toBe('bytes-v0');\n221:    expect(bytes.total).not.toBe(heuristic.total);\n223:    expect(bytes.segments.map((s) => s.blockIds)).toEqual(heuristic.segments.map((s) => s.blockIds));\n227:describe('event: a turn appended to the ACTIVE branch', () => {\n228:  it('leaves Zone A and Zone B fully cache-readable and charges only Zone C as fresh, because the appended turn lands after the last breakpoint (§10 rule 2)', () => {\n236:    h.trace.append({ type: 'user_message', ts: TS, blob: h.blobs.put('also fix the tax line') });\n237:    h.trace.append({\n261:  it('grows Zone B by exactly the newly-closed br",
-      "wide_context": "### tool_result for seq 150 (seq 151)\n99:    trace.append({ type: 'user_message', ts: TS, blob: blobs.put(`please ${spec.title}`) });\n100:    trace.append({ type: 'assistant_message', ts: TS, blob: blobs.put(`starting ${spec.title}`) });\n101:    trace.append({\n185:  it('is byte-identical across a config-identical re-assemble and is read from cache on the second submission, which is the only evidence the frozen prefix is actually earning anything', () => {\n215:    const bytes = new ProviderCacheSimulator({\n216:      tokenizer: new ExactTokenizer('bytes-v0', (text) => text.length),\n220:    expect(bytes.tokenizerId).toBe('bytes-v0');\n221:    expect(bytes.total).not.toBe(heuristic.total);\n223:    expect(bytes.segments.map((s) => s.blockIds)).toEqual(heuristic.segments.map((s) => s.blockIds));\n227:describe('event: a turn appended to the ACTIVE branch', () => {\n228:  it('leaves Zone A and Zone B fully cache-readable and charges only Zone C as fresh, because the appended turn lands after the last breakpoint (§10 rule 2)', () => {\n236:    h.trace.append({ type: 'user_message', ts: TS, blob: h.blobs.put('also fix the tax line') });\n237:    h.trace.append({\n261:  it('grows Zone B by exactly the newly-closed branch summary at its END, keeps the prefix through the previous last summary byte-identical, and rewrites Zone C in full', () => {\n273:    // still byt",
+      "source_context": " =>\\n    `ran the test suite for ${body} and edited the module until the cases passed; reran to confirm green`;\\n\\n  it('skips a pending branch that duplicates an already-summarized sibling', () => {\\n    const { kept, deduped } = dedupSummarizePlan(\\n      [{ id: 'n_new', text: detail('slugify hyphen collapse boundary strip') }],\\n      [{ id: 'n_done', text: detail('slugify hyphen collapse boundary strip') }],\\n    );\\n    expect(kept).toEqual([]);\\n    expect(deduped).toHaveLength(1);\\n    expect(deduped[0]).toMatchObject({ id: 'n_new', against: 'n_done' });\\n    expect(deduped[0]!.cosine).toBeGreaterThanOrEqual(0.9);\\n  });\\n\\n  it('dedupes within the plan itself — the first twin summarizes, the second is skipped', () => {\\n    const { kept, deduped } = dedupSummarizePlan(\\n      [\\n        { id: 'n_first', text: detail('wordwrap greedy width joining space overflow') },\\n        { id: 'n_twin', text: detail('wordwrap greedy width joining space overflow') },\\n      ],\\n      [],\\n    );\\n    expect(kept).toEqual(['n_first']);\\n    expect(deduped.map((entry) => entry.id)).toEqual(['n_twin']);\\n  });\\n\\n  it('keeps genuinely distinct branches — one summary per topic, not per plan', () => {\\n    const {",
+      "wide_context": "l({ pending: [], skipped: 0 });\\n  });\\n});\\n\\ndescribe('cosine dedup-before-summarize (dedupSummarizePlan)', () => {\\n  const detail = (body: string) =>\\n    `ran the test suite for ${body} and edited the module until the cases passed; reran to confirm green`;\\n\\n  it('skips a pending branch that duplicates an already-summarized sibling', () => {\\n    const { kept, deduped } = dedupSummarizePlan(\\n      [{ id: 'n_new', text: detail('slugify hyphen collapse boundary strip') }],\\n      [{ id: 'n_done', text: detail('slugify hyphen collapse boundary strip') }],\\n    );\\n    expect(kept).toEqual([]);\\n    expect(deduped).toHaveLength(1);\\n    expect(deduped[0]).toMatchObject({ id: 'n_new', against: 'n_done' });\\n    expect(deduped[0]!.cosine).toBeGreaterThanOrEqual(0.9);\\n  });\\n\\n  it('dedupes within the plan itself — the first twin summarizes, the second is skipped', () => {\\n    const { kept, deduped } = dedupSummarizePlan(\\n      [\\n        { id: 'n_first', text: detail('wordwrap greedy width joining space overflow') },\\n        { id: 'n_twin', text: detail('wordwrap greedy width joining space overflow') },\\n      ],\\n      [],\\n    );\\n    expect(kept).toEqual(['n_first']);\\n    expect(deduped.map((entry) => entry.id)).toEqual(['n_twin']);\\n  });\\n\\n  it('keeps genuinely distinct branches — one summary per topic, not per plan', () => {\\n    const { kept, deduped } = dedupSummarizePlan(\\n      [\\n        { id: 'n_slug', text: detail('slugify hyphen collapse punctuation runs') },\\n        { id: 'n",
       "id": "s1-qo01-overflow"
-    },
-    {
-      "stratum": "overflow",
-      "exploratory": false,
-      "node_id": "n_1FJ2VN7BZMD0C22JVNB4NGNNPW",
-      "node_ids": [
-        "n_1FJ2VN7BZMD0C22JVNB4NGNNPW"
-      ],
-      "seq": 339,
-      "kind": "quoted",
-      "answer_literals": [
-        "Extract suite points and spend"
-      ],
-      "answer_regexes": [
-        "(?<![\\w])Extract suite points and spend(?![\\w])"
-      ],
-      "source_context": "('fs');\\nlet total=0, pts=[];\\nfor (const rep of ['suite-rep1','suite-rep2','suite-rep3']) {\\n  const rs=JSON.parse(fs.readFileSync('eval/results/suite-final/'+rep+'/results.json','utf8'));\\n  for (const r of rs){ total+=r.metrics.costUsd; pts.push({it:'suite',arm:r.arm,task:r.scenarioId,cost:+r.metrics.costUsd.toFixed(4),turns:r.metrics.turns.modelTurns,ok:r.success===true,cw:r.metrics.tokens.cacheWrite,cr:r.metrics.tokens.cacheRead,inp:r.metrics.tokens.input,tot:r.metrics.tokens.total});}\\n}\\nconsole.log('suite spend', total.toFixed(2));\\nconsole.log(JSON.stringify(pts));\\n\\\"\",\"description\":\"Extract suite points and spend\"}",
-      "wide_context": "### tool_call Bash (seq 339)\nargs: {\"command\":\"node -e \\\"\\nconst fs=require('fs');\\nlet total=0, pts=[];\\nfor (const rep of ['suite-rep1','suite-rep2','suite-rep3']) {\\n  const rs=JSON.parse(fs.readFileSync('eval/results/suite-final/'+rep+'/results.json','utf8'));\\n  for (const r of rs){ total+=r.metrics.costUsd; pts.push({it:'suite',arm:r.arm,task:r.scenarioId,cost:+r.metrics.costUsd.toFixed(4),turns:r.metrics.turns.modelTurns,ok:r.success===true,cw:r.metrics.tokens.cacheWrite,cr:r.metrics.tokens.cacheRead,inp:r.metrics.tokens.input,tot:r.metrics.tokens.total});}\\n}\\nconsole.log('suite spend', total.toFixed(2));\\nconsole.log(JSON.stringify(pts));\\n\\\"\",\"description\":\"Extract suite points and spend\"}",
-      "id": "s1-qo02-overflow"
-    },
-    {
-      "stratum": "overflow",
-      "exploratory": false,
-      "node_id": "n_15NSXSQ4W9X9C2ETGMA5QCSJ05",
-      "node_ids": [
-        "n_15NSXSQ4W9X9C2ETGMA5QCSJ05"
-      ],
-      "seq": 469,
-      "kind": "path",
-      "answer_literals": [
-        "packages/core/dist/assemble/format.js"
-      ],
-      "answer_regexes": [
-        "(?<![\\w])packages/core/dist/assemble/format\\.js(?![\\w])"
-      ],
-      "source_context": "### tool_call Bash (seq 469)\nargs: {\"command\":\"npx tsc -p packages/core/tsconfig.json 2>&1 | grep -v \\\"npm warn\\\" | head -5; grep -c \\\"seqRange(active)\\\" packages/core/dist/assemble/format.js; echo \\\"core rebuilt\\\"\",\"description\":\"Rebuild core dist, verify header change landed\"}",
-      "wide_context": "### tool_call Bash (seq 469)\nargs: {\"command\":\"npx tsc -p packages/core/tsconfig.json 2>&1 | grep -v \\\"npm warn\\\" | head -5; grep -c \\\"seqRange(active)\\\" packages/core/dist/assemble/format.js; echo \\\"core rebuilt\\\"\",\"description\":\"Rebuild core dist, verify header change landed\"}",
-      "id": "s1-qo03-overflow"
-    },
-    {
-      "stratum": "overflow",
-      "exploratory": false,
-      "node_id": "n_1KYBBC6PCAH0M474M0EMX9AD0Z",
-      "node_ids": [
-        "n_1KYBBC6PCAH0M474M0EMX9AD0Z"
-      ],
-      "seq": 402,
-      "kind": "path",
-      "answer_literals": [
-        "eval/src/types.ts"
-      ],
-      "answer_regexes": [
-        "(?<![\\w])eval/src/types\\.ts(?![\\w])"
-      ],
-      "source_context": "### tool_result for seq 401 (seq 402)\neval/src/run.ts:98:      budgets: { zoneB: 8000, zoneC: 30000 },\neval/src/loop.ts:658:      budgets: { ...args.options.budgets },\neval/src/loop.ts:942:      budgets: { ...options.budgets },\neval/src/run.ts:98:      budgets: { zoneB: 8000, zoneC: 30000 },\neval/src/run.ts:98:      budgets: { zoneB: 8000, zoneC: 30000 },\neval/src/types.ts:101:  budgets: { zoneB: number; zoneC: number };",
-      "wide_context": "### tool_result for seq 401 (seq 402)\neval/src/run.ts:98:      budgets: { zoneB: 8000, zoneC: 30000 },\neval/src/loop.ts:658:      budgets: { ...args.options.budgets },\neval/src/loop.ts:942:      budgets: { ...options.budgets },\neval/src/run.ts:98:      budgets: { zoneB: 8000, zoneC: 30000 },\neval/src/run.ts:98:      budgets: { zoneB: 8000, zoneC: 30000 },\neval/src/types.ts:101:  budgets: { zoneB: number; zoneC: number };",
-      "id": "s1-qo04-overflow"
-    },
-    {
-      "stratum": "overflow",
-      "exploratory": false,
-      "node_id": "n_11RPJ28833FQ1CY47DSW5T93NG",
-      "node_ids": [
-        "n_11RPJ28833FQ1CY47DSW5T93NG"
-      ],
-      "seq": 372,
-      "kind": "quoted",
-      "answer_literals": [
-        "Locate v5/v6 gates in loop.ts"
-      ],
-      "answer_regexes": [
-        "(?<![\\w])Locate v5/v6 gates in loop\\.ts(?![\\w])"
-      ],
-      "source_context": "### tool_call Bash (seq 372)\nargs: {\"command\":\"grep -n \\\"EVAL_DSA_V6\\\\|makeTreeDsaV6Selector\\\\|DSA_V6_KEEP_FRACTION\\\\|DSA_V6_FOCUS_TAIL_CHARS\\\\|mergeKeepSets\\\\|EVAL_ZONEC_LATEST\\\\|EVAL_SUMMARIZE_ON_CLOSE\\\\|EVAL_NATIVE_CACHE\\\" eval/src/loop.ts | head -40\",\"description\":\"Locate v5/v6 gates in loop.ts\"}",
-      "wide_context": "### tool_call Bash (seq 372)\nargs: {\"command\":\"grep -n \\\"EVAL_DSA_V6\\\\|makeTreeDsaV6Selector\\\\|DSA_V6_KEEP_FRACTION\\\\|DSA_V6_FOCUS_TAIL_CHARS\\\\|mergeKeepSets\\\\|EVAL_ZONEC_LATEST\\\\|EVAL_SUMMARIZE_ON_CLOSE\\\\|EVAL_NATIVE_CACHE\\\" eval/src/loop.ts | head -40\",\"description\":\"Locate v5/v6 gates in loop.ts\"}",
-      "id": "s1-qo05-overflow"
-    },
-    {
-      "stratum": "overflow",
-      "exploratory": false,
-      "node_id": "n_1WAD2VDY2YPXVF79V20K82TEXK",
-      "node_ids": [
-        "n_1WAD2VDY2YPXVF79V20K82TEXK"
-      ],
-      "seq": 507,
-      "kind": "ident",
-      "answer_literals": [
-        "extractJsonObject"
-      ],
-      "answer_regexes": [
-        "(?<![\\w])extractJsonObject(?![\\w])"
-      ],
-      "source_context": "### tool_result for seq 506 (seq 507)\n      decisions: requireStringArray(meta.decisions, 'meta.decisions'),\n      node_ids: requireStringArray(meta.node_ids, 'meta.node_ids'),\n    },\n  };\n}\n\nconst JSON_FENCE = /```(?:json)?[ \\t]*\\r?\\n([\\s\\S]*?)```/;\n\n/** Models wrap JSON in fences and prose; tolerate that, but tolerate nothing else. */\nfunction extractJsonObject(raw: string): unknown {\n  const candidates = [raw.trim()];\n  const fenced = JSON_FENCE.exec(raw);\n  if (fenced?.[1] !== undefined) candidates.push(fenced[1]);\n  const open = raw.indexOf('{');\n  const close = raw.lastIndexOf('}');\n  if (open >= 0 && close > open) candidates.push(raw.slice(open, close + 1));\n\n  for (const candidate of candidates) {\n    try {\n      return JSON.parse(candidate);\n    } catch {\n      // Next shape.\n    }\n  }\n  throw new SummaryContractError('response: no JSON object found in the model reply');\n}\n\nfunction fail(field: string, problem: string): never {\n  throw new Su",
-      "wide_context": "### tool_result for seq 506 (seq 507)\n      decisions: requireStringArray(meta.decisions, 'meta.decisions'),\n      node_ids: requireStringArray(meta.node_ids, 'meta.node_ids'),\n    },\n  };\n}\n\nconst JSON_FENCE = /```(?:json)?[ \\t]*\\r?\\n([\\s\\S]*?)```/;\n\n/** Models wrap JSON in fences and prose; tolerate that, but tolerate nothing else. */\nfunction extractJsonObject(raw: string): unknown {\n  const candidates = [raw.trim()];\n  const fenced = JSON_FENCE.exec(raw);\n  if (fenced?.[1] !== undefined) candidates.push(fenced[1]);\n  const open = raw.indexOf('{');\n  const close = raw.lastIndexOf('}');\n  if (open >= 0 && close > open) candidates.push(raw.slice(open, close + 1));\n\n  for (const candidate of candidates) {\n    try {\n      return JSON.parse(candidate);\n    } catch {\n      // Next shape.\n    }\n  }\n  throw new SummaryContractError('response: no JSON object found in the model reply');\n}\n\nfunction fail(field: string, problem: string): never {\n  throw new SummaryContractError(`${field}: ${problem}`);\n}\n\npackages/core/src/config.ts:90:  summarize: { concurrency: number; maxSummaryTokens: number };\npackages",
-      "id": "s1-qo06-overflow"
-    },
-    {
-      "stratum": "overflow",
-      "exploratory": false,
-      "node_id": "n_16BHTPNT77GCNRJQH6ASZJGQGT",
-      "node_ids": [
-        "n_16BHTPNT77GCNRJQH6ASZJGQGT"
-      ],
-      "seq": 295,
-      "kind": "quoted",
-      "answer_literals": [
-        "Memory over summaries, attention over detail"
-      ],
-      "answer_regexes": [
-        "(?<![\\w])Memory over summaries, attention over detail(?![\\w])"
-      ],
-      "source_context": " content (\"what am I working on now\") gives the selector a signal that actually varies.\n- **Metadata guards over lexical cosine.** The §8 summaries carry structured meta — open questions, failing tests. Never evict a branch whose meta says its work is unfinished. That single rule would have prevented the iter6 failure (the dedent module's branch was evicted while unsolved).\n- **Move selection from Zone B to Zone C.** Summaries are cheap (~100s of tokens) and load-bearing — keep all of them, always. Detail is expensive — let DSA decide *which branch gets expanded*, not which summaries survive. \"Memory over summaries, attention over detail\" preserves the floor property permanently.\n- **Sticky/phase-boundary membership** so any change lands where Zone B invalidates anyway (a new summary arriving).\n- Embeddings behind the same cosine interface remain the paraphrase-robustness upgrade, but they're fourth on this list — the failures observed were signal-shape problems, not vocabulary problems.\n\nWant me to fold this into the report's §10 as the v6 spec (focus-scoring + meta guards + monotone k + Zone-C selection)? The suite runs are still a few minutes out, so it would ride the same republish.",
-      "wide_context": "e-to-task was near-uniform and eviction was effectively decided by recency+diversity — i.e., arbitrarily. Scoring against the *active branch's* recent content (\"what am I working on now\") gives the selector a signal that actually varies.\n- **Metadata guards over lexical cosine.** The §8 summaries carry structured meta — open questions, failing tests. Never evict a branch whose meta says its work is unfinished. That single rule would have prevented the iter6 failure (the dedent module's branch was evicted while unsolved).\n- **Move selection from Zone B to Zone C.** Summaries are cheap (~100s of tokens) and load-bearing — keep all of them, always. Detail is expensive — let DSA decide *which branch gets expanded*, not which summaries survive. \"Memory over summaries, attention over detail\" preserves the floor property permanently.\n- **Sticky/phase-boundary membership** so any change lands where Zone B invalidates anyway (a new summary arriving).\n- Embeddings behind the same cosine interface remain the paraphrase-robustness upgrade, but they're fourth on this list — the failures observed were signal-shape problems, not vocabulary problems.\n\nWant me to fold this into the report's §10 as the v6 spec (focus-scoring + meta guards + monotone k + Zone-C selection)? The suite runs are still a few minutes out, so it would ride the same republish.",
-      "id": "s1-qo07-overflow"
     },
     {
       "stratum": "overflow",
@@ -160,121 +46,26 @@
       ],
       "source_context": " = resolveConfig({\n720\t      root: join(sandbox.path, '.context-tree'),\n721\t      provider: options.provider,\n722\t      leafModel: options.leafModel,\n723\t      rootModel: options.rootModel,\n724\t      judgeModel: options.judgeModel,\n725\t      budgets: { ...options.budgets },\n726\t      taskTitle: `${scenario.benchmark}/${scenario.id}`,\n727\t    });\n728\t    const armArgs: ArmArgs = {\n729\t      scenario,\n730\t      config,\n731\t      options,\n732\t      provider: meteredAgent,\n733\t      sandbox,\n734\t      turns,\n735\t      usage,\n736\t      runHandle,\n737\t      deadlineMs: startedAt.getTime() + options.timeCapMs,\n738\t    };\n739\t    const output =\n740\t      arm === 'native'\n741\t        ? await runNativeArm(armArgs)\n742\t        : arm === 'dsa'\n743\t          ? await runDsaArm(armArgs)\n744\t          : arm === 'tree-dsa'\n745\t            ? await runTreeArm({\n746\t                ...armArgs,\n747\t                summarizerProvider: meteredSummarizer,\n748\t                selectBranches: makeTreeDsaSelector(scenario.task),\n749\t              })\n750\t            : await runTreeArm({ ...armArgs, summarizerProvider: meteredSummarizer });\n751\t    status = output.status;\n752\t    finalText = output.finalText;\n753\t  } c",
       "wide_context": "ing | undefined;\n714\t  let finalText = '';\n715\t  let success: boolean | null = null;\n716\t  let judgeDetail = '';\n717\t\n718\t  try {\n719\t    const config = resolveConfig({\n720\t      root: join(sandbox.path, '.context-tree'),\n721\t      provider: options.provider,\n722\t      leafModel: options.leafModel,\n723\t      rootModel: options.rootModel,\n724\t      judgeModel: options.judgeModel,\n725\t      budgets: { ...options.budgets },\n726\t      taskTitle: `${scenario.benchmark}/${scenario.id}`,\n727\t    });\n728\t    const armArgs: ArmArgs = {\n729\t      scenario,\n730\t      config,\n731\t      options,\n732\t      provider: meteredAgent,\n733\t      sandbox,\n734\t      turns,\n735\t      usage,\n736\t      runHandle,\n737\t      deadlineMs: startedAt.getTime() + options.timeCapMs,\n738\t    };\n739\t    const output =\n740\t      arm === 'native'\n741\t        ? await runNativeArm(armArgs)\n742\t        : arm === 'dsa'\n743\t          ? await runDsaArm(armArgs)\n744\t          : arm === 'tree-dsa'\n745\t            ? await runTreeArm({\n746\t                ...armArgs,\n747\t                summarizerProvider: meteredSummarizer,\n748\t                selectBranches: makeTreeDsaSelector(scenario.task),\n749\t              })\n750\t            : await runTreeArm({ ...armArgs, summarizerProvider: meteredSummarizer });\n751\t    status = output.status;\n752\t    finalText = output.finalText;\n753\t  } catch (error) {\n754\t    if (error instanceof CostCapExceededError) {\n755\t      status = 'cost_cap';\n756\t    } else {\n757\t      errorText = `${(error as",
-      "id": "s1-qo08-overflow"
+      "id": "s1-qo02-overflow"
     },
     {
       "stratum": "overflow",
       "exploratory": false,
-      "node_id": "n_1F6E3RF111CVYDQ7MA643CRGBC",
+      "node_id": "n_1JNW5D8CNYSATE4X6NV3Z39R81",
       "node_ids": [
-        "n_1F6E3RF111CVYDQ7MA643CRGBC"
+        "n_1JNW5D8CNYSATE4X6NV3Z39R81"
       ],
-      "seq": 264,
-      "kind": "quoted",
-      "answer_literals": [
-        "Extract per-turn input distributions"
-      ],
-      "answer_regexes": [
-        "(?<![\\w])Extract per-turn input distributions(?![\\w])"
-      ],
-      "source_context": "### tool_call Bash (seq 264)\nargs: {\"command\":\"node -e \\\"\\nconst fs = require('fs');\\nconst all = JSON.parse(fs.readFileSync('/private/tmp/claude-501/-Users-danielbyrne-GitHub-rpm-context-tree/4bf1e198-8af4-47e0-ae99-fa2ca13f1400/scratchpad/all-runs.json','utf8'));\\nconst inputs = (label, arm) => all.perRun.filter(r => r.label===label && r.arm===arm).flatMap(r => r.turns.map(t => t.usage.input));\\nconsole.log('CT5='+JSON.stringify(inputs('iter5','context-tree')));\\nconsole.log('CT6='+JSON.stringify(inputs('iter6','context-tree')));\\n\\\"\",\"description\":\"Extract per-turn input distributions\"}",
-      "wide_context": "### tool_call Bash (seq 264)\nargs: {\"command\":\"node -e \\\"\\nconst fs = require('fs');\\nconst all = JSON.parse(fs.readFileSync('/private/tmp/claude-501/-Users-danielbyrne-GitHub-rpm-context-tree/4bf1e198-8af4-47e0-ae99-fa2ca13f1400/scratchpad/all-runs.json','utf8'));\\nconst inputs = (label, arm) => all.perRun.filter(r => r.label===label && r.arm===arm).flatMap(r => r.turns.map(t => t.usage.input));\\nconsole.log('CT5='+JSON.stringify(inputs('iter5','context-tree')));\\nconsole.log('CT6='+JSON.stringify(inputs('iter6','context-tree')));\\n\\\"\",\"description\":\"Extract per-turn input distributions\"}",
-      "id": "s1-qo09-overflow"
-    },
-    {
-      "stratum": "overflow",
-      "exploratory": false,
-      "node_id": "n_10MK5T7JRRKENQ275F460TS827",
-      "node_ids": [
-        "n_10MK5T7JRRKENQ275F460TS827"
-      ],
-      "seq": 305,
-      "kind": "quoted",
-      "answer_literals": [
-        "Check suite progress before republishing"
-      ],
-      "answer_regexes": [
-        "(?<![\\w])Check suite progress before republishing(?![\\w])"
-      ],
-      "source_context": "### tool_call Bash (seq 305)\nargs: {\"command\":\"S=\\\"/private/tmp/claude-501/-Users-danielbyrne-GitHub-rpm-context-tree/4bf1e198-8af4-47e0-ae99-fa2ca13f1400/scratchpad\\\"; for i in 1 2 3; do tail -1 \\\"$S/suite-rep$i.log\\\" | cut -c1-140; done; ps aux | grep -c \\\"[r]un.js.*suite-rep\\\"\",\"description\":\"Check suite progress before republishing\"}",
-      "wide_context": "### tool_call Bash (seq 305)\nargs: {\"command\":\"S=\\\"/private/tmp/claude-501/-Users-danielbyrne-GitHub-rpm-context-tree/4bf1e198-8af4-47e0-ae99-fa2ca13f1400/scratchpad\\\"; for i in 1 2 3; do tail -1 \\\"$S/suite-rep$i.log\\\" | cut -c1-140; done; ps aux | grep -c \\\"[r]un.js.*suite-rep\\\"\",\"description\":\"Check suite progress before republishing\"}",
-      "id": "s1-qo10-overflow"
-    },
-    {
-      "stratum": "overflow",
-      "exploratory": false,
-      "node_id": "n_1ZDHE4823CEZMPPMH8M8H452BP",
-      "node_ids": [
-        "n_1ZDHE4823CEZMPPMH8M8H452BP"
-      ],
-      "seq": 352,
-      "kind": "quoted",
-      "answer_literals": [
-        "Sync final report and check repo state"
-      ],
-      "answer_regexes": [
-        "(?<![\\w])Sync final report and check repo state(?![\\w])"
-      ],
-      "source_context": "### tool_call Bash (seq 352)\nargs: {\"command\":\"cp \\\"/private/tmp/claude-501/-Users-danielbyrne-GitHub-rpm-context-tree/4bf1e198-8af4-47e0-ae99-fa2ca13f1400/scratchpad/tree-vs-transcript.html\\\" /Users/danielbyrne/GitHub/rpm/context-tree/reports/metrics/tree-vs-transcript.html && git status --short | head -15\",\"description\":\"Sync final report and check repo state\"}",
-      "wide_context": "### tool_call Bash (seq 352)\nargs: {\"command\":\"cp \\\"/private/tmp/claude-501/-Users-danielbyrne-GitHub-rpm-context-tree/4bf1e198-8af4-47e0-ae99-fa2ca13f1400/scratchpad/tree-vs-transcript.html\\\" /Users/danielbyrne/GitHub/rpm/context-tree/reports/metrics/tree-vs-transcript.html && git status --short | head -15\",\"description\":\"Sync final report and check repo state\"}",
-      "id": "s1-qo11-overflow"
-    },
-    {
-      "stratum": "overflow",
-      "exploratory": false,
-      "node_id": "n_18ZHNQYZRHWS0K4P4GHXHF1ND5",
-      "node_ids": [
-        "n_18ZHNQYZRHWS0K4P4GHXHF1ND5"
-      ],
-      "seq": 419,
-      "kind": "quoted",
-      "answer_literals": [
-        "Verify AssembledPrompt export path"
-      ],
-      "answer_regexes": [
-        "(?<![\\w])Verify AssembledPrompt export path(?![\\w])"
-      ],
-      "source_context": "### tool_call Bash (seq 419)\nargs: {\"command\":\"grep -n \\\"assemble/index\\\\|from './assemble\\\\|AssembledPrompt\\\" packages/core/src/index.ts | head; grep -rn \\\"export.*AssembledPrompt\\\" packages/core/src/assemble/ | head -3\",\"description\":\"Verify AssembledPrompt export path\"}",
-      "wide_context": "### tool_call Bash (seq 419)\nargs: {\"command\":\"grep -n \\\"assemble/index\\\\|from './assemble\\\\|AssembledPrompt\\\" packages/core/src/index.ts | head; grep -rn \\\"export.*AssembledPrompt\\\" packages/core/src/assemble/ | head -3\",\"description\":\"Verify AssembledPrompt export path\"}",
-      "id": "s1-qo12-overflow"
-    },
-    {
-      "stratum": "overflow",
-      "exploratory": false,
-      "node_id": "n_161P8JTCNTZ2S217FDR4ABC2NB",
-      "node_ids": [
-        "n_161P8JTCNTZ2S217FDR4ABC2NB"
-      ],
-      "seq": 315,
-      "kind": "quoted",
-      "answer_literals": [
-        "Check SummaryMeta shape for guards"
-      ],
-      "answer_regexes": [
-        "(?<![\\w])Check SummaryMeta shape for guards(?![\\w])"
-      ],
-      "source_context": "### tool_call Bash (seq 315)\nargs: {\"command\":\"grep -n \\\"open_questions\\\\|tests\\\" packages/core/src/contracts/*.ts | grep -i \\\"summary\\\\|meta\\\" | head; grep -n \\\"interface SummaryMeta\\\" -A 12 packages/core/src/contracts/*.ts | head -20\",\"description\":\"Check SummaryMeta shape for guards\"}",
-      "wide_context": "### tool_call Bash (seq 315)\nargs: {\"command\":\"grep -n \\\"open_questions\\\\|tests\\\" packages/core/src/contracts/*.ts | grep -i \\\"summary\\\\|meta\\\" | head; grep -n \\\"interface SummaryMeta\\\" -A 12 packages/core/src/contracts/*.ts | head -20\",\"description\":\"Check SummaryMeta shape for guards\"}",
-      "id": "s1-qo13-overflow"
-    },
-    {
-      "stratum": "overflow",
-      "exploratory": false,
-      "node_id": "n_1BGBV85XX4QTHMYPGFB7YAF1HT",
-      "node_ids": [
-        "n_1BGBV85XX4QTHMYPGFB7YAF1HT"
-      ],
-      "seq": 272,
+      "seq": 39,
       "kind": "ident",
       "answer_literals": [
-        "nrenderAll"
+        "phaseKey"
       ],
       "answer_regexes": [
-        "(?<![\\w])nrenderAll(?![\\w])"
+        "(?<![\\w])phaseKey(?![\\w])"
       ],
-      "source_context": "ing each next block/marker\\ns = s.replace(\\\"})();\\\\n\\\\n/* ---- fig 2\\\", \\\"});\\\\n\\\\n/* ---- fig 2\\\")\\ns = s.replace(\\\"})();\\\\n\\\\n/* ---- fig 3\\\", \\\"});\\\\n\\\\n/* ---- fig 3\\\")\\ns = s.replace(\\\"})();\\\\n\\\\n/* ---- fig 4\\\", \\\"});\\\\n\\\\n/* ---- fig 4\\\")\\ns = s.replace(\\\"})();\\\\n\\\\n/* ---- fig 5\\\", \\\"});\\\\n\\\\n/* ---- fig 5\\\")\\ns = s.replace(\\\"})();\\\\n\\\\n/* ---- appendix table ---- */\\\", \\\"});\\\\n\\\\nconst FIGS=['fig-scatter','fig-bars','fig-cache','fig-hist','fig-strip'];\\\\nfunction renderAll(){for(const id of FIGS){const n=document.getElementById(id);if(n)n.innerHTML='';}for(const f of RENDERERS)f();}\\\\nrenderAll();\\\\ntry{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',renderAll);}catch(e){}\\\\nnew MutationObserver(renderAll).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});\\\\n\\\\n/* ---- appendix table ---- */\\\")\\nopen(p,'w').write(s)\\nprint('ok', s.count('RENDERERS.push(function(){'), 'push blocks')\\nEOF\",\"description\":\"Convert chart IIFEs to re-renderable functions\"}",
-      "wide_context": "tion(){') > out.count('!!'):\\n        pass\\n    out += '})();' + seg\\ns = out\\n# simpler deterministic approach: replace the closer immediately preceding each next block/marker\\ns = s.replace(\\\"})();\\\\n\\\\n/* ---- fig 2\\\", \\\"});\\\\n\\\\n/* ---- fig 2\\\")\\ns = s.replace(\\\"})();\\\\n\\\\n/* ---- fig 3\\\", \\\"});\\\\n\\\\n/* ---- fig 3\\\")\\ns = s.replace(\\\"})();\\\\n\\\\n/* ---- fig 4\\\", \\\"});\\\\n\\\\n/* ---- fig 4\\\")\\ns = s.replace(\\\"})();\\\\n\\\\n/* ---- fig 5\\\", \\\"});\\\\n\\\\n/* ---- fig 5\\\")\\ns = s.replace(\\\"})();\\\\n\\\\n/* ---- appendix table ---- */\\\", \\\"});\\\\n\\\\nconst FIGS=['fig-scatter','fig-bars','fig-cache','fig-hist','fig-strip'];\\\\nfunction renderAll(){for(const id of FIGS){const n=document.getElementById(id);if(n)n.innerHTML='';}for(const f of RENDERERS)f();}\\\\nrenderAll();\\\\ntry{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',renderAll);}catch(e){}\\\\nnew MutationObserver(renderAll).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});\\\\n\\\\n/* ---- appendix table ---- */\\\")\\nopen(p,'w').write(s)\\nprint('ok', s.count('RENDERERS.push(function(){'), 'push blocks')\\nEOF\",\"description\":\"Convert chart IIFEs to re-renderable functions\"}",
-      "id": "s1-qo14-overflow"
+      "source_context": "ity is what makes the M1 acceptance (\"bit-identical across\n * runs\") a thing a test can assert at all, and what lets a segmenter change be\n * validated by deleting L1 and replaying L0 (D8).\n *\n * Span convention for `ingest/`: `open` already covers its own `start_seq`, so\n * the opening event emits no `extend` for that node. Every later event under a\n * node emits one, and `close` carries the last seq the node covered.\n */\nimport type {\n  NodeKey,\n  PhaseType,\n  Segmentation,\n  SegmentConfig,\n  Seq,\n  TraceEvent,\n  TreeOp,\n} from '../contracts/index.js';\nimport { TASK_KEY, fileKey, fileTitle, phaseKey, phaseTitle } from './keys.js';\nimport { segmentByText } from './text-fallback.js';\n\nexport interface SegmentOptions extends SegmentConfig {\n  /**\n   * Resolves an event's message text for the §7 unstructured-trace fallback.\n   * Optional because L0 stores blob refs, not text: L2 access belongs to the\n   * caller, so the segmenter stays pure. Absent => one `other` phase.\n   */\n  textOf?: (event: TraceEvent) => string;\n}\n\n/** The phase node currently accepting events, plus its per-phase file nodes. */\ninterface OpenPhase {\n  key: NodeKey;\n  index: number;\n  phaseType: PhaseType;\n  /** path -> ",
+      "wide_context": "gle O(n) pass over L0 that emits tree ops.\n *\n * Pure by construction: no store, no clock, no ULIDs, no filesystem, no network\n * (§7.1/D15). That purity is what makes the M1 acceptance (\"bit-identical across\n * runs\") a thing a test can assert at all, and what lets a segmenter change be\n * validated by deleting L1 and replaying L0 (D8).\n *\n * Span convention for `ingest/`: `open` already covers its own `start_seq`, so\n * the opening event emits no `extend` for that node. Every later event under a\n * node emits one, and `close` carries the last seq the node covered.\n */\nimport type {\n  NodeKey,\n  PhaseType,\n  Segmentation,\n  SegmentConfig,\n  Seq,\n  TraceEvent,\n  TreeOp,\n} from '../contracts/index.js';\nimport { TASK_KEY, fileKey, fileTitle, phaseKey, phaseTitle } from './keys.js';\nimport { segmentByText } from './text-fallback.js';\n\nexport interface SegmentOptions extends SegmentConfig {\n  /**\n   * Resolves an event's message text for the §7 unstructured-trace fallback.\n   * Optional because L0 stores blob refs, not text: L2 access belongs to the\n   * caller, so the segmenter stays pure. Absent => one `other` phase.\n   */\n  textOf?: (event: TraceEvent) => string;\n}\n\n/** The phase node currently accepting events, plus its per-phase file nodes. */\ninterface OpenPhase {\n  key: NodeKey;\n  index: number;\n  phaseType: PhaseType;\n  /** path -> file node key. Scoped here because §7 reuses a file node per phase. */\n  files: Map<string, NodeKey>;\n}\n\nexport function segment(\n  events: readonly T",
+      "id": "s1-qo03-overflow"
     },
     {
       "stratum": "overflow",
@@ -283,16 +74,225 @@
       "node_ids": [
         "n_1E48X9HAFPEYNQHHSF609KHMEE"
       ],
-      "seq": 218,
-      "kind": "quoted",
+      "seq": 55,
+      "kind": "number",
       "answer_literals": [
-        "Build two-task suite file and validate rows"
+        "11785"
       ],
       "answer_regexes": [
-        "(?<![\\w])Build two-task suite file and validate rows(?![\\w])"
+        "(?<![\\w])11785(?![\\w])"
       ],
-      "source_context": "ate/tmp/claude-501/-Users-danielbyrne-GitHub-rpm-context-tree/4bf1e198-8af4-47e0-ae99-fa2ca13f1400/scratchpad/suite-two-tasks.jsonl\\\"; wc -l \\\"/private/tmp/claude-501/-Users-danielbyrne-GitHub-rpm-context-tree/4bf1e198-8af4-47e0-ae99-fa2ca13f1400/scratchpad/suite-two-tasks.jsonl\\\"; python3 -c \\\"\\nimport json\\nfor line in open('/private/tmp/claude-501/-Users-danielbyrne-GitHub-rpm-context-tree/4bf1e198-8af4-47e0-ae99-fa2ca13f1400/scratchpad/suite-two-tasks.jsonl'):\\n    row=json.loads(line); print(row['id'], 'files:', len(row['files']), 'judge_files:', len(row['judge_files']))\\\"\",\"description\":\"Build two-task suite file and validate rows\"}",
-      "wide_context": " {\"command\":\"cat eval/scenarios/deepswe-agents-last-exam/sw-1-jsonc.jsonl.bak eval/scenarios/deepswe-agents-last-exam/agents-last-exam.jsonl > \\\"/private/tmp/claude-501/-Users-danielbyrne-GitHub-rpm-context-tree/4bf1e198-8af4-47e0-ae99-fa2ca13f1400/scratchpad/suite-two-tasks.jsonl\\\"; wc -l \\\"/private/tmp/claude-501/-Users-danielbyrne-GitHub-rpm-context-tree/4bf1e198-8af4-47e0-ae99-fa2ca13f1400/scratchpad/suite-two-tasks.jsonl\\\"; python3 -c \\\"\\nimport json\\nfor line in open('/private/tmp/claude-501/-Users-danielbyrne-GitHub-rpm-context-tree/4bf1e198-8af4-47e0-ae99-fa2ca13f1400/scratchpad/suite-two-tasks.jsonl'):\\n    row=json.loads(line); print(row['id'], 'files:', len(row['files']), 'judge_files:', len(row['judge_files']))\\\"\",\"description\":\"Build two-task suite file and validate rows\"}",
+      "source_context": "rne/GitHub/rpm/context-tree/eval/scripts/build-multimod-scenario.py (seq 55)\nargs: {\"file_path\":\"/Users/danielbyrne/GitHub/rpm/context-tree/eval/scripts/build-multimod-scenario.py\",\"content\":\"#!/usr/bin/env python3\\n\\\"\\\"\\\"Self-verifying generator for sw-2-multimod (the >k-branch long task).\\n\\nPhase-0 prerequisite from the long-task report (§9.1): the tree-dsa selector\\nnever fired because sw-1-jsonc grew <= 3 branches. This task forces module-by-\\nmodule read->test->fix cycles across FOUR independent modules, so segmentation\\nalternates diagnosis/implementation and yields ~8 phase branch\n...[11785 chars elided - call `context_fetch` for the full detail]\n#!/usr/bin/env python3\n\"\"\"Self-verifying generator for sw-2-multimod (the >k-branch long task).\n\nPhase-0 prerequisite from the long-task report (§9.1): the tree-dsa selector\nnever fired because sw-1-jsonc grew <= 3 branches. This task forces module-by-\nmodule read->test->fix cycles across FOUR independent modules, so segmentation\nalternates diagnosis/implementation and yields ~8 phase branches (> k=3).\n\nSame contract as build-jsonc-scenario.py:\n  - ships four buggy modules, asserts they FAIL the hidden suite;\n  - writes the correct refe",
+      "wide_context": "### tool_call Write /Users/danielbyrne/GitHub/rpm/context-tree/eval/scripts/build-multimod-scenario.py (seq 55)\nargs: {\"file_path\":\"/Users/danielbyrne/GitHub/rpm/context-tree/eval/scripts/build-multimod-scenario.py\",\"content\":\"#!/usr/bin/env python3\\n\\\"\\\"\\\"Self-verifying generator for sw-2-multimod (the >k-branch long task).\\n\\nPhase-0 prerequisite from the long-task report (§9.1): the tree-dsa selector\\nnever fired because sw-1-jsonc grew <= 3 branches. This task forces module-by-\\nmodule read->test->fix cycles across FOUR independent modules, so segmentation\\nalternates diagnosis/implementation and yields ~8 phase branch\n...[11785 chars elided - call `context_fetch` for the full detail]\n#!/usr/bin/env python3\n\"\"\"Self-verifying generator for sw-2-multimod (the >k-branch long task).\n\nPhase-0 prerequisite from the long-task report (§9.1): the tree-dsa selector\nnever fired because sw-1-jsonc grew <= 3 branches. This task forces module-by-\nmodule read->test->fix cycles across FOUR independent modules, so segmentation\nalternates diagnosis/implementation and yields ~8 phase branches (> k=3).\n\nSame contract as build-jsonc-scenario.py:\n  - ships four buggy modules, asserts they FAIL the hidden suite;\n  - writes the correct reference modules, asserts they PASS;\n  - only then writes the single-row scenario JSONL.\n\"\"\"\n\nimport json\nimport os\nimport pathlib\nimport subprocess\nimpo",
+      "id": "s1-qo04-overflow"
+    },
+    {
+      "stratum": "overflow",
+      "exploratory": false,
+      "node_id": "n_1E48X9HAFPEYNQHHSF609KHMEE",
+      "node_ids": [
+        "n_1E48X9HAFPEYNQHHSF609KHMEE"
+      ],
+      "seq": 82,
+      "kind": "ident",
+      "answer_literals": [
+        "spanEvents"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])spanEvents(?![\\w])"
+      ],
+      "source_context": "### tool_call Bash (seq 82)\nargs: {\"command\":\"grep -n \\\"detail\\\\|events\\\\|spanEvents\\\\|blob\\\" packages/core/src/summarize/summarizer.ts | head -30; echo ===; grep -rn \\\"export function\\\\|export class\\\" packages/core/src/summarize/*.ts | head\",\"description\":\"Find node-detail collection in summarizer\"}",
+      "wide_context": "### tool_call Bash (seq 82)\nargs: {\"command\":\"grep -n \\\"detail\\\\|events\\\\|spanEvents\\\\|blob\\\" packages/core/src/summarize/summarizer.ts | head -30; echo ===; grep -rn \\\"export function\\\\|export class\\\" packages/core/src/summarize/*.ts | head\",\"description\":\"Find node-detail collection in summarizer\"}",
+      "id": "s1-qo05-overflow"
+    },
+    {
+      "stratum": "overflow",
+      "exploratory": false,
+      "node_id": "n_1E48X9HAFPEYNQHHSF609KHMEE",
+      "node_ids": [
+        "n_1E48X9HAFPEYNQHHSF609KHMEE"
+      ],
+      "seq": 107,
+      "kind": "ident",
+      "answer_literals": [
+        "toMatchObject"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])toMatchObject(?![\\w])"
+      ],
+      "source_context": "up-before-summarize (dedupSummarizePlan)', () => {\\n  const detail = (body: string) =>\\n    `ran the test suite for ${body} and edited the module until the cases passed; reran to confirm green`;\\n\\n  it('skips a pending branch that duplicates an already-summarized sibling', () => {\\n    const { kept, deduped } = dedupSummarizePlan(\\n      [{ id: 'n_new', text: detail('slugify hyphen collapse boundary strip') }],\\n      [{ id: 'n_done', text: detail('slugify hyphen collapse boundary strip') }],\\n    );\\n    expect(kept).toEqual([]);\\n    expect(deduped).toHaveLength(1);\\n    expect(deduped[0]).toMatchObject({ id: 'n_new', against: 'n_done' });\\n    expect(deduped[0]!.cosine).toBeGreaterThanOrEqual(0.9);\\n  });\\n\\n  it('dedupes within the plan itself — the first twin summarizes, the second is skipped', () => {\\n    const { kept, deduped } = dedupSummarizePlan(\\n      [\\n        { id: 'n_first', text: detail('wordwrap greedy width joining space overflow') },\\n        { id: 'n_twin', text: detail('wordwrap greedy width joining space overflow') },\\n      ],\\n      [],\\n    );\\n    expect(kept).toEqual(['n_first']);\\n    expect(deduped.map((entry) => entry.id)).toEqual(['n_twin']);\\n  });\\n\\n  it('ke",
+      "wide_context": " 0 });\\n  });\\n});\",\"new_string\":\"    expect(splitSummarizePlan([], failed)).toEqual({ pending: [], skipped: 0 });\\n  });\\n});\\n\\ndescribe('cosine dedup-before-summarize (dedupSummarizePlan)', () => {\\n  const detail = (body: string) =>\\n    `ran the test suite for ${body} and edited the module until the cases passed; reran to confirm green`;\\n\\n  it('skips a pending branch that duplicates an already-summarized sibling', () => {\\n    const { kept, deduped } = dedupSummarizePlan(\\n      [{ id: 'n_new', text: detail('slugify hyphen collapse boundary strip') }],\\n      [{ id: 'n_done', text: detail('slugify hyphen collapse boundary strip') }],\\n    );\\n    expect(kept).toEqual([]);\\n    expect(deduped).toHaveLength(1);\\n    expect(deduped[0]).toMatchObject({ id: 'n_new', against: 'n_done' });\\n    expect(deduped[0]!.cosine).toBeGreaterThanOrEqual(0.9);\\n  });\\n\\n  it('dedupes within the plan itself — the first twin summarizes, the second is skipped', () => {\\n    const { kept, deduped } = dedupSummarizePlan(\\n      [\\n        { id: 'n_first', text: detail('wordwrap greedy width joining space overflow') },\\n        { id: 'n_twin', text: detail('wordwrap greedy width joining space overflow') },\\n      ],\\n      [],\\n    );\\n    expect(kept).toEqual(['n_first']);\\n    expect(deduped.map((entry) => entry.id)).toEqual(['n_twin']);\\n  });\\n\\n  it('keeps genuinely distinct branches — one summary per topic, not per plan', () => {\\n    const { kept, deduped } = dedupSummarizePlan(\\n      [\\n        {",
+      "id": "s1-qo06-overflow"
+    },
+    {
+      "stratum": "overflow",
+      "exploratory": false,
+      "node_id": "n_1JNW5D8CNYSATE4X6NV3Z39R81",
+      "node_ids": [
+        "n_1JNW5D8CNYSATE4X6NV3Z39R81"
+      ],
+      "seq": 39,
+      "kind": "ident",
+      "answer_literals": [
+        "TASK_KEY"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])TASK_KEY(?![\\w])"
+      ],
+      "source_context": "etwork\n * (§7.1/D15). That purity is what makes the M1 acceptance (\"bit-identical across\n * runs\") a thing a test can assert at all, and what lets a segmenter change be\n * validated by deleting L1 and replaying L0 (D8).\n *\n * Span convention for `ingest/`: `open` already covers its own `start_seq`, so\n * the opening event emits no `extend` for that node. Every later event under a\n * node emits one, and `close` carries the last seq the node covered.\n */\nimport type {\n  NodeKey,\n  PhaseType,\n  Segmentation,\n  SegmentConfig,\n  Seq,\n  TraceEvent,\n  TreeOp,\n} from '../contracts/index.js';\nimport { TASK_KEY, fileKey, fileTitle, phaseKey, phaseTitle } from './keys.js';\nimport { segmentByText } from './text-fallback.js';\n\nexport interface SegmentOptions extends SegmentConfig {\n  /**\n   * Resolves an event's message text for the §7 unstructured-trace fallback.\n   * Optional because L0 stores blob refs, not text: L2 access belongs to the\n   * caller, so the segmenter stays pure. Absent => one `other` phase.\n   */\n  textOf?: (event: TraceEvent) => string;\n}\n\n/** The phase node currently accepting events, plus its per-phase file nodes. */\ninterface OpenPhase {\n  key: NodeKey;\n  index: number;\n  phaseT",
+      "wide_context": "gmentation engine (D1) — a single O(n) pass over L0 that emits tree ops.\n *\n * Pure by construction: no store, no clock, no ULIDs, no filesystem, no network\n * (§7.1/D15). That purity is what makes the M1 acceptance (\"bit-identical across\n * runs\") a thing a test can assert at all, and what lets a segmenter change be\n * validated by deleting L1 and replaying L0 (D8).\n *\n * Span convention for `ingest/`: `open` already covers its own `start_seq`, so\n * the opening event emits no `extend` for that node. Every later event under a\n * node emits one, and `close` carries the last seq the node covered.\n */\nimport type {\n  NodeKey,\n  PhaseType,\n  Segmentation,\n  SegmentConfig,\n  Seq,\n  TraceEvent,\n  TreeOp,\n} from '../contracts/index.js';\nimport { TASK_KEY, fileKey, fileTitle, phaseKey, phaseTitle } from './keys.js';\nimport { segmentByText } from './text-fallback.js';\n\nexport interface SegmentOptions extends SegmentConfig {\n  /**\n   * Resolves an event's message text for the §7 unstructured-trace fallback.\n   * Optional because L0 stores blob refs, not text: L2 access belongs to the\n   * caller, so the segmenter stays pure. Absent => one `other` phase.\n   */\n  textOf?: (event: TraceEvent) => string;\n}\n\n/** The phase node currently accepting events, plus its per-phase file nodes. */\ninterface OpenPhase {\n  key: NodeKey;\n  index: number;\n  phaseType: PhaseType;\n  /** path -> file node key. Scoped here because §7 reuses a file node per phase. */\n  files: Map<string, NodeKey>;\n}\n\nexport function",
+      "id": "s1-qo07-overflow"
+    },
+    {
+      "stratum": "overflow",
+      "exploratory": false,
+      "node_id": "n_1E48X9HAFPEYNQHHSF609KHMEE",
+      "node_ids": [
+        "n_1E48X9HAFPEYNQHHSF609KHMEE"
+      ],
+      "seq": 86,
+      "kind": "quoted",
+      "answer_literals": [
+        "Read renderBranchDetail signature and core exports"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])Read renderBranchDetail signature and core exports(?![\\w])"
+      ],
+      "source_context": "### tool_call Bash (seq 86)\nargs: {\"command\":\"sed -n 20,110p packages/core/src/summarize/detail.ts; echo ===; grep -n \\\"detail\\\\|summarize\\\" packages/core/src/index.ts | head\",\"description\":\"Read renderBranchDetail signature and core exports\"}",
+      "wide_context": "### tool_call Bash (seq 86)\nargs: {\"command\":\"sed -n 20,110p packages/core/src/summarize/detail.ts; echo ===; grep -n \\\"detail\\\\|summarize\\\" packages/core/src/index.ts | head\",\"description\":\"Read renderBranchDetail signature and core exports\"}",
+      "id": "s1-qo08-overflow"
+    },
+    {
+      "stratum": "overflow",
+      "exploratory": false,
+      "node_id": "n_1JNW5D8CNYSATE4X6NV3Z39R81",
+      "node_ids": [
+        "n_1JNW5D8CNYSATE4X6NV3Z39R81"
+      ],
+      "seq": 18,
+      "kind": "ident",
+      "answer_literals": [
+        "totalUsd"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])totalUsd(?![\\w])"
+      ],
+      "source_context": "     provider: meteredAgent,\n768\t        judgeModel: options.judgeModel,\n769\t      });\n770\t      success = judge.success;\n771\t      judgeDetail = judge.detail;\n772\t    } catch (error) {\n773\t      if (error instanceof CostCapExceededError) {\n774\t        status = 'cost_cap';\n775\t      } else {\n776\t        errorText = `judge: ${(error as Error).name}: ${(error as Error).message}`;\n777\t      }\n778\t    }\n779\t  }\n780\t\n781\t  const finishedAt = new Date();\n782\t  const wallMs = finishedAt.getTime() - startedAt.getTime();\n783\t  const metrics = summarizeMetrics({ turns, wallMs, usage, costUsd: costMeter.totalUsd() });\n784\t  runHandle.finish(status, metrics, success, judgeDetail);\n785\t  if (options.keepSandbox) sandbox.writeFile('.final-answer.txt', finalText);\n786\t  else sandbox.cleanup();\n787\t\n788\t  const result: RunResult = {\n789\t    runId: loop.runId,\n790\t    benchmark: scenario.benchmark,\n791\t    scenarioId: scenario.id,\n792\t    arm,\n793\t    model: options.model,\n794\t    status,\n795\t    success,\n796\t    judge: { success, detail: judgeDetail },\n797\t    metrics,\n798\t    turns: [...turns],\n799\t    error: errorText,\n800\t    sandboxPath: options.keepSandbox ? sandbox.path : undefined,\n801\t    startedA",
+      "wide_context": "= 'time_cap')) {\n762\t    try {\n763\t      const judge = await judgeScenario({\n764\t        scenario,\n765\t        sandbox,\n766\t        finalText,\n767\t        provider: meteredAgent,\n768\t        judgeModel: options.judgeModel,\n769\t      });\n770\t      success = judge.success;\n771\t      judgeDetail = judge.detail;\n772\t    } catch (error) {\n773\t      if (error instanceof CostCapExceededError) {\n774\t        status = 'cost_cap';\n775\t      } else {\n776\t        errorText = `judge: ${(error as Error).name}: ${(error as Error).message}`;\n777\t      }\n778\t    }\n779\t  }\n780\t\n781\t  const finishedAt = new Date();\n782\t  const wallMs = finishedAt.getTime() - startedAt.getTime();\n783\t  const metrics = summarizeMetrics({ turns, wallMs, usage, costUsd: costMeter.totalUsd() });\n784\t  runHandle.finish(status, metrics, success, judgeDetail);\n785\t  if (options.keepSandbox) sandbox.writeFile('.final-answer.txt', finalText);\n786\t  else sandbox.cleanup();\n787\t\n788\t  const result: RunResult = {\n789\t    runId: loop.runId,\n790\t    benchmark: scenario.benchmark,\n791\t    scenarioId: scenario.id,\n792\t    arm,\n793\t    model: options.model,\n794\t    status,\n795\t    success,\n796\t    judge: { success, detail: judgeDetail },\n797\t    metrics,\n798\t    turns: [...turns],\n799\t    error: errorText,\n800\t    sandboxPath: options.keepSandbox ? sandbox.path : undefined,\n801\t    startedAt: startedAt.toISOString(),\n802\t    finishedAt: finishedAt.toISOString(),\n803\t  };\n804\t  return { result, finalText };\n805\t}\n806\t\n807\t",
+      "id": "s1-qo09-overflow"
+    },
+    {
+      "stratum": "overflow",
+      "exploratory": false,
+      "node_id": "n_1JNW5D8CNYSATE4X6NV3Z39R81",
+      "node_ids": [
+        "n_1JNW5D8CNYSATE4X6NV3Z39R81"
+      ],
+      "seq": 24,
+      "kind": "number",
+      "answer_literals": [
+        "132.7"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])132\\.7(?![\\w])"
+      ],
+      "source_context": "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n| native | 1 | 1 | 100.0% | 70097 | 6066 | 0 | 0 | 76163 | 17 | 18 | 319067 | 319067 | $0.2009 |\n| context-tree | 1 | 1 | 100.0% | 78245 | 4494 | 67032 | 27432 | 177203 | 14 | 15 | 182104 | 182104 | $0.4401 |\n| tree-dsa | 1 | 1 | 100.0% | 39678 | 4359 | 47880 | 5492 | 97409 | 9 | 10 | 114802 | 114802 | $0.2178 |\n\n\n**context-tree vs native (deltas):**\n\n| metric | native | context-tree | delta | reads |\n| --- | --- | --- | --- | --- |\n| success rate | 100.0% | 100.0% | +0.0 pp | pp |\n| avg total tokens | 76163 | 177203 | +132.7% | lower-is-better |\n| avg output tokens | 6066 | 4494 | -25.9% | lower-is-better |\n| avg cache-read tokens | 0 | 67032 | n/a | lower-is-better |\n| avg tool calls | 17 | 14 | -17.6% | lower-is-better |\n| avg model turns | 18 | 15 | -16.7% | lower-is-better |\n| p50 wall ms | 319067 | 182104 | -42.9% | lower-is-better |\n| p95 wall ms | 319067 | 182104 | -42.9% | lower-is-better |\n| avg cost usd | $0.2009 | $0.4401 | +119.1% | lower-is-better |",
+      "wide_context": "-exam\n\n| arm | runs | ok | success | in tok | out tok | cache r | cache w | total tok | tool calls | turns | p50 ms | p95 ms | avg cost |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n| native | 1 | 1 | 100.0% | 70097 | 6066 | 0 | 0 | 76163 | 17 | 18 | 319067 | 319067 | $0.2009 |\n| context-tree | 1 | 1 | 100.0% | 78245 | 4494 | 67032 | 27432 | 177203 | 14 | 15 | 182104 | 182104 | $0.4401 |\n| tree-dsa | 1 | 1 | 100.0% | 39678 | 4359 | 47880 | 5492 | 97409 | 9 | 10 | 114802 | 114802 | $0.2178 |\n\n\n**context-tree vs native (deltas):**\n\n| metric | native | context-tree | delta | reads |\n| --- | --- | --- | --- | --- |\n| success rate | 100.0% | 100.0% | +0.0 pp | pp |\n| avg total tokens | 76163 | 177203 | +132.7% | lower-is-better |\n| avg output tokens | 6066 | 4494 | -25.9% | lower-is-better |\n| avg cache-read tokens | 0 | 67032 | n/a | lower-is-better |\n| avg tool calls | 17 | 14 | -17.6% | lower-is-better |\n| avg model turns | 18 | 15 | -16.7% | lower-is-better |\n| p50 wall ms | 319067 | 182104 | -42.9% | lower-is-better |\n| p95 wall ms | 319067 | 182104 | -42.9% | lower-is-better |\n| avg cost usd | $0.2009 | $0.4401 | +119.1% | lower-is-better |",
+      "id": "s1-qo10-overflow"
+    },
+    {
+      "stratum": "overflow",
+      "exploratory": false,
+      "node_id": "n_1JNW5D8CNYSATE4X6NV3Z39R81",
+      "node_ids": [
+        "n_1JNW5D8CNYSATE4X6NV3Z39R81"
+      ],
+      "seq": 43,
+      "kind": "ident",
+      "answer_literals": [
+        "FIXED_LOADER"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])FIXED_LOADER(?![\\w])"
+      ],
+      "source_context": "ch rows are not needed here).\n4\t    JSONL.write_text(json.dumps(row, ensure_ascii=False) + \"\\n\", encoding=\"utf-8\")\n5\t\n6\t    with tempfile.TemporaryDirectory() as tmp:\n7\t        tmp_path = pathlib.Path(tmp)\n8\t        cwd_before = os.getcwd()\n9\t        os.chdir(tmp_path)\n10\t        try:\n11\t            write_files(tmp_path, {**row[\"files\"], **row[\"judge_files\"]})\n12\t            buggy = run(tmp_path / \"hidden_test.py\")\n13\t            print(\"=== BUGGY exit=%s ===\" % buggy.returncode)\n14\t            print((buggy.stdout + buggy.stderr)[-400:])\n15\t            (tmp_path / \"jsonc_loader.py\").write_text(FIXED_LOADER, encoding=\"utf-8\")\n16\t            fixed = run(tmp_path / \"hidden_test.py\")\n17\t            print(\"=== FIXED exit=%s ===\" % fixed.returncode)\n18\t            print((fixed.stdout + fixed.stderr)[-400:])\n19\t        finally:\n20\t            os.chdir(cwd_before)\n21\t\n22\t    assert buggy.returncode != 0, \"buggy loader should FAIL the hidden test\"\n23\t    assert fixed.returncode == 0, \"correct loader should PASS the hidden test\"\n24\t    print(\"OK: sw-1-jsonc written; buggy FAILS / fixed PASSES confirmed\")",
+      "wide_context": " 43)\n1\tdef main() -> None:\n2\t    # Overwrite the scenario file with sw-1-jsonc (this experiment runs that\n3\t    # single long task; the probe/dsa/branch rows are not needed here).\n4\t    JSONL.write_text(json.dumps(row, ensure_ascii=False) + \"\\n\", encoding=\"utf-8\")\n5\t\n6\t    with tempfile.TemporaryDirectory() as tmp:\n7\t        tmp_path = pathlib.Path(tmp)\n8\t        cwd_before = os.getcwd()\n9\t        os.chdir(tmp_path)\n10\t        try:\n11\t            write_files(tmp_path, {**row[\"files\"], **row[\"judge_files\"]})\n12\t            buggy = run(tmp_path / \"hidden_test.py\")\n13\t            print(\"=== BUGGY exit=%s ===\" % buggy.returncode)\n14\t            print((buggy.stdout + buggy.stderr)[-400:])\n15\t            (tmp_path / \"jsonc_loader.py\").write_text(FIXED_LOADER, encoding=\"utf-8\")\n16\t            fixed = run(tmp_path / \"hidden_test.py\")\n17\t            print(\"=== FIXED exit=%s ===\" % fixed.returncode)\n18\t            print((fixed.stdout + fixed.stderr)[-400:])\n19\t        finally:\n20\t            os.chdir(cwd_before)\n21\t\n22\t    assert buggy.returncode != 0, \"buggy loader should FAIL the hidden test\"\n23\t    assert fixed.returncode == 0, \"correct loader should PASS the hidden test\"\n24\t    print(\"OK: sw-1-jsonc written; buggy FAILS / fixed PASSES confirmed\")",
+      "id": "s1-qo11-overflow"
+    },
+    {
+      "stratum": "overflow",
+      "exploratory": false,
+      "node_id": "n_1JNW5D8CNYSATE4X6NV3Z39R81",
+      "node_ids": [
+        "n_1JNW5D8CNYSATE4X6NV3Z39R81"
+      ],
+      "seq": 8,
+      "kind": "ident",
+      "answer_literals": [
+        "py_compile"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])py_compile(?![\\w])"
+      ],
+      "source_context": "before-summarize (§9).\n78\t\n79\t## 6. Defect ledger (what this iteration loop caught)\n80\t\n81\t| # | Defect | Caught by | Fix |\n82\t|---|---|---|---|\n83\t| 1 | Upstream benchmarks unreachable (GitHub 404s, HF API unusable) | environment probing | faithful in-sandbox task with hidden grader tests |\n84\t| 2 | `--limit 1` ran the *first* scenario (branch-1-five-cycles), not the new task | live log mismatch | scenario file isolated to the single `sw-1-jsonc` row |\n85\t| 3 | Hidden test shipped with literal newlines inside single-quoted strings → `SyntaxError: unterminated string literal` in the sandbox | py_compile check in the self-verify step | cases regenerated via `repr()` escapes |\n86\t| 4 | The first \"buggy\" loader was a *correct* string-aware stripper (passed all 10 cases) — the experiment would have measured nothing | self-verification assert | naive regex shipped as the bug; state machine kept as reference fix |\n87\t| 5 | Recency dominated relevance in the branch scorer (1.5 max vs ≤0.9 typical) — a brand-new irrelevant branch won the anchor pick | unit test + simulation | weights rebalanced to relevance 4 / recency 1 / diversity 2 |\n88\t| 6 | Test premise wrong: \"more mentions = more relevant\" is",
+      "wide_context": "win. The fix is not \"summarize less\" but \"summarize *fewer distinct things*, more reliably, more cheaply\" — hence the breaker (reliability) and dedup-before-summarize (§9).\n78\t\n79\t## 6. Defect ledger (what this iteration loop caught)\n80\t\n81\t| # | Defect | Caught by | Fix |\n82\t|---|---|---|---|\n83\t| 1 | Upstream benchmarks unreachable (GitHub 404s, HF API unusable) | environment probing | faithful in-sandbox task with hidden grader tests |\n84\t| 2 | `--limit 1` ran the *first* scenario (branch-1-five-cycles), not the new task | live log mismatch | scenario file isolated to the single `sw-1-jsonc` row |\n85\t| 3 | Hidden test shipped with literal newlines inside single-quoted strings → `SyntaxError: unterminated string literal` in the sandbox | py_compile check in the self-verify step | cases regenerated via `repr()` escapes |\n86\t| 4 | The first \"buggy\" loader was a *correct* string-aware stripper (passed all 10 cases) — the experiment would have measured nothing | self-verification assert | naive regex shipped as the bug; state machine kept as reference fix |\n87\t| 5 | Recency dominated relevance in the branch scorer (1.5 max vs ≤0.9 typical) — a brand-new irrelevant branch won the anchor pick | unit test + simulation | weights rebalanced to relevance 4 / recency 1 / diversity 2 |\n88\t| 6 | Test premise wrong: \"more mentions = more relevant\" is false under idf-cosine (norm dilution penalizes verbose branches) | failing assertion + trace | test rewritten to the sharp property: identical dupli",
+      "id": "s1-qo12-overflow"
+    },
+    {
+      "stratum": "overflow",
+      "exploratory": false,
+      "node_id": "n_1JNW5D8CNYSATE4X6NV3Z39R81",
+      "node_ids": [
+        "n_1JNW5D8CNYSATE4X6NV3Z39R81"
+      ],
+      "seq": 8,
+      "kind": "path",
+      "answer_literals": [
+        "eval/test/adapters/util.test.ts"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])eval/test/adapters/util\\.test\\.ts(?![\\w])"
+      ],
+      "source_context": "rewrite-based (one node, composed from children, already cheap). See §9 Phase 1.\n102\t\n103\t## 8. Current state of the code\n104\t\n105\t- `eval/src/loop.ts` — `termCounts`, `cosineSimilarity`, `idfVectors`; `selectTopKBranches` rewritten as farthest-point diversity (weights 4/1/2); `splitSummarizePlan`; `maybeResummarize` now runs the per-node breaker through `scheduleSummarize` + `drain` with failure memory (`failedSummaryNodes`).\n106\t- `eval/src/adapters/util.ts` — `judgeFromRow(row, where)`; `judgeFilesFromRow` attaches hidden files to `command` judges; `filesFromRow` behavior unchanged.\n107\t- `eval/test/adapters/util.test.ts` — 4 tests (attach/absent/malformed `judge_files`, malformed `files`).\n108\t- `eval/test/loop.test.ts` — +6 (floor, relevance-anchor, duplicate-spread, cosine determinism, idf weighting, breaker split). **Suite: 58/58 across 7 files.**\n109\t- `eval/scripts/build-jsonc-scenario.py` — self-verifying generator (buggy FAILS / fixed PASSES asserts).\n110\t- `eval/scenarios/deepswe-agents-last-exam/agents-last-exam.jsonl` — single `sw-1-jsonc` row (local-only, gitignored by design per README).\n111\t- **Results:** `eval/results/long-swe-iter{1,2,3}/` (results.json + report.md each).\n112\t\n113\t## 9. Next e",
+      "wide_context": "e the summary until compaction, so bound it — append N times, then one full rewrite when the summary exceeds a length cap. Root summaries should stay rewrite-based (one node, composed from children, already cheap). See §9 Phase 1.\n102\t\n103\t## 8. Current state of the code\n104\t\n105\t- `eval/src/loop.ts` — `termCounts`, `cosineSimilarity`, `idfVectors`; `selectTopKBranches` rewritten as farthest-point diversity (weights 4/1/2); `splitSummarizePlan`; `maybeResummarize` now runs the per-node breaker through `scheduleSummarize` + `drain` with failure memory (`failedSummaryNodes`).\n106\t- `eval/src/adapters/util.ts` — `judgeFromRow(row, where)`; `judgeFilesFromRow` attaches hidden files to `command` judges; `filesFromRow` behavior unchanged.\n107\t- `eval/test/adapters/util.test.ts` — 4 tests (attach/absent/malformed `judge_files`, malformed `files`).\n108\t- `eval/test/loop.test.ts` — +6 (floor, relevance-anchor, duplicate-spread, cosine determinism, idf weighting, breaker split). **Suite: 58/58 across 7 files.**\n109\t- `eval/scripts/build-jsonc-scenario.py` — self-verifying generator (buggy FAILS / fixed PASSES asserts).\n110\t- `eval/scenarios/deepswe-agents-last-exam/agents-last-exam.jsonl` — single `sw-1-jsonc` row (local-only, gitignored by design per README).\n111\t- **Results:** `eval/results/long-swe-iter{1,2,3}/` (results.json + report.md each).\n112\t\n113\t## 9. Next experiments\n114\t\n115\tOrdered by **dependency, not interest** — each phase changes the baseline the next phase tunes against. Running the hyperparameter",
+      "id": "s1-qo13-overflow"
+    },
+    {
+      "stratum": "overflow",
+      "exploratory": false,
+      "node_id": "n_1JNW5D8CNYSATE4X6NV3Z39R81",
+      "node_ids": [
+        "n_1JNW5D8CNYSATE4X6NV3Z39R81"
+      ],
+      "seq": 43,
+      "kind": "quoted",
+      "answer_literals": [
+        "correct loader should PASS the hidden test"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])correct loader should PASS the hidden test(?![\\w])"
+      ],
+      "source_context": "(tmp_path / \"hidden_test.py\")\n13\t            print(\"=== BUGGY exit=%s ===\" % buggy.returncode)\n14\t            print((buggy.stdout + buggy.stderr)[-400:])\n15\t            (tmp_path / \"jsonc_loader.py\").write_text(FIXED_LOADER, encoding=\"utf-8\")\n16\t            fixed = run(tmp_path / \"hidden_test.py\")\n17\t            print(\"=== FIXED exit=%s ===\" % fixed.returncode)\n18\t            print((fixed.stdout + fixed.stderr)[-400:])\n19\t        finally:\n20\t            os.chdir(cwd_before)\n21\t\n22\t    assert buggy.returncode != 0, \"buggy loader should FAIL the hidden test\"\n23\t    assert fixed.returncode == 0, \"correct loader should PASS the hidden test\"\n24\t    print(\"OK: sw-1-jsonc written; buggy FAILS / fixed PASSES confirmed\")",
+      "wide_context": ")\n9\t        os.chdir(tmp_path)\n10\t        try:\n11\t            write_files(tmp_path, {**row[\"files\"], **row[\"judge_files\"]})\n12\t            buggy = run(tmp_path / \"hidden_test.py\")\n13\t            print(\"=== BUGGY exit=%s ===\" % buggy.returncode)\n14\t            print((buggy.stdout + buggy.stderr)[-400:])\n15\t            (tmp_path / \"jsonc_loader.py\").write_text(FIXED_LOADER, encoding=\"utf-8\")\n16\t            fixed = run(tmp_path / \"hidden_test.py\")\n17\t            print(\"=== FIXED exit=%s ===\" % fixed.returncode)\n18\t            print((fixed.stdout + fixed.stderr)[-400:])\n19\t        finally:\n20\t            os.chdir(cwd_before)\n21\t\n22\t    assert buggy.returncode != 0, \"buggy loader should FAIL the hidden test\"\n23\t    assert fixed.returncode == 0, \"correct loader should PASS the hidden test\"\n24\t    print(\"OK: sw-1-jsonc written; buggy FAILS / fixed PASSES confirmed\")",
+      "id": "s1-qo14-overflow"
+    },
+    {
+      "stratum": "overflow",
+      "exploratory": false,
+      "node_id": "n_1JNW5D8CNYSATE4X6NV3Z39R81",
+      "node_ids": [
+        "n_1JNW5D8CNYSATE4X6NV3Z39R81"
+      ],
+      "seq": 18,
+      "kind": "ident",
+      "answer_literals": [
+        "sandboxPath"
+      ],
+      "answer_regexes": [
+        "(?<![\\w])sandboxPath(?![\\w])"
+      ],
+      "source_context": "etrics = summarizeMetrics({ turns, wallMs, usage, costUsd: costMeter.totalUsd() });\n784\t  runHandle.finish(status, metrics, success, judgeDetail);\n785\t  if (options.keepSandbox) sandbox.writeFile('.final-answer.txt', finalText);\n786\t  else sandbox.cleanup();\n787\t\n788\t  const result: RunResult = {\n789\t    runId: loop.runId,\n790\t    benchmark: scenario.benchmark,\n791\t    scenarioId: scenario.id,\n792\t    arm,\n793\t    model: options.model,\n794\t    status,\n795\t    success,\n796\t    judge: { success, detail: judgeDetail },\n797\t    metrics,\n798\t    turns: [...turns],\n799\t    error: errorText,\n800\t    sandboxPath: options.keepSandbox ? sandbox.path : undefined,\n801\t    startedAt: startedAt.toISOString(),\n802\t    finishedAt: finishedAt.toISOString(),\n803\t  };\n804\t  return { result, finalText };\n805\t}\n806\t\n807\t",
+      "wide_context": "777\t      }\n778\t    }\n779\t  }\n780\t\n781\t  const finishedAt = new Date();\n782\t  const wallMs = finishedAt.getTime() - startedAt.getTime();\n783\t  const metrics = summarizeMetrics({ turns, wallMs, usage, costUsd: costMeter.totalUsd() });\n784\t  runHandle.finish(status, metrics, success, judgeDetail);\n785\t  if (options.keepSandbox) sandbox.writeFile('.final-answer.txt', finalText);\n786\t  else sandbox.cleanup();\n787\t\n788\t  const result: RunResult = {\n789\t    runId: loop.runId,\n790\t    benchmark: scenario.benchmark,\n791\t    scenarioId: scenario.id,\n792\t    arm,\n793\t    model: options.model,\n794\t    status,\n795\t    success,\n796\t    judge: { success, detail: judgeDetail },\n797\t    metrics,\n798\t    turns: [...turns],\n799\t    error: errorText,\n800\t    sandboxPath: options.keepSandbox ? sandbox.path : undefined,\n801\t    startedAt: startedAt.toISOString(),\n802\t    finishedAt: finishedAt.toISOString(),\n803\t  };\n804\t  return { result, finalText };\n805\t}\n806\t\n807\t",
       "id": "s1-qo15-overflow"
     }
   ]

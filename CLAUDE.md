@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Limit exposition
+
+Limit code comments and let the code speak for itself. Limit excessive exposition in reponses.
+
 ## Current state: spec-only, zero commits
 
 `IMPLEMENTATION_PLAN.md` is the entire repository. There is no `package.json`, no
@@ -33,7 +37,7 @@ prompt + tool-schema driven on hosted frontier models.
 Storage is layered, and **L1/L3/L4 are always deterministic functions of L0 + L2**:
 
 | Layer | What | Mutability |
-|---|---|---|
+| --- | --- | --- |
 | L0 | `trace.jsonl` — append-only event log, monotonic `seq` | source of truth, never edited |
 | L2 | `blobs/<first2>/<sha256>` — content-addressed payloads | write-once |
 | L1 | SQLite `nodes` / `node_summaries` / `node_links` | derived, rebuildable |
@@ -41,6 +45,7 @@ Storage is layered, and **L1/L3/L4 are always deterministic functions of L0 + L2
 | L4 | generated markdown views | render-only, never hand-edited |
 
 Consequences to hold onto while coding:
+
 - Changing the segmenter or a summary prompt means *delete derived layers and
   rebuild* — never write a data migration for L1.
 - L1 stores **coordinates, not content**: nodes reference L0 via

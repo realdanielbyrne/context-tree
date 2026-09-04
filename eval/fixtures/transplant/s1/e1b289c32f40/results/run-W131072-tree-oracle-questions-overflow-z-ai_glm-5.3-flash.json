@@ -1,0 +1,2250 @@
+{
+  "budgets": {
+    "window": 131072,
+    "ratio": 0.850896663206653,
+    "slackFraction": 0.1,
+    "zoneCFraction": 0.2,
+    "reply": 7701,
+    "zoneA": 15403,
+    "zoneB": 30807,
+    "zoneC": 30807,
+    "lazy": 53913,
+    "slack": 15403,
+    "K": 123232,
+    "maxReplyTokens": 6553,
+    "rootKeep": 40,
+    "rootLadder": [
+      {
+        "keep": 40,
+        "ok": true,
+        "rootBlockTokens": 6917,
+        "branchesSurviving": 21,
+        "branchSeqRange": {
+          "from": 1,
+          "to": 754
+        },
+        "overBudget": [],
+        "zoneB": 16921
+      }
+    ],
+    "rootKeepOk": true,
+    "rootBlockTokens": 6917,
+    "branchesSurviving": 21,
+    "branchSeqRange": {
+      "from": 1,
+      "to": 754
+    },
+    "overBudget": [],
+    "arm": "tree",
+    "rootSummarySha": "1eb0306cee54159eec2c5b9983e91e1d70020b5fa4e169d364c0a9aeb4074a6d"
+  },
+  "compactionBuildUsd": null,
+  "compactionSkippedChunks": [],
+  "compaction": null,
+  "rows": [
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-oracle",
+      "window": 131072,
+      "question": "s1-qo01-overflow",
+      "stratum": "overflow",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 3,
+      "finalText": "(invoking tool)",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "test byte-identical re-assembled output read from cache on second submission bytes-v0",
+        "bytes-v0"
+      ],
+      "fetchedIds": [
+        "n_1E48X9HAFPEYNQHHSF609KHMEE"
+      ],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 124218,
+      "usage": {
+        "input": 120426,
+        "output": 1574,
+        "cacheRead": 229696,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 28217,
+          "usage": {
+            "input": 103502,
+            "output": 1043,
+            "cacheRead": 6656,
+            "cacheWrite": 0
+          },
+          "promptTokens": 110158,
+          "input": 103502,
+          "cacheRead": 6656,
+          "cacheWrite": 0,
+          "output": 1043,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 12241,
+          "usage": {
+            "input": 2786,
+            "output": 525,
+            "cacheRead": 110144,
+            "cacheWrite": 0
+          },
+          "promptTokens": 112930,
+          "input": 2786,
+          "cacheRead": 110144,
+          "cacheWrite": 0,
+          "output": 525,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 2503,
+          "usage": {
+            "input": 14138,
+            "output": 6,
+            "cacheRead": 112896,
+            "cacheWrite": 0
+          },
+          "promptTokens": 127034,
+          "input": 14138,
+          "cacheRead": 112896,
+          "cacheWrite": 0,
+          "output": 6,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 43316,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "tokenizerId",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-oracle",
+      "window": 131072,
+      "question": "s1-qo01-overflow",
+      "stratum": "overflow",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 6,
+      "finalText": "I've now searched the recorded history thoroughly for this — including an exact-string search for `bytes-v0` — and I have to give you an honest negative rather than a guess:\n\n**No test matching that description exists in this task's recorded history, and the string `'bytes-v0'` does not appear anywhere in it.** Every search for it (and for \"byte-identical second submission cache\", \"blob version\", etc.) comes back empty; the search index has no node containing that term.\n\nWhat *does* exist in the record is a family of byte-identical / cache-stability tests, and none of them touch a `bytes` object:\n\n- **\"Zone B blocks carry no volatile bits (D5)\"** (`packages/core/test/assemble.test.ts`) — asserts a branch-summary block's `text` and `id` are byte-identical after the branch's span grows (`extendSpan`), so the cached prefix survives.\n- **\"Zone C header carries no volatile bits (D5)\"** — same property for the `C:head` block.\n- **\"v5.5 incremental Zone C caching (toZoneCCachedRequest)\"** (`eval/test/loop.test.ts`) — asserts the request's message sequence stays byte-identical when a Zone C event is appended (the \"second submission reads from cache\" property), and pins which messages carry `cacheBreakpoint`.\n- The e2e test in `packages/core/test/e2e.test.ts` asserting the exact Zone A/B/C block-id layout, plus the §17 cache-assertion harness referenced in the design docs.\n\nNone of these assert any property of an object called `bytes` to be `'bytes-v0'`. The closest thing conceptually would be a blob-store format-version test (`packages/core/src/blobs` / `FsBlobStore`), but no such test was written, run, or discussed in this session's record — so I can't tell you what property it checks without fabricating.\n\nIf you're thinking of a test from a different repo or a later session, point me at the file and I'll look; but for this task's history, the premise doesn't match anything recorded.",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "bytes-v0 byte-identical re-assembled cache read second submission test",
+        "bytes object version assertion assemble cache test",
+        "bytes-v0",
+        "cache simulator test second submission byte-identical re-assembled cacheRead assertion",
+        "blob store version manifest format bytes-v0 test",
+        "byte-identical re-assembled prompt read from cache on second submission test",
+        "cache simulator submit bytes version bytes-v0 test"
+      ],
+      "fetchedIds": [
+        "n_1E48X9HAFPEYNQHHSF609KHMEE",
+        "n_1E48X9HAFPEYNQHHSF609KHMEE"
+      ],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 90,
+      "resultCharsTruncated": 20161,
+      "resultsTruncated": 6,
+      "resultTruncationEstimated": 5,
+      "peakRequestTokens": 124982,
+      "usage": {
+        "input": 17439,
+        "output": 9520,
+        "cacheRead": 714048,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 4980,
+          "usage": {
+            "input": 14,
+            "output": 143,
+            "cacheRead": 110144,
+            "cacheWrite": 0
+          },
+          "promptTokens": 110158,
+          "input": 14,
+          "cacheRead": 110144,
+          "cacheWrite": 0,
+          "output": 143,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 5282,
+          "usage": {
+            "input": 2787,
+            "output": 206,
+            "cacheRead": 110144,
+            "cacheWrite": 0
+          },
+          "promptTokens": 112931,
+          "input": 2787,
+          "cacheRead": 110144,
+          "cacheWrite": 0,
+          "output": 206,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 38888,
+          "usage": {
+            "input": 13212,
+            "output": 1763,
+            "cacheRead": 112896,
+            "cacheWrite": 0
+          },
+          "promptTokens": 126108,
+          "input": 13212,
+          "cacheRead": 112896,
+          "cacheWrite": 0,
+          "output": 1763,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 27991,
+          "usage": {
+            "input": 1327,
+            "output": 1309,
+            "cacheRead": 126080,
+            "cacheWrite": 0
+          },
+          "promptTokens": 127407,
+          "input": 1327,
+          "cacheRead": 126080,
+          "cacheWrite": 0,
+          "output": 1309,
+          "toolCalls": [
+            "context_search",
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 5,
+          "turn": 5,
+          "latencyMs": 97196,
+          "usage": {
+            "input": 70,
+            "output": 3558,
+            "cacheRead": 127360,
+            "cacheWrite": 0
+          },
+          "promptTokens": 127430,
+          "input": 70,
+          "cacheRead": 127360,
+          "cacheWrite": 0,
+          "output": 3558,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 6,
+          "turn": 6,
+          "latencyMs": 55398,
+          "usage": {
+            "input": 29,
+            "output": 2541,
+            "cacheRead": 127424,
+            "cacheWrite": 0
+          },
+          "promptTokens": 127453,
+          "input": 29,
+          "cacheRead": 127424,
+          "cacheWrite": 0,
+          "output": 2541,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 230389,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "tokenizerId",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-oracle",
+      "window": 131072,
+      "question": "s1-qo01-overflow",
+      "stratum": "overflow",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 3,
+      "finalText": "The property is **`tokenizerId`** — the assertion is:\n\n```ts\nexpect(bytes.tokenizerId).toBe('bytes-v0');\n```\n\nOne precision on location: in `packages/core/test/cache.test.ts` (inside the `Zone A — the frozen prefix (§10 rule 5, D5)` describe block), that exact assertion actually sits in the test immediately *after* the byte-identical one — line 220, in:\n\n> *\"records the injected tokenizer id on every outcome so swapping tokenizers is a deliberate diff rather than a silent shift of every recorded range (§17)\"*\n\nThere, `bytes` is the outcome of submitting the prompt to a second `ProviderCacheSimulator` constructed with `new ExactTokenizer('bytes-v0', (text) => text.length)`, and the test asserts `bytes.tokenizerId === 'bytes-v0'`, that `bytes.total` differs from the heuristic tokenizer's total, while `bytes.segments.map(s => s.blockIds)` still equals the heuristic's — i.e., swapping tokenizers must be an explicit, recorded diff, never a silent shift of the recorded ranges.\n\nThe byte-identical/reassembled test itself (line 185: *\"is byte-identical across a config-identical re-assemble and is read from cache on the second submission...\"*) submits twice and asserts the second submission's `survivingSegments` / `cacheRead` / `cacheWrite` — it doesn't touch `bytes` or `'bytes-v0'`.",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "bytes-v0 byte-identical re-assembled read from cache second submission test"
+      ],
+      "fetchedIds": [
+        "n_1E48X9HAFPEYNQHHSF609KHMEE"
+      ],
+      "fetchedDepths": [
+        {
+          "turn": 2,
+          "branchId": "n_1E48X9HAFPEYNQHHSF609KHMEE",
+          "depth": "index"
+        }
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 1074,
+      "resultCharsTruncated": 3807,
+      "resultsTruncated": 1,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 124772,
+      "usage": {
+        "input": 17159,
+        "output": 2118,
+        "cacheRead": 331840,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 13799,
+          "usage": {
+            "input": 14,
+            "output": 545,
+            "cacheRead": 110144,
+            "cacheWrite": 0
+          },
+          "promptTokens": 110158,
+          "input": 14,
+          "cacheRead": 110144,
+          "cacheWrite": 0,
+          "output": 545,
+          "toolCalls": [
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 8188,
+          "usage": {
+            "input": 1409,
+            "output": 318,
+            "cacheRead": 110144,
+            "cacheWrite": 0
+          },
+          "promptTokens": 111553,
+          "input": 1409,
+          "cacheRead": 110144,
+          "cacheWrite": 0,
+          "output": 318,
+          "toolCalls": [
+            "context_fetch"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [
+            "index"
+          ],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 27127,
+          "usage": {
+            "input": 15736,
+            "output": 1255,
+            "cacheRead": 111552,
+            "cacheWrite": 0
+          },
+          "promptTokens": 127288,
+          "input": 15736,
+          "cacheRead": 111552,
+          "cacheWrite": 0,
+          "output": 1255,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 49522,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "tokenizerId",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-oracle",
+      "window": 131072,
+      "question": "s1-qo01-overflow",
+      "stratum": "overflow",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 4,
+      "finalText": "The asserted property is **`tokenizerId`** — specifically `expect(bytes.tokenizerId).toBe('bytes-v0')`.\n\nContext from `packages/core/test/cache.test.ts` (the §17 cache-assertion suite): the `bytes` object is the outcome of `ProviderCacheSimulator.submit(prompt)` where the simulator was constructed with `new ExactTokenizer('bytes-v0', (text) => text.length)`. The test — \"records the injected tokenizer id on every outcome so swapping tokenizers is a deliberate diff rather than a silent shift of every recorded range (§17)\" — asserts that the outcome stamps the injected tokenizer's id, so that every recorded cache segment/range is traceable to the tokenizer that produced it (its sibling assertions in that same test are `bytes.total !== heuristic.total` but `bytes.segments.map(s => s.blockIds)` deep-equals the heuristic tokenizer's segment layout).\n\nOne clarification on the question's framing: the `'bytes-v0'` assertion lives in the *neighboring* test in that file. The test titled \"is byte-identical across a config-identical re-assemble and is read from cache on the second submission\" (line 185) asserts prefix stability, `survivingSegments: ['A']`, and `cacheRead === firstOutcome.cacheWrite` — it doesn't touch the `bytes` object. The `bytes.tokenizerId === 'bytes-v0'` check is the tokenizer-id provenance test at line 209.",
+      "searched": true,
+      "fetched": true,
+      "searchQueries": [
+        "test byte-identical re-assembled cache read second submission bytes-v0",
+        "bytes-v0 byte-identical cache second submission test blob",
+        "bytes-v0 cache simulator test re-assembled byte-identical",
+        "cache simulator second submission cache hit byte-identical assemble"
+      ],
+      "fetchedIds": [
+        "n_1E48X9HAFPEYNQHHSF609KHMEE"
+      ],
+      "fetchedDepths": [
+        {
+          "turn": 3,
+          "branchId": "n_1E48X9HAFPEYNQHHSF609KHMEE",
+          "depth": "index"
+        }
+      ],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 1132,
+      "resultCharsTruncated": 9007,
+      "resultsTruncated": 2,
+      "resultTruncationEstimated": 1,
+      "peakRequestTokens": 124777,
+      "usage": {
+        "input": 17210,
+        "output": 2385,
+        "cacheRead": 447424,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 7214,
+          "usage": {
+            "input": 14,
+            "output": 279,
+            "cacheRead": 110144,
+            "cacheWrite": 0
+          },
+          "promptTokens": 110158,
+          "input": 14,
+          "cacheRead": 110144,
+          "cacheWrite": 0,
+          "output": 279,
+          "toolCalls": [
+            "context_search",
+            "context_peek"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 9751,
+          "usage": {
+            "input": 2061,
+            "output": 359,
+            "cacheRead": 110144,
+            "cacheWrite": 0
+          },
+          "promptTokens": 112205,
+          "input": 2061,
+          "cacheRead": 110144,
+          "cacheWrite": 0,
+          "output": 359,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 18460,
+          "usage": {
+            "input": 2789,
+            "output": 608,
+            "cacheRead": 112192,
+            "cacheWrite": 0
+          },
+          "promptTokens": 114981,
+          "input": 2789,
+          "cacheRead": 112192,
+          "cacheWrite": 0,
+          "output": 608,
+          "toolCalls": [
+            "context_fetch",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [
+            "index"
+          ],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 4,
+          "turn": 4,
+          "latencyMs": 23068,
+          "usage": {
+            "input": 12346,
+            "output": 1139,
+            "cacheRead": 114944,
+            "cacheWrite": 0
+          },
+          "promptTokens": 127290,
+          "input": 12346,
+          "cacheRead": 114944,
+          "cacheWrite": 0,
+          "output": 1139,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 59032,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "tokenizerId",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-oracle",
+      "window": 131072,
+      "question": "s1-qo01-overflow",
+      "stratum": "overflow",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 3,
+      "finalText": "(invoking tool)",
+      "searched": true,
+      "fetched": false,
+      "searchQueries": [
+        "test byte-identical re-assembled output read from cache second submission bytes-v0",
+        "bytes-v0 cache simulator assertion bytes object property version",
+        "cache simulator test second submission byte-identical re-assembled cache hit",
+        "bytes-v0"
+      ],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 112987,
+      "usage": {
+        "input": 5614,
+        "output": 2344,
+        "cacheRead": 333184,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 15615,
+          "usage": {
+            "input": 14,
+            "output": 682,
+            "cacheRead": 110144,
+            "cacheWrite": 0
+          },
+          "promptTokens": 110158,
+          "input": 14,
+          "cacheRead": 110144,
+          "cacheWrite": 0,
+          "output": 682,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 2,
+          "turn": 2,
+          "latencyMs": 27155,
+          "usage": {
+            "input": 2792,
+            "output": 1159,
+            "cacheRead": 110144,
+            "cacheWrite": 0
+          },
+          "promptTokens": 112936,
+          "input": 2792,
+          "cacheRead": 110144,
+          "cacheWrite": 0,
+          "output": 1159,
+          "toolCalls": [
+            "context_search",
+            "context_search"
+          ],
+          "stopReason": "tool_calls",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        },
+        {
+          "index": 3,
+          "turn": 3,
+          "latencyMs": 14963,
+          "usage": {
+            "input": 2808,
+            "output": 503,
+            "cacheRead": 112896,
+            "cacheWrite": 0
+          },
+          "promptTokens": 115704,
+          "input": 2808,
+          "cacheRead": 112896,
+          "cacheWrite": 0,
+          "output": 503,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 57979,
+      "score": 0,
+      "success": false,
+      "perLiteral": [
+        {
+          "literal": "tokenizerId",
+          "exact_match": false,
+          "regex": false
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-oracle",
+      "window": 131072,
+      "question": "s1-qo02-overflow",
+      "stratum": "overflow",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The `description` field of that Bash call (seq 339) was:\n\n**\"Extract suite points and spend\"**\n\nThat's the call that looped over `['suite-rep1','suite-rep2','suite-rep3']`, read each `eval/results/suite-final/<rep>/results.json`, accumulated `r.metrics.costUsd` into a total, and pushed per-run point objects (`it`, `arm`, `task`, `cost`, `turns`, `ok`, `cw`, `cr`, `inp`, `tot`) into an array — printing `suite spend 3.63` followed by the 12-point JSON array that was then folded into the report's POINTS data.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 107636,
+      "usage": {
+        "input": 5476,
+        "output": 526,
+        "cacheRead": 104704,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 12119,
+          "usage": {
+            "input": 5476,
+            "output": 526,
+            "cacheRead": 104704,
+            "cacheWrite": 0
+          },
+          "promptTokens": 110180,
+          "input": 5476,
+          "cacheRead": 104704,
+          "cacheWrite": 0,
+          "output": 526,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 12156,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "Extract suite points and spend",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-oracle",
+      "window": 131072,
+      "question": "s1-qo02-overflow",
+      "stratum": "overflow",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The `description` field of that Bash call (seq 339) was:\n\n**\"Extract suite points and spend\"**\n\nIt's the call whose command ran `node -e` looping over `['suite-rep1','suite-rep2','suite-rep3']`, reading each `eval/results/suite-final/<rep>/results.json`, accumulating `total` and pushing per-run points (`it:'suite'`, arm, task, cost, turns, ok, cw, cr, inp, tot), then printing `suite spend` (which came out to `3.63`) and the JSON array of the 12 suite points.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 107620,
+      "usage": {
+        "input": 100,
+        "output": 486,
+        "cacheRead": 110080,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 8927,
+          "usage": {
+            "input": 100,
+            "output": 486,
+            "cacheRead": 110080,
+            "cacheWrite": 0
+          },
+          "promptTokens": 110180,
+          "input": 100,
+          "cacheRead": 110080,
+          "cacheWrite": 0,
+          "output": 486,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 8954,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "Extract suite points and spend",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-oracle",
+      "window": 131072,
+      "question": "s1-qo02-overflow",
+      "stratum": "overflow",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The `description` field was: **\"Extract suite points and spend\"**\n\nThat's the Bash call at seq 339, which ran the `node -e` script looping over `['suite-rep1','suite-rep2','suite-rep3']`, reading each `eval/results/suite-final/<rep>/results.json`, accumulating `total` cost, collecting the per-run point objects, and printing `suite spend 3.63` followed by the JSON array of the 12 suite data points (later folded into the report's POINTS array).",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 107604,
+      "usage": {
+        "input": 36,
+        "output": 510,
+        "cacheRead": 110144,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 14634,
+          "usage": {
+            "input": 36,
+            "output": 510,
+            "cacheRead": 110144,
+            "cacheWrite": 0
+          },
+          "promptTokens": 110180,
+          "input": 36,
+          "cacheRead": 110144,
+          "cacheWrite": 0,
+          "output": 510,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 14668,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "Extract suite points and spend",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-oracle",
+      "window": 131072,
+      "question": "s1-qo02-overflow",
+      "stratum": "overflow",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The `description` field of that Bash tool call (seq 339) was:\n\n**`Extract suite points and spend`**\n\nFor confirmation, that's the call whose command was the `node -e` script iterating over `['suite-rep1','suite-rep2','suite-rep3']`, reading `eval/results/suite-final/<rep>/results.json` for each, accumulating `total` from `r.metrics.costUsd`, collecting the per-run point objects (arm, task, cost, turns, ok, cw, cr, inp, tot), and then printing `console.log('suite spend', total.toFixed(2))` followed by `console.log(JSON.stringify(pts))` — which produced the `suite spend 3.63` output and the 12-point JSON array.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 107652,
+      "usage": {
+        "input": 36,
+        "output": 530,
+        "cacheRead": 110144,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 9862,
+          "usage": {
+            "input": 36,
+            "output": 530,
+            "cacheRead": 110144,
+            "cacheWrite": 0
+          },
+          "promptTokens": 110180,
+          "input": 36,
+          "cacheRead": 110144,
+          "cacheWrite": 0,
+          "output": 530,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 9890,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "Extract suite points and spend",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-oracle",
+      "window": 131072,
+      "question": "s1-qo02-overflow",
+      "stratum": "overflow",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The `description` field of that Bash tool call (seq 339 — the `node -e` script that looped over `suite-rep1`, `suite-rep2`, `suite-rep3` under `eval/results/suite-final/`, accumulated `total` from `r.metrics.costUsd`, printed `suite spend 3.63` and the JSON array of per-run points) was:\n\n**\"Extract suite points and spend\"**",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 107583,
+      "usage": {
+        "input": 36,
+        "output": 489,
+        "cacheRead": 110144,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 9177,
+          "usage": {
+            "input": 36,
+            "output": 489,
+            "cacheRead": 110144,
+            "cacheWrite": 0
+          },
+          "promptTokens": 110180,
+          "input": 36,
+          "cacheRead": 110144,
+          "cacheWrite": 0,
+          "output": 489,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 9213,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "Extract suite points and spend",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-oracle",
+      "window": 131072,
+      "question": "s1-qo03-overflow",
+      "stratum": "overflow",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "**Zero occurrences.**\n\nAfter rebuilding the core dist (`npx tsc -p packages/core/tsconfig.json`), the verification ran `grep -c \"seqRange(active)\" packages/core/dist/assemble/format.js` and it returned `0` — confirming the compiled `renderActiveHeader` no longer contained the volatile seq-range in the active-branch heading. That was the check that the Zone C header volatile-bit fix (same law as the v5.1 Zone B fix) had actually landed in the dist the eval harness loads: the header went from `(${seqRange(active)}, ${active.status})` to just `(${active.status})`, since the header is Zone C's first block and a growing seq range there would have rewritten the whole zone on every append and defeated any caching of the append-only event stream behind it.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 107610,
+      "usage": {
+        "input": 52,
+        "output": 446,
+        "cacheRead": 110080,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 10649,
+          "usage": {
+            "input": 52,
+            "output": 446,
+            "cacheRead": 110080,
+            "cacheWrite": 0
+          },
+          "promptTokens": 110132,
+          "input": 52,
+          "cacheRead": 110080,
+          "cacheWrite": 0,
+          "output": 446,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 10675,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "packages/core/dist/assemble/format.js",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-oracle",
+      "window": 131072,
+      "question": "s1-qo03-overflow",
+      "stratum": "overflow",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "**0 occurrences.**\n\nAfter the v5.5 header fix, I rebuilt core and ran `grep -c \"seqRange(active)\" packages/core/dist/assemble/format.js` as a verification step (seq 469) — it returned `0`, which was the desired result: the compiled `renderActiveHeader` no longer contained the volatile `(seqRange(active), ${active.status})` in its title line, just `(${active.status})`. That confirmed the volatile-bit removal had actually made it into the dist that the eval runs load, not just into the source.\n\nWorth noting for precision: this grep was for the *active* node's range specifically. Descendant entries still render their own seq ranges — first inside the old header, and after the v5.6 relocation inside the trailing `C:map` block — which is fine, because that block sits behind the moving cache breakpoint where its churn can't void the cached event stream.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 107634,
+      "usage": {
+        "input": 52,
+        "output": 560,
+        "cacheRead": 110080,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 13081,
+          "usage": {
+            "input": 52,
+            "output": 560,
+            "cacheRead": 110080,
+            "cacheWrite": 0
+          },
+          "promptTokens": 110132,
+          "input": 52,
+          "cacheRead": 110080,
+          "cacheWrite": 0,
+          "output": 560,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 13111,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "packages/core/dist/assemble/format.js",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-oracle",
+      "window": 131072,
+      "question": "s1-qo03-overflow",
+      "stratum": "overflow",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "**Zero.**\n\nAfter rebuilding the core package (`npx tsc -p packages/core/tsconfig.json`), the verification ran `grep -c \"seqRange(active)\" packages/core/dist/assemble/format.js` and it returned `0`, followed by \"core rebuilt\".\n\nThat `0` was the confirmation the rebuild worked as intended: the v5.5 header fix had removed `seqRange(active)` from `renderActiveHeader` in the source (the volatile-bit fix — the active branch's span extends on every append, so a seq range in Zone C's first block would rewrite the whole zone each turn and defeat the incremental caching), and the grep of the compiled dist verified the change had actually landed in the build output rather than being left as a stale artifact. If the count had been nonzero, it would have meant the dist was stale or the source edit hadn't taken.\n\nNote the distinction: only `seqRange(active)` disappeared. `seqRange(node)` still appears in the dist for the descendant map lines — that's fine, because after v5.6 those lines live in the trailing uncached `C:map` block, where per-edit churn is expected and harmless to the cached prefix.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 107686,
+      "usage": {
+        "input": 52,
+        "output": 741,
+        "cacheRead": 110080,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 17386,
+          "usage": {
+            "input": 52,
+            "output": 741,
+            "cacheRead": 110080,
+            "cacheWrite": 0
+          },
+          "promptTokens": 110132,
+          "input": 52,
+          "cacheRead": 110080,
+          "cacheWrite": 0,
+          "output": 741,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 17422,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "packages/core/dist/assemble/format.js",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-oracle",
+      "window": 131072,
+      "question": "s1-qo03-overflow",
+      "stratum": "overflow",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "Zero.\n\nAfter landing the v5.5 header fix and rebuilding, I ran `grep -c \"seqRange(active)\"` against `packages/core/dist/assemble/format.js` as the verification step, and it returned **0** — confirming the rebuilt dist no longer contained the volatile sequence range in `renderActiveHeader` (the `seqRange(active)` call had been removed from the header rendering, per the volatile-bit law that was violating the Zone C cache).\n\nWorth noting the distinction: the grep pattern was specifically `seqRange(active)` — the descendant-map renderer (`renderActiveMap`) still uses `seqRange(node)` deliberately, since that block trails the cache breakpoint and its churn is expected/uncached.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 107586,
+      "usage": {
+        "input": 52,
+        "output": 337,
+        "cacheRead": 110080,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 11257,
+          "usage": {
+            "input": 52,
+            "output": 337,
+            "cacheRead": 110080,
+            "cacheWrite": 0
+          },
+          "promptTokens": 110132,
+          "input": 52,
+          "cacheRead": 110080,
+          "cacheWrite": 0,
+          "output": 337,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 11290,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "packages/core/dist/assemble/format.js",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-oracle",
+      "window": 131072,
+      "question": "s1-qo03-overflow",
+      "stratum": "overflow",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "**0 occurrences.**\n\nThat grep was run at seq 469 as the verification step after rebuilding the core dist (`npx tsc -p packages/core/tsconfig.json`), checking `packages/core/dist/assemble/format.js` for the removed `seqRange(active)` call. The count of 0 was the expected, confirming result — it proved the v5.5 change (dropping the volatile seq range from `renderActiveHeader`) had actually landed in the built dist, since the rebuild happened after the edit and the whole point was that the Zone C header should no longer contain that call.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 107562,
+      "usage": {
+        "input": 52,
+        "output": 384,
+        "cacheRead": 110080,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 9830,
+          "usage": {
+            "input": 52,
+            "output": 384,
+            "cacheRead": 110080,
+            "cacheWrite": 0
+          },
+          "promptTokens": 110132,
+          "input": 52,
+          "cacheRead": 110080,
+          "cacheWrite": 0,
+          "output": 384,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 9861,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "packages/core/dist/assemble/format.js",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-oracle",
+      "window": 131072,
+      "question": "s1-qo04-overflow",
+      "stratum": "overflow",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "In that result (the grep across `eval/src/loop.ts` and `eval/src/run.ts` and friends), the lines were:\n\n- `eval/src/run.ts:98` → `budgets: { zoneB: 8000, zoneC: 30000 }` — a value assignment, not a type\n- `eval/src/loop.ts:658` and `eval/src/loop.ts:942` → `budgets: { ...args.options.budgets }` / `{ ...options.budgets }` — spreads\n- `eval/src/types.ts:101` → `budgets: { zoneB: number; zoneC: number };` — the **type declaration**\n\nSo the budgets type is declared in:\n\n**`/Users/danielbyrne/GitHub/rpm/context-tree/eval/src/types.ts`** (shown as `eval/src/types.ts:101` in the result).\n\nFor completeness: a parallel type declaration also exists in the core package (`packages/core/src/config.ts:89`), but that one appeared in the *seq 399* result, not seq 401 — the seq 401 result's only type declaration is the one in `eval/src/types.ts`.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 107702,
+      "usage": {
+        "input": 64,
+        "output": 1559,
+        "cacheRead": 110080,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 32309,
+          "usage": {
+            "input": 64,
+            "output": 1559,
+            "cacheRead": 110080,
+            "cacheWrite": 0
+          },
+          "promptTokens": 110144,
+          "input": 64,
+          "cacheRead": 110080,
+          "cacheWrite": 0,
+          "output": 1559,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 32345,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "eval/src/types.ts",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-oracle",
+      "window": 131072,
+      "question": "s1-qo04-overflow",
+      "stratum": "overflow",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "`/Users/danielbyrne/GitHub/rpm/context-tree/eval/src/types.ts` — at line 101:\n\n```ts\nbudgets: { zoneB: number; zoneC: number };\n```\n\nIn that tool result, this is the only entry that's a **type declaration** (note the `number` annotations rather than concrete values). The other hits are value usages of that type:\n\n- `eval/src/run.ts:98` — the concrete assignment `budgets: { zoneB: 8000, zoneC: 30000 }` (appeared three times in the output because the same line matched both grep patterns)\n- `eval/src/loop.ts:658` and `eval/src/loop.ts:942` — spreads of the budgets object (`{ ...args.options.budgets }` / `{ ...options.budgets }`)\n\nFor completeness, there's also a separate, independent type declaration in core (`packages/core/src/config.ts:89`: `budgets: { zoneB: number; zoneC: number };` within the config schema), but within the seq 401 result — which was scoped to `eval/src/` — the type is declared in `eval/src/types.ts:101`.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 107707,
+      "usage": {
+        "input": 64,
+        "output": 802,
+        "cacheRead": 110080,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 16539,
+          "usage": {
+            "input": 64,
+            "output": 802,
+            "cacheRead": 110080,
+            "cacheWrite": 0
+          },
+          "promptTokens": 110144,
+          "input": 64,
+          "cacheRead": 110080,
+          "cacheWrite": 0,
+          "output": 802,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 16574,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "eval/src/types.ts",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-oracle",
+      "window": 131072,
+      "question": "s1-qo04-overflow",
+      "stratum": "overflow",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "In that result (seq 401/402), the grep showed two different things across the files:\n\n- **Values** (concrete numbers): `eval/src/run.ts:98` — `budgets: { zoneB: 8000, zoneC: 30000 }` (and the spread sites in `eval/src/loop.ts:658` and `:942`)\n- **Type declaration**: `eval/src/types.ts:101` — `budgets: { zoneB: number; zoneC: number };`\n\nSo the exact file path where the **budgets type** is declared is:\n\n```\n/Users/danielbyrne/GitHub/rpm/context-tree/eval/src/types.ts\n```\n\nat **line 101** — distinguishable from the other lines in that result because it annotates the fields as `number` rather than assigning the concrete `8000`/`30000` values.\n\n(One adjacent note: the separate grep at seq 399 also surfaced a type-shaped line in `packages/core/src/config.ts:89` — `budgets: { zoneB: number; zoneC: number };` for the core `ContextTreeConfig` — but within the seq 401 result itself, the declaration is the `eval/src/types.ts:101` one.)",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 107717,
+      "usage": {
+        "input": 64,
+        "output": 1008,
+        "cacheRead": 110080,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 18384,
+          "usage": {
+            "input": 64,
+            "output": 1008,
+            "cacheRead": 110080,
+            "cacheWrite": 0
+          },
+          "promptTokens": 110144,
+          "input": 64,
+          "cacheRead": 110080,
+          "cacheWrite": 0,
+          "output": 1008,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 18419,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "eval/src/types.ts",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-oracle",
+      "window": 131072,
+      "question": "s1-qo04-overflow",
+      "stratum": "overflow",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "In the seq 401 tool result, the budgets **type** declaration — `budgets: { zoneB: number; zoneC: number };` — appears at:\n\n**`/Users/danielbyrne/GitHub/rpm/context-tree/eval/src/types.ts`** (line 101)\n\nDistinguishing it from the other lines in that result:\n\n| Line shown | What it is |\n|---|---|\n| `eval/src/run.ts:98` | Value assignment (`{ zoneB: 8000, zoneC: 30000 }`) — the concrete budget the eval passes |\n| `eval/src/loop.ts:658`, `eval/src/loop.ts:942` | Value spreads (`{ ...args.options.budgets }`) passing the option through |\n| `eval/src/types.ts:101` | **The type declaration** — `number`-typed fields, terminated with `;` |\n\nOne adjacent note from the nearby grep (seq 399): the core package has its own parallel type declaration at `packages/core/src/config.ts:89` (`budgets: { zoneB: number; zoneC: number };`) with the defaults at line 110 (`{ zoneB: 8_000, zoneC: 30_000 }`). So `eval/src/types.ts:101` is the eval-side interface whose value is populated by `run.ts:98`, mirroring the core-level type in `config.ts` — but the file the seq 401 result shows declaring the type is **eval/src/types.ts**.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 107772,
+      "usage": {
+        "input": 64,
+        "output": 1363,
+        "cacheRead": 110080,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 28390,
+          "usage": {
+            "input": 64,
+            "output": 1363,
+            "cacheRead": 110080,
+            "cacheWrite": 0
+          },
+          "promptTokens": 110144,
+          "input": 64,
+          "cacheRead": 110080,
+          "cacheWrite": 0,
+          "output": 1363,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 28417,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "eval/src/types.ts",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-oracle",
+      "window": 131072,
+      "question": "s1-qo04-overflow",
+      "stratum": "overflow",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The budgets **type** is declared in `/Users/danielbyrne/GitHub/rpm/context-tree/eval/src/types.ts` at line 101:\n\n```ts\nbudgets: { zoneB: number; zoneC: number };\n```\n\nThat's the only entry in the seq 401 grep output that's a type declaration — you can tell because it annotates the fields as `number` rather than assigning values. The other hits are usages of that type:\n\n- `eval/src/run.ts:98` — the concrete value assignment `budgets: { zoneB: 8000, zoneC: 30000 }` (the eval harness's actual budget settings)\n- `eval/src/loop.ts:658` and `eval/src/loop.ts:942` — spreads of `options.budgets` / `args.options.budgets` passed into the `ZoneAssembler` constructor\n\n(Separately, `packages/core/src/config.ts:89` declares the core-side `budgets` field in `ContextTreeConfig` with the `DEFAULT_CONFIG` defaults at line 110 — but within the seq 401 result specifically, the type declaration is `eval/src/types.ts:101`.)",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 107700,
+      "usage": {
+        "input": 64,
+        "output": 834,
+        "cacheRead": 110080,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 13283,
+          "usage": {
+            "input": 64,
+            "output": 834,
+            "cacheRead": 110080,
+            "cacheWrite": 0
+          },
+          "promptTokens": 110144,
+          "input": 64,
+          "cacheRead": 110080,
+          "cacheWrite": 0,
+          "output": 834,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 13318,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "eval/src/types.ts",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-oracle",
+      "window": 131072,
+      "question": "s1-qo06-overflow",
+      "stratum": "overflow",
+      "rep": 1,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The function is **`extractJsonObject`**, defined in `packages/core/src/prompts/index.ts` (around line 188), immediately after the `JSON_FENCE` regex constant there:\n\n```ts\nconst JSON_FENCE = /```(?:json)?[ \\t]*\\r?\\n([\\s\\S]*?)```/;\n\n/** Models wrap JSON in fences and prose; tolerate that, but tolerate nothing else. */\nfunction extractJsonObject(raw: string): unknown {\n```\n\nIt's the strict parser behind the §8 contract's error path: it tries three candidate shapes — the trimmed raw reply, the fenced block matched by `JSON_FENCE`, and the substring between the first `{` and last `}` — and on total failure throws the `SummaryContractError('response: no JSON object found in the model reply')` that surfaced throughout the FM-1 logs.\n\nWorth noting, since the same pattern exists twice in the codebase: `packages/core/src/summarize/contract.ts` also defines a `JSON_FENCE` constant, and the function immediately after *that* one is **`asJsonObject`** — the lenient twin (returns `null` on a miss instead of throwing, because it only pre-processes tree-owned fields before handing off to the strict parser). If you meant the contract.ts file, the answer is `asJsonObject`; if you meant the one named for exactly that job, it's `extractJsonObject`.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 107751,
+      "usage": {
+        "input": 67,
+        "output": 1132,
+        "cacheRead": 110080,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 21976,
+          "usage": {
+            "input": 67,
+            "output": 1132,
+            "cacheRead": 110080,
+            "cacheWrite": 0
+          },
+          "promptTokens": 110147,
+          "input": 67,
+          "cacheRead": 110080,
+          "cacheWrite": 0,
+          "output": 1132,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 22007,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "extractJsonObject",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-oracle",
+      "window": 131072,
+      "question": "s1-qo06-overflow",
+      "stratum": "overflow",
+      "rep": 2,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "`extractJsonObject` — defined in `packages/core/src/prompts/index.ts` immediately after the `JSON_FENCE` constant:\n\n```ts\nconst JSON_FENCE = /```(?:json)?[ \\t]*\\r?\\n([\\s\\S]*?)```/;\n\n/** Models wrap JSON in fences and prose; tolerate that, but tolerate nothing else. */\nfunction extractJsonObject(raw: string): unknown {\n```\n\nIt tries three candidate shapes (the trimmed raw reply, the fenced block, and the `{...}` span between the first `{` and last `}`) and throws `SummaryContractError('response: no JSON object found in the model reply')` if none parse — the exact §8 error seen in the iter7–9 run logs.\n\nWorth noting: there's a sibling helper of the same shape in `packages/core/src/summarize/contract.ts` — `asJsonObject`, also defined right after that file's own `JSON_FENCE` constant — but it's the lenient variant (returns `null` on a miss, used by `dropTreeOwnedContents`), whereas `extractJsonObject` is the strict extractor that owns the diagnosis.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 107694,
+      "usage": {
+        "input": 3,
+        "output": 2063,
+        "cacheRead": 110144,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 40413,
+          "usage": {
+            "input": 3,
+            "output": 2063,
+            "cacheRead": 110144,
+            "cacheWrite": 0
+          },
+          "promptTokens": 110147,
+          "input": 3,
+          "cacheRead": 110144,
+          "cacheWrite": 0,
+          "output": 2063,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 40443,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "extractJsonObject",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-oracle",
+      "window": 131072,
+      "question": "s1-qo06-overflow",
+      "stratum": "overflow",
+      "rep": 3,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "`extractJsonObject` — defined in `packages/core/src/prompts/index.ts` immediately after the `JSON_FENCE` regex constant:\n\n```ts\nconst JSON_FENCE = /```(?:json)?[ \\t]*\\r?\\n([\\s\\S]*?)```/;\n\n/** Models wrap JSON in fences and prose; tolerate that, but tolerate nothing else. */\nfunction extractJsonObject(raw: string): unknown {\n```\n\nIt tries three candidate shapes — the trimmed raw reply, the first fenced block, and the span from the first `{` to the last `}` — returning the first that parses, and throwing `SummaryContractError('response: no JSON object found in the model reply')` if none do. That thrown message is the exact FM-1 failure text we saw in the iter7/iter8 logs.\n\nWorth noting there's a lenient sibling with the same surrounding structure in `packages/core/src/summarize/contract.ts`: `asJsonObject(raw): Record<string, unknown> | null`, which also sits right after its own `JSON_FENCE` constant but returns `null` on a miss (handing the raw reply back untouched) instead of throwing — the lenient pre-pass used by `parseSummaryReply` before the strict parser owns the diagnosis.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 107716,
+      "usage": {
+        "input": 3,
+        "output": 1582,
+        "cacheRead": 110144,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 27149,
+          "usage": {
+            "input": 3,
+            "output": 1582,
+            "cacheRead": 110144,
+            "cacheWrite": 0
+          },
+          "promptTokens": 110147,
+          "input": 3,
+          "cacheRead": 110144,
+          "cacheWrite": 0,
+          "output": 1582,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 27178,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "extractJsonObject",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-oracle",
+      "window": 131072,
+      "question": "s1-qo06-overflow",
+      "stratum": "overflow",
+      "rep": 4,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "The function is **`extractJsonObject(raw: string): unknown`**, defined in `packages/core/src/prompts/index.ts` immediately after the `JSON_FENCE` constant:\n\n```ts\nconst JSON_FENCE = /```(?:json)?[ \\t]*\\r?\\n([\\s\\S]*?)```/;\n\n/** Models wrap JSON in fences and prose; tolerate that, but tolerate nothing else. */\nfunction extractJsonObject(raw: string): unknown {\n  const candidates = [raw.trim()];\n  const fenced = JSON_FENCE.exec(raw);\n  if (fenced?.[1] !== undefined) candidates.push(fenced[1]);\n  const open = raw.indexOf('{');\n  const close = raw.lastIndexOf('}');\n  if (open >= 0 && close > open) candidates.push(raw.slice(open, close + 1));\n\n  for (const candidate of candidates) {\n    try {\n      return JSON.parse(candidate);\n    } catch {\n      // Next shape.\n    }\n  }\n  throw new SummaryContractError('response: no JSON object found in the model reply');\n}\n```\n\nIt tries three candidate shapes in order — the raw trimmed string, a fenced ```json block, and the span from the first `{` to the last `}` — and throws the `SummaryContractError` (\"no JSON object found in the model reply\") if none parse. That error message is the one surfacing in the FM-1 §8 contract failures in the iter logs.\n\nWorth noting: there's a second, near-identical `JSON_FENCE` constant in `packages/core/src/summarize/contract.ts`, where the analogous function is `asJsonObject(raw)` (used by `dropTreeOwnedContents` before `parseSummaryReply`). The difference in contract: `extractJsonObject` throws on a miss, while `asJsonObject` returns `null` on a miss and hands the raw text back for the strict parser to diagnose.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 107848,
+      "usage": {
+        "input": 3,
+        "output": 1176,
+        "cacheRead": 110144,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 21513,
+          "usage": {
+            "input": 3,
+            "output": 1176,
+            "cacheRead": 110144,
+            "cacheWrite": 0
+          },
+          "promptTokens": 110147,
+          "input": 3,
+          "cacheRead": 110144,
+          "cacheWrite": 0,
+          "output": 1176,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 21549,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "extractJsonObject",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    },
+    {
+      "scenario": "s1",
+      "model": "z-ai/glm-5.3-flash",
+      "arm": "tree-oracle",
+      "window": 131072,
+      "question": "s1-qo06-overflow",
+      "stratum": "overflow",
+      "rep": 5,
+      "status": "completed",
+      "modelTurns": 1,
+      "finalText": "**`extractJsonObject`** — defined in `packages/core/src/prompts/index.ts`, immediately after the `JSON_FENCE` constant (`/```(?:json)?[ \\t]*\\r?\\n([\\s\\S]*?)```/`).\n\nIts docstring reads: *\"Models wrap JSON in fences and prose; tolerate that, but tolerate nothing else.\"* It builds a candidate list — the raw trimmed string, the fenced block if one matches, and the substring between the first `{` and last `}` — tries `JSON.parse` on each, and throws `SummaryContractError('response: no JSON object found in the model reply')` if all candidates fail. That thrown message is the exact FM-1 error you saw in the iter7/iter8 logs when haiku leaf summaries came back unparseable.\n\nOne precision note: there's a sibling in `packages/core/src/summarize/contract.ts` — `asJsonObject(raw: string): Record<string, unknown> | null` — also defined right after its own identical `JSON_FENCE` constant, but it's the lenient variant: on a miss it returns `null` and hands the raw reply back untouched for the strict parser to diagnose, rather than throwing. The one \"responsible for extracting\" (and failing loudly when it can't) is `extractJsonObject`.",
+      "searched": false,
+      "fetched": false,
+      "searchQueries": [],
+      "fetchedIds": [],
+      "fetchedDepths": [],
+      "annotateRefused": 0,
+      "resultTokensTruncated": 0,
+      "resultCharsTruncated": 0,
+      "resultsTruncated": 0,
+      "resultTruncationEstimated": 0,
+      "peakRequestTokens": 107731,
+      "usage": {
+        "input": 3,
+        "output": 1374,
+        "cacheRead": 110144,
+        "cacheWrite": 0
+      },
+      "turns": [
+        {
+          "index": 1,
+          "turn": 1,
+          "latencyMs": 23589,
+          "usage": {
+            "input": 3,
+            "output": 1374,
+            "cacheRead": 110144,
+            "cacheWrite": 0
+          },
+          "promptTokens": 110147,
+          "input": 3,
+          "cacheRead": 110144,
+          "cacheWrite": 0,
+          "output": 1374,
+          "toolCalls": [],
+          "stopReason": "stop",
+          "zoneBudgets": {
+            "zoneA": 2271,
+            "zoneB": 16921,
+            "zoneC": 0,
+            "tail": 0,
+            "total": 19192,
+            "overBudget": []
+          },
+          "fetchedDepths": [],
+          "nonAgentModelCalls": 0
+        }
+      ],
+      "durationMs": 23626,
+      "score": 1,
+      "success": true,
+      "perLiteral": [
+        {
+          "literal": "extractJsonObject",
+          "exact_match": true,
+          "regex": true
+        }
+      ]
+    }
+  ],
+  "partial": false
+}
