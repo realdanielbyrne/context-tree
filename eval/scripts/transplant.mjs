@@ -1140,9 +1140,11 @@ export function extractLiterals(events, blobs, store) {
 /**
  * The seq at which `truncate-tail`'s keep window opens: walk L0 newest-first,
  * charging heuristic tokens, and stop when K is spent. Everything at or after
- * that seq is visible to truncation (the `tail` stratum); everything before it
- * is not (the `head` stratum). Stratifying on the token boundary rather than an
- * event count is what makes "head" mean "provably outside the baseline's view".
+ * that seq is visible to truncation at THIS K (the `tail` stratum); everything
+ * before it is not (the `head` stratum). Stratifying on the token boundary
+ * rather than an event count makes the cut reproducible — but note the boundary
+ * is non-increasing in K, so "outside the tail" holds only at the K passed in,
+ * NOT at every window. See the correction in `runPrep`.
  */
 export function truncationBoundarySeq(events, blobs, K, tokenizer = heuristic) {
   let spent = 0;
@@ -1176,6 +1178,15 @@ export function pickDeterministic(pool, n, { distinctNodes = true, exclude = new
   // pool is by construction the newest ~15k tokens, which is one or two phases,
   // so insisting on three distinct branches there would silently return two
   // questions and quietly shrink the stratum the design pre-registered at 3.
+  //
+  // CORRECTION (2026-09-03): the comment above `truncationBoundarySeq` used to
+  // claim that stratifying on the token boundary makes `head` mean "provably
+  // outside the baseline's view". It does not. The boundary is non-increasing
+  // in K, so a fact outside the SMALLEST window's tail can sit well inside a
+  // wider window's tail — and the whole prior pass was aimed by trusting that
+  // sentence. `head` means "outside the tail at the K it was cut for", nothing
+  // more. Use `--phase prep-overflow --ref-window W` to cut a stratum that is
+  // outside the tail at W and every narrower window.
   if (picked.length < n) {
     for (const candidate of sorted) {
       if (picked.length === n) break;
@@ -2780,9 +2791,17 @@ async function runPrep(scenario, options) {
   if (!verdict.ok) {
     throw new Error(`KILL GATE: heuristic->BPE ratio ${ratio.toFixed(4)} exceeds ${RATIO_KILL} — see Step 3 mitigation before proceeding`);
   }
-  // Strata are cut against the SMALLEST window's K: a fact outside the tightest
-  // truncation window is outside every wider one, so `head` means the same
-  // thing at every W and the question set stays one frozen artifact.
+  // Strata are cut against the SMALLEST window's K, which keeps the question set
+  // one frozen artifact.
+  //
+  // What this does NOT give you, despite what this comment claimed until
+  // 2026-09-03: `head` is not "provably outside the baseline's view". The
+  // boundary is non-increasing in K, so cutting at the smallest window's K is
+  // the WEAKEST such guarantee — a `head` fact can sit inside a wider window's
+  // tail, and three of them did (seq 558 is inside the tail from W=65,536 up).
+  // A whole pass was aimed by trusting the old sentence. For a stratum that is
+  // outside the tail at W and every narrower window, use `--phase prep-overflow
+  // --ref-window W`.
   const budgets = budgetsFor(scenario, Math.min(...WINDOWS), ratio, verdict.slackFraction);
   const boundary = truncationBoundarySeq(events, scenario.blobs, budgets.K);
   const rootPins = summaries.size === 0 ? {} : rootByWindow(scenario, ratio, verdict.slackFraction);
