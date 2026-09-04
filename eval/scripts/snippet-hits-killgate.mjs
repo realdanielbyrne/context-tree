@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * Zero-live-token gate for the `tree-snippet-hits` arm (DS-STAR Fable-interface
- * pass, iteration 3). Replays the search queries the model ACTUALLY issued in
+ * pass, iteration 3) — since 2026-09-04 the arm IS the library's `context_search`,
+ * so this gate also checks the shipped event-hit search against recorded queries. Replays the search queries the model ACTUALLY issued in
  * the iteration-1 cell at W=131072 through the new handler and reports, per
  * query: hits returned, excerpt characters, exact tokens of the whole result
  * as the model would receive it (after the harness's snippet/text strip), the
@@ -21,7 +22,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TreeRetriever } from '@context-tree/core';
-import { openScenario, handlersForArm, exact, SNIPPET_HIT_COUNT, SNIPPET_CHARS } from './transplant.mjs';
+import { openScenario, handlersForArm, exact } from './transplant.mjs';
 
 const REPO = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const ART = join(REPO, 'eval/fixtures/transplant/s1/e1b289c32f40');
@@ -67,7 +68,7 @@ for (const q of questions) {
 }
 console.table(out);
 const lit = out.filter((r) => r.literalInExcerpt).length;
-console.log(`k=${SNIPPET_HIT_COUNT} chars=${SNIPPET_CHARS} | queries=${out.length} | literal in an excerpt: ${lit}/${out.length} | answer branch visible: ${out.filter((r) => r.answerRank !== null).length}/${out.length} | answer EVENT visible: ${out.filter((r) => r.answerSeqRank !== null).length}/${out.length} | tokens median ${[...out.map((r) => r.tokens)].sort((a, b) => a - b)[Math.floor(out.length / 2)]}`);
+console.log(`k=${scenario.config.retrieval.eventHits} chars=${scenario.config.retrieval.excerptChars} | queries=${out.length} | literal in an excerpt: ${lit}/${out.length} | answer branch id visible: ${out.filter((r) => r.answerRank !== null).length}/${out.length} (undercounts since 2026-09-04: events are labelled with their MOST SPECIFIC branch, often a file node, while the key names the phase) | answer EVENT visible: ${out.filter((r) => r.answerSeqRank !== null).length}/${out.length} | tokens median ${[...out.map((r) => r.tokens)].sort((a, b) => a - b)[Math.floor(out.length / 2)]}`);
 // Gate artifact, not just the pass bit: print one excerpt per question.
 for (const q of questions) {
   const query = (rows.find((r) => r.question === q.id && (r.searchQueries ?? []).length > 0)?.searchQueries ?? [])[0];

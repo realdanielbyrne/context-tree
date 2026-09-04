@@ -54,7 +54,7 @@ contract that tells it when to reach for them.
 | Tool | Signature | Behavior |
 |---|---|---|
 | `context_fetch` | `{branch_id, depth?, file?}` | Branch content. `file` narrows to one file node — the common case, since a verification phase usually needs one file from implementation. Appended to the transcript tail; never mutates the tree or the cache prefix. |
-| `context_search` | `{query, kind?}` | Collapsed-tree retrieval over summary vectors, falling back to beam search over summary text when embeddings are absent. |
+| `context_search` | `{query, kind?}` | Ranks branches by collapsed-tree retrieval over summary vectors (beam search over summary text when embeddings are absent), then returns the best-matching **events** across them — each with its `seq` and a `retrieval.excerptChars` excerpt of its own text, `retrieval.eventHits` of them. A hit is a payload; fetch only when the excerpt is not enough. |
 | `context_peek` | `{node_id, max_chars?}` | A cheap excerpt for relevance checking — suspicion costs one small call, not a full expansion. |
 | `annotate` | `{node_id, text, link_to?, link_kind?}` | Write side: adds a lateral link and/or a note. A review-phase discovery can mark an implementation branch `superseded_by` a later one. |
 

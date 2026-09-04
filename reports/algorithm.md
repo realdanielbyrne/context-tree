@@ -105,13 +105,13 @@ assemble
   fill remaining headroom with raw recent events from the trace tail
 
 retrieve on demand
-  search: rank branch summaries enriched with fingerprints, return coordinates
+  search: rank branches by fingerprint-enriched summaries (the pool)
     grep raw events for the query's literals; a grep hit REORDERS a branch the
       lexical pass already found — it cannot introduce one (see note)
     when regex finds nothing distinctive, a cheap LLM rewrites the query (optional fallback)
-    MEASURED, NOT YET DEFAULT [harness arm `tree-snippet-hits`, see note]: keep the branch
-      ranking, but return the k best-matching EVENTS across the ranked branches, each with
-      its seq and an excerpt of its own text — a hit is a payload; fetch only when it is not
+    return the k best-matching EVENTS across the ranked branches, each attributed to the most
+      specific branch holding it, with its seq and an excerpt of its own text — a hit is a
+      payload; fetch only when the excerpt is not enough
   fetch: raw events narrowed ONCE, by the caller that knows where the answer sits
     centers on the query's matching events; band grown outward under a real
     token count until the next event would not fit the live headroom
@@ -135,12 +135,14 @@ and because a host that omits it will silently re-cut its own narrowed payloads.
 routing is **not shipped either** — facet indexes exist only as offline gates, and the
 `tree-route` arm is specified and unbuilt; it lives under Candidates, not here.
 
-*The event-snippet search is harness-only.* `snippetHitsFor` / `excerptAround` live in
-`eval/scripts/transplant.mjs`; `packages/mcp`'s `context_search` still returns branch coordinates.
-Measured 2026-09-04 at W=131,072 on GLM 5.3 Flash, n=5, one store: 15/25 against 6/25 for the
-same stack with coordinate hits, in one batch, every success answered with zero fetches, −54% uncached
-input over completed runs (−59% over all rows) (`ds-star-fable-interface-report.md` §7). Promotion to the library default is the
-first open item of that report; it is not done, so Tier 1 above still describes what ships.
+*The event-hit search shipped 2026-09-04 (afternoon).* `TreeRetriever.searchEvents` and
+`excerptAround` are in `packages/core/src/retrieve/`; `packages/mcp`'s `context_search` returns
+event hits (`seq`, `excerpt`, `branch_rank`, pointer meta). The branch-coordinate handler survives
+only in the harness (`branchSearch` in `eval/scripts/transplant.mjs`) so historical arms replay the
+surface they were measured on. Evidence: at W=131,072 on GLM 5.3 Flash, n=5, one store, 15/25
+against 6/25 for the same stack with coordinate hits, in one batch, every success answered with
+zero fetches, −54% uncached input over completed runs (−59% over all rows)
+(`ds-star-fable-interface-report.md` §7). One store, one model, one window: see that report's §9.
 
 *The grep merge is not RRF.* `mergeWithGrep` adds `count / maxGrepScore / (RRF_K + 1)` to
 nodes the lexical pass already returned and skips any node it did not
@@ -163,8 +165,8 @@ found in code and missing here as a defect in this table, not a licence.
 | heuristic-to-tokenizer ratio | **derived** (0.851 on this corpus) | measured per corpus, refuses above 1.6 |
 | root keep (fold level) | **derived** in portability harness; **unvalidated** constant in live | largest rung whose Zone B fits |
 | search result limit | **unvalidated**, and there are TWO defaults: config `limit: 20`, retriever `DEFAULT_LIMIT = 8`. Measured 2026-09-04: the all-rank COMPACT list (coordinates only) is **retired as a display** — it freed ~5k tokens per search and cost the one question the model could otherwise select (qo03 5/5 → 0/5 at W=131,072) | W and per-hit payload size |
-| snippet hit count (`SNIPPET_HIT_COUNT`) | **host** (5, *harness*) — taken from the published claude.ai interface (default 5, max 10), per rule 3; unvalidated here (never swept) | the published interface; should derive from headroom ÷ excerpt cost |
-| snippet excerpt size (`SNIPPET_CHARS`) | **host** (1,000 chars, *harness*) — the observed ~200-360-word chunk of the published interface; unvalidated here. Known miss: a literal outside the window (qo02) | the published interface; should derive from the event's matched span |
+| event hits per search (`retrieval.eventHits`) | **host** (5, config default) — taken from the published claude.ai interface (default 5, max 10), per rule 3; unvalidated here (never swept) | the published interface; should derive from headroom ÷ excerpt cost |
+| excerpt size (`retrieval.excerptChars`) | **host** (1,000 chars, config default) — the observed ~200-360-word chunk of the published interface; unvalidated here. Known miss: a literal outside the window (qo02); a dotted identifier is not a usable fallback term (`Math.round` → `Mathround`) | the published interface; should derive from the event's matched span |
 | grep re-rank constant | **unvalidated** (60). Named `RRF_K`, but the pass is a re-ranker over the lexical candidate set, not a fusion, so the RRF literature does not justify it | never swept on any store |
 | query fingerprint minimum length | **unvalidated**, and it is three literals not one: `add()` enforces 3, `QUOTED_Q` hardcodes `{3,}`, `UPPER_SNAKE_Q` is effectively 4 | below it a token matches everything |
 | fetch narrowing budget | **derived** on the primary path (live headroom at the moment of append, per call). TWO `?? 20000` fallbacks survive and are still defects — the halved one that computes the budget, and the one that feeds it | the request as it stands that turn — rule 5 |
@@ -339,8 +341,19 @@ so the negative result is not rebuilt).
 | 2026-09-03 | Fingerprint extraction + hybrid grep in search; algorithm pseudocode updated |
 | 2026-09-03 pm | Two cuts in the fetch path collapsed to one; a chars-vs-tokens magic number (×0.85) replaced by an injected tokenizer; the halved build-time narrowing budget replaced by the live per-call headroom |
 | 2026-09-04 | Compact coordinate display retired; the search UNIT changed from branch to event in the measured arm, which removes the second stage for most questions (fetches 1.42 → 0.05 per run) — one stanza does the work two did |
+| 2026-09-04 pm | Event-hit search shipped in `packages/`; harness-local copy deleted; the two sizes moved from constants to `retrieval.eventHits` / `retrieval.excerptChars` (config, still host values); §19 Q2 decided in `docs/IMPLEMENTATION_PLAN.md` |
 
 ## Change log
+
+- **2026-09-04 14:40** — Library port. `context_search` now returns event hits (Tier 1 `search`
+  stanza rewritten to what ships; the "MEASURED" line is gone). Events are attributed to the most
+  specific branch that holds them — a defect the port surfaced: the harness arm let the first-ranked
+  branch claim a shared event, which on a fixture with a task root swallowed the phase that did the
+  work. Second defect: pointer `meta` on an event hit re-inflated the payload (three recorded
+  queries reached 4,666-6,136 tokens; the gate's NS2 caught it) — removed, the excerpt is the
+  legibility signal; gate back to 48/56 literal-in-excerpt, 53/56 event visible, median 1,750
+  tokens. Contract v1-v3 `context_search` bullet rewritten; §19 Q2 decided. Core +5 tests, mcp +2,
+  two mcp tests restated for the event unit; harness tests −3 (moved to core). Suite 977/9.
 
 - **2026-09-04 11:20** — Fable-interface pass (3 iterations, `ds-star-fable-interface-report.md`).
   **No change under `packages/`;** the measured arm is harness-only. Regime: the production Fable 5.1

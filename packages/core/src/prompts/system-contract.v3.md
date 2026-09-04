@@ -35,9 +35,12 @@ it is not.
 - `context_fetch { branch_id, depth?: "summary" | "full", file? }` — return a
   branch's content. Pass `file` to narrow to a single file node instead of
   pulling a whole branch; that is the common case and the cheap one.
-- `context_search { query, kind? }` — rank branch summaries by relevance to a
-  query and get their node ids back. Use it when you know what you need but not
-  where it happened.
+- `context_search { query, kind? }` — search the recorded history. Each hit is one
+  recorded event: the branch it belongs to (node id, title, pointers), its position
+  (`seq`), and an excerpt of that event's own text. If the excerpt shows the exact
+  literal you need, answer from it; otherwise `context_fetch` the hit's branch with
+  `from`/`to` a few events either side of `seq`. Query with a few content words or
+  identifiers that appeared in the work, not a question.
 - `context_peek { node_id, max_chars? }` — a short excerpt from one node, for
   checking whether a suspicion is worth a full fetch.
 - `annotate { node_id, text, link_to?, link_kind? }` — record a note on a node,

@@ -18,7 +18,7 @@ import type {
 import { FsBlobStore } from '../src/blobs/index.js';
 import { JsonlTraceLog } from '../src/trace/index.js';
 import { openInMemoryStore, type SqliteTreeStore } from '../src/store/index.js';
-import { TreeRetriever, createVectorProvider } from '../src/retrieve/index.js';
+import { TreeRetriever, createVectorProvider, excerptAround } from '../src/retrieve/index.js';
 
 const TS = '2026-01-01T00:00:00.000Z';
 const HUGE_BLOB_CHARS = 200_000;
@@ -798,5 +798,69 @@ describe('bare-filename centring candidate', () => {
     expect(terms.filter((term) => term.value === 'src/pricing.ts')).toHaveLength(1);
     expect(terms.filter((term) => term.value === 'archive.tar.gz')).toHaveLength(1);
     expect(terms.find((term) => term.value === 'archive.tar.gz')?.source).toBe('bare-filename');
+  });
+});
+
+describe('excerptAround — the excerpt an event hit carries', () => {
+  it('centres a window on the first matched term and marks both elisions', () => {
+    const text = `${'a'.repeat(500)} NEEDLE ${'b'.repeat(500)}`;
+    const out = excerptAround(text, ['needle'], 100);
+    expect(out.startsWith('…')).toBe(true);
+    expect(out.endsWith('…')).toBe(true);
+    expect(out).toContain('NEEDLE');
+    expect(out.length).toBeLessThanOrEqual(102);
+  });
+
+  it('returns a short text whole and falls back to the head when no term matches', () => {
+    expect(excerptAround('short', ['zzz'], 100)).toBe('short');
+    const head = excerptAround('x'.repeat(300), ['zzz'], 100);
+    expect(head.startsWith('x')).toBe(true);
+    expect(head.endsWith('…')).toBe(true);
+  });
+});
+
+describe('TreeRetriever.searchEvents — the hit is the event, and the event is the payload', () => {
+  it('returns the best-matching events across the ranked branches, each with its seq and an excerpt of its own text', async () => {
+    const f = fixture();
+    const retriever = new TreeRetriever({ store: f.store, blobs: f.blobs, trace: f.trace });
+    const result = await retriever.searchEvents('applyTier tier brackets', { hits: 3, excerptChars: 200 });
+
+    expect(result.hits.length).toBeLessThanOrEqual(3);
+    expect(result.path).toBe('beam');
+    const edit = result.hits.find((hit) => hit.seq === 7);
+    expect(edit, 'the Edit event holding applyTier is the best payload for this query').toBeDefined();
+    expect(edit?.excerpt).toContain('applyTier');
+    expect([f.nodes.p2.id, f.nodes.f2.id]).toContain(edit?.nodeId);
+    // Every event hit points into the branch it came from; branch rank is 1-based.
+    for (const hit of result.hits) {
+      expect(result.branches.map((b) => b.nodeId)).toContain(hit.nodeId);
+      if (hit.seq !== null) expect(hit.branchRank).toBeGreaterThanOrEqual(1);
+    }
+    // Ranked by event relevance, best first.
+    for (let i = 1; i < result.hits.length; i += 1) {
+      expect(result.hits[i - 1]!.score).toBeGreaterThanOrEqual(result.hits[i]!.score);
+    }
+  });
+
+  it('fills the remaining slots with bare branch coordinates when fewer events match than hits were asked for', async () => {
+    const f = fixture();
+    const retriever = new TreeRetriever({ store: f.store, blobs: f.blobs, trace: f.trace });
+    const result = await retriever.searchEvents('oauth', { hits: 6, excerptChars: 200 });
+    const withExcerpt = result.hits.filter((hit) => hit.excerpt !== null);
+    const bare = result.hits.filter((hit) => hit.excerpt === null);
+    expect(withExcerpt.length).toBeGreaterThan(0);
+    expect(bare.length).toBeGreaterThan(0);
+    expect(bare.every((hit) => hit.seq === null)).toBe(true);
+    // A branch appears at most once as a bare coordinate, and never both ways.
+    const excerptNodes = new Set(withExcerpt.map((h) => h.nodeId));
+    expect(bare.every((hit) => !excerptNodes.has(hit.nodeId))).toBe(true);
+  });
+
+  it('degrades to branch coordinates when the retriever has no trace to read events from', async () => {
+    const f = fixture();
+    const retriever = new TreeRetriever({ store: f.store, blobs: f.blobs });
+    const result = await retriever.searchEvents('applyTier', { hits: 3, excerptChars: 200 });
+    expect(result.hits.length).toBeGreaterThan(0);
+    expect(result.hits.every((hit) => hit.seq === null && hit.excerpt === null)).toBe(true);
   });
 });

@@ -636,6 +636,12 @@ per-PR spend via the cost meter.
 
 1. Embedding model default (local vs API) — decide in M6; L3 must stay disposable.
 2. Should `context_search` search raw turns or summaries only? Start summaries-only.
+   **Decided 2026-09-04:** the ranking stays over summaries (fingerprint-enriched, grep
+   re-ranked), but the HIT is a raw event — the best-matching events across the ranked
+   branches, each with its `seq` and a ~1,000-char excerpt (`retrieval.eventHits`,
+   `retrieval.excerptChars`). Measured 15/25 vs 6/25 against branch coordinates on one store,
+   every success with zero fetches (`reports/metrics/ds-star-fable-interface-report.md` §7).
+   Branch-coordinate hits are retired as the shipped unit.
 3. Multi-task workspaces: one SQLite DB per task, or one DB with task roots?
    Start one-DB-per-task (mirrors graft's per-repo index simplicity).
 4. Two agents on one tree: SQLite WAL is likely sufficient; revisit only if

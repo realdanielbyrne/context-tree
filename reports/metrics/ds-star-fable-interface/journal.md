@@ -221,3 +221,31 @@ corpus total 245 → 239 (6 unearned, none in this arm).
 Route: clean win on its bucket (delivery via the hit) and on the headline; the pass's three
 iterations are spent. Stop, report. Promotion to the library default is a decision for the
 checkpoint, not the loop; the arm is harness-only (`transplant.mjs`) and `packages/` is unchanged.
+
+
+## Library port (14:12-14:35, user request "update the library")
+
+TDD: 7 RED tests (core `excerptAround` ×2, `searchEvents` ×3; mcp event-hit ×2) → GREEN. Shipped:
+`TreeRetriever.searchEvents` + `excerptAround` in `packages/core/src/retrieve/`; `context_search`
+in `packages/mcp` returns event hits (`seq`, `excerpt`, `branch_rank`); `retrieval.eventHits` (5) and
+`retrieval.excerptChars` (1,000) in config; contract v1-v3 bullet rewritten; §19 Q2 decided in
+`docs/IMPLEMENTATION_PLAN.md`. Harness: historical arms now call `branchSearch` (the pre-port
+handler, kept byte-compatible); `tree-snippet-hits` is the library as shipped; harness-local
+`snippetHitsFor` deleted.
+
+Two defects the port surfaced, both caught by tests/gates before commit:
+1. **Shared events need a most-specific owner.** Branches nest (task ⊃ phase ⊃ file); the harness
+   arm let the first-ranked branch claim a shared event, so on the mcp fixture the task root
+   swallowed the implementation phase's events. Fixed: attribute to the smallest span; ORDER by the
+   best rank of any containing branch (ordering by the specific branch's rank regressed the gate
+   48→41/56 literal-in-excerpt).
+2. **Pointer meta on an event hit re-inflates the payload.** The first port carried the branch's
+   `meta.files` on each hit; three recorded queries hit 4,666-6,136 tokens (NS2 fail). Removed —
+   the excerpt is the legibility signal; gate back to 48/56 literal, 53/56 event, median 1,750
+   tokens (was 1,693 in the harness arm; `summary_version`/`branch_rank` account for the rest).
+
+Full suite after port: 977 passed, 9 skipped. `pnpm build` emits core/mcp/cli; the pre-existing
+`eval/src/run.ts:104` error is unchanged. Not re-measured live: the port is behaviourally identical
+to the arm on the offline gate, but a same-batch live confirmation (`tree-center-filename` vs
+`tree-snippet-hits`, W=131,072, n=5, ~$0.30) is the honest next step before any claim that the
+shipped library scores 15/25.

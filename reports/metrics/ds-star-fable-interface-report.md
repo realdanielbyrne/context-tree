@@ -314,8 +314,8 @@ confirmed, event-snippet hits measured and not yet default.
 - **One store, one model, one window.** Every live number is GLM 5.3 Flash on the s1 trace at
   W = 131,072 with n = 5. The claude.ai probe was Sonnet 5 on one 8-turn chat with n = 1 per
   question. Nothing here is proven on a second trace, a second model, or a second window.
-- **The library.** `packages/mcp`'s `context_search` still returns branch coordinates. The
-  15/25 is a harness arm.
+- **The library, live.** `packages/mcp`'s `context_search` was ported to event hits after the
+  pass closed (open item 5); it reproduces the arm on the offline gate but has not been run live.
 - **The constants.** 5 hits and 1,000 characters were never swept; qo02 shows the excerpt window
   can miss a literal in a correctly ranked event.
 - **The system prompt as bytes.** The realistic host was modeled by reducing W, which is exact
@@ -374,9 +374,14 @@ Ordered by information gained per unit of effort.
 4. **Second model, same cell** (~$1-3): `deepseek/deepseek-v4-flash` and one Anthropic model
    on {tree-center-filename, tree-snippet-hits} at W = 131,072, n = 5. The claim "the hit should
    be the payload" is a claim about models reading excerpts; one flash model is not evidence of it.
-5. **Port the unit into the library** only after 1 and 4: `packages/mcp/src/tools/context-search.ts`
-   returns event hits with `seq` and `excerpt`; `context_fetch` already accepts `from`/`to`.
-   Update Tier 1 from "measured" to shipped when it lands, and retire the two constants' rows.
+5. **Port the unit into the library — DONE 2026-09-04 14:35 at the user's request, ahead of
+   items 1 and 4.** `TreeRetriever.searchEvents` and `context_search` now return event hits;
+   the two constants moved to `retrieval.eventHits` / `retrieval.excerptChars` (config, still
+   host values). The port surfaced two defects the harness arm had hidden: shared events must be
+   attributed to their most specific branch but ordered by the best containing rank, and pointer
+   meta on an event hit re-inflates the payload (three queries reached 4,666-6,136 tokens until it
+   was removed). The offline gate reproduces the arm (48/56, 53/56). Owed: one same-batch live
+   confirmation of the shipped library at W = 131,072 (~$0.30) before quoting 15/25 for it.
 6. **The system prompt as bytes** (~43 lines in the harness per analyzer A4, one batch ~$0.5):
    prepend a realistic operator prompt and raise W by its size; the control arm is the same
    size of inert text. This is the only way to learn whether the pad's content, not just its

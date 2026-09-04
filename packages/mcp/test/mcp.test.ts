@@ -353,14 +353,16 @@ function fakeProvider(
 }
 
 /**
- * Relative rank, not absolute position: the tree also holds the task root and a
- * file node whose titles legitimately match a pricing query. What must hold is
- * that the branch which did the work outranks a branch about something else.
+ * Hits are EVENTS (2026-09-04): what must hold is that the branch which did the
+ * work is represented among them by its own events, each carrying a seq and an
+ * excerpt. Relative order between branches is no longer asserted here — at the
+ * event level the diagnosis phase's user message legitimately contains the whole
+ * query, and ranking within the list is by event relevance, then branch rank.
  */
-function expectRankedAbove(data: ContextSearchData, better: NodeId, worse: NodeId): void {
-  const ranked = data.hits.map((hit) => hit.node_id);
-  expect(ranked, `expected ${better} among the hits`).toContain(better);
-  expect(ranked.indexOf(better)).toBeLessThan(ranked.includes(worse) ? ranked.indexOf(worse) : ranked.length);
+function expectWorkRepresented(data: ContextSearchData, worker: NodeId): void {
+  const own = data.hits.filter((hit) => hit.node_id === worker);
+  expect(own.length, `expected ${worker} among the hits`).toBeGreaterThan(0);
+  expect(own.some((hit) => typeof hit.seq === 'number' && typeof hit.excerpt === 'string')).toBe(true);
 }
 
 describe('context_search', () => {
@@ -372,11 +374,11 @@ describe('context_search', () => {
 
     expect(data.path).toBe('beam');
     expect(data.fallback).toBe('no-embedder');
-    expectRankedAbove(data, fixture.implementation.id, fixture.unrelated.id);
-    // §8's pointers must survive to the model: they are how it judges relevance
-    // without paying for a fetch.
+    expectWorkRepresented(data, fixture.implementation.id);
+    // The excerpt is how the model judges relevance without paying for a fetch —
+    // it replaced the pointer meta a branch hit carried (2026-09-04).
     const impl = data.hits.find((hit) => hit.node_id === fixture.implementation.id);
-    expect(impl?.meta?.files[0]?.path).toBe('src/pricing.ts');
+    expect(typeof impl?.excerpt).toBe('string');
   });
 
   it('uses the L3 vector path once summaries are embedded, and ranks by that vector, not by text overlap', async () => {
@@ -397,7 +399,7 @@ describe('context_search', () => {
 
     expect(data.path).toBe('vector');
     expect(data.fallback).toBeNull();
-    expectRankedAbove(data, fixture.implementation.id, fixture.unrelated.id);
+    expectWorkRepresented(data, fixture.implementation.id);
   });
 
   it('kind narrows the answer to file nodes so a model can ask which branch touched a path', async () => {
@@ -437,7 +439,7 @@ describe('context_search', () => {
     expect(data.unavailable).toEqual([]);
   });
 
-  it('a hit carries coordinates and pointer-only meta, no summary text — Zone B already has it (R8)', async () => {
+  it('a hit carries coordinates and its event excerpt, never summary text or summary meta — Zone B already has those (R8, revised 2026-09-04)', async () => {
     const fixture = seed();
     const longSummary = 'x'.repeat(500);
     fixture.handle.store.putSummary({
@@ -460,14 +462,11 @@ describe('context_search', () => {
     expect(hit).toBeDefined();
     expect(hit).not.toHaveProperty('text');
     expect(hit).not.toHaveProperty('snippet');
-    // Pointer fields survive (files is what packages/mcp/test asserts against elsewhere)...
-    expect(hit?.meta?.files[0]?.path).toBe('src/pricing.ts');
-    expect(hit?.meta?.symbols).toEqual(['price']);
-    // ...prose fields do not, because Zone B already renders them for every branch shown.
-    expect(hit?.meta).not.toHaveProperty('tests');
-    expect(hit?.meta).not.toHaveProperty('open_questions');
-    expect(hit?.meta).not.toHaveProperty('decisions');
-    expect(hit?.meta).not.toHaveProperty('artifacts');
+    // No summary meta either: on the measured store a phase's file-span records
+    // cost thousands of tokens per hit list. The excerpt carries the legibility.
+    expect(hit).not.toHaveProperty('meta');
+    expect(typeof hit?.excerpt).toBe('string');
+    expect(hit?.excerpt).not.toContain(longSummary);
   });
 
   it('a provider that fails its capability probe is dropped and named, never fatal (§18)', async () => {
@@ -483,6 +482,36 @@ describe('context_search', () => {
 
     expect(data.unavailable).toEqual(['missing-binary']);
     expect(data.hits.length).toBeGreaterThan(0);
+  });
+});
+
+describe('context_search — a hit is an event with its excerpt (the published-alternative unit)', () => {
+  it('each hit names the event (seq) and carries an excerpt of that event, so a literal can be answered without a fetch', async () => {
+    const fixture = seed();
+    const data = unwrap(
+      (await contextSearch(contextFor(fixture), { query: 'price cents' })) as ToolOutcome<ContextSearchData>,
+    );
+    // The Edit's post-state blob holds `Math.round`; the query names the identifiers
+    // around it (the centring scorer strips punctuation from fallback words, so a
+    // dotted name like Math.round is not itself a usable query term).
+    const hit = data.hits.find((h) => typeof h.excerpt === 'string' && h.excerpt.includes('Math.round'));
+    expect(hit, 'the Edit event carrying Math.round should be a hit').toBeDefined();
+    expect(typeof hit?.seq).toBe('number');
+    expect(hit?.branch_rank).toBeGreaterThanOrEqual(1);
+    // The event is attributed to the most specific branch that holds it — the file
+    // node keyed by src/pricing.ts or the implementation phase — never the task root.
+    expect([fixture.fileNode.id, fixture.implementation.id]).toContain(hit?.node_id);
+    // No summary meta on an event hit: the excerpt is the legibility signal.
+    expect(hit).not.toHaveProperty('meta');
+  });
+
+  it('honours retrieval.eventHits and retrieval.excerptChars from config, not a constant in the tool', async () => {
+    const fixture = seed({ retrieval: { providers: [], limit: 20, eventHits: 1, excerptChars: 40 } });
+    const data = unwrap(
+      (await contextSearch(contextFor(fixture), { query: 'price cents' })) as ToolOutcome<ContextSearchData>,
+    );
+    expect(data.hits).toHaveLength(1);
+    expect((data.hits[0]?.excerpt ?? '').length).toBeLessThanOrEqual(42);
   });
 });
 

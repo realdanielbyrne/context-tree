@@ -79,6 +79,47 @@ export interface TreeSearchResult {
   fallback?: BeamFallbackReason;
 }
 
+/** `searchEvents` options: the branch pool is `TreeSearchOptions`; the two sizes come from config, never a constant here. */
+export interface EventSearchOptions extends TreeSearchOptions {
+  /** How many event hits to return (`retrieval.eventHits`). */
+  hits: number;
+  /** Characters of the event's rendered text each hit carries (`retrieval.excerptChars`). */
+  excerptChars: number;
+}
+
+/**
+ * One event-level hit. The retrieval UNIT is the event, not the branch: `seq`
+ * names the position a follow-up `fetchBranch({ from, to })` narrows to, and
+ * `excerpt` is the payload — a slice of that event's own rendered text. A hit
+ * with `seq === null` is a bare branch coordinate filling a slot no event
+ * matched. Branch identity travels with every hit so a model can still judge
+ * relevance from the §8 pointers.
+ */
+export interface EventHit {
+  nodeId: NodeId;
+  kind: NodeKind;
+  title: string;
+  phaseType: PhaseType | null;
+  path?: string;
+  version: number;
+  meta: SummaryMeta | null;
+  /** 1-based rank of the branch in the underlying branch search. */
+  branchRank: number;
+  branchScore: number;
+  seq: number | null;
+  /** Event relevance for event hits; the branch score for bare coordinates. */
+  score: number;
+  excerpt: string | null;
+}
+
+export interface EventSearchResult {
+  hits: EventHit[];
+  /** The ranked branch pool the events were drawn from — what §9.1's merge still consumes. */
+  branches: SummaryHit[];
+  path: SearchPath;
+  fallback?: BeamFallbackReason;
+}
+
 export interface FetchBranchOptions {
   /**
    * Defaults to `'full'` (R9): a summary cannot carry a verbatim literal by

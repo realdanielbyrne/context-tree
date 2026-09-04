@@ -9,9 +9,13 @@
  */
 export { TreeRetriever, type TreeRetrieverDeps } from './retriever.js';
 export { createVectorProvider } from './vector-provider.js';
+export { excerptAround } from './excerpt.js';
 export type {
   BeamFallbackReason,
   EmbedSummariesResult,
+  EventHit,
+  EventSearchOptions,
+  EventSearchResult,
   FetchBranchOptions,
   FetchedBranch,
   QueryRewriter,

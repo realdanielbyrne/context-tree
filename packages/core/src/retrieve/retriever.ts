@@ -10,6 +10,8 @@
  * are reachable only by an explicit `context_fetch` / `context_peek` on a node
  * a summary pointed at.
  */
+import { excerptAround } from './excerpt.js';
+import { renderEvent } from '../assemble/format.js';
 import type {
   BlobStore,
   NodeId,
@@ -26,6 +28,9 @@ import { clampSpans, mergeSpans, nodeSpan, payloadRef, renderIndex, renderSpans 
 import { buildLexicalIndex, extractFingerprints, lexicalScore, summaryDocument, uniqueTerms } from './lexical.js';
 import type {
   EmbedSummariesResult,
+  EventHit,
+  EventSearchOptions,
+  EventSearchResult,
   FetchBranchOptions,
   FetchDiagnostic,
   FetchedBranch,
@@ -181,6 +186,100 @@ export class TreeRetriever {
     if (grepHits.size === 0) return base;
 
     return mergeWithGrep(base, grepHits, limit);
+  }
+
+  /**
+   * Event-level search: the unit the model is shown is the EVENT, and the hit
+   * carries its payload. The branch pool is exactly `search()`'s (same ranking,
+   * limit and kind filter); within each ranked branch the same relevance scorer
+   * that centres a narrowed fetch (`findRelevantCenter`) scores that branch's
+   * events for the query, and the best `hits` events across all branches are
+   * returned, each with its `seq` and an excerpt of its own rendered text.
+   * Branches whose events match nothing fill the remaining slots as bare
+   * coordinates, so the caller still sees `hits` rows. Without a trace there is
+   * nothing to excerpt and every row is a bare coordinate.
+   *
+   * Measured against the branch-coordinate unit on one store at W=131,072
+   * (GLM 5.3 Flash, n=5): 15/25 vs 6/25, every success with zero fetches
+   * (`reports/metrics/ds-star-fable-interface-report.md` §7).
+   */
+  async searchEvents(query: string, options: EventSearchOptions): Promise<EventSearchResult> {
+    const base = await this.search(query, options);
+    const branches = base.hits;
+    const coordinate = (branch: SummaryHit, rank: number): Omit<EventHit, 'seq' | 'score' | 'excerpt'> => ({
+      nodeId: branch.nodeId,
+      kind: branch.kind,
+      title: branch.title,
+      phaseType: branch.phaseType,
+      ...(branch.path === undefined ? {} : { path: branch.path }),
+      version: branch.version,
+      meta: branch.meta,
+      branchRank: rank + 1,
+      branchScore: branch.score,
+    });
+    const bare = (branch: SummaryHit, rank: number): EventHit => ({ ...coordinate(branch, rank), seq: null, score: branch.score, excerpt: null });
+    const result = (hits: EventHit[]): EventSearchResult =>
+      base.fallback === undefined ? { hits, branches, path: base.path } : { hits, branches, path: base.path, fallback: base.fallback };
+
+    const trace = this.trace;
+    if (trace === undefined) return result(branches.slice(0, options.hits).map(bare));
+
+    // Branches nest (task ⊃ phase ⊃ file), so one event can sit inside several
+    // ranked branches. It is attributed to the MOST SPECIFIC one — the smallest
+    // span that contains it — never to whichever branch happened to rank first,
+    // or the root would swallow every event and the phase that did the work
+    // would vanish from the hit list.
+    // Ordering, however, uses the BEST rank of any branch holding the event: the
+    // pool's relevance is a property of the event's context, not of the label it
+    // is filed under, and tie-breaking on a file node's rank would push the top
+    // phase's events below those of unrelated branches.
+    type Entry = { branch: SummaryHit; rank: number; bestRank: number; seq: number; score: number; width: number; terms: string[] };
+    const scored = new Set<NodeId>();
+    const bySeq = new Map<number, Entry>();
+    branches.forEach((branch, rank) => {
+      const node = this.store.getNode(branch.nodeId);
+      if (node === null) return;
+      const span = nodeSpan(node);
+      if (span === null) return;
+      const center = this.findRelevantCenter(query, [span]);
+      if (center.scores.length > 0) scored.add(branch.nodeId);
+      const width = span.end - span.start;
+      for (const { seq, score } of center.scores) {
+        const held = bySeq.get(seq);
+        const terms = center.terms.map((term) => term.value);
+        if (held === undefined) {
+          bySeq.set(seq, { branch, rank, bestRank: rank, seq, score, width, terms });
+          continue;
+        }
+        held.bestRank = Math.min(held.bestRank, rank);
+        held.score = Math.max(held.score, score);
+        if (width < held.width || (width === held.width && rank < held.rank)) {
+          held.branch = branch;
+          held.rank = rank;
+          held.width = width;
+          held.terms = terms;
+        }
+      }
+    });
+    const events = [...bySeq.values()].sort((a, b) => b.score - a.score || a.bestRank - b.bestRank || b.seq - a.seq);
+
+    const hits: EventHit[] = [];
+    for (const entry of events) {
+      if (hits.length >= options.hits) break;
+      const event = [...trace.read({ from: entry.seq, to: entry.seq })][0];
+      if (event === undefined) continue;
+      hits.push({
+        ...coordinate(entry.branch, entry.rank),
+        seq: entry.seq,
+        score: entry.score,
+        excerpt: excerptAround(renderEvent(event, this.blobs), entry.terms, options.excerptChars),
+      });
+    }
+    branches.forEach((branch, rank) => {
+      if (hits.length >= options.hits || scored.has(branch.nodeId)) return;
+      hits.push(bare(branch, rank));
+    });
+    return result(hits);
   }
 
   /**

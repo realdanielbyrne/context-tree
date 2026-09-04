@@ -62,6 +62,7 @@ import {
   MeteredProvider,
   ModelCallError,
   OPENROUTER_BASE_URL,
+  mergeCandidates,
   OpenRouterProvider,
   TreeRetriever,
   ZoneAssembler,
@@ -1549,92 +1550,49 @@ async function legacySearchHits(ctx, input) {
 }
 
 /**
- * The published alternative's unit, as observed. claude.ai's conversation_search
- * returns 5 hits by default (schema max 10) and each conversation-kind hit is a
- * ~200-360-word chunk of raw transcript (self-reported across 7 probe chats,
- * `reports/metrics/ds-star-fable-interface/claude-ai-probe-answer-key.md`).
- * Both values are taken from that interface, not fitted here — rule 3 of
- * `reports/algorithm.md`: set from a documented source, never guessed — and
- * they are unvalidated on this host until the arm is measured.
+ * The branch-level search the library shipped before 2026-09-04, kept here so
+ * every historical arm (tree-tail-v2, tree-center-filename,
+ * tree-search-coordinates, tree-oracle, tree-escalate, tree-hit-keywords)
+ * reproduces the surface its recorded results were measured on. The library's
+ * `context_search` now returns EVENT hits with excerpts; only `tree-snippet-hits`
+ * uses it. Output shape is byte-compatible with the old handler: pointer-only
+ * `meta`, tree candidates carrying a 240-char snippet, no provider fan-out.
  */
-export const SNIPPET_HIT_COUNT = 5;
-export const SNIPPET_CHARS = 1000;
-
-/**
- * A window of `chars` characters from `text`, centred on the first occurrence
- * of any of `terms` (case-insensitive), or the head of the text when no term
- * occurs. Elisions are marked so the model can tell an excerpt from a whole.
- */
-export function excerptAround(text, terms, chars = SNIPPET_CHARS) {
-  if (text.length <= chars) return text;
-  const lower = text.toLowerCase();
-  let at = -1;
-  for (const term of terms) {
-    const idx = lower.indexOf(String(term).toLowerCase());
-    if (idx >= 0 && (at < 0 || idx < at)) at = idx;
+export async function branchSearch(ctx, input) {
+  const query = input?.query ?? '';
+  const limit = ctx.config.retrieval.limit;
+  try {
+    const tree = await ctx.retriever.search(query, { kind: input?.kind, limit });
+    const toCandidate = (hit) => {
+      const file = hit.path === undefined ? undefined : hit.meta?.files.find((entry) => entry.path === hit.path);
+      return {
+        node_id: hit.nodeId,
+        path: hit.path,
+        span: file === undefined ? undefined : { start_line: file.start_line, end_line: file.end_line },
+        symbol: hit.meta?.symbols?.[0],
+        score: hit.score,
+        provider: 'tree',
+        tier: 'fuzzy',
+        snippet: hit.text.slice(0, 240),
+      };
+    };
+    const merged = mergeCandidates([{ provider: 'tree', tier: 'fuzzy', candidates: tree.hits.map(toCandidate) }], { query, kind: input?.kind, limit, mode: 'ranked' });
+    return { ok: true, data: {
+      query,
+      path: tree.path,
+      fallback: tree.fallback ?? null,
+      hits: tree.hits.map((hit) => ({
+        node_id: hit.nodeId, kind: hit.kind, title: hit.title, phase_type: hit.phaseType, path: hit.path ?? null,
+        summary_version: hit.version, score: hit.score,
+        meta: hit.meta === null ? null : { files: hit.meta.files, symbols: hit.meta.symbols, node_ids: hit.meta.node_ids },
+      })),
+      candidates: merged.candidates,
+      provenance: merged.contributions,
+      unavailable: [],
+    } };
+  } catch (error) {
+    return { ok: false, error: { code: 'internal', message: error.message } };
   }
-  let start = at < 0 ? 0 : Math.max(0, at - Math.floor(chars / 2));
-  if (start + chars > text.length) start = Math.max(0, text.length - chars);
-  const end = Math.min(text.length, start + chars);
-  return `${start > 0 ? '…' : ''}${text.slice(start, end)}${end < text.length ? '…' : ''}`;
-}
-
-/**
- * Event-level hits over the branch pool the ranker already produced. For every
- * ranked branch, the retriever's own relevance scorer (`findRelevantCenter`,
- * the same one that centres a narrowed fetch) scores that branch's events for
- * the query; the top `k` events across all branches become the hits, each
- * carrying its `seq` (the position a follow-up fetch narrows to with
- * `from`/`to`) and an `excerpt` of the event's own rendered text. Branch rank,
- * order and scores are untouched; what changes is the UNIT the model is shown.
- * Branches whose events match nothing fill the remaining slots as bare
- * coordinates, so the model still sees k rows.
- */
-export function snippetHitsFor(ctx, query, branchHits, k = SNIPPET_HIT_COUNT, chars = SNIPPET_CHARS) {
-  const { store, trace, blobs } = ctx.handle;
-  const scorer = ctx.retriever['findRelevantCenter'];
-  const events = [];
-  const scored = new Set();
-  for (const [rank, hit] of branchHits.entries()) {
-    const node = store.getNode(hit.node_id);
-    if (node === null || node === undefined) continue;
-    const span = node.span_start_seq === null || node.span_start_seq === undefined
-      ? null
-      : { start: node.span_start_seq, end: node.span_end_seq ?? node.span_start_seq };
-    if (span === null || typeof scorer !== 'function') continue;
-    const center = scorer.call(ctx.retriever, query, [span]);
-    if (center.scores.length > 0) scored.add(hit.node_id);
-    for (const { seq, score } of center.scores) {
-      events.push({ hit, rank, seq, score, terms: center.terms.map((t) => t.value) });
-    }
-  }
-  events.sort((a, b) => b.score - a.score || a.rank - b.rank || b.seq - a.seq);
-  const seen = new Set();
-  const hits = [];
-  for (const entry of events) {
-    if (hits.length >= k) break;
-    if (seen.has(entry.seq)) continue;
-    seen.add(entry.seq);
-    const event = [...trace.read({ from: entry.seq, to: entry.seq })][0];
-    if (event === undefined) continue;
-    hits.push({
-      node_id: entry.hit.node_id,
-      kind: entry.hit.kind,
-      title: entry.hit.title,
-      phase_type: entry.hit.phase_type,
-      path: entry.hit.path ?? null,
-      branch_rank: entry.rank + 1,
-      score: entry.score,
-      seq: entry.seq,
-      excerpt: excerptAround(renderEvent(event, blobs), entry.terms, chars),
-    });
-  }
-  for (const [rank, hit] of branchHits.entries()) {
-    if (hits.length >= k) break;
-    if (scored.has(hit.node_id)) continue;
-    hits.push({ node_id: hit.node_id, kind: hit.kind, title: hit.title, phase_type: hit.phase_type, path: hit.path ?? null, branch_rank: rank + 1, score: hit.score, seq: null, excerpt: null });
-  }
-  return hits;
 }
 
 /**
@@ -1758,7 +1716,7 @@ export function handlersForArm(arm) {
         // evidence the score was computed from; only the MATCHING ones are
         // attached, so a 967-fingerprint branch costs a line, not a page.
         if (arm === 'tree-hit-keywords') {
-          const outcome = await HANDLERS[CONTEXT_SEARCH](ctx, input);
+          const outcome = await branchSearch(ctx, input);
           if (!outcome.ok || !Array.isArray(outcome.data?.hits)) return outcome;
           const fingerprints = fingerprintCacheOf(ctx.retriever);
           const queryTokens = tokensOf(input?.query ?? '');
@@ -1796,9 +1754,10 @@ export function handlersForArm(arm) {
           return { ok: true, data: { ...outcome.data, hits } };
         }
         if (arm === 'tree-snippet-hits') {
+          // The library as shipped since 2026-09-04: event hits with excerpts.
           const outcome = await HANDLERS[CONTEXT_SEARCH](ctx, input);
           if (!outcome.ok || !Array.isArray(outcome.data?.hits)) return outcome;
-          const hits = snippetHitsFor(ctx, input?.query ?? '', outcome.data.hits);
+          const hits = outcome.data.hits;
           const wanted = new Set(ctx._oracleNodeIds ?? []);
           const visibleHitIds = hits.map((hit) => hit.node_id);
           const answerIndex = visibleHitIds.findIndex((nodeId) => wanted.has(nodeId));
@@ -1812,10 +1771,10 @@ export function handlersForArm(arm) {
             excerptChars: hits.reduce((sum, hit) => sum + (hit.excerpt?.length ?? 0), 0),
             excerptHits: hits.filter((hit) => hit.excerpt !== null).length,
           }];
-          return { ...outcome, data: { ...outcome.data, hits, candidates: [] } };
+          return { ...outcome, data: { ...outcome.data, candidates: [] } };
         }
         if (arm === 'tree-search-coordinates') {
-          const outcome = await HANDLERS[CONTEXT_SEARCH](ctx, input);
+          const outcome = await branchSearch(ctx, input);
           if (!outcome.ok) return outcome;
           const data = coordinateSearchData(outcome.data);
           const wanted = new Set(ctx._oracleNodeIds ?? []);
@@ -1831,7 +1790,7 @@ export function handlersForArm(arm) {
           }];
           return { ...outcome, data };
         }
-        if (arm !== 'tree-escalate') return HANDLERS[CONTEXT_SEARCH](ctx, input);
+        if (arm !== 'tree-escalate') return branchSearch(ctx, input);
         // Escalating search. Rank is whatever the retriever says; the change is
         // that the Nth search in a run returns the Nth group of UNSEEN
         // candidates. Group size is derived, never fixed: hits are admitted
@@ -1844,7 +1803,7 @@ export function handlersForArm(arm) {
         const base = ctx.config.retrieval.limit;
         // Deep enough that later groups exist to escalate INTO: without this the
         // second search re-ranks the same `base` rows and escalation is a no-op.
-        const outcome = await HANDLERS[CONTEXT_SEARCH](ctx, { ...(input ?? {}), limit: base * 4 });
+        const outcome = await branchSearch(ctx, { ...(input ?? {}), limit: base * 4 });
         if (!outcome.ok || !Array.isArray(outcome.data?.hits)) return outcome;
         const unseen = outcome.data.hits.filter((hit) => !state.seen.has(hit.node_id));
         const budget = Math.max(0, Math.floor((ctx._liveHeadroom ?? 0) * SEARCH_RESULT_HEADROOM_SHARE));
@@ -4392,7 +4351,7 @@ async function runArms(scenario, options) {
   const codeKey = sha256(JSON.stringify(code)).slice(0, 12);
   const iteration1CandidateKey = 'retrieval-center-fingerprint-mode:bare-filename';
   const iteration2CandidateKey = 'search-result-view:all-rank-coordinates@center-bare-filename';
-  const iteration3CandidateKey = `search-result-view:event-snippets@k${SNIPPET_HIT_COUNT}-chars${SNIPPET_CHARS}@center-bare-filename`;
+  const iteration3CandidateKey = `search-result-view:event-snippets@k${scenario.config.retrieval.eventHits}-chars${scenario.config.retrieval.excerptChars}@center-bare-filename`;
   const candidateKey = arms.includes('tree-snippet-hits')
     ? iteration3CandidateKey
     : arms.includes('tree-search-coordinates')

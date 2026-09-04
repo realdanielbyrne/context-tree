@@ -29,10 +29,6 @@ import {
   capToolResult,
   compactionSummaryValid,
   coordinateSearchData,
-  excerptAround,
-  snippetHitsFor,
-  SNIPPET_CHARS,
-  SNIPPET_HIT_COUNT,
   questionTextValid,
   requestTokens,
   runOneReplicate,
@@ -707,51 +703,3 @@ describe('verdict-side arithmetic', () => {
   });
 });
 
-describe('DS-STAR event-snippet hits (tree-snippet-hits)', () => {
-  it('excerptAround centres the window on the first matched term and marks both elisions', () => {
-    const text = `${'a'.repeat(500)} NEEDLE ${'b'.repeat(500)}`;
-    const out = excerptAround(text, ['needle'], 100);
-    expect(out.startsWith('…')).toBe(true);
-    expect(out.endsWith('…')).toBe(true);
-    expect(out).toContain('NEEDLE');
-    expect(out.length).toBeLessThanOrEqual(102);
-  });
-
-  it('excerptAround returns whole short texts unmarked and falls back to the head when no term matches', () => {
-    expect(excerptAround('short', ['zzz'], 100)).toBe('short');
-    const head = excerptAround('x'.repeat(300), ['zzz'], 100);
-    expect(head.startsWith('x')).toBe(true);
-    expect(head.endsWith('…')).toBe(true);
-  });
-
-  it('snippetHitsFor returns at most k event hits ranked by relevance, each a payload (seq + excerpt), and fills with coordinates', () => {
-    const spans: Record<string, [number, number]> = { A: [1, 3], B: [4, 6], C: [7, 9] };
-    const scores: Record<string, Array<{ seq: number; score: number }>> = {
-      A: [{ seq: 2, score: 3 }, { seq: 1, score: 1 }],
-      B: [{ seq: 5, score: 2 }],
-      C: [],
-    };
-    const ctx = {
-      handle: {
-        store: { getNode: (id: string) => (spans[id] ? { id, span_start_seq: spans[id][0], span_end_seq: spans[id][1] } : null) },
-        trace: { read: ({ from }: { from: number }) => [{ seq: from, type: 'user_message', blob: `blob-${from}` }] },
-        blobs: { getText: (ref: string) => `text of ${ref} with answer-literal` },
-      },
-      retriever: {
-        findRelevantCenter(_q: string, [span]: Array<{ start: number }>) {
-          const id = Object.keys(spans).find((k) => spans[k][0] === span.start)!;
-          return { centerSeq: scores[id][0]?.seq ?? null, terms: [{ value: 'answer-literal' }], scores: scores[id] };
-        },
-      },
-    };
-    const branchHits = ['A', 'B', 'C'].map((id, i) => ({ node_id: id, kind: 'phase', title: id, phase_type: 'implementation', path: null, score: 10 - i }));
-    const hits = snippetHitsFor(ctx as never, 'answer-literal', branchHits as never, 3, 200);
-    expect(hits.map((h) => h.seq)).toEqual([2, 5, 1]);
-    expect(hits.every((h) => typeof h.excerpt === 'string' && h.excerpt.includes('answer-literal'))).toBe(true);
-    const padded = snippetHitsFor(ctx as never, 'answer-literal', branchHits as never, 5, 200);
-    expect(padded).toHaveLength(4);
-    expect(padded.at(-1)).toMatchObject({ node_id: 'C', seq: null, excerpt: null, branch_rank: 3 });
-    expect(SNIPPET_HIT_COUNT).toBe(5);
-    expect(SNIPPET_CHARS).toBe(1000);
-  });
-});

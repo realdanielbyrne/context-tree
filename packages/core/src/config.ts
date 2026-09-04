@@ -95,7 +95,14 @@ export interface ContextTreeConfig {
   /** D17: max branch headlines the composed root renders; older members fold into one line. */
   rootKeep: number;
   summarize: { concurrency: number; maxSummaryTokens: number };
-  retrieval: { providers: string[]; limit: number };
+  /**
+   * `limit`: the ranked branch pool. `eventHits` / `excerptChars`: how many EVENT hits
+   * `context_search` returns from that pool and how much of each event's text a hit
+   * carries. The two defaults are the published claude.ai interface's (5 hits;
+   * ~200-360-word chunks) and were measured, not derived, on one store — see
+   * `reports/algorithm.md` Tier 2 before treating them as settled.
+   */
+  retrieval: { providers: string[]; limit: number; eventHits: number; excerptChars: number };
   /** Per-run spend cap in USD; null disables the cap. */
   costCapUsd: number | null;
   taskTitle: string;
@@ -116,7 +123,7 @@ export const DEFAULT_CONFIG: ContextTreeConfig = {
   budgets: { zoneB: 8_000, zoneC: 30_000 },
   rootKeep: 40,
   summarize: { concurrency: 8, maxSummaryTokens: 1_024 },
-  retrieval: { providers: ['graft', 'serena', 'augment', 'vector', 'grep'], limit: 20 },
+  retrieval: { providers: ['graft', 'serena', 'augment', 'vector', 'grep'], limit: 20, eventHits: 5, excerptChars: 1_000 },
   costCapUsd: null,
   taskTitle: 'task',
 };

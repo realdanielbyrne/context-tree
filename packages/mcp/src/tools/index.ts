@@ -44,7 +44,6 @@ export {
   contextSearchInputShape,
   contextSearchSchema,
   type ContextSearchData,
-  type SearchHitMeta,
   type SearchHitPayload,
 } from './context-search.js';
 
