@@ -17,7 +17,8 @@ baseline at 0/25 (GLM 5.3 Flash, n = 5, provenance-audited). An ablation confirm
 centering (qo04 0 → 3-5 of 5) and retired the compact coordinate hit list (qo03 5 → 0 of 5).
 Porting Anthropic's unit, five best-matching events with a 1,000-character excerpt each in place
 of branch pointers, scored 15/25 against 6/25 in the same batch, every success with zero fetches,
-median 2 turns, and 54% fewer input tokens. The main limitations are one store, one model, one
+median 2 turns, and 54% less uncached input over completed runs (59% over all rows). The main
+limitations are one store, one model, one
 window, n = 5, two constants taken from the published interface and never swept, and a library
 that still ships the old unit.
 
@@ -34,7 +35,9 @@ window's raw tail. A question scores 1 only if the model's final answer contains
 from the trace that no fluent model could synthesize.
 
 Two facts prompted this pass. First, the production system prompt of Claude Fable 5.1, as leaked
-in the CL4R1T4S repository, is 274,608 characters, which is 60,903 cl100k tokens; every prior
+in the CL4R1T4S repository, is 274,608 characters, which is 60,903 cl100k tokens (counted with the harness's own
+tokenizer package: `node --input-type=module -e "import {countTokens} from
+'./eval/node_modules/gpt-tokenizer/esm/main.js'; ..."` over the fetched markdown body); every prior
 batch ran at W = 32,768 or 65,536, windows a realistic host has already spent on its operator
 prompt before the conversation begins. Second, that same prompt defines Anthropic's own
 past-conversation retrieval: `conversation_search` (5 hits by default, each a snippet with a
@@ -62,6 +65,13 @@ events that fit) as the equal-n, same-epoch baseline in iteration 1 and the prev
 iteration's best arm as the baseline afterwards. Every score below was passed through
 `eval/scripts/provenance-audit.mjs`, which nulls a success the run could not have earned from
 what it was served.
+
+Conventions. Scores are unconditional: provider failures and stalls stay in the denominator
+(n = 25 per arm). Medians of turns and tokens are over completed runs only; token totals are
+over all rows. "Uncached input" is the provider's `usage.input`, the tokens not served from the
+prefix cache; cache-read tokens are reported separately. The first request of every arm pays the
+whole prompt as uncached input while it writes the cache, so each arm has one row whose uncached
+input is an order of magnitude above its median.
 
 Terms. **Window (W)**: the token budget the harness pretends the model has; budgets for every
 zone derive from it. **Headroom**: the tokens left for tool results after the prompt and the
@@ -156,7 +166,7 @@ Result file
 75 rows; 1,751,898 uncached input tokens plus 17,418,240 cache-read tokens and 114,064 output
 tokens, $0.458; provenance audit 10/10 successes earned, none answerable without retrieval.
 
-| arm | exact match | completed / provider error / stalled | qo01 qo02 qo03 qo04 qo05 | median turns | median uncached input tokens per run |
+| arm | exact match | completed / provider error / stalled | qo01 qo02 qo03 qo04 qo05 | median turns (completed) | median uncached input per completed run |
 |---|---|---|---|---|---|
 | truncate-tail | 0/25 | 22 / 0 / 0 (+3 turn cap) | 0 0 0 0 0 | 1 | 4,188 |
 | tree-tail-v2 | 5/25 (1/25 at W=65,536) | 19 / 6 / 0 | 0 0 5 0 0 | 3 | 31,508 |
@@ -167,7 +177,7 @@ added nothing on the headline but moved everything underneath, and because that 
 tree-tail-v2 in two ways at once (the hit list and the centering extractor) the headline could
 not be attributed without the ablation in §6. Reading the per-call telemetry (`toolCalls[]`):
 
-- **qo04, a 57,891-character branch.** tree-tail-v2 centered its band at seq 55, 93 or 115 and
+- **qo04, a 57,891-character branch.** tree-tail-v2 centered its band at seq 55, 93, 115 or 121 and
   the literal at seq 218 was absent after the cap in every fetch. The bare-filename extractor
   centered at 218 in 4 of 4 fetches, the band arrived at about 49,700 characters (roughly 12,000
   tokens) with the literal present, and 4 of 5 runs scored. At W = 65,536 the same centering
@@ -256,16 +266,18 @@ Pre-registered: snippet-hits − center-filename ≥ +4/25 in the same batch; me
 Result file `results/run-W131072-tree-center-filename+tree-snippet-hits-questions-deep-q9ebc3150-cd956c49f5ef4-n5-z-ai_glm-5.3-flash.json`,
 50 rows, $0.299. The baseline re-ran because the harness edit changed the code fingerprint.
 
-| arm (W = 131,072, deep set, n = 5, one batch) | earned | qo01 qo02 qo03 qo04 qo05 | completed / provider error / stalled | median turns | fetches per run | uncached input | cache-read input | output |
+| arm (W = 131,072, deep set, n = 5, one batch) | earned | qo01 qo02 qo03 qo04 qo05 | completed / provider error / stalled | median turns (completed) | fetches per completed run | uncached input, all rows (completed) | cache-read input, all rows | output, all rows |
 |---|---|---|---|---|---|---|---|---|
-| tree-center-filename | 6/25 | 0 0 5 1 0 | 19 / 4 / 2 | 3 | 1.42 | 768,123 | 8,381,952 | 55,688 |
-| **tree-snippet-hits** | **15/25** | **5** 0 **5** **5** 0 | 21 / 4 / 0 | **2** | **0.05** | **318,449** | **4,372,992** | **15,192** |
+| tree-center-filename | 6/25 | 0 0 5 1 0 | 19 / 4 / 2 | 3 | 1.42 | 768,123 (698,680) | 8,381,952 | 55,688 |
+| **tree-snippet-hits** | **15/25** | **5** 0 **5** **5** 0 | 21 / 4 / 0 | **2** | **0.05** | **318,449 (318,449)** | **4,372,992** | **15,192** |
 
 The pre-registered threshold was met by +9. Every one of the 15 successes was answered without a
 single fetch: on 12 the first search's excerpts contained the literal
 (`answerLiteralInExcerpts = true`), on the other 3 (all qo04) the first query matched no event
-and a reformulated second search did. Median turns fell from 3 to 2, fetches per run from 1.42
-to 0.05, and both uncached and cached input roughly halved. The provenance audit had to be
+and a reformulated later search did (the second in two runs, the third in one). Median turns fell from 3 to 2, fetches per run from 1.42
+to 0.05; uncached input fell 54% over completed runs (318,449 vs 698,680) and 59% over all rows
+(318,449 vs 768,123), cache-read input 48% (4,372,992 vs 8,381,952), output 73%. The kill gate had
+also shown the answer branch visible in the hit list on 49 of 56 recorded queries. The provenance audit had to be
 extended before this number could be read: it credited literals served by the prompt or by a
 fetched branch, so it marked all 15 as unverifiable; a new `earned-search` verdict reads the
 recorded per-call `answerLiteralPresentAfterCap` on search calls, after which the arm is 15/25

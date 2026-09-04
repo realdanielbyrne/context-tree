@@ -138,8 +138,8 @@ routing is **not shipped either** — facet indexes exist only as offline gates,
 *The event-snippet search is harness-only.* `snippetHitsFor` / `excerptAround` live in
 `eval/scripts/transplant.mjs`; `packages/mcp`'s `context_search` still returns branch coordinates.
 Measured 2026-09-04 at W=131,072 on GLM 5.3 Flash, n=5, one store: 15/25 against 6/25 for the
-same stack with coordinate hits, in one batch, every success answered with zero fetches, −54%
-input tokens (`ds-star-fable-interface-report.md` §7). Promotion to the library default is the
+same stack with coordinate hits, in one batch, every success answered with zero fetches, −54% uncached
+input over completed runs (−59% over all rows) (`ds-star-fable-interface-report.md` §7). Promotion to the library default is the
 first open item of that report; it is not done, so Tier 1 above still describes what ships.
 
 *The grep merge is not RRF.* `mergeWithGrep` adds `count / maxGrepScore / (RRF_K + 1)` to
@@ -310,7 +310,7 @@ so the negative result is not rebuilt).
   scoring fetches; the prior pass could not credit it because its bands were capped away at 65k.
 - **Event-snippet hits** (`tree-snippet-hits`, the published-alternative port): **15/25 vs 6/25**
   in one batch (n=5, GLM 5.3 Flash, W=131,072, deep set), 15/15 successes with zero fetches,
-  median 2 turns, −54% input tokens. Measured, not default; library port pending. Two host
+  median 2 turns, −54% uncached input over completed runs. Measured, not default; library port pending. Two host
   constants (5 hits, 1,000 chars) from the published interface, unvalidated here.
 - **Contract v3**: one rule replaced, one removed.
 - **One budget derivation**: delete the live suite's absolute switch point.
@@ -347,7 +347,7 @@ so the negative result is not rebuilt).
   system prompt is 60,903 tokens, so W ≤ 65,536 was a starvation cell; the valid cell on this store
   is W=131,072, where truncate-tail stays 0/25 and the shipped stack goes 1/25 → 5/25. Ablation:
   bare-filename centring confirmed (qo04), compact coordinate display retired (qo03). Published
-  alternative ported as event-snippet hits: 15/25 vs 6/25 same batch, zero fetches, −54% tokens.
+  alternative ported as event-snippet hits: 15/25 vs 6/25 same batch, zero fetches, −54% uncached input (completed runs).
   Tier 1 gains a MEASURED variant line; Tier 2 gains three rows (two host constants from the
   published interface, one boundary); boundary table +2 rows, hazards +4 rows (distractor decay,
   audit channel blindness, provider empty turns, exact boundaries). Provenance audit extended with
