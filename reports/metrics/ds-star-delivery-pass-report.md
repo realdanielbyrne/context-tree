@@ -17,13 +17,13 @@ ground truth, 13 are payloads that never carried the answer and 5 are payloads t
 still failed. Within that first group, 9 runs never fetched the correct branch at all —
 a sub-diagnosis, not a third bucket, and the least expected part of the result because the
 offline ranker is nearly perfect on this set — 5 of 5 in the top three,
-4 of 5 at rank one — while the model fetches the correct branch on only 16-18 of 25 runs. The
+3 of 5 at rank one — while the model fetches the correct branch on only 16-18 of 25 runs. The
 cause is that a search hit renders without the evidence it was ranked on: the correct branch
 displays as the bare word `diagnosis` while a distractor displays as `loop.ts`, and the model
 takes the distractor five times out of five. The obvious repair — show the model the matching
 fingerprints — was built, pre-registered and refuted: selection was 18 of 25 against the
 baseline's own 18 of 25, for 32% more input tokens and twice the stalls. Extra legible leads
-are leads the model follows. Three offline gates and a provenance audit were added; the audit
+are leads the model follows. Two offline gates and a provenance audit were added, a third gate parameterized; the audit
 mechanically reproduces the previous pass's hand-found fabrications and drops one baseline
 cell from 4/25 to 0/25. The main limitation is unchanged: one 754-event session, one model,
 five questions per set.
@@ -64,13 +64,27 @@ dressing a phase up as an iteration, and only the third is a full turn of the lo
 
 | | what ran | route taken |
 |---|---|---|
-| **1 — instrument** | No candidate. Fixed a red suite, built `provenance-audit.mjs`, parameterized `rank-killgate.mjs`. All zero-token, because each changes the denominator of everything after it. | The rank gate's result **retired the queued candidate's premise unspent**: the deep set is 5/5 top-3 and 4/5 rank-1 offline, so `tree-route`'s ranking argument was dead before a dollar was spent (§5). |
+| **1 — instrument** | No candidate. Fixed a red suite, built `provenance-audit.mjs`, parameterized `rank-killgate.mjs`. All zero-token, because each changes the denominator of everything after it. | The rank gate's result **retired the queued candidate's premise unspent**: the deep set is 5/5 top-3 and 3/5 rank-1 offline, so `tree-route`'s ranking argument was dead before a dollar was spent (§5). |
 | **2 — measure** | One 25-run cell, `tree-tail-v2` on the deep set, $0.152. Pre-registered: ≥11/25 means retrieval is at its ceiling, ≤6/25 means a live selection gap. | Landed at **7/25 — the ambiguous band**, which under the loop's rules is not a verdict. What broke the pass open was not the cell but a question put to it from outside — *why is the oracle not 100%?* — which the pass had not asked because it had inherited the previous pass's answer. That is where the delivery defect was found (§3). |
-| **3 — candidate** | `tree-hit-keywords`, one measurable change against `tree-tail-v2`. Two kill gates ran first; the second **failed** and caught the arm as a silent no-op before the batch (§7). Pre-registered: selection ≥21/25 primary, score ≥11/25 secondary. | **Regression → revert and journal the mechanism.** Selection 18/25 against the baseline's own 18/25, +32% tokens. Retained in the harness marked rejected so the negative result stays reproducible. |
+| **3 — candidate** | `tree-hit-keywords`, one measurable change against `tree-tail-v2`. Two kill gates ran first; the second **failed** and caught the arm as a silent no-op before the batch (§7). Pre-registered: selection ≥21/25 primary, score ≥11/25 secondary. | **No signal on the primary, and the escalation was declined.** See below — an earlier draft called this a regression, which the pre-registration does not support. |
+
+**The route taken in iteration 3, stated against the rule rather than the impression.**
+The pre-registered primary was branch selection. The arm scored **18/25 against the
+baseline's own 18/25 in the same batch — identical**, which is the loop's *no-signal* row,
+not its regression row. No-signal says raise n once, baseline included, and retire if still
+flat. That escalation was **declined**, and the reason should be on the record: n here is
+5 questions × 5 replicates, outcomes cluster hard by question, so raising replicates buys
+almost nothing — the fix would be more questions, which is a different item (14.6). The
+score did fall 7/25 → 3/25 and effort rose 32%, but score was the *secondary* and effort was
+not pre-registered at all, so neither can carry the verdict: promoting a bucket after the
+fact is exactly what pre-registration exists to stop. The defensible statement is **the arm
+did not move its primary and cost 32% more to not move it**, which is enough to reject it
+and not enough to call it a regression. It is retained in the harness marked rejected so the
+negative result stays reproducible.
 
 **Which stopping reason ended it: the three-iteration bound**, not a goal met and not
 diminishing returns. The gap that opened in iteration 2 — a mis-centred retrieval band — is
-still open and is item 13.1.
+still open and is item 14.1.
 
 One methodological note that shapes how to read §3 onward. A **ceiling probe** replaces one
 pipeline stage with a perfect version by fiat and measures what the rest achieves;
@@ -118,7 +132,10 @@ W=65,536. A second pass over the same data sweeps the budget from 4,000 to 64,00
 separates two failure modes that look alike: qo04 is `--` at every budget through 40,000 and
 only reaches YES at 64,000, where the band is essentially the whole 56,973-token branch. It
 is **mis-centred, not starved** — growing the budget does not reach it, so the fix is where
-the band centres.
+the band centres. One row of the gate's output needs its own footnote: qo04 shows
+`delivered 0/30` beside `scored 1/30`. That one success is the deep oracle at W=131,072, and
+it is among the six rows §4's stricter served-band check flags — a run that produced the
+literal without any recorded band carrying it.
 
 For qo04 no query the model issued ever centred the band on the answer at any live
 headroom. Five of the
@@ -163,12 +180,13 @@ wrong answer. It reproduces the previous pass's hand-found artifacts mechanicall
 | cell | before | after audit |
 |---|---|---|
 | overflow W=65,536 `truncate-tail` | 4/25 | **0/25** |
-| overflow W=32,768 `tree-tail-v2`, `run-W32768-tree-tail-v2-…` alone | 1/25 | **0/25** |
-| all cells, before this pass's three deep batches | 183/450 | 178/450 |
+| overflow W=32,768 `tree-tail-v2`, in `run-W32768-truncate-tail+tree-tail-v2-…` | 1/25 | **0/25** |
+| all cells, before this pass's three deep arm-cells (75 rows) | 183/450 | 178/450 |
 | all cells, as the script reports today | 200/525 | 195/525 |
 
 The script prints that second cell pooled across its two batches (2/50 → 1/50); the 1/25 →
-0/25 above is the single file named, recovered from `--json rows[]`. Zero rows were
+0/25 above is the one file named, recovered from `--json rows[]` — the *other* W=32,768 file
+keeps its success, which is earned. An earlier draft named the wrong one of the pair. Zero rows were
 unverifiable. Two rows cite sequence numbers that do not exist in a
 754-event trace, one of them a scored zero — the same fabrication in a wrong answer, which
 is why the citation check runs on failures too.
@@ -214,7 +232,7 @@ count.
 |---|---|---|---|---|
 | `questions.json` (12) | 10/12 | — | — | — |
 | `questions-overflow.json` (5) | 3/5 | 2/5 | 21/25 | 2/25 (0/25 in a second batch; 2/50 pooled) |
-| `questions-deep.json` (5) | **5/5** | **4/5** | 13/25 | 7/25 |
+| `questions-deep.json` (5) | **5/5** | **3/5** | 13/25 | 7/25 |
 
 The two sets dissociate. The ranker is **better** on the deep set and the oracle is
 **worse** there. Two deep questions rank first offline and still score 0/5 and 2/5 with
@@ -315,7 +333,7 @@ reach at every window tested.
 
 ## 6 Why the model does not use a good ranker
 
-The obvious explanation for 16–18/25 selection against 4/5 offline rank-1 is that the
+The obvious explanation for 16–18/25 selection against 3/5 offline rank-1 is that the
 model's own reformulated query ranks worse than the question text does. It does not: on the
 deep set the two agree almost exactly, ranks 1, 2, 7, 1, 1 against 1, 2, 3, 1, 1. The check
 took two minutes and the conclusion reverses without it.
@@ -430,7 +448,7 @@ epochs, which is what makes the comparison above worth anything.
 ## 8 What was rejected, and the number that rejected it
 
 - **`tree-route` on the ranking argument** — retired unspent for the deep set. Offline
-  ranking there is 5/5 top-3 and 4/5 rank-1; there is no ranking gap for routing to close.
+  ranking there is 5/5 top-3 and 3/5 rank-1; there is no ranking gap for routing to close.
   Its *payload* argument survives and is untested.
 - **Query reformulation as the cause of poor live selection** — ranks 1,2,7,1,1 under the
   model's own queries against 1,2,3,1,1 under the question text.
@@ -463,6 +481,11 @@ epochs, which is what makes the comparison above worth anything.
   The correct branch ranked second and rendered as the bare word `diagnosis`; the model
   chose a rank-10 hit that at least named a file, five times out of five. A ranker whose
   evidence is invisible to the consumer is a ranker the consumer cannot follow.
+- **A one-hit result is obeyed less as the window widens.** Handed the correct branch and
+  nothing else, the model fetched it on 25 of 25 runs at W=65,536 and on 17 of 25 at
+  W=131,072. More prompt to look at makes it less willing to act on a single instruction —
+  which means an oracle's own guarantee decays with window size, and any probe that assumes
+  "handed over" equals "used" needs that checked per window.
 - **Perfect retrieval can worsen delivery.** Fewer hits leave more headroom, a wider band
   is requested, and the append cap fires. Truncation was anti-correlated with hit-list
   size and correlated with failure. An arm that improves one stage can silently regress
@@ -489,6 +512,36 @@ epochs, which is what makes the comparison above worth anything.
   already written down and already cited. Re-derive the load-bearing one at the start of
   each pass, and treat a ceiling probe that is not at 100% as an open question rather than
   a measured constant.
+- **A correction is not done until it has swept every site, and this pass failed that three
+  times.** The abstract kept a funnel §5 had retracted; §7 kept a rank vector §6 had fixed;
+  and a renumbering updated one sentence of §11 while leaving all seven rows of its own table
+  pointing at the old sections. Each was caught by a reviewer, not by the edit. The habit
+  that would have caught all three is mechanical: after changing a figure or a heading,
+  `grep` the document for the old value and for every reference form before committing.
+- **A headline figure with no written definition is not a measurement.** The delivery count
+  was published as prose; an adversarial recount got 11, 12, 14, 20 or 23 depending on
+  reasonable choices nobody had recorded. The fix was not a better number but moving the
+  definition into a script the report cites. A figure whose definition lives only in the
+  author's head cannot be checked, and will be read as whichever variant flatters it.
+- **A bucket whose size depends on its own definition must publish both.** Counting any
+  fetched branch gives 13/5; counting only the question's own branch gives 14/4. The looser
+  rule happened to work against this report's own headline, which is exactly why quoting one
+  silently would have been indefensible.
+- **Stages that are not nested must not be drawn as a funnel.** Selection, delivery and
+  extraction each answer a different question, and a run can be delivered without having
+  selected. Subtracting one from the next decomposed nothing and produced arithmetic that
+  looked exact and meant nothing.
+- **Attribute a cost delta to the bucket that moved, not the bucket you assumed.** The +32%
+  token growth was written up from turn counts, which rose 7.5%. It was fetches: 68 against
+  46, while searches fell 63 to 38. Same conclusion, wrong axis — and mechanism attribution
+  is the discipline that was supposed to prevent exactly that.
+- **A next-steps command that overwrites its own baseline is worse than no command.** Every
+  batch in this harness writes `run-W<window>-<arms>-<set>-<model>.json`, so the obvious
+  rerun destroys the file the comparison is computed on. Any handoff that includes commands
+  owes a copy-aside step and a check that a swept parameter appears in the output name.
+- **Pre-registration that lives only in the session is an assertion.** Four bars were
+  pre-registered in this pass and none is artifacted; the arm and its result landed in one
+  commit. Write the criterion to a file, and commit it, before the batch.
 - **A provenance check is only as strong as the narrowest thing it asks about.** This
   pass's own audit shipped asking "did the run fetch a branch containing the answer",
   which a run can pass while never receiving the answer — the very failure the pass exists
@@ -498,7 +551,28 @@ epochs, which is what makes the comparison above worth anything.
   independently, artifacts the previous pass found by hand — and then measured
   question-set decay per row, which that pass could only infer from median turns.
 
-## 10 State of the code
+## 10 Methodology lessons promoted to the skill
+
+The DS-STAR skill (`~/.claude/skills/ds-star/SKILL.md`) is the only artifact that compounds
+across unrelated projects, so a pass that learns something about *how to run a pass* owes it
+an edit. Landed this pass:
+
+| lesson | where |
+|---|---|
+| An oracle bounds only the stage it replaces; its residual is not automatically downstream. Write down what it hands the next stage and verify that stage received it. | Ceiling-probes section |
+| An oracle that improves one stage can regress the next through a shared budget. | Ceiling-probes section |
+| The previous pass's load-bearing conclusion is the least-audited thing in the room. Recompute the number the queue is ordered on; treat a ceiling probe not at 100% as an open question. | Discipline list |
+| Prove the candidate's mechanism can fire at the live budgets before spending, and put a field in the row recording how much it did. | Discipline list |
+| Read the gate's artifact, not only its pass bit. | Discipline list |
+| A refuted repair does not refute the observation that motivated it. | Discipline list |
+| The skill's own ceiling-probe example was teaching the conclusion this pass overturned. | Corrected in place |
+
+Owed and not yet written, because each needs one more instance before it generalizes: *a
+correction must sweep every site* (three failures here, §9); *pre-registration that lives
+only in the session is an assertion* (four bars, none artifacted); and *publish both
+definitions when a bucket's size depends on its own*.
+
+## 11 State of the code
 
 All paths relative to the repository root.
 
@@ -513,27 +587,28 @@ All paths relative to the repository root.
 | `eval-resumption/harness/harness.test.ts` | Raw-by-default asserted positively and negatively; advertised enums asserted equal to zod enums |
 | `reports/algorithm.md` | Five new boundary conditions; corrected oracle row; two new parameter rows |
 
-## 11 Figures not emitted by any script
+## 12 Figures not emitted by any script
 
-Everything in the reproduce-first block of §13 runs from committed code. These do not, and
+Everything in the reproduce-first block of §14 runs from committed code. These do not, and
 a fresh agent cannot regenerate them without writing something new. They are recorded here
 rather than left to be discovered:
 
 | figure | where it lives | § |
 |---|---|---|
-| hit list 5,203 → 5,377 tokens, 1,649-token quarter-share, 16 keywords/hit offline | `transplant.mjs:1632-1633`, `:270` — comments | 6 |
-| 425 fingerprints, 72 whitespace-bearing, largest 4,998 chars | `transplant.mjs:260, 1481-1482` — comments | 5, 7 |
-| Zone B slab: 1 of 21 headlines, 10 heuristic / 11 cl100k tokens | prose only | 7 |
-| the 183/450 audit figure | prose only; the script prints today's 200/525 | 3 |
-| model-query ranks 1,2,7,1,1 | prose only (`grep-model-queries.mjs` is pinned to `questions.json` and a different result file) | 5 |
-| branch-size medians | prose only | 11.3 |
-| the pre-registered selection ≥ 21/25 bar | **prose only, and asserted rather than artifacted** — the arm and its result landed in one commit, so nothing in the repository proves the bar was set before the batch | 6 |
+| hit list 5,203 → 5,377 tokens, 1,649-token quarter-share, 16 keywords/hit offline | `transplant.mjs:1632-1633`, `:270` — comments. **5,377 appears nowhere in the repo at all** | 7 |
+| 425 fingerprints, 72 whitespace-bearing, largest 4,998 chars | `transplant.mjs:260, 1481-1482` — comments | 6, 8 |
+| Zone B slab: 1 of 21 headlines, 10 heuristic / 11 cl100k tokens | prose only | 8 |
+| the 183/450 audit figure | prose only; the script prints today's 200/525 | 4 |
+| model-query ranks 1,2,7,1,1 | prose only (`grep-model-queries.mjs` is pinned to `questions.json` and a different result file) | 6 |
+| branch-size medians | prose only | 14.3 |
+| the legibility gate's 5/5 (no committed script emits it) | prose only | 2, 7 |
+| the pre-registered selection ≥ 21/25 bar | **prose only, and asserted rather than artifacted** — the arm and its result landed in one commit, so nothing in the repository proves the bar was set before the batch. The other three pre-registered bars — iteration 2's ≥11/25 / ≤6/25 and iteration 3's secondary ≥11/25 — are equally prose-only | 2, 7 |
 
 The last row is the one that matters for anyone weighing the refutation: the bar was
 pre-registered in the working session, and the repository cannot corroborate that. Treat it
 as an author's claim. Future arms should write the criterion to a file before the batch.
 
-## 12 What this pass did not test
+## 13 What this pass did not test
 
 One store, one scenario, one model. `tree-hit-keywords` was measured at a single window
 (65,536) on a single five-question set; it has never run on the overflow set, at another
@@ -545,7 +620,7 @@ retriever's band carries the answer; it does not simulate the append cap that re
 band, so its numbers are an upper bound on what the model receives. And every question set
 here has five questions, which is an effective sample nearer five than twenty-five.
 
-## 13 Next steps, runnable cold
+## 14 Next steps, runnable cold
 
 Everything below assumes a fresh agent with no memory of this pass. Run from the repository
 root. Live batches need `set -a && . ./.env && set +a` first (the harness reads
@@ -565,6 +640,17 @@ cp eval/fixtures/transplant/s1/e1b289c32f40/results/run-W*-questions-deep-*.json
 ```
 (The gates read `run-W*` at the top level, so a subdirectory is ignored by them.)
 
+**Every item below that edits the harness shifts the epoch, and the baselines in the table
+above go stale the moment it does.** §5 makes that argument about a `transplant.mjs`
+fingerprint changing between two batches; it applies to the next agent with more force,
+because 14.1 and 14.2 both begin by changing code the baseline arm runs. Two consequences,
+neither optional: **give the candidate its own arm id or flag so baseline and candidate can
+run in ONE invocation**, and re-run the baseline in that invocation rather than quoting 7/25
+from here. And note what 14.1 in particular invalidates: band centring lives on the shared
+`CONTEXT_FETCH` path for every arm in `RAW_NARROWED_FETCH_ARMS` (`transplant.mjs:1450`), so
+it moves `tree-oracle` too — the 13/25, the three-window oracle table in §5, and §3's whole
+delivery derivation all need re-running, not just the arm under test.
+
 **Standing constraints.** Invoke the `ds-star` skill before starting an item — these are
 all Mode 1, each has a metric and a same-epoch baseline here. One measurable change per
 arm. Pre-register the win criterion before the batch and do not soften it after. Judge a
@@ -572,7 +658,19 @@ candidate on its own bucket first and the headline second. Run
 `node eval/scripts/provenance-audit.mjs` before any score enters a comparison. A pass is
 three iterations, then a report in `reports/metrics/`, committed.
 
-**Reproduce this pass's numbers first (about 90 seconds, no tokens):**
+**Reproduce this pass's numbers first (~55 seconds, no tokens).** Two of these **exit 1 by
+design** — the gates signal their own verdict — so do not chain them with `&&` or run them
+under `set -e`. And read `rank-killgate --all` carefully: it **FAILS on
+`questions-overflow.json` at 3/5 against a bar of 4/5**. That is a real failing gate on a
+real stratum, disclosed here rather than buried: every overflow figure in this report is a
+measurement on a set whose ranking gate does not pass, which is part of why §5 treats the
+deep set as the cleaner instrument.
+
+Preconditions this machine has and a fresh clone does not: the frozen store
+(`eval/fixtures/transplant/*/store/`) and `packages/*/dist/` are both gitignored, so run
+`pnpm install && pnpm build` first, and note that **none of this pass's artifacts are
+reproducible without that store** — it is not in the repository.
+
 ```bash
 npx vitest run                                          # expect 966 passed, 9 skipped, 0 failed
 node eval/scripts/provenance-audit.mjs                  # expect 200 -> 195; 6 fetched-not-delivered
@@ -583,7 +681,8 @@ node eval/scripts/pipeline-decomposition.mjs           # expect 16 / 12 / 7 for 
 
 **Same-store baselines** — not same-epoch: they come from four separate invocations, and
 two of them disagree on the `transplant.mjs` fingerprint (§5). All at W=65,536 on
-`questions-deep.json` unless noted, GLM 5.3 Flash, n=5 per question, provenance-audited. Do
+`questions-deep.json` unless noted (the oracle's parenthetical draws on a fifth file at
+W=131,072), GLM 5.3 Flash, n=5 per question, provenance-audited. Do
 not re-run these unless the store or question set changes.
 
 | arm | score | correct branch fetched | input tokens |
@@ -593,7 +692,7 @@ not re-run these unless the store or question set changes.
 | `tree-tail-v2` | 7/25 in each of two batches (14/50 pooled) | 18/25 (paired batch; 16/25 standalone) | 460,389 (paired batch) |
 | `tree-hit-keywords` (rejected) | 3/25 | 18/25 | 609,073 |
 
-### 13.1 Diagnose the mis-centred band — zero tokens, do this first
+### 14.1 Diagnose the mis-centred band — zero tokens, do this first
 
 The largest fixable bucket and the one no ranking change can reach. qo04 is 0/30 runs
 delivered, and `--` at every swept budget through 40,000 tokens, so the band is not too
@@ -601,10 +700,14 @@ small — it is centred in the wrong place. Do not design a fix before measuring
 centres.
 
 Extend `eval/scripts/delivery-killgate.mjs` with a column reporting the seq `fetchBranch`
-centred on against the question's own seq (`q.seq`), for all five deep questions × every
-recorded query. The band-growth code is `packages/core/src/retrieve/retriever.ts`; the
+centred on against the question's own seq (`q.seq`). **Do this without touching core:**
+`fetchBranch` already returns `spans: SeqSpan[]` (`packages/core/src/retrieve/types.ts:113`)
+— the L0 ranges the band covers — so the centre is derivable in the gate alone. Only if that
+is not enough, `fetchBranch` is at `packages/core/src/retrieve/retriever.ts:273`, and the
 centring input is the `query` argument threaded from `transplant.mjs`'s `CONTEXT_FETCH`
-handler as `lastSearchQuery`.
+handler as `lastSearchQuery` (`:1713`). **If you do edit the TypeScript, run `pnpm build`** —
+`@context-tree/core` resolves to `./dist`, so the `.mjs` gates keep running the old code
+until you do, and the gate will appear not to have changed.
 
 Two candidates, whichever the diagnosis supports — centre on the highest-scoring event
 rather than the first match, or return several disjoint bands rather than one contiguous
@@ -622,7 +725,7 @@ node eval/scripts/transplant.mjs --phase run --scenario s1 --window 65536 \
 Roughly $0.15. Win: score ≥ 11/25 against the 7/25 baseline. Report the gate's delivered
 count alongside — this is a delivery fix, so delivery is the bucket it must move first.
 
-### 13.2 Shrink the hit list — three cells, ~$0.45
+### 14.2 Shrink the hit list — three cells, ~$0.45
 
 The refuted arm makes the opposite experiment the interesting one: `retrieval.limit` is 20,
 is unvalidated in `reports/algorithm.md`, and the one-hit oracle selects perfectly.
@@ -637,9 +740,13 @@ it in three places. Thread the option to `ctx.config.retrieval.limit` — and no
 delegates to the shared `HANDLERS[CONTEXT_SEARCH]`, so the read is in
 `packages/mcp/src/tools/context-search.ts:151`, not in `transplant.mjs`. (The two
 arm-specific handlers that read it there, `transplant.mjs:1563` and `:1669`, belong to
-`tree-grep` and `tree-escalate` and are not on the swept path.) Record the value on the row
-next to `hitKeywordK`; and **add it to the output filename at `transplant.mjs:4105`, or
-every cell of the sweep overwrites the last.**
+`tree-grep` and `tree-escalate` and are not on the swept path.) The config object reaching the handler is built at
+`transplant.mjs:773` and `:843-844` for the tool contexts and `:4069-4070` for the run loop —
+thread it at all of them or the arm silently keeps the default. Note there are **two**
+defaults to reconcile: `DEFAULT_CONFIG.retrieval.limit = 20` (`packages/core/src/config.ts:119`)
+and `DEFAULT_LIMIT = 8` (`retriever.ts:280`); this repo's `context-tree.config.json` sets
+neither. Record the value on the row next to `hitKeywordK`; and **add it to the output
+filename at `transplant.mjs:4105`, or every cell of the sweep overwrites the last.**
 
 Verify the wiring with zero tokens rather than a smoke run — `--phase run` prints no hit
 count, so there is nothing to read there. Assert it directly instead: call the arm's
@@ -650,12 +757,16 @@ node eval/scripts/transplant.mjs --phase run --scenario s1 --window 65536 \
   --arm tree-tail-v2 --model z-ai/glm-5.3-flash --reps 5 \
   --questions-file questions-deep.json --retrieval-limit 5
 ```
-Sweep 3, 5, 10 against the 20-hit baseline, ~$0.15 per cell. **Primary is the mechanism,
-not the score:** correct-branch-fetched ≥ 21/25 against 18/25. Report input tokens
+Sweep 3, 5, 10 against the 20-hit baseline, ~$0.15 per cell — and **put the 20-hit baseline
+in each invocation** rather than quoting a figure from here. The two batches of this pass
+give 18/25 and 16/25 for the same arm, a spread as large as the effect being chased, so a
+reused number decides the verdict by which batch you happened to pick. **Primary is the
+mechanism, not the score:** correct-branch-fetched ≥ 21/25 against the baseline measured
+alongside it. Report input tokens
 alongside — the refuted arm's real damage was effort, not accuracy. This is rule 4: find
 the sweet spot, do not pick a bound.
 
-### 13.3 Cap the oversized branch — zero tokens to gate
+### 14.3 Cap the oversized branch — zero tokens to gate
 
 Three of five deep questions live in one 56,973-token phase branch — **6.7× the median over
 the 21 phase branches** (8,497 tokens), which is the comparison that matters since phases are
@@ -672,25 +783,25 @@ runs against a COPY and never writes the fixture, so running it and then re-runn
 a segmentation; then the actual work is a step that does not exist yet: re-derive the
 fixture's L1 from L0 under the new rule and rebuild the store. That is legitimate — L1 is
 rebuildable by design — but it changes the epoch, so every live baseline in this report must
-be re-run afterwards. Schedule it before 13.1 and 13.2, or after both, never between.
+be re-run afterwards. Schedule it before 14.1 and 14.2, or after both, never between.
 
-### 13.4 `tree-route`, on its payload argument only — deferred behind 13.1
+### 14.4 `tree-route`, on its payload argument only — deferred behind 14.1
 
 Specified in `ds-star-multi-index-report.md` §12.1 with a seven-point wiring table that is
 still accurate. Its ranking argument is retired by §5 above (offline ranking on the deep
 set is already 5/5 top-3); only the payload claim survives — a facet line is ~24 tokens
 where a branch replay is 26 KB. That is a delivery fix in different clothing, so judge it
-against 13.1 rather than ahead of it, and re-measure whether it still buys anything once
-13.1 lands.
+against 14.1 rather than ahead of it, and re-measure whether it still buys anything once
+14.1 lands.
 
-### 13.5 Fix the fingerprint extractor — zero tokens
+### 14.5 Fix the fingerprint extractor — zero tokens
 
 72 of one branch's 425 fingerprints carry whitespace, the largest 4,998 characters of raw
 source. This pass filters them at the display boundary only. Zone B is unaffected today
 solely because the set happens to be insertion-ordered with paths first — an accident, not
 a guarantee, and it will break silently the first time extraction order changes.
 
-### 13.6 Second scenario — the item that turns "true on s1" into "true"
+### 14.6 Second scenario — the item that turns "true on s1" into "true"
 
 Unchanged from the previous report and still the highest-value item for any outward-facing
 claim. `eval/scripts/build-*-scenario.py` are six parameterized builders. Target s1's shape
