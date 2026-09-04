@@ -349,7 +349,10 @@ describe('arms', () => {
   it('advertises exactly the four §9 tools, with the arguments the real zod schemas validate', () => {
     expect(TOOL_SCHEMAS.map((schema) => schema.name)).toEqual([...TOOL_NAMES]);
 
-    type ProbeField = { safeParse: (value: unknown) => { success: boolean } };
+    type ProbeField = {
+      safeParse: (value: unknown) => { success: boolean };
+      unwrap?: () => { options?: readonly string[] };
+    };
     const shapes: Record<string, Record<string, ProbeField>> = {
       [CONTEXT_FETCH]: contextFetchInputShape,
       [CONTEXT_SEARCH]: contextSearchInputShape,
@@ -370,6 +373,16 @@ describe('arms', () => {
         .map(([name]) => name)
         .sort();
       expect(required).toEqual(zodRequired);
+
+      // An enum the handler accepts but Zone A never advertises is a capability the
+      // model cannot reach; one it advertises but the handler rejects is a promised
+      // argument that errors. Both are the drift this test exists to catch.
+      for (const [name, field] of Object.entries(shape)) {
+        const zodOptions = field.unwrap?.().options;
+        if (zodOptions === undefined) continue;
+        const advertised = (properties[name] as { enum?: readonly string[] } | undefined)?.enum;
+        expect(advertised === undefined ? undefined : [...advertised].sort()).toEqual([...zodOptions].sort());
+      }
     }
   });
 });
@@ -485,9 +498,12 @@ describe('tool-use loop', () => {
     expect(loop.toolCalls[0]?.ok).toBe(true);
     expect(loop.toolCalls[0]?.digest.summary_version).toBe(1);
 
-    // The handler's real payload reached the model's next turn.
+    // The handler's real payload reached the model's next turn — and R9's raw-by-default
+    // is what makes it useful: the replayed source line is a literal no paraphrase carries,
+    // so asserting the summary is ABSENT is what fails if the default flips back.
     const toolTurn = loop.messages.find((message) => message.content.includes('[tool_result context_fetch'));
-    expect(toolTurn?.content).toContain('touched src/pricing/rule1.ts');
+    expect(toolTurn?.content).toContain('return cents * (1 + taxRate)');
+    expect(toolTurn?.content).not.toContain('touched src/pricing/rule1.ts');
   });
 });
 

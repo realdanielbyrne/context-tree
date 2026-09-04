@@ -44,6 +44,7 @@
  *   TRANSPLANT_SMOKE=1 node eval/scripts/transplant.mjs --phase run --scenario s1
  *   node eval/scripts/transplant.mjs --phase verdict --scenario s1
  */
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -282,6 +283,32 @@ const sha256 = (text) => createHash('sha256').update(text).digest('hex');
 const sha256File = (path) => createHash('sha256').update(readFileSync(path)).digest('hex');
 const mean = (xs) => (xs.length === 0 ? null : xs.reduce((a, b) => a + b, 0) / xs.length);
 const escapeRe = (s) => s.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * What code produced a result file. Two batches of this pass ran hours apart
+ * against different working-tree state and nothing in either file discriminates
+ * them, so the pre/post labelling of the narrowing fix rests on the author's
+ * record rather than on evidence. The git SHA alone is not enough — both ran
+ * against UNCOMMITTED state — so the two files that decide retrieval behaviour
+ * are hashed directly.
+ */
+function codeFingerprint() {
+  const hashOf = (rel) => {
+    const path = join(REPO, rel);
+    return existsSync(path) ? sha256File(path).slice(0, 12) : null;
+  };
+  let git = null;
+  try {
+    git = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: REPO, encoding: 'utf8' }).trim().slice(0, 12);
+  } catch {
+    git = null;
+  }
+  return {
+    git,
+    retriever: hashOf('packages/core/src/retrieve/retriever.ts'),
+    transplant: hashOf('eval/scripts/transplant.mjs'),
+  };
+}
 
 /** Non-overlapping occurrence count — the strict reading of "exactly once". */
 export function countOccurrences(haystack, needle) {
@@ -610,7 +637,7 @@ function composeRootAt(scenario, rootKeep, expectedSha) {
  * composed at that keep — every caller downstream (assembly, gates, arms) then
  * reads a root that matches the budget it was sized against.
  */
-function budgetsFor(scenario, windowTokens, ratio, slackFraction, arm = 'tree') {
+export function budgetsFor(scenario, windowTokens, ratio, slackFraction, arm = 'tree') {
   const rungs = rootLadderFor(scenario);
   // The predicate IS gate 8, run against the real assembly. Nothing is
   // modelled: the prompt is built at this keep and asked whether it fits and
@@ -801,7 +828,7 @@ async function buildSemanticToolCtx(scenario) {
 }
 
 /** The one ratio measurement, so every phase reads the same number. */
-function measureRatio(scenario) {
+export function measureRatio(scenario) {
   const sample = l0Sample(scenario.blobs, scenario.paths.blobs);
   return exact.count(sample) / heuristic.count(sample);
 }
@@ -846,7 +873,7 @@ export function nodeDump(store) {
  * a plain recursive copy is simpler and this store is small) and it makes the
  * hazard structural rather than a rule someone has to remember.
  */
-function openScenario(scenarioId, { mutable = false } = {}) {
+export function openScenario(scenarioId, { mutable = false } = {}) {
   const dir = join(FIXTURES, scenarioId);
   const src = join(dir, 'trace.src.jsonl');
   const frozenRoot = join(dir, 'store');
@@ -3213,6 +3240,22 @@ async function runPrepOverflow(scenario, options) {
 }
 
 // ── run (Steps 4-6) ──────────────────────────────────────────────────────
+/**
+ * Answering spend per model bucket, as the meters measured it. Every cost
+ * figure in the multi-index report was reverse-engineered from `usage` against
+ * a list price because this was never written down; persisting it makes the
+ * next one auditable rather than plausible. Compaction buckets are excluded —
+ * they are a build cost, already reported as `compactionBuildUsd`.
+ */
+function answeringSpend(meters) {
+  const out = {};
+  for (const [bucket, meter] of meters) {
+    if (bucket.startsWith('compaction:')) continue;
+    out[bucket] = Number(meter.totalUsd().toFixed(6));
+  }
+  return out;
+}
+
 function providerFor(bucket, meters, capUsd = CAP_USD_PER_MODEL) {
   if (!meters.has(bucket)) meters.set(bucket, new InMemoryCostMeter({ capUsd }));
   if (process.env.TRANSPLANT_MOCK === '1') {
@@ -3470,7 +3513,7 @@ function truncateToBudget(text, budget) {
   return text.slice(lo);
 }
 
-async function buildArm(scenario, arm, budgets, artifacts) {
+export async function buildArm(scenario, arm, budgets, artifacts) {
   switch (arm) {
     case 'naive-full': {
       return { system: FLAT_SYSTEM, context: renderNativeTranscript(scenario.trace.all(), scenario.blobs), tools: [] };
@@ -4003,7 +4046,7 @@ async function runArms(scenario, options) {
             // Incremental write so progress is visible and a failing run can be killed early.
             writeFileSync(
               join(out, name),
-              `${JSON.stringify({ budgets, compactionBuildUsd, compactionSkippedChunks, compaction: artifacts.compaction?.build ?? null, rows, partial: true }, null, 2)}\n`,
+              `${JSON.stringify({ budgets, code: codeFingerprint(), answeringUsd: answeringSpend(meters), compactionBuildUsd, compactionSkippedChunks, compaction: artifacts.compaction?.build ?? null, rows, partial: true }, null, 2)}\n`,
             );
           } catch (error) {
             if (error instanceof CostCapExceededError) {
@@ -4050,7 +4093,7 @@ async function runArms(scenario, options) {
   const truncatedRuns = rows.filter((r) => (r.resultsTruncated ?? 0) > 0).length;
   writeFileSync(
     join(out, name),
-    `${JSON.stringify({ budgets, compactionBuildUsd, compactionSkippedChunks, compaction: artifacts.compaction?.build ?? null, rows, partial: false }, null, 2)}\n`,
+    `${JSON.stringify({ budgets, code: codeFingerprint(), answeringUsd: answeringSpend(meters), compactionBuildUsd, compactionSkippedChunks, compaction: artifacts.compaction?.build ?? null, rows, partial: false }, null, 2)}\n`,
   );
   console.log(
     `\nwrote ${join(out, name)}; answering spend ${[...meters]

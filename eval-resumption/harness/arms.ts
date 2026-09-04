@@ -96,8 +96,14 @@ export const TOOL_SCHEMAS: readonly ToolSchema[] = Object.freeze([
       type: 'object',
       properties: {
         branch_id: { type: 'string', description: 'Node id of the branch to read.' },
-        depth: { type: 'string', enum: ['summary', 'full'], description: "'summary' (default) or 'full'." },
+        depth: {
+          type: 'string',
+          enum: ['summary', 'index', 'full'],
+          description: "'full' (default) replays the events, 'index' lists them, 'summary' reads L1.",
+        },
         file: { type: 'string', description: 'Repo-relative path to narrow to one file node.' },
+        from: { type: 'integer', description: "Inclusive L0 seq to start at (depth 'full'/'index')." },
+        to: { type: 'integer', description: "Inclusive L0 seq to end at (depth 'full'/'index')." },
       },
       required: ['branch_id'],
       additionalProperties: false,
