@@ -978,9 +978,10 @@ describe('the window is the real constraint (2026-09-02)', () => {
     expect(prompt.budgets.overWindow).toBe(false);
   });
 
-  it('a window changes nothing about what gets built — it is reported, not enforced', () => {
-    // The addition is observational. Every existing caller keeps its behaviour,
-    // which is what makes this a defect fix rather than an epoch shift.
+  it('a window changes nothing about what gets built while nothing is over it — zones are never trimmed to fit', () => {
+    // Enforcement (below) acts only on the tail and, as a last valve, on Zone C
+    // events; a prompt that fits keeps every byte, so existing callers keep
+    // their behaviour.
     const h = harness();
     h.addBranch({ title: 'reproduce', phase: 'diagnosis' });
     h.addBranch({ title: 'patch', phase: 'implementation' });
@@ -991,5 +992,79 @@ describe('the window is the real constraint (2026-09-02)', () => {
     expect(ids(with_.blocks)).toEqual(ids(without.blocks));
     expect(with_.budgets.zoneB).toBe(without.budgets.zoneB);
     expect(with_.budgets.zoneC).toBe(without.budgets.zoneC);
+  });
+});
+
+describe('window enforcement — the tail is evicted per turn so a retrieved result is never truncated', () => {
+  const REPLY = 0.05; // ZONE_FRACTIONS.reply — the reserve derives from the window, not from a constant here
+  const fitsWith = (total: number): number => Math.ceil((total + 1) / (1 - REPLY));
+
+  it('evicts the oldest already-seen ephemeral tail entry first, and reports it', () => {
+    const h = harness();
+    h.addBranch({ title: 'reproduce', phase: 'diagnosis' });
+    h.assembler.appendTail({ id: 'a', text: 'first fetch '.repeat(300), ephemeral: true });
+    const seen = h.assembler.assemble({ toolSchemasText: TOOL_SCHEMAS, window: 1_000_000 }); // marks `a` as seen
+    const window = fitsWith(seen.budgets.total);
+    h.assembler.appendTail({ id: 'b', text: 'second fetch '.repeat(120), ephemeral: true });
+
+    const prompt = h.assembler.assemble({ toolSchemasText: TOOL_SCHEMAS, window });
+
+    expect(prompt.budgets.evictedFromTail).toEqual(['a']);
+    expect(ids(prompt.blocks)).toContain('tail:b');
+    expect(ids(prompt.blocks)).not.toContain('tail:a');
+    expect(prompt.budgets.total + Math.floor(REPLY * window)).toBeLessThanOrEqual(window);
+    expect(prompt.budgets.overWindow).toBe(false);
+    expect(h.assembler.tailEntries().map((e) => e.id)).toEqual(['b']);
+  });
+
+  it('never evicts an entry the model has not seen yet — Zone C events go first, oldest first, and are reported', () => {
+    const h = harness();
+    // Zone C must hold events for the last valve to have anything to drop: make
+    // the branch active, as the live loop does with `activeNodeId`.
+    const branch = h.addBranch({ title: 'reproduce', phase: 'diagnosis' });
+    const baseline = h.assembler.assemble({ toolSchemasText: TOOL_SCHEMAS, window: 1_000_000, activeNodeId: branch.id });
+    const window = fitsWith(baseline.budgets.total);
+    // Small enough that dropping Zone C events can make room (the fixture's
+    // branch holds three short events); the property under test is the ORDER
+    // of eviction, not the capacity of a tiny fixture.
+    h.assembler.appendTail({ id: 'fresh', text: 'just fetched '.repeat(4), ephemeral: true });
+
+    const prompt = h.assembler.assemble({ toolSchemasText: TOOL_SCHEMAS, window, activeNodeId: branch.id });
+
+    expect(ids(prompt.blocks)).toContain('tail:fresh');
+    expect(prompt.budgets.evictedFromTail).toEqual([]);
+    expect(prompt.budgets.droppedFromZoneC).toBeGreaterThan(0);
+    // Zone C's head and map stay; only event blocks leave, oldest first.
+    expect(ids(prompt.blocks).some((id) => id.startsWith('C:head:'))).toBe(true);
+    expect(prompt.budgets.total + Math.floor(REPLY * window)).toBeLessThanOrEqual(window);
+  });
+
+  it('never evicts a non-ephemeral tail entry, even when it is the oldest', () => {
+    const h = harness();
+    h.addBranch({ title: 'reproduce', phase: 'diagnosis' });
+    h.assembler.appendTail({ id: 'pinned', text: 'keep me '.repeat(200), ephemeral: false });
+    h.assembler.appendTail({ id: 'seen', text: 'disposable '.repeat(200), ephemeral: true });
+    const full = h.assembler.assemble({ toolSchemasText: TOOL_SCHEMAS, window: 1_000_000 });
+    const seenTokens = full.blocks.find((b) => b.id === 'tail:seen')!.tokens;
+    const window = fitsWith(full.budgets.total - seenTokens);
+
+    const prompt = h.assembler.assemble({ toolSchemasText: TOOL_SCHEMAS, window });
+
+    expect(prompt.budgets.evictedFromTail).toEqual(['seen']);
+    expect(ids(prompt.blocks)).toContain('tail:pinned');
+  });
+
+  it('does nothing without a window — there is no number to enforce against', () => {
+    const h = harness();
+    h.addBranch({ title: 'reproduce', phase: 'diagnosis' });
+    h.assembler.appendTail({ id: 'a', text: 'x '.repeat(5_000), ephemeral: true });
+    h.assembler.assemble({ toolSchemasText: TOOL_SCHEMAS });
+    h.assembler.appendTail({ id: 'b', text: 'y '.repeat(5_000), ephemeral: true });
+
+    const prompt = h.assembler.assemble({ toolSchemasText: TOOL_SCHEMAS });
+
+    expect(prompt.budgets.evictedFromTail).toEqual([]);
+    expect(prompt.budgets.droppedFromZoneC).toBe(0);
+    expect(ids(prompt.blocks)).toEqual(expect.arrayContaining(['tail:a', 'tail:b']));
   });
 });

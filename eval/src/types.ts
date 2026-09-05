@@ -156,6 +156,12 @@ export interface HarnessOptions {
   timeCapMs: number;
   costCapUsd: number | null;
   budgets: { zoneB: number; zoneC: number };
+  /**
+   * The model's context window in tokens. When set, the tree arm's assembler
+   * enforces it per turn (evicting already-seen retrieval results, then Zone C
+   * events, so prompt + reply fit); unset keeps the report-only behaviour.
+   */
+  window?: number;
   keepSandbox: boolean;
   /**
    * Pinned sampling temperature for every agent-loop and summarizer call, or

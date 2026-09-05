@@ -771,6 +771,9 @@ async function runTreeArm(
       tokenizer: new HeuristicTokenizer(),
       systemContract: systemContract(contractVersion) + TREE_COMPLETION_ADDENDUM,
       budgets: { ...args.options.budgets },
+      // Window enforcement is opt-in per host: without it the assembler only
+      // reports `overWindow`, exactly as before.
+      ...(args.options.window === undefined ? {} : { window: args.options.window }),
     });
 
     const ts = () => new Date().toISOString();

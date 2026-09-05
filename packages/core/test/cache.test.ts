@@ -717,3 +717,27 @@ describe('cacheReport — §15 input-token split across a session', () => {
     expect(() => cacheReport([])).toThrow(CacheAssertionError);
   });
 });
+
+describe('tail eviction and the cached prefix (layout F: tail after the last breakpoint, shrunk from the front)', () => {
+  it('an evicted tail entry re-bills nothing cacheable: A and B survive, the divergence is in the tail, cacheWrite is 0', () => {
+    const h = harness();
+    h.addBranch({ title: 'reproduce', phase: 'diagnosis' });
+    h.addBranch({ title: 'patch', phase: 'implementation' });
+    const simulator = new ProviderCacheSimulator({ tokenizer: h.tokenizer, matchPolicy: 'automatic-prefix' });
+    h.assembler.appendTail({ id: 'a', text: 'first fetch '.repeat(300), ephemeral: true });
+    h.assembler.appendTail({ id: 'b', text: 'second fetch '.repeat(300), ephemeral: true });
+    const first = h.assembler.assemble({ toolSchemasText: SYSTEM, window: 1_000_000 });
+    simulator.submit(first);
+
+    // A window that holds everything but `a`: the assembler evicts it (seen, ephemeral, oldest).
+    const aTokens = first.blocks.find((b) => b.id === 'tail:a')!.tokens;
+    const window = Math.ceil((first.budgets.total - aTokens + 1) / 0.95);
+    const second = h.assembler.assemble({ toolSchemasText: SYSTEM, window });
+    expect(second.budgets.evictedFromTail).toEqual(['a']);
+
+    const outcome = simulator.submit(second);
+    expect(outcome.divergedInZone).toBe('tail');
+    expect(outcome.survivingSegments).toEqual(expect.arrayContaining(['A', 'B']));
+    expect(outcome.cacheWrite).toBe(0);
+  });
+});

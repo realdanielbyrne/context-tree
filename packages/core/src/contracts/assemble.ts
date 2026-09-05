@@ -56,6 +56,19 @@ export interface BudgetReport {
    * on short replies where a fixed ceiling would have made the request invalid.
    */
   replyAllowance: number | null;
+  /**
+   * Tail entries evicted THIS assemble so that prompt + reply fit the window:
+   * oldest already-seen ephemeral entries first (D6 — a result the model has
+   * already reacted to is disposable; one it has not seen yet never is). Empty
+   * when no window is known or nothing was over.
+   */
+  evictedFromTail: string[];
+  /**
+   * Zone C event blocks dropped, oldest first, when the tail alone could not
+   * make room — the last valve, reported so a run that lost its own recent
+   * detail says so.
+   */
+  droppedFromZoneC: number;
 }
 
 export interface TailEntry {

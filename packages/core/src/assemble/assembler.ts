@@ -21,6 +21,7 @@
  * two assemblies. If an id moved for a reason unrelated to content, that harness
  * silently stops testing anything.
  */
+import { replyHeadroom } from './budgets.js';
 import { DEFAULT_CONFIG } from '../config.js';
 import { StoreInvariantError } from '../contracts/index.js';
 import type {
@@ -88,6 +89,12 @@ export interface ZoneAssemblerDeps {
    * fix applied silently underneath existing callers.
    */
   cacheZoneCBreakpoint?: boolean;
+  /**
+   * Tokens reserved for the reply when enforcing the window. Defaults to
+   * `replyHeadroom({ window })` — the window fraction — so a host that knows its
+   * model's maximum output should pass the measured figure instead.
+   */
+  replyReserve?: number;
 }
 
 /** A Zone B node contributes a summary block plus an optional links block; the
@@ -118,6 +125,12 @@ export class ZoneAssembler implements PromptAssembler {
   private readonly budgets: { zoneB: number; zoneC: number };
   /** D6 soft offloading: fetched detail lives here and dies at a phase boundary. */
   private tail: TailEntry[] = [];
+  /**
+   * How many tail entries the model has already been shown — everything that
+   * was in the tail at the end of the previous `assemble()`. Entries appended
+   * since are unseen and are never evicted: the turn exists to show them.
+   */
+  private seenTail = 0;
 
   constructor(deps: ZoneAssemblerDeps) {
     this.deps = deps;
@@ -193,8 +206,41 @@ export class ZoneAssembler implements PromptAssembler {
     if (zoneB.tokens > zoneBBudget) overBudget.push('B');
     if (zoneC.truncated) overBudget.push('C');
 
-    const tailTokens = sumTokens(tailBlocks);
     const window = options.window ?? this.deps.window ?? null;
+    // Window enforcement, per turn. Order of value: a result the model asked for
+    // this turn is why the turn exists; Zone C is the newest branch's only copy;
+    // an already-seen ephemeral result is consumed (the model's reaction to it
+    // is in L0). So: oldest SEEN ephemeral tail entries leave first, then Zone C
+    // events oldest-first as the last valve. Both are reported, never silent.
+    // The tail rides after the last breakpoint, so evicting it re-bills nothing.
+    const evictedFromTail: string[] = [];
+    let droppedFromZoneC = 0;
+    if (window !== null && options.tail === undefined) {
+      const reply = this.deps.replyReserve ?? replyHeadroom({ window }).tokens;
+      const over = (): number =>
+        sumTokens(zoneA) + zoneB.tokens + sumTokens(zoneC.blocks) + sumTokens(tailBlocks) + reply - window;
+      let i = 0;
+      while (over() > 0 && i < this.seenTail) {
+        const entry = this.tail[i];
+        if (entry !== undefined && entry.ephemeral) {
+          evictedFromTail.push(entry.id);
+          this.tail.splice(i, 1);
+          tailBlocks.splice(i, 1);
+          this.seenTail -= 1;
+        } else {
+          i += 1;
+        }
+      }
+      while (over() > 0) {
+        const idx = zoneC.blocks.findIndex((b) => b.id.startsWith('C:event:'));
+        if (idx < 0) break;
+        zoneC.blocks.splice(idx, 1);
+        droppedFromZoneC += 1;
+      }
+    }
+    this.seenTail = this.tail.length;
+
+    const tailTokens = sumTokens(tailBlocks);
     const budgets: BudgetReport = {
       zoneA: sumTokens(zoneA),
       zoneB: zoneB.tokens,
@@ -207,6 +253,8 @@ export class ZoneAssembler implements PromptAssembler {
       windowRemaining: null,
       overWindow: false,
       replyAllowance: null,
+      evictedFromTail,
+      droppedFromZoneC,
     };
     budgets.total = budgets.zoneA + budgets.zoneB + budgets.zoneC + budgets.tail;
     // The one constraint that is not a matter of allocation: this prompt either
