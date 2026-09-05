@@ -43,7 +43,7 @@ import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TreeRetriever } from '@context-tree/core';
-import { buildArm, budgetsFor, gradeAnswer, measureRatio, openScenario } from './transplant.mjs';
+import { buildArm, budgetsFor, gradeAnswer, measureRatio, openScenario, requestTokens } from './transplant.mjs';
 
 const REPO = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const FRACTION_SLACK = 0.1;
@@ -165,7 +165,14 @@ async function main() {
         let text = '';
         try {
           const budgets = budgetsFor(scenario, window, ratio, FRACTION_SLACK, arm);
-          text = textOf(await buildArm(scenario, arm, budgets, {}));
+          const built = await buildArm(scenario, arm, budgets, {});
+          text = textOf(built);
+          // Elastic arms hold the raw tail outside `messages`; at turn 1 it fills
+          // what prefix + reply leave, so include that rendering in the prompt view.
+          if (built.elastic !== undefined) {
+            const fixed = requestTokens({ system: built.system, messages: built.messages, tools: built.tools });
+            text += `\n${built.elastic.tail(Math.max(0, window - fixed - budgets.maxReplyTokens - 64 - 4), 0).text}`;
+          }
         } catch (error) {
           text = '';
           process.stderr.write(`  ! could not rebuild ${key}: ${error.message}\n`);
@@ -209,7 +216,9 @@ async function main() {
           const searchServed = (row.toolCalls ?? []).some(
             (call) => call?.name === 'context_search' && call.answerLiteralPresentAfterCap === true,
           );
-          if (gradeAnswer(await promptText(row.arm, window), question).success) verdict = 'earned-prompt';
+          // `prefix-plus-retrieval` fills the prompt per question (recorded per row).
+          const prefilled = row.prefill?.answerLiteralInPrefill === true;
+          if (prefilled || gradeAnswer(await promptText(row.arm, window), question).success) verdict = 'earned-prompt';
           else if (searchServed) {
             verdict = 'earned-search';
             delivered = true;

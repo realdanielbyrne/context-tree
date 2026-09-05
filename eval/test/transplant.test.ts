@@ -766,6 +766,49 @@ describe('verdict-side arithmetic', () => {
 });
 
 
+describe('elastic tail — last valve', () => {
+  it('once the tail is exhausted, the oldest already-seen appended result is evicted so the request still fits; a result appended since the last send never is', async () => {
+    // Added after the replay gate (elastic-tail-killgate.mjs EG1) found two
+    // requests over the window with an empty tail: the model's own reply text,
+    // appended after the cap, tipped the next request. The assembler rule applies.
+    const W = 16_384;
+    const reply = 800;
+    const requests: { messages: { role: string; content: string }[] }[] = [];
+    let turn = 0;
+    const provider = {
+      id: 'stub',
+      async complete(request: { messages: { role: string; content: string }[]; model: string }) {
+        requests.push(request);
+        turn += 1;
+        const usage = { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 };
+        return turn <= 3
+          ? { text: 'thinking '.repeat(60), model: request.model, usage, toolCalls: [{ id: `c${turn}`, name: 'context_search', input: { query: `q${turn}` } }], stopReason: 'tool_use' }
+          : { text: 'final answer', model: request.model, usage, toolCalls: [], stopReason: 'end_turn' };
+      },
+    };
+    let payload = '';
+    while (exact.count(payload) < W * 0.31) payload += 'search hit: node n_ABC path src/foo.ts line 42. ';
+    const built = {
+      system: 'system contract',
+      messages: [{ role: 'user', content: 'zone a+b prefix' }],
+      tools: [{ name: 'context_search' }],
+      handlers: { context_search: async () => ({ ok: true, data: { hits: payload } }) },
+      toolCtx: {},
+      elastic: { header: '# recent events', tail: () => ({ text: '', fromSeq: 1, events: 0 }) }, // nothing left to give
+    };
+    const result = await runOneReplicate(null, built, 'what is the literal?', 'stub-model', provider, { window: W, maxReplyTokens: reply });
+
+    expect(result.status).toBe('completed');
+    for (const request of requests) expect(requestTokens({ system: 'system contract', messages: request.messages, tools: built.tools }) + reply).toBeLessThanOrEqual(W);
+    const evicted = result.turns.map((t: { evictedResults: number }) => t.evictedResults);
+    expect(evicted.reduce((a: number, b: number) => a + b, 0)).toBeGreaterThan(0);
+    // The newest result is always intact in the request that follows it.
+    const last = requests[3]!.messages;
+    expect(last.at(-1)!.content.includes('evicted to fit the window')).toBe(false);
+    expect(last.some((m) => m.content.includes('evicted to fit the window'))).toBe(true);
+  });
+});
+
 describe('null arms — flat event hits and budget-filled retrieval', () => {
   it('flatEventHits scores every event of the whole trace with the fetch-centring scorer and attributes each hit to the smallest phase holding it', () => {
     const phases: Record<string, [number, number]> = { root: [1, 9], p1: [1, 4], p2: [5, 9] };

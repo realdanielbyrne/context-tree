@@ -1244,6 +1244,23 @@ export function extractLiterals(events, blobs, store) {
  * is non-increasing in K, so "outside the tail" holds only at the K passed in,
  * NOT at every window. See the correction in `runPrep`.
  */
+/**
+ * The newest events whose RENDERED transcript fits `budget` exact tokens, from
+ * a boundary no earlier than `minFrom`. `truncationBoundarySeq` sums per-event
+ * counts; the joined rendering can tokenize a little larger across the seams,
+ * so the result is measured whole and the oldest event dropped until it fits —
+ * the appender makes room, it does not send an over-budget block.
+ */
+export function renderTailWithin(events, blobs, budget, minFrom = 0, tokenizer = exact) {
+  let from = Math.max(minFrom, truncationBoundarySeq(events, blobs, Math.max(0, budget), tokenizer));
+  for (;;) {
+    const kept = events.filter((e) => e.seq >= from);
+    const text = kept.length === 0 ? '' : renderNativeTranscript(kept, blobs);
+    if (kept.length === 0 || tokenizer.count(text) <= budget) return { text, fromSeq: from, events: kept.length };
+    from = kept[1]?.seq ?? kept[0].seq + 1;
+  }
+}
+
 export function truncationBoundarySeq(events, blobs, K, tokenizer = heuristic) {
   let spent = 0;
   for (let i = events.length - 1; i >= 0; i -= 1) {
@@ -3919,11 +3936,7 @@ export async function buildArm(scenario, arm, budgets, artifacts) {
       const system = [treeSystemTextFor('tree'), TOOL_SCHEMAS_TEXT, ...(steering ? [`# Operator steering (CLAUDE.md)\n${steering}`] : [])].join('\n\n');
       const allEvents = scenario.trace.all();
       const header = '# Verbatim recent events (most recent portion of the session trace)';
-      const tailOf = (budget, minFrom = 0) => {
-        const from = Math.max(minFrom, truncationBoundarySeq(allEvents, scenario.blobs, Math.max(0, budget), exact));
-        const events = allEvents.filter((e) => e.seq >= from);
-        return { text: renderNativeTranscript(events, scenario.blobs), fromSeq: from, events: events.length };
-      };
+      const tailOf = (budget, minFrom = 0) => renderTailWithin(allEvents, scenario.blobs, budget, minFrom);
       if (arm === 'flat-events') {
         return {
           system, messages: [], tools: toolSchemasForArm(arm), handlers: handlersForArm(arm),
@@ -4015,9 +4028,7 @@ export async function buildArm(scenario, arm, budgets, artifacts) {
         ? {
             header,
             tail(budget, minFrom) {
-              const from = Math.max(minFrom, truncationBoundarySeq(allEvents, scenario.blobs, Math.max(0, budget), exact));
-              const events = allEvents.filter((e) => e.seq >= from);
-              return { text: renderNativeTranscript(events, scenario.blobs), fromSeq: from, events: events.length };
+              return renderTailWithin(allEvents, scenario.blobs, budget, minFrom);
             },
           }
         : undefined;
@@ -4170,8 +4181,23 @@ export async function runOneReplicate(
   let tailFrom = 0;
   let tailRecord = null;
   let peakWire = 0;
+  let seenCount = 0;
   const wire = () => {
     if (elastic === undefined) return messages;
+    const limit = budgets.window - budgets.maxReplyTokens - REQUEST_MARGIN_TOKENS - MESSAGE_OVERHEAD_TOKENS;
+    // Last valve, the assembler's rule (`ZoneAssembler.assemble`): once the raw
+    // tail is exhausted, the oldest ALREADY-SEEN appended results leave first —
+    // never one appended since the last send, which the turn exists to show.
+    // A stub keeps the conversation well-formed and tells the model what left.
+    let evicted = 0;
+    for (let i = prefixCount; i < seenCount && requestTokens({ system: built.system, messages, tools: built.tools }) > limit; i += 1) {
+      const m = messages[i];
+      if (m.role === 'user' && m.content.startsWith('[tool_result ') && !m.content.endsWith('evicted to fit the window]')) {
+        const name = m.content.slice('[tool_result '.length).split(']')[0];
+        messages[i] = { role: 'user', content: `[tool_result ${name}: earlier result evicted to fit the window]` };
+        evicted += 1;
+      }
+    }
     const fixed = requestTokens({ system: built.system, messages, tools: built.tools });
     const budget = budgets.window - fixed - budgets.maxReplyTokens - REQUEST_MARGIN_TOKENS - MESSAGE_OVERHEAD_TOKENS - exact.count(`${elastic.header}\n`);
     let tail = elastic.tail(Math.max(0, budget), tailFrom);
@@ -4180,8 +4206,13 @@ export async function runOneReplicate(
     // further so the tail block is rewritten once per exhaustion, not per turn.
     if (moved) tail = elastic.tail(Math.max(0, budget - budgets.maxReplyTokens), tailFrom);
     tailFrom = Math.max(tailFrom, tail.fromSeq);
-    tailRecord = { tailFromSeq: tailFrom, tailEvents: tail.events, tailTokens: exact.count(tail.text), tailMoved: moved };
-    const request = [...messages.slice(0, prefixCount), { role: 'user', content: `${elastic.header}\n${tail.text}` }, ...messages.slice(prefixCount)];
+    tailRecord = { tailFromSeq: tailFrom, tailEvents: tail.events, tailTokens: exact.count(tail.text), tailMoved: moved, evictedResults: evicted };
+    seenCount = messages.length;
+    // An exhausted tail sends nothing — not even its header, which could tip a
+    // request that the cap sized to the byte over the window.
+    const request = tail.events === 0
+      ? messages
+      : [...messages.slice(0, prefixCount), { role: 'user', content: `${elastic.header}\n${tail.text}` }, ...messages.slice(prefixCount)];
     peakWire = Math.max(peakWire, requestTokens({ system: built.system, messages: request, tools: built.tools }));
     return request;
   };
@@ -4244,7 +4275,7 @@ export async function runOneReplicate(
       stopReason: result.stopReason ?? null,
       // Instrumentation bundle (Step 5):
       zoneBudgets,
-      ...(tailRecord ?? { tailFromSeq: null, tailEvents: null, tailTokens: null, tailMoved: false }),
+      ...(tailRecord ?? { tailFromSeq: null, tailEvents: null, tailTokens: null, tailMoved: false, evictedResults: 0 }),
       fetchedDepths: [], // populated below per turn
       nonAgentModelCalls: 0, // leaf summarizer calls happen at ingestion, not during run
     });

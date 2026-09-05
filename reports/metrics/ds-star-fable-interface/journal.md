@@ -273,3 +273,33 @@ result and the append cap truncates the newest one (qo02: third search cut to 95
 shipped assembler only rewrites Zone C at phase boundaries. Open item: an elastic tail — recompute
 the raw-tail boundary each turn as W − (A + B + appended results + reply), so retrieved detail
 displaces passive recency; measure the cache cost of rewriting the tail block.
+
+## Plan approved 23:31 — per-turn window management + null arms (`~/.claude/plans/squishy-inventing-cloud.md`)
+
+Historical read (Explore, 17:13) recorded in the plan §1: no design ever cached CLAUDE.md/skills;
+thrashing had three causes (window stalls at 32k; large-W loops from losing the agent's last action;
+threshold-transition artefacts); tree beat transcript on TASK success at large W (62/62 vs 20/22),
+so the null arms are primary for the Q&A regime and the user's hypothesis is tested on tasks in step 8.
+
+## Plan execution (23:31 → 00:40) — steps 2-6 done, zero live tokens
+
+- Core (21a3e14): `ZoneAssembler` enforces the window when one is known — oldest SEEN ephemeral
+  tail entries evicted first, Zone C events as the last valve, both reported
+  (`evictedFromTail`, `droppedFromZoneC`); reply reserve from `replyHeadroom(window)`; simulator
+  test: eviction leaves A and B cached, divergence in the tail, cacheWrite 0. `HarnessOptions.window`
+  plumbed into the live loop (opt-in). Core 62/62.
+- Harness (33c0d58, cfdd5f2, + this commit): `tree-snippet-hits-elastic` (per-turn tail rebuild,
+  latched, evict-ahead one reply share, exhausted tail sends no header, seen appended results
+  evicted last); null arms `flat-events` and `prefix-plus-retrieval`; `renderTailWithin` measures
+  the rendered tail whole (per-event sums under-count across seams). Transplant tests 56/56.
+- Kill gate `eval/scripts/elastic-tail-killgate.mjs` on the 118 recorded W=131,072 runs (435 calls):
+  EG1 overflows **0** (was 2 before seen-result eviction; both the same run, tail empty, the
+  model's reply text tipping the next request). EG2 truncations **9/435 vs 198 recorded**; the 9 are
+  results larger than the whole remaining window (5 with the tail already exhausted). EG1b 3
+  seen results evicted. EG3 tail moved on 63 turns, mean **52,418 fresh tokens re-sent per move**
+  (the predicted ~2× uncached bill on moving turns). EG4 **76/186** recorded cut-without-literal
+  calls now arrive with the literal. EG5 both null arms fit for all 5 questions; prefill hits
+  8/4/68/23/434 for qo01-qo05 (qo05 fills 101k tokens), literal in the prefill for 4/5 (qo02 ✗, the
+  excerpt-window miss).
+- Provenance audit extended: elastic arms' turn-1 tail included in the prompt view; a row whose
+  prefill carried the literal is `earned-prompt`. Existing cells unchanged (30/50 snippet-hits).
