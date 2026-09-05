@@ -45,6 +45,9 @@ import {
   type TaskStore,
   type ToolCallRequest,
   type TraceEventInput,
+  deriveZoneBudgets,
+  excerptAround,
+  renderEvent,
 } from '@context-tree/core';
 import { HANDLERS, type ToolContext, type ToolName } from '@context-tree/mcp';
 import {
@@ -65,6 +68,9 @@ import type { LangfuseRunHandle, LangfuseSink } from './langfuse.js';
 import { HARNESS_STOPPED } from './types.js';
 import type { Arm, HarnessOptions, RunResult, RunStatus, Scenario, TokenTotals, TurnRecord } from './types.js';
 import { join } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { countTokens } from 'gpt-tokenizer';
 
 const NATIVE_SYSTEM_PROMPT = [
   'You are a capable coding agent working inside a task sandbox.',
@@ -339,6 +345,136 @@ async function runDsaArm(args: ArmArgs): Promise<ArmOutput> {
     if (guard.endTurn()) return { status: 'stalled', finalText };
   }
   return { status: 'turn_cap', finalText };
+}
+
+/**
+ * `prefix-retrieval` — the "stable prefix + retrieval-filled window" design
+ * (plan 2026-09-04 pm, step 8): what stays cached is the system prompt, the
+ * tool schemas and the operator's steering text; the transcript is NOT resent.
+ * Each turn sends the task, a block of events retrieved from the run's own L0
+ * log for the model's current focus, and a recency slice of its latest
+ * exchanges, sized by the derived `slack` share of the window so the agent's
+ * own last action is never lost (the loop failure mode the record names).
+ * Every exchange is appended to L0 exactly as the tree arm does, so retrieval
+ * searches the whole history; no summaries, no Zone B, no branch ranking —
+ * events are scored over the root span by the fetch-centring scorer.
+ */
+const STEERING_HEADER = '# Operator steering (CLAUDE.md)';
+const RETRIEVED_LABEL = '[retrieved from this session]';
+const REQUEST_MARGIN = 64;
+
+function readSteering(): string {
+  try {
+    return readFileSync(fileURLToPath(new URL('../../CLAUDE.md', import.meta.url)), 'utf8');
+  } catch {
+    return '';
+  }
+}
+
+/** Newest messages that fit `budget` tokens; the last exchange is always kept. */
+function recencySlice(messages: readonly ChatMessage[], budget: number): ChatMessage[] {
+  const kept: ChatMessage[] = [];
+  let spent = 0;
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const cost = countTokens(messages[i]!.content);
+    if (kept.length >= 2 && spent + cost > budget) break;
+    kept.unshift(messages[i]!);
+    spent += cost;
+  }
+  return kept;
+}
+
+/** Event hits over the WHOLE trace (root span), each excerpted; no branch pool. */
+function flatHits(handle: TaskStore, retriever: TreeRetriever, query: string, excerptChars: number) {
+  const root = handle.store.root();
+  if (root === null || root.span_start_seq === null || root.span_start_seq === undefined) return [];
+  const span = { start: root.span_start_seq, end: root.span_end_seq ?? root.span_start_seq };
+  const scorer = (retriever as unknown as { findRelevantCenter(q: string, s: Array<{ start: number; end: number }>): { terms: Array<{ value: string }>; scores: Array<{ seq: number; score: number }> } }).findRelevantCenter;
+  const center = scorer.call(retriever, query, [span]);
+  const terms = center.terms.map((t) => t.value);
+  return [...center.scores]
+    .sort((a, b) => b.score - a.score || b.seq - a.seq)
+    .flatMap(({ seq, score }) => {
+      const event = [...handle.trace.read({ from: seq, to: seq })][0];
+      return event === undefined ? [] : [{ seq, score, excerpt: excerptAround(renderEvent(event, handle.blobs), terms, excerptChars) }];
+    });
+}
+
+async function runPrefixRetrievalArm(args: ArmArgs): Promise<ArmOutput> {
+  const window = args.options.window;
+  if (window === undefined) {
+    throw new Error('prefix-retrieval needs options.window: the recency slice and the retrieval fill derive from it');
+  }
+  const handle = openTaskStore(args.config);
+  try {
+    const budgets = deriveZoneBudgets(window);
+    const steering = readSteering();
+    const system = `${NATIVE_SYSTEM_PROMPT}\n\n${STEERING_HEADER}\n${steering}`;
+    const retriever = new TreeRetriever({ store: handle.store, blobs: handle.blobs, trace: handle.trace });
+    const guard = makeRepeatGuard();
+    const ts = () => new Date().toISOString();
+    const task: ChatMessage = { role: 'user', content: args.scenario.task };
+    const transcript: ChatMessage[] = [];
+    appendTo(handle, { type: 'user_message', ts: ts(), blob: handle.blobs.put(args.scenario.task) });
+    const fixed = countTokens(system) + countTokens(JSON.stringify(HARNESS_TOOL_SCHEMAS)) + countTokens(task.content);
+    let finalText = '';
+    let focus = args.scenario.task;
+    for (let turnIndex = 0; turnIndex < args.options.maxTurns; turnIndex += 1) {
+      if (Date.now() >= args.deadlineMs) return { status: 'time_cap', finalText };
+      const slice = recencySlice(transcript, budgets.slack);
+      const sliceTokens = slice.reduce((n, m) => n + countTokens(m.content), 0);
+      const remaining = window - fixed - sliceTokens - budgets.reply - REQUEST_MARGIN;
+      const retrieved: ChatMessage[] = [];
+      if (turnIndex > 0 && remaining > 0) {
+        const query = [...contentWords(focus)].join(' ') || args.scenario.task;
+        const hits = flatHits(handle, retriever, query, args.config.retrieval.excerptChars);
+        const kept: typeof hits = [];
+        for (const hit of hits) {
+          const next = [...kept, hit];
+          if (countTokens(`${RETRIEVED_LABEL} ${JSON.stringify({ query, hits: next })}`) > remaining) break;
+          kept.push(hit);
+        }
+        if (kept.length > 0) retrieved.push({ role: 'user', content: `${RETRIEVED_LABEL} ${JSON.stringify({ query, hits: kept })}` });
+      }
+      const request: CompletionRequest = {
+        model: args.options.model,
+        system,
+        messages: [task, ...retrieved, ...slice],
+        tools: HARNESS_TOOL_SCHEMAS,
+        maxTokens: AGENT_MAX_TOKENS,
+        systemCacheBreakpoint: true,
+      };
+      if (args.options.temperature != null) request.temperature = args.options.temperature;
+      const { result, record } = await callModel({ provider: args.provider, request, turnIndex, runHandle: args.runHandle, usage: args.usage });
+      args.turns.push(record);
+      Object.assign(args.usage, addTotals(args.usage, result.usage));
+      transcript.push({ role: 'assistant', content: result.text });
+      const assistantEvent = appendTo(handle, { type: 'assistant_message', ts: ts(), blob: handle.blobs.put(result.text.length > 0 ? result.text : '(invoking tool)') });
+      if (result.text.length > 0) focus = result.text;
+      if (result.toolCalls.length === 0) {
+        finalText = result.text;
+        return { status: 'completed', finalText };
+      }
+      for (const call of result.toolCalls) {
+        const outcome = await guard(call, () => executeHarnessTool(args.sandbox, call.name, call.input));
+        const text = toolResultMessage(call, outcome);
+        transcript.push({ role: 'user', content: text });
+        const callEvent = appendTo(handle, {
+          type: 'tool_call',
+          ts: ts(),
+          tool: call.name,
+          args_blob: handle.blobs.put(JSON.stringify(call.input)),
+          parent_seq: assistantEvent.event.seq,
+        });
+        appendTo(handle, { type: 'tool_result', ts: ts(), call_seq: callEvent.event.seq, output_blob: handle.blobs.put(outcome.output), error: outcome.isError ? outcome.output.slice(0, 500) : undefined });
+        focus = `${focus}\n${outcome.output.slice(-2_000)}`;
+      }
+      if (guard.endTurn()) return { status: 'stalled', finalText };
+    }
+    return { status: 'turn_cap', finalText };
+  } finally {
+    handle.close();
+  }
 }
 
 async function runNativeArm(args: ArmArgs): Promise<ArmOutput> {
@@ -1235,6 +1371,8 @@ export async function runScenario(loop: LoopOptions): Promise<LoopOutput> {
     const output =
       arm === 'native'
         ? await runNativeArm(armArgs)
+        : arm === 'prefix-retrieval'
+          ? await runPrefixRetrievalArm(armArgs)
         : arm === 'dsa'
           ? await runDsaArm(armArgs)
           : arm === 'tree-dsa'

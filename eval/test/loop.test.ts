@@ -370,6 +370,67 @@ describe('runScenario — native arm', () => {
   });
 });
 
+describe('runScenario — prefix-retrieval arm (cached prefix + recency slice + retrieval-filled window)', () => {
+  it('keeps the steering text in the system prompt, sends only the recency slice of its own transcript plus a retrieved block, records its exchanges as L0 events, and never exceeds window − reply', async () => {
+    const requests: CompletionRequest[] = [];
+    const recording: ModelProvider = {
+      id: 'recording',
+      async complete(request) {
+        requests.push(request);
+        return new ScriptedProvider([]).complete(request).catch(() => {
+          throw new Error('unreachable');
+        });
+      },
+    };
+    const scripted = new ScriptedProvider(agentReplies);
+    const provider: ModelProvider = {
+      id: 'scripted+recording',
+      async complete(request) {
+        requests.push(request);
+        return scripted.complete(request);
+      },
+    };
+    void recording;
+    const { result, finalText } = await runScenario({
+      runId: 'r-prefix',
+      scenario,
+      arm: 'prefix-retrieval',
+      agentProvider: provider,
+      options: { ...options, window: 32_768 },
+      sink: disabledSink(),
+    });
+    expect(result.status).toBe('completed');
+    expect(finalText).toBe('done');
+    expect(requests).toHaveLength(2);
+    // The cached prefix: system prompt carries the steering text every turn.
+    for (const request of requests) expect(request.system).toContain('Operator steering');
+    // Turn 2 sees the task, the recency slice (its own last exchange) and a retrieved block.
+    const second = requests[1]!.messages.map((m) => m.content);
+    expect(second[0]).toBe(scenario.task);
+    expect(second.some((c) => c.includes('write_file'))).toBe(true);
+    expect(second.some((c) => c.startsWith('[retrieved from this session]'))).toBe(true);
+    // Every request fits beside the reply reserve derived from the window.
+    for (const request of requests) {
+      const chars = (request.system ?? '').length + request.messages.reduce((n, m) => n + m.content.length, 0);
+      expect(chars / 2).toBeLessThan(32_768 * 0.95); // coarse: 2 chars/token is the pessimistic bound
+    }
+    expect(result.metrics.turns).toEqual({ modelTurns: 2, toolCalls: 1 });
+  });
+
+  it('refuses to run without a window — the recency slice and the fill have nothing to derive from', async () => {
+    const { result } = await runScenario({
+      runId: 'r-prefix-nowindow',
+      scenario,
+      arm: 'prefix-retrieval',
+      agentProvider: new ScriptedProvider(agentReplies),
+      options,
+      sink: disabledSink(),
+    });
+    expect(result.status).toBe('error');
+    expect(result.error ?? '').toMatch(/window/i);
+  });
+});
+
 describe('runScenario — context-tree arm', () => {
   /** The completion gate nudges once after tool work, so a tree run needs a second bare-text reply to finish. */
   const confirmReply: CompletionResult = {

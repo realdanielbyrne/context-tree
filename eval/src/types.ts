@@ -9,9 +9,9 @@
 import type { TokenUsage } from '@context-tree/core';
 
 /** §15's arms: raw transcript vs the tree, plus the top-k filtered variants. */
-export type Arm = 'native' | 'context-tree' | 'dsa' | 'tree-dsa';
+export type Arm = 'native' | 'context-tree' | 'dsa' | 'tree-dsa' | 'prefix-retrieval';
 
-export const ARMS: readonly Arm[] = ['native', 'context-tree', 'dsa', 'tree-dsa'] as const;
+export const ARMS: readonly Arm[] = ['native', 'context-tree', 'dsa', 'tree-dsa', 'prefix-retrieval'] as const;
 
 export function isArm(value: string): value is Arm {
   return (ARMS as readonly string[]).includes(value);

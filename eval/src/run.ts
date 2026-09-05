@@ -28,7 +28,7 @@ import { isArm, type Arm, type HarnessOptions, type RunResult, type Scenario } f
 loadWorkspaceEnv(dirname(fileURLToPath(import.meta.url)));
 
 const evalRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const ARMS_LIST = ['native', 'context-tree', 'dsa', 'tree-dsa'];
+const ARMS_LIST = ['native', 'context-tree', 'dsa', 'tree-dsa', 'prefix-retrieval'];
 
 function parsePositiveInt(value: string): number {
   const parsed = Number.parseInt(value, 10);
@@ -108,6 +108,10 @@ program
       judgeModel: opts.judgeModel,
       provider,
       maxTurns: opts.maxTurns === undefined ? Number.POSITIVE_INFINITY : parsePositiveInt(opts.maxTurns),
+      // No duration ceiling from this entry point (see --max-turns above): spend
+      // is the resource, and a stalled run ends on non-progress.
+      timeCapMs: Number.POSITIVE_INFINITY,
+      ...(window === undefined ? {} : { window }),
       costCapUsd: opts.costCapUsd === undefined ? null : Number(opts.costCapUsd),
       budgets: (() => {
         if (window !== undefined) {
