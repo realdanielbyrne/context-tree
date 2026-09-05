@@ -242,6 +242,13 @@ export const ARM_IDS = Object.freeze([
   // its own text. Identical to tree-center-filename in every other respect
   // (headlines, bare-filename centring, raw narrowed fetch, contract).
   'tree-snippet-hits',
+  // Per-turn window management (plan 2026-09-04 pm). ONE variable against
+  // `tree-snippet-hits`: the raw tail is recomputed before every provider call
+  // from window − (A+B) − appended results − reply, in the exact tokenizer, so a
+  // retrieved result displaces the OLDEST tail events instead of being cut by
+  // the append cap. The boundary is latched (never regrows) and moves one reply
+  // share ahead of need, so the tail block is rewritten once per exhaustion.
+  'tree-snippet-hits-elastic',
   // DS-STAR iter 2: tree-tail without tools. Eliminates stall failure mode
   // while keeping Zone B summaries as passive context alongside raw events.
   'tree-tail-static',
@@ -544,6 +551,7 @@ export const TREE_ARMS = Object.freeze([
   'tree-center-filename',
   'tree-search-coordinates',
   'tree-snippet-hits',
+  'tree-snippet-hits-elastic',
   'tree-tail-static',
   'tree-tail-headline',
   'tree-oracle',
@@ -1461,7 +1469,7 @@ const TOOL_SCHEMAS_TEXT = JSON.stringify(CONTEXT_TOOL_SCHEMAS);
  * | `tree-verbatim`| Zone A policy text only (Step 4, Graft 1)     | legacy  | v3       |
  * | `tree-semantic`| search ranks by meaning, not lexical (Step 5) | legacy  | v1       |
  */
-const LEGACY_SURFACE_ARMS = new Set(['tree', 'tree-wide', 'tree-static', 'tree-verbatim', 'tree-semantic', 'tree-tail', 'tree-tail-v2', 'tree-center-filename', 'tree-search-coordinates', 'tree-snippet-hits', 'tree-tail-static', 'tree-tail-headline', 'tree-oracle', 'tree-escalate', 'tree-hit-keywords']);
+const LEGACY_SURFACE_ARMS = new Set(['tree', 'tree-wide', 'tree-static', 'tree-verbatim', 'tree-semantic', 'tree-tail', 'tree-tail-v2', 'tree-center-filename', 'tree-search-coordinates', 'tree-snippet-hits', 'tree-snippet-hits-elastic', 'tree-tail-static', 'tree-tail-headline', 'tree-oracle', 'tree-escalate', 'tree-hit-keywords']);
 /**
  * The share of one turn's live headroom a search result may occupy. Search
  * locates; fetch is what carries content, so a result list that eats the space
@@ -1470,7 +1478,9 @@ const LEGACY_SURFACE_ARMS = new Set(['tree', 'tree-wide', 'tree-static', 'tree-v
  */
 const SEARCH_RESULT_HEADROOM_SHARE = 0.25;
 /** Arms whose fetch is a raw, narrowed L0 replay sized by the live headroom. */
-const RAW_NARROWED_FETCH_ARMS = new Set(['tree-tail-v2', 'tree-center-filename', 'tree-search-coordinates', 'tree-snippet-hits', 'tree-oracle', 'tree-escalate', 'tree-hit-keywords']);
+/** Arms whose search is the library's event-hit `context_search` (with or without the elastic tail). */
+const SNIPPET_HIT_ARMS = new Set(['tree-snippet-hits', 'tree-snippet-hits-elastic']);
+const RAW_NARROWED_FETCH_ARMS = new Set(['tree-tail-v2', 'tree-center-filename', 'tree-search-coordinates', 'tree-snippet-hits', 'tree-snippet-hits-elastic', 'tree-oracle', 'tree-escalate', 'tree-hit-keywords']);
 
 /**
  * Tokens shorter than this decide nothing and match everything. UNVALIDATED —
@@ -1642,7 +1652,7 @@ function toolSchemasForArm(arm) {
       return { ...tool, inputSchema: params,
         description: tool.description.replace(/Reach for it BEFORE EDITING/, 'Returns the full raw events of a branch, narrowed to the most relevant section when the branch is large. Reach for it BEFORE EDITING') };
     }).map((tool) => {
-      if (arm !== 'tree-snippet-hits' || tool.name !== CONTEXT_SEARCH) return tool;
+      if (!SNIPPET_HIT_ARMS.has(arm) || tool.name !== CONTEXT_SEARCH) return tool;
       return { ...tool, description: tool.description +
         ' Each hit here is one recorded EVENT: its `seq` and an `excerpt` of that event\'s own text. If the excerpt ' +
         'already shows the exact literal you need, answer from it. Otherwise call context_fetch with the hit\'s ' +
@@ -1753,7 +1763,7 @@ export function handlersForArm(arm) {
           ctx._hitKeywordK = [...(ctx._hitKeywordK ?? []), chosen];
           return { ok: true, data: { ...outcome.data, hits } };
         }
-        if (arm === 'tree-snippet-hits') {
+        if (SNIPPET_HIT_ARMS.has(arm)) {
           // The library as shipped since 2026-09-04: event hits with excerpts.
           const outcome = await HANDLERS[CONTEXT_SEARCH](ctx, input);
           if (!outcome.ok || !Array.isArray(outcome.data?.hits)) return outcome;
@@ -3828,6 +3838,7 @@ export async function buildArm(scenario, arm, budgets, artifacts) {
     case 'tree-center-filename':
     case 'tree-search-coordinates':
     case 'tree-snippet-hits':
+    case 'tree-snippet-hits-elastic':
     case 'tree-oracle':
     case 'tree-escalate':
     case 'tree-hit-keywords':
@@ -3840,7 +3851,7 @@ export async function buildArm(scenario, arm, budgets, artifacts) {
       const withTools = arm !== 'tree-tail-static';
       const { assembler, prompt } = buildTreePrompt(scenario, budgets, { withTools, systemText: treeSystemTextFor('tree') });
       // Keyword headlines for all tool-bearing arms: replace prose with fingerprints.
-      if (arm === 'tree-tail-v2' || arm === 'tree-center-filename' || arm === 'tree-search-coordinates' || arm === 'tree-snippet-hits' || arm === 'tree-tail-headline' || arm === 'tree-oracle' || arm === 'tree-escalate' || arm === 'tree-hit-keywords') {
+      if (arm === 'tree-tail-v2' || arm === 'tree-center-filename' || arm === 'tree-search-coordinates' || SNIPPET_HIT_ARMS.has(arm) || arm === 'tree-tail-headline' || arm === 'tree-oracle' || arm === 'tree-escalate' || arm === 'tree-hit-keywords') {
         // Keyword-list headlines: replace prose with fingerprints extracted from
         // raw events. Each headline = heading + metadata lines + keyword fingerprints.
         // No first-sentence prose — the keywords ARE the headline.
@@ -3877,9 +3888,24 @@ export async function buildArm(scenario, arm, budgets, artifacts) {
       const messagesWithTail = tailText
         ? [...treeMessages, { role: 'user', content: tailText }]
         : treeMessages;
+      const header = '# Verbatim recent events (most recent portion of the session trace)';
+      // Elastic: the tail is not part of the frozen prefix. `runOneReplicate`
+      // asks for it before every provider call with the budget left after the
+      // conversation so far, in the EXACT tokenizer; `minFrom` latches it.
+      const elastic = arm === 'tree-snippet-hits-elastic'
+        ? {
+            header,
+            tail(budget, minFrom) {
+              const from = Math.max(minFrom, truncationBoundarySeq(allEvents, scenario.blobs, Math.max(0, budget), exact));
+              const events = allEvents.filter((e) => e.seq >= from);
+              return { text: renderNativeTranscript(events, scenario.blobs), fromSeq: from, events: events.length };
+            },
+          }
+        : undefined;
       return {
         system: prompt.system,
-        messages: messagesWithTail,
+        messages: elastic === undefined ? messagesWithTail : treeMessages,
+        ...(elastic === undefined ? {} : { elastic }),
         tools: withTools ? toolSchemasForArm(arm) : [],
         assembler,
         handlers: withTools ? handlersForArm(arm) : {},
@@ -4005,6 +4031,31 @@ export async function runOneReplicate(
   let finalText = '';
   let status = 'turn_cap';
   let turns = 0;
+  // Elastic tail (`built.elastic`): `messages` holds prefix + question + appended
+  // turns and NEVER the raw tail; the tail is rebuilt per call to fill exactly
+  // what those leave, so headroom and the append cap (both computed over
+  // `messages`) budget a result against the space eviction creates — rule 5,
+  // the appender makes room, it does not cut. Legacy arms: `wire()` is `messages`.
+  const elastic = built.elastic;
+  const prefixCount = built.messages?.length ?? 0;
+  let tailFrom = 0;
+  let tailRecord = null;
+  let peakWire = 0;
+  const wire = () => {
+    if (elastic === undefined) return messages;
+    const fixed = requestTokens({ system: built.system, messages, tools: built.tools });
+    const budget = budgets.window - fixed - budgets.maxReplyTokens - REQUEST_MARGIN_TOKENS - MESSAGE_OVERHEAD_TOKENS - exact.count(`${elastic.header}\n`);
+    let tail = elastic.tail(Math.max(0, budget), tailFrom);
+    const moved = tailFrom !== 0 && tail.fromSeq > tailFrom;
+    // Evict-ahead: when the boundary has to move, move it one reply share
+    // further so the tail block is rewritten once per exhaustion, not per turn.
+    if (moved) tail = elastic.tail(Math.max(0, budget - budgets.maxReplyTokens), tailFrom);
+    tailFrom = Math.max(tailFrom, tail.fromSeq);
+    tailRecord = { tailFromSeq: tailFrom, tailEvents: tail.events, tailTokens: exact.count(tail.text), tailMoved: moved };
+    const request = [...messages.slice(0, prefixCount), { role: 'user', content: `${elastic.header}\n${tail.text}` }, ...messages.slice(prefixCount)];
+    peakWire = Math.max(peakWire, requestTokens({ system: built.system, messages: request, tools: built.tools }));
+    return request;
+  };
   const started = Date.now();
   let lastToolSig = '';
   let stallCount = 0;
@@ -4029,7 +4080,7 @@ export async function runOneReplicate(
     const result = await provider.complete({
       model,
       system: built.system,
-      messages,
+      messages: wire(),
       ...(built.tools.length > 0 ? { tools: built.tools } : {}),
       maxTokens,
     });
@@ -4064,6 +4115,7 @@ export async function runOneReplicate(
       stopReason: result.stopReason ?? null,
       // Instrumentation bundle (Step 5):
       zoneBudgets,
+      ...(tailRecord ?? { tailFromSeq: null, tailEvents: null, tailTokens: null, tailMoved: false }),
       fetchedDepths: [], // populated below per turn
       nonAgentModelCalls: 0, // leaf summarizer calls happen at ingestion, not during run
     });
@@ -4239,7 +4291,7 @@ export async function runOneReplicate(
     resultsTruncated,
     resultTruncationEstimated,
     /** What the provider was handed on the LAST turn, in cl100k — the number the 400 was about. */
-    peakRequestTokens: requestTokens({ system: built.system, messages, tools: built.tools }),
+    peakRequestTokens: elastic === undefined ? requestTokens({ system: built.system, messages, tools: built.tools }) : peakWire,
     usage,
     /** `RunResult.turns: TurnRecord[]` — same field name, same shape (§15). */
     turns: turnRecords,
@@ -4276,10 +4328,10 @@ async function runArms(scenario, options) {
   if (requestedCenterMode !== undefined && arms.length !== 1) {
     throw new Error('--retrieval-center-fingerprint-mode is a single-arm diagnostic; use tree-center-filename in paired batches');
   }
-  if (requestedCenterMode === 'bare-filename' && !['tree-center-filename', 'tree-search-coordinates', 'tree-snippet-hits'].includes(arms[0])) {
+  if (requestedCenterMode === 'bare-filename' && !['tree-center-filename', 'tree-search-coordinates', ...SNIPPET_HIT_ARMS].includes(arms[0])) {
     throw new Error('bare-filename mode requires --arm tree-center-filename or tree-search-coordinates');
   }
-  if (requestedCenterMode === 'legacy' && ['tree-center-filename', 'tree-search-coordinates', 'tree-snippet-hits'].includes(arms[0])) {
+  if (requestedCenterMode === 'legacy' && ['tree-center-filename', 'tree-search-coordinates', ...SNIPPET_HIT_ARMS].includes(arms[0])) {
     throw new Error(`${arms[0]} requires bare-filename mode`);
   }
   const reps = Number.parseInt(options.reps ?? String(REPS), 10);
@@ -4352,7 +4404,10 @@ async function runArms(scenario, options) {
   const iteration1CandidateKey = 'retrieval-center-fingerprint-mode:bare-filename';
   const iteration2CandidateKey = 'search-result-view:all-rank-coordinates@center-bare-filename';
   const iteration3CandidateKey = `search-result-view:event-snippets@k${scenario.config.retrieval.eventHits}-chars${scenario.config.retrieval.excerptChars}@center-bare-filename`;
-  const candidateKey = arms.includes('tree-snippet-hits')
+  const elasticCandidateKey = `${iteration3CandidateKey}@tail-elastic`;
+  const candidateKey = arms.includes('tree-snippet-hits-elastic')
+    ? elasticCandidateKey
+    : arms.includes('tree-snippet-hits')
     ? iteration3CandidateKey
     : arms.includes('tree-search-coordinates')
       ? iteration2CandidateKey
@@ -4404,7 +4459,7 @@ async function runArms(scenario, options) {
           trace: scenario.trace,
           rewrite: buildQueryRewriter(),
           retrievalCenterFingerprintMode:
-            requestedCenterMode ?? (['tree-center-filename', 'tree-search-coordinates', 'tree-snippet-hits'].includes(arm) ? 'bare-filename' : 'legacy'),
+            requestedCenterMode ?? (['tree-center-filename', 'tree-search-coordinates', ...SNIPPET_HIT_ARMS].includes(arm) ? 'bare-filename' : 'legacy'),
           observeFetch: (observation) => observedCtx?._fetchObservations?.push(observation),
         });
         observedCtx = { ...toolCtxBase, retriever: armRetriever, _fetchObservations: [], _searchObservations: [] };
@@ -4481,10 +4536,14 @@ async function runArms(scenario, options) {
               question: question.id,
               stratum: question.stratum,
               rep,
-              candidateKey: arm === 'tree-search-coordinates'
-                ? iteration2CandidateKey
-                : arm === 'tree-center-filename' ? iteration1CandidateKey : null,
-              retrievalCenterFingerprintMode: ['tree-center-filename', 'tree-search-coordinates'].includes(arm) ? 'bare-filename' : 'legacy',
+              candidateKey: arm === 'tree-snippet-hits-elastic'
+                ? elasticCandidateKey
+                : arm === 'tree-snippet-hits'
+                  ? iteration3CandidateKey
+                  : arm === 'tree-search-coordinates'
+                    ? iteration2CandidateKey
+                    : arm === 'tree-center-filename' ? iteration1CandidateKey : null,
+              retrievalCenterFingerprintMode: ['tree-center-filename', 'tree-search-coordinates', ...SNIPPET_HIT_ARMS].includes(arm) ? 'bare-filename' : 'legacy',
               ...r,
               ...grade,
             });

@@ -416,6 +416,66 @@ describe('window cap on appended tool results', () => {
     expect(requestTokens(requests[1]) + maxReplyTokens).toBeLessThanOrEqual(window);
     expect(result.peakRequestTokens + maxReplyTokens).toBeLessThanOrEqual(window);
   });
+
+  it('elastic tail: rebuilds the request every turn so appended results displace the oldest tail events and nothing is ever truncated', async () => {
+    const W = 16_384;
+    const reply = 800;
+    const requests: { system: string; messages: { role: string; content: string }[]; tools?: unknown[] }[] = [];
+    let turn = 0;
+    const provider = {
+      id: 'stub',
+      async complete(request: { system: string; messages: { role: string; content: string }[]; tools?: unknown[]; model: string }) {
+        requests.push(request);
+        turn += 1;
+        const usage = { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 };
+        return turn <= 3
+          ? { text: '', model: request.model, usage, toolCalls: [{ id: `c${turn}`, name: 'context_search', input: { query: `q${turn}` } }], stopReason: 'tool_use' }
+          : { text: 'final answer', model: request.model, usage, toolCalls: [], stopReason: 'end_turn' };
+      },
+    };
+    // Each result is ~28% of the window in EXACT tokens: three of them cannot
+    // coexist with a full tail, so the tail must give way and no result may be cut.
+    let payload = '';
+    while (exact.count(payload) < W * 0.28) payload += 'search hit: node n_ABC path src/foo.ts line 42. ';
+    const tailCalls: Array<{ budget: number; minFrom: number }> = [];
+    const built = {
+      system: 'system contract',
+      messages: [{ role: 'user', content: 'zone a+b prefix' }],
+      tools: [{ name: 'context_search' }],
+      handlers: { context_search: async () => ({ ok: true, data: { hits: payload } }) },
+      toolCtx: {},
+      elastic: {
+        header: '# recent events',
+        // A stub tail that fills exactly the budget it is given, from a boundary
+        // that only ever moves later (fewer events), never back.
+        tail(budget: number, minFrom: number) {
+          tailCalls.push({ budget, minFrom });
+          const fromSeq = Math.max(minFrom, 1000 - Math.max(0, Math.floor(budget / 10)));
+          const events = Math.max(0, 1000 - fromSeq);
+          return { text: 'e '.repeat(events * 5), fromSeq, events };
+        },
+      },
+    };
+    const result = await runOneReplicate(null, built, 'what is the literal?', 'stub-model', provider, { window: W, maxReplyTokens: reply });
+
+    expect(result.status).toBe('completed');
+    expect(result.resultsTruncated).toBe(0);
+    expect(requests).toHaveLength(4);
+    for (const request of requests) {
+      expect(requestTokens(request) + reply).toBeLessThanOrEqual(W);
+      // Wire order: prefix, tail, question, then appended turns in arrival order.
+      expect(request.messages[0]?.content).toBe('zone a+b prefix');
+      expect(request.messages[1]?.content.startsWith('# recent events')).toBe(true);
+      expect(request.messages[2]?.content).toBe('what is the literal?');
+    }
+    expect(requests[3]!.messages.slice(3).map((m) => m.role)).toEqual(['assistant', 'user', 'assistant', 'user', 'assistant', 'user']);
+    const froms = result.turns.map((t: { tailFromSeq: number | null }) => t.tailFromSeq);
+    expect(froms.every((f: number | null) => typeof f === 'number')).toBe(true);
+    for (let i = 1; i < froms.length; i += 1) expect(froms[i]!).toBeGreaterThanOrEqual(froms[i - 1]!);
+    expect(froms.at(-1)!).toBeGreaterThan(froms[0]!);
+    expect(result.turns.filter((t: { tailMoved: boolean }) => t.tailMoved).length).toBeGreaterThan(0);
+  });
+
 });
 
 describe('question text validity — the check that voided a batch', () => {
