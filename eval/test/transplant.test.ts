@@ -29,6 +29,8 @@ import {
   capToolResult,
   compactionSummaryValid,
   coordinateSearchData,
+  fitHitsToBudget,
+  flatEventHits,
   questionTextValid,
   requestTokens,
   runOneReplicate,
@@ -763,3 +765,38 @@ describe('verdict-side arithmetic', () => {
   });
 });
 
+
+describe('null arms — flat event hits and budget-filled retrieval', () => {
+  it('flatEventHits scores every event of the whole trace with the fetch-centring scorer and attributes each hit to the smallest phase holding it', () => {
+    const phases: Record<string, [number, number]> = { root: [1, 9], p1: [1, 4], p2: [5, 9] };
+    const ctx = {
+      handle: {
+        store: {
+          root: () => ({ id: 'root', kind: 'task', title: 'task', span_start_seq: 1, span_end_seq: 9 }),
+          nodesInCreationOrder: () => Object.entries(phases).map(([id, [a, b]]) => ({ id, kind: id === 'root' ? 'task' : 'phase', title: id, phase_type: 'implementation', span_start_seq: a, span_end_seq: b })),
+        },
+        trace: { read: ({ from }: { from: number }) => [{ seq: from, type: 'user_message', blob: `b${from}` }] },
+        blobs: { getText: (ref: string) => `event ${ref} mentions needle` },
+      },
+      retriever: {
+        findRelevantCenter(_q: string, [span]: Array<{ start: number; end: number }>) {
+          expect(span).toEqual({ start: 1, end: 9 }); // the WHOLE trace, no branch pool
+          return { centerSeq: 7, terms: [{ value: 'needle' }], scores: [{ seq: 7, score: 3 }, { seq: 2, score: 2 }, { seq: 8, score: 1 }] };
+        },
+      },
+    };
+    const hits = flatEventHits(ctx as never, 'needle', 2, 200);
+    expect(hits.map((h) => h.seq)).toEqual([7, 2]);
+    expect(hits.map((h) => h.node_id)).toEqual(['p2', 'p1']);
+    expect(hits.every((h) => typeof h.excerpt === 'string' && h.excerpt.includes('needle'))).toBe(true);
+  });
+
+  it('fitHitsToBudget keeps hits in rank order until the serialized result would exceed the budget, and reports how many it kept', () => {
+    const hits = Array.from({ length: 10 }, (_, i) => ({ node_id: `n${i}`, seq: i, excerpt: 'word '.repeat(50) }));
+    const budget = exact.count(JSON.stringify(hits.slice(0, 3))) + 5;
+    const kept = fitHitsToBudget(hits, budget);
+    expect(kept.length).toBe(3);
+    expect(kept.map((h) => h.seq)).toEqual([0, 1, 2]);
+    expect(fitHitsToBudget(hits, 0)).toEqual([]);
+  });
+});

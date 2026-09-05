@@ -63,6 +63,7 @@ import {
   ModelCallError,
   OPENROUTER_BASE_URL,
   mergeCandidates,
+  excerptAround,
   OpenRouterProvider,
   TreeRetriever,
   ZoneAssembler,
@@ -249,6 +250,18 @@ export const ARM_IDS = Object.freeze([
   // the append cap. The boundary is latched (never regrows) and moves one reply
   // share ahead of need, so the tail block is rewritten once per exhaustion.
   'tree-snippet-hits-elastic',
+  // Null arms (plan 2026-09-04 pm): is the tree layout retrieval, or only cache shape?
+  // `flat-events`: no Zone B, no branch ranking. Zone A + an elastic raw tail;
+  // search scores EVENTS over the whole trace with the same scorer that centres a
+  // fetch and returns `retrieval.eventHits` excerpts. Everything else as the
+  // elastic snippet arm.
+  'flat-events',
+  // `prefix-plus-retrieval`: the user's hypothesis. Cached prefix = contract +
+  // tool schemas + steering text (this repo's CLAUDE.md); no Zone B; a recency
+  // slice of the raw tail sized by the derived `slack` share of W; and BEFORE
+  // the model sees the question the harness runs the library's event search on
+  // it and fills the remaining window with the hits. Tools stay available.
+  'prefix-plus-retrieval',
   // DS-STAR iter 2: tree-tail without tools. Eliminates stall failure mode
   // while keeping Zone B summaries as passive context alongside raw events.
   'tree-tail-static',
@@ -1469,7 +1482,7 @@ const TOOL_SCHEMAS_TEXT = JSON.stringify(CONTEXT_TOOL_SCHEMAS);
  * | `tree-verbatim`| Zone A policy text only (Step 4, Graft 1)     | legacy  | v3       |
  * | `tree-semantic`| search ranks by meaning, not lexical (Step 5) | legacy  | v1       |
  */
-const LEGACY_SURFACE_ARMS = new Set(['tree', 'tree-wide', 'tree-static', 'tree-verbatim', 'tree-semantic', 'tree-tail', 'tree-tail-v2', 'tree-center-filename', 'tree-search-coordinates', 'tree-snippet-hits', 'tree-snippet-hits-elastic', 'tree-tail-static', 'tree-tail-headline', 'tree-oracle', 'tree-escalate', 'tree-hit-keywords']);
+const LEGACY_SURFACE_ARMS = new Set(['tree', 'tree-wide', 'tree-static', 'tree-verbatim', 'tree-semantic', 'tree-tail', 'tree-tail-v2', 'tree-center-filename', 'tree-search-coordinates', 'tree-snippet-hits', 'tree-snippet-hits-elastic', 'flat-events', 'prefix-plus-retrieval', 'tree-tail-static', 'tree-tail-headline', 'tree-oracle', 'tree-escalate', 'tree-hit-keywords']);
 /**
  * The share of one turn's live headroom a search result may occupy. Search
  * locates; fetch is what carries content, so a result list that eats the space
@@ -1479,8 +1492,12 @@ const LEGACY_SURFACE_ARMS = new Set(['tree', 'tree-wide', 'tree-static', 'tree-v
 const SEARCH_RESULT_HEADROOM_SHARE = 0.25;
 /** Arms whose fetch is a raw, narrowed L0 replay sized by the live headroom. */
 /** Arms whose search is the library's event-hit `context_search` (with or without the elastic tail). */
-const SNIPPET_HIT_ARMS = new Set(['tree-snippet-hits', 'tree-snippet-hits-elastic']);
-const RAW_NARROWED_FETCH_ARMS = new Set(['tree-tail-v2', 'tree-center-filename', 'tree-search-coordinates', 'tree-snippet-hits', 'tree-snippet-hits-elastic', 'tree-oracle', 'tree-escalate', 'tree-hit-keywords']);
+const SNIPPET_HIT_ARMS = new Set(['tree-snippet-hits', 'tree-snippet-hits-elastic', 'prefix-plus-retrieval']);
+/** Arms whose search hits are events with excerpts (the tool description addendum applies). */
+const EVENT_HIT_ARMS = new Set([...SNIPPET_HIT_ARMS, 'flat-events']);
+/** Arms with no Zone B: the prompt is Zone A plus raw events only. */
+const NO_TREE_ARMS = new Set(['flat-events', 'prefix-plus-retrieval']);
+const RAW_NARROWED_FETCH_ARMS = new Set(['tree-tail-v2', 'tree-center-filename', 'tree-search-coordinates', 'tree-snippet-hits', 'tree-snippet-hits-elastic', 'flat-events', 'prefix-plus-retrieval', 'tree-oracle', 'tree-escalate', 'tree-hit-keywords']);
 
 /**
  * Tokens shorter than this decide nothing and match everything. UNVALIDATED —
@@ -1606,6 +1623,54 @@ export async function branchSearch(ctx, input) {
 }
 
 /**
+ * `flat-events`: event hits with no branch pool. The whole trace (the task
+ * root's span) is scored by the retriever's own centring scorer; the top `k`
+ * events become hits, each attributed to the SMALLEST phase holding it so a
+ * follow-up `context_fetch` has a branch id. Same excerpt rule as the library.
+ */
+export function flatEventHits(ctx, query, k, chars) {
+  const { store, trace, blobs } = ctx.handle;
+  const root = store.root();
+  if (root === null || root === undefined) return [];
+  const span = { start: root.span_start_seq, end: root.span_end_seq ?? root.span_start_seq };
+  const center = ctx.retriever['findRelevantCenter'](query, [span]);
+  const terms = center.terms.map((term) => term.value);
+  const phases = store.nodesInCreationOrder().filter((n) => n.kind === 'phase' && n.span_start_seq !== null && n.span_start_seq !== undefined);
+  const owner = (seq) => {
+    let best = null;
+    for (const node of phases) {
+      const end = node.span_end_seq ?? node.span_start_seq;
+      if (node.span_start_seq <= seq && seq <= end) {
+        const width = end - node.span_start_seq;
+        if (best === null || width < best.width) best = { node, width };
+      }
+    }
+    return best?.node ?? root;
+  };
+  return [...center.scores]
+    .sort((a, b) => b.score - a.score || b.seq - a.seq)
+    .slice(0, k)
+    .map(({ seq, score }) => {
+      const event = [...trace.read({ from: seq, to: seq })][0];
+      const node = owner(seq);
+      return {
+        node_id: node.id, kind: node.kind, title: node.title, phase_type: node.phase_type ?? null, path: null,
+        score, seq, excerpt: event === undefined ? null : excerptAround(renderEvent(event, blobs), terms, chars),
+      };
+    });
+}
+
+/** Keep hits in rank order while their serialized form fits `budget` tokens. */
+export function fitHitsToBudget(hits, budget, tokenizer = exact) {
+  const kept = [];
+  for (const hit of hits) {
+    if (tokenizer.count(JSON.stringify([...kept, hit])) > budget) break;
+    kept.push(hit);
+  }
+  return kept;
+}
+
+/**
  * One canonical, all-rank coordinate view for a search result. The ranker has
  * already searched its configured pool; this projection never changes which
  * rows exist, their order, or their scores. It only removes the large pointer
@@ -1652,7 +1717,7 @@ function toolSchemasForArm(arm) {
       return { ...tool, inputSchema: params,
         description: tool.description.replace(/Reach for it BEFORE EDITING/, 'Returns the full raw events of a branch, narrowed to the most relevant section when the branch is large. Reach for it BEFORE EDITING') };
     }).map((tool) => {
-      if (!SNIPPET_HIT_ARMS.has(arm) || tool.name !== CONTEXT_SEARCH) return tool;
+      if (!EVENT_HIT_ARMS.has(arm) || tool.name !== CONTEXT_SEARCH) return tool;
       return { ...tool, description: tool.description +
         ' Each hit here is one recorded EVENT: its `seq` and an `excerpt` of that event\'s own text. If the excerpt ' +
         'already shows the exact literal you need, answer from it. Otherwise call context_fetch with the hit\'s ' +
@@ -1762,6 +1827,18 @@ export function handlersForArm(arm) {
           // what the first version of this arm did.
           ctx._hitKeywordK = [...(ctx._hitKeywordK ?? []), chosen];
           return { ok: true, data: { ...outcome.data, hits } };
+        }
+        if (arm === 'flat-events') {
+          const { eventHits, excerptChars } = ctx.config.retrieval;
+          const hits = flatEventHits(ctx, input?.query ?? '', eventHits, excerptChars);
+          const wanted = new Set(ctx._oracleNodeIds ?? []);
+          const answerIndex = hits.findIndex((hit) => wanted.has(hit.node_id));
+          ctx._searchObservations = [...(ctx._searchObservations ?? []), {
+            searchResultView: 'flat-events', availableHitIds: hits.map((h) => h.node_id), visibleHitIds: hits.map((h) => h.node_id),
+            availableCandidateIds: [], visibleCandidateIds: [], answerVisibleRank: answerIndex < 0 ? null : answerIndex + 1,
+            excerptChars: hits.reduce((sum, hit) => sum + (hit.excerpt?.length ?? 0), 0), excerptHits: hits.filter((h) => h.excerpt !== null).length,
+          }];
+          return { ok: true, data: { query: input?.query ?? '', path: 'flat', fallback: null, hits, candidates: [], provenance: [], unavailable: [] } };
         }
         if (SNIPPET_HIT_ARMS.has(arm)) {
           // The library as shipped since 2026-09-04: event hits with excerpts.
@@ -3834,6 +3911,48 @@ export async function buildArm(scenario, arm, budgets, artifacts) {
       );
       return { system: FLAT_SYSTEM, context, tools: [], meta: { chunks: artifact.chunks } };
     }
+    case 'flat-events':
+    case 'prefix-plus-retrieval': {
+      // No Zone B, no Zone C. Zone A as the tree arms render it (contract + tool
+      // schemas), plus steering text for the prefix arm; raw events only after that.
+      const steering = arm === 'prefix-plus-retrieval' ? readFileSync(join(REPO, 'CLAUDE.md'), 'utf8') : '';
+      const system = [treeSystemTextFor('tree'), TOOL_SCHEMAS_TEXT, ...(steering ? [`# Operator steering (CLAUDE.md)\n${steering}`] : [])].join('\n\n');
+      const allEvents = scenario.trace.all();
+      const header = '# Verbatim recent events (most recent portion of the session trace)';
+      const tailOf = (budget, minFrom = 0) => {
+        const from = Math.max(minFrom, truncationBoundarySeq(allEvents, scenario.blobs, Math.max(0, budget), exact));
+        const events = allEvents.filter((e) => e.seq >= from);
+        return { text: renderNativeTranscript(events, scenario.blobs), fromSeq: from, events: events.length };
+      };
+      if (arm === 'flat-events') {
+        return {
+          system, messages: [], tools: toolSchemasForArm(arm), handlers: handlersForArm(arm),
+          elastic: { header, tail: tailOf },
+          meta: { contractVersion: contractVersionFor(arm), legacySurface: true, steeringTokens: 0 },
+        };
+      }
+      // Recency slice: the derived `slack` share of W, in exact tokens, fixed.
+      const slice = tailOf(Math.floor(budgets.slack * budgets.ratio));
+      return {
+        system,
+        messages: slice.events > 0 ? [{ role: 'user', content: `${header}\n${slice.text}` }] : [],
+        tools: toolSchemasForArm(arm),
+        handlers: handlersForArm(arm),
+        // Proactive retrieval: run the library's event search on the question and
+        // fill what the window leaves after prefix + slice + question + reply.
+        async prefill(question, ctx, remaining) {
+          const { limit, excerptChars } = ctx.config.retrieval;
+          const result = await ctx.retriever.searchEvents(question, { limit, hits: Number.MAX_SAFE_INTEGER, excerptChars });
+          const visible = result.hits
+            .filter((h) => h.excerpt !== null)
+            .map((h) => ({ node_id: h.nodeId, kind: h.kind, title: h.title, phase_type: h.phaseType, path: h.path ?? null, branch_rank: h.branchRank, score: h.score, seq: h.seq, excerpt: h.excerpt }));
+          const label = '[retrieved for this turn] ';
+          const kept = fitHitsToBudget(visible, remaining - exact.count(label) - MESSAGE_OVERHEAD_TOKENS);
+          return { content: `${label}${JSON.stringify({ query: question, hits: kept })}`, hits: kept.length, available: visible.length };
+        },
+        meta: { contractVersion: contractVersionFor(arm), legacySurface: true, steeringTokens: exact.count(steering), sliceFromSeq: slice.fromSeq, sliceEvents: slice.events },
+      };
+    }
     case 'tree-tail-v2':
     case 'tree-center-filename':
     case 'tree-search-coordinates':
@@ -4000,6 +4119,16 @@ export async function runOneReplicate(
           { role: 'user', content: built.context },
           { role: 'user', content: question },
         ];
+  // Proactive retrieval (prefix-plus-retrieval): the search runs on the question
+  // BEFORE the model sees it and its hits land after the question, sized to what
+  // the window leaves. Recorded so a null result and an empty fill differ.
+  let prefillRecord = null;
+  if (typeof built.prefill === 'function' && built.toolCtx !== undefined) {
+    const remaining = appendHeadroom({ prefix: '', system: built.system, messages, tools: built.tools, window: budgets.window, maxReplyTokens: budgets.maxReplyTokens });
+    const filled = await built.prefill(question, built.toolCtx, Math.max(0, remaining));
+    messages.push({ role: 'user', content: filled.content });
+    prefillRecord = { hits: filled.hits, available: filled.available, tokens: exact.count(filled.content), answerLiteralInPrefill: answerLiterals.some((literal) => filled.content.includes(literal)) };
+  }
   const searchQueries = [];
   const fetchedIds = [];
   const fetchedDepths = []; // Record depth argument for each context_fetch
@@ -4273,6 +4402,7 @@ export async function runOneReplicate(
   return {
     status,
     modelTurns: turns,
+    prefill: prefillRecord,
     finalText,
     searched: searchQueries.length > 0,
     fetched: fetchedIds.length > 0,
@@ -4328,10 +4458,10 @@ async function runArms(scenario, options) {
   if (requestedCenterMode !== undefined && arms.length !== 1) {
     throw new Error('--retrieval-center-fingerprint-mode is a single-arm diagnostic; use tree-center-filename in paired batches');
   }
-  if (requestedCenterMode === 'bare-filename' && !['tree-center-filename', 'tree-search-coordinates', ...SNIPPET_HIT_ARMS].includes(arms[0])) {
+  if (requestedCenterMode === 'bare-filename' && !['tree-center-filename', 'tree-search-coordinates', ...EVENT_HIT_ARMS].includes(arms[0])) {
     throw new Error('bare-filename mode requires --arm tree-center-filename or tree-search-coordinates');
   }
-  if (requestedCenterMode === 'legacy' && ['tree-center-filename', 'tree-search-coordinates', ...SNIPPET_HIT_ARMS].includes(arms[0])) {
+  if (requestedCenterMode === 'legacy' && ['tree-center-filename', 'tree-search-coordinates', ...EVENT_HIT_ARMS].includes(arms[0])) {
     throw new Error(`${arms[0]} requires bare-filename mode`);
   }
   const reps = Number.parseInt(options.reps ?? String(REPS), 10);
@@ -4405,7 +4535,10 @@ async function runArms(scenario, options) {
   const iteration2CandidateKey = 'search-result-view:all-rank-coordinates@center-bare-filename';
   const iteration3CandidateKey = `search-result-view:event-snippets@k${scenario.config.retrieval.eventHits}-chars${scenario.config.retrieval.excerptChars}@center-bare-filename`;
   const elasticCandidateKey = `${iteration3CandidateKey}@tail-elastic`;
-  const candidateKey = arms.includes('tree-snippet-hits-elastic')
+  const nullArmKey = arms.includes('prefix-plus-retrieval') ? 'null:prefix-plus-retrieval' : arms.includes('flat-events') ? 'null:flat-events' : null;
+  const candidateKey = nullArmKey !== null
+    ? nullArmKey
+    : arms.includes('tree-snippet-hits-elastic')
     ? elasticCandidateKey
     : arms.includes('tree-snippet-hits')
     ? iteration3CandidateKey
@@ -4459,7 +4592,7 @@ async function runArms(scenario, options) {
           trace: scenario.trace,
           rewrite: buildQueryRewriter(),
           retrievalCenterFingerprintMode:
-            requestedCenterMode ?? (['tree-center-filename', 'tree-search-coordinates', ...SNIPPET_HIT_ARMS].includes(arm) ? 'bare-filename' : 'legacy'),
+            requestedCenterMode ?? (['tree-center-filename', 'tree-search-coordinates', ...EVENT_HIT_ARMS].includes(arm) ? 'bare-filename' : 'legacy'),
           observeFetch: (observation) => observedCtx?._fetchObservations?.push(observation),
         });
         observedCtx = { ...toolCtxBase, retriever: armRetriever, _fetchObservations: [], _searchObservations: [] };
@@ -4536,14 +4669,16 @@ async function runArms(scenario, options) {
               question: question.id,
               stratum: question.stratum,
               rep,
-              candidateKey: arm === 'tree-snippet-hits-elastic'
+              candidateKey: NO_TREE_ARMS.has(arm)
+                ? `null:${arm}`
+                : arm === 'tree-snippet-hits-elastic'
                 ? elasticCandidateKey
                 : arm === 'tree-snippet-hits'
                   ? iteration3CandidateKey
                   : arm === 'tree-search-coordinates'
                     ? iteration2CandidateKey
                     : arm === 'tree-center-filename' ? iteration1CandidateKey : null,
-              retrievalCenterFingerprintMode: ['tree-center-filename', 'tree-search-coordinates', ...SNIPPET_HIT_ARMS].includes(arm) ? 'bare-filename' : 'legacy',
+              retrievalCenterFingerprintMode: ['tree-center-filename', 'tree-search-coordinates', ...EVENT_HIT_ARMS].includes(arm) ? 'bare-filename' : 'legacy',
               ...r,
               ...grade,
             });
