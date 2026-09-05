@@ -29,10 +29,11 @@ instead of inheriting a number from a machine it never saw.
 trades off against metrics, the answer is the setting that wins —
 established by measurement, not chosen because it reads as reasonable.
 
-**5. Truncate once, where the answer's location is known.** Two cuts in
-one path means the second one, which does not know what the first was
-protecting, discards it. A caller that narrows content must narrow to the
-budget the appending caller will actually enforce. Measured: an append
+**5. Truncate once, where the answer's location is known — and the appender makes room, it
+does not cut.** Two cuts in one path means the second one, which does not know what the first
+was protecting, discards it. A caller that narrows content must narrow to the budget the
+appending caller will actually enforce, and that budget is the space lower-value content can
+yield (the raw tail, then already-seen results), not what happens to be left after it. Measured: an append
 cap keeps the head and drops the tail, so a relevance-centred band that
 arrives over budget loses the very section it was centred on
 (`ds-star-multi-index-report.md` §5).
@@ -98,11 +99,13 @@ decide how much to summarize
   a later edit marks its leaf stale; staleness travels to ancestors only
   compose the root from leaf headlines; newest kept whole, older fold to one line
 
-assemble
+assemble (every turn)
   Zone A: the contract, frozen; tool schemas as the API parameter
   Zone B: root + branch headlines + summaries, creation order, to budget
   Zone C: the active branch's raw detail, to budget
-  fill remaining headroom with raw recent events from the trace tail
+  fill remaining headroom with raw recent events from the trace tail — recomputed each turn
+    from what A + B + appended results + reply leave; the boundary is latched (never regrows)
+    and moves one reply share ahead of need, so the tail block is rewritten once per exhaustion
 
 retrieve on demand
   search: rank branches by fingerprint-enriched summaries (the pool)
@@ -118,11 +121,13 @@ retrieve on demand
   peek: a raw excerpt
   annotate: record a note
 
-append a result                                    [harness-only today, see note]
+append a result
   results land in the transcript tail, never in the cached prefix
-  cap the appended result to the headroom left THIS turn, measured, not estimated
-  the cap KEEPS THE HEAD and drops the tail, so a band centred on the answer
-    loses the answer if it arrives over budget
+  the appender makes room, it does not cut: when A + B + C + tail + reply exceed W,
+    the raw tail yields first, then the OLDEST already-seen results (D6 — consumed),
+    then Zone C events oldest-first; a result appended since the last send never leaves
+  only a result larger than the whole remaining window is cut, and the cut KEEPS THE HEAD
+    [cap is harness-only; eviction ships in `ZoneAssembler.assemble`, see note]
 ```
 
 **Two notes a porting host needs before implementing the block above.**
@@ -143,6 +148,16 @@ surface they were measured on. Evidence: at W=131,072 on GLM 5.3 Flash, n=5, one
 against 6/25 for the same stack with coordinate hits, in one batch, every success answered with
 zero fetches, −54% uncached input over completed runs (−59% over all rows)
 (`ds-star-fable-interface-report.md` §7). One store, one model, one window: see that report's §9.
+
+*Window enforcement is in the library; the append cap is not.* `ZoneAssembler.assemble` evicts
+oldest seen ephemeral tail entries, then Zone C events, when `A+B+C+tail+reply > window`, and
+reports both (`evictedFromTail`, `droppedFromZoneC`); it acts only when the host supplies a
+window (`HarnessOptions.window` in the live loop). The elastic raw tail, the evict-ahead quantum
+and the append cap live in `eval/scripts/transplant.mjs` (`tree-snippet-hits-elastic`, `wire()`).
+Replayed offline over 118 recorded runs at W=131,072 (`elastic-tail-killgate.mjs`): overflows 0;
+truncated appends 9/435 against 198 recorded, the 9 being results larger than the whole remaining
+window; 76/186 previously cut literals arrive whole; the tail moved on 63 turns at ~52k fresh
+tokens each. Live measurement pending (journal 00:45).
 
 *The grep merge is not RRF.* `mergeWithGrep` adds `count / maxGrepScore / (RRF_K + 1)` to
 nodes the lexical pass already returned and skips any node it did not
@@ -180,6 +195,7 @@ found in code and missing here as a defect in this table, not a licence.
 | edit-argument cap | **derived on one store** (512 bytes when post-state exists); cross-host unvalidated | both alternatives measured |
 | reply allowance | **derived** (`window − prompt`, per turn) | arithmetic, untested live |
 | window below the host's own system prompt | **boundary** — a 60,903-token production system prompt (Fable 5.1, measured) makes W ≤ 65,536 a cell no real host occupies; the eval's small windows were starving the model, not measuring the algorithm | the host's prompt size, measured, subtracted from W |
+| tail eviction quantum (evict-ahead) | **derived** (one reply share of W, *harness*) — the boundary moves one reply reserve further than needed so the tail block is rewritten once per exhaustion, not per turn | `maxReplyTokens`, itself derived from W |
 | reply headroom | **derived** when the host reports a max or one is measured; the fallback is `ZONE_FRACTIONS.reply` = 0.05, which the code's own comment calls "a guess in exactly the way rule 2 forbids" — so **unvalidated** whenever the fallback fires | the model — rule 3 |
 | tool-to-phase map | **host**. The library default `DEFAULT_TOOL_PHASE` has **20** entries; the 8 is this repository's own override. Unknown → "other" | the harness |
 | contract version | **host** (v1 default, v2/v3 registered) | the model |
@@ -218,11 +234,11 @@ measurement, would be worth more than another boundary condition.
 | No embedder | Beam search fallback — tested |
 | Search ranks wrong branch | Fingerprints + grep raised offline top-3 sharply, but the rate is set-dependent (10/12, 3/5, 5/5 on the three sets) and the live score did not move. Not "fixed". Ranking was never the deep set's constraint: with the same ranks, selection went 5/5 → 0/5 on a display change alone (see "label vs payload"). |
 | Tail covers the answerable content (W ≥ answer depth) | **Found 2026-09-03.** The tree adds no value when the raw tail already contains the answer — tool-use overhead (15-20K tokens per question) is a net loss. The tree earns its keep only in the overflow regime: sessions where the trace exceeds the window and answers lie outside the tail. Measured 2026-09-04 on this store: the deep set is overflow up to an effective W ≈ 150k (5/5 at 131,072; 1/5 at 200,000; 0/5 at 270,000). |
-| Headroom at the first tool turn | ~8-9k tokens at W=65,536 versus ~18k at W=131,072 (A2). At the smaller figure a 20-hit full-surface search list (6-7k) leaves nothing for a fetch; at the larger one two such searches still exhaust it (qo01, iteration 2). The list's cost, not the window, is what binds. |
+| Headroom at the first tool turn | ~8-9k tokens at W=65,536 versus ~18k at W=131,072 (A2) — and neither was a reservation: the tail was sized to fill `W − prompt − reply`, so the headroom was the heuristic-vs-exact tokenizer gap (ratio 0.851). With the elastic tail what binds is the tail's remaining length, not the list's cost: 198 → 9 truncated appends in replay. |
 | A search hit as a label vs as a payload | **Measured both ways 2026-09-04 at W=131,072.** Full-surface hits select the rank-7 branch first 5/5 and spend ~6.5k tokens per search; compact coordinates spend ~1.3k and select a distractor 5/5; event excerpts (~1.7k, content included) answered 15/25 with zero fetches. The unit the model is shown decides selection AND delivery. |
 | Overflow regime, ranking made perfect | Recovers most of the loss on one question set and under half on another. Set-dependent; no single figure ports. |
 | A branch larger than W | Fetch returns a band, not the branch. Whether the band holds the answer depends on the query, not the rank — a branch can be ranked first, fetched, and still deliver nothing. Gate: `delivery-killgate.mjs`. |
-| Perfect selection, large headroom | Fewer hits leave more headroom, so the fetch requests a wider band, overruns, and the append cap re-cuts it. Truncation is anti-correlated with hit-list size. |
+| Perfect selection, large headroom | Fewer hits leave more headroom, so the fetch requests a wider band, overruns, and the append cap re-cuts it. Truncation was anti-correlated with hit-list size under the static tail; under the elastic tail a band is cut only when it exceeds the whole remaining window (9/435 in replay). |
 | A search hit rendered without its ranking evidence | Hits render on title plus `meta.files`/`meta.symbols`, routinely empty for a phase node, so the fingerprints the hit was ranked on never reach the model. Attaching the matched fingerprints does **not** repair selection and costs input tokens. Open. |
 | Fingerprint set used as a keyword list | Not one — entries may be whole slabs of source. Rank by the query's share of a fingerprint's own tokens. Bites overlap-ranked consumers only; Zone B headlines checked clean. |
 | Facet index with high-cardinality key | Cheap-unit economics fail. 66 file / 311 command entries cost 2.7K / 7.5K tokens; 3,969 line entries cost 77K — as much as the content, so "return more candidates" is unavailable and ranking binds again. |
@@ -342,8 +358,18 @@ so the negative result is not rebuilt).
 | 2026-09-03 pm | Two cuts in the fetch path collapsed to one; a chars-vs-tokens magic number (×0.85) replaced by an injected tokenizer; the halved build-time narrowing budget replaced by the live per-call headroom |
 | 2026-09-04 | Compact coordinate display retired; the search UNIT changed from branch to event in the measured arm, which removes the second stage for most questions (fetches 1.42 → 0.05 per run) — one stanza does the work two did |
 | 2026-09-04 pm | Event-hit search shipped in `packages/`; harness-local copy deleted; the two sizes moved from constants to `retrieval.eventHits` / `retrieval.excerptChars` (config, still host values); §19 Q2 decided in `docs/IMPLEMENTATION_PLAN.md` |
+| 2026-09-05 | The append cap stops being the mechanism: the window is enforced by eviction (tail, then seen results, then Zone C events) in one place per turn; the tail-fill line in `assemble` becomes per-turn and latched instead of build-once |
 
 ## Change log
+
+- **2026-09-05 00:50** — Per-turn window management (plan `squishy-inventing-cloud`). Library:
+  `ZoneAssembler` enforces a supplied window by eviction (seen ephemeral tail entries, then Zone C
+  events), reported, cache-neutral (simulator: A and B survive, cacheWrite 0). Harness: elastic raw
+  tail, latched, evict-ahead by one reply share; seen appended results evicted as the last valve;
+  null arms `flat-events` and `prefix-plus-retrieval`. Rule 5 extended ("the appender makes room, it
+  does not cut"); Tier 1 `assemble`/`append` stanzas rewritten; Tier 2 +1 derived row; two boundary
+  rows corrected (the small-window "headroom" was the tokenizer gap, not a reservation). Replay
+  gate numbers above; live results pending.
 
 - **2026-09-04 14:40** — Library port. `context_search` now returns event hits (Tier 1 `search`
   stanza rewritten to what ships; the "MEASURED" line is gone). Events are attributed to the most

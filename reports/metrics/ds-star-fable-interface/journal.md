@@ -303,3 +303,74 @@ so the null arms are primary for the Q&A regime and the user's hypothesis is tes
   excerpt-window miss).
 - Provenance audit extended: elastic arms' turn-1 tail included in the prompt view; a row whose
   prefill carried the literal is `earned-prompt`. Existing cells unchanged (30/50 snippet-hits).
+
+## Live batch, pre-registered (00:45) — plan §2c
+
+Cell: W=131,072, `questions-deep.json`, n=5, `z-ai/glm-5.3-flash`, one batch, code epoch = the
+commit above. Arms: `tree-snippet-hits` (static tail, the baseline), `tree-snippet-hits-elastic`,
+`flat-events`, `prefix-plus-retrieval`. Command:
+`node eval/scripts/transplant.mjs --phase run --scenario s1 --window 131072 --arm tree-snippet-hits,tree-snippet-hits-elastic,flat-events,prefix-plus-retrieval --questions-file questions-deep.json --reps 5 --model z-ai/glm-5.3-flash`
+Pre-registered (deep only, nothing exploratory):
+- Hard: elastic arm has 0 appended-result truncations while its tail had events (`turns[].tailEvents`
+  > 0 at the previous send) — the gate's EG2 property, live.
+- Elastic ≥ snippet-hits − 1/25 (non-inferiority; the mechanism is about effort, not selection).
+  Report uncached and cache-read input per arm: expect ≈ 2× uncached on runs where the tail moved.
+- flat-events within ±2/25 of elastic ⇒ Zone B and branch ranking are inert for this task class.
+- prefix-plus-retrieval ≥ elastic ⇒ proactive fill leads; also record `prefill.answerLiteralInPrefill`
+  and how often the model still called a tool.
+- Escalation: if any decisive pair lands within ±2, raise n to 10 for all four arms once.
+- Mechanism fields read before any verdict: `tailMoved`, `evictedResults`, `resultsTruncated`,
+  `prefill.*`, fetches per run, provenance audit.
+
+## Step 8 built (00:55-01:10) — `prefix-retrieval` arm in the live task loop (7713029)
+
+`eval/src/loop.ts` `runPrefixRetrievalArm`: cached prefix = native system prompt + tool schemas
++ `CLAUDE.md` (1,751 tokens); per turn: task, a `[retrieved from this session]` block of event
+excerpts scored over the run's own L0 root span for the model's current focus and filled to
+`W − prefix − slice − reply`, then a recency slice of its latest exchanges within the derived
+`slack` share (13,107 tokens at W=131,072; the last exchange always kept). Exchanges appended to
+L0 as in the tree arm; no summaries. Refuses without `options.window`. `run.ts` passes `--window`
+and sets `timeCapMs`, which cleared the old build error — `pnpm build` is clean for the first
+time this week. Zero-token gate: turn-1 request ≈ 2.4k tokens for sw-1 and sw-2, fits.
+Smoke (GLM 5.3 Flash, sw-1, cap $0.30, run id `step8-smoke-glm`) launched to prove the arm
+end-to-end before the Sonnet 5 batch.
+
+**Smoke result (00:03):** `prefix-retrieval` on sw-1-jsonc, GLM 5.3 Flash: completed, hidden tests
+pass (success=true), 12 turns, 17 tool calls, 108,409 tokens (89,262 in / 19,147 out), $0.0115.
+The arm runs end to end (`eval/results/step8-smoke-glm/`).
+
+## Step 8 live batch, pre-registered (00:05) — task completion, Sonnet 5
+
+Arms `native` (EVAL_NATIVE_CACHE=1, the fair transcript baseline), `context-tree` (current default,
+with `--window` so the assembler enforces it), `prefix-retrieval`; scenarios sw-1-jsonc and
+sw-2-multimod (`--benchmarks deepswe-agents-last-exam --limit 2`); W=131,072; model `claude-sonnet-5`
+for agent and summarizers; judge `claude-sonnet-5` too (command judges do not call the model);
+`--cost-cap-usd 1.0` per run. n=3 first (`step8-sonnet-r1..r3`, 18 runs, est. $5-8), escalating to
+n=5 only if the decisive pair lands within one success per scenario. Pre-registered: success rate
+per scenario (primary), then turns, total tokens, cache-read/write per arm. If prefix-retrieval
+matches the tree's success at fewer tokens, Zone B is retired to a caching-only role; if it loses,
+the record's boundedness advantage stands and steps 2a/2b are the fix.
+Command per rep: `EVAL_NATIVE_CACHE=1 node eval/dist/run.js --benchmarks deepswe-agents-last-exam --arms native,context-tree,prefix-retrieval --limit 2 --window 131072 --model claude-sonnet-5 --leaf-model claude-haiku-4-5-20251001 --root-model claude-sonnet-5 --judge-model claude-sonnet-5 --cost-cap-usd 1.0 --run-id step8-sonnet-rN --no-langfuse`
+
+## Four-arm Q&A batch — result (00:12; $0.368; 100 rows; file
+`results/run-W131072-tree-snippet-hits+tree-snippet-hits-elastic+flat-events+prefix-plus-retrieval-questions-deep-q9ebc3150-c1165171b8a30-n5-z-ai_glm-5.3-flash.json`, code d5a9f4f)
+
+| arm | earned | qo01 qo02 qo03 qo04 qo05 | completed / provider error | median turns | no-tool runs | wins w/o fetch | uncached input | cache-read | truncated appends |
+|---|---|---|---|---|---|---|---|---|---|
+| tree-snippet-hits (static tail) | 16/25 | 5 1 5 5 0 | 24 / 1 | 2 | 5 | 15 | 405,170 | 5,559,552 | 2 |
+| tree-snippet-hits-elastic | 16/25 | 3 1 5 5 2 | 19 / 6 | 2 | 3 | 15 | 224,814 | 4,239,360 | **0** |
+| flat-events (no Zone B) | 15/25 | 3 1 5 5 1 | 20 / 5 | 2 | 4 | 14 | 469,196 | 4,126,464 | 0 |
+| **prefix-plus-retrieval** | **25/25** | 5 5 5 5 5 | **25 / 0** | **1** | **20** | 20 | 488,826 | 1,428,480 | 0 |
+
+Provenance audit: every success earned; prefix-plus-retrieval 20/25 `earned-prompt` (the prefill
+carried the literal: hits median 23, 6,879 tokens) and 5/25 via the model's own search/fetch.
+Pre-registered verdicts: elastic hard gate PASS (0 truncations); elastic ≥ snippet − 1 → 16 vs 16
+PASS at 44% less uncached input per completed run; flat-events within ±2 of elastic → 15 vs 16 →
+**Zone B and branch ranking are inert for this task class**; prefix-plus-retrieval ≥ elastic →
+**25 vs 16, proactive fill leads**, with no provider empty-turn failures (its requests are ~20-40k
+tokens, not 105-125k) and a 1-turn median.
+Pre-mortem: qo05 favours the prefix arm because its 13k recency slice excludes the seq-329
+distractor the tail arms carry (instrument, plan §1); excluding qo05 it is still 20/20 vs 14/20
+(elastic) and 16/20 (static). The elastic arm's 6 provider errors (vs 1 for static) are GLM's
+empty-turn failure at ~110-125k prompts, not a mechanism difference; completed-conditional it is
+16/19 vs 16/24.
