@@ -1,0 +1,1790 @@
+[
+  {
+    "runId": "step8-sonnet-r1",
+    "benchmark": "deepswe-agents-last-exam",
+    "scenarioId": "sw-1-jsonc",
+    "arm": "native",
+    "model": "claude-sonnet-5",
+    "costByModel": [
+      {
+        "model": "claude-sonnet-5",
+        "calls": 17,
+        "usage": {
+          "input": 23,
+          "output": 7277,
+          "cacheRead": 58670,
+          "cacheWrite": 8913
+        },
+        "usd": 0.1068325
+      }
+    ],
+    "status": "completed",
+    "success": true,
+    "judge": {
+      "success": true,
+      "score": 1,
+      "detail": "--- exit 0 ---\n--- stdout ---\ncase 0: ok\ncase 1: ok\ncase 2: ok\ncase 3: ok\ncase 4: ok\ncase 5: ok\ncase 6: ok\ncase 7: ok\ncase 8: ok\ncase 9: ok\nexample: ok\nall pass\n\n--- stderr ---\n"
+    },
+    "metrics": {
+      "tokens": {
+        "input": 23,
+        "output": 7277,
+        "cacheRead": 58670,
+        "cacheWrite": 8913,
+        "total": 74883
+      },
+      "turns": {
+        "modelTurns": 17,
+        "toolCalls": 22
+      },
+      "speed": {
+        "wallMs": 196166,
+        "p50TurnMs": 2226,
+        "p95TurnMs": 18512,
+        "outputTokensPerSec": 37.09613286706157
+      },
+      "costUsd": 0.1068325,
+      "batching": {
+        "trailingBareTurns": 1,
+        "gateFired": true,
+        "gateRescued": false,
+        "callsPerToolUsingTurn": 1.375,
+        "callsPerTurn": 1.2941176470588236,
+        "writesPerWriteBearingTurn": 1,
+        "maxReadBatch": 3,
+        "maxWriteBatch": 1,
+        "runCommandOnlyTurns": 8
+      },
+      "lazyCrossed": false,
+      "finalTextChars": 2746
+    },
+    "turns": [
+      {
+        "index": 0,
+        "latencyMs": 1867,
+        "usage": {
+          "input": 1,
+          "output": 101,
+          "cacheRead": 0,
+          "cacheWrite": 1376
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 1,
+        "latencyMs": 1806,
+        "usage": {
+          "input": 1,
+          "output": 76,
+          "cacheRead": 1376,
+          "cacheWrite": 41
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 2,
+        "latencyMs": 1949,
+        "usage": {
+          "input": 1,
+          "output": 188,
+          "cacheRead": 1417,
+          "cacheWrite": 65
+        },
+        "toolCalls": [
+          "read_file",
+          "read_file",
+          "read_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 3,
+        "latencyMs": 2226,
+        "usage": {
+          "input": 1,
+          "output": 168,
+          "cacheRead": 1482,
+          "cacheWrite": 409
+        },
+        "toolCalls": [
+          "write_file",
+          "read_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 4,
+        "latencyMs": 1691,
+        "usage": {
+          "input": 2,
+          "output": 84,
+          "cacheRead": 1891,
+          "cacheWrite": 97
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 5,
+        "latencyMs": 5918,
+        "usage": {
+          "input": 1,
+          "output": 745,
+          "cacheRead": 1988,
+          "cacheWrite": 386
+        },
+        "toolCalls": [
+          "write_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 6,
+        "latencyMs": 1816,
+        "usage": {
+          "input": 2,
+          "output": 102,
+          "cacheRead": 2374,
+          "cacheWrite": 54
+        },
+        "toolCalls": [
+          "read_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 7,
+        "latencyMs": 1428,
+        "usage": {
+          "input": 2,
+          "output": 74,
+          "cacheRead": 2428,
+          "cacheWrite": 69
+        },
+        "toolCalls": [
+          "read_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 8,
+        "latencyMs": 1907,
+        "usage": {
+          "input": 2,
+          "output": 112,
+          "cacheRead": 2497,
+          "cacheWrite": 69
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 9,
+        "latencyMs": 18512,
+        "usage": {
+          "input": 1,
+          "output": 2161,
+          "cacheRead": 2566,
+          "cacheWrite": 675
+        },
+        "toolCalls": [
+          "write_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 10,
+        "latencyMs": 2887,
+        "usage": {
+          "input": 2,
+          "output": 134,
+          "cacheRead": 3241,
+          "cacheWrite": 58
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 11,
+        "latencyMs": 2770,
+        "usage": {
+          "input": 1,
+          "output": 145,
+          "cacheRead": 3299,
+          "cacheWrite": 2077
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 12,
+        "latencyMs": 12124,
+        "usage": {
+          "input": 1,
+          "output": 1544,
+          "cacheRead": 5376,
+          "cacheWrite": 389
+        },
+        "toolCalls": [
+          "edit_file",
+          "edit_file",
+          "edit_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 13,
+        "latencyMs": 4581,
+        "usage": {
+          "input": 2,
+          "output": 301,
+          "cacheRead": 5765,
+          "cacheWrite": 195
+        },
+        "toolCalls": [
+          "read_file",
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 14,
+        "latencyMs": 2138,
+        "usage": {
+          "input": 1,
+          "output": 198,
+          "cacheRead": 5960,
+          "cacheWrite": 2502
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 15,
+        "latencyMs": 2279,
+        "usage": {
+          "input": 1,
+          "output": 196,
+          "cacheRead": 8462,
+          "cacheWrite": 86
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 16,
+        "latencyMs": 10033,
+        "usage": {
+          "input": 1,
+          "output": 948,
+          "cacheRead": 8548,
+          "cacheWrite": 365
+        },
+        "toolCalls": [],
+        "stopReason": "end_turn"
+      }
+    ],
+    "startedAt": "2026-09-05T05:04:19.896Z",
+    "finishedAt": "2026-09-05T05:07:36.062Z"
+  },
+  {
+    "runId": "step8-sonnet-r1",
+    "benchmark": "deepswe-agents-last-exam",
+    "scenarioId": "sw-1-jsonc",
+    "arm": "context-tree",
+    "model": "claude-sonnet-5",
+    "costByModel": [
+      {
+        "model": "claude-sonnet-5",
+        "calls": 12,
+        "usage": {
+          "input": 27030,
+          "output": 7542,
+          "cacheRead": 45178,
+          "cacheWrite": 8946
+        },
+        "usd": 0.1608806
+      },
+      {
+        "model": "claude-haiku-4-5-20251001",
+        "calls": 5,
+        "usage": {
+          "input": 6820,
+          "output": 1589,
+          "cacheRead": 0,
+          "cacheWrite": 0
+        },
+        "usd": 0.014765
+      }
+    ],
+    "status": "completed",
+    "success": true,
+    "judge": {
+      "success": true,
+      "score": 1,
+      "detail": "--- exit 0 ---\n--- stdout ---\ncase 0: ok\ncase 1: ok\ncase 2: ok\ncase 3: ok\ncase 4: ok\ncase 5: ok\ncase 6: ok\ncase 7: ok\ncase 8: ok\ncase 9: ok\nexample: ok\nall pass\n\n--- stderr ---\n"
+    },
+    "metrics": {
+      "tokens": {
+        "input": 18138,
+        "output": 3563,
+        "cacheRead": 45178,
+        "cacheWrite": 8946,
+        "total": 75825
+      },
+      "turns": {
+        "modelTurns": 8,
+        "toolCalls": 8
+      },
+      "speed": {
+        "wallMs": 93041,
+        "p50TurnMs": 2213,
+        "p95TurnMs": 7560,
+        "outputTokensPerSec": 38.29494523919563
+      },
+      "costUsd": 0.1756456,
+      "batching": {
+        "trailingBareTurns": 2,
+        "gateFired": true,
+        "gateRescued": false,
+        "callsPerToolUsingTurn": 1.3333333333333333,
+        "callsPerTurn": 1,
+        "writesPerWriteBearingTurn": 1,
+        "maxReadBatch": 2,
+        "maxWriteBatch": 1,
+        "runCommandOnlyTurns": 3
+      },
+      "lazyCrossed": false,
+      "finalTextChars": 1942
+    },
+    "turns": [
+      {
+        "index": 0,
+        "latencyMs": 1661,
+        "usage": {
+          "input": 515,
+          "output": 92,
+          "cacheRead": 0,
+          "cacheWrite": 5313
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 1,
+        "latencyMs": 1687,
+        "usage": {
+          "input": 651,
+          "output": 114,
+          "cacheRead": 5313,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "read_file",
+          "read_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 2,
+        "latencyMs": 6086,
+        "usage": {
+          "input": 1072,
+          "output": 771,
+          "cacheRead": 5313,
+          "cacheWrite": 1456
+        },
+        "toolCalls": [
+          "write_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 3,
+        "latencyMs": 1902,
+        "usage": {
+          "input": 2072,
+          "output": 137,
+          "cacheRead": 6769,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "read_file",
+          "read_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 4,
+        "latencyMs": 2213,
+        "usage": {
+          "input": 2435,
+          "output": 124,
+          "cacheRead": 5313,
+          "cacheWrite": 2177
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 5,
+        "latencyMs": 7560,
+        "usage": {
+          "input": 2721,
+          "output": 835,
+          "cacheRead": 7490,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 6,
+        "latencyMs": 7011,
+        "usage": {
+          "input": 3924,
+          "output": 745,
+          "cacheRead": 7490,
+          "cacheWrite": 0
+        },
+        "toolCalls": [],
+        "stopReason": "end_turn"
+      },
+      {
+        "index": 7,
+        "latencyMs": 5157,
+        "usage": {
+          "input": 4748,
+          "output": 745,
+          "cacheRead": 7490,
+          "cacheWrite": 0
+        },
+        "toolCalls": [],
+        "stopReason": "end_turn"
+      }
+    ],
+    "startedAt": "2026-09-05T05:07:36.065Z",
+    "finishedAt": "2026-09-05T05:09:09.106Z"
+  },
+  {
+    "runId": "step8-sonnet-r1",
+    "benchmark": "deepswe-agents-last-exam",
+    "scenarioId": "sw-1-jsonc",
+    "arm": "prefix-retrieval",
+    "model": "claude-sonnet-5",
+    "costByModel": [
+      {
+        "model": "claude-sonnet-5",
+        "calls": 7,
+        "usage": {
+          "input": 23177,
+          "output": 2963,
+          "cacheRead": 22032,
+          "cacheWrite": 3672
+        },
+        "usd": 0.0895704
+      }
+    ],
+    "status": "completed",
+    "success": true,
+    "judge": {
+      "success": true,
+      "score": 1,
+      "detail": "--- exit 0 ---\n--- stdout ---\ncase 0: ok\ncase 1: ok\ncase 2: ok\ncase 3: ok\ncase 4: ok\ncase 5: ok\ncase 6: ok\ncase 7: ok\ncase 8: ok\ncase 9: ok\nexample: ok\nall pass\n\n--- stderr ---\n"
+    },
+    "metrics": {
+      "tokens": {
+        "input": 23177,
+        "output": 2963,
+        "cacheRead": 22032,
+        "cacheWrite": 3672,
+        "total": 51844
+      },
+      "turns": {
+        "modelTurns": 7,
+        "toolCalls": 8
+      },
+      "speed": {
+        "wallMs": 148708,
+        "p50TurnMs": 2138,
+        "p95TurnMs": 9016,
+        "outputTokensPerSec": 19.9249536003443
+      },
+      "costUsd": 0.0895704,
+      "batching": {
+        "trailingBareTurns": 1,
+        "gateFired": true,
+        "gateRescued": false,
+        "callsPerToolUsingTurn": 1.3333333333333333,
+        "callsPerTurn": 1.1428571428571428,
+        "writesPerWriteBearingTurn": 1,
+        "maxReadBatch": 3,
+        "maxWriteBatch": 1,
+        "runCommandOnlyTurns": 3
+      },
+      "lazyCrossed": false,
+      "finalTextChars": 2798
+    },
+    "turns": [
+      {
+        "index": 0,
+        "latencyMs": 1601,
+        "usage": {
+          "input": 439,
+          "output": 102,
+          "cacheRead": 0,
+          "cacheWrite": 3672
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 1,
+        "latencyMs": 2138,
+        "usage": {
+          "input": 1298,
+          "output": 147,
+          "cacheRead": 3672,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 2,
+        "latencyMs": 1903,
+        "usage": {
+          "input": 2377,
+          "output": 160,
+          "cacheRead": 3672,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "read_file",
+          "read_file",
+          "read_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 3,
+        "latencyMs": 5112,
+        "usage": {
+          "input": 3678,
+          "output": 635,
+          "cacheRead": 3672,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "write_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 4,
+        "latencyMs": 1568,
+        "usage": {
+          "input": 4286,
+          "output": 71,
+          "cacheRead": 3672,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "read_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 5,
+        "latencyMs": 7206,
+        "usage": {
+          "input": 4589,
+          "output": 856,
+          "cacheRead": 3672,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 6,
+        "latencyMs": 9016,
+        "usage": {
+          "input": 6510,
+          "output": 992,
+          "cacheRead": 3672,
+          "cacheWrite": 0
+        },
+        "toolCalls": [],
+        "stopReason": "end_turn"
+      }
+    ],
+    "startedAt": "2026-09-05T05:09:09.112Z",
+    "finishedAt": "2026-09-05T05:11:37.820Z"
+  },
+  {
+    "runId": "step8-sonnet-r1",
+    "benchmark": "deepswe-agents-last-exam",
+    "scenarioId": "sw-2-multimod",
+    "arm": "native",
+    "model": "claude-sonnet-5",
+    "costByModel": [
+      {
+        "model": "claude-sonnet-5",
+        "calls": 30,
+        "usage": {
+          "input": 40,
+          "output": 7142,
+          "cacheRead": 124952,
+          "cacheWrite": 7423
+        },
+        "usd": 0.1150479
+      }
+    ],
+    "status": "completed",
+    "success": true,
+    "judge": {
+      "success": true,
+      "score": 1,
+      "detail": "--- exit 0 ---\n--- stdout ---\nall cases passed\n\n--- stderr ---\n"
+    },
+    "metrics": {
+      "tokens": {
+        "input": 40,
+        "output": 7142,
+        "cacheRead": 124952,
+        "cacheWrite": 7423,
+        "total": 139557
+      },
+      "turns": {
+        "modelTurns": 30,
+        "toolCalls": 36
+      },
+      "speed": {
+        "wallMs": 202297,
+        "p50TurnMs": 2007,
+        "p95TurnMs": 7149,
+        "outputTokensPerSec": 35.304527501643626
+      },
+      "costUsd": 0.1150479,
+      "batching": {
+        "trailingBareTurns": 1,
+        "gateFired": true,
+        "gateRescued": false,
+        "callsPerToolUsingTurn": 1.2413793103448276,
+        "callsPerTurn": 1.2,
+        "writesPerWriteBearingTurn": 1,
+        "maxReadBatch": 2,
+        "maxWriteBatch": 1,
+        "runCommandOnlyTurns": 9
+      },
+      "lazyCrossed": false,
+      "finalTextChars": 983
+    },
+    "turns": [
+      {
+        "index": 0,
+        "latencyMs": 1640,
+        "usage": {
+          "input": 1,
+          "output": 109,
+          "cacheRead": 0,
+          "cacheWrite": 1269
+        },
+        "toolCalls": [
+          "read_file",
+          "read_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 1,
+        "latencyMs": 3155,
+        "usage": {
+          "input": 1,
+          "output": 278,
+          "cacheRead": 1269,
+          "cacheWrite": 336
+        },
+        "toolCalls": [
+          "write_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 2,
+        "latencyMs": 1515,
+        "usage": {
+          "input": 2,
+          "output": 71,
+          "cacheRead": 1605,
+          "cacheWrite": 54
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 3,
+        "latencyMs": 2236,
+        "usage": {
+          "input": 1,
+          "output": 154,
+          "cacheRead": 1659,
+          "cacheWrite": 218
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 4,
+        "latencyMs": 3758,
+        "usage": {
+          "input": 1,
+          "output": 392,
+          "cacheRead": 1877,
+          "cacheWrite": 41
+        },
+        "toolCalls": [
+          "write_file",
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 5,
+        "latencyMs": 1959,
+        "usage": {
+          "input": 1,
+          "output": 172,
+          "cacheRead": 1918,
+          "cacheWrite": 214
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 6,
+        "latencyMs": 2178,
+        "usage": {
+          "input": 1,
+          "output": 233,
+          "cacheRead": 2132,
+          "cacheWrite": 546
+        },
+        "toolCalls": [
+          "edit_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 7,
+        "latencyMs": 1701,
+        "usage": {
+          "input": 2,
+          "output": 132,
+          "cacheRead": 2678,
+          "cacheWrite": 39
+        },
+        "toolCalls": [
+          "read_file",
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 8,
+        "latencyMs": 1603,
+        "usage": {
+          "input": 1,
+          "output": 100,
+          "cacheRead": 2717,
+          "cacheWrite": 111
+        },
+        "toolCalls": [
+          "read_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 9,
+        "latencyMs": 4134,
+        "usage": {
+          "input": 1,
+          "output": 480,
+          "cacheRead": 2828,
+          "cacheWrite": 319
+        },
+        "toolCalls": [
+          "write_file",
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 10,
+        "latencyMs": 1677,
+        "usage": {
+          "input": 1,
+          "output": 144,
+          "cacheRead": 3147,
+          "cacheWrite": 193
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 11,
+        "latencyMs": 2767,
+        "usage": {
+          "input": 1,
+          "output": 309,
+          "cacheRead": 3340,
+          "cacheWrite": 685
+        },
+        "toolCalls": [
+          "edit_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 12,
+        "latencyMs": 1635,
+        "usage": {
+          "input": 2,
+          "output": 132,
+          "cacheRead": 4025,
+          "cacheWrite": 45
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 13,
+        "latencyMs": 1461,
+        "usage": {
+          "input": 1,
+          "output": 75,
+          "cacheRead": 4070,
+          "cacheWrite": 45
+        },
+        "toolCalls": [
+          "read_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 14,
+        "latencyMs": 2341,
+        "usage": {
+          "input": 1,
+          "output": 263,
+          "cacheRead": 4115,
+          "cacheWrite": 353
+        },
+        "toolCalls": [
+          "write_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 15,
+        "latencyMs": 1600,
+        "usage": {
+          "input": 2,
+          "output": 131,
+          "cacheRead": 4468,
+          "cacheWrite": 29
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 16,
+        "latencyMs": 1991,
+        "usage": {
+          "input": 1,
+          "output": 199,
+          "cacheRead": 4497,
+          "cacheWrite": 343
+        },
+        "toolCalls": [
+          "edit_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 17,
+        "latencyMs": 1638,
+        "usage": {
+          "input": 2,
+          "output": 139,
+          "cacheRead": 4840,
+          "cacheWrite": 36
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 18,
+        "latencyMs": 1525,
+        "usage": {
+          "input": 1,
+          "output": 77,
+          "cacheRead": 4876,
+          "cacheWrite": 302
+        },
+        "toolCalls": [
+          "read_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 19,
+        "latencyMs": 4418,
+        "usage": {
+          "input": 1,
+          "output": 499,
+          "cacheRead": 5178,
+          "cacheWrite": 311
+        },
+        "toolCalls": [
+          "write_file",
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 20,
+        "latencyMs": 2007,
+        "usage": {
+          "input": 1,
+          "output": 113,
+          "cacheRead": 5489,
+          "cacheWrite": 71
+        },
+        "toolCalls": [
+          "read_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 21,
+        "latencyMs": 8115,
+        "usage": {
+          "input": 1,
+          "output": 753,
+          "cacheRead": 5560,
+          "cacheWrite": 311
+        },
+        "toolCalls": [
+          "write_file",
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 22,
+        "latencyMs": 2903,
+        "usage": {
+          "input": 2,
+          "output": 219,
+          "cacheRead": 5871,
+          "cacheWrite": 95
+        },
+        "toolCalls": [
+          "read_file",
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 23,
+        "latencyMs": 2848,
+        "usage": {
+          "input": 1,
+          "output": 194,
+          "cacheRead": 5966,
+          "cacheWrite": 458
+        },
+        "toolCalls": [
+          "read_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 24,
+        "latencyMs": 1807,
+        "usage": {
+          "input": 2,
+          "output": 92,
+          "cacheRead": 6424,
+          "cacheWrite": 92
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 25,
+        "latencyMs": 3516,
+        "usage": {
+          "input": 1,
+          "output": 298,
+          "cacheRead": 6516,
+          "cacheWrite": 368
+        },
+        "toolCalls": [
+          "read_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 26,
+        "latencyMs": 7149,
+        "usage": {
+          "input": 2,
+          "output": 786,
+          "cacheRead": 6884,
+          "cacheWrite": 68
+        },
+        "toolCalls": [
+          "edit_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 27,
+        "latencyMs": 1398,
+        "usage": {
+          "input": 2,
+          "output": 51,
+          "cacheRead": 6952,
+          "cacheWrite": 39
+        },
+        "toolCalls": [
+          "read_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 28,
+        "latencyMs": 2271,
+        "usage": {
+          "input": 2,
+          "output": 179,
+          "cacheRead": 6991,
+          "cacheWrite": 69
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 29,
+        "latencyMs": 4148,
+        "usage": {
+          "input": 1,
+          "output": 368,
+          "cacheRead": 7060,
+          "cacheWrite": 363
+        },
+        "toolCalls": [],
+        "stopReason": "end_turn"
+      }
+    ],
+    "startedAt": "2026-09-05T05:11:37.825Z",
+    "finishedAt": "2026-09-05T05:15:00.122Z"
+  },
+  {
+    "runId": "step8-sonnet-r1",
+    "benchmark": "deepswe-agents-last-exam",
+    "scenarioId": "sw-2-multimod",
+    "arm": "context-tree",
+    "model": "claude-sonnet-5",
+    "costByModel": [
+      {
+        "model": "claude-sonnet-5",
+        "calls": 33,
+        "usage": {
+          "input": 140490,
+          "output": 34264,
+          "cacheRead": 107343,
+          "cacheWrite": 21682
+        },
+        "usd": 0.6992936
+      },
+      {
+        "model": "claude-haiku-4-5-20251001",
+        "calls": 14,
+        "usage": {
+          "input": 39191,
+          "output": 9644,
+          "cacheRead": 0,
+          "cacheWrite": 0
+        },
+        "usd": 0.087411
+      }
+    ],
+    "status": "completed",
+    "success": true,
+    "judge": {
+      "success": true,
+      "score": 1,
+      "detail": "--- exit 0 ---\n--- stdout ---\nall cases passed\n\n--- stderr ---\n"
+    },
+    "metrics": {
+      "tokens": {
+        "input": 88596,
+        "output": 6948,
+        "cacheRead": 107343,
+        "cacheWrite": 21682,
+        "total": 224569
+      },
+      "turns": {
+        "modelTurns": 17,
+        "toolCalls": 22
+      },
+      "speed": {
+        "wallMs": 439650,
+        "p50TurnMs": 3349,
+        "p95TurnMs": 13861,
+        "outputTokensPerSec": 15.80348004094166
+      },
+      "costUsd": 0.7867046,
+      "batching": {
+        "trailingBareTurns": 2,
+        "gateFired": true,
+        "gateRescued": false,
+        "callsPerToolUsingTurn": 1.4666666666666666,
+        "callsPerTurn": 1.2941176470588236,
+        "writesPerWriteBearingTurn": 1.3333333333333333,
+        "maxReadBatch": 5,
+        "maxWriteBatch": 2,
+        "runCommandOnlyTurns": 7
+      },
+      "lazyCrossed": false,
+      "finalTextChars": 1076
+    },
+    "turns": [
+      {
+        "index": 0,
+        "latencyMs": 1990,
+        "usage": {
+          "input": 407,
+          "output": 118,
+          "cacheRead": 0,
+          "cacheWrite": 5313
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 1,
+        "latencyMs": 2353,
+        "usage": {
+          "input": 892,
+          "output": 278,
+          "cacheRead": 5313,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "read_file",
+          "read_file",
+          "read_file",
+          "read_file",
+          "read_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 2,
+        "latencyMs": 3733,
+        "usage": {
+          "input": 2311,
+          "output": 349,
+          "cacheRead": 5313,
+          "cacheWrite": 1481
+        },
+        "toolCalls": [
+          "write_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 3,
+        "latencyMs": 3333,
+        "usage": {
+          "input": 2916,
+          "output": 174,
+          "cacheRead": 6794,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 4,
+        "latencyMs": 2533,
+        "usage": {
+          "input": 3292,
+          "output": 247,
+          "cacheRead": 6794,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "edit_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 5,
+        "latencyMs": 2623,
+        "usage": {
+          "input": 3687,
+          "output": 193,
+          "cacheRead": 5313,
+          "cacheWrite": 2172
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 6,
+        "latencyMs": 4981,
+        "usage": {
+          "input": 3931,
+          "output": 492,
+          "cacheRead": 7485,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "write_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 7,
+        "latencyMs": 3349,
+        "usage": {
+          "input": 4680,
+          "output": 198,
+          "cacheRead": 7485,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 8,
+        "latencyMs": 13861,
+        "usage": {
+          "input": 5170,
+          "output": 1750,
+          "cacheRead": 5313,
+          "cacheWrite": 2313
+        },
+        "toolCalls": [
+          "edit_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 9,
+        "latencyMs": 3289,
+        "usage": {
+          "input": 5734,
+          "output": 183,
+          "cacheRead": 7626,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 10,
+        "latencyMs": 2788,
+        "usage": {
+          "input": 5980,
+          "output": 183,
+          "cacheRead": 7626,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 11,
+        "latencyMs": 1875,
+        "usage": {
+          "input": 6421,
+          "output": 139,
+          "cacheRead": 5313,
+          "cacheWrite": 2754
+        },
+        "toolCalls": [
+          "read_file",
+          "read_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 12,
+        "latencyMs": 7948,
+        "usage": {
+          "input": 6774,
+          "output": 1041,
+          "cacheRead": 8067,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "write_file",
+          "write_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 13,
+        "latencyMs": 5521,
+        "usage": {
+          "input": 7953,
+          "output": 635,
+          "cacheRead": 5313,
+          "cacheWrite": 3569
+        },
+        "toolCalls": [
+          "edit_file",
+          "edit_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 14,
+        "latencyMs": 3418,
+        "usage": {
+          "input": 8942,
+          "output": 194,
+          "cacheRead": 8882,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 15,
+        "latencyMs": 3852,
+        "usage": {
+          "input": 9529,
+          "output": 369,
+          "cacheRead": 5313,
+          "cacheWrite": 4080
+        },
+        "toolCalls": [],
+        "stopReason": "end_turn"
+      },
+      {
+        "index": 16,
+        "latencyMs": 4577,
+        "usage": {
+          "input": 9977,
+          "output": 405,
+          "cacheRead": 9393,
+          "cacheWrite": 0
+        },
+        "toolCalls": [],
+        "stopReason": "end_turn"
+      }
+    ],
+    "startedAt": "2026-09-05T05:15:00.126Z",
+    "finishedAt": "2026-09-05T05:22:19.776Z"
+  },
+  {
+    "runId": "step8-sonnet-r1",
+    "benchmark": "deepswe-agents-last-exam",
+    "scenarioId": "sw-2-multimod",
+    "arm": "prefix-retrieval",
+    "model": "claude-sonnet-5",
+    "costByModel": [
+      {
+        "model": "claude-sonnet-5",
+        "calls": 19,
+        "usage": {
+          "input": 116822,
+          "output": 4335,
+          "cacheRead": 66096,
+          "cacheWrite": 3672
+        },
+        "usd": 0.2993932
+      }
+    ],
+    "status": "stalled",
+    "success": false,
+    "judge": {
+      "success": false,
+      "score": 0,
+      "detail": "--- exit 1 ---\n--- stdout ---\nFAIL [numparse] parse_count(\"2.5k\") -> 2000 (want 2500)\nFAIL [numparse] parse_count(\"-1.5k\") -> -1000 (want -1500)\nFAIL [dedent] dedent_text(\"    a\n  b\n      c\") -> 'a\\n\\n  c' (want '  a\\nb\\n    c')\n3 case(s) failed\n\n--- stderr ---\n"
+    },
+    "metrics": {
+      "tokens": {
+        "input": 116822,
+        "output": 4335,
+        "cacheRead": 66096,
+        "cacheWrite": 3672,
+        "total": 190925
+      },
+      "turns": {
+        "modelTurns": 19,
+        "toolCalls": 19
+      },
+      "speed": {
+        "wallMs": 58147,
+        "p50TurnMs": 2415,
+        "p95TurnMs": 6460,
+        "outputTokensPerSec": 74.55242746831307
+      },
+      "costUsd": 0.2993932,
+      "batching": {
+        "trailingBareTurns": 0,
+        "gateFired": false,
+        "gateRescued": false,
+        "callsPerToolUsingTurn": 1,
+        "callsPerTurn": 1,
+        "writesPerWriteBearingTurn": 1,
+        "maxReadBatch": 1,
+        "maxWriteBatch": 1,
+        "runCommandOnlyTurns": 11
+      },
+      "lazyCrossed": false,
+      "finalTextChars": 0
+    },
+    "turns": [
+      {
+        "index": 0,
+        "latencyMs": 1492,
+        "usage": {
+          "input": 332,
+          "output": 77,
+          "cacheRead": 0,
+          "cacheWrite": 3672
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 1,
+        "latencyMs": 1435,
+        "usage": {
+          "input": 2076,
+          "output": 65,
+          "cacheRead": 3672,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "read_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 2,
+        "latencyMs": 2972,
+        "usage": {
+          "input": 2615,
+          "output": 297,
+          "cacheRead": 3672,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "write_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 3,
+        "latencyMs": 1699,
+        "usage": {
+          "input": 1948,
+          "output": 75,
+          "cacheRead": 3672,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 4,
+        "latencyMs": 2415,
+        "usage": {
+          "input": 3411,
+          "output": 267,
+          "cacheRead": 3672,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "edit_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 5,
+        "latencyMs": 1619,
+        "usage": {
+          "input": 2638,
+          "output": 90,
+          "cacheRead": 3672,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 6,
+        "latencyMs": 1618,
+        "usage": {
+          "input": 4333,
+          "output": 86,
+          "cacheRead": 3672,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "read_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 7,
+        "latencyMs": 4624,
+        "usage": {
+          "input": 3956,
+          "output": 472,
+          "cacheRead": 3672,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "write_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 8,
+        "latencyMs": 1782,
+        "usage": {
+          "input": 4760,
+          "output": 107,
+          "cacheRead": 3672,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 9,
+        "latencyMs": 1679,
+        "usage": {
+          "input": 6416,
+          "output": 83,
+          "cacheRead": 3672,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 10,
+        "latencyMs": 1869,
+        "usage": {
+          "input": 7736,
+          "output": 118,
+          "cacheRead": 3672,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 11,
+        "latencyMs": 6460,
+        "usage": {
+          "input": 8914,
+          "output": 535,
+          "cacheRead": 3672,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "read_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 12,
+        "latencyMs": 5294,
+        "usage": {
+          "input": 5806,
+          "output": 521,
+          "cacheRead": 3672,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "edit_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 13,
+        "latencyMs": 2886,
+        "usage": {
+          "input": 7555,
+          "output": 192,
+          "cacheRead": 3672,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 14,
+        "latencyMs": 4015,
+        "usage": {
+          "input": 10523,
+          "output": 345,
+          "cacheRead": 3672,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "edit_file"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 15,
+        "latencyMs": 2992,
+        "usage": {
+          "input": 10989,
+          "output": 121,
+          "cacheRead": 3672,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 16,
+        "latencyMs": 1884,
+        "usage": {
+          "input": 12013,
+          "output": 129,
+          "cacheRead": 3672,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 17,
+        "latencyMs": 4893,
+        "usage": {
+          "input": 12268,
+          "output": 324,
+          "cacheRead": 3672,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      },
+      {
+        "index": 18,
+        "latencyMs": 5826,
+        "usage": {
+          "input": 8533,
+          "output": 431,
+          "cacheRead": 3672,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_use"
+      }
+    ],
+    "startedAt": "2026-09-05T05:22:19.792Z",
+    "finishedAt": "2026-09-05T05:23:17.939Z"
+  }
+]

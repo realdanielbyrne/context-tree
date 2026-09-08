@@ -1,0 +1,238 @@
+[
+  {
+    "runId": "step8-smoke-glm",
+    "benchmark": "deepswe-agents-last-exam",
+    "scenarioId": "sw-1-jsonc",
+    "arm": "prefix-retrieval",
+    "model": "z-ai/glm-5.3-flash",
+    "costByModel": [
+      {
+        "model": "z-ai/glm-5.3-flash",
+        "calls": 12,
+        "usage": {
+          "input": 89262,
+          "output": 19147,
+          "cacheRead": 0,
+          "cacheWrite": 0
+        },
+        "usd": 0.0114814
+      }
+    ],
+    "status": "completed",
+    "success": true,
+    "judge": {
+      "success": true,
+      "score": 1,
+      "detail": "--- exit 0 ---\n--- stdout ---\ncase 0: ok\ncase 1: ok\ncase 2: ok\ncase 3: ok\ncase 4: ok\ncase 5: ok\ncase 6: ok\ncase 7: ok\ncase 8: ok\ncase 9: ok\nexample: ok\nall pass\n\n--- stderr ---\n"
+    },
+    "metrics": {
+      "tokens": {
+        "input": 89262,
+        "output": 19147,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 108409
+      },
+      "turns": {
+        "modelTurns": 12,
+        "toolCalls": 17
+      },
+      "speed": {
+        "wallMs": 195004,
+        "p50TurnMs": 1696,
+        "p95TurnMs": 70733,
+        "outputTokensPerSec": 98.18772948247216
+      },
+      "costUsd": 0.0114814,
+      "batching": {
+        "trailingBareTurns": 1,
+        "gateFired": true,
+        "gateRescued": false,
+        "callsPerToolUsingTurn": 1.5454545454545454,
+        "callsPerTurn": 1.4166666666666667,
+        "writesPerWriteBearingTurn": 2,
+        "maxReadBatch": 2,
+        "maxWriteBatch": 2,
+        "runCommandOnlyTurns": 5
+      },
+      "lazyCrossed": false,
+      "finalTextChars": 2422
+    },
+    "turns": [
+      {
+        "index": 0,
+        "latencyMs": 1349,
+        "usage": {
+          "input": 2558,
+          "output": 40,
+          "cacheRead": 0,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "read_file",
+          "read_file"
+        ],
+        "stopReason": "tool_calls"
+      },
+      {
+        "index": 1,
+        "latencyMs": 13878,
+        "usage": {
+          "input": 3569,
+          "output": 1338,
+          "cacheRead": 0,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_calls"
+      },
+      {
+        "index": 2,
+        "latencyMs": 901,
+        "usage": {
+          "input": 4110,
+          "output": 26,
+          "cacheRead": 0,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "read_file"
+        ],
+        "stopReason": "tool_calls"
+      },
+      {
+        "index": 3,
+        "latencyMs": 1561,
+        "usage": {
+          "input": 4264,
+          "output": 124,
+          "cacheRead": 0,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_calls"
+      },
+      {
+        "index": 4,
+        "latencyMs": 50000,
+        "usage": {
+          "input": 4527,
+          "output": 5998,
+          "cacheRead": 0,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "write_file",
+          "write_file"
+        ],
+        "stopReason": "tool_calls"
+      },
+      {
+        "index": 5,
+        "latencyMs": 1203,
+        "usage": {
+          "input": 5421,
+          "output": 40,
+          "cacheRead": 0,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "read_file",
+          "read_file"
+        ],
+        "stopReason": "tool_calls"
+      },
+      {
+        "index": 6,
+        "latencyMs": 1335,
+        "usage": {
+          "input": 7670,
+          "output": 28,
+          "cacheRead": 0,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_calls"
+      },
+      {
+        "index": 7,
+        "latencyMs": 70733,
+        "usage": {
+          "input": 9769,
+          "output": 6089,
+          "cacheRead": 0,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_calls"
+      },
+      {
+        "index": 8,
+        "latencyMs": 35697,
+        "usage": {
+          "input": 10784,
+          "output": 3699,
+          "cacheRead": 0,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "edit_file"
+        ],
+        "stopReason": "tool_calls"
+      },
+      {
+        "index": 9,
+        "latencyMs": 5147,
+        "usage": {
+          "input": 11544,
+          "output": 748,
+          "cacheRead": 0,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "edit_file",
+          "edit_file",
+          "edit_file",
+          "edit_file"
+        ],
+        "stopReason": "tool_calls"
+      },
+      {
+        "index": 10,
+        "latencyMs": 1696,
+        "usage": {
+          "input": 12777,
+          "output": 73,
+          "cacheRead": 0,
+          "cacheWrite": 0
+        },
+        "toolCalls": [
+          "run_command"
+        ],
+        "stopReason": "tool_calls"
+      },
+      {
+        "index": 11,
+        "latencyMs": 10922,
+        "usage": {
+          "input": 12269,
+          "output": 944,
+          "cacheRead": 0,
+          "cacheWrite": 0
+        },
+        "toolCalls": [],
+        "stopReason": "stop"
+      }
+    ],
+    "startedAt": "2026-09-05T05:00:04.579Z",
+    "finishedAt": "2026-09-05T05:03:19.583Z"
+  }
+]

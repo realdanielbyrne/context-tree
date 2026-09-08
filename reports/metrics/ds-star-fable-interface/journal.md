@@ -374,3 +374,17 @@ distractor the tail arms carry (instrument, plan §1); excluding qo05 it is stil
 (elastic) and 16/20 (static). The elastic arm's 6 provider errors (vs 1 for static) are GLM's
 empty-turn failure at ~110-125k prompts, not a mechanism difference; completed-conditional it is
 16/19 vs 16/24.
+
+
+## Step 8 result (01:12; Sonnet 5, W=131,072, n=3, 18 runs, $7.5 total; files copied to
+`reports/metrics/ds-star-fable-interface/step8-sonnet/`)
+
+sw-1: native 3/3 (median 22 turns, $0.118), context-tree 3/3 (8 turns, $0.208), prefix-retrieval 3/3
+(11 turns, $0.435; one run hit the $1 cap at 34 turns with 431,942 uncached input tokens — the
+retrieval fill is fresh input every turn). sw-2: native 3/3 (30 turns, $0.255), context-tree 3/3 (24
+turns, $0.943; one cap hit during root summarization), **prefix-retrieval 0/3 — stalled every
+replicate**, the last 4-6 turns of each being repeated `run_command` calls with 90-100k tokens of
+headroom left: the investigate-1 loop (an agent that cannot see what it has done re-verifies).
+Pre-registered verdict: prefix-retrieval does NOT match the tree on task completion; the record's
+boundedness advantage stands; the design needs a ledger of completed steps (candidate role for Zone
+B) before it can be a task arm. No escalation to n=5: 0/3 vs 3/3 is not within noise.

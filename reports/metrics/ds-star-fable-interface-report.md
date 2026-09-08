@@ -481,7 +481,35 @@ W = 131,072; Sonnet 5 agent; command judges. Replicates completed so far are in 
 `eval/results/step8-sonnet-r*/results.json`; the table below is filled from them when the batch
 ends (see the journal entry that supersedes this paragraph if the two disagree).
 
-<!-- 7c-table -->
+| scenario | arm | success | median turns | median total tokens | mean cost (Sonnet 5 list prices) | notes |
+|---|---|---|---|---|---|---|
+| sw-1-jsonc | native | 3/3 | 22 | 116,142 | $0.118 | one run stalled at 30 turns with tests already passing |
+| sw-1-jsonc | context-tree | 3/3 | 8 | 78,795 | $0.208 | fewest turns; cache writes 9-11k per run |
+| sw-1-jsonc | prefix-retrieval | 3/3 | 11 | 100,100 | $0.435 | one run hit the $1 cost cap at 34 turns (431,942 uncached input tokens) with tests passing |
+| sw-2-multimod | native | 3/3 | 30 | 139,557 | $0.255 | one 65-turn run re-read 1.46M cached tokens |
+| sw-2-multimod | context-tree | 3/3 | 24 | 336,206 | $0.943 | one run hit the $1 cap during root summarization, tests passing |
+| sw-2-multimod | prefix-retrieval | **0/3** | 19 | 190,925 | $0.261 | every run stalled: the last 4-6 turns are repeated `run_command` calls |
+
+Files: `reports/metrics/ds-star-fable-interface/step8-sonnet/results-r{1,2,3}.json` (copied from the
+gitignored `eval/results/step8-sonnet-r*`); smoke on GLM in `smoke-glm-results.json`.
+
+The multi-step task decides it. On sw-1 the prefix design is a peer: 3/3, fewer turns than native,
+more than the tree, and not cheaper, because everything it retrieves is fresh input every turn
+(23,000-56,000 uncached tokens per normal run against the tree's 18,000-28,000 and native's ~30, the
+rest of native being cache reads). On sw-2 it failed every replicate the same way native and the tree
+did not: after fixing one or two modules it fell into a run-command loop — the last four to six
+turns of each stalled run are `run_command` only — until the non-progress guard ended the run. It
+had 90,000 to 100,000 tokens of headroom when it stalled. The mechanism is the one the record named
+for `investigate-1`: an agent that cannot see what it has already done re-verifies instead of
+moving on. The prefix arm shows the model its last exchange and excerpts retrieved for its current
+focus; the transcript shows native everything; the tree's Zone C shows the active branch whole.
+What the prefix design lacks is not window, it is a ledger of completed steps.
+
+So the user's hypothesis splits cleanly by regime. For literal recall over a long history it is
+correct and decisive (25/25, one turn, no tool call in 20 of 25). For multi-step task work it fails
+as built, and the failure names what must be added: a compact, always-present record of what the
+run has done so far, kept inside the operating target ahead of retrieved content. That is a role
+the tree's branch summaries can fill; the deep set could never have shown it.
 
 Early reading, to be confirmed against the full table: on sw-1 all three arms pass and the prefix
 arm is cheapest (7 turns, 51,844 tokens against the tree's 8 turns, 75,825 and native's 17 turns,
@@ -556,14 +584,17 @@ summaries could play on tasks — kept inside the target, ahead of any retrieved
 | tree-search-coordinates | 5/25 | 3 | retired display |
 | truncate-tail | 0/25 | 1 | the set is overflow by construction at this window |
 
-**Task completion, Sonnet 5, W = 131,072:** see §7c and the journal for the completed table.
+**Task completion, Sonnet 5, W = 131,072, n = 3 (§7c).** sw-1: native 3/3 (22 turns), context-tree
+3/3 (8 turns), prefix-retrieval 3/3 (11 turns, most expensive). sw-2: native 3/3, context-tree 3/3,
+prefix-retrieval **0/3** (stalled in a run-command loop each time). The tree's task advantage
+stands; the prefix design needs a ledger of completed steps before it can be a task arm.
 
 **Best-performing variants to iterate on, in order.**
 
 1. **`prefix-plus-retrieval` / `prefix-retrieval`** — the Q&A leader and the user's design. Its
    two open defects are the excerpt window (qo02's literal sits outside 1,000 characters of a
    correctly ranked event) and, on multi-step tasks, the absence of a ledger of completed steps
-   (sw-2 stall). Iterate: excerpt centred on the rarest matched term or the matched line span;
+   (sw-2: 0/3, run-command loops with 90k tokens of headroom). Iterate: excerpt centred on the rarest matched term or the matched line span;
    a running "done so far" ledger inside the recency slice (the tree's branch summaries are the
    obvious source); then the soft target f of §12.
 2. **Per-turn window management (shipped in core; elastic tail in the harness)** — the mechanism

@@ -246,7 +246,7 @@ measurement, would be worth more than another boundary condition.
 | Fact needing two literals from two places | No single-entry index can serve it. Three of 17 questions; needs a join or an explicit second hop. Open. |
 | Zone B on a literal-recall task | **Inert, measured 2026-09-05.** `flat-events` (Zone A + elastic raw tail, events scored over the whole trace, no summaries, no branch ranking) 15/25 against 16/25 for the same stack with Zone B, one batch, n=5. Zone B's remaining candidate roles — a ledger of completed steps on multi-step tasks, and cache shape on long sessions — are unmeasured. |
 | Operating point of the window | The tail-filling arms run at 80-95% of W by construction; the design that scored 25/25 (`prefix-plus-retrieval`: cached prefix + recency slice + retrieval fill) runs at 15-30% and grows only when a turn needs it, and was the only arm with zero provider empty-turn failures. Next: a soft target of 25-50% of W_max, measured per task class (report §12). |
-| A design with no memory of completed steps | The prefix design stalled on sw-2 (four modules, fix in order) with 100k tokens of headroom: it sees its last exchange, not the ones before. Window size does not fix it; a compact ledger inside the target does (candidate role for Zone B). |
+| A design with no memory of completed steps | **Measured 2026-09-05 (Sonnet 5, n=3):** `prefix-retrieval` 0/3 on sw-2 (four modules, fix in order) against 3/3 for `context-tree` and `native`; every stalled run ended in 4-6 consecutive `run_command` turns with 90-100k tokens of headroom — the investigate-1 loop. On single-step sw-1 it was 3/3, a peer. Window size does not fix it; a compact ledger of completed steps inside the target does (candidate role for Zone B). |
 
 ## Measurement hazards
 
@@ -336,7 +336,8 @@ so the negative result is not rebuilt).
 - **flat-events** (no Zone B): 15/25 vs 16/25 — the null hypothesis for Zone B on this task class holds.
 - **prefix-plus-retrieval** (cached prefix + recency slice + retrieval-filled window): **25/25**, median 1
   turn, 20/25 with no tool call, 0 provider failures, lowest cache-weighted input. The Q&A leader.
-  Task-completion result on Sonnet 5 in the report §7c (sw-2 stall: no ledger of completed steps).
+  Task completion (Sonnet 5, n=3): sw-1 3/3 but not cheaper (fresh retrieval every turn); **sw-2 0/3**,
+  stalled in run-command loops — no ledger of completed steps. Not a task arm as built.
 - **Event-snippet hits** (`tree-snippet-hits`, the published-alternative port): **15/25 vs 6/25**
   in one batch (n=5, GLM 5.3 Flash, W=131,072, deep set), 15/15 successes with zero fetches,
   median 2 turns, −54% uncached input over completed runs. Measured, not default; library port pending. Two host
@@ -378,7 +379,9 @@ so the negative result is not rebuilt).
   inert); prefix-plus-retrieval 25/25 in one turn. Boundary table +3 rows (Zone B inert; operating
   point of the window; no memory of completed steps). Candidates +3. Next design recorded from the
   user: a soft target window of 25-50% of W_max with overruns allowed per turn and eviction back to
-  target once results are seen; f to be measured, not set.
+  target once results are seen; f to be measured, not set. Task completion (Sonnet 5, n=3): the tree
+  and native 3/3 on both tasks; prefix-retrieval 3/3 on sw-1, **0/3 on sw-2** (stalls) — the tree's
+  task advantage stands and Zone B's candidate role is a ledger of completed steps.
 
 - **2026-09-05 00:50** — Per-turn window management (plan `squishy-inventing-cloud`). Library:
   `ZoneAssembler` enforces a supplied window by eviction (seen ephemeral tail entries, then Zone C
