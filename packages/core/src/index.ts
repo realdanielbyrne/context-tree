@@ -32,3 +32,4 @@ export * from './assemble/index.js';
 export * from './retrieve/index.js';
 export * from './providers/index.js';
 export * from './render/index.js';
+export * from './attention/index.js';

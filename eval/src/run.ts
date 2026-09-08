@@ -17,6 +17,8 @@
 import { createProvider, loadApiKeys, resolveConfig, deriveZoneBudgets } from '@context-tree/core';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { existsSync, readFileSync } from 'node:fs';
+import { parseAttentionProfile } from './attention-loop.js';
 import { Command } from 'commander';
 import { adapterFor, BENCHMARK_IDS } from './adapters/index.js';
 import { loadWorkspaceEnv } from './env.js';
@@ -28,7 +30,7 @@ import { isArm, type Arm, type HarnessOptions, type RunResult, type Scenario } f
 loadWorkspaceEnv(dirname(fileURLToPath(import.meta.url)));
 
 const evalRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const ARMS_LIST = ['native', 'context-tree', 'dsa', 'tree-dsa', 'prefix-retrieval'];
+const ARMS_LIST = ['native', 'context-tree', 'dsa', 'tree-dsa', 'prefix-retrieval', 'attention'];
 
 function parsePositiveInt(value: string): number {
   const parsed = Number.parseInt(value, 10);
@@ -45,6 +47,8 @@ program
   .requiredOption('--benchmarks <list>', `comma-separated benchmark ids or "all" (${BENCHMARK_IDS.join(', ')})`)
   .option('--arms <list>', 'comma-separated arms', 'native,context-tree')
   .option('--scenarios-dir <dir>', 'root directory holding one subdirectory per benchmark', join(evalRoot, 'scenarios'))
+  .option('--scenario-ids <list>', 'only these comma-separated scenario ids')
+  .option('--policy-profile <file>', 'explicit experimental attention profile JSON')
   .option('--limit <n>', 'max scenarios per benchmark', parsePositiveInt)
   .option('--model <id>', 'agent model id', 'claude-sonnet-5')
   .option('--leaf-model <id>', 'context-tree leaf summarizer model', 'claude-haiku-4-5-20251001')
@@ -66,6 +70,7 @@ program
   .option('--zone-b-budget <n>', 'context-tree Zone B token budget (override derived value)')
   .option('--zone-c-budget <n>', 'context-tree Zone C token budget (override derived value)')
   .option('--cost-cap-usd <n>', 'per-run spend cap in USD')
+  .option('--token-cap <n>', 'per-run all-model token ceiling', parsePositiveInt)
   .option('--out <dir>', 'results output directory', join(evalRoot, 'results'))
   .option('--run-id <id>', 'run identifier (defaults to a timestamp)')
   .option('--keep-sandbox', 'keep per-run sandboxes and record their paths', false)
@@ -83,6 +88,9 @@ program
       if (!arms.includes(arm)) arms.push(arm);
     }
 
+    const policyProfile = opts.policyProfile === undefined ? undefined : parseAttentionProfile(JSON.parse(readFileSync(resolve(opts.policyProfile), 'utf8')));
+    if (arms.includes('attention') && policyProfile === undefined) throw new Error('--arms attention requires --policy-profile');
+    if (!['anthropic', 'openrouter'].includes(opts.provider)) throw new Error(`unknown provider ${opts.provider}`);
     const provider = opts.provider === 'openrouter' ? 'openrouter' : 'anthropic';
     const keys = loadApiKeys();
     if (provider === 'anthropic' && keys.anthropic === undefined) {
@@ -129,6 +137,8 @@ program
         };
       })(),
       keepSandbox: opts.keepSandbox === true,
+      tokenCap: opts.tokenCap,
+      policyProfile,
       temperature: opts.temperature === undefined ? null : Number(opts.temperature),
     };
     if (options.temperature != null && !(options.temperature >= 0 && options.temperature <= 1)) {
@@ -136,17 +146,23 @@ program
     }
 
     const runId = opts.runId ?? `run-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}`;
+    options.captureDir = join(resolve(opts.out), runId, 'captures');
     const results: RunResult[] = [];
     let loaded = 0;
 
     for (const benchmarkId of benchmarkIds) {
-      const dir = join(resolve(opts.scenariosDir), benchmarkId);
+      const root = resolve(opts.scenariosDir);
+      const dir = benchmarkId === 'deepswe' && existsSync(join(root, 'manifest.json')) ? root : join(root, benchmarkId);
       let scenarios: Scenario[];
       try {
         scenarios = adapterFor(benchmarkId).load(dir);
       } catch (error) {
         console.error(`[eval] skipping ${benchmarkId}: ${(error as Error).message}`);
         continue;
+      }
+      if (opts.scenarioIds !== undefined) {
+        const ids = new Set<string>(opts.scenarioIds.split(',').map((id: string) => id.trim()));
+        scenarios = scenarios.filter((scenario) => ids.has(scenario.id));
       }
       if (opts.limit !== undefined) scenarios = scenarios.slice(0, opts.limit);
       loaded += scenarios.length;
@@ -156,6 +172,7 @@ program
           process.stderr.write(`[eval] ${benchmarkId}/${scenario.id} arm=${arm} ... `);
           const { result } = await runScenario({ runId, scenario, arm, agentProvider, options, sink });
           results.push(result);
+          writeReportFiles(opts.out, runId, results, renderMarkdownReport({ runId, results, model: options.model, provider }));
           process.stderr.write(
             `${result.status} success=${result.success} tokens=${result.metrics.tokens.total} ` +
               `turns=${result.metrics.turns.modelTurns} cost=${result.metrics.costUsd.toFixed(4)}\n`,

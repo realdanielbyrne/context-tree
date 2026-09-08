@@ -806,6 +806,7 @@ describe('e2e: cache behaviour across a phase transition (D5, D6)', () => {
     zones.appendTail({ id: 'fetch:pricing', text: PRICING_V4, ephemeral: true });
     const withTail = zones.assemble({ activeNodeId: implementation.id, toolSchemasText: TOOL_SCHEMAS_TEXT });
     const warm = simulator.submit(withTail);
+    zones.acknowledgeDelivery(withTail.deliveryReceipt);
     expect(warm.survivingSegments).toEqual(['A', 'B']);
     expect(warm.cacheRead).toBe(cold.cacheWrite);
     expect(warm.divergedInZone).toBe('tail');

@@ -8,6 +8,7 @@ import { resolveConfig } from '../src/config.js';
 import {
   ConfigError,
   CostCapExceededError,
+  EmptyCompletionError,
   ModelCallError,
   type CompletionRequest,
   type TokenUsage,
@@ -206,6 +207,26 @@ describe('AnthropicProvider', () => {
 });
 
 describe('OpenRouterProvider', () => {
+  it('retains billed empty-response usage in a typed error without returning reasoning as an answer', async () => {
+    const stub = new OpenRouterStub({
+      model: 'z-ai/glm-5.3-flash',
+      choices: [{ message: { content: '  ', reasoning: 'private scratchpad' }, finish_reason: 'length' }],
+      usage: { prompt_tokens: 21, completion_tokens: 49, prompt_tokens_details: { cached_tokens: 10 } },
+    });
+    const error: unknown = await new OpenRouterProvider({ client: stub }).complete(request()).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(EmptyCompletionError);
+    expect(error).toBeInstanceOf(ModelCallError);
+    expect((error as EmptyCompletionError).usageKnown).toBe(true);
+    expect((error as EmptyCompletionError).result).toMatchObject({ text: '  ', toolCalls: [], usage: { input: 11, output: 49, cacheRead: 10, cacheWrite: 0 } });
+    expect(JSON.stringify((error as EmptyCompletionError).result)).not.toContain('private scratchpad');
+  });
+
+  it('does not label missing upstream usage as known zero usage on an empty answer', async () => {
+    const stub = new OpenRouterStub({ model: 'model', choices: [{ message: { content: '' } }] });
+    const error: unknown = await new OpenRouterProvider({ client: stub }).complete(request()).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(EmptyCompletionError);
+    expect((error as EmptyCompletionError).usageKnown).toBe(false);
+  });
   it('a reply with no content and no tool calls FAILS LOUDLY, naming the reasoning tokens that ate the budget', async () => {
     // Returning '' hands the caller a blank answer indistinguishable from a
     // real one: a batch of 180 scored runs once graded that empty string as a
@@ -331,6 +352,27 @@ describe('OpenRouterProvider', () => {
     const result = await new OpenRouterProvider({ client: stub }).complete(request());
 
     expect(result.usage).toEqual({ input: 100, output: 30, cacheRead: 900, cacheWrite: 0 });
+    expect(result.usageKnown).toBe(true);
+  });
+
+  it.each([
+    undefined, null,
+    { prompt_tokens: 10, completion_tokens: -1 },
+    { prompt_tokens: 10, completion_tokens: Number.NaN },
+    { prompt_tokens: 10, completion_tokens: 1, prompt_tokens_details: { cached_tokens: 11 } },
+  ])('preserves nonempty answers with unknown OpenRouter usage %j without billing placeholders', async (rawUsage) => {
+    const meter = new InMemoryCostMeter();
+    const provider = new MeteredProvider(new OpenRouterProvider({ client: new OpenRouterStub({
+      model: 'openai/gpt-4.1-mini', choices: [{ message: { content: 'valid answer' } }], usage: rawUsage,
+    }) }), meter);
+    const result = await provider.complete(request());
+    expect(result).toMatchObject({ text: 'valid answer', usageKnown: false });
+    expect(meter.snapshot().entries).toEqual([]);
+  });
+
+  it.each([undefined, null, { input_tokens: 10, output_tokens: -1 }])('preserves nonempty Anthropic answers when usage is incomplete %j', async (rawUsage) => {
+    const result = await new AnthropicProvider({ client: new AnthropicStub(anthropicResponse({ usage: rawUsage })) }).complete(request());
+    expect(result).toMatchObject({ text: 'ok', usageKnown: false });
   });
 
   it('reports zero cache counters when the upstream returns none, because an unknown reported as zero is honest and an invented number is not', async () => {
@@ -563,6 +605,16 @@ describe('RecordedProvider', () => {
     ]);
   });
 
+  it('keeps unknown usage unknown across a recorded-provider round trip', async () => {
+    const path = cassettePath();
+    const inner = { id: 'unknown-usage', async complete() { return { text: 'answer', model: 'fake', usage: usage(), usageKnown: false, toolCalls: [], stopReason: 'stop' }; } };
+    await new RecordingProvider(inner, path).complete(request());
+    const meter = new InMemoryCostMeter();
+    const replayed = await new MeteredProvider(new RecordedProvider(path), meter).complete(request());
+    expect(replayed).toMatchObject({ text: 'answer', usageKnown: false });
+    expect(meter.snapshot().entries).toEqual([]);
+  });
+
   it('names the key, the cassette path and the LIVE=1 remedy on a miss, because a cassette miss with no coordinates is unfixable', async () => {
     const path = cassettePath();
     await new RecordingProvider(new MockProvider({ reply: 'a' }), path).complete(request());
@@ -592,6 +644,27 @@ describe('RecordedProvider', () => {
 });
 
 describe('InMemoryCostMeter', () => {
+  it('meters known empty completions before rethrowing, without fabricating usage for unknown errors', async () => {
+    const meter = new InMemoryCostMeter();
+    const result = { model: 'claude-sonnet-5', text: '', toolCalls: [], stopReason: 'length', usage: usage({ input: 100, output: 20 }) };
+    const empty = new EmptyCompletionError('empty', result);
+    const provider = new MeteredProvider({ id: 'failing', async complete() { throw empty; } }, meter);
+    await expect(provider.complete(request())).rejects.toBe(empty);
+    expect(meter.snapshot().entries[0]).toMatchObject({ calls: 1, usage: result.usage });
+    const unknown = new Error('network failed');
+    await expect(new MeteredProvider({ id: 'unknown', async complete() { throw unknown; } }, meter).complete(request())).rejects.toBe(unknown);
+    await expect(new MeteredProvider({ id: 'unknown-empty', async complete() { throw new EmptyCompletionError('empty', result, false); } }, meter).complete(request())).rejects.toBeInstanceOf(EmptyCompletionError);
+    expect(meter.snapshot().entries[0]?.calls).toBe(1);
+  });
+
+  it('a known empty response that exhausts the cost cap cannot be retried past that cap', async () => {
+    const meter = new InMemoryCostMeter({ capUsd: 0 });
+    const provider = new MeteredProvider({ id: 'empty', async complete() {
+      throw new EmptyCompletionError('empty', { model: 'claude-sonnet-5', text: '', toolCalls: [], stopReason: null, usage: usage({ input: 1 }) });
+    } }, meter);
+    await expect(provider.complete(request())).rejects.toBeInstanceOf(CostCapExceededError);
+    expect(meter.snapshot().entries[0]?.calls).toBe(1);
+  });
   it('computes USD from the price table per million tokens, because §16 gates a PR on this number', () => {
     const meter = new InMemoryCostMeter({
       prices: { fake: { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75 } },
@@ -608,6 +681,7 @@ describe('InMemoryCostMeter', () => {
     );
     // 3 + 1.5 + 0.6 + 1.5
     expect(snapshot.entries[0]?.usd).toBeCloseTo(6.6, 10);
+    expect(snapshot.entries[0]?.priceMatched).toBe('fake');
     expect(snapshot.totalUsd).toBeCloseTo(6.6, 10);
   });
 
@@ -641,6 +715,7 @@ describe('InMemoryCostMeter', () => {
     const snapshot = meter.snapshot();
     expect(snapshot.entries.map((entry) => entry.model)).toEqual(['some-new-model-v9']);
     expect(snapshot.entries[0]?.usd).toBeGreaterThan(0);
+    expect(snapshot.entries[0]?.priceMatched).toBeNull();
     expect(meter.unpricedModels()).toEqual(['some-new-model-v9']);
   });
 

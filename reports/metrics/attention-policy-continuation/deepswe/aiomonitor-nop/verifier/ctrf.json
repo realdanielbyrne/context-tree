@@ -1,0 +1,316 @@
+{
+  "reportFormat": "CTRF",
+  "specVersion": "1.0.0",
+  "results": {
+    "tool": {
+      "name": "pytest"
+    },
+    "summary": {
+      "tests": 61,
+      "passed": 8,
+      "failed": 53,
+      "skipped": 0,
+      "pending": 0,
+      "other": 0
+    },
+    "tests": [
+      {
+        "name": "[p2p] tests.test_monitor.test_basic_monitor",
+        "status": "passed"
+      },
+      {
+        "name": "[p2p] tests.test_monitor.test_cancel_where_tasks",
+        "status": "passed"
+      },
+      {
+        "name": "[p2p] tests.test_monitor.test_ctor[console:False]",
+        "status": "passed"
+      },
+      {
+        "name": "[p2p] tests.test_monitor.test_ctor[console:True]",
+        "status": "passed"
+      },
+      {
+        "name": "[p2p] tests.test_monitor.test_custom_monitor_command",
+        "status": "passed"
+      },
+      {
+        "name": "[p2p] tests.test_monitor.test_monitor_task_factory",
+        "status": "passed"
+      },
+      {
+        "name": "[p2p] tests.test_monitor.test_monitor_task_factory_with_context",
+        "status": "passed"
+      },
+      {
+        "name": "[p2p] tests.test_snapshot.test_webui_snapshot_delete_missing",
+        "status": "passed"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_auto_eviction_preserves_named",
+        "status": "failed",
+        "message": "TypeError: Monitor.__init__() got an unexpected keyword argument 'max_snapshots'\n@pytest.mark.asyncio\n    async def test_auto_eviction_preserves_named():\n        loop = asyncio.get_running_loop()\n>       with Monitor(loop, max_snapshots=3, console_enabled=False) as m:\nE       TypeError: Monitor.__init__() got an unexpected keyword argument 'max_snapshots'\n\ntests/test_snapshot.py:509: TypeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_auto_eviction_unnamed",
+        "status": "failed",
+        "message": "TypeError: Monitor.__init__() got an unexpected keyword argument 'max_snapshots'\n@pytest.mark.asyncio\n    async def test_auto_eviction_unnamed():\n        loop = asyncio.get_running_loop()\n>       with Monitor(loop, max_snapshots=3, console_enabled=False) as m:\nE       TypeError: Monitor.__init__() got an unexpected keyword argument 'max_snapshots'\n\ntests/test_snapshot.py:493: TypeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_capture_snapshot_ids_are_ordered",
+        "status": "failed",
+        "message": "AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_capture_snapshot_ids_are_ordered(monitor: Monitor):\n>       id1 = await monitor.capture_snapshot()\nE       AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\n\ntests/test_snapshot.py:115: AttributeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_capture_snapshot_returns_id",
+        "status": "failed",
+        "message": "AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_capture_snapshot_returns_id(monitor: Monitor):\n>       snap_id = await monitor.capture_snapshot()\nE       AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\n\ntests/test_snapshot.py:108: AttributeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_capture_snapshot_with_name",
+        "status": "failed",
+        "message": "AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_capture_snapshot_with_name(monitor: Monitor):\n>       snap_id = await monitor.capture_snapshot(name=\"before\")\nE       AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\n\ntests/test_snapshot.py:122: AttributeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_cli_snapshot_delete",
+        "status": "failed",
+        "message": "click.exceptions.UsageError: No such command 'snapshot'.\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_cli_snapshot_delete(monitor: Monitor):\n>       await invoke_command(monitor, [\"snapshot\", \"save\"])\n\ntests/test_snapshot.py:665: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \ntests/test_snapshot.py:86: in invoke_command\n    ctx.run(\n/usr/local/lib/python3.12/site-packages/click/core.py:1406: in main\n    rv = self.invoke(ctx)\n/usr/local/lib/python3.12/site-packages/click/core.py:1867: in invoke\n    cmd_name, cmd, args = self.resolve_command(ctx, args)\n/usr/local/lib/python3.12/site-packages/click/core.py:1931: in resolve_command\n    ctx.fail(_(\"No such command {name!r}.\").format(name=original_cmd_name))\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nself = <click.core.Context object at 0x7ffffb2f0680>\nmessage = \"No such command 'snapshot'.\"\n\n    def fail(self, message: str) -> t.NoReturn:\n        \"\"\"Aborts the execution of the program with a specific error\n        message.\n    \n        :param message: the error message to fail with.\n        \"\"\"\n>       raise UsageError(message, self)\nE       click.exceptions.UsageError: No such command 'snapshot'.\n\n/usr/local/lib/python3.12/site-packages/click/core.py:724: UsageError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_cli_snapshot_delete_invalid",
+        "status": "failed",
+        "message": "click.exceptions.UsageError: No such command 'snapshot'.\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_cli_snapshot_delete_invalid(monitor: Monitor):\n>       resp = await invoke_command(monitor, [\"snapshot\", \"delete\", \"999\"])\n\ntests/test_snapshot.py:675: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \ntests/test_snapshot.py:86: in invoke_command\n    ctx.run(\n/usr/local/lib/python3.12/site-packages/click/core.py:1406: in main\n    rv = self.invoke(ctx)\n/usr/local/lib/python3.12/site-packages/click/core.py:1867: in invoke\n    cmd_name, cmd, args = self.resolve_command(ctx, args)\n/usr/local/lib/python3.12/site-packages/click/core.py:1931: in resolve_command\n    ctx.fail(_(\"No such command {name!r}.\").format(name=original_cmd_name))\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nself = <click.core.Context object at 0x7ffffb1b90a0>\nmessage = \"No such command 'snapshot'.\"\n\n    def fail(self, message: str) -> t.NoReturn:\n        \"\"\"Aborts the execution of the program with a specific error\n        message.\n    \n        :param message: the error message to fail with.\n        \"\"\"\n>       raise UsageError(message, self)\nE       click.exceptions.UsageError: No such command 'snapshot'.\n\n/usr/local/lib/python3.12/site-packages/click/core.py:724: UsageError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_cli_snapshot_diff",
+        "status": "failed",
+        "message": "click.exceptions.UsageError: No such command 'snapshot'.\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_cli_snapshot_diff(monitor: Monitor):\n        async def sleeper():\n            await asyncio.sleep(100)\n    \n>       await invoke_command(monitor, [\"snapshot\", \"save\"])\n\ntests/test_snapshot.py:612: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \ntests/test_snapshot.py:86: in invoke_command\n    ctx.run(\n/usr/local/lib/python3.12/site-packages/click/core.py:1406: in main\n    rv = self.invoke(ctx)\n/usr/local/lib/python3.12/site-packages/click/core.py:1867: in invoke\n    cmd_name, cmd, args = self.resolve_command(ctx, args)\n/usr/local/lib/python3.12/site-packages/click/core.py:1931: in resolve_command\n    ctx.fail(_(\"No such command {name!r}.\").format(name=original_cmd_name))\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nself = <click.core.Context object at 0x7ffffbc5cec0>\nmessage = \"No such command 'snapshot'.\"\n\n    def fail(self, message: str) -> t.NoReturn:\n        \"\"\"Aborts the execution of the program with a specific error\n        message.\n    \n        :param message: the error message to fail with.\n        \"\"\"\n>       raise UsageError(message, self)\nE       click.exceptions.UsageError: No such command 'snapshot'.\n\n/usr/local/lib/python3.12/site-packages/click/core.py:724: UsageError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_cli_snapshot_diff_invalid",
+        "status": "failed",
+        "message": "click.exceptions.UsageError: No such command 'snapshot'.\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_cli_snapshot_diff_invalid(monitor: Monitor):\n>       await invoke_command(monitor, [\"snapshot\", \"save\"])\n\ntests/test_snapshot.py:650: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \ntests/test_snapshot.py:86: in invoke_command\n    ctx.run(\n/usr/local/lib/python3.12/site-packages/click/core.py:1406: in main\n    rv = self.invoke(ctx)\n/usr/local/lib/python3.12/site-packages/click/core.py:1867: in invoke\n    cmd_name, cmd, args = self.resolve_command(ctx, args)\n/usr/local/lib/python3.12/site-packages/click/core.py:1931: in resolve_command\n    ctx.fail(_(\"No such command {name!r}.\").format(name=original_cmd_name))\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nself = <click.core.Context object at 0x7ffffb2db260>\nmessage = \"No such command 'snapshot'.\"\n\n    def fail(self, message: str) -> t.NoReturn:\n        \"\"\"Aborts the execution of the program with a specific error\n        message.\n    \n        :param message: the error message to fail with.\n        \"\"\"\n>       raise UsageError(message, self)\nE       click.exceptions.UsageError: No such command 'snapshot'.\n\n/usr/local/lib/python3.12/site-packages/click/core.py:724: UsageError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_cli_snapshot_diff_removed",
+        "status": "failed",
+        "message": "click.exceptions.UsageError: No such command 'snapshot'.\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_cli_snapshot_diff_removed(monitor: Monitor):\n        async def sleeper():\n            await asyncio.sleep(100)\n    \n        t = asyncio.create_task(sleeper(), name=\"diff-gone\")\n        await asyncio.sleep(0.1)\n>       await invoke_command(monitor, [\"snapshot\", \"save\"])\n\ntests/test_snapshot.py:634: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \ntests/test_snapshot.py:86: in invoke_command\n    ctx.run(\n/usr/local/lib/python3.12/site-packages/click/core.py:1406: in main\n    rv = self.invoke(ctx)\n/usr/local/lib/python3.12/site-packages/click/core.py:1867: in invoke\n    cmd_name, cmd, args = self.resolve_command(ctx, args)\n/usr/local/lib/python3.12/site-packages/click/core.py:1931: in resolve_command\n    ctx.fail(_(\"No such command {name!r}.\").format(name=original_cmd_name))\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nself = <click.core.Context object at 0x7ffffb35be00>\nmessage = \"No such command 'snapshot'.\"\n\n    def fail(self, message: str) -> t.NoReturn:\n        \"\"\"Aborts the execution of the program with a specific error\n        message.\n    \n        :param message: the error message to fail with.\n        \"\"\"\n>       raise UsageError(message, self)\nE       click.exceptions.UsageError: No such command 'snapshot'.\n\n/usr/local/lib/python3.12/site-packages/click/core.py:724: UsageError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_cli_snapshot_list_after_save",
+        "status": "failed",
+        "message": "click.exceptions.UsageError: No such command 'snapshot'.\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_cli_snapshot_list_after_save(monitor: Monitor):\n>       await invoke_command(monitor, [\"snapshot\", \"save\"])\n\ntests/test_snapshot.py:542: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \ntests/test_snapshot.py:86: in invoke_command\n    ctx.run(\n/usr/local/lib/python3.12/site-packages/click/core.py:1406: in main\n    rv = self.invoke(ctx)\n/usr/local/lib/python3.12/site-packages/click/core.py:1867: in invoke\n    cmd_name, cmd, args = self.resolve_command(ctx, args)\n/usr/local/lib/python3.12/site-packages/click/core.py:1931: in resolve_command\n    ctx.fail(_(\"No such command {name!r}.\").format(name=original_cmd_name))\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nself = <click.core.Context object at 0x7ffffb359280>\nmessage = \"No such command 'snapshot'.\"\n\n    def fail(self, message: str) -> t.NoReturn:\n        \"\"\"Aborts the execution of the program with a specific error\n        message.\n    \n        :param message: the error message to fail with.\n        \"\"\"\n>       raise UsageError(message, self)\nE       click.exceptions.UsageError: No such command 'snapshot'.\n\n/usr/local/lib/python3.12/site-packages/click/core.py:724: UsageError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_cli_snapshot_list_alias_ls",
+        "status": "failed",
+        "message": "click.exceptions.UsageError: No such command 'snapshot'.\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_cli_snapshot_list_alias_ls(monitor: Monitor):\n>       await invoke_command(monitor, [\"snapshot\", \"save\"])\n\ntests/test_snapshot.py:687: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \ntests/test_snapshot.py:86: in invoke_command\n    ctx.run(\n/usr/local/lib/python3.12/site-packages/click/core.py:1406: in main\n    rv = self.invoke(ctx)\n/usr/local/lib/python3.12/site-packages/click/core.py:1867: in invoke\n    cmd_name, cmd, args = self.resolve_command(ctx, args)\n/usr/local/lib/python3.12/site-packages/click/core.py:1931: in resolve_command\n    ctx.fail(_(\"No such command {name!r}.\").format(name=original_cmd_name))\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nself = <click.core.Context object at 0x7ffffb2d9b80>\nmessage = \"No such command 'snapshot'.\"\n\n    def fail(self, message: str) -> t.NoReturn:\n        \"\"\"Aborts the execution of the program with a specific error\n        message.\n    \n        :param message: the error message to fail with.\n        \"\"\"\n>       raise UsageError(message, self)\nE       click.exceptions.UsageError: No such command 'snapshot'.\n\n/usr/local/lib/python3.12/site-packages/click/core.py:724: UsageError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_cli_snapshot_list_empty",
+        "status": "failed",
+        "message": "click.exceptions.UsageError: No such command 'snapshot'.\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_cli_snapshot_list_empty(monitor: Monitor):\n>       resp = await invoke_command(monitor, [\"snapshot\", \"list\"])\n\ntests/test_snapshot.py:536: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \ntests/test_snapshot.py:86: in invoke_command\n    ctx.run(\n/usr/local/lib/python3.12/site-packages/click/core.py:1406: in main\n    rv = self.invoke(ctx)\n/usr/local/lib/python3.12/site-packages/click/core.py:1867: in invoke\n    cmd_name, cmd, args = self.resolve_command(ctx, args)\n/usr/local/lib/python3.12/site-packages/click/core.py:1931: in resolve_command\n    ctx.fail(_(\"No such command {name!r}.\").format(name=original_cmd_name))\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nself = <click.core.Context object at 0x7ffffb35b020>\nmessage = \"No such command 'snapshot'.\"\n\n    def fail(self, message: str) -> t.NoReturn:\n        \"\"\"Aborts the execution of the program with a specific error\n        message.\n    \n        :param message: the error message to fail with.\n        \"\"\"\n>       raise UsageError(message, self)\nE       click.exceptions.UsageError: No such command 'snapshot'.\n\n/usr/local/lib/python3.12/site-packages/click/core.py:724: UsageError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_cli_snapshot_save",
+        "status": "failed",
+        "message": "click.exceptions.UsageError: No such command 'snapshot'.\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_cli_snapshot_save(monitor: Monitor):\n>       resp = await invoke_command(monitor, [\"snapshot\", \"save\"])\n\ntests/test_snapshot.py:522: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \ntests/test_snapshot.py:86: in invoke_command\n    ctx.run(\n/usr/local/lib/python3.12/site-packages/click/core.py:1406: in main\n    rv = self.invoke(ctx)\n/usr/local/lib/python3.12/site-packages/click/core.py:1867: in invoke\n    cmd_name, cmd, args = self.resolve_command(ctx, args)\n/usr/local/lib/python3.12/site-packages/click/core.py:1931: in resolve_command\n    ctx.fail(_(\"No such command {name!r}.\").format(name=original_cmd_name))\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nself = <click.core.Context object at 0x7ffffb2f1880>\nmessage = \"No such command 'snapshot'.\"\n\n    def fail(self, message: str) -> t.NoReturn:\n        \"\"\"Aborts the execution of the program with a specific error\n        message.\n    \n        :param message: the error message to fail with.\n        \"\"\"\n>       raise UsageError(message, self)\nE       click.exceptions.UsageError: No such command 'snapshot'.\n\n/usr/local/lib/python3.12/site-packages/click/core.py:724: UsageError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_cli_snapshot_save_with_name",
+        "status": "failed",
+        "message": "click.exceptions.UsageError: No such command 'snapshot'.\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_cli_snapshot_save_with_name(monitor: Monitor):\n>       resp = await invoke_command(monitor, [\"snapshot\", \"save\", \"--name\", \"before\"])\n\ntests/test_snapshot.py:530: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \ntests/test_snapshot.py:86: in invoke_command\n    ctx.run(\n/usr/local/lib/python3.12/site-packages/click/core.py:1406: in main\n    rv = self.invoke(ctx)\n/usr/local/lib/python3.12/site-packages/click/core.py:1867: in invoke\n    cmd_name, cmd, args = self.resolve_command(ctx, args)\n/usr/local/lib/python3.12/site-packages/click/core.py:1931: in resolve_command\n    ctx.fail(_(\"No such command {name!r}.\").format(name=original_cmd_name))\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nself = <click.core.Context object at 0x7ffffb2dae10>\nmessage = \"No such command 'snapshot'.\"\n\n    def fail(self, message: str) -> t.NoReturn:\n        \"\"\"Aborts the execution of the program with a specific error\n        message.\n    \n        :param message: the error message to fail with.\n        \"\"\"\n>       raise UsageError(message, self)\nE       click.exceptions.UsageError: No such command 'snapshot'.\n\n/usr/local/lib/python3.12/site-packages/click/core.py:724: UsageError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_cli_snapshot_show",
+        "status": "failed",
+        "message": "click.exceptions.UsageError: No such command 'snapshot'.\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_cli_snapshot_show(monitor: Monitor):\n        async def sleeper():\n            await asyncio.sleep(100)\n    \n        t = asyncio.create_task(sleeper(), name=\"show-task\")\n        await asyncio.sleep(0.1)\n>       await invoke_command(monitor, [\"snapshot\", \"save\"])\n\ntests/test_snapshot.py:555: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \ntests/test_snapshot.py:86: in invoke_command\n    ctx.run(\n/usr/local/lib/python3.12/site-packages/click/core.py:1406: in main\n    rv = self.invoke(ctx)\n/usr/local/lib/python3.12/site-packages/click/core.py:1867: in invoke\n    cmd_name, cmd, args = self.resolve_command(ctx, args)\n/usr/local/lib/python3.12/site-packages/click/core.py:1931: in resolve_command\n    ctx.fail(_(\"No such command {name!r}.\").format(name=original_cmd_name))\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nself = <click.core.Context object at 0x7ffffb231190>\nmessage = \"No such command 'snapshot'.\"\n\n    def fail(self, message: str) -> t.NoReturn:\n        \"\"\"Aborts the execution of the program with a specific error\n        message.\n    \n        :param message: the error message to fail with.\n        \"\"\"\n>       raise UsageError(message, self)\nE       click.exceptions.UsageError: No such command 'snapshot'.\n\n/usr/local/lib/python3.12/site-packages/click/core.py:724: UsageError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_cli_snapshot_show_invalid_id",
+        "status": "failed",
+        "message": "click.exceptions.UsageError: No such command 'snapshot'.\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_cli_snapshot_show_invalid_id(monitor: Monitor):\n>       resp = await invoke_command(monitor, [\"snapshot\", \"show\", \"999\"])\n\ntests/test_snapshot.py:567: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \ntests/test_snapshot.py:86: in invoke_command\n    ctx.run(\n/usr/local/lib/python3.12/site-packages/click/core.py:1406: in main\n    rv = self.invoke(ctx)\n/usr/local/lib/python3.12/site-packages/click/core.py:1867: in invoke\n    cmd_name, cmd, args = self.resolve_command(ctx, args)\n/usr/local/lib/python3.12/site-packages/click/core.py:1931: in resolve_command\n    ctx.fail(_(\"No such command {name!r}.\").format(name=original_cmd_name))\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nself = <click.core.Context object at 0x7ffffb1ba8d0>\nmessage = \"No such command 'snapshot'.\"\n\n    def fail(self, message: str) -> t.NoReturn:\n        \"\"\"Aborts the execution of the program with a specific error\n        message.\n    \n        :param message: the error message to fail with.\n        \"\"\"\n>       raise UsageError(message, self)\nE       click.exceptions.UsageError: No such command 'snapshot'.\n\n/usr/local/lib/python3.12/site-packages/click/core.py:724: UsageError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_cli_snapshot_where",
+        "status": "failed",
+        "message": "click.exceptions.UsageError: No such command 'snapshot'.\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_cli_snapshot_where(monitor: Monitor):\n        async def sleeper():\n            await asyncio.sleep(100)\n    \n        t = asyncio.create_task(sleeper(), name=\"where-snap\")\n        t_id = str(id(t))\n        await asyncio.sleep(0.1)\n>       await invoke_command(monitor, [\"snapshot\", \"save\"])\n\ntests/test_snapshot.py:585: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \ntests/test_snapshot.py:86: in invoke_command\n    ctx.run(\n/usr/local/lib/python3.12/site-packages/click/core.py:1406: in main\n    rv = self.invoke(ctx)\n/usr/local/lib/python3.12/site-packages/click/core.py:1867: in invoke\n    cmd_name, cmd, args = self.resolve_command(ctx, args)\n/usr/local/lib/python3.12/site-packages/click/core.py:1931: in resolve_command\n    ctx.fail(_(\"No such command {name!r}.\").format(name=original_cmd_name))\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nself = <click.core.Context object at 0x7ffffb3582c0>\nmessage = \"No such command 'snapshot'.\"\n\n    def fail(self, message: str) -> t.NoReturn:\n        \"\"\"Aborts the execution of the program with a specific error\n        message.\n    \n        :param message: the error message to fail with.\n        \"\"\"\n>       raise UsageError(message, self)\nE       click.exceptions.UsageError: No such command 'snapshot'.\n\n/usr/local/lib/python3.12/site-packages/click/core.py:724: UsageError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_cli_snapshot_where_invalid_snapshot",
+        "status": "failed",
+        "message": "click.exceptions.UsageError: No such command 'snapshot'.\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_cli_snapshot_where_invalid_snapshot(monitor: Monitor):\n>       resp = await invoke_command(monitor, [\"snapshot\", \"where\", \"999\", \"123\"])\n\ntests/test_snapshot.py:597: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \ntests/test_snapshot.py:86: in invoke_command\n    ctx.run(\n/usr/local/lib/python3.12/site-packages/click/core.py:1406: in main\n    rv = self.invoke(ctx)\n/usr/local/lib/python3.12/site-packages/click/core.py:1867: in invoke\n    cmd_name, cmd, args = self.resolve_command(ctx, args)\n/usr/local/lib/python3.12/site-packages/click/core.py:1931: in resolve_command\n    ctx.fail(_(\"No such command {name!r}.\").format(name=original_cmd_name))\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nself = <click.core.Context object at 0x7ffffb230e60>\nmessage = \"No such command 'snapshot'.\"\n\n    def fail(self, message: str) -> t.NoReturn:\n        \"\"\"Aborts the execution of the program with a specific error\n        message.\n    \n        :param message: the error message to fail with.\n        \"\"\"\n>       raise UsageError(message, self)\nE       click.exceptions.UsageError: No such command 'snapshot'.\n\n/usr/local/lib/python3.12/site-packages/click/core.py:724: UsageError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_delete_snapshot",
+        "status": "failed",
+        "message": "AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_delete_snapshot(monitor: Monitor):\n>       snap_id = await monitor.capture_snapshot()\nE       AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\n\ntests/test_snapshot.py:170: AttributeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_delete_snapshot_missing_raises",
+        "status": "failed",
+        "message": "AttributeError: 'Monitor' object has no attribute 'delete_snapshot'\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_delete_snapshot_missing_raises(monitor: Monitor):\n        with pytest.raises(KeyError):\n>           monitor.delete_snapshot(9999)\nE           AttributeError: 'Monitor' object has no attribute 'delete_snapshot'\n\ntests/test_snapshot.py:179: AttributeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_format_snapshot_diff_added",
+        "status": "failed",
+        "message": "AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_format_snapshot_diff_added(monitor: Monitor):\n>       snap_id1 = await monitor.capture_snapshot()\nE       AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\n\ntests/test_snapshot.py:370: AttributeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_format_snapshot_diff_by_identity_not_name",
+        "status": "failed",
+        "message": "AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\n@pytest.mark.asyncio\n    async def test_format_snapshot_diff_by_identity_not_name():\n        loop = asyncio.get_running_loop()\n        with Monitor(loop, console_enabled=False) as m:\n            await asyncio.sleep(0.1)\n    \n            async def worker():\n                await asyncio.sleep(100)\n    \n            t1 = asyncio.create_task(worker(), name=\"same-name\")\n            await asyncio.sleep(0.1)\n>           id1 = await m.capture_snapshot()\nE           AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\n\ntests/test_snapshot.py:470: AttributeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_format_snapshot_diff_common",
+        "status": "failed",
+        "message": "AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_format_snapshot_diff_common(monitor: Monitor):\n        async def sleeper():\n            await asyncio.sleep(100)\n    \n        t = asyncio.create_task(sleeper(), name=\"stable-task\")\n        await asyncio.sleep(0.1)\n>       snap_id1 = await monitor.capture_snapshot()\nE       AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\n\ntests/test_snapshot.py:411: AttributeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_format_snapshot_diff_missing_snapshot",
+        "status": "failed",
+        "message": "AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_format_snapshot_diff_missing_snapshot(monitor: Monitor):\n>       snap_id = await monitor.capture_snapshot()\nE       AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\n\ntests/test_snapshot.py:423: AttributeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_format_snapshot_diff_no_false_match",
+        "status": "failed",
+        "message": "AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\n@pytest.mark.asyncio\n    async def test_format_snapshot_diff_no_false_match():\n        loop = asyncio.get_running_loop()\n        with Monitor(loop, console_enabled=False) as m:\n            await asyncio.sleep(0.1)\n    \n            async def worker():\n                await asyncio.sleep(100)\n    \n            t1 = asyncio.create_task(worker(), name=\"name-A\")\n            await asyncio.sleep(0.1)\n>           id1 = await m.capture_snapshot()\nE           AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\n\ntests/test_snapshot.py:441: AttributeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_format_snapshot_diff_removed",
+        "status": "failed",
+        "message": "AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_format_snapshot_diff_removed(monitor: Monitor):\n        async def sleeper():\n            await asyncio.sleep(100)\n    \n        t = asyncio.create_task(sleeper(), name=\"removed-task\")\n        await asyncio.sleep(0.1)\n>       snap_id1 = await monitor.capture_snapshot()\nE       AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\n\ntests/test_snapshot.py:393: AttributeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_format_snapshot_task_list_captures_running",
+        "status": "failed",
+        "message": "AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_format_snapshot_task_list_captures_running(monitor: Monitor):\n        async def sleeper():\n            await asyncio.sleep(100)\n    \n        t = asyncio.create_task(sleeper(), name=\"snap-sleeper\")\n        await asyncio.sleep(0.1)\n>       snap_id = await monitor.capture_snapshot()\nE       AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\n\ntests/test_snapshot.py:198: AttributeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_format_snapshot_task_list_returns_formatted_info",
+        "status": "failed",
+        "message": "AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_format_snapshot_task_list_returns_formatted_info(monitor: Monitor):\n        async def sleeper():\n            await asyncio.sleep(100)\n    \n        t = asyncio.create_task(sleeper(), name=\"fmtinfo-task\")\n        await asyncio.sleep(0.1)\n>       snap_id = await monitor.capture_snapshot()\nE       AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\n\ntests/test_snapshot.py:214: AttributeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_format_snapshot_task_stack_missing_task",
+        "status": "failed",
+        "message": "AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_format_snapshot_task_stack_missing_task(monitor: Monitor):\n>       snap_id = await monitor.capture_snapshot()\nE       AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\n\ntests/test_snapshot.py:283: AttributeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_format_snapshot_task_stack_returns_formatted_items",
+        "status": "failed",
+        "message": "AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_format_snapshot_task_stack_returns_formatted_items(monitor: Monitor):\n        async def sleeper():\n            await asyncio.sleep(100)\n    \n        t = asyncio.create_task(sleeper(), name=\"fmt-check\")\n        t_id = str(id(t))\n        await asyncio.sleep(0.1)\n>       snap_id = await monitor.capture_snapshot()\nE       AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\n\ntests/test_snapshot.py:271: AttributeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_format_snapshot_task_stack_shows_header",
+        "status": "failed",
+        "message": "AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_format_snapshot_task_stack_shows_header(monitor: Monitor):\n        async def sleeper():\n            await asyncio.sleep(100)\n    \n        t = asyncio.create_task(sleeper(), name=\"stack-show\")\n        t_id = str(id(t))\n        await asyncio.sleep(0.1)\n>       snap_id = await monitor.capture_snapshot()\nE       AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\n\ntests/test_snapshot.py:253: AttributeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_format_snapshot_terminated_task_list",
+        "status": "failed",
+        "message": "AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\nmonitor_factory = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_format_snapshot_terminated_task_list(monitor_factory: Monitor):\n        async def short_task():\n            await asyncio.sleep(0)\n    \n        t = asyncio.create_task(short_task(), name=\"term-format\")\n        await t\n        await asyncio.sleep(0.2)\n>       snap_id = await monitor_factory.capture_snapshot()\nE       AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\n\ntests/test_snapshot.py:331: AttributeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_format_task_stack_with_creation_chain",
+        "status": "failed",
+        "message": "AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\nmonitor_factory = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_format_task_stack_with_creation_chain(monitor_factory: Monitor):\n        async def inner():\n            await asyncio.sleep(100)\n    \n        async def outer():\n            asyncio.create_task(inner(), name=\"chain-inner\")\n            await asyncio.sleep(100)\n    \n        ot = asyncio.create_task(outer(), name=\"chain-outer\")\n        await asyncio.sleep(0.1)\n>       snap_id = await monitor_factory.capture_snapshot()\nE       AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\n\ntests/test_snapshot.py:354: AttributeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_format_with_task_factory_shows_timing",
+        "status": "failed",
+        "message": "AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\nmonitor_factory = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_format_with_task_factory_shows_timing(monitor_factory: Monitor):\n        async def sleeper():\n            await asyncio.sleep(100)\n    \n        t = asyncio.create_task(sleeper(), name=\"timed-task\")\n        await asyncio.sleep(0.1)\n>       snap_id = await monitor_factory.capture_snapshot()\nE       AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\n\ntests/test_snapshot.py:313: AttributeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_format_without_task_factory_shows_dash",
+        "status": "failed",
+        "message": "AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_format_without_task_factory_shows_dash(monitor: Monitor):\n        async def sleeper():\n            await asyncio.sleep(100)\n    \n        t = asyncio.create_task(sleeper(), name=\"nofactory-task\")\n        await asyncio.sleep(0.1)\n>       snap_id = await monitor.capture_snapshot()\nE       AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\n\ntests/test_snapshot.py:295: AttributeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_get_snapshot_missing_raises",
+        "status": "failed",
+        "message": "AttributeError: 'Monitor' object has no attribute 'get_snapshot'\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_get_snapshot_missing_raises(monitor: Monitor):\n        with pytest.raises(KeyError):\n>           monitor.get_snapshot(9999)\nE           AttributeError: 'Monitor' object has no attribute 'get_snapshot'\n\ntests/test_snapshot.py:165: AttributeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_get_snapshot_returns_object_with_id",
+        "status": "failed",
+        "message": "AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_get_snapshot_returns_object_with_id(monitor: Monitor):\n>       snap_id = await monitor.capture_snapshot()\nE       AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\n\ntests/test_snapshot.py:157: AttributeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_list_snapshots_after_capture",
+        "status": "failed",
+        "message": "AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_list_snapshots_after_capture(monitor: Monitor):\n>       await monitor.capture_snapshot()\nE       AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\n\ntests/test_snapshot.py:137: AttributeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_list_snapshots_empty",
+        "status": "failed",
+        "message": "AttributeError: 'Monitor' object has no attribute 'list_snapshots'\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_list_snapshots_empty(monitor: Monitor):\n>       snaps = monitor.list_snapshots()\nE       AttributeError: 'Monitor' object has no attribute 'list_snapshots'\n\ntests/test_snapshot.py:131: AttributeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_list_snapshots_has_task_counts",
+        "status": "failed",
+        "message": "AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_list_snapshots_has_task_counts(monitor: Monitor):\n>       await monitor.capture_snapshot()\nE       AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\n\ntests/test_snapshot.py:148: AttributeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_snapshot_freezes_state",
+        "status": "failed",
+        "message": "AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_snapshot_freezes_state(monitor: Monitor):\n        async def sleeper():\n            await asyncio.sleep(100)\n    \n        t = asyncio.create_task(sleeper(), name=\"freeze-me\")\n        await asyncio.sleep(0.1)\n>       snap_id = await monitor.capture_snapshot()\nE       AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\n\ntests/test_snapshot.py:235: AttributeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_snapshot_survives_task_termination",
+        "status": "failed",
+        "message": "AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_snapshot_survives_task_termination(monitor: Monitor):\n        async def sleeper():\n            await asyncio.sleep(100)\n    \n        t = asyncio.create_task(sleeper(), name=\"survivor\")\n        await asyncio.sleep(0.1)\n>       snap_id = await monitor.capture_snapshot()\nE       AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\n\ntests/test_snapshot.py:706: AttributeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_snapshot_visible_in_main_help",
+        "status": "failed",
+        "message": "assert 'snapshot' in 'usage: help [options] command [args]...\\n\\n  to see the usage of each command, run them with \"--help\" option.\\n\\ncommands:\\n  cancel (ca)             cancel an indicated task\\n  console                 switch to async python repl\\n  exit (q,quit)           leave the monitor client session\\n  help (?,h)              show the list of commands\\n  ps (p)                  show task table\\n  ps-terminated (pst,pt)  list recently terminated/cancelled tasks\\n  signal                  send a unix signal\\n  stacktrace (st,stack)   print a stack trace from the event loop thread\\n  where (w)               show stack frames and the task creation chain...\\n  where-terminated (wt)   show stack frames and the...\\n'\n +  where 'usage: help [options] command [args]...\\n\\n  to see the usage of each command, run them with \"--help\" option.\\n\\ncommands:\\n  cancel (ca)             cancel an indicated task\\n  console                 switch to async python repl\\n  exit (q,quit)           leave the monitor client session\\n  help (?,h)              show the list of commands\\n  ps (p)                  show task table\\n  ps-terminated (pst,pt)  list recently terminated/cancelled tasks\\n  signal                  send a unix signal\\n  stacktrace (st,stack)   print a stack trace from the event loop thread\\n  where (w)               show stack frames and the task creation chain...\\n  where-terminated (wt)   show stack frames and the...\\n' = <built-in method lower of str object at 0x555556466a00>()\n +    where <built-in method lower of str object at 0x555556466a00> = 'Usage: help [OPTIONS] COMMAND [ARGS]...\\n\\n  To see the usage of each command, run them with \"--help\" option.\\n\\nCommands:\\n  cancel (ca)             Cancel an indicated task\\n  console                 Switch to async Python REPL\\n  exit (q,quit)           Leave the monitor client session\\n  help (?,h)              Show the list of commands\\n  ps (p)                  Show task table\\n  ps-terminated (pst,pt)  List recently terminated/cancelled tasks\\n  signal                  Send a Unix signal\\n  stacktrace (st,stack)   Print a stack trace from the event loop thread\\n  where (w)               Show stack frames and the task creation chain...\\n  where-terminated (wt)   Show stack frames and the...\\n'.lower\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_snapshot_visible_in_main_help(monitor: Monitor):\n        resp = await invoke_command(monitor, [\"help\"])\n>       assert \"snapshot\" in resp.lower()\nE       assert 'snapshot' in 'usage: help [options] command [args]...\\n\\n  to see the usage of each command, run them with \"--help\" option.\\n\\ncommands:\\n  cancel (ca)             cancel an indicated task\\n  console                 switch to async python repl\\n  exit (q,quit)           leave the monitor client session\\n  help (?,h)              show the list of commands\\n  ps (p)                  show task table\\n  ps-terminated (pst,pt)  list recently terminated/cancelled tasks\\n  signal                  send a unix signal\\n  stacktrace (st,stack)   print a stack trace from the event loop thread\\n  where (w)               show stack frames and the task creation chain...\\n  where-terminated (wt)   show stack frames and the...\\n'\nE        +  where 'usage: help [options] command [args]...\\n\\n  to see the usage of each command, run them with \"--help\" option.\\n\\ncommands:\\n  cancel (ca)             cancel an indicated task\\n  console                 switch to async python repl\\n  exit (q,quit)           leave the monitor client session\\n  help (?,h)              show the list of commands\\n  ps (p)                  show task table\\n  ps-terminated (pst,pt)  list recently terminated/cancelled tasks\\n  signal                  send a unix signal\\n  stacktrace (st,stack)   print a stack trace from the event loop thread\\n  where (w)               show stack frames and the task creation chain...\\n  where-terminated (wt)   show stack frames and the...\\n' = <built-in method lower of str object at 0x555556466a00>()\nE        +    where <built-in method lower of str object at 0x555556466a00> = 'Usage: help [OPTIONS] COMMAND [ARGS]...\\n\\n  To see the usage of each command, run them with \"--help\" option.\\n\\nCommands:\\n  cancel (ca)             Cancel an indicated task\\n  console                 Switch to async Python REPL\\n  exit (q,quit)           Leave the monitor client session\\n  help (?,h)              Show the list of commands\\n  ps (p)                  Show task table\\n  ps-terminated (pst,pt)  List recently terminated/cancelled tasks\\n  signal                  Send a Unix signal\\n  stacktrace (st,stack)   Print a stack trace from the event loop thread\\n  where (w)               Show stack frames and the task creation chain...\\n  where-terminated (wt)   Show stack frames and the...\\n'.lower\n\ntests/test_snapshot.py:696: AssertionError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_start_monitor_accepts_max_snapshots",
+        "status": "failed",
+        "message": "TypeError: start_monitor() got an unexpected keyword argument 'max_snapshots'\n@pytest.mark.asyncio\n    async def test_start_monitor_accepts_max_snapshots():\n        loop = asyncio.get_running_loop()\n>       with start_monitor(loop, max_snapshots=5, console_enabled=False) as m:\nE       TypeError: start_monitor() got an unexpected keyword argument 'max_snapshots'\n\ntests/test_snapshot.py:185: TypeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_webui_layout_has_snapshots_link",
+        "status": "failed",
+        "message": "assert '/snapshots' in '<!doctype html>\\n<html class=\"h-full bg-gray-100\">\\n<head>\\n  <meta charset=\"utf-8\">\\n  <meta name=\"viewport\" content=\"width=device-width\">\\n  <meta name=\"htmx-config\" content=\\'{\"methodsThatUseUrlParams\":[\"get\",\"delete\"]}\\'>\\n  <title>aiomonitor - </title>\\n  <script src=\"/static/htmx.js\"></script>\\n  <script src=\"/static/mustache.js\"></script>\\n  <script src=\"/static/client-side-templates.js\"></script>\\n  <script src=\"/static/tailwind.js\"></script><!-- includes the official \"forms\" plugin -->\\n  <script src=\"/static/alpine.js\" defer></script>\\n  <style type=\"text/css\">\\n  .htmx-indicator{\\n    display: none;\\n  }\\n  .htmx-request .button-indicator{\\n    display: inline-block;\\n  }\\n  .htmx-request.button-indicator{\\n    display: inline-block;\\n  }\\n  </style>\\n</head>\\n<body class=\"h-full\" hx-ext=\"client-side-templates\">\\n<div class=\"min-h-full\">\\n  <nav class=\"bg-gray-800\">\\n    <div class=\"mx-auto max-w-7xl px-4 sm:px-6 lg:px-8\">\\n      <div class=\"flex h-16 items-center justify-between\">\\n        <div class=\"flex items-center\">\\n          <div class=\"flex-shrink-0 text-white\">\\n            aiomonitor\\n          </div>\\n          <div class=\"ml-10 flex items-baseline space-x... 5.22z\" />\\n                </svg>\\n              </button>\\n            </div>\\n          </div>\\n        </div>\\n      </div>\\n    </div>\\n  </div>\\n</template>\\n\\n\\n<script type=\"text/javascript\">\\nfunction showNotification(success, data) {\\n  var tpl;\\n  if (success) {\\n    tpl = document.getElementById(\\'notification-success\\');\\n  } else {\\n    tpl = document.getElementById(\\'notification-failure\\');\\n  }\\n  var outContainer = document.getElementById(\"notification\");\\n  const renderedContent = Mustache.render(tpl.innerHTML, data);\\n  if (outContainer === null) {\\n    outContainer = document.createElement(\"div\");\\n    outContainer.setAttribute(\"id\", \"notification\");\\n    document.body.appendChild(outContainer);\\n  }\\n  outContainer.setAttribute(\"x-data\", \"{ open: false }\");\\n  outContainer.setAttribute(\"x-init\", \"$nextTick(() => open = true); setTimeout(() => open = false, 4200)\");\\n  outContainer.innerHTML = renderedContent;\\n}\\n\\ndocument.addEventListener(\"htmx:afterRequest\", function(ev) {\\n  if (!ev.detail.elt.classList.contains(\"notify-result\"))\\n    return;\\n  showNotification(!ev.detail.failed, JSON.parse(ev.detail.xhr.responseText));\\n});\\n</script>\\n</body>\\n</html>'\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_webui_layout_has_snapshots_link(monitor: Monitor):\n        from aiohttp.test_utils import TestClient, TestServer\n        from aiomonitor.webui.app import init_webui\n    \n        app = await init_webui(monitor)\n        async with TestClient(TestServer(app)) as client:\n            resp = await client.get(\"/\")\n            assert resp.status == 200\n            text = await resp.text()\n>           assert \"/snapshots\" in text\nE           assert '/snapshots' in '<!doctype html>\\n<html class=\"h-full bg-gray-100\">\\n<head>\\n  <meta charset=\"utf-8\">\\n  <meta name=\"viewport\" content=\"width=device-width\">\\n  <meta name=\"htmx-config\" content=\\'{\"methodsThatUseUrlParams\":[\"get\",\"delete\"]}\\'>\\n  <title>aiomonitor - </title>\\n  <script src=\"/static/htmx.js\"></script>\\n  <script src=\"/static/mustache.js\"></script>\\n  <script src=\"/static/client-side-templates.js\"></script>\\n  <script src=\"/static/tailwind.js\"></script><!-- includes the official \"forms\" plugin -->\\n  <script src=\"/static/alpine.js\" defer></script>\\n  <style type=\"text/css\">\\n  .htmx-indicator{\\n    display: none;\\n  }\\n  .htmx-request .button-indicator{\\n    display: inline-block;\\n  }\\n  .htmx-request.button-indicator{\\n    display: inline-block;\\n  }\\n  </style>\\n</head>\\n<body class=\"h-full\" hx-ext=\"client-side-templates\">\\n<div class=\"min-h-full\">\\n  <nav class=\"bg-gray-800\">\\n    <div class=\"mx-auto max-w-7xl px-4 sm:px-6 lg:px-8\">\\n      <div class=\"flex h-16 items-center justify-between\">\\n        <div class=\"flex items-center\">\\n          <div class=\"flex-shrink-0 text-white\">\\n            aiomonitor\\n          </div>\\n          <div class=\"ml-10 flex items-baseline space-x... 5.22z\" />\\n                </svg>\\n              </button>\\n            </div>\\n          </div>\\n        </div>\\n      </div>\\n    </div>\\n  </div>\\n</template>\\n\\n\\n<script type=\"text/javascript\">\\nfunction showNotification(success, data) {\\n  var tpl;\\n  if (success) {\\n    tpl = document.getElementById(\\'notification-success\\');\\n  } else {\\n    tpl = document.getElementById(\\'notification-failure\\');\\n  }\\n  var outContainer = document.getElementById(\"notification\");\\n  const renderedContent = Mustache.render(tpl.innerHTML, data);\\n  if (outContainer === null) {\\n    outContainer = document.createElement(\"div\");\\n    outContainer.setAttribute(\"id\", \"notification\");\\n    document.body.appendChild(outContainer);\\n  }\\n  outContainer.setAttribute(\"x-data\", \"{ open: false }\");\\n  outContainer.setAttribute(\"x-init\", \"$nextTick(() => open = true); setTimeout(() => open = false, 4200)\");\\n  outContainer.innerHTML = renderedContent;\\n}\\n\\ndocument.addEventListener(\"htmx:afterRequest\", function(ev) {\\n  if (!ev.detail.elt.classList.contains(\"notify-result\"))\\n    return;\\n  showNotification(!ev.detail.failed, JSON.parse(ev.detail.xhr.responseText));\\n});\\n</script>\\n</body>\\n</html>'\n\ntests/test_snapshot.py:861: AssertionError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_webui_snapshot_delete",
+        "status": "failed",
+        "message": "AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_webui_snapshot_delete(monitor: Monitor):\n        from aiohttp.test_utils import TestClient, TestServer\n        from aiomonitor.webui.app import init_webui\n    \n>       snap_id = await monitor.capture_snapshot()\nE       AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\n\ntests/test_snapshot.py:818: AttributeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_webui_snapshot_diff",
+        "status": "failed",
+        "message": "AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_webui_snapshot_diff(monitor: Monitor):\n        from aiohttp.test_utils import TestClient, TestServer\n        from aiomonitor.webui.app import init_webui\n    \n        async def sleeper():\n            await asyncio.sleep(100)\n    \n>       id1 = await monitor.capture_snapshot()\nE       AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\n\ntests/test_snapshot.py:793: AttributeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_webui_snapshot_list",
+        "status": "failed",
+        "message": "AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_webui_snapshot_list(monitor: Monitor):\n        from aiohttp.test_utils import TestClient, TestServer\n        from aiomonitor.webui.app import init_webui\n    \n>       await monitor.capture_snapshot(name=\"web-snap\")\nE       AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\n\ntests/test_snapshot.py:735: AttributeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_webui_snapshot_save",
+        "status": "failed",
+        "message": "AssertionError: assert 404 == 200\n +  where 404 = <ClientResponse(http://127.0.0.1:42743/api/snapshot/save) [404 Not Found]>\\n<CIMultiDictProxy('Content-Type': 'text/plain; charset=utf-8', 'Content-Length': '14', 'Date': 'Tue, 08 Sep 2026 14:03:57 GMT', 'Server': 'Python/3.12 aiohttp/3.10.10')>\\n.status\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_webui_snapshot_save(monitor: Monitor):\n        from aiohttp.test_utils import TestClient, TestServer\n        from aiomonitor.webui.app import init_webui\n    \n        app = await init_webui(monitor)\n        async with TestClient(TestServer(app)) as client:\n            resp = await client.post(\"/api/snapshot/save\")\n>           assert resp.status == 200\nE           AssertionError: assert 404 == 200\nE            +  where 404 = <ClientResponse(http://127.0.0.1:42743/api/snapshot/save) [404 Not Found]>\\n<CIMultiDictProxy('Content-Type': 'text/plain; charset=utf-8', 'Content-Length': '14', 'Date': 'Tue, 08 Sep 2026 14:03:57 GMT', 'Server': 'Python/3.12 aiohttp/3.10.10')>\\n.status\n\ntests/test_snapshot.py:724: AssertionError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_webui_snapshot_tasks",
+        "status": "failed",
+        "message": "AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_webui_snapshot_tasks(monitor: Monitor):\n        from aiohttp.test_utils import TestClient, TestServer\n        from aiomonitor.webui.app import init_webui\n    \n>       snap_id = await monitor.capture_snapshot()\nE       AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\n\ntests/test_snapshot.py:750: AttributeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_webui_snapshot_trace",
+        "status": "failed",
+        "message": "AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_webui_snapshot_trace(monitor: Monitor):\n        from aiohttp.test_utils import TestClient, TestServer\n        from aiomonitor.webui.app import init_webui\n    \n        async def sleeper():\n            await asyncio.sleep(100)\n    \n        t = asyncio.create_task(sleeper(), name=\"web-trace\")\n        t_id = str(id(t))\n        await asyncio.sleep(0.1)\n>       snap_id = await monitor.capture_snapshot()\nE       AttributeError: 'Monitor' object has no attribute 'capture_snapshot'\n\ntests/test_snapshot.py:772: AttributeError"
+      },
+      {
+        "name": "[f2p] tests.test_snapshot.test_webui_snapshots_page",
+        "status": "failed",
+        "message": "AssertionError: assert 404 == 200\n +  where 404 = <ClientResponse(http://127.0.0.1:38957/snapshots) [404 Not Found]>\\n<CIMultiDictProxy('Content-Type': 'text/plain; charset=utf-8', 'Content-Length': '14', 'Date': 'Tue, 08 Sep 2026 14:03:57 GMT', 'Server': 'Python/3.12 aiohttp/3.10.10')>\\n.status\nmonitor = <Monitor: 127.0.0.1:20101>\n\n    @pytest.mark.asyncio\n    async def test_webui_snapshots_page(monitor: Monitor):\n        from aiohttp.test_utils import TestClient, TestServer\n        from aiomonitor.webui.app import init_webui\n    \n        app = await init_webui(monitor)\n        async with TestClient(TestServer(app)) as client:\n            resp = await client.get(\"/snapshots\")\n>           assert resp.status == 200\nE           AssertionError: assert 404 == 200\nE            +  where 404 = <ClientResponse(http://127.0.0.1:38957/snapshots) [404 Not Found]>\\n<CIMultiDictProxy('Content-Type': 'text/plain; charset=utf-8', 'Content-Length': '14', 'Date': 'Tue, 08 Sep 2026 14:03:57 GMT', 'Server': 'Python/3.12 aiohttp/3.10.10')>\\n.status\n\ntests/test_snapshot.py:846: AssertionError"
+      }
+    ]
+  }
+}

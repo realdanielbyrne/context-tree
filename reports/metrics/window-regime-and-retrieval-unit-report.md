@@ -1,5 +1,11 @@
 # The retrieval unit, not the ranking: porting Claude's chat-search interface into context-tree
 
+> Continuation note (2026-09-08): the user withdrew the proposed 25–50% target and
+> made whole-tool preservation an explicit hypothesis. See §16 for corrected
+> accounting and evidence limits, and [the continuation journal](attention-policy-continuation/journal.md)
+> for current implementation and experiments.
+
+
 DS-STAR pass, context-tree retrieval · September 4, 2026 · GLM 5.3 Flash on the frozen `s1` store
 
 ## Abstract
@@ -706,3 +712,37 @@ retired: this is deterministic scoring with a few fitted constants over L0.
 **Order.** (1) Replay the recorded W=131,072 runs and the step-8 task runs: compute both channels per
 turn from L0 alone and score them against the recorded fetches. (2) Build the §14 H1 scenario.
 (3) One live pair: relevance-only admission vs relevance + priority, same soft target, n ≥ 5.
+
+
+## 16 Continuation corrections — 2026-09-08
+
+The current user instructions supersede the proposed 25–50% operating target in
+§§12–15. Occupancy is telemetry; context grows with task demand. Whole tool
+responses, excerpts, and structural selections are experimental arms. A
+sufficiency phrase is evidence for reassessment, never permission or an
+irrelevance label. Current work and reproducible evidence are in
+[the continuation journal](attention-policy-continuation/journal.md) and
+[the source-hashed historical audit](attention-policy-continuation/legacy-audit.json).
+
+The final historical task artifacts contain **4,546,867 agent tokens and
+5,095,123 all-model tokens**. The omitted 548,256 tokens are summarization work.
+Their recorded total cost is **$6.6558556**. These are recorded usage/cost values,
+not a newly rerun benchmark. Tree medians are 112,519 all-model tokens on sw-1
+and 493,787 on sw-2; the former headline medians 78,795 and 336,206 were agent-only.
+Caps and stalls remain in the audit, including three runs whose judge passed
+despite a stalled/capped harness status. A 3/3 judge column is not proof that
+all three model runs completed normally.
+
+Elastic-tail savings were **44.51% arm-total uncached input**, or **29.91% per
+completed run**, not 44% per completed run. The final QA epoch reported
+static 16/25 (one error), elastic 16/25 (six errors), flat 15/25 (five errors),
+and prefix 25/25 (zero errors). No cross-epoch or error-dropped promotion is
+justified by these totals. qo05 remains excluded from new primary evidence.
+
+The 382 historical task turns recorded zero context-tool calls. Exact request
+and response bodies and disposable L0 stores were not retained. Consequently
+next-fetch AUC and retrospective H4/admission replay are **unavailable**, not
+zero; the ledger explanation of sw-2 is a hypothesis. The local
+`deepswe-agents-last-exam` files are generated fixtures, not public benchmark
+results. The continuation imports official Datacurve DeepSWE tasks and gates
+pristine and reference-patch behavior in separate verifier containers.

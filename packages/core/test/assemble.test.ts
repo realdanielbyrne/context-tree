@@ -535,7 +535,7 @@ describe('tail (rule 3, D6)', () => {
     expect(inZone(after, 'tail')[0]?.text).toContain('the fetched branch detail');
   });
 
-  it('drops ephemeral tail entries at a phase boundary and keeps the rest, which is the whole of D6 soft offloading and nothing more', () => {
+  it('drops acknowledged ephemeral tail entries at a phase boundary and keeps the rest', () => {
     const h = harness();
     h.addBranch({ title: 'patch', phase: 'implementation', status: 'open', summary: null });
     h.assembler.appendTail({ id: 'fetched', text: 'branch detail', ephemeral: true });
@@ -543,6 +543,7 @@ describe('tail (rule 3, D6)', () => {
 
     const before = h.assembler.assemble();
     expect(ids(inZone(before, 'tail'))).toEqual(['tail:fetched', 'tail:pinned']);
+    h.assembler.acknowledgeDelivery(before.deliveryReceipt);
 
     h.assembler.onPhaseTransition();
     const after = h.assembler.assemble();
@@ -995,7 +996,7 @@ describe('the window is the real constraint (2026-09-02)', () => {
   });
 });
 
-describe('window enforcement — the tail is evicted per turn so a retrieved result is never truncated', () => {
+describe('window enforcement — selected tail payloads require explicit delivery acknowledgement', () => {
   const REPLY = 0.05; // ZONE_FRACTIONS.reply — the reserve derives from the window, not from a constant here
   const fitsWith = (total: number): number => Math.ceil((total + 1) / (1 - REPLY));
 
@@ -1003,7 +1004,8 @@ describe('window enforcement — the tail is evicted per turn so a retrieved res
     const h = harness();
     h.addBranch({ title: 'reproduce', phase: 'diagnosis' });
     h.assembler.appendTail({ id: 'a', text: 'first fetch '.repeat(300), ephemeral: true });
-    const seen = h.assembler.assemble({ toolSchemasText: TOOL_SCHEMAS, window: 1_000_000 }); // marks `a` as seen
+    const seen = h.assembler.assemble({ toolSchemasText: TOOL_SCHEMAS, window: 1_000_000 });
+    h.assembler.acknowledgeDelivery(seen.deliveryReceipt);
     const window = fitsWith(seen.budgets.total);
     h.assembler.appendTail({ id: 'b', text: 'second fetch '.repeat(120), ephemeral: true });
 
@@ -1014,6 +1016,10 @@ describe('window enforcement — the tail is evicted per turn so a retrieved res
     expect(ids(prompt.blocks)).not.toContain('tail:a');
     expect(prompt.budgets.total + Math.floor(REPLY * window)).toBeLessThanOrEqual(window);
     expect(prompt.budgets.overWindow).toBe(false);
+    // Even candidate eviction is pure until the request succeeds.
+    expect(h.assembler.tailEntries().map((e) => e.id)).toEqual(['a', 'b']);
+    h.assembler.acknowledgeDelivery(prompt.deliveryReceipt);
+    h.assembler.acknowledgeDelivery(prompt.deliveryReceipt);
     expect(h.assembler.tailEntries().map((e) => e.id)).toEqual(['b']);
   });
 
@@ -1045,6 +1051,7 @@ describe('window enforcement — the tail is evicted per turn so a retrieved res
     h.assembler.appendTail({ id: 'pinned', text: 'keep me '.repeat(200), ephemeral: false });
     h.assembler.appendTail({ id: 'seen', text: 'disposable '.repeat(200), ephemeral: true });
     const full = h.assembler.assemble({ toolSchemasText: TOOL_SCHEMAS, window: 1_000_000 });
+    h.assembler.acknowledgeDelivery(full.deliveryReceipt);
     const seenTokens = full.blocks.find((b) => b.id === 'tail:seen')!.tokens;
     const window = fitsWith(full.budgets.total - seenTokens);
 
@@ -1066,5 +1073,88 @@ describe('window enforcement — the tail is evicted per turn so a retrieved res
     expect(prompt.budgets.evictedFromTail).toEqual([]);
     expect(prompt.budgets.droppedFromZoneC).toBe(0);
     expect(ids(prompt.blocks)).toEqual(expect.arrayContaining(['tail:a', 'tail:b']));
+  });
+
+  it('previewing twice acknowledges nothing, so a failed or unsent candidate cannot evict its selected payload', () => {
+    const h = harness();
+    h.assembler.appendTail({ id: 'selected', text: 'selected excerpt '.repeat(300), ephemeral: true });
+    const entries = h.assembler.tailEntries();
+    const first = h.assembler.assemble({ window: 100 });
+    const second = h.assembler.assemble({ window: 100 });
+
+    expect(second).toEqual(first);
+    expect(first.budgets.overWindow).toBe(true);
+    expect(first.budgets.replyAllowance).toBe(0);
+    expect(first.budgets.evictedFromTail).toEqual([]);
+    expect(h.assembler.tailEntries()).toEqual(entries);
+    h.assembler.onPhaseTransition();
+    expect(h.assembler.tailEntries()).toEqual(entries);
+  });
+
+  it('an old receipt cannot acknowledge replacement content under the same supplied ID', () => {
+    const h = harness();
+    const old = { id: 'fetch:1', text: 'old excerpt '.repeat(300), ephemeral: true };
+    const replacement = { ...old, text: 'new excerpt '.repeat(300) };
+    const sent = h.assembler.assemble({ tail: [old] });
+    const pending = h.assembler.assemble({ tail: [replacement] });
+    expect(pending.deliveryReceipt.blocks.at(-1)?.contentHash).not.toBe(sent.deliveryReceipt.blocks.at(-1)?.contentHash);
+
+    h.assembler.acknowledgeDelivery(sent.deliveryReceipt);
+    h.assembler.acknowledgeDelivery(sent.deliveryReceipt);
+    const small = h.assembler.assemble({ tail: [replacement], window: 100 });
+    expect(small.budgets.evictedFromTail).toEqual([]);
+    expect(inZone(small, 'tail')[0]?.text).toContain(replacement.text);
+    expect(small.budgets.overWindow).toBe(true);
+  });
+
+  it('phase transitions remove only acknowledged payloads and never make later appends appear delivered', () => {
+    const h = harness();
+    h.assembler.appendTail({ id: 'seen', text: 'delivered excerpt', ephemeral: true });
+    h.assembler.acknowledgeDelivery(h.assembler.assemble().deliveryReceipt);
+    h.assembler.appendTail({ id: 'pending', text: 'pending excerpt '.repeat(100), ephemeral: true });
+    h.assembler.assemble();
+    h.assembler.onPhaseTransition();
+    h.assembler.appendTail({ id: 'new', text: 'new excerpt '.repeat(100), ephemeral: true });
+
+    const prompt = h.assembler.assemble({ window: 100 });
+    expect(h.assembler.tailEntries().map((entry) => entry.id)).toEqual(['pending', 'new']);
+    expect(ids(inZone(prompt, 'tail'))).toEqual(['tail:pending', 'tail:new']);
+    expect(prompt.budgets.evictedFromTail).toEqual([]);
+    expect(prompt.budgets.overWindow).toBe(true);
+  });
+
+  it('enforces supplied tails by the same delivery rules without mutating either owner buffer', () => {
+    const h = harness();
+    const old = { id: 'a', text: 'old excerpt '.repeat(300), ephemeral: true };
+    h.assembler.appendTail(old);
+    const sent = h.assembler.assemble({ tail: [old], window: 1_000_000 });
+    h.assembler.acknowledgeDelivery(sent.deliveryReceipt);
+    const supplied = [old, { id: 'b', text: 'new excerpt '.repeat(120), ephemeral: true }];
+    const prompt = h.assembler.assemble({ tail: supplied, window: fitsWith(sent.budgets.total) });
+
+    expect(prompt.budgets.evictedFromTail).toEqual(['a']);
+    expect(ids(inZone(prompt, 'tail'))).toEqual(['tail:b']);
+    expect(prompt.budgets.overWindow).toBe(false);
+    h.assembler.acknowledgeDelivery(prompt.deliveryReceipt);
+    expect(supplied.map((entry) => entry.id)).toEqual(['a', 'b']);
+    expect(h.assembler.tailEntries()).toEqual([old]);
+  });
+
+  it('reports an unsendable selected payload without acknowledging or silently cutting it', () => {
+    const h = harness();
+    // The host chose this excerpt; it need not be the full source response.
+    const selected = 'the chosen excerpt '.repeat(500);
+    h.assembler.appendTail({ id: 'oversized', text: selected, ephemeral: true });
+    const prompt = h.assembler.assemble({ window: 64 });
+    expect(prompt.budgets.overWindow).toBe(true);
+    expect(prompt.budgets.windowRemaining).toBe(64 - prompt.budgets.total);
+    expect(prompt.budgets.replyAllowance).toBe(0);
+    expect(inZone(prompt, 'tail')[0]?.text).toContain(selected);
+    expect(prompt.deliveryReceipt.blocks.at(-1)?.id).toBe('tail:oversized');
+    expect(h.assembler.tailEntries()).toHaveLength(1);
+  });
+
+  it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY])('rejects an invalid hard window %s', (window) => {
+    expect(() => harness().assembler.assemble({ window })).toThrow(/finite positive/);
   });
 });

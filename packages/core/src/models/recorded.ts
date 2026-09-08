@@ -129,12 +129,16 @@ function parseResult(value: unknown, where: string): CompletionResult {
   }
   const raw = value as Record<string, unknown>;
   const stopReason = raw.stopReason ?? null;
+  if (raw.usageKnown !== undefined && typeof raw.usageKnown !== 'boolean') {
+    throw new ConfigError(`${where}: usageKnown must be a boolean`);
+  }
   if (stopReason !== null && typeof stopReason !== 'string') {
     throw new ConfigError(`${where}: stopReason must be a string or null`);
   }
   return {
     text: requireString(raw.text, `${where}.text`),
     model: requireString(raw.model, `${where}.model`),
+    ...(raw.usageKnown === undefined ? {} : { usageKnown: raw.usageKnown }),
     usage: parseUsage(raw.usage, `${where}.usage`),
     toolCalls: parseToolCalls(raw.toolCalls, `${where}.toolCalls`),
     stopReason,

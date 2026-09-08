@@ -85,6 +85,8 @@ export interface EventSearchOptions extends TreeSearchOptions {
   hits: number;
   /** Characters of the event's rendered text each hit carries (`retrieval.excerptChars`). */
   excerptChars: number;
+  /** Experimental anchor repair; omitted preserves historical first-match behavior. */
+  excerptAnchor?: 'first' | 'rarest';
 }
 
 /**

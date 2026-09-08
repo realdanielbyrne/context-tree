@@ -43,13 +43,14 @@ export interface AnthropicMessageLike {
   model: string;
   stop_reason?: string | null;
   content: readonly AnthropicContentBlockLike[];
-  usage: AnthropicUsageLike;
+  usage?: AnthropicUsageLike | null;
 }
 
 export interface AnthropicClientLike {
   messages: {
     create(
       params: Anthropic.Messages.MessageCreateParamsNonStreaming,
+      options?: { maxRetries?: number },
     ): Promise<AnthropicMessageLike>;
   };
 }
@@ -62,6 +63,8 @@ export interface AnthropicProviderOptions {
   /** Injected in tests; a real client is constructed when absent. */
   client?: AnthropicClientLike;
   retry?: RetryOptions;
+  /** SDK retries per wrapper attempt; omitted preserves the SDK default. */
+  sdkMaxRetries?: number;
   maxTokens?: number;
 }
 
@@ -69,17 +72,22 @@ export class AnthropicProvider implements ModelProvider {
   readonly id = 'anthropic';
   private readonly client: AnthropicClientLike;
   private readonly retry: RetryOptions;
+  private readonly sdkRequestOptions: { maxRetries: number } | undefined;
   private readonly defaultMaxTokens: number;
 
   constructor(options: AnthropicProviderOptions = {}) {
-    this.client = options.client ?? new Anthropic({ apiKey: options.apiKey });
+    if (options.sdkMaxRetries !== undefined && (!Number.isSafeInteger(options.sdkMaxRetries) || options.sdkMaxRetries < 0)) {
+      throw new RangeError('sdkMaxRetries must be a nonnegative integer');
+    }
+    this.sdkRequestOptions = options.sdkMaxRetries === undefined ? undefined : { maxRetries: options.sdkMaxRetries };
+    this.client = options.client ?? new Anthropic({ apiKey: options.apiKey, maxRetries: options.sdkMaxRetries });
     this.retry = options.retry ?? {};
     this.defaultMaxTokens = options.maxTokens ?? DEFAULT_MAX_TOKENS;
   }
 
   async complete(request: CompletionRequest): Promise<CompletionResult> {
     const params = this.toParams(request);
-    const response = await withRetry(() => this.client.messages.create(params), {
+    const response = await withRetry(() => this.client.messages.create(params, this.sdkRequestOptions), {
       label: 'anthropic messages.create',
       ...this.retry,
     });
@@ -155,15 +163,20 @@ function fromAnthropicResponse(response: AnthropicMessageLike): CompletionResult
       });
     }
   }
+  const rawUsage = response.usage;
+  const usageKnown = rawUsage != null
+    && [rawUsage.input_tokens, rawUsage.output_tokens, rawUsage.cache_read_input_tokens ?? 0, rawUsage.cache_creation_input_tokens ?? 0]
+      .every((count) => Number.isSafeInteger(count) && count >= 0);
   return {
     text,
     model: response.model,
-    usage: {
-      input: response.usage.input_tokens,
-      output: response.usage.output_tokens,
-      cacheRead: response.usage.cache_read_input_tokens ?? 0,
-      cacheWrite: response.usage.cache_creation_input_tokens ?? 0,
-    },
+    usageKnown,
+    usage: usageKnown ? {
+      input: rawUsage?.input_tokens ?? 0,
+      output: rawUsage?.output_tokens ?? 0,
+      cacheRead: rawUsage?.cache_read_input_tokens ?? 0,
+      cacheWrite: rawUsage?.cache_creation_input_tokens ?? 0,
+    } : { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
     toolCalls,
     stopReason: response.stop_reason ?? null,
   };

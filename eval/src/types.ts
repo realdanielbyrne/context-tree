@@ -7,17 +7,19 @@
  * the metrics for exactly one of those runs.
  */
 import type { TokenUsage } from '@context-tree/core';
+import type { AttentionProfile } from './attention-loop.js';
+import type { DeepSweEnvironment } from './adapters/deepswe.js';
 
 /** §15's arms: raw transcript vs the tree, plus the top-k filtered variants. */
-export type Arm = 'native' | 'context-tree' | 'dsa' | 'tree-dsa' | 'prefix-retrieval';
+export type Arm = 'native' | 'context-tree' | 'dsa' | 'tree-dsa' | 'prefix-retrieval' | 'attention';
 
-export const ARMS: readonly Arm[] = ['native', 'context-tree', 'dsa', 'tree-dsa', 'prefix-retrieval'] as const;
+export const ARMS: readonly Arm[] = ['native', 'context-tree', 'dsa', 'tree-dsa', 'prefix-retrieval', 'attention'] as const;
 
 export function isArm(value: string): value is Arm {
   return (ARMS as readonly string[]).includes(value);
 }
 
-export type JudgeKind = 'exact_match' | 'command' | 'llm_rubric';
+export type JudgeKind = 'exact_match' | 'command' | 'llm_rubric' | 'deepswe';
 
 export interface ScenarioJudge {
   kind: JudgeKind;
@@ -39,6 +41,7 @@ export interface Scenario {
   files?: Record<string, string>;
   judge: ScenarioJudge;
   meta?: Record<string, unknown>;
+  environment?: DeepSweEnvironment;
 }
 
 /** One benchmark's loader: native layout on disk -> scenarios. Fails loud. */
@@ -55,17 +58,21 @@ export interface Adapter {
  * `success` stays null rather than false. Turn and wall-clock ceilings are
  * unbounded unless a probe deliberately sets one.
  */
-export type RunStatus = 'completed' | 'stalled' | 'turn_cap' | 'time_cap' | 'cost_cap' | 'error';
+export type RunStatus = 'completed' | 'stalled' | 'turn_cap' | 'time_cap' | 'cost_cap' | 'token_cap' | 'error';
 
 /** Statuses that mean the harness stopped the run, not that the task failed. */
-export const HARNESS_STOPPED: readonly RunStatus[] = ['turn_cap', 'time_cap', 'cost_cap'];
+export const HARNESS_STOPPED: readonly RunStatus[] = ['turn_cap', 'time_cap', 'cost_cap', 'token_cap'];
 
 export interface TurnRecord {
   index: number;
   latencyMs: number;
   usage: TokenUsage;
+  /** False means usage contains only the known subtotal from this turn's attempts. */
+  usageComplete?: boolean;
   toolCalls: string[];
   stopReason: string | null;
+  attempts?: number;
+  promptTokens?: number;
 }
 
 export type TokenTotals = TokenUsage & { total: number };
@@ -98,6 +105,9 @@ export interface BatchingMetrics {
 
 export interface RunMetrics {
   tokens: TokenTotals;
+  /** All providers, including retries and summaries; old tokens remains agent-only. */
+  allModelTokens?: TokenTotals;
+  usageComplete?: boolean;
   turns: { modelTurns: number; toolCalls: number };
   speed: { wallMs: number; p50TurnMs: number; p95TurnMs: number; outputTokensPerSec: number };
   costUsd: number;
@@ -133,7 +143,13 @@ export interface RunResult {
    * This is what makes summarizer overhead attributable per run instead of a
    * stderr-only residual.
    */
-  costByModel?: { model: string; calls: number; usage: TokenUsage; usd: number }[];
+  costByModel?: {
+    model: string; calls: number; usage: TokenUsage;
+    /** Price-table estimate of the known usage subtotal, not a provider invoice. */
+    usd: number;
+    priceMatched?: string | null;
+    usageComplete?: boolean;
+  }[];
   status: RunStatus;
   success: boolean | null;
   judge: JudgeResult | null;
@@ -142,6 +158,8 @@ export interface RunResult {
   error?: string;
   /** Present only when the sandbox was kept for inspection. */
   sandboxPath?: string;
+  capturePath?: string;
+  configuration?: Record<string, unknown>;
   startedAt: string;
   finishedAt: string;
 }
@@ -163,6 +181,10 @@ export interface HarnessOptions {
    */
   window?: number;
   keepSandbox: boolean;
+  /** Durable evidence outside disposable sandboxes; CLI enables it by default. */
+  captureDir?: string;
+  tokenCap?: number;
+  policyProfile?: AttentionProfile;
   /**
    * Pinned sampling temperature for every agent-loop and summarizer call, or
    * null for the provider default. Unpinned sampling is the program's largest

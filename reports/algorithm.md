@@ -57,33 +57,27 @@ query the model issued ever centred the band. The corollary for probes:
 replacing a stage by fiat bounds that stage only, so write down what it
 hands to the next one and check the next one received it.
 
-**8. Attend only to what bears on the turn.** If earlier context has little or
-no bearing on the current turn, the model should not spend attention on it at
-all. This is DSA's idea — sparse attention at the token level — applied to the
-context as a whole, and it is the reasoning behind eviction: not "we ran out of
-room" but "this does not belong in this turn". Relevance over a long horizon is
-not monotonic: an early API edit is irrelevant while the UI is being written and
-relevant again when the unit tests are, so history must be categorised AND
-prioritised per turn, not summarised once and forgotten. Some artifacts belong
-in every turn regardless — the task statement, the plan written before
-implementation, the operator's steering — because every turn bears on them.
-Measured so far: with no ledger of completed steps the prefix design stalled 0/3
-on a four-module task (report §7c); with the whole tail present the tail arms
-answered from a distractor 14/15 times (§5). Both are attention spent on the
-wrong history.
+**8. Attention over history is an experimental selection policy.** Remove only
+history with evidence that it is nearly irrelevant to the current turn. Low
+lexical overlap alone is insufficient; uncertain relevance stays in context.
+An API edit can recur during later tests, so relevance must be reassessed from
+the available turn evidence. Task, plan and steering preservation, recency spans,
+and a compact action ledger are separately testable hypotheses. The old sw-2
+stall does not establish a missing ledger as its cause: its transcript was not
+retained. The opt-in `attention` evaluator now records originals, selected bytes,
+source sequences and acknowledged sends. Its deterministic primitive is in
+`packages/core/src/attention/`; no experimental profile is a product default.
 
-**9. Breadth follows the horizon, inside a soft target.** Retrieval should be as
-broad as the turn needs and no broader: a fact-finding turn needs one event, a
-planning turn needs an overview of the whole task (the shape, not every
-detail), a multi-file edit needs several files, their APIs and the
-instructions in view at once. Fitting an arbitrary window constraint is not a
-reason to starve the model; the soft target (report §12) is where the steady
-state sits, and a turn overruns it when its work requires. Two signals should
-drive this and neither is used yet: the model's own statements of sufficiency
-("I have enough to implement X") and of topic change, which say when to stop
-adding exploratory context and when to evict; and the recency of the last n
-turns, which stay anchored across everything else. Hypotheses, with the
-measurements that would settle them, are in the report §14.
+**9. Breadth follows demonstrated task demand.** A question may need a narrow
+excerpt; software work may need complete tool responses or coherent structural
+sections. Compare these units rather than assuming whole-result preservation
+wins. There is no mandatory 25% or 50% occupancy target, no filling unused space,
+and no early-session pruning to meet a fraction. Model sufficiency statements
+can trigger reassessment of exploratory additions. They neither authorize
+implementation nor prove existing evidence irrelevant. H1–H6 and deterministic
+priority require mechanism gates, paired public multi-turn SWE evaluation and
+combined validation before promotion. See
+`metrics/attention-policy-continuation/journal.md` for the current experiment epoch.
 
 Terms. **L0**: append-only event log. **L2**: content-addressed payload
 store. **L1**: the tree (nodes pointing into L0 by sequence range, with
@@ -178,9 +172,11 @@ against 6/25 for the same stack with coordinate hits, in one batch, every succes
 zero fetches, −54% uncached input over completed runs (−59% over all rows)
 (`window-regime-and-retrieval-unit-report.md` §7). One store, one model, one window: see that report's §9.
 
-*Window enforcement is in the library; the append cap is not.* `ZoneAssembler.assemble` evicts
-oldest seen ephemeral tail entries, then Zone C events, when `A+B+C+tail+reply > window`, and
-reports both (`evictedFromTail`, `droppedFromZoneC`); it acts only when the host supplies a
+*Window enforcement is in the library; the append cap is not.* `ZoneAssembler.assemble` proposes eviction of
+oldest acknowledged ephemeral tail entries, then Zone C events, when `A+B+C+tail+reply > window`, and
+reports both (`evictedFromTail`, `droppedFromZoneC`). The host commits delivery with
+`acknowledgeDelivery(prompt.deliveryReceipt)` after a successful send; assembly itself
+does not mark selected payloads seen or mutate the tail. Window enforcement acts when the host supplies a
 window (`HarnessOptions.window` in the live loop). The elastic raw tail, the evict-ahead quantum
 and the append cap live in `eval/scripts/transplant.mjs` (`tree-snippet-hits-elastic`, `wire()`).
 Replayed offline over 118 recorded runs at W=131,072 (`elastic-tail-killgate.mjs`): overflows 0;
@@ -274,7 +270,7 @@ measurement, would be worth more than another boundary condition.
 | Fusing indexes with disjoint coverage | **Harmful.** RRF across four indexes scores 6/17 where routing to the best single index scores 9/17; answers already found are demoted (rank 3→12, 7→25). Fuse rankers over one index, route across indexes. |
 | Fact needing two literals from two places | No single-entry index can serve it. Three of 17 questions; needs a join or an explicit second hop. Open. |
 | Zone B on a literal-recall task | **Inert, measured 2026-09-05.** `flat-events` (Zone A + elastic raw tail, events scored over the whole trace, no summaries, no branch ranking) 15/25 against 16/25 for the same stack with Zone B, one batch, n=5. Zone B's remaining candidate roles — a ledger of completed steps on multi-step tasks, and cache shape on long sessions — are unmeasured. |
-| Operating point of the window | The tail-filling arms run at 80-95% of W by construction; the design that scored 25/25 (`prefix-plus-retrieval`: cached prefix + recency slice + retrieval fill) runs at 15-30% and grows only when a turn needs it, and was the only arm with zero provider empty-turn failures. Next: a soft target of 25-50% of W_max, measured per task class (report §12). |
+| Operating point of the window | The tail-filling arms run at 80-95% of W by construction; the design that scored 25/25 (`prefix-plus-retrieval`: cached prefix + recency slice + retrieval fill) runs at 15-30% and grows only when a turn needs it, and was the only arm with zero provider empty-turn failures. Current experiments use demand and relevance evidence; the former 25–50% target was withdrawn by the user. |
 | A design with no memory of completed steps | **Measured 2026-09-05 (Sonnet 5, n=3):** `prefix-retrieval` 0/3 on sw-2 (four modules, fix in order) against 3/3 for `context-tree` and `native`; every stalled run ended in 4-6 consecutive `run_command` turns with 90-100k tokens of headroom — the investigate-1 loop. On single-step sw-1 it was 3/3, a peer. Window size does not fix it; a compact ledger of completed steps inside the target does (candidate role for Zone B). |
 
 ## Measurement hazards
@@ -360,7 +356,7 @@ so the negative result is not rebuilt).
   scoring fetches; the prior pass could not credit it because its bands were capped away at 65k.
 - **Elastic tail / per-turn window management** (`tree-snippet-hits-elastic`; eviction shipped in
   `ZoneAssembler`): 16/25 vs 16/25 same batch, **0 truncated appends** (2 for the static tail; 198/435
-  recorded before), −44% uncached input per completed run, tail moved once. Landed: core eviction;
+  recorded before), −44.51% arm-total uncached input (−29.91% per completed run), tail moved once. Landed: core eviction;
   harness arm. Non-inferior on score, strictly better on effort.
 - **flat-events** (no Zone B): 15/25 vs 16/25 — the null hypothesis for Zone B on this task class holds.
 - **prefix-plus-retrieval** (cached prefix + recency slice + retrieval-filled window): **25/25**, median 1
@@ -371,7 +367,7 @@ so the negative result is not rebuilt).
   (query-dependent, the fingerprint match `context_search` already scores) + priority
   (query-independent state derived from L0: fetch/edit boosts, decay, `superseded_by` → 0, topic-shift
   reset), categories {pinned, active, dormant, unrelated} as the prior, admission by relevance MASS
-  (nucleus p) inside the soft target, an appended per-turn attention log for audit. First step is an
+  (nucleus p) inside an explicit demand budget, an appended per-turn attention log for audit. First step is an
   offline replay: does relevance + priority predict the recorded fetches better than relevance alone?
 - **Event-snippet hits** (`tree-snippet-hits`, the published-alternative port): **15/25 vs 6/25**
   in one batch (n=5, GLM 5.3 Flash, W=131,072, deep set), 15/15 successes with zero fetches,

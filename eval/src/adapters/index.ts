@@ -2,6 +2,7 @@
  * The benchmark registry. Each id is a directory name under the scenarios root
  * and a value accepted by `--benchmarks`.
  */
+import { deepSweAdapter, DEEPSWE_ID } from './deepswe.js';
 import type { Adapter } from '../types.js';
 import { automationBenchAdapter, AUTOMATION_BENCH_ID } from './automation-bench.js';
 import { deepsweAgentsLastExamAdapter, DEEPSWE_AGENTS_LAST_EXAM_ID } from './deepswe-agents-last-exam.js';
@@ -11,6 +12,7 @@ import { TERMINAL_BENCH_ID, terminalBenchAdapter } from './terminal-bench.js';
 
 export const ADAPTERS: readonly Adapter[] = [
   terminalBenchAdapter,
+  deepSweAdapter,
   deepsweAgentsLastExamAdapter,
   automationBenchAdapter,
   hleToolsAdapter,
@@ -19,7 +21,7 @@ export const ADAPTERS: readonly Adapter[] = [
 
 export const BENCHMARK_IDS: readonly string[] = ADAPTERS.map((adapter) => adapter.id);
 
-export { AUTOMATION_BENCH_ID, DEEPSWE_AGENTS_LAST_EXAM_ID, GDPVAL_AA_V2_ID, HLE_TOOLS_ID, TERMINAL_BENCH_ID };
+export { DEEPSWE_ID, AUTOMATION_BENCH_ID, DEEPSWE_AGENTS_LAST_EXAM_ID, GDPVAL_AA_V2_ID, HLE_TOOLS_ID, TERMINAL_BENCH_ID };
 
 export function adapterFor(id: string): Adapter {
   const adapter = ADAPTERS.find((candidate) => candidate.id === id);

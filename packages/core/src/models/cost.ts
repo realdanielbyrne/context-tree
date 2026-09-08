@@ -14,7 +14,7 @@ import type {
   ModelProvider,
   TokenUsage,
 } from '../contracts/index.js';
-import { CostCapExceededError } from '../contracts/index.js';
+import { CostCapExceededError, EmptyCompletionError } from '../contracts/index.js';
 
 /** USD per 1M tokens. */
 export interface ModelPrice {
@@ -145,6 +145,13 @@ export interface CostMeterOptions {
   prices?: PriceTable;
 }
 
+/** Missing flags preserve compatibility with providers returning valid TokenUsage. */
+export function hasKnownUsage(result: Pick<CompletionResult, 'usage' | 'usageKnown'>): boolean {
+  return result.usageKnown !== false && result.usage != null
+    && [result.usage.input, result.usage.output, result.usage.cacheRead, result.usage.cacheWrite]
+      .every((count) => Number.isSafeInteger(count) && count >= 0);
+}
+
 export class InMemoryCostMeter implements CostMeter {
   private readonly totals = new Map<string, { calls: number; usage: TokenUsage }>();
   private readonly unpriced = new Set<string>();
@@ -157,6 +164,7 @@ export class InMemoryCostMeter implements CostMeter {
   }
 
   record(model: string, usage: TokenUsage): void {
+    if (!hasKnownUsage({ usage })) throw new RangeError('cost meter requires known nonnegative integer usage');
     const current = this.totals.get(model) ?? { calls: 0, usage: ZERO_USAGE };
     this.totals.set(model, { calls: current.calls + 1, usage: addUsage(current.usage, usage) });
     if (priceFor(model, this.prices).matched === null) this.unpriced.add(model);
@@ -166,11 +174,13 @@ export class InMemoryCostMeter implements CostMeter {
   snapshot(): CostSnapshot {
     const entries: CostEntry[] = [];
     for (const [model, total] of this.totals) {
+      const price = priceFor(model, this.prices);
       entries.push({
         model,
         calls: total.calls,
         usage: total.usage,
-        usd: usdFor(total.usage, priceFor(model, this.prices).price),
+        usd: usdFor(total.usage, price.price),
+        priceMatched: price.matched,
       });
     }
     return {
@@ -220,8 +230,18 @@ export class MeteredProvider implements ModelProvider {
   }
 
   async complete(request: CompletionRequest): Promise<CompletionResult> {
-    const result = await this.inner.complete(request);
-    this.meter.record(result.model, result.usage);
+    let result: CompletionResult;
+    try {
+      result = await this.inner.complete(request);
+    } catch (error) {
+      if (error instanceof EmptyCompletionError && error.usageKnown && hasKnownUsage(error.result)) {
+        this.meter.record(error.result.model, error.result.usage);
+        this.meter.assertUnderCap();
+      }
+      throw error;
+    }
+    if (hasKnownUsage(result)) this.meter.record(result.model, result.usage);
+    else result = { ...result, usageKnown: false };
     this.meter.assertUnderCap();
     return result;
   }

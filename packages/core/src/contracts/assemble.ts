@@ -57,9 +57,9 @@ export interface BudgetReport {
    */
   replyAllowance: number | null;
   /**
-   * Tail entries evicted THIS assemble so that prompt + reply fit the window:
-   * oldest already-seen ephemeral entries first (D6 — a result the model has
-   * already reacted to is disposable; one it has not seen yet never is). Empty
+   * Tail entries omitted from THIS candidate so prompt + reply fit the window:
+   * oldest acknowledged ephemeral payloads first. Held entries are removed only
+   * when this candidate's delivery is acknowledged. Empty
    * when no window is known or nothing was over.
    */
   evictedFromTail: string[];
@@ -75,8 +75,29 @@ export interface TailEntry {
   /** `context_fetch` / `context_search` / `context_peek` result text. */
   id: string;
   text: string;
-  /** Dropped at the next phase boundary — soft offloading (D6). */
+  /** Eligible for offloading after delivery has been acknowledged (D6). */
   ephemeral: boolean;
+}
+
+/** Identity of the selected, rendered payload, not of its full source response. */
+export interface DeliveredBlock {
+  readonly id: string;
+  /** SHA-256 of the exact UTF-8 block text. */
+  readonly contentHash: string;
+}
+
+/**
+ * A delivery candidate. Creating this receipt acknowledges nothing. The host
+ * acknowledges it only after successfully sending these exact selected blocks;
+ * previews, failed calls, and requests that replace/cut blocks must not use it.
+ * Receipts can be journalled beside requests without modifying L0 or L1.
+ */
+export interface DeliveryReceipt {
+  readonly version: 1;
+  readonly blocks: readonly DeliveredBlock[];
+  readonly tailSource: 'internal' | 'supplied';
+  /** Already-delivered tail payloads omitted from this candidate. */
+  readonly evictedTail: readonly DeliveredBlock[];
 }
 
 export interface AssembleOptions {
@@ -107,7 +128,11 @@ export interface AssembledPrompt {
   budgets: BudgetReport;
   /** Block ids, in order, that precede each emitted cache breakpoint. */
   cacheBreakpoints: string[];
+  /** Present on ZoneAssembler output; optional for other PromptAssembler implementations. */
+  deliveryReceipt?: DeliveryReceipt;
 }
+
+export type DeliveryPrompt = AssembledPrompt & { deliveryReceipt: DeliveryReceipt };
 
 export interface PromptAssembler {
   assemble(options?: AssembleOptions): AssembledPrompt;

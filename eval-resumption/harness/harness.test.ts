@@ -351,7 +351,7 @@ describe('arms', () => {
 
     type ProbeField = {
       safeParse: (value: unknown) => { success: boolean };
-      unwrap?: () => { options?: readonly string[] };
+      unwrap?: () => { safeParse: (value: unknown) => { success: boolean }; options?: readonly string[] };
     };
     const shapes: Record<string, Record<string, ProbeField>> = {
       [CONTEXT_FETCH]: contextFetchInputShape,

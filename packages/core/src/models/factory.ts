@@ -12,25 +12,32 @@ import { AnthropicProvider } from './anthropic.js';
 import { MockProvider } from './mock.js';
 import { OpenRouterProvider } from './openrouter.js';
 import { RecordedProvider } from './recorded.js';
+import type { RetryOptions } from './retry.js';
 
 /** Cassette inside `storePaths().recorded` (§17). */
 export const CASSETTE_FILENAME = 'completions.json';
 
-export function createProvider(config: ContextTreeConfig, apiKeys: ApiKeys): ModelProvider {
+export interface CreateProviderOptions {
+  /** Set 0 with retry.attempts=1 to expose every local transport attempt to the caller. */
+  sdkMaxRetries?: number;
+  retry?: RetryOptions;
+}
+
+export function createProvider(config: ContextTreeConfig, apiKeys: ApiKeys, options: CreateProviderOptions = {}): ModelProvider {
   switch (config.provider) {
     case 'anthropic': {
       const apiKey = apiKeys.anthropic;
       if (apiKey === undefined) {
         throw new ConfigError('provider "anthropic" selected but ANTHROPIC_API_KEY is not set');
       }
-      return new AnthropicProvider({ apiKey });
+      return new AnthropicProvider({ apiKey, ...options });
     }
     case 'openrouter': {
       const apiKey = apiKeys.openrouter;
       if (apiKey === undefined) {
         throw new ConfigError('provider "openrouter" selected but OPENROUTER_API_KEY is not set');
       }
-      return new OpenRouterProvider({ apiKey });
+      return new OpenRouterProvider({ apiKey, ...options });
     }
     case 'mock':
       return new MockProvider({ reply: '' });

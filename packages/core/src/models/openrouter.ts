@@ -17,7 +17,7 @@ import type {
   ModelProvider,
   ToolCallRequest,
 } from '../contracts/index.js';
-import { ModelCallError } from '../contracts/index.js';
+import { EmptyCompletionError, ModelCallError } from '../contracts/index.js';
 import { withRetry, type RetryOptions } from './retry.js';
 
 export const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
@@ -60,6 +60,7 @@ export interface OpenRouterClientLike {
     completions: {
       create(
         params: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming,
+        options?: { maxRetries?: number },
       ): Promise<OpenRouterCompletionLike>;
     };
   };
@@ -70,6 +71,8 @@ export interface OpenRouterProviderOptions {
   /** Injected in tests; a real client is constructed when absent. */
   client?: OpenRouterClientLike;
   retry?: RetryOptions;
+  /** SDK retries per wrapper attempt; omitted preserves the SDK default. */
+  sdkMaxRetries?: number;
   baseURL?: string;
 }
 
@@ -77,17 +80,22 @@ export class OpenRouterProvider implements ModelProvider {
   readonly id = 'openrouter';
   private readonly client: OpenRouterClientLike;
   private readonly retry: RetryOptions;
+  private readonly sdkRequestOptions: { maxRetries: number } | undefined;
 
   constructor(options: OpenRouterProviderOptions = {}) {
+    if (options.sdkMaxRetries !== undefined && (!Number.isSafeInteger(options.sdkMaxRetries) || options.sdkMaxRetries < 0)) {
+      throw new RangeError('sdkMaxRetries must be a nonnegative integer');
+    }
+    this.sdkRequestOptions = options.sdkMaxRetries === undefined ? undefined : { maxRetries: options.sdkMaxRetries };
     this.client =
       options.client ??
-      new OpenAI({ apiKey: options.apiKey, baseURL: options.baseURL ?? OPENROUTER_BASE_URL });
+      new OpenAI({ apiKey: options.apiKey, baseURL: options.baseURL ?? OPENROUTER_BASE_URL, maxRetries: options.sdkMaxRetries });
     this.retry = options.retry ?? {};
   }
 
   async complete(request: CompletionRequest): Promise<CompletionResult> {
     const params = toParams(request);
-    const response = await withRetry(() => this.client.chat.completions.create(params), {
+    const response = await withRetry(() => this.client.chat.completions.create(params, this.sdkRequestOptions), {
       label: 'openrouter chat.completions.create',
       ...this.retry,
     });
@@ -166,8 +174,25 @@ function fromOpenRouterResponse(response: OpenRouterCompletionLike): CompletionR
   }
   const cacheRead = response.usage?.prompt_tokens_details?.cached_tokens ?? 0;
   const promptTokens = response.usage?.prompt_tokens ?? 0;
+  const usageKnown = response.usage != null
+    && Number.isSafeInteger(response.usage.prompt_tokens) && response.usage.prompt_tokens >= 0
+    && Number.isSafeInteger(response.usage.completion_tokens) && response.usage.completion_tokens >= 0
+    && Number.isSafeInteger(cacheRead) && cacheRead >= 0 && cacheRead <= promptTokens;
   const text = choice.message.content ?? '';
   const toolCalls = choice.message.tool_calls ?? [];
+  const result: CompletionResult = {
+    text,
+    model: response.model,
+    usageKnown,
+    usage: usageKnown ? {
+      input: Math.max(0, promptTokens - cacheRead),
+      output: response.usage?.completion_tokens ?? 0,
+      cacheRead,
+      cacheWrite: 0,
+    } : { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+    toolCalls: toolCalls.map(toToolCall),
+    stopReason: choice.finish_reason ?? null,
+  };
   // An empty answer with no tool call is a FAILED call, not an empty answer.
   //
   // Returning '' hands the caller a blank answer indistinguishable from a real
@@ -184,10 +209,10 @@ function fromOpenRouterResponse(response: OpenRouterCompletionLike): CompletionR
   //
   // `content` is legitimately empty when the model returned only tool calls, so
   // that case is excluded rather than special-cased later.
-  if (text.length === 0 && toolCalls.length === 0) {
+  if (text.trim().length === 0 && toolCalls.length === 0) {
     const reasoningTokens = response.usage?.completion_tokens_details?.reasoning_tokens ?? 0;
     const reasoned = (choice.message.reasoning ?? '').length;
-    throw new ModelCallError(
+    throw new EmptyCompletionError(
       `openrouter returned no content and no tool calls (finish_reason=${choice.finish_reason ?? 'null'}` +
         `, completion_tokens=${response.usage?.completion_tokens ?? 0}` +
         `, reasoning_tokens=${reasoningTokens}, reasoning_chars=${reasoned})` +
@@ -196,20 +221,11 @@ function fromOpenRouterResponse(response: OpenRouterCompletionLike): CompletionR
           : reasoningTokens > 0
             ? ' — the completion was spent entirely on reasoning tokens'
             : ''),
+      result,
+      usageKnown,
     );
   }
-  return {
-    text,
-    model: response.model,
-    usage: {
-      input: Math.max(0, promptTokens - cacheRead),
-      output: response.usage?.completion_tokens ?? 0,
-      cacheRead,
-      cacheWrite: 0,
-    },
-    toolCalls: toolCalls.map(toToolCall),
-    stopReason: choice.finish_reason ?? null,
-  };
+  return result;
 }
 
 function toToolCall(call: OpenRouterToolCallLike): ToolCallRequest {

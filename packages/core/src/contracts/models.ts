@@ -61,6 +61,8 @@ export interface CompletionResult {
   text: string;
   model: string;
   usage: TokenUsage;
+  /** False when the provider omitted or returned invalid usage; numeric fields are then placeholders. */
+  usageKnown?: boolean;
   toolCalls: ToolCallRequest[];
   stopReason: string | null;
 }
@@ -77,6 +79,8 @@ export interface CostEntry {
   calls: number;
   usage: TokenUsage;
   usd: number;
+  /** Matching price-table prefix, or null when usd uses the fallback estimate. */
+  priceMatched?: string | null;
 }
 
 export interface CostSnapshot {

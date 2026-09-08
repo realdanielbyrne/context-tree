@@ -728,6 +728,7 @@ describe('tail eviction and the cached prefix (layout F: tail after the last bre
     h.assembler.appendTail({ id: 'b', text: 'second fetch '.repeat(300), ephemeral: true });
     const first = h.assembler.assemble({ toolSchemasText: SYSTEM, window: 1_000_000 });
     simulator.submit(first);
+    h.assembler.acknowledgeDelivery(first.deliveryReceipt);
 
     // A window that holds everything but `a`: the assembler evicts it (seen, ephemeral, oldest).
     const aTokens = first.blocks.find((b) => b.id === 'tail:a')!.tokens;

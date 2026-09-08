@@ -21,6 +21,7 @@
  * two assemblies. If an id moved for a reason unrelated to content, that harness
  * silently stops testing anything.
  */
+import { createHash } from 'node:crypto';
 import { replyHeadroom } from './budgets.js';
 import { DEFAULT_CONFIG } from '../config.js';
 import { StoreInvariantError } from '../contracts/index.js';
@@ -31,6 +32,9 @@ import type {
   BudgetReport,
   ChatMessage,
   CompletionRequest,
+  DeliveredBlock,
+  DeliveryPrompt,
+  DeliveryReceipt,
   NodeId,
   PromptAssembler,
   PromptBlock,
@@ -123,14 +127,10 @@ export interface ZoneBSelection {
 export class ZoneAssembler implements PromptAssembler {
   private readonly deps: ZoneAssemblerDeps;
   private readonly budgets: { zoneB: number; zoneC: number };
-  /** D6 soft offloading: fetched detail lives here and dies at a phase boundary. */
+  /** D6 soft offloading: acknowledged fetched detail can leave at a phase boundary. */
   private tail: TailEntry[] = [];
-  /**
-   * How many tail entries the model has already been shown — everything that
-   * was in the tail at the end of the previous `assemble()`. Entries appended
-   * since are unseen and are never evicted: the turn exists to show them.
-   */
-  private seenTail = 0;
+  /** Delivery is explicit and keyed by both coordinate and selected bytes. */
+  private readonly deliveredTail = new Set<string>();
 
   constructor(deps: ZoneAssemblerDeps) {
     this.deps = deps;
@@ -139,24 +139,40 @@ export class ZoneAssembler implements PromptAssembler {
 
   /** Appends one retrieval result to the tail (after Zone C — rule 3). */
   appendTail(entry: TailEntry): void {
-    this.tail.push(entry);
+    this.tail.push({ ...entry });
   }
 
   tailEntries(): readonly TailEntry[] {
-    return this.tail;
+    return this.tail.map((entry) => ({ ...entry }));
   }
 
   /**
-   * D6: fetched branches die at phase boundaries. This drops the ephemeral tail
-   * entries and does nothing else — in particular it does not touch L1, does not
+   * Commit a successfully delivered candidate. Replaying an acknowledgement is
+   * harmless, and an old receipt cannot acknowledge or evict replacement text
+   * under the same ID. This changes only the ephemeral assembly buffer.
+   */
+  acknowledgeDelivery(receipt: DeliveryReceipt): void {
+    if (receipt.version !== 1) throw new RangeError('unsupported delivery receipt version');
+    for (const block of receipt.blocks) {
+      if (block.id.startsWith('tail:')) this.deliveredTail.add(deliveryKey(block));
+    }
+    if (receipt.tailSource === 'internal') {
+      const evicted = new Set(receipt.evictedTail.map(deliveryKey));
+      this.tail = this.tail.filter((entry) => !evicted.has(deliveryKey(tailIdentity(entry))));
+    }
+  }
+
+  /**
+   * D6: delivered fetched payloads die at phase boundaries. Unacknowledged
+   * selected payloads survive. This does not touch L1, does not
    * close or open a node, and does not re-summarize. Phase state belongs to the
    * segmenter; the assembler only reads it.
    */
   onPhaseTransition(): void {
-    this.tail = this.tail.filter((entry) => !entry.ephemeral);
+    this.tail = this.tail.filter((entry) => !entry.ephemeral || !this.deliveredTail.has(deliveryKey(tailIdentity(entry))));
   }
 
-  assemble(options: AssembleOptions = {}): AssembledPrompt {
+  assemble(options: AssembleOptions = {}): DeliveryPrompt {
     const { store } = this.deps;
     const root = store.root();
 
@@ -174,7 +190,8 @@ export class ZoneAssembler implements PromptAssembler {
     const zoneCBudget = options.zoneCBudget ?? this.budgets.zoneC;
     const zoneC = this.zoneC(active, zoneCBudget);
 
-    const tailBlocks = (options.tail ?? this.tail).map((entry) =>
+    const tailEntries = [...(options.tail ?? this.tail)];
+    const tailBlocks = tailEntries.map((entry) =>
       this.block('tail', `tail:${entry.id}`, renderTailBlock(entry.id, entry.text, entry.ephemeral)),
     );
 
@@ -207,26 +224,31 @@ export class ZoneAssembler implements PromptAssembler {
     if (zoneC.truncated) overBudget.push('C');
 
     const window = options.window ?? this.deps.window ?? null;
-    // Window enforcement, per turn. Order of value: a result the model asked for
-    // this turn is why the turn exists; Zone C is the newest branch's only copy;
-    // an already-seen ephemeral result is consumed (the model's reaction to it
-    // is in L0). So: oldest SEEN ephemeral tail entries leave first, then Zone C
-    // events oldest-first as the last valve. Both are reported, never silent.
+    if (window !== null && (!Number.isFinite(window) || window <= 0)) {
+      throw new RangeError('window must be a finite positive number of tokens');
+    }
+    // Window enforcement proposes a candidate without committing buffer state.
+    // Selected tail payloads stay until their exact bytes are acknowledged;
+    // already-delivered ephemeral payloads leave first, then Zone C events
+    // oldest-first under its existing selection policy. Both are reported.
     // The tail rides after the last breakpoint, so evicting it re-bills nothing.
     const evictedFromTail: string[] = [];
+    const evictedTail: DeliveredBlock[] = [];
     let droppedFromZoneC = 0;
-    if (window !== null && options.tail === undefined) {
+    if (window !== null) {
       const reply = this.deps.replyReserve ?? replyHeadroom({ window }).tokens;
+      if (!Number.isFinite(reply) || reply < 0) throw new RangeError('replyReserve must be finite and nonnegative');
       const over = (): number =>
         sumTokens(zoneA) + zoneB.tokens + sumTokens(zoneC.blocks) + sumTokens(tailBlocks) + reply - window;
       let i = 0;
-      while (over() > 0 && i < this.seenTail) {
-        const entry = this.tail[i];
-        if (entry !== undefined && entry.ephemeral) {
+      while (over() > 0 && i < tailEntries.length) {
+        const entry = tailEntries[i]!;
+        const identity = tailIdentity(entry);
+        if (entry.ephemeral && this.deliveredTail.has(deliveryKey(identity))) {
           evictedFromTail.push(entry.id);
-          this.tail.splice(i, 1);
+          evictedTail.push(identity);
+          tailEntries.splice(i, 1);
           tailBlocks.splice(i, 1);
-          this.seenTail -= 1;
         } else {
           i += 1;
         }
@@ -238,7 +260,6 @@ export class ZoneAssembler implements PromptAssembler {
         droppedFromZoneC += 1;
       }
     }
-    this.seenTail = this.tail.length;
 
     const tailTokens = sumTokens(tailBlocks);
     const budgets: BudgetReport = {
@@ -258,11 +279,10 @@ export class ZoneAssembler implements PromptAssembler {
     };
     budgets.total = budgets.zoneA + budgets.zoneB + budgets.zoneC + budgets.tail;
     // The one constraint that is not a matter of allocation: this prompt either
-    // fits the host's window or the request fails. Reported, never enforced
-    // here — the assembler's job is to say what it built and what that leaves,
-    // and a caller that ignores an `overWindow: true` gets a provider error,
-    // which is the loud failure. Silently trimming to fit would hide which zone
-    // lost content.
+    // fits the host's window or cannot be sent. Report any residual overflow
+    // after selection instead of cutting an unacknowledged selected payload.
+    // The host must also count its serialized request framing and native tools
+    // before sending: these block counts are in the supplied tokenizer's units.
     if (window !== null) {
       budgets.windowRemaining = window - budgets.total;
       budgets.overWindow = budgets.total > window;
@@ -274,11 +294,19 @@ export class ZoneAssembler implements PromptAssembler {
       budgets.replyAllowance = Math.max(0, window - budgets.total);
     }
 
+    const blocks = [...zoneA, ...zoneB.blocks, ...zoneC.blocks, ...tailBlocks];
+    const deliveryReceipt: DeliveryReceipt = Object.freeze({
+      version: 1,
+      blocks: Object.freeze(blocks.map(blockIdentity)),
+      tailSource: options.tail === undefined ? 'internal' : 'supplied',
+      evictedTail: Object.freeze(evictedTail),
+    });
     return {
       system: zoneA.map((b) => b.text).join('\n\n'),
-      blocks: [...zoneA, ...zoneB.blocks, ...zoneC.blocks, ...tailBlocks],
+      blocks,
       budgets,
       cacheBreakpoints,
+      deliveryReceipt,
     };
   }
 
@@ -444,6 +472,18 @@ export class ZoneAssembler implements PromptAssembler {
     if (nodeId !== undefined) block.nodeId = nodeId;
     return block;
   }
+}
+
+function blockIdentity(block: Pick<PromptBlock, 'id' | 'text'>): DeliveredBlock {
+  return Object.freeze({ id: block.id, contentHash: createHash('sha256').update(block.text, 'utf8').digest('hex') });
+}
+
+function tailIdentity(entry: TailEntry): DeliveredBlock {
+  return blockIdentity({ id: `tail:${entry.id}`, text: renderTailBlock(entry.id, entry.text, entry.ephemeral) });
+}
+
+function deliveryKey(block: DeliveredBlock): string {
+  return JSON.stringify([block.id, block.contentHash]);
 }
 
 function sumTokens(blocks: readonly PromptBlock[]): number {

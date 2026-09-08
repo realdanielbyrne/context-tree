@@ -51,6 +51,13 @@ export class ModelCallError extends ContextTreeError {
   }
 }
 
+/** A provider answered, but selected no answer text or tool calls. Usage can still be billed. */
+export class EmptyCompletionError extends ModelCallError {
+  constructor(message: string, readonly result: CompletionResult, readonly usageKnown = result.usageKnown !== false) {
+    super(message);
+  }
+}
+
 /** Summarization was asked for over inputs that cannot produce one (a root whose children are all unsummarized). */
 export class SummaryInputError extends ContextTreeError {
   constructor(message: string) {
@@ -70,3 +77,4 @@ export class ConfigError extends ContextTreeError {
     super(message, 'E_CONFIG');
   }
 }
+import type { CompletionResult } from './models.js';

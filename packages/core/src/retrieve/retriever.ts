@@ -272,7 +272,7 @@ export class TreeRetriever {
         ...coordinate(entry.branch, entry.rank),
         seq: entry.seq,
         score: entry.score,
-        excerpt: excerptAround(renderEvent(event, this.blobs), entry.terms, options.excerptChars),
+        excerpt: excerptAround(renderEvent(event, this.blobs), entry.terms, options.excerptChars, options.excerptAnchor),
       });
     }
     branches.forEach((branch, rank) => {

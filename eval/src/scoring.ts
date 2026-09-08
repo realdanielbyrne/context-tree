@@ -112,6 +112,7 @@ export async function rubricJudge(args: RubricJudgeArgs): Promise<JudgeResult> {
 }
 
 export interface JudgeArgs {
+  artifactDirectory?: string;
   scenario: Scenario;
   sandbox: Sandbox;
   finalText: string;
@@ -122,6 +123,11 @@ export interface JudgeArgs {
 export async function judgeScenario(args: JudgeArgs): Promise<JudgeResult> {
   const { judge } = args.scenario;
   switch (judge.kind) {
+    case 'deepswe': {
+      if (args.sandbox.verify === undefined) throw new Error('DeepSWE requires its independent container verifier');
+      const verified = await args.sandbox.verify(args.artifactDirectory ?? `${args.sandbox.path}-verifier`);
+      return { success: verified.reward === 1, score: verified.reward, detail: JSON.stringify(verified) };
+    }
     case 'exact_match':
       return exactMatchJudge(args.finalText, judge.answer ?? '');
     case 'command':

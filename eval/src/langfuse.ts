@@ -20,7 +20,7 @@ export interface LangfuseGenerationFields {
   model: string;
   input: Record<string, unknown>;
   output: Record<string, unknown>;
-  usage: { input: number; output: number; unit: 'TOKENS'; totalCost: number };
+  usage?: { input: number; output: number; unit: 'TOKENS'; totalCost?: number };
   metadata: Record<string, unknown>;
 }
 
@@ -172,4 +172,3 @@ export function createLangfuseSink(
     },
   };
 }
-
