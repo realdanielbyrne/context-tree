@@ -610,3 +610,58 @@ stands; the prefix design needs a ledger of completed steps before it can be a t
 **Instruments to fix before the next batch.** Re-cut or drop qo05 (distractor decay); retry once on
 GLM's empty-turn failure so denominators are honest; persist per-run transcripts (assistant text
 and appended results) alongside the telemetry, which this pass could reconstruct only by replay.
+
+## 14 Hypotheses for the next DSA loop (set by the user, 2026-09-05)
+
+These extend §12 and become `reports/algorithm.md` rules 8 and 9. Each is stated so a fresh agent
+can pre-register it; none has been measured.
+
+**H1. Attend only to what bears on the turn (context-level DSA).** The token-level result that
+sparse attention over a long sequence loses nothing when the dropped tokens do not bear on the
+prediction should hold one level up: dropping history that does not bear on the current turn
+should not cost task success, and should save the tokens the tail arms spend re-reading it.
+Evidence so far is indirect but consistent (§5 distractor, §7c ledger). Measurement: a long-horizon
+scenario with three phases whose relevance is non-monotonic (API edit → UI work → unit tests that
+need the API again), n ≥ 5, arms native / context-tree / an arm that categorises history per turn
+into {always-present: task, plan, steering; active: current phase; dormant-but-recurring: earlier
+phases retrievable by relevance; unrelated: evicted} and re-prioritises each turn. Win: success
+non-inferior to native and the tree with strictly fewer total prompt tokens; kill gate: an offline
+replay showing the "dormant" API edit is re-admitted on the unit-test phase's turns. No such
+scenario exists; `build-refactor-scenario.py` / `build-ripple-scenario.py` are the nearest builders.
+
+**H2. Breadth follows the horizon.** A fact-finding turn should retrieve one event; a planning turn
+should retrieve an overview of the whole task; a multi-file edit should retrieve the files, APIs
+and instructions it touches. Measurement: label each turn's type from the request (question,
+plan, edit) in the recorded runs and the new scenario, and measure per type the tokens retrieved
+against tokens actually referenced by the next assistant turn (overlap of identifiers and paths).
+The design under test sizes the retrieval fill per turn type within the soft target of §12
+instead of one k for every turn. Win: referenced-fraction rises without success falling.
+
+**H3. The plan artifact is always in context.** A plan written before implementation belongs
+in every turn of that implementation, like the task statement and the steering text.
+Measurement: on the H1 scenario, the arm that pins the plan (and the task) inside the target
+against the same arm without it; pre-register success and turns.
+
+**H4. The model's own signals gate retrieval.** Statements such as "I have enough information to
+implement X" and "now let's look at Y" are already how the model paces its discovery. Detect them
+(a small classifier over assistant text is enough to start; log the phrases first, zero live
+tokens, from the recorded runs) and use them as the signal to stop adding exploratory context and
+to move the top-k breakpoint; detect topic shift the same way (a turn whose content words share
+little with the previous n turns) and use it as the signal to evict dormant history. Kill gate:
+over the recorded runs, how often each signal fires and whether the turns after a sufficiency
+statement retrieved anything the model then used. Win: fewer retrieval turns after sufficiency,
+no loss of success.
+
+**H5. Dynamic top-k under headroom.** When headroom exists, the breakpoint moves: retrieval widens
+toward the soft target rather than stopping at a fixed k, and narrows back once the turn's results
+are seen (§12's evict-back). Measurement is §12's sweep with k derived from headroom rather than
+from `retrieval.eventHits`.
+
+**H6. The last n turns are the anchor.** Whatever else is evicted, the model's own most recent
+exchanges stay; the sw-2 stall (§7c) suggests n must cover the whole current sub-task, not only
+the last exchange, and the ledger of H1 is the cheaper substitute for a large n. Measurement:
+n ∈ {1 exchange, one sub-task, everything} on the H1 scenario.
+
+Order for the loop: build the H1 scenario first (it serves H1, H3, H6 and the §12 sweep), log the
+H4 signals offline from the recorded runs second, then run one pre-registered batch per hypothesis
+with the tree and native as same-batch baselines.

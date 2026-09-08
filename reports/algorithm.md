@@ -4,7 +4,8 @@ The reference a DS-STAR pass scores against and a new host ports from.
 A change to the algorithm and a change to this page happen together.
 
 The goal: simple, repeatable, translatable to a model and harness it has
-never seen. Seven rules follow from that.
+never seen. Seven rules follow from that, and two guiding principles set by
+the user on 2026-09-05 (8 and 9) that the next loop exists to test.
 
 **1. No budgets or caps on the model's freedom to work** — turns,
 wall-clock, or reply length. Each is a guess about work nobody has
@@ -55,6 +56,34 @@ delivered the answer on 0 of 5 runs of one question, because a
 query the model issued ever centred the band. The corollary for probes:
 replacing a stage by fiat bounds that stage only, so write down what it
 hands to the next one and check the next one received it.
+
+**8. Attend only to what bears on the turn.** If earlier context has little or
+no bearing on the current turn, the model should not spend attention on it at
+all. This is DSA's idea — sparse attention at the token level — applied to the
+context as a whole, and it is the reasoning behind eviction: not "we ran out of
+room" but "this does not belong in this turn". Relevance over a long horizon is
+not monotonic: an early API edit is irrelevant while the UI is being written and
+relevant again when the unit tests are, so history must be categorised AND
+prioritised per turn, not summarised once and forgotten. Some artifacts belong
+in every turn regardless — the task statement, the plan written before
+implementation, the operator's steering — because every turn bears on them.
+Measured so far: with no ledger of completed steps the prefix design stalled 0/3
+on a four-module task (report §7c); with the whole tail present the tail arms
+answered from a distractor 14/15 times (§5). Both are attention spent on the
+wrong history.
+
+**9. Breadth follows the horizon, inside a soft target.** Retrieval should be as
+broad as the turn needs and no broader: a fact-finding turn needs one event, a
+planning turn needs an overview of the whole task (the shape, not every
+detail), a multi-file edit needs several files, their APIs and the
+instructions in view at once. Fitting an arbitrary window constraint is not a
+reason to starve the model; the soft target (report §12) is where the steady
+state sits, and a turn overruns it when its work requires. Two signals should
+drive this and neither is used yet: the model's own statements of sufficiency
+("I have enough to implement X") and of topic change, which say when to stop
+adding exploratory context and when to evict; and the recency of the last n
+turns, which stay anchored across everything else. Hypotheses, with the
+measurements that would settle them, are in the report §14.
 
 Terms. **L0**: append-only event log. **L2**: content-addressed payload
 store. **L1**: the tree (nodes pointing into L0 by sequence range, with
@@ -373,6 +402,12 @@ so the negative result is not rebuilt).
 | 2026-09-05 | The append cap stops being the mechanism: the window is enforced by eviction (tail, then seen results, then Zone C events) in one place per turn; the tail-fill line in `assemble` becomes per-turn and latched instead of build-once |
 
 ## Change log
+
+- **2026-09-05 08:20** — Rules 8 and 9 added as user-set guiding principles for the next loop:
+  attend only to what bears on the turn (context-level DSA; history categorised and prioritised
+  per turn; task, plan and steering always present); breadth follows the horizon inside a soft
+  target, driven by the model's own sufficiency and topic-shift signals and by the last n turns.
+  Report §14 turns them into pre-registrable hypotheses.
 
 - **2026-09-05 00:50** — Live results for the per-turn window plan (report §7b-§7c, §12-§13). Q&A at
   W=131,072, n=5: elastic 16/25 with 0 truncations and −44% uncached input; flat-events 15/25 (Zone B

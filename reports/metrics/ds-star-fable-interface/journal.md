@@ -388,3 +388,10 @@ headroom left: the investigate-1 loop (an agent that cannot see what it has done
 Pre-registered verdict: prefix-retrieval does NOT match the tree on task completion; the record's
 boundedness advantage stands; the design needs a ledger of completed steps (candidate role for Zone
 B) before it can be a task arm. No escalation to n=5: 0/3 vs 3/3 is not within noise.
+
+## 08:13 — user direction for the next DSA loop recorded
+
+algorithm.md rules 8 (attend only to what bears on the turn; categorise and prioritise history per
+turn; task/plan/steering always present) and 9 (breadth follows the horizon inside the soft target;
+sufficiency and topic-shift signals; last-n anchor). Report §14: six hypotheses with measurements
+and the H1 long-horizon scenario as the first build.
