@@ -236,7 +236,7 @@ export const ARM_IDS = Object.freeze([
   // DS-STAR Fable-interface pass, iteration 3: the published alternative's UNIT.
   // Claude.ai's conversation_search returns 5 hits that are each a ~250-word
   // chunk of raw transcript with an opaque position token; observed live on
-  // 2026-09-04 (reports/metrics/ds-star-fable-interface/claude-ai-probe-answer-key.md)
+  // 2026-09-04 (reports/metrics/window-regime-and-retrieval-unit/claude-ai-probe-answer-key.md)
   // it answered 4/5 literal questions from the snippets alone, no read. This
   // arm ports that unit: search ranks the same 20 branches, then returns the
   // 5 best-matching EVENTS across them, each with its seq and an excerpt of

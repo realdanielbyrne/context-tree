@@ -8,7 +8,7 @@
  * harness constants. No @context-tree/core import needed.
  *
  * Usage (from repo root):
- *   node reports/metrics/ds-star-fable-interface/a2-regime.mjs
+ *   node reports/metrics/window-regime-and-retrieval-unit/a2-regime.mjs
  */
 import { readFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';

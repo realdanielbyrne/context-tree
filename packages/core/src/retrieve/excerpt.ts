@@ -8,7 +8,7 @@
  * was measured against (claude.ai's `conversation_search`) returns ~200-360-word
  * chunks, and on this project's store that size carried the answer literal on
  * 48 of 56 recorded queries at ~1.7k tokens per five hits — a payload the
- * model can answer from without a fetch (`reports/metrics/ds-star-fable-interface-report.md` §7).
+ * model can answer from without a fetch (`reports/metrics/window-regime-and-retrieval-unit-report.md` §7).
  */
 export function excerptAround(text: string, terms: readonly string[], chars: number): string {
   if (text.length <= chars) return text;

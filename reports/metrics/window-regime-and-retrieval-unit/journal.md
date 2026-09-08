@@ -377,7 +377,7 @@ empty-turn failure at ~110-125k prompts, not a mechanism difference; completed-c
 
 
 ## Step 8 result (01:12; Sonnet 5, W=131,072, n=3, 18 runs, $7.5 total; files copied to
-`reports/metrics/ds-star-fable-interface/step8-sonnet/`)
+`reports/metrics/window-regime-and-retrieval-unit/step8-sonnet/`)
 
 sw-1: native 3/3 (median 22 turns, $0.118), context-tree 3/3 (8 turns, $0.208), prefix-retrieval 3/3
 (11 turns, $0.435; one run hit the $1 cap at 34 turns with 431,942 uncached input tokens — the

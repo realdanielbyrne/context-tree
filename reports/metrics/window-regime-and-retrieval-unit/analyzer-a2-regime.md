@@ -6,7 +6,7 @@ Analyzer lens A2. Computed from the frozen s1 fixture (trace sha `e1b289c32f40`,
 
 The harness has no pad parameter. Searched `transplant.mjs` for `pad`, `systemPad`, `systemText` pad, `FLAT_SYSTEM` pad, `TREE_SYSTEM` pad, Zone A pad: zero hits. The workaround is to pass `--window (W - P)` as the effective window. This is semantically exact: every budget in `deriveBudgets` derives from the `--window` argument alone (`transplant.mjs:449-495`). The cells below model P = 70,000 by setting effective W = W - P.
 
-The 70,000 token pad models a realistic host system prompt. Claude Fable 5.1's production system prompt is 275,723 characters (~65-70k tokens per `reports/metrics/ds-star-fable-interface/fable-5.1-past-chats-tools.md`). The context-tree's own Zone A (contract + tool schemas) is 2,271 heuristic / ~1,932 cl100k (measured from run turn data `zoneBudgets.zoneA`). A host carrying both would occupy ~68-72k tokens before any conversation content.
+The 70,000 token pad models a realistic host system prompt. Claude Fable 5.1's production system prompt is 275,723 characters (~65-70k tokens per `reports/metrics/window-regime-and-retrieval-unit/fable-5.1-past-chats-tools.md`). The context-tree's own Zone A (contract + tool schemas) is 2,271 heuristic / ~1,932 cl100k (measured from run turn data `zoneBudgets.zoneA`). A host carrying both would occupy ~68-72k tokens before any conversation content.
 
 ## 1. Truncate-tail K and boundary seq (instrument audit)
 

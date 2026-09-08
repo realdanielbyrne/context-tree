@@ -176,7 +176,7 @@ only in the harness (`branchSearch` in `eval/scripts/transplant.mjs`) so histori
 surface they were measured on. Evidence: at W=131,072 on GLM 5.3 Flash, n=5, one store, 15/25
 against 6/25 for the same stack with coordinate hits, in one batch, every success answered with
 zero fetches, −54% uncached input over completed runs (−59% over all rows)
-(`ds-star-fable-interface-report.md` §7). One store, one model, one window: see that report's §9.
+(`window-regime-and-retrieval-unit-report.md` §7). One store, one model, one window: see that report's §9.
 
 *Window enforcement is in the library; the append cap is not.* `ZoneAssembler.assemble` evicts
 oldest seen ephemeral tail entries, then Zone C events, when `A+B+C+tail+reply > window`, and
@@ -444,7 +444,7 @@ so the negative result is not rebuilt).
   tokens. Contract v1-v3 `context_search` bullet rewritten; §19 Q2 decided. Core +5 tests, mcp +2,
   two mcp tests restated for the event unit; harness tests −3 (moved to core). Suite 977/9.
 
-- **2026-09-04 11:20** — Fable-interface pass (3 iterations, `ds-star-fable-interface-report.md`).
+- **2026-09-04 11:20** — Fable-interface pass (3 iterations, `window-regime-and-retrieval-unit-report.md`).
   **No change under `packages/`;** the measured arm is harness-only. Regime: the production Fable 5.1
   system prompt is 60,903 tokens, so W ≤ 65,536 was a starvation cell; the valid cell on this store
   is W=131,072, where truncate-tail stays 0/25 and the shipped stack goes 1/25 → 5/25. Ablation:

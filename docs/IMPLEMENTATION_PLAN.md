@@ -640,7 +640,7 @@ per-PR spend via the cost meter.
    re-ranked), but the HIT is a raw event — the best-matching events across the ranked
    branches, each with its `seq` and a ~1,000-char excerpt (`retrieval.eventHits`,
    `retrieval.excerptChars`). Measured 15/25 vs 6/25 against branch coordinates on one store,
-   every success with zero fetches (`reports/metrics/ds-star-fable-interface-report.md` §7).
+   every success with zero fetches (`reports/metrics/window-regime-and-retrieval-unit-report.md` §7).
    Branch-coordinate hits are retired as the shipped unit.
 3. Multi-task workspaces: one SQLite DB per task, or one DB with task roots?
    Start one-DB-per-task (mirrors graft's per-repo index simplicity).

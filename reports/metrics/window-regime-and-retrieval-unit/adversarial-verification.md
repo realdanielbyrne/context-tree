@@ -1,4 +1,4 @@
-# Adversarial verification of ds-star-fable-interface-report.md
+# Adversarial verification of window-regime-and-retrieval-unit-report.md
 
 Verifier: subagent, 2026-09-04. No live LLM calls made. Every check command listed.
 

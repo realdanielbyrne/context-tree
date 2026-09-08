@@ -61,9 +61,9 @@ DS-STAR Mode 1 (improvement loop). Four fresh-context analyzers (interface delta
 arithmetic, audit of the prior pass, harness feasibility), three planners (published
 alternative, regime first, null hypothesis) and one judge ran as a Workflow, every role on
 `claude-opus-4-6[1m]`, reading the artifacts themselves; their reports are the
-`reports/metrics/ds-star-fable-interface/analyzer-*.md`, `plan-*.md` and `judge-verdict.md`
+`reports/metrics/window-regime-and-retrieval-unit/analyzer-*.md`, `plan-*.md` and `judge-verdict.md`
 files. The main loop then ran three iterations, each pre-registered in
-`reports/metrics/ds-star-fable-interface/journal.md` before its batch started, all on
+`reports/metrics/window-regime-and-retrieval-unit/journal.md` before its batch started, all on
 `z-ai/glm-5.3-flash` ($0.075 per million input tokens) at n = 5 replicates per question on the
 five-question deep set, with `truncate-tail` (the practitioner's default: keep the newest raw
 events that fit) as the equal-n, same-epoch baseline in iteration 1 and the previous
@@ -89,7 +89,7 @@ answer it.
 ## 3 Anthropic's interface, and what could be observed of it
 
 The leaked contract and the three tool schemas are quoted verbatim in
-`reports/metrics/ds-star-fable-interface/fable-5.1-past-chats-tools.md`. The tools are
+`reports/metrics/window-regime-and-retrieval-unit/fable-5.1-past-chats-tools.md`. The tools are
 claude.ai server-side; they cannot be called from this repository and their ranking is not
 observable. Their interface is, and the user's suggestion to test it on one of their own
 claude.ai chats made a live sample possible through the Chrome extension. The chat was an
@@ -490,7 +490,7 @@ ends (see the journal entry that supersedes this paragraph if the two disagree).
 | sw-2-multimod | context-tree | 3/3 | 24 | 336,206 | $0.943 | one run hit the $1 cap during root summarization, tests passing |
 | sw-2-multimod | prefix-retrieval | **0/3** | 19 | 190,925 | $0.261 | every run stalled: the last 4-6 turns are repeated `run_command` calls |
 
-Files: `reports/metrics/ds-star-fable-interface/step8-sonnet/results-r{1,2,3}.json` (copied from the
+Files: `reports/metrics/window-regime-and-retrieval-unit/step8-sonnet/results-r{1,2,3}.json` (copied from the
 gitignored `eval/results/step8-sonnet-r*`); smoke on GLM in `smoke-glm-results.json`.
 
 The multi-step task decides it. On sw-1 the prefix design is a peer: 3/3, fewer turns than native,

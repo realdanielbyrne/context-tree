@@ -143,7 +143,7 @@ node eval/scripts/transplant.mjs \
 KG-1. **Question validity at W=130,000.** Compute `truncationBoundarySeq` at
 K=122,209 and assert all 5 deep-set seqs (18, 151, 193, 218, 264) fall below
 the boundary (~358). Script: `a2-regime.mjs` (existing,
-`reports/metrics/ds-star-fable-interface/a2-regime.mjs`). Verified this session:
+`reports/metrics/window-regime-and-retrieval-unit/a2-regime.mjs`). Verified this session:
 PASS.
 
 KG-2. **Headroom adequacy.** Assert headroom at eff-W=130k (18,339 cl100k)

@@ -7,7 +7,7 @@
  * grep re-ranked), but the HIT is an event — the best-matching raw events across
  * the ranked branches, each with its seq and an excerpt of its own text. Measured
  * 15/25 vs 6/25 against branch coordinates, every success with zero fetches
- * (`reports/metrics/ds-star-fable-interface-report.md` §7). `context_fetch` /
+ * (`reports/metrics/window-regime-and-retrieval-unit-report.md` §7). `context_fetch` /
  * `context_peek` remain the way to read more than the excerpt.
  */
 import { z } from 'zod';

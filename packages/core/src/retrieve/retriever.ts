@@ -201,7 +201,7 @@ export class TreeRetriever {
    *
    * Measured against the branch-coordinate unit on one store at W=131,072
    * (GLM 5.3 Flash, n=5): 15/25 vs 6/25, every success with zero fetches
-   * (`reports/metrics/ds-star-fable-interface-report.md` §7).
+   * (`reports/metrics/window-regime-and-retrieval-unit-report.md` §7).
    */
   async searchEvents(query: string, options: EventSearchOptions): Promise<EventSearchResult> {
     const base = await this.search(query, options);

@@ -171,4 +171,4 @@ Pre-register both an absolute performance floor and superiority to same-epoch na
 report literal delivery separately from exact-match answering. Repeat on a second scenario
 before making a general claim.
 
-*Corrected 2026-09-04 by the Fable-interface pass after an adversarial re-derivation of every figure above (`reports/metrics/ds-star-fable-interface/analyzer-a3-prior-audit.md`): status label, success concentration, stall cross-reference, partial-cell row count, and the naive-full budget note. All numeric claims reproduced.*
+*Corrected 2026-09-04 by the Fable-interface pass after an adversarial re-derivation of every figure above (`reports/metrics/window-regime-and-retrieval-unit/analyzer-a3-prior-audit.md`): status label, success concentration, stall cross-reference, partial-cell row count, and the naive-full budget note. All numeric claims reproduced.*
