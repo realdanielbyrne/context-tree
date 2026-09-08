@@ -367,6 +367,12 @@ so the negative result is not rebuilt).
   turn, 20/25 with no tool call, 0 provider failures, lowest cache-weighted input. The Q&A leader.
   Task completion (Sonnet 5, n=3): sw-1 3/3 but not cheaper (fresh retrieval every turn); **sw-2 0/3**,
   stalled in run-command loops — no ledger of completed steps. Not a task arm as built.
+- **Attention over history** (design, unmeasured — report §15): per turn, per unit, relevance
+  (query-dependent, the fingerprint match `context_search` already scores) + priority
+  (query-independent state derived from L0: fetch/edit boosts, decay, `superseded_by` → 0, topic-shift
+  reset), categories {pinned, active, dormant, unrelated} as the prior, admission by relevance MASS
+  (nucleus p) inside the soft target, an appended per-turn attention log for audit. First step is an
+  offline replay: does relevance + priority predict the recorded fetches better than relevance alone?
 - **Event-snippet hits** (`tree-snippet-hits`, the published-alternative port): **15/25 vs 6/25**
   in one batch (n=5, GLM 5.3 Flash, W=131,072, deep set), 15/15 successes with zero fetches,
   median 2 turns, −54% uncached input over completed runs. Measured, not default; library port pending. Two host
@@ -407,7 +413,8 @@ so the negative result is not rebuilt).
   attend only to what bears on the turn (context-level DSA; history categorised and prioritised
   per turn; task, plan and steering always present); breadth follows the horizon inside a soft
   target, driven by the model's own sufficiency and topic-shift signals and by the last n turns.
-  Report §14 turns them into pre-registrable hypotheses.
+  Report §14 turns them into pre-registrable hypotheses; §15 proposes the encoding (two-channel
+  attention over history units, priority derived from L0, admission by relevance mass).
 
 - **2026-09-05 00:50** — Live results for the per-turn window plan (report §7b-§7c, §12-§13). Q&A at
   W=131,072, n=5: elastic 16/25 with 0 truncations and −44% uncached input; flat-events 15/25 (Zone B

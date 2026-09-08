@@ -665,3 +665,44 @@ n ∈ {1 exchange, one sub-task, everything} on the H1 scenario.
 Order for the loop: build the H1 scenario first (it serves H1, H3, H6 and the §12 sweep), log the
 H4 signals offline from the recorded runs second, then run one pre-registered batch per hypothesis
 with the tree and native as same-batch baselines.
+
+## 15 Encoding priority: an attention mechanism over history (design note, 2026-09-05)
+
+The user's framing: prioritisation of history is a metric parallel to contextual relevance, and
+priorities change. Encoded as attention over history units, with only structures the system has.
+
+**Two channels.** Per turn, per unit (branch, or event within one): *relevance*, query-dependent —
+the turn's fingerprints (identifiers, paths, the active plan step) against the unit's fingerprints,
+which is what `context_search` already scores (the query·key term); and *priority*, query-independent
+state carried across turns — how much the unit has mattered and is likely to again (the bias term).
+Admission ranks by relevance + priority and admits in that order until the soft target (§12) is
+reached; pinned units (task, plan, steering) are admitted before ranking.
+
+**Priority derives from L0.** The model's searches and fetches are events (the product records
+context-tool exchanges when `EVAL_FETCH_EVENTS=1`), so priority is a deterministic function of the
+log, never a second source of truth: +boost when a turn fetched the unit or edited a file it owns;
+decay with turns since last reference; 0 when a `superseded_by` link is written (`annotate`);
+dormant-category reset on topic shift. L1 stays rebuildable from L0 (Tier 0 invariant 1).
+
+**Categories as the prior.** pinned {task, plan, steering} · active (current phase) ·
+dormant-but-recurring (earlier phases: the API edit during UI work) · unrelated (evicted). A unit's
+category is a coarse prior; the continuous score moves it within and across categories. Heads:
+recency, reference count, files shared with the active phase, plan step served.
+
+**Breadth by relevance mass, not count.** Admit units until they hold p of the turn's relevance
+mass (nucleus-style), bounded by the soft target; an overrun is the case where p is not reached
+inside it. A fact-finding turn concentrates mass in one unit and admits little; a planning turn
+spreads it and admits broadly. This is rule 9 without labelling turn types, and p replaces every k.
+
+**Audit trail.** One appended row per turn per unit — relevance, priority, category, admitted —
+in a derived table: the attention map of a session, and the answer to "what did the model see,
+and why" without replay.
+
+**To measure, not choose:** decay and boost sizes (fit offline on the recorded runs' actual usage —
+does relevance + priority predict which branches the model went on to fetch better than relevance
+alone? AUC, zero live tokens), p, and the topic-shift threshold. The retired "learned ranking" stays
+retired: this is deterministic scoring with a few fitted constants over L0.
+
+**Order.** (1) Replay the recorded W=131,072 runs and the step-8 task runs: compute both channels per
+turn from L0 alone and score them against the recorded fetches. (2) Build the §14 H1 scenario.
+(3) One live pair: relevance-only admission vs relevance + priority, same soft target, n ≥ 5.
