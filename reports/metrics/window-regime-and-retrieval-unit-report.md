@@ -746,3 +746,6 @@ zero; the ledger explanation of sw-2 is a hypothesis. The local
 `deepswe-agents-last-exam` files are generated fixtures, not public benchmark
 results. The continuation imports official Datacurve DeepSWE tasks and gates
 pristine and reference-patch behavior in separate verifier containers.
+
+The continuation's terminal qualification results and next experiment gates are
+reported in [Attention over history: qualification report](attention-policy-continuation-report.md).

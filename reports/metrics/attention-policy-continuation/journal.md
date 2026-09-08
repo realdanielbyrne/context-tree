@@ -183,3 +183,20 @@ compiled and dependency-manifest hashes were checked after validation with zero
 differences. The orphaned v2 ABS container was stopped after confirming it still
 had the pristine base commit and a clean worktree; it was retained on disk.
 See `qualification-checkpoint.md` for the qualification and comparison gates.
+
+### Qualification v3 recovery and v4 terminal results
+
+The interrupted v3 shells left valid attempt markers but no result rows. On
+re-entry, the runner consumed both slots as explicit interrupted attempts, as
+designed. Fresh v4 output directories retained the same scientific inputs and
+epochs; only the output paths changed.
+
+Both v4 runs are now terminal. Aiomonitor ended after 13 attempts on a provider
+timeout following ten returned responses and two recorded empty completions. Its
+score is null, with 154,236 observed tokens and unknown complete usage/cost.
+ABS completed after 49 calls and 1,490,544 all-model tokens. Its verifier-backed
+binary score is 0, diagnostic partial 0.13043478260869565 (P2P 3/3, F2P 0/20).
+The agent left four files dirty but did not commit, so the committed-only
+submission patch was empty and the pristine base was graded. Neither task
+qualifies for n=5 treatment comparison. The final write-up is
+`../attention-policy-continuation-report.md`.

