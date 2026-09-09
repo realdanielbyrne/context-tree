@@ -1573,3 +1573,103 @@ room to amortise. **The order is deliberate: prove no harm on the short task fir
 benefit on a long one.** Running the long tasks first would have spent hours per run discovering
 harness defects that the short task surfaced in twenty minutes — which is, in fact, what the six
 short-task launches bought.
+
+## 2026-09-09 — ROOT CAUSE: the harness evicts the model's own tool calls from its history
+
+Found by the operator, who rejected the router's "the model does not drive an agent loop"
+characterisation as invalid for a model built to do exactly that, and asked where it actually got
+stuck. The operator was right and the characterisation was an inference, not evidence.
+
+### The defect, confirmed structurally rather than by inference
+
+`packages/core/src/contracts/models.ts:9`:
+
+    export interface ChatMessage {
+      role: 'user' | 'assistant';   // no 'tool' role
+      content: string;               // no tool_calls field
+      cacheBreakpoint?: boolean;
+    }
+
+**`ChatMessage` cannot represent a tool call.** No `tool_calls` field, no `'tool'` role. The
+limitation flows all the way to the wire: `toMessageParam`
+(`packages/core/src/models/openrouter.ts:169-179`) emits only `{ role, content }`.
+
+So every arm renders an agent turn as:
+
+    assistant: "<text only>"                       <- the model's tool_calls are ERASED
+    user:      "[tool_result read_file]
+                [call] {"id":...,"name":"read_file","input":{...}}
+                [output] <file contents>"          <- the result arrives as USER text
+
+Measured on the actual failing request (13 messages): **0 assistant messages carrying
+`tool_calls`, 0 messages with `role: 'tool'`**, and the only keys present across all 13 are
+`role`, `content`, `cacheBreakpoint`.
+
+### What the model sees, and why it repeats itself
+
+From the model's side its own history shows it saying *"Let me check the audit.py file:"* and then
+**never calling a tool** — followed by a *user* pasting a tool result. It is shown a conversation in
+which assistants announce actions and never take them, and it imitates that pattern. The transcript
+makes this unmistakable (turns 5, 6, 7 of the coder-flash run):
+
+    TURN 5  stop=stop        tools=[]           "Let me check the audit.py file:"
+    TURN 6  stop=tool_calls  tools=[]           (finish says tool_calls, array empty)
+    TURN 7  stop=tool_calls  tools=[read_file]  "Let me check what's in the audit.py file:"
+
+Its turn-0 plan was correct and well-structured. The 56,966 "prose" output tokens are
+**re-announcements of an intent that never executed**, not padding, and the 11 tool calls in 37
+turns are the surviving fraction rather than the model's rate.
+
+### The router's provider-blame claim was over-read from 3 trials, and is corrected
+
+An initial 3-trial replay showed 1 of 3 responses returning `finish_reason: "tool_calls"` with the
+payload absent, and the router reported that as "OpenRouter drops ~1 in 3 tool calls". Twelve
+trials of the identical request say otherwise:
+
+| model | tool_calls delivered | dropped (finish=tool_calls, payload absent) | text-only reply | true drop rate |
+| --- | ---: | ---: | ---: | ---: |
+| `qwen/qwen3-coder-flash` | 5/12 | 1/12 | **6/12** | 8% |
+| `z-ai/glm-5.3-flash` | **11/12** | 0/12 | 1/12 | 0% |
+| `qwen/qwen3.8-flash` | 10/12 | 0/12 | 2/12 | 0% |
+
+Provider-side dropping is **real but minor** (8% on one model, 0% on the other two). The dominant
+effect is the middle column: **on the identical request GLM emits a tool call 11 times in 12 while
+coder-flash manages 5.** The broken transcript degrades every model and coder-flash is far the most
+sensitive to it. That also retires the router's other claim — that coder-flash "doesn't drive an
+agent loop" — since GLM drives the same loop on the same malformed input.
+
+### Why the earlier repair missed this
+
+Pilot 1 was disqualified because "the native transcript contained tool name+output but omitted call
+IDs and arguments", and the fix embedded that metadata **as JSON inside the user text**
+(`tool-result-call-v1`, `eval/src/transcript.ts:9`). That treated the symptom — missing metadata —
+rather than the cause: the transcript never used the API's tool-calling format at all. The repair
+made the text more faithful while leaving the structural eviction in place.
+
+### What this invalidates
+
+**Every live run in loop 3 measured a degraded tool-calling harness, not a context policy.** The
+bare replies, the "empty completion" failures, the premature stops, and the nudge loop are all
+downstream of this. GLM's 4/11 — the only nonzero score of the night — was achieved *despite* it.
+No arm comparison from these epochs can be believed, and none should be reported as evidence about
+attention over history.
+
+### Observability gap found alongside it
+
+Langfuse credentials ARE present in `.env` (secret 42 chars, public 42 chars, base URL 29 chars);
+the router's earlier "empty" claim came from a `grep -o` whose pattern ended at `=` and therefore
+printed only key names. But `eval/scripts/run-attention-experiment.mjs:233` hardcodes
+`sink: disabledSink()`, so **the experiment runner cannot trace to Langfuse regardless of
+credentials.** This is why the diagnosis had to be reconstructed from capture blobs by hand.
+
+### The fix, in order
+
+1. **Give `ChatMessage` a faithful tool-calling representation** — `tool_calls` on assistant
+   messages and a `'tool'` role with `tool_call_id` — and emit it in `toMessageParam` for
+   OpenRouter and the Anthropic equivalent (`tool_use` / `tool_result` blocks). This is a contract
+   change touching every arm, so it is one epoch change and every prior number is superseded.
+2. **Treat `finish_reason: 'tool_calls'` with an empty payload as malformed and retry it**, as the
+   sibling `EmptyCompletionError` case already is. Worth doing on the measured 8% even after (1).
+3. **Wire the real Langfuse sink into the experiment runner**, so the next failure is readable
+   without blob archaeology.
+4. Re-run the pilot only after (1). Until then there is no measurement, only instrument repair.
