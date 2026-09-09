@@ -200,3 +200,94 @@ The agent left four files dirty but did not commit, so the committed-only
 submission patch was empty and the pristine base was graded. Neither task
 qualifies for n=5 treatment comparison. The final write-up is
 `../attention-policy-continuation-report.md`.
+
+## 2026-09-08 evening — DS-STAR iteration 1: the record correction and the router's re-derivation
+
+### Record correction (user, 2026-09-08 evening)
+
+The 25–50% soft occupancy target was **not withdrawn**. The user clarified only that it is
+not a *hard requirement*. Its status is identical to attention-over-history: a live
+hypothesis with no evidence for or against it. The prior pass recorded it as "withdrawn by
+the user" in `reports/algorithm.md` (boundary table, rule 9) and in the parent report's
+header note and §16; all four sites are corrected. Standing constraint restated by the
+user: *"We want to make decisions based upon evidence."* Neither hypothesis is privileged
+and neither is retired.
+
+### Router step 0 — recomputing the number the queue was ordered on
+
+The prior pass's queue was ordered on "no task qualifies, therefore no comparison is
+possible." Before accepting that, the router recomputed occupancy from the one artifact
+with complete per-turn accounting, `pilot-native-abs-v4/results.json`.
+
+**The ABS run never came close to its window.** 49 model turns, 67 tool calls, 27.9
+minutes, W = 1,310,720:
+
+| quantity | value |
+| --- | --- |
+| peak context | 73,801 tokens = **5.63% of W** |
+| cumulative prompt sent | 1,711,722 tokens = **23.2x the peak context** |
+| billed | 169,846 fresh input + 1,276,032 cache read (88.3% hit) |
+| prompt cost | $0.031879, against $0.108441 if nothing had cached (caching saves 70.6%) |
+
+Aiomonitor (10 turns, terminated on a provider timeout) peaked at 29,938 = 2.28% of W with
+a 4.8x re-send multiplier.
+
+Two consequences, both of which reorder the queue:
+
+1. **At the physical window, neither hypothesis's mechanism can fire on this task.** A
+   25–50% target of W = 1.31M is 327k–655k tokens; the task demanded 74k. The target would
+   have to *add* a quarter-million tokens of context, not evict any. Ejection has no window
+   pressure to relieve. This is a **boundary condition on both hypotheses, not evidence
+   against either**: the experiment was never in a regime where they apply.
+2. **The tokens are not in the context, they are in the re-sends.** Context peaked at 74k
+   but the run paid for 1.71M prompt tokens, because every turn re-sends the whole prefix.
+   The re-send burden is concentrated in *early* tokens: turn 6 added 6,902 tokens that were
+   re-sent 42 times, 17.7% of the entire re-send burden by itself. Early, dormant history is
+   simultaneously what attention-over-history wants to evict and what costs the most to keep.
+
+### Router step 0b — the cache tax, and a crossover
+
+Ejection is not free under prefix caching: dropping a segment at prefix position p
+invalidates the cache for everything after p, converting cache reads (GLM 5.3 Flash:
+$0.015/M) into fresh input ($0.075/M), a 5x penalty. Simulated over the ABS turn sequence,
+holding model behaviour fixed (`scratchpad/eject_sim.py` — a **ceiling probe**, generous to
+ejection by construction, since a real ejection would cause re-reads and extra turns):
+
+| budget | % of peak demand (73,801) | Δ prompt tokens | Δ cost |
+| ---: | ---: | ---: | ---: |
+| 4,000 | 5.4% | −89.5% | **−53.7%** |
+| 8,000 | 10.8% | −80.9% | −40.7% |
+| 16,000 | 21.7% | −65.2% | −23.3% |
+| 24,000 | 32.5% | −54.0% | −22.7% |
+| 32,000 | 43.4% | −35.9% | −5.3% |
+| 48,000 | 65.0% | −13.9% | **+13.1%** |
+| 65,536 | 88.8% | −3.4% | **+29.7%** |
+
+**Ejection always saves tokens and does not always save money.** The sign of the cost
+result flips at roughly 45% of peak demand. Rare, large ejections are taxed heavily (each
+one re-sends a large suffix at 5x); frequent, aggressive ejection keeps the invalidated
+suffix small and wins. The worst policy is a half-hearted one — eject hard or not at all.
+
+Expressed against *demand* rather than against *window*, the user's proposed 25–50% band
+sits almost exactly on the crossover: 25% of demand saves ~23% of cost, 50% is roughly
+break-even. That is a coincidence worth stating carefully — it makes the band the right
+thing to measure, not a validated setting.
+
+**Status of this number: unaudited.** The simulation's no-ejection baseline (73,801 fresh /
+1,637,921 cache read) does not reproduce the recorded split (169,846 / 1,276,032), so the
+cache model is wrong in a way that has not yet been characterised. An adversarial audit
+lens is recomputing it. No decision rests on these figures until that returns.
+
+### Iteration 1 analyzer panel (dispatched, fresh context, claude-opus-4-6[1m])
+
+1. **Cache economics, adversarial** — refute or repair the crossover; derive the algebraic
+   break-even; explain the baseline discrepancy and the cacheRead=0 turns (15, 27, 31, 39).
+2. **Demand/occupancy profile** — is 5.63% typical across every trace in the repo? Did any
+   run ever approach 25% of its window from task demand rather than a harness-imposed
+   budget? Is growth actually exponential, as the hypothesis assumes?
+3. **Ejection safety / recurrence** — from the first trace with complete tool-call metadata,
+   how much history is referenced again after going dormant, and would a recency policy have
+   thrown it away? Also: did the agent *lose track* of the commit requirement over 49 turns
+   (evidence for pinning instructions, H3) or simply not follow it (a harness bug)?
+4. **Null hypothesis, steelmanned** — caching already discounts these tokens 5x and the run
+   cost $0.043; argue nothing should be built, then state the exact regime where that fails.

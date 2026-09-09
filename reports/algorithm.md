@@ -71,8 +71,9 @@ source sequences and acknowledged sends. Its deterministic primitive is in
 **9. Breadth follows demonstrated task demand.** A question may need a narrow
 excerpt; software work may need complete tool responses or coherent structural
 sections. Compare these units rather than assuming whole-result preservation
-wins. There is no mandatory 25% or 50% occupancy target, no filling unused space,
-and no early-session pruning to meet a fraction. Model sufficiency statements
+wins. The 25-50% occupancy target is soft, not mandatory: filling unused space to
+reach it and pruning early history to hold it are both testable arms, not rules, and
+neither they nor the null (grow with demand) has evidence yet. Model sufficiency statements
 can trigger reassessment of exploratory additions. They neither authorize
 implementation nor prove existing evidence irrelevant. H1–H6 and deterministic
 priority require mechanism gates, paired public multi-turn SWE evaluation and
@@ -270,7 +271,7 @@ measurement, would be worth more than another boundary condition.
 | Fusing indexes with disjoint coverage | **Harmful.** RRF across four indexes scores 6/17 where routing to the best single index scores 9/17; answers already found are demoted (rank 3→12, 7→25). Fuse rankers over one index, route across indexes. |
 | Fact needing two literals from two places | No single-entry index can serve it. Three of 17 questions; needs a join or an explicit second hop. Open. |
 | Zone B on a literal-recall task | **Inert, measured 2026-09-05.** `flat-events` (Zone A + elastic raw tail, events scored over the whole trace, no summaries, no branch ranking) 15/25 against 16/25 for the same stack with Zone B, one batch, n=5. Zone B's remaining candidate roles — a ledger of completed steps on multi-step tasks, and cache shape on long sessions — are unmeasured. |
-| Operating point of the window | The tail-filling arms run at 80-95% of W by construction; the design that scored 25/25 (`prefix-plus-retrieval`: cached prefix + recency slice + retrieval fill) runs at 15-30% and grows only when a turn needs it, and was the only arm with zero provider empty-turn failures. Current experiments use demand and relevance evidence; the former 25–50% target was withdrawn by the user. |
+| Operating point of the window | The tail-filling arms run at 80-95% of W by construction; the design that scored 25/25 (`prefix-plus-retrieval`: cached prefix + recency slice + retrieval fill) runs at 15-30% and grows only when a turn needs it, and was the only arm with zero provider empty-turn failures. Current experiments use demand and relevance evidence. The 25–50% soft target is **not withdrawn and not rejected** — it is an open hypothesis alongside ejection-saves-tokens; neither has been measured. |
 | A design with no memory of completed steps | **Measured 2026-09-05 (Sonnet 5, n=3):** `prefix-retrieval` 0/3 on sw-2 (four modules, fix in order) against 3/3 for `context-tree` and `native`; every stalled run ended in 4-6 consecutive `run_command` turns with 90-100k tokens of headroom — the investigate-1 loop. On single-step sw-1 it was 3/3, a peer. Window size does not fix it; a compact ledger of completed steps inside the target does (candidate role for Zone B). |
 
 ## Measurement hazards
