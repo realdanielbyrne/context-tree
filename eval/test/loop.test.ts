@@ -12,6 +12,8 @@ import { FsBlobStore, MockProvider } from '@context-tree/core';
 import { CONTEXT_SEARCH } from '@context-tree/mcp';
 import { disabledSink } from '../src/langfuse.js';
 import {
+  COMPLETION_NUDGE,
+  completionGateOpen,
   branchContentText,
   dedupSummarizePlan,
   mergeKeepSets,
@@ -85,6 +87,17 @@ const agentReplies: CompletionResult[] = [
     usage: { input: 200, output: 5, cacheRead: 0, cacheWrite: 0 },
     toolCalls: [],
     stopReason: 'end_turn',
+  },
+  // Every arm nudges once on the first bare reply after tool work and only a
+  // second bare reply ends the run (loop.ts COMPLETION_NUDGE), so a completing
+  // script needs the bare reply twice. This was previously true of the tree arm
+  // alone, which is the asymmetry the shared gate removes.
+  {
+    text: 'done',
+    model: 'test-model',
+    usage: { input: 200, output: 5, cacheRead: 0, cacheWrite: 0 },
+    toolCalls: [],
+    stopReason: 'stop',
   },
 ];
 
@@ -360,10 +373,15 @@ describe('runScenario — native arm', () => {
     expect(result.status).toBe('completed');
     expect(result.success).toBe(true);
     expect(finalText).toBe('done');
-    expect(result.metrics.turns).toEqual({ modelTurns: 2, toolCalls: 1 });
-    expect(result.metrics.tokens.input).toBe(300);
-    expect(result.metrics.tokens.output).toBe(15);
-    expect(result.metrics.tokens.total).toBe(315);
+    expect(result.metrics.turns).toEqual({ modelTurns: 3, toolCalls: 1 });
+    // 500 = three scripted calls (100 + 200 + 200). The native arm used to
+    // meter 300 and the tree arm 400 for identical work; both now meter the
+    // same because both spend the same completion-gate turn.
+    expect(result.metrics.tokens.input).toBe(500);
+    // 20 = 10 + 5 + 5 across the three scripted calls.
+    expect(result.metrics.tokens.output).toBe(20);
+    // 520 = 500 input + 20 output.
+    expect(result.metrics.tokens.total).toBe(520);
     expect(result.metrics.costUsd).toBeGreaterThan(0);
     expect(result.metrics.speed.p50TurnMs).toBeGreaterThan(0);
     expect(result.judge?.detail).toContain('matched');
@@ -401,7 +419,8 @@ describe('runScenario — prefix-retrieval arm (cached prefix + recency slice + 
     });
     expect(result.status).toBe('completed');
     expect(finalText).toBe('done');
-    expect(requests).toHaveLength(2);
+    // 3, not 2: the completion gate spends one turn re-asking.
+    expect(requests).toHaveLength(3);
     // The cached prefix: system prompt carries the steering text every turn.
     for (const request of requests) expect(request.system).toContain('Operator steering');
     // Turn 2 sees the task, the recency slice (its own last exchange) and a retrieved block.
@@ -414,7 +433,7 @@ describe('runScenario — prefix-retrieval arm (cached prefix + recency slice + 
       const chars = (request.system ?? '').length + request.messages.reduce((n, m) => n + m.content.length, 0);
       expect(chars / 2).toBeLessThan(32_768 * 0.95); // coarse: 2 chars/token is the pessimistic bound
     }
-    expect(result.metrics.turns).toEqual({ modelTurns: 2, toolCalls: 1 });
+    expect(result.metrics.turns).toEqual({ modelTurns: 3, toolCalls: 1 });
   });
 
   it('refuses to run without a window — the recency slice and the fill have nothing to derive from', async () => {
@@ -446,7 +465,9 @@ describe('runScenario — context-tree arm', () => {
       runId: 'r1',
       scenario,
       arm: 'context-tree',
-      agentProvider: new ScriptedProvider([...agentReplies, confirmReply]),
+      // agentReplies now carries the second bare reply for every arm, so the
+      // tree arm no longer appends a confirm reply of its own.
+      agentProvider: new ScriptedProvider(agentReplies),
       summarizerProvider: new MockProvider({ responder: summaryResponder }),
       options,
       sink: disabledSink(),
@@ -455,7 +476,8 @@ describe('runScenario — context-tree arm', () => {
     expect(result.status).toBe('completed');
     expect(result.success).toBe(true);
     expect(result.metrics.turns.modelTurns).toBe(3);
-    expect(result.metrics.tokens.input).toBe(400);
+    // Same 500 as the native arm above — identical work, identical metering.
+    expect(result.metrics.tokens.input).toBe(500);
   });
 
   it('routes context tools through the real MCP handlers without leaving the tree inconsistent', async () => {
@@ -978,5 +1000,74 @@ describe('loop9-item3 step 1 gate (EVAL_CONTRACT_VERSION) — the Zone A trim ar
     // The whole point of failing loudly: no request was ever sent with a
     // silently-substituted contract.
     expect(agent.requests).toHaveLength(0);
+  });
+});
+
+describe('completion gate parity across arms', () => {
+  /**
+   * The gate was tree-only, and that asymmetry was a measurement defect, not a
+   * feature: the tree arm got one nudge on a premature bare reply and every
+   * other arm returned immediately, so tree turn-counts carried a +1 the
+   * baseline never paid, and 23 of 204 recorded tree runs were rescued by a
+   * second chance native was never offered. These tests fail if any arm stops
+   * treating a bare reply like the others.
+   */
+  const toolReply: CompletionResult = {
+    text: '', model: 'test-model', usage: { input: 100, output: 10, cacheRead: 0, cacheWrite: 0 },
+    toolCalls: [{ id: 't1', name: 'write_file', input: { path: 'hello.txt', content: 'hi' } }],
+    stopReason: 'tool_use',
+  };
+  const bare = (text: string): CompletionResult => ({
+    text, model: 'test-model', usage: { input: 100, output: 10, cacheRead: 0, cacheWrite: 0 },
+    toolCalls: [], stopReason: 'stop',
+  });
+
+  it.each(['native', 'context-tree', 'prefix-retrieval'] as const)(
+    '%s spends one nudged turn on a premature bare reply and keeps working',
+    async (arm) => {
+      const requests: CompletionRequest[] = [];
+      // A premature bare reply, then real work, then a genuine finish. Without
+      // the gate the run would end on the first bare reply with the task undone.
+      const replies = [toolReply, bare('I think that is everything'), toolReply, bare('done'), bare('done')];
+      const provider: ModelProvider = {
+        id: 'gate-probe',
+        async complete(request) {
+          requests.push(request);
+          const next = replies.shift();
+          if (next === undefined) throw new Error('script exhausted');
+          return next;
+        },
+      };
+      const { result, finalText } = await runScenario({
+        runId: `gate-${arm}`, scenario, arm, agentProvider: provider,
+        summarizerProvider: new MockProvider({ responder: summaryResponder }),
+        // prefix-retrieval refuses to run without a window: its recency slice
+        // and retrieval fill have nothing to derive from otherwise.
+        options: { ...options, window: 32_768 }, sink: disabledSink(),
+      });
+      expect(result.status).toBe('completed');
+      expect(finalText).toBe('done');
+      // The nudge is a user-role message carrying the shared wording.
+      const nudged = requests.some((request) =>
+        request.messages.some((message) => String(message.content).includes(COMPLETION_NUDGE)));
+      expect(nudged).toBe(true);
+      // Fires at most once per run, so a determined model can still stop.
+      const nudgeCount = requests.at(-1)!.messages
+        .filter((message) => String(message.content).includes(COMPLETION_NUDGE)).length;
+      expect(nudgeCount).toBeLessThanOrEqual(1);
+    });
+
+  it('EVAL_NO_COMPLETION_GATE=1 disables it for every arm, which is the only parity setting that existed before', () => {
+    expect(completionGateOpen(true, false)).toBe(true);
+    process.env.EVAL_NO_COMPLETION_GATE = '1';
+    try {
+      expect(completionGateOpen(true, false)).toBe(false);
+    } finally {
+      delete process.env.EVAL_NO_COMPLETION_GATE;
+    }
+    // Never fires before tool work: a task answered in one turn is not premature.
+    expect(completionGateOpen(false, false)).toBe(false);
+    // Never fires twice.
+    expect(completionGateOpen(true, true)).toBe(false);
   });
 });

@@ -38,6 +38,11 @@ describe('tool result transcript action metadata', () => {
     const requests: CompletionRequest[] = [];
     const responses: CompletionResult[] = [
       { model: 'test', text: '', toolCalls: calls, stopReason: 'tool_use', usage },
+      // The bare reply appears twice because every arm now nudges once on the
+      // first bare reply after tool work and only a second one ends the run
+      // (loop.ts COMPLETION_NUDGE). Scripting it twice keeps this test on the
+      // default path; this test's subject is action metadata, not the gate.
+      { model: 'test', text: 'done', toolCalls: [], stopReason: 'stop', usage },
       { model: 'test', text: 'done', toolCalls: [], stopReason: 'stop', usage },
     ];
     const { result } = await runScenario({
@@ -51,7 +56,7 @@ describe('tool result transcript action metadata', () => {
         return response;
       } },
       options: { provider: 'openrouter', model: 'test', leafModel: 'test', rootModel: 'test', judgeModel: 'test',
-        maxTurns: 2, timeCapMs: 60_000, costCapUsd: null, window: 131_072, budgets: { zoneB: 8000, zoneC: 30000 }, keepSandbox: false,
+        maxTurns: 3, timeCapMs: 60_000, costCapUsd: null, window: 131_072, budgets: { zoneB: 8000, zoneC: 30000 }, keepSandbox: false,
         ...(arm === 'attention' ? { policyProfile: { version: 1, id: 'whole-results', payload: { mode: 'whole', excerptChars: 100, anchor: 'first', producers: ['read_file'] } } } : {}),
       },
       sink: disabledSink(),

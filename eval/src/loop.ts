@@ -86,6 +86,31 @@ export const NATIVE_SYSTEM_PROMPT = [
 ].join('\n');
 
 /**
+ * One ephemeral nudge on the first bare-text reply after tool work; only a
+ * SECOND consecutive bare reply ends the run.
+ *
+ * This was a tree-only rule (iter 3) and the asymmetry was a confound, not a
+ * feature: the native arm returned on the FIRST bare reply, so every tree
+ * turn-count was `the arm's effect + 1`, and corpus replay over eval/results
+ * showed 185 fires with 23 rescues across 204 tree runs — 23 runs the native
+ * arm would have lost. The cost of the fix is one cached turn, charged only
+ * when the failure mode fires. EVAL_NO_COMPLETION_GATE=1 disables it for every
+ * arm at once, which is the only parity setting that was previously available.
+ *
+ * The failure it catches is real and not hypothetical: pilot-native-abs-v4
+ * turn 49 emitted `'Now the cache info issue: ...Let me test the hash in
+ * isolation:'` with no tool call, mid-debug, with 20 tests still failing and
+ * 1.5M of a 3.0M token budget unspent. The harness scored that run 0.
+ */
+export const COMPLETION_NUDGE =
+  'system: you stopped calling tools. If every step of the task is verifiably done, reply with your final answer again; otherwise continue working.';
+
+/** Shared by every arm so a bare reply is treated identically across arms. */
+export function completionGateOpen(toolWorkDone: boolean, alreadyConfirmed: boolean): boolean {
+  return toolWorkDone && !alreadyConfirmed && process.env.EVAL_NO_COMPLETION_GATE !== '1';
+}
+
+/**
  * No reply budget. A number here is a guess about how much the model needs to
  * say, and it is wrong in both directions: too small truncates the deliverable
  * (and on a model that reasons before answering, the budget can be spent
@@ -354,6 +379,8 @@ async function runDsaArm(args: ArmArgs): Promise<ArmOutput> {
   const taskWords = contentWords(args.scenario.task);
   const guard = makeRepeatGuard();
   let finalText = '';
+  let toolWorkDone = false;
+  let completionConfirmed = false;
   for (let turnIndex = 0; turnIndex < args.options.maxTurns; turnIndex += 1) {
     if (Date.now() >= args.deadlineMs) return { status: 'time_cap', finalText };
     const request: CompletionRequest = {
@@ -377,9 +404,18 @@ async function runDsaArm(args: ArmArgs): Promise<ArmOutput> {
     Object.assign(args.usage, addTotals(args.usage, result.usage));
     messages.push({ role: 'assistant', content: result.text });
     if (result.toolCalls.length === 0) {
+      if (completionGateOpen(toolWorkDone, completionConfirmed)) {
+        completionConfirmed = true;
+        messages.push({ role: 'user', content: COMPLETION_NUDGE });
+        continue;
+      }
       finalText = result.text;
       return { status: 'completed', finalText };
     }
+    // Not reset after tool work: the tree arm confirms at most once per run,
+    // so resetting here would hand native MORE nudges than the tree and swap
+    // one arm asymmetry for its mirror image.
+    toolWorkDone = true;
     for (const call of result.toolCalls) {
       const outcome = await guard(call, () => executeHarnessTool(args.sandbox, call.name, call.input));
       messages.push({ role: 'user', content: renderToolResult(call, outcome) });
@@ -461,6 +497,8 @@ async function runPrefixRetrievalArm(args: ArmArgs): Promise<ArmOutput> {
     appendTo(handle, { type: 'user_message', ts: ts(), blob: handle.blobs.put(args.scenario.task) });
     const fixed = countTokens(system) + countTokens(JSON.stringify(HARNESS_TOOL_SCHEMAS)) + countTokens(task.content);
     let finalText = '';
+  let toolWorkDone = false;
+  let completionConfirmed = false;
     let focus = args.scenario.task;
     for (let turnIndex = 0; turnIndex < args.options.maxTurns; turnIndex += 1) {
       if (Date.now() >= args.deadlineMs) return { status: 'time_cap', finalText };
@@ -495,9 +533,15 @@ async function runPrefixRetrievalArm(args: ArmArgs): Promise<ArmOutput> {
       const assistantEvent = appendTo(handle, { type: 'assistant_message', ts: ts(), blob: handle.blobs.put(result.text.length > 0 ? result.text : '(invoking tool)') });
       if (result.text.length > 0) focus = result.text;
       if (result.toolCalls.length === 0) {
+        if (completionGateOpen(toolWorkDone, completionConfirmed)) {
+          completionConfirmed = true;
+          transcript.push({ role: 'user', content: COMPLETION_NUDGE });
+          continue;
+        }
         finalText = result.text;
         return { status: 'completed', finalText };
       }
+      toolWorkDone = true;
       for (const call of result.toolCalls) {
         const outcome = await guard(call, () => executeHarnessTool(args.sandbox, call.name, call.input));
         const text = renderToolResult(call, outcome);
@@ -532,6 +576,8 @@ async function runNativeArm(args: ArmArgs): Promise<ArmOutput> {
   // accumulate markers past the provider's 4-breakpoint limit.
   const nativeCache = process.env.EVAL_NATIVE_CACHE === '1';
   let finalText = '';
+  let toolWorkDone = false;
+  let completionConfirmed = false;
   for (let turnIndex = 0; turnIndex < args.options.maxTurns; turnIndex += 1) {
     if (Date.now() >= args.deadlineMs) return { status: 'time_cap', finalText };
     const turnMessages = [...messages];
@@ -561,9 +607,15 @@ async function runNativeArm(args: ArmArgs): Promise<ArmOutput> {
     Object.assign(args.usage, addTotals(args.usage, result.usage));
     messages.push({ role: 'assistant', content: result.text });
     if (result.toolCalls.length === 0) {
+      if (completionGateOpen(toolWorkDone, completionConfirmed)) {
+        completionConfirmed = true;
+        messages.push({ role: 'user', content: COMPLETION_NUDGE });
+        continue;
+      }
       finalText = result.text;
       return { status: 'completed', finalText };
     }
+    toolWorkDone = true;
     for (const call of result.toolCalls) {
       const outcome = await guard(call, () => executeHarnessTool(args.sandbox, call.name, call.input));
       messages.push({ role: 'user', content: renderToolResult(call, outcome) });
@@ -1262,10 +1314,9 @@ async function runTreeArm(
         // 14 fires and 0 rescues, at a mean 13,793 tokens — the run's most
         // expensive turn, because cacheRead bills the whole prefix and that
         // turn carries the largest prefix the run ever has.
-        if (toolWorkDone && !completionConfirmed && process.env.EVAL_NO_COMPLETION_GATE !== '1') {
+        if (completionGateOpen(toolWorkDone, completionConfirmed)) {
           completionConfirmed = true;
-          const nudge =
-            'system: you stopped calling tools. If every step of the task is verifiably done, reply with your final answer again; otherwise continue working.';
+          const nudge = COMPLETION_NUDGE;
           if (fetchEvents) {
             // v5.8: the nudge is an L0 event like everything else — it rides
             // behind the moving breakpoint instead of re-billing fresh forever.

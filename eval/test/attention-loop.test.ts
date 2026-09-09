@@ -25,6 +25,14 @@ const profile = (mode: AttentionProfile['payload']['mode'] = 'excerpt'): Attenti
 const reply = (text: string, toolCalls: CompletionResult['toolCalls'] = []): CompletionResult => ({
   text, toolCalls, model: 'test-model', usage: { input: 100, output: 10, cacheRead: 0, cacheWrite: 0 }, stopReason: toolCalls.length ? 'tool_use' : 'end_turn',
 });
+/**
+ * The completion gate nudges once on the first bare reply after tool work and
+ * only a second bare reply ends the run (loop.ts COMPLETION_NUDGE), so a script
+ * that completes must answer bare twice. These tests are about payload
+ * selection and signals, not the gate, so they stay on the default path rather
+ * than disabling it.
+ */
+const confirming = (text: string): CompletionResult[] => [reply(text), reply(text)];
 const contextCall = { id: 'search-1', name: CONTEXT_SEARCH, input: { query: 'NEEDLE' } };
 const originalData = { query: 'NEEDLE', text: 'unrelated '.repeat(100) + 'NEEDLE original full producer response ' + 'tail '.repeat(100) };
 const cleanup: (() => void)[] = [];
@@ -83,7 +91,7 @@ describe('real multi-turn attention arm', () => {
   it('applies breadth to actual scored search hits while preserving original and unknown hits', async () => {
     const data = { query: 'NEEDLE', hits: [{ seq: 1, score: 9, excerpt: 'task' }, { seq: 2, score: 1, excerpt: 'assistant' }, { seq: null, score: 0, excerpt: null }] };
     vi.spyOn(HANDLERS, CONTEXT_SEARCH).mockResolvedValue({ ok: true, data });
-    const run = harness({ ...profile('whole'), payload: { ...profile('whole').payload, excerptChars: 10000 }, attention: { breadth: { relevanceMass: 0.8, calibrationId: 'synthetic-fixture-only' } } }, [reply('search', [contextCall]), reply('done')]);
+    const run = harness({ ...profile('whole'), payload: { ...profile('whole').payload, excerptChars: 10000 }, attention: { breadth: { relevanceMass: 0.8, calibrationId: 'synthetic-fixture-only' } } }, [reply('search', [contextCall]), ...confirming('done')]);
     await run.run();
     const admission = run.events().find((event) => event.kind === 'attention_admission')!.value;
     expect(admission.mechanismApplied).toBe(true);
@@ -98,13 +106,14 @@ describe('real multi-turn attention arm', () => {
     const replies = [
       reply('Inspect the fixture.', [{ id: 'write-1', name: 'write_file', input: { path: 'fixture.txt', content: 'retained source file' } }, contextCall]),
       reply('Verify the file.', [{ id: 'read-1', name: 'read_file', input: { path: 'fixture.txt' } }]),
-      reply('done'),
+      ...confirming('done'),
     ];
     const excerpt = harness(profile('excerpt'), replies);
     const whole = harness(profile('whole'), replies);
     expect(await excerpt.run()).toEqual({ status: 'completed', finalText: 'done' });
     expect(await whole.run()).toEqual({ status: 'completed', finalText: 'done' });
-    expect(excerpt.requests).toHaveLength(3);
+    // 4, not 3: the completion gate spends one turn re-asking before the run ends.
+    expect(excerpt.requests).toHaveLength(4);
     expect(excerpt.args.turns.flatMap((turn) => turn.toolCalls)).toEqual(['write_file', CONTEXT_SEARCH, 'read_file']);
     expect(excerpt.requests.map((request) => request.tools)).toEqual(whole.requests.map((request) => request.tools));
     expect(excerpt.requests[0]).toEqual(whole.requests[0]);
@@ -128,12 +137,14 @@ describe('real multi-turn attention arm', () => {
     } finally { handle.close(); }
     const delivered = excerpt.events().filter((event) => event.kind === 'attention_delivery');
     expect(JSON.stringify(delivered)).toContain(payload.selectedPayloadBlob);
-    expect(excerpt.args.usage.total).toBe(330);
+    // 440 = four scripted calls at 100 input + 10 output each; the fourth is
+    // the completion-gate turn.
+    expect(excerpt.args.usage.total).toBe(440);
   });
 
   it('treats unsupported structural selection as unchanged control, with no mechanism credit', async () => {
     vi.spyOn(HANDLERS, CONTEXT_SEARCH).mockResolvedValue({ ok: true, data: originalData });
-    const run = harness(profile('structural'), [reply('', [contextCall]), reply('done')]);
+    const run = harness(profile('structural'), [reply('', [contextCall]), ...confirming('done')]);
     await run.run();
     const payload = run.events().find((event) => event.kind === 'attention_payload')!.value;
     expect(payload.fallback).toBe('unchanged_control');
@@ -144,7 +155,7 @@ describe('real multi-turn attention arm', () => {
   });
 
   it('compares read_file payloads only when the producer is explicitly selected', async () => {
-    const replies = [reply('', [{ id: 'file-read', name: 'read_file', input: { path: 'input.txt' } }]), reply('done')];
+    const replies = [reply('', [{ id: 'file-read', name: 'read_file', input: { path: 'input.txt' } }]), ...confirming('done')];
     const producerProfile = (mode: AttentionProfile['payload']['mode']) => ({ ...profile(mode), payload: { ...profile(mode).payload, producers: ['context', 'read_file'] as ('context' | 'read_file')[] } });
     const excerpt = harness(producerProfile('excerpt'), replies);
     const whole = harness(producerProfile('whole'), replies);
@@ -181,7 +192,7 @@ describe('real multi-turn attention arm', () => {
     const run = harness({ ...profile('whole'), attention: { excludeIrrelevant: true, sufficiencyGate: true } }, [
       reply('"I have enough information to implement this."', [contextCall]),
       reply('Should I implement the plan?', [{ id: 'read-2', name: 'read_file', input: { path: 'missing.txt' } }]),
-      reply('done'),
+      ...confirming('done'),
     ]);
     await run.run();
     const signals = run.events().filter((event) => event.kind === 'attention_signals');
@@ -196,7 +207,7 @@ describe('real multi-turn attention arm', () => {
   it('adds an opt-in ledger of actual edit outcomes with source coordinates', async () => {
     const run = harness({ ...profile('whole'), ledger: true }, [
       reply('', [{ id: 'write-1', name: 'write_file', input: { path: 'actual.txt', content: 'actual edit' } }]),
-      reply('done'),
+      ...confirming('done'),
     ]);
     await run.run();
     const ledgerMessage = run.requests[1]!.messages.find((message) => String(message.content).startsWith('[Recorded action outcomes;'));

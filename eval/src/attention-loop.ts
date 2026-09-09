@@ -9,6 +9,7 @@ import {
 import { HANDLERS, type ToolContext, type ToolName } from '@context-tree/mcp';
 import { countTokens } from 'gpt-tokenizer';
 import type { ArmArgs, ArmOutput } from './loop.js';
+import { COMPLETION_NUDGE, completionGateOpen } from './loop.js';
 import type { LangfuseRunHandle } from './langfuse.js';
 import type { RunCapture } from './capture.js';
 import type { TokenTotals, TurnRecord } from './types.js';
@@ -294,6 +295,8 @@ export async function runAttentionArm(args: ArmArgs, deps: {
   const ledger: { sourceSeq: number; tool: string; command?: string; path?: string; outcome: 'success' | 'error'; originalBlob: string }[] = [];
   let signals: AttentionSignal[] = [];
   let focusFingerprints: string[] = [];
+  let toolWorkDone = false;
+  let completionConfirmed = false;
   const tools = [...HARNESS_TOOL_SCHEMAS, ...CONTEXT_TOOL_SCHEMAS];
   const nativeCache = process.env.EVAL_NATIVE_CACHE === '1';
   const ts = () => new Date().toISOString();
@@ -366,7 +369,19 @@ export async function runAttentionArm(args: ArmArgs, deps: {
         ...(typeof call.input.query === 'string' ? call.input.query.split(/\s+/).filter(Boolean) : []),
       ]);
       args.capture.record('attention_signals', { turn: turnIndex, sourceSeq: assistant.seq, sourceBlob: assistantBlob, signals, source: 'assistant_message' });
-      if (result.toolCalls.length === 0) return { status: 'completed', finalText: result.text };
+      if (result.toolCalls.length === 0) {
+        // Same gate, same wording, same once-per-run semantics as every other
+        // arm (loop.ts COMPLETION_NUDGE) so a bare reply is not an arm effect.
+        if (completionGateOpen(toolWorkDone, completionConfirmed)) {
+          completionConfirmed = true;
+          const nudgeBlob = handle.blobs.put(COMPLETION_NUDGE);
+          const nudgeEvent = append(handle, { type: 'user_message', ts: ts(), blob: nudgeBlob });
+          addMessage(nudgeEvent.seq, { role: 'user', content: COMPLETION_NUDGE }, nudgeBlob, `turn:${turnIndex}`, 'steering');
+          continue;
+        }
+        return { status: 'completed', finalText: result.text };
+      }
+      toolWorkDone = true;
       for (const call of result.toolCalls) {
         const contextTool = isContextTool(call.name);
         const payloadProducer = contextTool ? 'context' : call.name === 'read_file' ? 'read_file' : null;

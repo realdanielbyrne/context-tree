@@ -69,6 +69,11 @@ export function deriveBatchingMetrics(turns: readonly TurnRecord[]): BatchingMet
     }
   }
   const gateFired = firstBareAfterWork !== -1;
+  // Reachable only because every arm now nudges once on the first bare reply
+  // after tool work (loop.ts COMPLETION_NUDGE). While the gate was tree-only
+  // and the other arms returned on that first bare reply, there was never a
+  // turn after `firstBareAfterWork` to inspect, so this was `false` in 0 of 48
+  // recorded runs -- a metric measuring something the harness made impossible.
   const gateRescued = gateFired && firstBareAfterWork < n - 1 && turns[firstBareAfterWork + 1]!.toolCalls.length > 0;
 
   const toolUsingTurns = turns.filter((turn) => turn.toolCalls.length > 0);
