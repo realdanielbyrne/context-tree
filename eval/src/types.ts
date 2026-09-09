@@ -9,6 +9,7 @@
 import type { TokenUsage } from '@context-tree/core';
 import type { AttentionProfile } from './attention-loop.js';
 import type { DeepSweEnvironment } from './adapters/deepswe.js';
+import type { LhtbEnvironment } from './adapters/lhtb.js';
 
 /** §15's arms: raw transcript vs the tree, plus the top-k filtered variants. */
 export type Arm = 'native' | 'context-tree' | 'dsa' | 'tree-dsa' | 'prefix-retrieval' | 'attention';
@@ -19,7 +20,7 @@ export function isArm(value: string): value is Arm {
   return (ARMS as readonly string[]).includes(value);
 }
 
-export type JudgeKind = 'exact_match' | 'command' | 'llm_rubric' | 'deepswe';
+export type JudgeKind = 'exact_match' | 'command' | 'llm_rubric' | 'deepswe' | 'lhtb';
 
 export interface ScenarioJudge {
   kind: JudgeKind;
@@ -41,7 +42,7 @@ export interface Scenario {
   files?: Record<string, string>;
   judge: ScenarioJudge;
   meta?: Record<string, unknown>;
-  environment?: DeepSweEnvironment;
+  environment?: DeepSweEnvironment | LhtbEnvironment;
 }
 
 /** One benchmark's loader: native layout on disk -> scenarios. Fails loud. */

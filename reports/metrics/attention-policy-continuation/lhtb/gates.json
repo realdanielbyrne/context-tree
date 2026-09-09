@@ -1,0 +1,142 @@
+{
+  "noModelCalls": true,
+  "officialSeparateVerifier": true,
+  "denseReward": true,
+  "dockerDefaultPlatform": "linux/amd64",
+  "dockerServerVersion": "29.5.2",
+  "source": {
+    "repository": "https://github.com/zli12321/LHTB.git",
+    "commit": "1ece75aa255307a01430a754ce91f732e0ae6bb6"
+  },
+  "taskSourceHashes": {
+    "great-expectations-audit": "8e4ff31e6bdd6a37b570f5456d1109f2974b7e6f59c3042a956c1012ac3c43d4",
+    "langchain-version-migration": "5c9b136cd6c9e43b6bab4247985c07e931a0d70d3a1040773081d95428592600"
+  },
+  "images": {
+    "great-expectations-audit": {
+      "task": {
+        "reference": "zli12321/lhtb-great-expectations-audit:20260615",
+        "id": "sha256:aaf6c349caf62e887b982a3f5b706bdc3300b7619ba48817e6183c2391867b01",
+        "repoDigests": [
+          "zli12321/lhtb-great-expectations-audit@sha256:aaf6c349caf62e887b982a3f5b706bdc3300b7619ba48817e6183c2391867b01"
+        ],
+        "platform": "amd64/linux"
+      },
+      "verifierBase": {
+        "reference": "zli12321/lhtb-great-expectations-audit:20260615",
+        "id": "sha256:aaf6c349caf62e887b982a3f5b706bdc3300b7619ba48817e6183c2391867b01",
+        "repoDigests": [
+          "zli12321/lhtb-great-expectations-audit@sha256:aaf6c349caf62e887b982a3f5b706bdc3300b7619ba48817e6183c2391867b01"
+        ],
+        "platform": "amd64/linux"
+      }
+    },
+    "langchain-version-migration": {
+      "task": {
+        "reference": "zli12321/lhtb-langchain-version-migration:20260615",
+        "id": "sha256:cf31f3848d622f3445e9644f5200bab766f0c7144467c5323d21d629185eb13c",
+        "repoDigests": [
+          "zli12321/lhtb-langchain-version-migration@sha256:cf31f3848d622f3445e9644f5200bab766f0c7144467c5323d21d629185eb13c"
+        ],
+        "platform": "amd64/linux"
+      },
+      "verifierBase": {
+        "reference": "zli12321/lhtb-langchain-version-migration:20260615",
+        "id": "sha256:cf31f3848d622f3445e9644f5200bab766f0c7144467c5323d21d629185eb13c",
+        "repoDigests": [
+          "zli12321/lhtb-langchain-version-migration@sha256:cf31f3848d622f3445e9644f5200bab766f0c7144467c5323d21d629185eb13c"
+        ],
+        "platform": "amd64/linux"
+      }
+    }
+  },
+  "gates": [
+    {
+      "gate": "great-expectations-audit-pristine",
+      "task": "great-expectations-audit",
+      "reward": 0,
+      "rewardRaw": "0.0",
+      "passed": 0,
+      "total": 11,
+      "rewardMatchesPassedTotal": true,
+      "failedTests": [
+        "../tests/test_outputs.py::test_hidden_dataset_dynamic_paths_and_different_counts",
+        "../tests/test_outputs.py::test_source_uses_great_expectations_and_not_static_public_outputs",
+        "../tests/test_outputs.py::test_experiment_entrypoint_runs_same_pipeline",
+        "../tests/test_outputs.py::test_cli_creates_all_required_artifacts",
+        "../tests/test_outputs.py::test_cleaned_csv_schemas_sorted_and_referential_integrity",
+        "../tests/test_outputs.py::test_public_counts_and_quarantine_reason_distribution",
+        "../tests/test_outputs.py::test_reconciliation_report_is_exactly_recomputed_from_cleaned_data",
+        "../tests/test_outputs.py::test_validation_report_matches_gx_rerun_and_reconciliation",
+        "../tests/test_outputs.py::test_summary_agrees_with_json_reports",
+        "../tests/test_outputs.py::test_pipeline_is_deterministic",
+        "../tests/test_outputs.py::test_report_metadata_has_stable_checksum_not_timestamp"
+      ],
+      "missingArtifacts": [
+        "/app/outputs/cleaned_customers.csv",
+        "/app/outputs/cleaned_orders.csv",
+        "/app/outputs/cleaned_payments.csv",
+        "/app/outputs/cleaned_refunds.csv",
+        "/app/outputs/quarantine_report.csv",
+        "/app/outputs/validation_report.json",
+        "/app/outputs/reconciliation_report.json",
+        "/app/outputs/audit_summary.md"
+      ],
+      "verifierExitCode": 1,
+      "submissionSha256": "cca2ce1ae94b81923cbc1b634a765e44c530762065cdfb366e05161c51bb8ce0",
+      "imageId": "sha256:aaf6c349caf62e887b982a3f5b706bdc3300b7619ba48817e6183c2391867b01",
+      "verifierImageId": "sha256:aaf6c349caf62e887b982a3f5b706bdc3300b7619ba48817e6183c2391867b01",
+      "artifactDirectory": "reports/metrics/attention-policy-continuation/lhtb/great-expectations-audit-pristine"
+    },
+    {
+      "gate": "great-expectations-audit-reference",
+      "task": "great-expectations-audit",
+      "reward": 1,
+      "rewardRaw": "1.0",
+      "passed": 11,
+      "total": 11,
+      "rewardMatchesPassedTotal": true,
+      "failedTests": [],
+      "missingArtifacts": [],
+      "verifierExitCode": 0,
+      "submissionSha256": "2aeaef9fae32490b473e8bdcb785330d4a475e1a402a9b245f3d63d1d599995d",
+      "imageId": "sha256:aaf6c349caf62e887b982a3f5b706bdc3300b7619ba48817e6183c2391867b01",
+      "verifierImageId": "sha256:aaf6c349caf62e887b982a3f5b706bdc3300b7619ba48817e6183c2391867b01",
+      "artifactDirectory": "reports/metrics/attention-policy-continuation/lhtb/great-expectations-audit-reference"
+    },
+    {
+      "gate": "langchain-version-migration-pristine",
+      "task": "langchain-version-migration",
+      "reward": 0,
+      "rewardRaw": "0\n",
+      "passed": 0,
+      "total": 0,
+      "rewardMatchesPassedTotal": false,
+      "failedTests": [],
+      "missingArtifacts": [
+        "/app/outputs/replay_results.jsonl"
+      ],
+      "verifierExitCode": 1,
+      "submissionSha256": "64d8b8d6d37448032b0cd76558ecad80af758f94fed1a041ad5e0eeb7f4aed05",
+      "imageId": "sha256:cf31f3848d622f3445e9644f5200bab766f0c7144467c5323d21d629185eb13c",
+      "verifierImageId": "sha256:cf31f3848d622f3445e9644f5200bab766f0c7144467c5323d21d629185eb13c",
+      "artifactDirectory": "reports/metrics/attention-policy-continuation/lhtb/langchain-version-migration-pristine"
+    },
+    {
+      "gate": "langchain-version-migration-reference",
+      "task": "langchain-version-migration",
+      "reward": 1,
+      "rewardRaw": "1.0",
+      "passed": 1,
+      "total": 1,
+      "rewardMatchesPassedTotal": true,
+      "failedTests": [],
+      "missingArtifacts": [],
+      "verifierExitCode": 0,
+      "submissionSha256": "990f9ceff46df216e61d5859ab34c390083f9da0bfbcfb2135d889f5e09837df",
+      "imageId": "sha256:cf31f3848d622f3445e9644f5200bab766f0c7144467c5323d21d629185eb13c",
+      "verifierImageId": "sha256:cf31f3848d622f3445e9644f5200bab766f0c7144467c5323d21d629185eb13c",
+      "artifactDirectory": "reports/metrics/attention-policy-continuation/lhtb/langchain-version-migration-reference"
+    }
+  ]
+}

@@ -128,6 +128,12 @@ export async function judgeScenario(args: JudgeArgs): Promise<JudgeResult> {
       const verified = await args.sandbox.verify(args.artifactDirectory ?? `${args.sandbox.path}-verifier`);
       return { success: verified.reward === 1, score: verified.reward, detail: JSON.stringify(verified) };
     }
+    case 'lhtb': {
+      if (args.sandbox.verifyLhtb === undefined) throw new Error('LHTB requires its independent container verifier');
+      const verified = await args.sandbox.verifyLhtb(args.artifactDirectory ?? `${args.sandbox.path}-verifier`);
+      // The dense reward IS the score; `success` is only the all-or-nothing bit.
+      return { success: verified.reward === 1, score: verified.reward, detail: JSON.stringify(verified) };
+    }
     case 'exact_match':
       return exactMatchJudge(args.finalText, judge.answer ?? '');
     case 'command':

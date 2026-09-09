@@ -1,0 +1,101 @@
+{
+  "source": {
+    "repository": "https://github.com/zli12321/LHTB.git",
+    "commit": "1ece75aa255307a01430a754ce91f732e0ae6bb6",
+    "taskId": "langchain-version-migration",
+    "sourceHash": "5c9b136cd6c9e43b6bab4247985c07e931a0d70d3a1040773081d95428592600",
+    "files": {
+      "environment/Dockerfile": "ffe8d83d90b63fe834cec3dec796a8c3a6f215494bab0193ff3da784a420345c",
+      "environment/project/configs/agent.yaml": "28369f56a2846e5b441acc3238786604e9c93e406d84d420f434c27918cdc1fe",
+      "environment/project/configs/chain.yaml": "f2a6239b7eb4655d5ac50b7423fd8ecef57aba467beb1dfa05f723f7cb717ecd",
+      "environment/project/configs/memory.yaml": "3929c9a81359f3aac0e09e70ccb40c0e5f523411ccb6b62fce5d6963a265e704",
+      "environment/project/data/checkpoint.json": "480fb3c1dd46404d681270f743686621d135d28189e5073e03a2e0c4f46551ab",
+      "environment/project/data/faq.json": "23c6931452246d2ecda5897d73e55b9194eeb2660bab4f62d190ae19565ac54c",
+      "environment/project/data/history/session_001.jsonl": "a83e84d7cc4849017175f71b373127db5dd50b0600249a3ac69d85c884e20555",
+      "environment/project/data/history/session_002.jsonl": "c3f8abcd7d307cda183857d5dd5c546125660954d86c47349683ef7ad6ddb932",
+      "environment/project/prompt_registry/support_answer.yaml": "a123de753d95d42c93b5ede3900d74e4babe51db1ab290b467eae1ed1c755b79",
+      "environment/project/pyproject.toml": "a18fc27f17708556066aadfae9e1e68e6e859c46405188b12cf15135259ba160",
+      "environment/project/requirements.txt": "565f5285ed711ec3ffe89a5f72f19a505315d7402cdf824527d2a74099defdda",
+      "environment/project/src/support_rag/__init__.py": "785372d1da7dc40d2b461ba6ccdeafb8d7d8ef1fadd139c40d0618d9e012f22d",
+      "environment/project/src/support_rag/api.py": "c698e45c3c5206c0c7c482a4071ec0acc5b79097e1aee175bd730cdc8de2e7ec",
+      "environment/project/src/support_rag/chain.py": "50c73e3c61c1acdab02bdb9546f245c68a322e8de5383cab38ff779799378e64",
+      "environment/project/src/support_rag/cli.py": "a4f367e655f67e2c232f06b1515184c5fbf735f40143eaa24aab52b5b3cdd999",
+      "environment/project/src/support_rag/memory.py": "750eeb6e41198c6fec70aa311e3749b35c2a2ff13f79c3dd86d96e99c2a3c211",
+      "environment/project/src/support_rag/models.py": "652f0b0a7ad77875680ba57f9627aaec4634d795b303f9f5568c6fddb43ccfc2",
+      "environment/project/src/support_rag/replay.py": "284a4766bd2a5cdd60ded4256282a1923e601ee9b7fbafee6a567eae2a1649e4",
+      "environment/project/src/support_rag/retriever.py": "15f9c6a052f3da333c07e1016b84548de739bb9747b76e7740ef60ff9af6d026",
+      "environment/project/src/support_rag/router.py": "b2d7a10aec080555e7082e9a60cba6a919b999a8b62fc583df29808e81c3bdb7",
+      "instruction.md": "c13870cd8d22bc4b0158a8963736a5bebef40037e768cccfa98c7f9a5bb3a2de",
+      "task.toml": "f3dfd00e55b9783cd9299238973a0afeae2e74bc10a819b5b77c91ef329155c5",
+      "tests/Dockerfile": "f5b634e21464f2889cb67f456bdf57aef74dc70adb1ac2fbaae84f712b100f9b",
+      "tests/capture_legacy_golden.py": "1471e81712863a39ed06c0ade0f6fc51da0d3db7bb026d1a2462e7b65bf529a1",
+      "tests/fixtures/golden/answers.jsonl": "5055713fe4c392d631a65186731ca0aba0a2c61d06ac452de1e21a25aefee96b",
+      "tests/fixtures/golden/replay_private.jsonl": "e3186ba36c36ed706038f426c7528ed8fab948f2f1038a695416b650e24008bf",
+      "tests/fixtures/golden/replay_public.jsonl": "1fcd91da90e26597a3e785302627893e9802ff49289f8d97db3f61c61fa028e8",
+      "tests/fixtures/golden/routes.jsonl": "78b68b7859102fcbf5b1cecc6ce14bcc1670e1b8a21dab48901299b6e27c45a5",
+      "tests/fixtures/history_private/session_private_001.jsonl": "8d4a6e601bac2324bcdc6d989876ce67cd49ce89825dcfa1bba927a444ec0db8",
+      "tests/fixtures/history_private/session_private_002.jsonl": "d185f9babe5d7cf8d2c8b44db289f5fa823c1f4913e78b0d82ae408249cb2974",
+      "tests/test.sh": "455c33e681bb6ca2caec6f645f3b901f8bb3c8b777187b42af2d48d4ac86af01",
+      "tests/test_hardening_guards.py": "eee2b59019b5fbb767092c9247a1167d3c57a68d50f7b8f48101d6c8e7062762",
+      "tests/test_outputs.py": "7ec51c1927474db0eebf4a440fde0b45ff6c2ddbdf390ea877643ff9704ed787"
+    },
+    "solutionFiles": {
+      "solution/files/configs/agent.yaml": "8f2dbdaca6153406418f184ff1bd03536a3047a3342a97014af3629e7958e3e1",
+      "solution/files/pyproject.toml": "49232587ab9bfdf6be8febac5d0cdde664bb45b6402d10a201341fbc51cbd08a",
+      "solution/files/requirements.txt": "83de35c89ffb2b4955a24f619b1e51ad7197c12baa9e71d6ebe06cac1f11692c",
+      "solution/files/src/support_rag/chain.py": "bad917f4432765c5f49e9575d092a0388c7ab9a8861c3c466c0281f8880ff22e",
+      "solution/files/src/support_rag/memory.py": "ba0de1f02d8d6427a4f0f1dbbc90be6ba64b189949b2ec8b16e3ecbea565e7ae",
+      "solution/files/src/support_rag/models.py": "c19dec0920807be3b79d527298f9a11f359e6f11af19b09c8db80e0d70b0c286",
+      "solution/files/src/support_rag/retriever.py": "d1028a5b1e66c52ca87ff08ce4e3c26f7dcd3b764c9a8e756ed350f53c6e1730",
+      "solution/files/src/support_rag/router.py": "c3b25da3e922b08bb50d0a7a5ff25269b234e26dcc6fb55392b66cc0badec25e",
+      "solution/solve.sh": "1a234d5ce9c9aaa31e23a87ab77141df6d2a5b56aabaa0c176c69756db7179fe"
+    }
+  },
+  "imageId": "sha256:cf31f3848d622f3445e9644f5200bab766f0c7144467c5323d21d629185eb13c",
+  "verifierImageId": "sha256:cf31f3848d622f3445e9644f5200bab766f0c7144467c5323d21d629185eb13c",
+  "verifierMode": "separate",
+  "artifacts": [
+    "/app/pyproject.toml",
+    "/app/requirements.txt",
+    "/app/src",
+    "/app/configs",
+    "/app/prompt_registry",
+    "/app/data",
+    "/app/outputs/replay_results.jsonl"
+  ],
+  "missingArtifacts": [],
+  "transfers": [
+    {
+      "from": "/app/pyproject.toml",
+      "into": "app/pyproject.toml"
+    },
+    {
+      "from": "/app/requirements.txt",
+      "into": "app/requirements.txt"
+    },
+    {
+      "from": "/app/src",
+      "into": "app/src"
+    },
+    {
+      "from": "/app/configs",
+      "into": "app/configs"
+    },
+    {
+      "from": "/app/prompt_registry",
+      "into": "app/prompt_registry"
+    },
+    {
+      "from": "/app/data",
+      "into": "app/data"
+    },
+    {
+      "from": "/app/outputs/replay_results.jsonl",
+      "into": "app/outputs/replay_results.jsonl"
+    }
+  ],
+  "submissionSha256": "990f9ceff46df216e61d5859ab34c390083f9da0bfbcfb2135d889f5e09837df",
+  "files": 35,
+  "agentNetwork": "none",
+  "verifierNetwork": "none"
+}

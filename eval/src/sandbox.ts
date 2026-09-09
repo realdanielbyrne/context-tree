@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import type { Scenario } from './types.js';
 import { deepSweVerifierImage, verifyDeepSweFiles, type DeepSweEnvironment } from './adapters/deepswe.js';
+import { createLhtbSandbox, type LhtbVerification } from './adapters/lhtb-sandbox.js';
 
 export interface CommandOutcome {
   exitCode: number | null;
@@ -27,6 +28,8 @@ export interface Sandbox {
   writeFile(relPath: string, content: string): void;
   cleanup(): void;
   verify?(artifactDirectory: string): Promise<DeepSweVerification>;
+  /** LHTB's dense-reward verifier; distinct because its result is not binary. */
+  verifyLhtb?(artifactDirectory: string): Promise<LhtbVerification>;
 }
 
 export interface DeepSweVerification {
@@ -131,6 +134,7 @@ export function renderOutcome(outcome: CommandOutcome, maxChars = 16_000): strin
 
 export function createSandbox(scenario: Scenario, label: string): Sandbox {
   if (scenario.environment?.kind === 'deepswe') return createDockerSandbox(scenario.environment, label);
+  if (scenario.environment?.kind === 'lhtb') return createLhtbSandbox(scenario.environment, label);
   const safeLabel = label.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 64);
   const path = mkdtempSync(join(tmpdir(), `ct-eval-${safeLabel}-`));
 

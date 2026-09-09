@@ -126,12 +126,6 @@ export function verifyLhtbFiles(environment: LhtbEnvironment): void {
   }
 }
 
-/** Verifier image tag is a function of the pinned source, so a re-import cannot reuse a stale build. */
-export function lhtbVerifierImage(environment: LhtbEnvironment): string {
-  const fingerprint = createHash('sha256').update(JSON.stringify(environment.source)).digest('hex').slice(0, 24);
-  return `context-tree-lhtb-verifier:${fingerprint}`;
-}
-
 /**
  * Container paths of the declared artifacts, absolute under /app. task.toml
  * writes some entries relative (`outputs/x.csv`) and some absolute

@@ -11,10 +11,11 @@ const fixture = (name: string): string =>
   fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url));
 
 describe('the benchmark registry', () => {
-  it('registers the public DeepSWE adapter alongside the existing benchmarks', () => {
+  it('registers the public DeepSWE and LHTB adapters alongside the existing benchmarks', () => {
     expect(BENCHMARK_IDS).toEqual([
       'terminal-bench',
       'deepswe',
+      'lhtb',
       'deepswe-agents-last-exam',
       'automation-bench',
       'hle-tools',
@@ -27,7 +28,7 @@ describe('the benchmark registry', () => {
   });
 
   it('every registered adapter is present', () => {
-    expect(ADAPTERS).toHaveLength(6);
+    expect(ADAPTERS).toHaveLength(7);
   });
 });
 

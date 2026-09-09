@@ -316,7 +316,7 @@ describe('dependency-tracking eviction (re-derivability)', () => {
   });
 
   it('rejects a negative or fractional cadence rather than guessing one', () => {
-    const units = [unit()];
+    const units = [cand()];
     for (const minCadenceTurns of [-1, 2.5]) {
       expect(() => selectAttention({
         units, asOfSeq: 1, turn: 5, queryFingerprints: [], policy: { evictRederivable: { minCadenceTurns } },

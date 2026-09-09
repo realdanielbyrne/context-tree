@@ -1,0 +1,56 @@
+{
+  "source": {
+    "repository": "https://github.com/zli12321/LHTB.git",
+    "commit": "1ece75aa255307a01430a754ce91f732e0ae6bb6",
+    "taskId": "great-expectations-audit",
+    "sourceHash": "8e4ff31e6bdd6a37b570f5456d1109f2974b7e6f59c3042a956c1012ac3c43d4",
+    "files": {
+      "environment/Dockerfile": "fed1d12022650075399e0e64a8710d0bd940c22486e0dcf66493bbcfac3cde60",
+      "environment/Singularity.def": "c24dea08fa71c9de1ae753ceed3b82cd234bef2c6b53a00645c4e8506d53965c",
+      "environment/Singularity.from-fastapi.def": "302470f6ec016ca592f443ca064ec16b85688029fca76901155f7624dd83534f",
+      "environment/project/configs/public_audit.yml": "e9ee76a9b16dbe9a4c1d437f7f3f4503fc87c8f24db6e9dac7e6c7128dec7a60",
+      "environment/project/data/public/messy_customers.csv": "d28a8d1233dbb9de38c0463eebd38464a211b9af4652c4d65c38d3bc2a760981",
+      "environment/project/data/public/messy_orders.csv": "ff005b3f89b068372323b877426d1091e7c60cdd5cba8d933580d4b30b99ef3d",
+      "environment/project/data/public/messy_payments.csv": "8e2f3f5cf95d74ed9000810a44b81c50c083e92ce4397359dfd6272e609cdef0",
+      "environment/project/data/public/messy_refunds.csv": "6e393a76612fc6c19df600f68540ce9ed542537868e0c90c61a3598b87952989",
+      "environment/project/experiments/run_audit_suite.py": "a967129b3a94f77213870954430b5ddcc7ac1728285a019c8f0a5956d586883e",
+      "environment/project/pyproject.toml": "a670686eb71adcfb84ebfb71e4822e3d0463a408914bdf074ac98e87e8e97387",
+      "environment/project/rules/public_expectations.yml": "80721a53814d3de5a0a11111032671c434c6ea4996cba6f86103ee996a9a8f2e",
+      "environment/project/src/dq_audit/__init__.py": "eda44d87ab826a3b9b0d6ca9bc629a1d7002bbf2341b66917112dd533bf5091e",
+      "environment/project/src/dq_audit/audit.py": "15b9deb90debcaef589db1df098499a58c03e4a129f14da26bd34d4f8a6e0b5e",
+      "environment/project/src/dq_audit/cli.py": "1c45aac495d91e224b4a7774cca69e3cc7e1ae6d5f1c49d3c8fd4c06db5d7cd7",
+      "instruction.md": "b955addb9c560e29718215130f1c16c53b53021bdbcba1f3ce7d0440cc7b6810",
+      "task.toml": "4cc2d8da82877313911035506c1ae3a1b8035132776e8a3911814bd0c4ce8ad4",
+      "tests/test.sh": "1fbe0db92527f8d8738992bfaa1492d44540ffbe5290d2de1f225979616f776e",
+      "tests/test_outputs.py": "a2c70c5854ba5a95cdd1fc3027b8b449a81c5de54df653fb1486768c7acefb60"
+    },
+    "solutionFiles": {
+      "solution/files/src/dq_audit/audit.py": "65b7ee0bc67114a528c7c5819372587e7ec487c77e922284cd39b9001df6cd6a",
+      "solution/solve.sh": "448e61f2293d28ef845511a15c92fd2938daa1b23ef8390c3d6186b693b31db1"
+    }
+  },
+  "imageId": "sha256:aaf6c349caf62e887b982a3f5b706bdc3300b7619ba48817e6183c2391867b01",
+  "verifierImageId": "sha256:aaf6c349caf62e887b982a3f5b706bdc3300b7619ba48817e6183c2391867b01",
+  "verifierMode": "shared",
+  "artifacts": [
+    "/app/outputs/cleaned_customers.csv",
+    "/app/outputs/cleaned_orders.csv",
+    "/app/outputs/cleaned_payments.csv",
+    "/app/outputs/cleaned_refunds.csv",
+    "/app/outputs/quarantine_report.csv",
+    "/app/outputs/validation_report.json",
+    "/app/outputs/reconciliation_report.json",
+    "/app/outputs/audit_summary.md"
+  ],
+  "missingArtifacts": [],
+  "transfers": [
+    {
+      "from": "/app",
+      "into": "app"
+    }
+  ],
+  "submissionSha256": "2aeaef9fae32490b473e8bdcb785330d4a475e1a402a9b245f3d63d1d599995d",
+  "files": 28,
+  "agentNetwork": "bridge",
+  "verifierNetwork": "bridge"
+}
