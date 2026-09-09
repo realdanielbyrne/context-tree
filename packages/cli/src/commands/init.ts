@@ -223,7 +223,7 @@ function planOpencode(cwd: string, registration: McpRegistration): HostPlan {
       {
         [SERVER_NAME]: {
           type: 'local',
-          command: [registration.command],
+          command: [registration.command, ...registration.args],
           cwd: '.',
           enabled: true,
           timeout: 15_000,
@@ -243,7 +243,7 @@ function planOpencode(cwd: string, registration: McpRegistration): HostPlan {
   const existing: Record<string, unknown> = isPlainObject(mcp) ? mcp : {};
   const entry: OpencodeRegistration = {
     type: 'local',
-    command: [registration.command],
+    command: [registration.command, ...registration.args],
     cwd: '.',
     enabled: true,
     timeout: 15_000,

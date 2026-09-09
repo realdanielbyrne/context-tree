@@ -62,20 +62,23 @@ const BLOB_REF = /^[0-9a-f]{64}$/;
 const BLOB_FIELDS = ['blob', 'args_blob', 'output_blob'] as const;
 
 export function importCommand(file: string, opts: ImportOptions, io: Io): ImportResult {
+  if (opts.fromClaudeCode === true && opts.fromOpencode === true) {
+    throw new CliError('--from-claude-code and --from-opencode are mutually exclusive');
+  }
   const config = configFor(opts);
   const source = resolve(cwdOf(opts), file);
   if (!existsSync(source)) throw new CliError(`no such trace file: ${source}`);
-  const lines = readFileSync(source, 'utf8').split('\n');
+  const raw = readFileSync(source, 'utf8');
 
   const handle = openTaskStore(config);
   try {
     const startSeq = handle.trace.lastSeq();
     const mapped =
       opts.fromOpencode === true
-        ? mapOpencodeExport(JSON.parse(readFileSync(source, 'utf8')), { startSeq, blobs: handle.blobs })
+        ? mapOpencodeExport(JSON.parse(raw), { startSeq, blobs: handle.blobs })
         : opts.fromClaudeCode === true
-          ? mapClaudeCodeTranscript(lines, { startSeq, blobs: handle.blobs })
-          : mapL0Trace(lines, startSeq);
+          ? mapClaudeCodeTranscript(raw.split('\n'), { startSeq, blobs: handle.blobs })
+          : mapL0Trace(raw.split('\n'), startSeq);
 
     if (opts.strict === true && mapped.failures.length > 0) {
       const first = mapped.failures[0] as LineFailure;
