@@ -80,6 +80,30 @@ export const DEFAULT_PRICES: PriceTable = Object.freeze({
   'z-ai/glm-5.3-flash': { input: 0.075, output: 0.25, cacheRead: 0.015, cacheWrite: 0 },
   'deepseek/deepseek-v4-flash': { input: 0.0855, output: 0.1711, cacheRead: 0.0171, cacheWrite: 0 },
   'qwen/qwen3.7-flash': { input: 0.03, output: 0.13, cacheRead: 0.006, cacheWrite: 0.038 },
+  // Read live from OpenRouter's /api/v1/models on 2026-09-09, not transcribed.
+  // This row exists because an unpriced model is charged the most expensive
+  // first-party tier by the rule above, which would silently inflate every cost
+  // figure rather than fail. Its cache ratios are the reason it was selected as
+  // the substrate: cacheRead/input = 0.107 and cacheWrite/input = 1.33 put its
+  // eviction break-even at 12.5 turns, effectively identical to claude-sonnet-5
+  // (0.10 / 1.25), where glm-5.3-flash and deepseek-v4-flash publish cacheWrite
+  // 0 -- a free-prefix-rewrite edge case that removes eviction's penalty and
+  // flatters the hypothesis under test.
+  'qwen/qwen3.8-flash': { input: 0.15, output: 0.47, cacheRead: 0.016, cacheWrite: 0.20 },
+  // Read live from OpenRouter /api/v1/models on 2026-09-09. Selected as the
+  // loop3 substrate on a measured capability, not on price: emitting a large
+  // file through a write_file JSON string argument, which is what every earlier
+  // run died on. Three trials each at max_tokens 16384 --
+  //   qwen3-coder-flash   3/3 valid, 17,719 chars mean content
+  //   deepseek-v4-flash   3/3 valid, 46,285 chars
+  //   qwen3.8-flash       2/3 valid, 49,176 chars (one truncated at its own end)
+  // The reference solution's largest file is 17,473 bytes, so this is the only
+  // candidate that is both reliable AND right-sized; the general flash models
+  // pad to 2.6-2.8x the reference and then risk truncation. The cost is
+  // economic fidelity: cacheRead/input is 0.2 here against 0.107 on
+  // qwen3.8-flash, so the eviction break-even is 6.2 turns rather than
+  // Anthropic's 12.5, and any token-side result carries that discount.
+  'qwen/qwen3-coder-flash': { input: 0.195, output: 0.975, cacheRead: 0.039, cacheWrite: 0.2437 },
   'qwen/qwen-2.5-72b-instruct': { input: 0.36, output: 0.4, cacheRead: 0, cacheWrite: 0 },
   'google/gemini-3.7-flash': { input: 0.75, output: 3.75, cacheRead: 0.075, cacheWrite: 0.0417 },
   'openai/gpt-3.5-turbo': { input: 0.5, output: 1.5, cacheRead: 0.05, cacheWrite: 0.625 },

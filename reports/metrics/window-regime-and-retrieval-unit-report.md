@@ -1,9 +1,12 @@
 # The retrieval unit, not the ranking: porting Claude's chat-search interface into context-tree
 
-> Continuation note (2026-09-08): the user withdrew the proposed 25–50% target and
-> made whole-tool preservation an explicit hypothesis. See §16 for corrected
-> accounting and evidence limits, and [the continuation journal](attention-policy-continuation/journal.md)
-> for current implementation and experiments.
+> Continuation note (2026-09-08, corrected 2026-09-08 evening): the user clarified that the
+> 25–50% target is not a hard requirement, and made whole-tool preservation an explicit
+> hypothesis. The target was **not withdrawn**: it is a live, untested hypothesis with the
+> same status as attention-over-history — no evidence has been produced for or against
+> either. See §16 for corrected accounting and evidence limits, and
+> [the continuation journal](attention-policy-continuation/journal.md) for current
+> implementation and experiments.
 
 
 DS-STAR pass, context-tree retrieval · September 4, 2026 · GLM 5.3 Flash on the frozen `s1` store
@@ -716,9 +719,12 @@ turn from L0 alone and score them against the recorded fetches. (2) Build the §
 
 ## 16 Continuation corrections — 2026-09-08
 
-The current user instructions supersede the proposed 25–50% operating target in
-§§12–15. Occupancy is telemetry; context grows with task demand. Whole tool
-responses, excerpts, and structural selections are experimental arms. A
+The 25–50% operating target of §§12–15 is a **soft target, not a hard requirement**, and
+it remains an open hypothesis: no experiment has yet produced evidence for or against it.
+Occupancy is telemetry, and context grows with task demand; neither statement rejects the
+target. The parallel hypothesis — that ejecting inconsequential history limits context
+growth and saves tokens — is likewise untested. Whole tool responses, excerpts, and
+structural selections are experimental arms. A
 sufficiency phrase is evidence for reassessment, never permission or an
 irrelevance label. Current work and reproducible evidence are in
 [the continuation journal](attention-policy-continuation/journal.md) and

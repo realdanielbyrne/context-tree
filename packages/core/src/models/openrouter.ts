@@ -73,6 +73,15 @@ export interface OpenRouterProviderOptions {
   retry?: RetryOptions;
   /** SDK retries per wrapper attempt; omitted preserves the SDK default. */
   sdkMaxRetries?: number;
+  /**
+   * Per-request timeout. The SDK default is 10 MINUTES, which is the wrong
+   * shape for this workload: an agent turn on a 25 KB request either answers in
+   * seconds or never, so a 10-minute wait buys nothing and a 3-attempt policy
+   * spends 30 minutes discovering the provider is unresponsive. Observed: the
+   * loop3 attn-control arm managed 4 turns in 26 minutes before exhausting its
+   * attempts. Fail fast and retry more instead.
+   */
+  timeoutMs?: number;
   baseURL?: string;
 }
 
@@ -86,10 +95,15 @@ export class OpenRouterProvider implements ModelProvider {
     if (options.sdkMaxRetries !== undefined && (!Number.isSafeInteger(options.sdkMaxRetries) || options.sdkMaxRetries < 0)) {
       throw new RangeError('sdkMaxRetries must be a nonnegative integer');
     }
+    if (options.timeoutMs !== undefined && (!Number.isSafeInteger(options.timeoutMs) || options.timeoutMs <= 0)) {
+      throw new RangeError('timeoutMs must be a positive integer');
+    }
     this.sdkRequestOptions = options.sdkMaxRetries === undefined ? undefined : { maxRetries: options.sdkMaxRetries };
     this.client =
       options.client ??
-      new OpenAI({ apiKey: options.apiKey, baseURL: options.baseURL ?? OPENROUTER_BASE_URL, maxRetries: options.sdkMaxRetries });
+      new OpenAI({ apiKey: options.apiKey, baseURL: options.baseURL ?? OPENROUTER_BASE_URL,
+        maxRetries: options.sdkMaxRetries,
+        ...(options.timeoutMs === undefined ? {} : { timeout: options.timeoutMs }) });
     this.retry = options.retry ?? {};
   }
 

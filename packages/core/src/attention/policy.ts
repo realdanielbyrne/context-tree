@@ -14,6 +14,13 @@ export interface AttentionUnit {
   relevanceScore?: number;
   /** Exclusion requires current-turn evidence, not absence of lexical overlap. */
   relevance?: { value: 'relevant' | 'irrelevant'; turn: number; sourceSeq: number; reason: string };
+  /**
+   * Whether the agent can recover this content by re-running a tool
+   * (`isRederivable`). Computed from L0, never supplied by hand. `undefined`
+   * means unknown, which is treated as NOT re-derivable — evicting content
+   * nothing can restore is the one unrecoverable mistake this policy can make.
+   */
+  rederivable?: boolean;
 }
 
 export interface AttentionReference {
@@ -34,6 +41,16 @@ export interface AttentionPolicy {
   demandExpansion?: boolean;
   sufficiencyGate?: boolean;
   topicShiftReset?: boolean;
+  /**
+   * Dependency-tracking eviction: drop units whose content is re-derivable,
+   * but only at a cadence. `minCadenceTurns` exists because eviction is not
+   * free at the API level — it invalidates the cached prefix suffix and forces
+   * a re-write, so one eviction pays for itself only after
+   * `w*keep/(r*(1-keep))` further turns (12.5 on Anthropic, 5 on OpenRouter
+   * GLM). A policy that re-evaluates every turn is underwater by construction,
+   * which is why the cadence is part of the mechanism and not a tuning knob.
+   */
+  evictRederivable?: { minCadenceTurns: number };
 }
 
 export interface AttentionInput {
@@ -51,11 +68,13 @@ export interface AttentionInput {
    * clear them. The caller provides text-derived observations, never approval. */
   signals?: readonly AttentionSignal[];
   demand?: { kind: 'explicit' | 'exploratory'; budgetTokens: number; expandedBudgetTokens?: number };
+  /** Turn of the last eviction, so cadence is enforced without state here. */
+  lastEvictionTurn?: number;
   policy?: AttentionPolicy;
 }
 
-export type AttentionDisposition = 'selected' | 'excluded_irrelevant' | 'deferred_no_demand'
-  | 'deferred_sufficiency' | 'deferred_mass' | 'deferred_budget';
+export type AttentionDisposition = 'selected' | 'excluded_irrelevant' | 'evicted_rederivable'
+  | 'deferred_no_demand' | 'deferred_sufficiency' | 'deferred_mass' | 'deferred_budget';
 
 export interface AttentionAudit {
   id: string;
@@ -83,6 +102,10 @@ export interface AttentionResult {
     sufficiencyDeferredUnits: number;
     demandExtraTokens: number;
     topicShiftReset: boolean;
+    /** Tokens dropped as re-derivable, and whether the cadence gate allowed it. */
+    evictedRederivableTokens: number;
+    evictedRederivableUnits: number;
+    cadenceOpen: boolean;
   };
 }
 
@@ -101,6 +124,17 @@ export function selectAttention(input: AttentionInput): AttentionResult {
   if (policy.breadth !== undefined && (!(policy.breadth.relevanceMass > 0 && policy.breadth.relevanceMass <= 1) || !policy.breadth.calibrationId.trim())) {
     throw new RangeError('breadth requires relevanceMass in (0, 1] and calibrationId');
   }
+  if (policy.evictRederivable !== undefined) {
+    const { minCadenceTurns } = policy.evictRederivable;
+    if (!Number.isInteger(minCadenceTurns) || minCadenceTurns < 0) {
+      throw new RangeError('evictRederivable.minCadenceTurns must be a nonnegative integer');
+    }
+  }
+  // Cadence: open when no eviction has happened yet, or when enough turns have
+  // passed since the last one. This is what keeps the mechanism above water.
+  const cadenceOpen = policy.evictRederivable !== undefined
+    && (input.lastEvictionTurn === undefined
+      || input.turn - input.lastEvictionTurn >= policy.evictRederivable.minCadenceTurns);
   if (input.demand !== undefined) {
     nonnegative(input.demand.budgetTokens, 'demand.budgetTokens');
     if (input.demand.expandedBudgetTokens !== undefined) nonnegative(input.demand.expandedBudgetTokens, 'demand.expandedBudgetTokens');
@@ -130,6 +164,10 @@ export function selectAttention(input: AttentionInput): AttentionResult {
     const protectedUnit = unit.role === 'task' || unit.role === 'steering' || (policy.pinPlan === true && unit.role === 'plan') || recent;
     const recurrenceRestored = irrelevant && matched;
     const exclude = policy.excludeIrrelevant === true && irrelevant && !matched && !protectedUnit;
+    // Re-derivable AND not pinned AND not wanted by this turn's query AND the
+    // cadence gate is open. `rederivable !== true` (not `=== false`) so unknown
+    // never evicts.
+    const evictRederivable = cadenceOpen && unit.rederivable === true && !protectedUnit && !matched;
     const active = input.activePhaseId !== undefined && unit.phaseId === input.activePhaseId;
     let priority = 0;
     if (policy.priority !== undefined && !topicShift && !refs.some((r) => r.kind === 'supersede')) {
@@ -140,11 +178,13 @@ export function selectAttention(input: AttentionInput): AttentionResult {
       id: unit.id, seq: unit.seq, relevance: unit.relevanceScore ?? (matched ? 1 : 0), priority,
       category: protectedUnit ? 'pinned' : active ? 'active' : irrelevant && !matched ? 'unrelated' : refs.length > 0 ? 'dormant' : 'unknown',
       protected: protectedUnit, recurrenceRestored, evidenceSeq: evidence?.sourceSeq ?? null,
-      disposition: exclude ? 'excluded_irrelevant' : unit.state === 'resident' ? 'selected' : 'deferred_no_demand',
+      disposition: exclude ? 'excluded_irrelevant' : evictRederivable ? 'evicted_rederivable'
+        : unit.state === 'resident' ? 'selected' : 'deferred_no_demand',
     };
     return { unit, audit };
   });
-  const candidates = rows.filter((row) => row.unit.state === 'candidate' && row.audit.disposition !== 'excluded_irrelevant');
+  const candidates = rows.filter((row) => row.unit.state === 'candidate'
+    && row.audit.disposition !== 'excluded_irrelevant' && row.audit.disposition !== 'evicted_rederivable');
   const mass = candidates.reduce((sum, row) => sum + row.audit.relevance, 0);
   if (mass > 0) for (const row of candidates) row.audit.relevance /= mass;
   const byRelevance = [...candidates].sort((a, b) => Number(b.audit.protected) - Number(a.audit.protected) || b.audit.relevance - a.audit.relevance || a.unit.seq - b.unit.seq || a.unit.id.localeCompare(b.unit.id));
@@ -181,6 +221,9 @@ export function selectAttention(input: AttentionInput): AttentionResult {
       massDeferredUnits: audit.filter((row) => row.disposition === 'deferred_mass').length,
       sufficiencyDeferredUnits: audit.filter((row) => row.disposition === 'deferred_sufficiency').length,
       demandExtraTokens: Math.max(0, admittedTokens - baselineBudget), topicShiftReset: topicShift,
+      evictedRederivableTokens: rows.filter((row) => row.audit.disposition === 'evicted_rederivable').reduce((sum, row) => sum + row.unit.tokens, 0),
+      evictedRederivableUnits: rows.filter((row) => row.audit.disposition === 'evicted_rederivable').length,
+      cadenceOpen,
     },
   };
 }

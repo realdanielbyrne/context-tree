@@ -1,0 +1,192 @@
+{
+  "noModelCalls": true,
+  "officialSeparateVerifier": true,
+  "denseReward": true,
+  "dockerDefaultPlatform": "linux/amd64",
+  "dockerServerVersion": "29.5.2",
+  "source": {
+    "repository": "https://github.com/zli12321/LHTB.git",
+    "commit": "1ece75aa255307a01430a754ce91f732e0ae6bb6"
+  },
+  "taskSourceHashes": {
+    "great-expectations-audit": "8e4ff31e6bdd6a37b570f5456d1109f2974b7e6f59c3042a956c1012ac3c43d4",
+    "langchain-version-migration": "5c9b136cd6c9e43b6bab4247985c07e931a0d70d3a1040773081d95428592600"
+  },
+  "images": {
+    "great-expectations-audit": {
+      "task": {
+        "reference": "zli12321/lhtb-great-expectations-audit:20260615",
+        "id": "sha256:aaf6c349caf62e887b982a3f5b706bdc3300b7619ba48817e6183c2391867b01",
+        "repoDigests": [
+          "zli12321/lhtb-great-expectations-audit@sha256:aaf6c349caf62e887b982a3f5b706bdc3300b7619ba48817e6183c2391867b01"
+        ],
+        "platform": "amd64/linux"
+      },
+      "verifierBase": {
+        "reference": "zli12321/lhtb-great-expectations-audit:20260615",
+        "id": "sha256:aaf6c349caf62e887b982a3f5b706bdc3300b7619ba48817e6183c2391867b01",
+        "repoDigests": [
+          "zli12321/lhtb-great-expectations-audit@sha256:aaf6c349caf62e887b982a3f5b706bdc3300b7619ba48817e6183c2391867b01"
+        ],
+        "platform": "amd64/linux"
+      }
+    },
+    "langchain-version-migration": {
+      "task": {
+        "reference": "zli12321/lhtb-langchain-version-migration:20260615",
+        "id": "sha256:cf31f3848d622f3445e9644f5200bab766f0c7144467c5323d21d629185eb13c",
+        "repoDigests": [
+          "zli12321/lhtb-langchain-version-migration@sha256:cf31f3848d622f3445e9644f5200bab766f0c7144467c5323d21d629185eb13c"
+        ],
+        "platform": "amd64/linux"
+      },
+      "verifierBase": {
+        "reference": "zli12321/lhtb-langchain-version-migration:20260615",
+        "id": "sha256:cf31f3848d622f3445e9644f5200bab766f0c7144467c5323d21d629185eb13c",
+        "repoDigests": [
+          "zli12321/lhtb-langchain-version-migration@sha256:cf31f3848d622f3445e9644f5200bab766f0c7144467c5323d21d629185eb13c"
+        ],
+        "platform": "amd64/linux"
+      }
+    }
+  },
+  "gates": [
+    {
+      "gate": "great-expectations-audit-pristine",
+      "task": "great-expectations-audit",
+      "reward": 0,
+      "rewardRaw": "0.0",
+      "passed": 0,
+      "total": 11,
+      "rewardMatchesPassedTotal": true,
+      "failedTests": [
+        "../tests/test_outputs.py::test_hidden_dataset_dynamic_paths_and_different_counts",
+        "../tests/test_outputs.py::test_source_uses_great_expectations_and_not_static_public_outputs",
+        "../tests/test_outputs.py::test_experiment_entrypoint_runs_same_pipeline",
+        "../tests/test_outputs.py::test_cli_creates_all_required_artifacts",
+        "../tests/test_outputs.py::test_cleaned_csv_schemas_sorted_and_referential_integrity",
+        "../tests/test_outputs.py::test_public_counts_and_quarantine_reason_distribution",
+        "../tests/test_outputs.py::test_reconciliation_report_is_exactly_recomputed_from_cleaned_data",
+        "../tests/test_outputs.py::test_validation_report_matches_gx_rerun_and_reconciliation",
+        "../tests/test_outputs.py::test_summary_agrees_with_json_reports",
+        "../tests/test_outputs.py::test_pipeline_is_deterministic",
+        "../tests/test_outputs.py::test_report_metadata_has_stable_checksum_not_timestamp"
+      ],
+      "missingArtifacts": [
+        "/app/outputs/cleaned_customers.csv",
+        "/app/outputs/cleaned_orders.csv",
+        "/app/outputs/cleaned_payments.csv",
+        "/app/outputs/cleaned_refunds.csv",
+        "/app/outputs/quarantine_report.csv",
+        "/app/outputs/validation_report.json",
+        "/app/outputs/reconciliation_report.json",
+        "/app/outputs/audit_summary.md"
+      ],
+      "verifierExitCode": 1,
+      "submissionSha256": "cca2ce1ae94b81923cbc1b634a765e44c530762065cdfb366e05161c51bb8ce0",
+      "imageId": "sha256:aaf6c349caf62e887b982a3f5b706bdc3300b7619ba48817e6183c2391867b01",
+      "verifierImageId": "sha256:aaf6c349caf62e887b982a3f5b706bdc3300b7619ba48817e6183c2391867b01",
+      "artifactDirectory": "reports/metrics/attention-policy-continuation/lhtb/great-expectations-audit-pristine"
+    },
+    {
+      "gate": "great-expectations-audit-reference",
+      "task": "great-expectations-audit",
+      "reward": 1,
+      "rewardRaw": "1.0",
+      "passed": 11,
+      "total": 11,
+      "rewardMatchesPassedTotal": true,
+      "failedTests": [],
+      "missingArtifacts": [],
+      "verifierExitCode": 0,
+      "submissionSha256": "a54b9fa2798c491ce5d44e58f89ae398f6c60c1d7c2d7a350ddd225495f91a3c",
+      "imageId": "sha256:aaf6c349caf62e887b982a3f5b706bdc3300b7619ba48817e6183c2391867b01",
+      "verifierImageId": "sha256:aaf6c349caf62e887b982a3f5b706bdc3300b7619ba48817e6183c2391867b01",
+      "artifactDirectory": "reports/metrics/attention-policy-continuation/lhtb/great-expectations-audit-reference"
+    },
+    {
+      "gate": "langchain-version-migration-pristine",
+      "task": "langchain-version-migration",
+      "reward": 0,
+      "rewardRaw": "0\n",
+      "passed": 0,
+      "total": 0,
+      "rewardMatchesPassedTotal": false,
+      "failedTests": [],
+      "missingArtifacts": [
+        "/app/outputs/replay_results.jsonl"
+      ],
+      "verifierExitCode": 1,
+      "submissionSha256": "64d8b8d6d37448032b0cd76558ecad80af758f94fed1a041ad5e0eeb7f4aed05",
+      "imageId": "sha256:cf31f3848d622f3445e9644f5200bab766f0c7144467c5323d21d629185eb13c",
+      "verifierImageId": "sha256:cf31f3848d622f3445e9644f5200bab766f0c7144467c5323d21d629185eb13c",
+      "artifactDirectory": "reports/metrics/attention-policy-continuation/lhtb/langchain-version-migration-pristine"
+    },
+    {
+      "gate": "langchain-version-migration-reference",
+      "task": "langchain-version-migration",
+      "reward": 1,
+      "rewardRaw": "1.0",
+      "passed": 1,
+      "total": 1,
+      "rewardMatchesPassedTotal": true,
+      "failedTests": [],
+      "missingArtifacts": [],
+      "verifierExitCode": 0,
+      "submissionSha256": "995dc9ba83c007315529523337e6e16222588326e902b0391f9ca6383519cd90",
+      "imageId": "sha256:cf31f3848d622f3445e9644f5200bab766f0c7144467c5323d21d629185eb13c",
+      "verifierImageId": "sha256:cf31f3848d622f3445e9644f5200bab766f0c7144467c5323d21d629185eb13c",
+      "artifactDirectory": "reports/metrics/attention-policy-continuation/lhtb/langchain-version-migration-reference"
+    }
+  ],
+  "agentIsolation": {
+    "great-expectations-audit": {
+      "probe": "test ! -e /tests && test ! -e /solution && ls -A /app | head -50",
+      "exitCode": 0,
+      "agentHasHiddenTests": false,
+      "agentHasSolution": false,
+      "agentWorkspace": [
+        "configs",
+        "data",
+        "experiments",
+        "pyproject.toml",
+        "rules",
+        "src"
+      ]
+    },
+    "langchain-version-migration": {
+      "probe": "test ! -e /tests && test ! -e /solution && ls -A /app | head -50",
+      "exitCode": 0,
+      "agentHasHiddenTests": false,
+      "agentHasSolution": false,
+      "agentWorkspace": [
+        "configs",
+        "data",
+        "outputs",
+        "prompt_registry",
+        "pyproject.toml",
+        "requirements.txt",
+        "src"
+      ]
+    }
+  },
+  "stagedTestHashes": {
+    "great-expectations-audit": {
+      "tests/test.sh": "1fbe0db92527f8d8738992bfaa1492d44540ffbe5290d2de1f225979616f776e",
+      "tests/test_outputs.py": "a2c70c5854ba5a95cdd1fc3027b8b449a81c5de54df653fb1486768c7acefb60"
+    },
+    "langchain-version-migration": {
+      "tests/Dockerfile": "f5b634e21464f2889cb67f456bdf57aef74dc70adb1ac2fbaae84f712b100f9b",
+      "tests/capture_legacy_golden.py": "1471e81712863a39ed06c0ade0f6fc51da0d3db7bb026d1a2462e7b65bf529a1",
+      "tests/fixtures/golden/answers.jsonl": "5055713fe4c392d631a65186731ca0aba0a2c61d06ac452de1e21a25aefee96b",
+      "tests/fixtures/golden/replay_private.jsonl": "e3186ba36c36ed706038f426c7528ed8fab948f2f1038a695416b650e24008bf",
+      "tests/fixtures/golden/replay_public.jsonl": "1fcd91da90e26597a3e785302627893e9802ff49289f8d97db3f61c61fa028e8",
+      "tests/fixtures/golden/routes.jsonl": "78b68b7859102fcbf5b1cecc6ce14bcc1670e1b8a21dab48901299b6e27c45a5",
+      "tests/fixtures/history_private/session_private_001.jsonl": "8d4a6e601bac2324bcdc6d989876ce67cd49ce89825dcfa1bba927a444ec0db8",
+      "tests/fixtures/history_private/session_private_002.jsonl": "d185f9babe5d7cf8d2c8b44db289f5fa823c1f4913e78b0d82ae408249cb2974",
+      "tests/test.sh": "455c33e681bb6ca2caec6f645f3b901f8bb3c8b777187b42af2d48d4ac86af01",
+      "tests/test_hardening_guards.py": "eee2b59019b5fbb767092c9247a1167d3c57a68d50f7b8f48101d6c8e7062762",
+      "tests/test_outputs.py": "7ec51c1927474db0eebf4a440fde0b45ff6c2ddbdf390ea877643ff9704ed787"
+    }
+  }
+}

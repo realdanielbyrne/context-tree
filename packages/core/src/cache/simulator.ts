@@ -20,7 +20,7 @@
  * `matchPolicy` (default `'automatic-prefix'`) decides HOW a submission's
  * prefix is checked against cache history — see the two modes documented on
  * `ProviderCacheSimulatorOptions`. Iteration 2 of the tuning loop
- * (`eval/plans/tuning/ITERATION-2-VERDICT.md` §1, experiment 4) diagnosed the
+ * (tuning iteration 2, experiment 4) diagnosed the
  * original algorithm — matching only the immediately previous submission's
  * exact breakpoint positions — as unable to credit a read for a breakpoint
  * that moves forward by one block every turn, because that exact position
@@ -180,7 +180,7 @@ interface Submission {
  *    the exact block position one of the PREVIOUS submission's breakpoints
  *    also landed at. This under-credits any breakpoint that advances by less
  *    than a whole previously-seen segment each turn (§1 of
- *    `eval/plans/tuning/ITERATION-2-VERDICT.md`, experiment 4) — kept as an
+ *    tuning iteration 2, experiment 4) — kept as an
  *    explicit opt-in for anything that wants that stricter, more
  *    pessimistic model rather than as the default.
  */

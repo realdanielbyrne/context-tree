@@ -55,15 +55,15 @@ import {
   buildGoldenTree,
 } from './golden.js';
 
-const EVAL_RECORDED = fileURLToPath(new URL('../../../../eval-resumption/recorded/', import.meta.url));
+const RECORDED_DIR = fileURLToPath(new URL('../recorded/', import.meta.url));
 
 /**
  * Named for the prompt version they were produced from: a `v2` leaf template is
  * a different prompt, so its replies belong in a different file rather than
  * silently replacing v1's.
  */
-export const LEAF_CASSETTE = join(EVAL_RECORDED, `leaf-summary.${LEAF_SUMMARY_VERSION}.json`);
-export const ROOT_CASSETTE = join(EVAL_RECORDED, `root-summary.${ROOT_SUMMARY_VERSION}.json`);
+export const LEAF_CASSETTE = join(RECORDED_DIR, `leaf-summary.${LEAF_SUMMARY_VERSION}.json`);
+export const ROOT_CASSETTE = join(RECORDED_DIR, `root-summary.${ROOT_SUMMARY_VERSION}.json`);
 
 /**
  * Reserved cassette keys. A real key is a 64-char SHA-256 hex digest, so an
@@ -75,7 +75,7 @@ export const PROVENANCE_KEY = '_provenance';
 export const REGENERATE_KEY = '_regenerate';
 
 export const AUTHORED_PROVENANCE =
-  'hand-authored, not a real recording — written by hand because no API key was available; see eval-resumption/recorded/README.md';
+  'hand-authored, not a real recording — written by hand because no API key was available; see packages/core/test/recorded/README.md';
 
 export function recordedProvenance(providerId: string, when: string): string {
   return `recorded from live models via ${providerId} on ${when}`;
@@ -233,7 +233,7 @@ export function liveConfig(env: NodeJS.ProcessEnv): ContextTreeConfig {
 async function main(mode: '--authored' | '--live'): Promise<void> {
   if (mode === '--authored') {
     await writeCassettes({ inner: new AuthoredProvider(), provenance: AUTHORED_PROVENANCE });
-    process.stdout.write(`wrote hand-authored cassettes to ${EVAL_RECORDED}\n`);
+    process.stdout.write(`wrote hand-authored cassettes to ${RECORDED_DIR}\n`);
     return;
   }
   loadDotEnv();
@@ -251,7 +251,7 @@ async function main(mode: '--authored' | '--live'): Promise<void> {
     leafModel: config.leafModel,
     rootModel: config.rootModel,
   });
-  process.stdout.write(`re-recorded cassettes from ${inner.id} into ${EVAL_RECORDED}\n`);
+  process.stdout.write(`re-recorded cassettes from ${inner.id} into ${RECORDED_DIR}\n`);
 }
 
 /**

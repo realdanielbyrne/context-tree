@@ -6,20 +6,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Limit code comments and let the code speak for itself. Limit excessive exposition in reponses.
 
-## Current state: spec-only, zero commits
+## Plan and decisions
 
-`IMPLEMENTATION_PLAN.md` is the entire repository. There is no `package.json`, no
-`packages/`, no test runner, and `main` has no commits yet. Any command below
-describes the **intended** end state from the plan — none of it runs today. When
-you are asked to build something here, the first move is almost always to read
-the relevant section of `IMPLEMENTATION_PLAN.md`, not to search for existing code.
-
-Treat the plan as authoritative and versioned: it carries a decision record
-(§3, D1–D15) with rationale and citations. **Do not silently deviate from a D-numbered
+`docs/IMPLEMENTATION_PLAN.md` carries the design and a decision record
+(§3, D1–D20) with rationale and citations. **Do not silently deviate from a D-numbered
 decision.** If implementation reveals a decision is wrong, say so, propose the
 change, and update the plan's decision row — don't just write different code.
 §19 lists deliberately open questions; those are yours to decide (with a stated
 default already given for each).
+
+Evaluation is **not** an in-repo harness (D20). The bespoke `eval/` harness was
+deleted because its `ChatMessage` could not represent tool calls, invalidating
+every measurement. Evaluation means running tasks in an external host (opencode)
+with and without the MCP server attached.
 
 ## What this project is
 
@@ -98,20 +97,17 @@ Consequences to hold onto while coding:
   `GrepProvider` are always available; every other provider must degrade
   gracefully on a failed capability probe.
 
-## Planned commands (do not exist yet — create them as part of M0)
+## Commands
 
 ```bash
 pnpm install
 pnpm vitest run <path>        # targeted tests — the local default
 pnpm vitest run               # full suite = CI's
 context-tree init             # wire the MCP server into a host's config
-context-tree import <trace.jsonl> | rebuild | render | eval
+context-tree import <trace.jsonl> | rebuild | render | summarize | tree
 ```
 
-Build order is milestone-gated (§16): **M0–M2 (trace log, blob store,
-segmenter, SQLite schema, invalidation cascade with a mocked LLM) require zero
-LLM budget — do them first.** M3+ spends real tokens; the cost meter caps
-per-PR spend. Live-model tests are opt-in via `LIVE=1`; CI never hits the
+Live-model tests are opt-in via `LIVE=1`; CI never hits the
 network and runs against recorded completions.
 
 The test that will catch the subtlest regressions is the **cache assertion

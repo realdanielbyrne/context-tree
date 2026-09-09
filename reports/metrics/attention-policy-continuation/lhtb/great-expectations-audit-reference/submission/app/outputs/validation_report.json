@@ -1,0 +1,337 @@
+{
+  "cross_table": [
+    {
+      "name": "orders_customer_id_referential",
+      "passed": true,
+      "unexpected_count": 0
+    },
+    {
+      "name": "payments_order_id_referential",
+      "passed": true,
+      "unexpected_count": 0
+    },
+    {
+      "name": "refunds_order_id_referential",
+      "passed": true,
+      "unexpected_count": 0
+    }
+  ],
+  "datasets": {
+    "customers": {
+      "expectations": [
+        {
+          "name": "customers_customer_id_not_null",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "customers_customer_id_unique",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "customers_customer_id_regex",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "customers_name_not_null",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "customers_email_not_null",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "customers_email_regex",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "customers_tier_not_null",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "customers_tier_in_set",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "customers_signup_date_not_null",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "customers_signup_date_regex",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "customers_country_not_null",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "customers_country_in_set",
+          "passed": true,
+          "unexpected_count": 0
+        }
+      ],
+      "input_rows": 16,
+      "output_rows": 9,
+      "quarantined_rows": 7
+    },
+    "orders": {
+      "expectations": [
+        {
+          "name": "orders_order_id_not_null",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "orders_order_id_unique",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "orders_order_id_regex",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "orders_customer_id_not_null",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "orders_customer_id_regex",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "orders_order_date_not_null",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "orders_order_date_regex",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "orders_status_not_null",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "orders_status_in_set",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "orders_amount_cents_not_null",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "orders_amount_cents_min",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "orders_currency_not_null",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "orders_currency_in_set",
+          "passed": true,
+          "unexpected_count": 0
+        }
+      ],
+      "input_rows": 18,
+      "output_rows": 9,
+      "quarantined_rows": 9
+    },
+    "payments": {
+      "expectations": [
+        {
+          "name": "payments_payment_id_not_null",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "payments_payment_id_unique",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "payments_payment_id_regex",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "payments_order_id_not_null",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "payments_order_id_regex",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "payments_payment_date_not_null",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "payments_payment_date_regex",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "payments_status_not_null",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "payments_status_in_set",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "payments_amount_cents_not_null",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "payments_amount_cents_min",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "payments_method_not_null",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "payments_method_in_set",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "payments_currency_not_null",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "payments_currency_in_set",
+          "passed": true,
+          "unexpected_count": 0
+        }
+      ],
+      "input_rows": 13,
+      "output_rows": 8,
+      "quarantined_rows": 5
+    },
+    "refunds": {
+      "expectations": [
+        {
+          "name": "refunds_refund_id_not_null",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "refunds_refund_id_unique",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "refunds_refund_id_regex",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "refunds_order_id_not_null",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "refunds_order_id_regex",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "refunds_refund_date_not_null",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "refunds_refund_date_regex",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "refunds_status_not_null",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "refunds_status_in_set",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "refunds_amount_cents_not_null",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "refunds_amount_cents_min",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "refunds_reason_not_null",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "refunds_reason_in_set",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "refunds_currency_not_null",
+          "passed": true,
+          "unexpected_count": 0
+        },
+        {
+          "name": "refunds_currency_in_set",
+          "passed": true,
+          "unexpected_count": 0
+        }
+      ],
+      "input_rows": 10,
+      "output_rows": 4,
+      "quarantined_rows": 6
+    }
+  },
+  "metadata": {
+    "dataset": "public_audit",
+    "gx_version": "0.18.21",
+    "rules_checksum": "80721a53814d3de5a0a11111032671c434c6ea4996cba6f86103ee996a9a8f2e"
+  },
+  "overall_pass": false,
+  "reconciliation": [
+    {
+      "name": "all_orders_reconciled",
+      "passed": false,
+      "unexpected_count": 1
+    }
+  ]
+}

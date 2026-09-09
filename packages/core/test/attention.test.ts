@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { detectAttentionSignals, selectAttention, selectPayload } from '../src/attention/index.js';
+import { buildTopicIndex, detectAttentionSignals, isRederivable, renderTopicIndex, selectAttention, selectPayload } from '../src/attention/index.js';
 import type { AttentionInput, AttentionUnit, PayloadSelectionInput } from '../src/attention/index.js';
 import { excerptAround } from '../src/retrieve/excerpt.js';
 
@@ -226,5 +226,182 @@ describe('payload selection hypotheses', () => {
     const codePoints = [...result.text ?? ''].map((char) => char.codePointAt(0) ?? 0);
     expect(codePoints.some((point) => point >= 0xd800 && point <= 0xdfff)).toBe(false);
     expect(result.text).toContain('NEEDLE');
+  });
+});
+
+describe('dependency-tracking eviction (re-derivability)', () => {
+  it('classifies durable-view tools as re-derivable and transient observations as not', () => {
+    // Recoverable by a re-read of the filesystem or the append-only trace.
+    for (const tool of ['read_file', 'write_file', 'edit_file', 'context_fetch', 'context_search', 'context_peek']) {
+      expect(isRederivable(tool)).toBe(true);
+    }
+    // run_command observes transient state: exit codes, test results, the tree
+    // at one instant. ABS's `git stash` A/B established which failures
+    // pre-existed and was referenced 10 and 11 turns later; nothing on disk
+    // could have reconstructed it.
+    expect(isRederivable('run_command')).toBe(false);
+    // Unknown degrades to undefined -> treated as NOT re-derivable. Never a
+    // crash, and never a drop.
+    expect(isRederivable('some_future_tool')).toBeUndefined();
+    expect(isRederivable(undefined)).toBeUndefined();
+    expect(isRederivable('  ')).toBeUndefined();
+  });
+
+  const cand = (over: Partial<AttentionUnit> = {}): AttentionUnit => ({
+    id: over.id ?? 'u1', seq: over.seq ?? 1, tokens: over.tokens ?? 100,
+    state: over.state ?? 'candidate', fingerprints: over.fingerprints ?? [], ...over,
+  });
+
+  it('evicts a re-derivable unit only when the cadence gate is open', () => {
+    const units = [cand({ id: 'read', rederivable: true, tokens: 5000 })];
+    const policy = { evictRederivable: { minCadenceTurns: 12 } };
+    // Turn 20, last eviction at turn 15 -> only 5 turns elapsed, gate shut.
+    const shut = selectAttention({ units, asOfSeq: 1, turn: 20, lastEvictionTurn: 15, queryFingerprints: [], policy });
+    expect(shut.mechanism.cadenceOpen).toBe(false);
+    expect(shut.mechanism.evictedRederivableTokens).toBe(0);
+    // Turn 30, last eviction at turn 15 -> 15 turns elapsed, gate open.
+    const open = selectAttention({ units, asOfSeq: 1, turn: 30, lastEvictionTurn: 15, queryFingerprints: [], policy });
+    expect(open.mechanism.cadenceOpen).toBe(true);
+    expect(open.mechanism.evictedRederivableTokens).toBe(5000);
+    expect(open.selectedIds).not.toContain('read');
+  });
+
+  it('NEVER evicts an unrepeatable observation, at any cadence or age', () => {
+    // The policy's one unrecoverable mistake. run_command output is gone if dropped.
+    const units = [cand({ id: 'stash-ab', rederivable: false, seq: 1, tokens: 9000 })];
+    const result = selectAttention({
+      units, asOfSeq: 1, turn: 999, lastEvictionTurn: 0, queryFingerprints: [],
+      policy: { evictRederivable: { minCadenceTurns: 0 } },
+    });
+    expect(result.mechanism.cadenceOpen).toBe(true);
+    expect(result.mechanism.evictedRederivableTokens).toBe(0);
+    expect(result.audit.find((row) => row.id === 'stash-ab')!.disposition).not.toBe('evicted_rederivable');
+  });
+
+  it('treats an unknown tool as unrepeatable rather than dropping it', () => {
+    // rederivable is left undefined when isRederivable cannot classify.
+    const units = [cand({ id: 'mystery', rederivable: undefined, tokens: 4000 })];
+    const result = selectAttention({
+      units, asOfSeq: 1, turn: 50, queryFingerprints: [],
+      policy: { evictRederivable: { minCadenceTurns: 0 } },
+    });
+    expect(result.mechanism.evictedRederivableUnits).toBe(0);
+  });
+
+  it('keeps a re-derivable unit the current turn is actually asking about', () => {
+    // Recurrence beats re-derivability: ABS turn 40 needed the turn-4 sed
+    // window after 16 dormant turns, and re-reading it cost 29,082 tokens.
+    const units = [cand({ id: 'functions.go', rederivable: true, fingerprints: ['evaluator/functions.go'], tokens: 5000 })];
+    const result = selectAttention({
+      units, asOfSeq: 1, turn: 40, queryFingerprints: ['evaluator/functions.go'],
+      demand: { kind: 'explicit', budgetTokens: 20_000 },
+      policy: { evictRederivable: { minCadenceTurns: 0 } },
+    });
+    expect(result.mechanism.evictedRederivableTokens).toBe(0);
+    expect(result.audit.find((row) => row.id === 'functions.go')!.disposition).toBe('selected');
+    expect(result.selectedIds).toContain('functions.go');
+  });
+
+  it('never evicts pinned task, steering or plan text even when re-derivable', () => {
+    const units = [
+      cand({ id: 'task', role: 'task', rederivable: true, tokens: 600 }),
+      cand({ id: 'steering', role: 'steering', rederivable: true, tokens: 300 }),
+      cand({ id: 'plan', role: 'plan', rederivable: true, tokens: 900 }),
+    ];
+    const result = selectAttention({
+      units, asOfSeq: 1, turn: 80, queryFingerprints: [],
+      policy: { evictRederivable: { minCadenceTurns: 0 }, pinPlan: true },
+    });
+    expect(result.mechanism.evictedRederivableTokens).toBe(0);
+  });
+
+  it('rejects a negative or fractional cadence rather than guessing one', () => {
+    const units = [cand()];
+    for (const minCadenceTurns of [-1, 2.5]) {
+      expect(() => selectAttention({
+        units, asOfSeq: 1, turn: 5, queryFingerprints: [], policy: { evictRederivable: { minCadenceTurns } },
+      })).toThrow(RangeError);
+    }
+  });
+
+  it('is inert when the switch is absent — the default changes nothing', () => {
+    const units = [cand({ id: 'read', rederivable: true, tokens: 5000 })];
+    const result = selectAttention({ units, asOfSeq: 1, turn: 99, queryFingerprints: [] });
+    expect(result.mechanism.cadenceOpen).toBe(false);
+    expect(result.mechanism.evictedRederivableTokens).toBe(0);
+  });
+});
+
+describe('Zone B as a topic index (operator specification)', () => {
+  const regions = [
+    { id: 'b1', text: 'edited evaluator/functions.go to add requireFn and requireCache handling', spanStartSeq: 1, spanEndSeq: 20 },
+    { id: 'b2', text: 'wired valueFlags in repl/repl.go for the CLI, touching evaluator/functions.go once', spanStartSeq: 21, spanEndSeq: 40 },
+    { id: 'b3', text: 'added modulePathEntries and cycleError to evaluator/module.go', spanStartSeq: 41, spanEndSeq: 60 },
+  ];
+
+  it('indexes identifiers, not prose, and carries a retrieval coordinate per region', () => {
+    const index = buildTopicIndex({ regions, keywordsPerRegion: 4, maxRegionFraction: 0.6 });
+    expect(index.entries).toHaveLength(3);
+    for (const entry of index.entries) {
+      expect(entry.spanEndSeq).toBeGreaterThan(entry.spanStartSeq);
+      // Keywords are identifiers/paths, never sentences.
+      for (const kw of entry.keywords) expect(kw).not.toMatch(/\s/);
+    }
+    expect(index.entries[2]!.keywords).toContain('modulePathEntries');
+  });
+
+  it('drops an identifier that appears in too many regions, and says which', () => {
+    // functions.go is in 2 of 3 regions; at a 0.6 fraction the limit is 1, so
+    // it routes nowhere and must be dropped rather than listed everywhere.
+    const index = buildTopicIndex({ regions, keywordsPerRegion: 8, maxRegionFraction: 0.6 });
+    expect(index.droppedCommon).toContain('evaluator/functions.go');
+    for (const entry of index.entries) expect(entry.keywords).not.toContain('evaluator/functions.go');
+    // A rarer path in a single region survives.
+    expect(index.entries[1]!.keywords).toContain('repl/repl.go');
+  });
+
+  it('ranks rarest first, so a keyword resolves to one region unambiguously', () => {
+    const index = buildTopicIndex({ regions, keywordsPerRegion: 2, maxRegionFraction: 1 });
+    const b2 = index.entries.find((e) => e.id === 'b2')!;
+    // With the cap at 1.0 nothing is dropped, so the shared path is eligible —
+    // but it must not outrank an identifier unique to this region.
+    expect(b2.keywords[0]).not.toBe('evaluator/functions.go');
+  });
+
+  it('caps keywords per region so the index is a fixed cost as history grows', () => {
+    const many = Array.from({ length: 40 }, (_, i) => `symbolNumber${i}`).join(' ');
+    const index = buildTopicIndex({ regions: [{ id: 'big', text: many, spanStartSeq: 1, spanEndSeq: 9 }], keywordsPerRegion: 5, maxRegionFraction: 1 });
+    expect(index.entries[0]!.keywords).toHaveLength(5);
+    expect(index.totalKeywords).toBe(5);
+  });
+
+  it('renders pointers with the retrieval instruction, and nothing when empty', () => {
+    const text = renderTopicIndex(buildTopicIndex({ regions, keywordsPerRegion: 3, maxRegionFraction: 0.6 }));
+    expect(text).toContain('These are pointers, not content');
+    expect(text).toContain('call context_search');
+    expect(text).toMatch(/b3 \[41-60\]/);
+    // No prose from the source text leaks in.
+    expect(text).not.toContain('added modulePathEntries and cycleError to');
+    expect(renderTopicIndex(buildTopicIndex({ regions: [], keywordsPerRegion: 3, maxRegionFraction: 1 }))).toBe('');
+    // A region with no distinctive identifiers contributes no line rather than a blank one.
+    expect(renderTopicIndex(buildTopicIndex({ regions: [{ id: 'x', text: 'we talked about it', spanStartSeq: 1, spanEndSeq: 2 }], keywordsPerRegion: 3, maxRegionFraction: 1 }))).toBe('');
+  });
+
+  it('rejects unusable parameters rather than guessing', () => {
+    for (const bad of [{ keywordsPerRegion: 0, maxRegionFraction: 0.5 }, { keywordsPerRegion: 2.5, maxRegionFraction: 0.5 },
+      { keywordsPerRegion: 3, maxRegionFraction: 0 }, { keywordsPerRegion: 3, maxRegionFraction: 1.5 }]) {
+      expect(() => buildTopicIndex({ regions, ...bad })).toThrow(RangeError);
+    }
+  });
+
+  it('measures document frequency over regions, not occurrences', () => {
+    // One region naming a symbol many times must not make it look common.
+    const repeated = [
+      { id: 'r1', text: 'alphaSymbol alphaSymbol alphaSymbol alphaSymbol betaSymbol', spanStartSeq: 1, spanEndSeq: 5 },
+      { id: 'r2', text: 'gammaSymbol', spanStartSeq: 6, spanEndSeq: 9 },
+    ];
+    const index = buildTopicIndex({ regions: repeated, keywordsPerRegion: 5, maxRegionFraction: 0.5 });
+    expect(index.droppedCommon).toEqual([]);
+    expect(index.entries[0]!.keywords).toContain('alphaSymbol');
   });
 });

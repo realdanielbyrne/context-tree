@@ -336,7 +336,7 @@ export function buildGoldenTree(dir: string): GoldenTree {
 
 // ---------------------------------------------------------------------------
 // Hand-authored replies. These are what a §8-compliant model would return for
-// the five branches above — see eval-resumption/recorded/README.md for why they are hand
+// the five branches above — see packages/core/test/recorded/README.md for why they are hand
 // authored rather than recorded.
 //
 // Two constraints are not stylistic and will fail the suite if broken

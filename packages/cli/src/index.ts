@@ -20,6 +20,7 @@ export {
   type TranscriptOptions,
   type TranscriptResult,
 } from './claude-code.js';
+export { mapOpencodeExport } from './opencode.js';
 export {
   initCommand,
   type InitHost,
@@ -38,4 +39,4 @@ export {
   type SummarizeReport,
 } from './commands/summarize.js';
 export { treeCommand, type TreeOptions, type TreeReport, type TreeRow } from './commands/tree.js';
-export { evalCommand, type EvalOptions, type EvalReport } from './commands/eval.js';
+

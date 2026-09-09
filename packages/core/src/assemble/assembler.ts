@@ -82,7 +82,7 @@ export interface ZoneAssemblerDeps {
    */
   window?: number;
   /**
-   * D5 experiment 4 (`eval/plans/tuning/exp-04-caching.md`): mark a THIRD
+   * D5 experiment 4: mark a THIRD
    * provider breakpoint at the end of Zone C's stable run — every block except
    * the descendant map (`C:map:*`), which churns on every edit and must ride
    * after the marker (see the comment above `zoneC`). Anthropic honours up to

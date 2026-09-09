@@ -33,15 +33,6 @@ local.settings.json
 *.sqlite
 *.sqlite3
 
-# Eval runs write results + recorded completions; fixtures ARE committed.
-eval/results/
-eval/.cache/
-eval-resumption/results/
-eval-resumption/.cache/
-# Downloaded benchmark datasets are local-only; the fixtures under eval/test/fixtures ARE committed.
-eval/scenarios/
-!eval/fixtures/
-!eval-resumption/fixtures/
 
 # ── operational data (never committed) ────────────────────────────────────
 # Real Vista/ERP extracts and their analysis outputs live here for local work.
@@ -82,12 +73,4 @@ Thumbs.db
 *.swo
 *~
 
-# transplant fixtures: raw session transcripts + derived stores are private/rebuildable — only the manifest, questions, verdict doc and stats get committed
-eval/fixtures/transplant/*/trace.src.jsonl
-eval/fixtures/transplant/*/store/
-eval/scripts/.probe-tmp.mjs
-# TRANSPLANT_MOCK=1 output — offline stubs, never real measurements
-eval/fixtures/transplant/*/*/results-mock/
-eval/fixtures/transplant/*/*/compact-*.mock.json
-eval/scenarios-sw3/
 .tmp-*

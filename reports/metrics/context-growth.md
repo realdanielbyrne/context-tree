@@ -2,6 +2,19 @@
 
 # Context size per turn in long conversations
 
+> **Correction (2026-09-08).** Every occupancy percentage and headroom figure below assumes
+> `W = 200,000` for `claude-sonnet-5`, described in places as "this host's window". **Sonnet 5's
+> context window is 1,000,000 tokens.** No `--window` was passed on these runs — `configuration`
+> is absent from every `eval/results` record — so 200,000 was never the host's window; it was an
+> assumption. Read every "% of window" here as **5x too high**, and every headroom figure as
+> correspondingly understated: the 45,564-token peak leaves 954,436 tokens of headroom, not
+> 154,436. Token counts, turn counts and crossing turns are unaffected, and the reports'
+> central conclusion — that nothing here was in danger of overflowing anything — is made
+> **five times stronger**, not weaker. Statements framed as "at a candidate fraction of a
+> 200,000-token window" remain valid as counterfactual replays at that budget; only the claim
+> that the budget *is* this host's window is wrong. See
+> `metrics/attention-policy-continuation/journal.md`, iteration 1 lens 2.
+
 Context-tree evaluation program · supplementary note to the loop-8 interim report · September 1, 2026, revised September 2, 2026
 
 > *Status.* Sections 1–3 are the original interim note of 1 September 2026: not a new experiment, but a plot of data already on disk from the runs described in the loop-8 interim report [1], because a reader asked to see context size against turn with both arms on one chart. Loop-8's conclusions are unchanged by it; one of them is sharpened. Section 4, added 2 September 2026, reports a new experiment — the six live runs of the loop-9 real-token lazy gate, which §3 argued for and §5 item 1 specified.

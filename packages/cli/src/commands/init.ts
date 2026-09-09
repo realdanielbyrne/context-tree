@@ -25,8 +25,8 @@ import { cwdOf, type GlobalOptions } from '../context.js';
 import { CliError } from '../errors.js';
 import { report, type Io } from '../io.js';
 
-/** `print` writes nothing; the other two name a host config to merge into. */
-export type InitHost = 'claude-code' | 'codex' | 'print';
+/** `print` writes nothing; the others name a host config to merge into. */
+export type InitHost = 'claude-code' | 'codex' | 'opencode' | 'print';
 
 /** Hosts that have a config file. `print` reports the plan for one of these. */
 type WritableHost = Exclude<InitHost, 'print'>;
@@ -65,6 +65,8 @@ const SERVER_NAME = 'context-tree';
 const SERVER_COMMAND = 'context-tree-mcp';
 
 const CLAUDE_CODE_CONFIG = '.mcp.json';
+const OPENCODE_CONFIG = 'opencode.json';
+const OPENCODE_JSONC = 'opencode.jsonc';
 
 export function initCommand(opts: InitOptions, io: Io): InitResult {
   const cwd = cwdOf(opts);
@@ -76,7 +78,9 @@ export function initCommand(opts: InitOptions, io: Io): InitResult {
   const plan =
     target === 'claude-code'
       ? planClaudeCode(join(cwd, CLAUDE_CODE_CONFIG), registration)
-      : planCodex(codexConfigPath(), registration);
+      : target === 'opencode'
+        ? planOpencode(cwd, registration)
+        : planCodex(codexConfigPath(), registration);
 
   // Refuse before writing anything, so a refused init leaves the tree untouched.
   // `--force` cannot rescue codex: see `refusal`.
@@ -197,8 +201,60 @@ function detectWritableHostOrNull(cwd: string): WritableHost | null {
   if (existsSync(join(cwd, CLAUDE_CODE_CONFIG)) || existsSync(join(cwd, '.claude'))) {
     return 'claude-code';
   }
+  if (existsSync(join(cwd, OPENCODE_CONFIG)) || existsSync(join(cwd, OPENCODE_JSONC))) {
+    return 'opencode';
+  }
   if (existsSync(codexConfigPath())) return 'codex';
   return null;
+}
+
+interface OpencodeRegistration {
+  type: string;
+  command: string[];
+  cwd: string;
+  enabled: boolean;
+  timeout: number;
+}
+
+function planOpencode(cwd: string, registration: McpRegistration): HostPlan {
+  const jsoncPath = join(cwd, OPENCODE_JSONC);
+  if (existsSync(jsoncPath)) {
+    const block = JSON.stringify(
+      {
+        [SERVER_NAME]: {
+          type: 'local',
+          command: [registration.command, ...registration.args],
+          cwd: '.',
+          enabled: true,
+          timeout: 15_000,
+        } satisfies OpencodeRegistration,
+      },
+      null,
+      2,
+    );
+    throw new CliError(
+      `${OPENCODE_JSONC} exists — init would strip comments; paste this into the "mcp" key manually:\n${block}`,
+    );
+  }
+
+  const path = join(cwd, OPENCODE_CONFIG);
+  const doc = readJsonObject(path);
+  const mcp = doc.mcp;
+  const existing: Record<string, unknown> = isPlainObject(mcp) ? mcp : {};
+  const entry: OpencodeRegistration = {
+    type: 'local',
+    command: [registration.command, ...registration.args],
+    cwd: '.',
+    enabled: true,
+    timeout: 15_000,
+  };
+  const merged = { ...doc, mcp: { ...existing, [SERVER_NAME]: entry } };
+  return {
+    path,
+    text: `${JSON.stringify(merged, null, 2)}\n`,
+    alreadyRegistered: Object.hasOwn(existing, SERVER_NAME),
+    preservedServers: Object.keys(existing).filter((name) => name !== SERVER_NAME),
+  };
 }
 
 function readJsonObject(path: string): Record<string, unknown> {

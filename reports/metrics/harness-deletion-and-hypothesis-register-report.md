@@ -1,0 +1,569 @@
+# The instrument was the experiment: a deleted harness, a mis-specified detector, and no valid measurement of context policy
+
+**Loop of 2026-09-08 → 2026-09-09.** Companion plan: [`reports/hypothesis-test-ladder.md`](../hypothesis-test-ladder.md).
+
+## Abstract
+
+`context-tree` reorganises an agent's linear conversation trace — prompts, replies, tool calls,
+file edits — into a summary-headed tree, so a long-running session sees branch summaries instead of
+raw history and pulls detail back on demand through four MCP tools. This loop set out to test
+whether *attention over history* — evicting context that does not bear on the current turn — saves
+tokens without costing task success. It tested none of it. Instead it found that the bespoke
+evaluation harness carrying every prior measurement could not represent a tool call at all: its
+`ChatMessage` type had no `tool_calls` field and no `'tool'` role, so the harness stripped the
+model's own tool calls from its history and replayed results as user text. A 13-message request
+carried **0** assistant messages with `tool_calls` and **0** `role: 'tool'` messages. Models shown
+that transcript re-announce actions they have already taken; one run emitted 56,966 tokens of
+repeated intent against 11 surviving tool calls. **Every arm comparison ever taken with that
+harness is void.** The harness (~16,500 lines across two directories) was deleted rather than
+repaired, because `context-tree` is an MCP adjunct and should not own an agent loop; evaluation now
+means running tasks in an external host with and without the server attached. Three separate
+guards — an instrument hash, a derived-ceiling requirement, and an epoch check — each caught the
+author mid-error during the same loop. The loop closes with one measured result and a
+14-test ladder whose first three rungs need no provider budget: over **1,073 real agent sessions and
+14,695 assistant turns**, the shipped sufficiency-signal detector fires on **3.2% of sessions and
+0.245% of turns**, and one of its three patterns fires **zero times**. That measures a
+mis-implementation rather than the hypothesis: the design specified "a small classifier over
+assistant text" and what shipped was four regexes, which cannot work in principle because an LLM is
+probabilistic and every model phrases sufficiency differently. The number's only value is that it
+proves nothing downstream of that code could ever have fired. A second result came from re-reading
+an existing comparison rather than running anything: the programme's one head-to-head
+(`step8-sonnet-r{1,2,3}`, 2026-09-05, W=131,072, Sonnet 5) contains a retrieval arm that failed
+every replicate of a four-module task, and the per-turn usage shows it **stalled at 8–15% window
+occupancy with 85–92% of the window unused**, while the arm that succeeded on the same scenario
+occupied the same range and one succeeding run occupied **5.1%**. Task success in that cell is
+therefore **not a function of context volume**; the defect is content selection, and the failure was
+one of accumulating the wrong context rather than holding too little. That comparison is itself void
+for the harness reason above — and the defect falls hardest on the arm that lost — so re-running it
+on opencode is the first live test the ladder owes. The named repair for the failure it exposed was
+specified four days before this loop and has still never been built.
+
+---
+
+## 1. What this loop was supposed to do, and what it did
+
+The queue at the start was explicit (`window-regime-and-retrieval-unit-report.md` §13): iterate on
+`prefix-plus-retrieval`, the arm that scored **25/25** on the retrieval question set, by fixing its
+two named defects — an excerpt window too narrow to contain one answer literal, and a missing
+ledger of completed steps that left it **0/3** on a four-module task. Then the soft occupancy
+target of §12, then the six hypotheses of §14.
+
+None of that happened. Six live batches were launched and none produced a comparative result. The
+sequence matters more than the count, because each failure was a different class:
+
+| # | Cause | Class |
+| --- | --- | --- |
+| 1 | Rebuilt `eval/dist` while a batch was live; `readInstrument()` hashes it and aborted the run | self-inflicted; the guard was correct |
+| 2 | `Request timed out` read as provider flakiness; retries raised to 3 | misdiagnosis |
+| 3 | No request timeout was ever configured, so the SDK default of **10 minutes** applied; three attempts spent 30 minutes discovering a call would never answer. Setting 180s then **killed legitimate long writes** — a regression I introduced | symptom treated twice before the mechanism was measured |
+| 4 | The real cause: `AGENT_MAX_TOKENS` is unset by design, so an uncapped reply on a task that asks the agent to write a whole pipeline runs past any timeout. Measured: **64 tokens → 1.6 s; 4,096 → 77.7 s; uncapped → still generating past 200 s** | measurable in one isolated probe |
+| 5 | LHTB sets `continue_until_timeout` on 30 of its 46 tasks and this harness ignored it, exactly as the benchmark warns ("those tasks run single-shot there and score lower"). Observed: 6 turns, score 0/11, **15,726 of 1,552,615 tokens spent** | contract not read |
+| 6 | The tool-call eviction below | invalidates everything upstream |
+
+Two policy changes were made on inference before the mechanism was measured once, and the second
+was a regression. A single isolated latency probe — minutes of work, a few thousand tokens — would
+have skipped both.
+
+## 2. The defect that voided the prior measurements
+
+`packages/core/src/contracts/models.ts:9`, before deletion:
+
+```ts
+export interface ChatMessage {
+  role: 'user' | 'assistant';   // no 'tool' role
+  content: string;               // no tool_calls field
+  cacheBreakpoint?: boolean;
+}
+```
+
+The limitation reached the wire: `toMessageParam` emitted only `{role, content}`. So every arm
+rendered an agent turn as assistant text with the tool calls **erased**, followed by the result as
+a `role: 'user'` text blob:
+
+```
+assistant: "Let me check the audit.py file:"       <- its tool_calls, gone
+user:      "[tool_result read_file]
+            [call] {"name":"read_file","input":{...}}
+            [output] <contents>"                    <- result as USER text
+```
+
+The model is shown a conversation in which assistants announce actions and never take them, and it
+imitates the pattern. From the transcript, turns 5–7 of one run:
+
+```
+TURN 5  stop=stop        tools=[]           "Let me check the audit.py file:"
+TURN 6  stop=tool_calls  tools=[]           (finish says tool_calls; array empty)
+TURN 7  stop=tool_calls  tools=[read_file]  "Let me check what's in the audit.py file:"
+```
+
+Its turn-0 plan was correct and well structured. The 56,966 output tokens are **re-announcements of
+an intent that never executed**, not verbosity, and 11 tool calls across 37 turns is the surviving
+fraction rather than the model's rate.
+
+**A claim of mine, corrected by measurement.** A 3-trial replay showing one response with
+`finish_reason: tool_calls` and no payload was reported as "OpenRouter drops ~1 in 3 tool calls."
+Twelve trials of the identical request:
+
+| model | tool_calls delivered | dropped by provider | text-only reply |
+| --- | ---: | ---: | ---: |
+| `qwen/qwen3-coder-flash` | 5/12 | 1/12 (8%) | **6/12** |
+| `z-ai/glm-5.3-flash` | **11/12** | 0 | 1/12 |
+| `qwen/qwen3.8-flash` | 10/12 | 0 | 2/12 |
+
+Provider dropping is real but minor. The dominant column is the last one: on identical input GLM
+emits a tool call 11 times in 12 where coder-flash manages 5. The broken transcript degrades every
+model and coder-flash is the most sensitive — which also retires a second claim of mine, that
+coder-flash "does not drive an agent loop." It drives the same loop on the same malformed input.
+
+**Why the earlier repair missed it.** An earlier pilot was disqualified for a transcript that
+"omitted call IDs and arguments." The fix embedded that metadata **as JSON inside the user text**
+(`tool-result-call-v1`). It made the text more faithful and left the structural eviction untouched
+— symptom, not cause.
+
+## 3. Deleting the harness
+
+The operator's judgement, and it is the correct one: *"This product isn't trying to recreate a
+coding harness anyway, it is supposed to be an adjunct add-on… This product is simple in its
+design, and you are trying to make it more complicated."*
+
+So the eviction is not a bug to fix. `ChatMessage` lacks a `tool_calls` field because the eval tree
+was a half-built reimplementation of something mature harnesses already do correctly; fixing the
+type would deepen the wrong thing. Recorded as **D20**, superseding D19.
+
+Deleted: `eval/` (254 tracked files; 5,779 source + 4,374 test lines, 44 scripts) and
+`eval-resumption/` (68 files, ~6,362 lines) — about **16,500 lines**, 340 files, 581k lines removed
+in one commit.
+
+Two couplings made naive deletion unsafe, and both were found before it:
+- `packages/core/test/live/record.ts:58` reached into `eval-resumption/recorded/` for replay
+  cassettes, so four product tests would have broken. Those moved into `packages/core/test/`.
+- `packages/cli/src/commands/eval.ts` **shipped in the published CLI tarball** and dynamically
+  imported `<cwd>/eval-resumption/harness/index.js`. It was a command that could only ever error,
+  and it was the one place a published package referenced the harness. Removed.
+
+A third exposure was live and unrelated to imports: `eval/package.json` had **no `private` field**,
+a `bin` entry, and `files: ["dist"]`, so `pnpm publish -r` would have published
+`@context-tree/eval` containing the harness. The deletion removes it; the verification gate is
+`npm pack --dry-run --json` on each package, which reads what npm would actually publish rather
+than trusting the declared `files`.
+
+## 4. The one thing measured, and what it does not show
+
+The one hypothesis this loop tested is **H4/HR3** — that the model's own statements pace its
+discovery, so *"I have enough information to implement X"* and *"now let's look at Y"* can gate
+retention. It had been recorded as firing **0 times in 19 real agent responses**, and that was read
+as a null for the hypothesis.
+
+It is a null for the **detector**. `detectAttentionSignals` is four literal regexes. Run — the
+shipped function, which masks code fences, block quotes and quoted strings and filters negated
+clauses, not hand-copied patterns — over **1,073 real Claude Code sessions, 14,695 assistant text
+turns**:
+
+| metric | value | baseline / comparison |
+| --- | ---: | --- |
+| sessions with any signal | **34 / 1,073 = 3.2%** | pre-registered retirement threshold: <10% |
+| signals per assistant text turn | **0.245%** | — |
+| `sufficiency` hits | 17 | — |
+| `topic_shift` hits | 19 | — |
+| `research_done` hits | **0** | in 14,695 turns; a dead pattern |
+| broadened `Now let me` | **318 sessions = 29.6%**, 711 hits | **≈9× session coverage, ≈20× hits** |
+| `Now I (understand\|have\|need to\|can)` | 117 sessions = 10.9%, 163 hits | — |
+
+**Verdict: this measures a mis-implementation, not the hypothesis — and the remedy is not a bigger
+lexicon.** At 0.245% of turns the shipped code cannot gate anything, so nothing downstream of it
+could ever have worked. That is the whole value of the number. It is *not* evidence about H4/HR3.
+
+The design already specified the right instrument
+(`window-regime-and-retrieval-unit-report.md:655-659`):
+
+> "Detect them (**a small classifier over assistant text is enough to start**; log the phrases
+> first, zero live tokens, from the recorded runs) … detect topic shift the same way (**a turn whose
+> content words share little with the previous n turns**)"
+
+"Log the phrases first" was a preliminary look at the corpus. What shipped was four regexes — the
+preliminary step mistaken for the detector. **A lexical matcher cannot work here in principle:** an
+LLM is probabilistic, every model phrases sufficiency differently, and "I have what I need" is a
+semantic state rather than a string. A regex list is a sample of one author's guesses at phrasing.
+
+**My first reading of this result was wrong in the same direction.** I concluded "the lexicon is
+too narrow — broaden it," and cited a candidate phrase reaching ≈9× the coverage. That is more of
+the wrong approach; coverage of a wider guess-list is not detection. The operator's correction is
+the right one: sufficiency needs **a model query or a small adjacent classifier** judging the
+assistant's turn; topic shift needs the **content-word overlap** measure §14 already named, which
+is deterministic and needs no model at all. The two sub-signals have different right instruments
+and only one of them costs anything.
+
+*Provenance.* A first pass reported 4.8% and 37.8% using hand-copied regexes over a slightly
+different text extraction. The figures above come from the shipped function and are the ones to
+quote; the two disagree by ≈1.4× while agreeing on the conclusion, which is precisely why the
+shipped function is authoritative and why the standing rule is to re-read every number from its
+artifact.
+
+**What this does not show, and what replaces it.** Fire rate is not detection. The next test is
+not a wider phrase list; it is the instrument the design named, split by sub-signal:
+**topic shift** is deterministic — fingerprint overlap between turn *t* and turns *t−n…t−1*,
+validated against a within-session permutation null, zero model calls; **sufficiency** needs
+semantic judgment, so a small adjacent classifier or a cheap-model call per turn, with ground truth
+from hand-labelled real turns rather than from phrases. Falsification for each is fixed in the
+companion plan. `sufficiencyGate` and `topicShiftReset` are switches on a detector that does not
+work; they should be **rewired to the new detector or deleted**, not tuned.
+
+## 5. What else was learned, separately from what was decided
+
+**"Small windows failed" is three different findings, and only one of them is an artifact.** Claude
+Fable 5.1's production system prompt is **274,608 characters = 60,903 cl100k tokens**, so at
+W=65,536 there is effectively no room for anything else. That arithmetic is sound, and it licenses
+much less than it appears to: it says nothing about experiments that ran a different model's prompt.
+Separating the three cells by their provenance:
+
+| Cell | Source | What it showed | Status |
+| --- | --- | --- | --- |
+| **W=16,384** | `minimum-window-boundary` | Zone A + Zone B + one search exceeds the window; 57/60 stalls | **Artifact.** A dead cell, not evidence about the tree. |
+| **W=32,768–65,536** | `live-verification-findings.md:11-16`, 2026-09-03, arms `truncate-tail` vs `tree-tail-v2`, on **Haiku 4.5** with partial Sonnet 5 | truncate-tail 11/60 against tree-tail-v2 2–4/60. Recorded cause: **tool overhead** — each search/fetch turn adds ~5–10K tokens that the tail arm spends on raw events instead. "Showing more raw content beats navigating to it at these window sizes." | **A genuine negative**, with a mechanism its own author identified correctly. |
+| **A Fable-class prompt at W=65,536** | arithmetic, no run | The prompt alone would consume the window | **True but hypothetical.** Describes a deployment, not any experiment above. |
+
+Those runs never used Fable's prompt, so the starvation arithmetic does not reach them. **One
+recorded negative (16K) is an artifact; the W=32–65K result stands as a real finding about MCP tool
+overhead at small windows**, and the design owes it an answer rather than a relabelling. **The valid
+realistic-host cell remains W = 131,072** — which is where §6's step8 cell ran — and the reason not
+to sweep 32–65K again is that the tail already covers the answers there, not that the cell is
+invalid.
+
+Two of those three rows are separable only because the memory file names its model and its arms. The
+cell in §6 does not name its window anywhere in its artifacts, which is the same defect one step
+worse.
+
+**The recorded blockers conflated two questions.** Every one of H1–H6 and the priority channel was
+marked `eligible: false, status: missing_labels`, needing e.g. "current-turn grounded irrelevance
+labels" or "labeled true/false sufficiency and topic-shift examples". But labels are needed to
+validate *whether a policy's judgment is correct* — not to measure *whether the policy helps*. The
+hypotheses are the second question. The prior pass blocked itself validating an intermediate signal
+before ever measuring an outcome.
+
+**A corpus for the overflow regime existed and was never used.** The record listed "the overflow
+regime itself — no trace in the repo has ever reached it" as an open item. Of 1,073 real local
+sessions: **109 have ≥100 tool calls**, 55 exceed 131,072 estimated content tokens, 18 exceed
+262,144, and 2 exceed 1,048,576 (max ≈4.38M estimated tokens across 788 tool calls). The shipped
+`mapClaudeCodeTranscript` importer reads exactly that format. That open item is retired.
+
+**Guards beat judgement, three times in one loop.** The instrument hash caught a concurrent
+rebuild. A derived-ceiling requirement refused an invented token cap and forced one derived from a
+measured run. An epoch check refused to reuse an output directory after scientific inputs changed.
+Each was correct and each caught me. A harness that refuses to run is cheaper than a batch that
+runs and cannot be believed.
+
+**Measure the mechanism before changing the policy.** The recurring failure of this loop was
+inference: a 180-second timeout derived from a single latency sample that was 2× optimistic
+(GLM sustains 24.5 tok/s, not the 52.7 one probe showed, so a full reply needs 335 s and the
+timeout killed it); an 8,192-token reply cap chosen as a round number when the reference solution's
+largest file needs ~6,240 with the JSON envelope; a "malformed JSON" diagnosis that the probe
+showed was a truncation at the end. Each isolated probe cost minutes.
+
+**And the model I blamed was innocent.** I characterised a model as unable to drive an agent loop.
+The transcript shows it planning correctly and re-issuing the same read three times because the
+calls were vanishing. That characterisation was an inference about a model built to do exactly that
+task, and the operator was right to reject it.
+
+## 6. The one comparison that does exist, why it is void, and what remains untested
+
+**A head-to-head comparison exists, it is published, and it is not from this loop.** So the claim
+that belongs here is narrow and specific: *this* loop produced no comparative measurement, but the
+programme has one, and it is four days old.
+
+**Provenance.** Runs `step8-sonnet-r1`, `-r2`, `-r3` — plan **step 8** of the
+`window-regime-and-retrieval-unit` loop, executed **2026-09-05**, reported in **§7c of
+`reports/metrics/window-regime-and-retrieval-unit-report.md`**, artifacts at
+`reports/metrics/window-regime-and-retrieval-unit/step8-sonnet/results-r{1,2,3}.json`. Cell: **W =
+131,072** — the valid realistic-host window, *not* one of the starved cells of §5 — Sonnet 5 agent,
+command judges, 3 arms × 2 scenarios × 3 replicates = 18 runs. Scenarios: `sw-1-jsonc` (one module,
+one bug) and `sw-2-multimod` (four modules, fixed in order). Arms as defined there: `native`
+(transcript with prefix caching), `context-tree` (the shipped default, window enforced), and
+`prefix-retrieval` (the loop-arm port of the prefix design — cached prefix of system prompt, tool
+schemas and CLAUDE.md; a recency slice sized by derived slack; a block of events retrieved from the
+run's own log for the current focus, filled to the window).
+
+§7c's table, which I re-derived from the raw JSON before citing it — all six rows agree:
+
+| scenario | arm | success | median turns | mean cost | note |
+| --- | --- | --- | ---: | ---: | --- |
+| `sw-1-jsonc` | native | 3/3 | 22 | $0.118 | one run stalled at 30 turns with tests already passing |
+| `sw-1-jsonc` | context-tree | 3/3 | **8** | $0.208 | fewest turns of any arm |
+| `sw-1-jsonc` | prefix-retrieval | 3/3 | 11 | $0.435 | one run hit the $1 cost cap at 34 turns, tests passing |
+| `sw-2-multimod` | native | 3/3 | 30 | $0.255 | one 65-turn run re-read 1.46M cached tokens |
+| `sw-2-multimod` | context-tree | 3/3 | 24 | $0.943 | one run hit the cap during root summarisation, tests passing |
+| `sw-2-multimod` | prefix-retrieval | **0/3** | 19 | $0.261 | every run stalled in a trailing `run_command` loop |
+
+So the shape is not "managing context is pointless." On the one-module task the tree finished in
+**8 median turns against native's 22** — the bounded prompt did what it was designed to do — and
+still cost more, because its cache writes are charged where native's re-reads are cheap. The
+programme's cost case and its turn-count case point in opposite directions here, and that is the
+real content of the result.
+
+**Quantifying the failure, which is the part the record never did.** Context compression is not a
+speculative technique — it demonstrably preserves task continuity, including in the session that
+produced this report, which was compacted mid-task and continued to completion. So a 0/3 is not
+evidence that a summary-headed context cannot work; it is a defect with a magnitude, and the
+magnitude is recoverable from the per-turn usage already in the artifacts. Context actually seen per
+turn (`input + cacheRead`) against W = 131,072, on `sw-2-multimod`:
+
+| arm | outcome | peak occupancy per run | occupancy during the stall tail |
+| --- | --- | --- | --- |
+| `native` | 3/3 | **5.4% · 27.3% · 5.1%** | — |
+| `context-tree` | 3/3 | **14.8% · 14.6% · 17.9%** | — |
+| `prefix-retrieval` | **0/3** | **12.2% · 14.6% · 8.3%** | r1 11.2→9.3% · r2 9.6→14.6% · r3 7.6→8.3% |
+
+Three things follow, and none of them is "there was not enough context":
+
+1. **Every arm ran in the bottom quarter of the window. `prefix-retrieval` stalled with 85–92% of
+   the window unused** — roughly 112,000–120,000 tokens of headroom it never spent.
+2. **The winning and losing arms occupied the same range.** `context-tree` succeeded 3/3 at
+   14.6–17.9%; `prefix-retrieval` failed 0/3 at 8.3–14.6%. Overlapping volumes, opposite outcomes.
+   And `native` completed one run at **5.1%** — the least context of any run on the scenario. On this
+   cell, task success is **not a function of context volume**.
+3. **During the stall the context was growing, not shrinking.** In r2 occupancy climbed 9.6% → 14.6%
+   across the eight stalled turns. The arm was accumulating context and still failing, so it was not
+   starving — it was admitting the wrong content.
+
+That relocates the defect precisely: it is **content selection, not compression ratio**, and it is
+measurable without a provider. It also means the "err on more context" principle does not explain
+this failure — the losing arm carried more context than the winner in two of three runs.
+
+**Why it took those turns.** On `sw-2` it fixed one or two modules and then fell into repeated
+`run_command` calls: the trailing runs of identical turn shape are **4, 8 and 4 turns** across
+r1/r2/r3 (§7c records the tail as "4–6"; the r2 run is 8). That is a model re-probing the repository
+for state it cannot see in its own history — while, per the table above, having room to hold six
+times what it was carrying. Three explanations are on the record and **none has been tested against
+the others**:
+
+1. **D-b — no ledger of completed steps.** The arm carries no "done so far", so it re-investigates.
+   §7c's own reading, and the hand-off queue's named iteration.
+2. **HR1 — the retrieval unit is wrong for the turn type.** It returns a few best-matching events
+   with a short excerpt each, tuned for literal lookup; a four-module task needs file and tree
+   structure, so the model substitutes `run_command` for the structure it never receives.
+3. **§2's tool-call stripping** — new to this loop, and it predicts this signature directly.
+
+**Did any later design improve on it? No.** The mechanism was identified on 2026-09-05 and no
+candidate fix has been built or measured since: there is **no ledger implementation anywhere in
+`packages/`**, and every commit between that batch and the deletion went to harness repair
+(timeouts, reply caps, model substitutions) or to the root-cause discovery itself. The named
+iteration from the hand-off queue was never run. That is the single most consequential thing this
+report can say about the programme's four days.
+
+**What this loop adds is that §2's defect applies to these 18 runs, and not evenly.** Under
+`ChatMessage`, tool results returned as user-role text while the assistant's own `tool_use` blocks
+were dropped. In `native` the history is raw event text, so the *content* of prior work survives the
+stripping even though the call framing does not. In `prefix-retrieval` that raw history is *replaced*
+by retrieval summaries and excerpts — so the stripping removes the call and the policy removes the
+content it would have pointed at. `native` shows the same trailing `run_command` behaviour (up to 6
+consecutive, 37 run-command-only turns in one run) and still converges by brute force at 65 turns,
+which is what having the raw text buys.
+
+That asymmetry is an argument from the recorded turn shapes, not a measurement. It is enough to say
+the comparison **cannot be scored for or against any policy**, and not enough to say the tree would
+have won. The defensible claims are narrow: the arms differ, the harness that produced the
+difference was broken, and the broken part sits closest to the arm that lost. The honest status is
+**void and must be re-run on opencode** — where the same numbers, if they reproduce, would be a real
+refutation of the cost case.
+
+**A provenance defect this cell exposes, which applies to every future batch.** The run ids
+(`step8-sonnet-r{1,2,3}`) are unique, but the artifacts record only `runId`, `benchmark`,
+`scenarioId`, `arm`, `model`, `status`, `success`, `judge`, `metrics`, `turns` and timestamps. **The
+window size, the arm definitions and the code version are not in the artifact at all** — `W =
+131,072` had to be recovered from prose in §7c, and the arm named `prefix-retrieval` here is a
+*different implementation* from the `prefix-plus-retrieval` arm quoted elsewhere in the same report,
+distinguishable only by name. A comparison whose cell parameters live in prose cannot be verified
+against a later run, and two arms whose lineage differs by one word will eventually be conflated.
+Every experimental artifact must carry a uniquely named, versioned manifest — run id, arm id **with
+a version**, W, model, judge, commit SHA, date, and the falsification condition fixed before the
+run — written next to the results. §7 item 11 makes this a gate.
+
+The remaining untested list is unchanged. Specifically untested: the umbrella
+attention-over-history hypothesis; all six of H1–H6; the 25–50% soft occupancy target; Zone B as an
+index; `evictRederivable` and the priority channel (both have passing mechanism-fire gates and
+**zero production callers**); whether the retrieval unit is wrong for structural turns; whether
+keeping full retrieval payloads helps; and the score hypothesis — that a shorter, better-curated
+context makes the model *reason* better, which no analysis in this loop could refute and none
+tested. Every measurement here argued cost, latency or instrument integrity.
+
+Also untested by *this* loop: anything on a model other than the cheap OpenRouter tier (the step8
+cell above is the programme's Sonnet 5 evidence, and it predates this loop), anything at a window other
+than 1M-class hosts, and Anthropic cache economics — where `cacheWrite` is billed at 1.25× input
+and `cacheRead` at 0.1×, so a token-side result measured on a provider publishing `cacheWrite: 0`
+is an upper bound, not a transferable number.
+
+## 7. Open items and recommendations
+
+Ordered by information gained per unit of cost. The full 14-test ladder, with a numeric
+falsification condition fixed in advance for each, is in
+[`reports/hypothesis-test-ladder.md`](../hypothesis-test-ladder.md) — **that document is the
+executable next step and is written to be run cold.** Reiterating its head:
+
+1. **Run Rung 0 — three tests, and two of them need no model call at all.** (0a and 0c are pure
+   offline sweeps; 0b's topic-shift half is deterministic and only its sufficiency half needs a
+   cheap model.) Everything they need
+   survived: the 1,073-session corpus, the 22-query set (all 22 carry their payload text
+   inline, so it needs no store rebuild; 17 further literals entries do not), and every offline primitive in `packages/core`. Highest first:
+   **0a**, the excerpt-window sweep (`excerptChars` × anchor over the surviving queries) — this is
+   hand-off item 1's first named defect and it produces a number in about an hour. It must report
+   the count of queries with non-empty fingerprint terms, because the prior version of this sweep
+   returned a degenerate null on 15 payloads that all had `terms: []`.
+2. **Replace the H4/HR3 detector rather than widening it — and fix the stopping rule now.** Build
+   the two instruments the design named: deterministic content-word overlap for topic shift (no
+   model calls), and a cheap-model judgment for sufficiency, ground-truthed on hand-labelled real
+   turns. §4's number licenses no live work — it only proves the shipped code cannot fire.
+
+   The trap here is that "the detector failed" always admits a stronger detector, so H4 can regress
+   forever without ever being wrong. A regex fails → build a classifier; the classifier fails → use
+   a bigger model. **So the stopping rule is fixed in advance, before the instrument is built:** one
+   cheap-model binary judgment per assistant turn, prompted with the design's own definition,
+   against **200 hand-labelled turns** drawn from the 1,073-session corpus. If that judge cannot
+   reach **κ ≥ 0.6** against the hand labels, **the sufficiency half of H4/HR3 is retired, not
+   iterated** — the conclusion being that the signal is not reliably present in assistant text, not
+   that a better detector is needed. The topic-shift half has no such problem: fingerprint-overlap
+   drop against a within-session permutation null is deterministic and falsifiable on its own terms.
+   Recording this because the previous framing had no such rule, which is what let a null result on
+   four regexes look like a result about a hypothesis.
+3. **Build the opencode plugin for Rungs 1–3, and gate it first.** Two facts read from the shipped
+   1.18.27 binary decide whether it works at all: the `experimental.chat.messages.transform`
+   trigger's **return value is discarded**, so only in-place array mutation is observable and
+   `output.messages = [...]` silently no-ops — the S4 failure class through a new seam, and gate 0
+   is a unit test proving a mutation reaches the provider call. Conversely, Zone A is assembled
+   *after* the transform, so the system prompt, steering and skills are structurally **out of
+   reach** — S2's failure mode cannot recur there. opencode's own compaction defaults to preserving
+   `floor(context × 0.25)` and must be disabled and recorded, or a live arm measures opencode
+   rather than the policy — and that 0.25 is a direct confound for the soft-target hypothesis.
+4. **One variable per test.** Twelve mechanisms at once yields one number and no attribution. The
+   combination is the destination, reached by knowing which parts carried an effect.
+5. **Run at W = 131,072, and not at W = 32k–65k — but for the right reason.** W=16,384 is a
+   starvation cell. W=32k–65k is *not*: it is a cell where the tail already covers the answers and
+   MCP tool overhead costs more than the raw content it replaces (§5). Re-running there re-measures
+   a known negative rather than an artifact.
+6. **Ejection cannot pay for itself per turn on Anthropic, so stop designing it that way.** With
+   `cacheRead = 0.1×` and `cacheWrite = 1.25×` input (`packages/core/src/models/cost.ts:45-48`, a
+   property of the price table, not a measurement), the break-even for invalidating a cached prefix
+   is `turns = w·keep / (r·(1−keep))` — **12.5 turns at keep=0.5**, 29 at keep=0.7, 112 at keep=0.9.
+   A policy that edits the middle of the prompt every turn to save half of it must then survive 12.5
+   turns before it breaks even, and the eviction is re-paid each time it fires. This retires the
+   **per-turn** forms of H1, H2 and H5 and the per-turn admission loop as *cost* propositions; they
+   survive only as **success** propositions, or at cadences of tens of turns. It also means the
+   OpenRouter numbers in this report flatter ejection: a provider publishing `cacheWrite: 0` charges
+   nothing for the invalidation that dominates the Anthropic bill.
+7. **Compare any attention policy against source-side hygiene, not against naive full history.**
+   Dropping the write echo and capping tool-result bodies at 2,000 tokens cuts prompt volume
+   **−31%** with **no cache invalidation at all**, because it changes what enters the prefix rather
+   than rewriting it (`reports/metrics/attention-policy-continuation/journal.md:732,801`). That is
+   the same order as the reduction the attention policies are meant to deliver, at none of the
+   cache cost, and it is the honest baseline. A policy that beats naive history but not hygiene has
+   not earned its complexity.
+8. **The soft target's mechanism does fire in real use — the corpus was the problem.** Operator
+   `/context` on Opus 5 (1M window) shows **37% occupancy after one prompt and 56% after two**
+   (`reports/algorithm.md:88-89`, 2026-09-08), against a median 1.25% of window across the harness
+   corpus. HA was recorded as untestable on the basis of the corpus, which was ~10× too short. That
+   is an instrument defect, not evidence against the hypothesis.
+9. **Spend the long live runs last.** The score hypothesis needs ~4,000–6,000 model calls across
+   ≥2 tasks at n≥5 and is the endpoint that can vindicate the programme. Its parameters come from
+   the tests above, so running it early wastes it — and a null from a badly-set arm is weak
+   evidence, not a refutation.
+10. **Re-run the `step8-sonnet` cell first among the live tests.** It is the programme's only
+   head-to-head, it is void for a known reason (§6), and it is the cheapest live result available:
+   18 runs, 2 scenarios, real Sonnet 5, W = 131,072. If the unmanaged arm still matches on success
+   while costing less on a working harness, that is a real refutation of the cost case and it should
+   be accepted as one. Re-run it **blind** — take the cell definition from the artifacts, record
+   your own numbers, and only then compare.
+11. **Name and version every experimental artifact, and write a manifest beside it.** §6 shows what
+   the absence costs: a cell whose window size survives only in prose, and two differently
+   implemented arms separated by one word in their names. Required per batch: a unique run id, an
+   **arm id carrying a version** (`prefix-retrieval@v2`, not `prefix-retrieval`), W, model, judge,
+   commit SHA, date, and the falsification condition fixed before the run. Without it, side-by-side
+   comparison across loops is unverifiable — which is the state §6 is in now.
+12. **Sweep the occupancy analysis of §6 across every committed result artifact — zero model
+   calls.** One cell yielded the finding that success there was uncorrelated with context volume.
+   The same three lines of arithmetic (`input + cacheRead` per turn against that run's W) apply to
+   every `results*.json` in `reports/metrics/`, and would establish whether that holds generally or
+   is specific to `sw-2-multimod`. **This is the cheapest unrun test in the programme** and it
+   subsumes part of HA: if no arm in the entire record ever approached its window, then every
+   occupancy-target result to date describes the instrument, not the policy. Build it as Rung 0d.
+   Caveat to respect: most of those artifacts do not record their own W (item 11), so recover each
+   cell's window from its report and **record which ones you had to infer**.
+
+## 7a. Provenance: which numbers here a reader can check, and which they cannot
+
+An adversarial pass recomputed every load-bearing number in this report against its source. The
+detector figures (1,073 sessions at measurement time and 1,077 on re-check, 14,695 assistant turns,
+36 signals, 3.2% of sessions, 0.245% of turns, 17/19/0 by kind, 109 sessions ≥100 tool calls)
+reproduced exactly or within the drift of a corpus that grows daily; the deletion figures (340 files,
+581,359 lines removed, 16,515 source lines across the two trees) reproduced exactly from
+`git show --stat 7d459f9`; and §6's table reproduced row-for-row from `results-r{1,2,3}.json`.
+
+Three figures elsewhere in the record disagree with their own artifacts, so quote the artifact and
+not the summary: the deleted tree holds **44** scripts; the vitest baseline is **692 passed + 9
+skipped (701 total)**, not ~701 passing; and the recovered question corpus is **22 entries carrying
+inline payload** plus 17 literals entries without payload, not 56. The journal also records §6's
+`context-tree` arm at $0.291/run where the artifacts give $0.575 — about half the true cost penalty.
+That last one is why the provenance rule exists.
+
+Six figures in this report were measured in-session and have **no committed artifact**, so nothing
+in the repo reproduces them:
+
+| Figure | Status |
+| --- | --- |
+| The 12-trial tool-call table (5/12, 11/12, 10/12) | in-session probe, not committed |
+| "56,966 output tokens against 11 tool calls in 37 turns" | from a transcript that was not persisted — §5's own lesson |
+| "64 tok → 1.6 s; 4,096 → 77.7 s; uncapped → past 200 s" | in-session probe (`200007 ms AbortError`), not committed |
+| "GLM sustains 24.5 tok/s, not 52.7" | in-session probe (26.4 and 24.5 tok/s over two trials), not committed |
+| "6 turns, score 0/11, 15,726 of 1,552,615 tokens" | in-session, not committed |
+| The "13-message request" count | in-session, not committed |
+
+They are reported as measured and they are not verifiable, which is a weaker claim than the rest of
+this document carries. The cause is the same instrument defect §5 names — per-run transcripts were
+not persisted — and the fix belongs in the next loop's setup, not in a footnote: **a probe whose
+number will be quoted must write its output under `reports/metrics/` before the number is used.**
+
+## 8. Methodology lessons worth carrying to other work
+
+- **When a symptom recurs, measure the mechanism before changing the policy.** Two policy changes
+  on inference, the second a regression, where one isolated probe would have found the cause.
+- **A mechanism-can-fire gate must be fed the inputs the live path builds.** One gate reported an
+  arm inert because the gate itself supplied no reference edges. An "inert" verdict is a claim
+  about the gate until that is checked.
+- **Read the gate's artifact, not only its pass bit**, and re-read every number from its raw source
+  before quoting it. Two figures in this loop were wrong in the direction that flattered the
+  conclusion.
+- **A metric that cannot be true is worse than a missing one.** `gateRescued` was `false` in 0 of
+  48 runs and structurally unreachable, because every arm returned at the very turn whose successor
+  the metric inspects.
+- **Distinguish "the instrument fired" from "the hypothesis is false."** The single result in this
+  loop exists only because that distinction was drawn.
+- **Do not detect a semantic state with a lexical matcher, and check the design before measuring
+  the code.** The instrument here was four regexes where the design said "a small classifier"; the
+  measurement therefore reported on a mis-implementation. Worse, the first reading of that
+  measurement proposed *widening the regex list* — the same error one step larger. When an
+  instrument fails, ask what it was specified to be before asking how to extend it.
+- **"We have not measured it" needs the same evidence as "we measured it."** A claim that no live
+  comparative measurement existed is reachable by reasoning from the harness deletion, and it is
+  wrong: §6's cell ran on the deployment model at the valid window and is published in the prior
+  loop's §7c. Absence claims of this kind fail in one direction only — they omit the least
+  convenient result. Before writing that something was never measured, search the artifacts.
+- **Quantify a failure before concluding an approach cannot work.** Context compression is not
+  speculative — it demonstrably preserves task continuity, including in the session that wrote this
+  report. So "the retrieval arm scored 0/3" is the beginning of an analysis, not the end of one. The
+  per-turn usage was sitting in a committed artifact the whole time and it relocated the defect from
+  compression to content selection in an afternoon, with no provider calls. A failing arm that is
+  never quantified becomes folklore about the technique instead of a bug report about the
+  implementation.
+- **Version and uniquely name every experimental artifact.** §6's cell cannot state its own window
+  size: `W = 131,072` survives only in a paragraph of prose, and two differently implemented arms
+  (`prefix-retrieval`, `prefix-plus-retrieval`) are separated by one word. Side-by-side comparison
+  across loops is only as good as the manifest sitting next to the results.
+- **A reclassification is a claim about a specific experiment, and needs its attribution read.**
+  "Those small-window failures were starvation" was applied to experiments run on Haiku 4.5 whose
+  recorded cause was tool overhead, using arithmetic about a different model's system prompt. The
+  correct conclusion was narrower and less convenient: one cell was an artifact, the other is a
+  real negative the design still has to answer. Re-labelling a negative is the most tempting
+  available move and the one most worth distrusting.
+- **A hypothesis needs a stopping rule before its instrument is built.** "The detector failed"
+  always admits a stronger detector, so without a pre-committed threshold a hypothesis can absorb
+  any number of null results without ever being wrong. §7 item 2 now fixes one for H4.
+- **Also worth stating plainly:** the "the design specified a classifier and what shipped was
+  regexes" framing is true, but the spec was committed roughly two hours before the code, in the
+  same working session. The sequence is real; the implied deliberation is not.
