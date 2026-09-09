@@ -1,17 +1,17 @@
 {
   "version": 1,
-  "arm": "native",
+  "arm": "attn-control",
   "scenario": "great-expectations-audit",
   "replicate": 1,
-  "runId": "great-expectations-audit-native-r1",
+  "runId": "great-expectations-audit-attn-control-r1",
   "epoch": "d0582371ec3c1bdaccd58b84080655f2267c22b1c1b5f9bab15dd0a3b695aa24",
   "model": "z-ai/glm-5.3-flash",
-  "configHash": "bd6fd1bd7839b08c32e630a268be8353902cf19c0cc2cc4a05a287443c771139",
-  "capturePath": "/Users/danielbyrne/GitHub/rpm/context-tree/reports/metrics/attention-policy-continuation/loop3-pilot-n1c/captures/great-expectations-audit-native-r1/lhtb-great-expectations-audit-native",
+  "configHash": "fc2e6e7de4af11455bbdbb5c614e8eb88f4c0871182b2eee1b936ab905337215",
+  "capturePath": "/Users/danielbyrne/GitHub/rpm/context-tree/reports/metrics/attention-policy-continuation/loop3-pilot-n1c/captures/great-expectations-audit-attn-control-r1/lhtb-great-expectations-audit-attention",
   "expectedManifest": {
     "version": 1,
-    "runId": "great-expectations-audit-native-r1",
-    "arm": "native",
+    "runId": "great-expectations-audit-attn-control-r1",
+    "arm": "attention",
     "scenario": {
       "id": "great-expectations-audit",
       "benchmark": "lhtb",
@@ -161,9 +161,22 @@
         "defaultMaxTokens": null,
         "confirmationEligible": true
       },
-      "captureDir": "/Users/danielbyrne/GitHub/rpm/context-tree/reports/metrics/attention-policy-continuation/loop3-pilot-n1c/captures/great-expectations-audit-native-r1"
+      "policyProfile": {
+        "version": 1,
+        "id": "whole",
+        "payload": {
+          "mode": "whole",
+          "excerptChars": 1000,
+          "anchor": "first",
+          "producers": [
+            "context",
+            "read_file"
+          ]
+        }
+      },
+      "captureDir": "/Users/danielbyrne/GitHub/rpm/context-tree/reports/metrics/attention-policy-continuation/loop3-pilot-n1c/captures/great-expectations-audit-attn-control-r1"
     }
   },
   "state": "settled",
-  "startedAt": "2026-09-09T04:49:56.948Z"
+  "startedAt": "2026-09-09T04:56:16.303Z"
 }
