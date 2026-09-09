@@ -1191,3 +1191,124 @@ of what the model actually saw; the L0/L1/L2 rebuildability invariant (derived l
 deterministic functions of the log); and the cache-preserving constraint that makes
 `context_fetch` results append *after* Zone C rather than reorder the prefix. Prefix stability has
 no counterpart in KV-cache eviction, where there is no cached prefix to protect.
+
+## 2026-09-08 late — LOOP 3: both named mechanisms made runnable and gated
+
+Operator direction: get usable results; test **attention-based** and **dependency-tracking**; hard
+numbers on a small number of hard examples; Zone B summaries are only an **index** ("the model
+once discussed X") that sends it to `context_search`, not a substitute for content.
+
+### The unlock: every prior hypothesis was ineligible for want of hand-supplied labels
+
+`selectAttention`'s only eviction path was `excludeIrrelevant`, which fires only on an explicit
+`relevance: { value: 'irrelevant', reason }` declaration carrying current-turn evidence, and the
+module deliberately refuses to infer one ("No live host inference invents missing relevance, plan,
+or reference labels"). That is why the v2 replay returned `eligible: false, status: missing_labels`
+for H1, H2, H3, H5, H6 and priority alike. **Both mechanisms the operator named can be computed
+from L0 alone, and that is what makes loop 3 runnable at all.**
+
+### Dependency-tracking, implemented as re-derivability
+
+New `packages/core/src/attention/rederive.ts`. `isRederivable(tool)` is a pure function of the
+producing tool name — no labels, no fitting:
+
+- **true** — `read_file`, `write_file`, `edit_file` (a view of the filesystem) and
+  `context_fetch`, `context_search`, `context_peek` (a view of the append-only trace, deterministic
+  by D1). The agent can get this back by re-reading; ABS turn 39 did exactly that unprompted, at a
+  measured price of 29,082 tokens.
+- **false** — `run_command`. Observes transient state: exit codes, test results, the working tree
+  at one instant. ABS's `git stash` A/B established which failures pre-existed and was referenced
+  10 and 11 turns later; nothing on disk could reconstruct it.
+- **undefined** — anything else. **Deliberately not `false`.** Both are kept, but they are
+  different facts and the audit must not blur them: `false` is a classification, `undefined` is an
+  admission that the host has a tool this policy has never seen. Classifying the unknown silently
+  would let a new tool's output be evicted the day it ships. (The first implementation returned
+  `false` for unknown tools; a test caught it.)
+
+Policy switch `evictRederivable: { minCadenceTurns }` on `AttentionPolicy`, with
+`lastEvictionTurn` supplied by the caller so `selectAttention` stays pure. **The cadence is part of
+the mechanism, not a tuning knob** — it is the `w*keep/(r*(1-keep))` break-even from iteration 1
+(12.5 turns on Anthropic, 5 on OpenRouter GLM), and a policy re-evaluating every turn is underwater
+by construction. New disposition `evicted_rederivable`; new counters `evictedRederivableTokens`,
+`evictedRederivableUnits`, `cadenceOpen`. Absent switch changes nothing.
+
+Eviction is refused for a unit that is pinned (task/steering/plan), inside the recency slice, not
+re-derivable, unclassified, **or matched by this turn's query fingerprints** — recurrence beats
+re-derivability, which is the ABS turn-40 case made a rule.
+
+Wired into `projectAttentionPrefix` (`eval/src/attention-loop.ts`): `producingTool(seq)` walks
+`tool_result -> call_seq -> tool_call.tool` from L0 and feeds `isRederivable`. New evidence
+counters `rederivableUnits` / `transientUnits` / `unclassifiedUnits` so an inert arm and a null
+result are different numbers. Profile schema accepts `evictRederivable`.
+
+Eight new tests in `packages/core/test/attention.test.ts` encode the intent, including the two
+failure modes that would make the policy dangerous: **never evict an unrepeatable observation at
+any cadence or age**, and **never evict an unfamiliar tool's output**. Full suite 1,133 passed,
+9 skipped, 0 failed.
+
+### Kill gate 4 — the mechanism-can-fire gate, zero live tokens
+
+Substrate: the ABS v4 capture, 49 turns, 67 tool-result units, 73,049 tokens, tool mix
+`run_command 37, edit_file 24, write_file 3, read_file 3`.
+
+**Composition of the trace by re-derivability:**
+
+| class | tokens | share | treatment |
+| --- | ---: | ---: | --- |
+| re-derivable | 46,511 | **63.7%** | eligible for eviction |
+| transient (`run_command`) | 26,538 | **36.3%** | never evicted |
+| unclassified | 0 | 0.0% | never evicted |
+
+So on a real trace the policy has a large but bounded target: it can consider two thirds of the
+context and is structurally forbidden from touching the other third. **Cadence sweep:**
+
+| cadence | evictions fired | cadence-open turns | peak evicted |
+| ---: | ---: | ---: | ---: |
+| c=0 | 35 | 49 | 46,511 tok / 30 units |
+| c=5 (OpenRouter break-even) | 7 | 21 | 44,748 tok / 25 units |
+| c=12 (Anthropic break-even) | 3 | 17 | 12,330 tok / 18 units |
+| c=25 | 2 | 16 | 41,410 tok / 23 units |
+
+**Dependency-tracking arm: GATE PASSES, mechanism live and non-trivial at every cadence.**
+
+**The attention-priority arm needed a second attempt, and the first result was the harness's fault,
+not the arm's.** Gate 4a passed `references: []` and reported `priorityChangedOrder=false` —
+"inert". That was wrong: `projectAttentionPrefix` builds **edit-provenance** edges (a write/edit to
+a path emits an `edit` edge to every prior unit touching that path), and the gate had starved the
+mechanism of its only available edge source. Rebuilt in gate 4b from the capture's real action
+sequence (paths recovered from `events.jsonl`: `module.go` written 15x / read 15x,
+`functions.go` read 7x / written 6x, `repl.go` 4x/3x, `module_test.go` 2x/1x):
+
+    units 90 | reference edges 265 | budget = half the trace
+    boost=1 halfLife=8:  priorityChangedOrder=true, selectionDiffers=true, 45 selected vs 45 base, overlap 19
+    boost=1 halfLife=4:  identical
+    boost=2 halfLife=8:  identical
+    boost=1 halfLife=16: identical
+
+**Attention-priority arm: GATE PASSES.** Priority replaces **26 of 45** admitted units — a large
+mechanism effect, not a marginal reordering.
+
+**But note what is identical across all four parameter settings, because it is a finding.** With no
+query fingerprints, relevance is 0 for every unit, so ranking is decided entirely by priority and
+*any* positive boost yields the same order. `boost` and `halfLifeTurns` are therefore **inert in
+the zero-relevance limit** and can only matter when relevance is non-zero and competing. Live runs
+do supply fingerprints, so this does not block the arm — but it means a sweep of these two
+constants on a fingerprint-free substrate would have measured nothing, and any future tuning of
+them must report the relevance distribution alongside.
+
+**Methodology lesson for the skill.** The gate's own instruction — "prove the candidate's mechanism
+can fire at all" — is not enough on its own: gate 4a *ran*, produced a clean `false`, and would
+have retired a live mechanism as inert. What caught it was asking where the mechanism's inputs come
+from in production and checking the gate supplied them. **A mechanism-can-fire gate must be fed the
+same inputs the live path builds, and an "inert" verdict is a claim about the gate until that is
+verified.**
+
+### Zone B re-specified per the operator (not yet implemented)
+
+Zone B summaries are an **index, not content**: their job is to tell the model that it once worked
+on X so it can go find X with `context_search`. This is consistent with the measured result that
+Zone B is inert on literal recall (flat-events 15/25 vs 16/25) — an index should not be expected to
+answer from itself — and with the headline-fingerprint work already in the record. Under this
+reading the correct Zone B evaluation is **whether it raises the rate of successful retrieval**,
+not whether the model can answer from Zone B directly. Registered as a distinct arm for a later
+loop; no code yet.

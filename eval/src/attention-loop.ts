@@ -1,7 +1,7 @@
 /** Opt-in experimental arm. Original producer responses remain in L0/L2;
  * policy-selected payloads are a separately recorded model-facing view. */
 import {
-  appendEvent, detectAttentionSignals, excerptAround, openTaskStore, selectAttention, selectPayload, TreeRetriever,
+  appendEvent, detectAttentionSignals, excerptAround, isRederivable, openTaskStore, selectAttention, selectPayload, TreeRetriever,
   type AttentionPolicy, type AttentionReference, type AttentionSignal, type AttentionUnit, type ChatMessage,
   type CompletionRequest, type CompletionResult, type ModelProvider, type PayloadMode,
   type TaskStore, type ToolCallRequest, type TraceEventInput,
@@ -53,7 +53,14 @@ export function parseAttentionProfile(input: unknown): AttentionProfile {
   if (profile.attention !== undefined) {
     const policy = object(profile.attention, 'policyProfile.attention');
     const switches = ['excludeIrrelevant', 'pinPlan', 'demandExpansion', 'sufficiencyGate', 'topicShiftReset'];
-    keys(policy, [...switches, 'recency', 'priority', 'breadth'], 'policyProfile.attention');
+    keys(policy, [...switches, 'recency', 'priority', 'breadth', 'evictRederivable'], 'policyProfile.attention');
+    if (policy.evictRederivable !== undefined) {
+      const evict = object(policy.evictRederivable, 'attention.evictRederivable');
+      keys(evict, ['minCadenceTurns'], 'attention.evictRederivable');
+      if (!Number.isSafeInteger(evict.minCadenceTurns) || (evict.minCadenceTurns as number) < 0) {
+        throw new Error('attention.evictRederivable.minCadenceTurns must be a nonnegative integer');
+      }
+    }
     for (const name of switches) if (policy[name] !== undefined && typeof policy[name] !== 'boolean') throw new Error(`attention.${name} must be boolean`);
     if (policy.recency !== undefined && (typeof policy.recency !== 'string' || !['exchange', 'subtask', 'all'].includes(policy.recency))) throw new Error('attention.recency must be exchange, subtask or all');
     if (policy.priority !== undefined) {
@@ -218,11 +225,26 @@ export function projectAttentionPrefix(handle: TaskStore, units: readonly Attent
       if (matched.length) mappedSupersessions++;
     }
   }
+  /**
+   * The tool that produced the content at this L0 seq, if any. A unit is a
+   * message; the message may be a tool result, in which case its provenance is
+   * the originating tool_call. Assistant and user messages have no tool.
+   */
+  const producingTool = (seq: number): string | undefined => {
+    const event = bySeq.get(seq);
+    if (event?.type === 'tool_result') return bySeq.get(event.call_seq)?.type === 'tool_call'
+      ? (bySeq.get(event.call_seq) as { tool: string }).tool : undefined;
+    return event?.type === 'tool_call' ? event.tool : undefined;
+  };
   const projected = units.map((unit) => {
     const relevant = scopedRelevance.filter((entry) => entry.declaration.kind === 'relevance' && entry.declaration.unit_seqs.includes(unit.seq)).at(-1);
     const subtask = subtasks.filter((entry) => entry.seq <= unit.seq).at(-1);
+    // Deterministic from L0, no labels: this is what makes the
+    // dependency-tracking arm runnable where the relevance-label arms were not.
+    const rederivable = isRederivable(producingTool(unit.seq));
     return {
       ...unit,
+      ...(rederivable === undefined ? {} : { rederivable }),
       ...(unit.seq !== planSeq || unit.role === 'task' || unit.role === 'steering' ? {} : { role: 'plan' as const }),
       ...(subtask?.declaration.kind === 'subtask' ? { phaseId: subtask.declaration.id } : {}),
       ...(relevant?.declaration.kind === 'relevance' ? { relevance: { value: relevant.declaration.value, turn, sourceSeq: relevant.seq, reason: `explicit ${relevant.type} declaration at L0 ${relevant.seq}` } } : {}),
@@ -231,7 +253,10 @@ export function projectAttentionPrefix(handle: TaskStore, units: readonly Attent
   return {
     units: projected, references, planSeq, subtaskStartSeq: activeSubtask?.seq,
     activePhaseId: activeSubtask?.declaration.kind === 'subtask' ? activeSubtask.declaration.id : undefined,
-    evidence: { planArtifacts: planSeq === undefined ? 0 : 1, subtaskBoundaries: subtasks.length, scopedRelevanceDeclarations: scopedRelevance.length, mappedFetches, mappedEdits, mappedSupersessions, referenceEdges: references.length, rejectedDeclarations: rejected },
+    evidence: { planArtifacts: planSeq === undefined ? 0 : 1, subtaskBoundaries: subtasks.length, scopedRelevanceDeclarations: scopedRelevance.length, mappedFetches, mappedEdits, mappedSupersessions, referenceEdges: references.length, rejectedDeclarations: rejected,
+      rederivableUnits: projected.filter((unit) => unit.rederivable === true).length,
+      transientUnits: projected.filter((unit) => unit.rederivable === false).length,
+      unclassifiedUnits: projected.filter((unit) => unit.rederivable === undefined).length },
   };
 }
 
@@ -295,6 +320,8 @@ export async function runAttentionArm(args: ArmArgs, deps: {
   const ledger: { sourceSeq: number; tool: string; command?: string; path?: string; outcome: 'success' | 'error'; originalBlob: string }[] = [];
   let signals: AttentionSignal[] = [];
   let focusFingerprints: string[] = [];
+  /** Cadence state lives here so selectAttention stays a pure function. */
+  let lastEvictionTurn: number | undefined;
   let toolWorkDone = false;
   let completionConfirmed = false;
   const tools = [...HARNESS_TOOL_SCHEMAS, ...CONTEXT_TOOL_SCHEMAS];
@@ -325,8 +352,12 @@ export async function runAttentionArm(args: ArmArgs, deps: {
       const attention = selectAttention({
         units: projection.units, references: projection.references, activePhaseId: projection.activePhaseId,
         subtaskStartSeq: projection.subtaskStartSeq, asOfSeq: handle.trace.lastSeq(), turn: turnIndex,
-        queryFingerprints: focusFingerprints, signals, currentExchangeId: `turn:${turnIndex - 1}`, policy: profile.attention,
+        queryFingerprints: focusFingerprints, signals, currentExchangeId: `turn:${turnIndex - 1}`,
+        lastEvictionTurn, policy: profile.attention,
       });
+      // Record the turn an eviction actually happened, not the turn it was
+      // merely permitted: the cadence must count from real prefix damage.
+      if (attention.mechanism.evictedRederivableUnits > 0) lastEvictionTurn = turnIndex;
       const selectedIds = new Set(attention.selectedIds);
       const selectedEntries = entries.filter((entry) => selectedIds.has(entry.unit.id));
       const messages = selectedEntries.map((entry) => ({ ...entry.message }));

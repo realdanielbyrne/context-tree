@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { detectAttentionSignals, selectAttention, selectPayload } from '../src/attention/index.js';
+import { detectAttentionSignals, isRederivable, selectAttention, selectPayload } from '../src/attention/index.js';
 import type { AttentionInput, AttentionUnit, PayloadSelectionInput } from '../src/attention/index.js';
 import { excerptAround } from '../src/retrieve/excerpt.js';
 
@@ -226,5 +226,108 @@ describe('payload selection hypotheses', () => {
     const codePoints = [...result.text ?? ''].map((char) => char.codePointAt(0) ?? 0);
     expect(codePoints.some((point) => point >= 0xd800 && point <= 0xdfff)).toBe(false);
     expect(result.text).toContain('NEEDLE');
+  });
+});
+
+describe('dependency-tracking eviction (re-derivability)', () => {
+  it('classifies durable-view tools as re-derivable and transient observations as not', () => {
+    // Recoverable by a re-read of the filesystem or the append-only trace.
+    for (const tool of ['read_file', 'write_file', 'edit_file', 'context_fetch', 'context_search', 'context_peek']) {
+      expect(isRederivable(tool)).toBe(true);
+    }
+    // run_command observes transient state: exit codes, test results, the tree
+    // at one instant. ABS's `git stash` A/B established which failures
+    // pre-existed and was referenced 10 and 11 turns later; nothing on disk
+    // could have reconstructed it.
+    expect(isRederivable('run_command')).toBe(false);
+    // Unknown degrades to undefined -> treated as NOT re-derivable. Never a
+    // crash, and never a drop.
+    expect(isRederivable('some_future_tool')).toBeUndefined();
+    expect(isRederivable(undefined)).toBeUndefined();
+    expect(isRederivable('  ')).toBeUndefined();
+  });
+
+  const cand = (over: Partial<AttentionUnit> = {}): AttentionUnit => ({
+    id: over.id ?? 'u1', seq: over.seq ?? 1, tokens: over.tokens ?? 100,
+    state: over.state ?? 'candidate', fingerprints: over.fingerprints ?? [], ...over,
+  });
+
+  it('evicts a re-derivable unit only when the cadence gate is open', () => {
+    const units = [cand({ id: 'read', rederivable: true, tokens: 5000 })];
+    const policy = { evictRederivable: { minCadenceTurns: 12 } };
+    // Turn 20, last eviction at turn 15 -> only 5 turns elapsed, gate shut.
+    const shut = selectAttention({ units, asOfSeq: 1, turn: 20, lastEvictionTurn: 15, queryFingerprints: [], policy });
+    expect(shut.mechanism.cadenceOpen).toBe(false);
+    expect(shut.mechanism.evictedRederivableTokens).toBe(0);
+    // Turn 30, last eviction at turn 15 -> 15 turns elapsed, gate open.
+    const open = selectAttention({ units, asOfSeq: 1, turn: 30, lastEvictionTurn: 15, queryFingerprints: [], policy });
+    expect(open.mechanism.cadenceOpen).toBe(true);
+    expect(open.mechanism.evictedRederivableTokens).toBe(5000);
+    expect(open.selectedIds).not.toContain('read');
+  });
+
+  it('NEVER evicts an unrepeatable observation, at any cadence or age', () => {
+    // The policy's one unrecoverable mistake. run_command output is gone if dropped.
+    const units = [cand({ id: 'stash-ab', rederivable: false, seq: 1, tokens: 9000 })];
+    const result = selectAttention({
+      units, asOfSeq: 1, turn: 999, lastEvictionTurn: 0, queryFingerprints: [],
+      policy: { evictRederivable: { minCadenceTurns: 0 } },
+    });
+    expect(result.mechanism.cadenceOpen).toBe(true);
+    expect(result.mechanism.evictedRederivableTokens).toBe(0);
+    expect(result.audit.find((row) => row.id === 'stash-ab')!.disposition).not.toBe('evicted_rederivable');
+  });
+
+  it('treats an unknown tool as unrepeatable rather than dropping it', () => {
+    // rederivable is left undefined when isRederivable cannot classify.
+    const units = [cand({ id: 'mystery', rederivable: undefined, tokens: 4000 })];
+    const result = selectAttention({
+      units, asOfSeq: 1, turn: 50, queryFingerprints: [],
+      policy: { evictRederivable: { minCadenceTurns: 0 } },
+    });
+    expect(result.mechanism.evictedRederivableUnits).toBe(0);
+  });
+
+  it('keeps a re-derivable unit the current turn is actually asking about', () => {
+    // Recurrence beats re-derivability: ABS turn 40 needed the turn-4 sed
+    // window after 16 dormant turns, and re-reading it cost 29,082 tokens.
+    const units = [cand({ id: 'functions.go', rederivable: true, fingerprints: ['evaluator/functions.go'], tokens: 5000 })];
+    const result = selectAttention({
+      units, asOfSeq: 1, turn: 40, queryFingerprints: ['evaluator/functions.go'],
+      demand: { kind: 'explicit', budgetTokens: 20_000 },
+      policy: { evictRederivable: { minCadenceTurns: 0 } },
+    });
+    expect(result.mechanism.evictedRederivableTokens).toBe(0);
+    expect(result.audit.find((row) => row.id === 'functions.go')!.disposition).toBe('selected');
+    expect(result.selectedIds).toContain('functions.go');
+  });
+
+  it('never evicts pinned task, steering or plan text even when re-derivable', () => {
+    const units = [
+      cand({ id: 'task', role: 'task', rederivable: true, tokens: 600 }),
+      cand({ id: 'steering', role: 'steering', rederivable: true, tokens: 300 }),
+      cand({ id: 'plan', role: 'plan', rederivable: true, tokens: 900 }),
+    ];
+    const result = selectAttention({
+      units, asOfSeq: 1, turn: 80, queryFingerprints: [],
+      policy: { evictRederivable: { minCadenceTurns: 0 }, pinPlan: true },
+    });
+    expect(result.mechanism.evictedRederivableTokens).toBe(0);
+  });
+
+  it('rejects a negative or fractional cadence rather than guessing one', () => {
+    const units = [unit()];
+    for (const minCadenceTurns of [-1, 2.5]) {
+      expect(() => selectAttention({
+        units, asOfSeq: 1, turn: 5, queryFingerprints: [], policy: { evictRederivable: { minCadenceTurns } },
+      })).toThrow(RangeError);
+    }
+  });
+
+  it('is inert when the switch is absent — the default changes nothing', () => {
+    const units = [cand({ id: 'read', rederivable: true, tokens: 5000 })];
+    const result = selectAttention({ units, asOfSeq: 1, turn: 99, queryFingerprints: [] });
+    expect(result.mechanism.cadenceOpen).toBe(false);
+    expect(result.mechanism.evictedRederivableTokens).toBe(0);
   });
 });
