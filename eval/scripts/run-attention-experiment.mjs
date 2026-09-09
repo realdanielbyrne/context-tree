@@ -90,6 +90,9 @@ if (timeoutMs !== undefined && (!Number.isSafeInteger(timeoutMs) || timeoutMs <=
 if (manifest.agentMaxTokens !== undefined && (!Number.isSafeInteger(manifest.agentMaxTokens) || manifest.agentMaxTokens <= 0)) {
   throw new Error('agentMaxTokens must be a positive integer');
 }
+if (manifest.completionNudgeBudget !== undefined && (!Number.isSafeInteger(manifest.completionNudgeBudget) || manifest.completionNudgeBudget < 1)) {
+  throw new Error('completionNudgeBudget must be an integer >= 1');
+}
 // The timeout is meaningless unless generation is bounded: an uncapped reply on
 // a slow model exceeds any timeout, so a timeout without a reply cap kills
 // legitimate long writes rather than hung calls. Require them together, and
@@ -114,6 +117,7 @@ const common = { provider: manifest.provider, model: manifest.model,
   leafModel: manifest.leafModel ?? manifest.model, rootModel: manifest.rootModel ?? manifest.model, judgeModel: manifest.model,
   maxTurns: Infinity, timeCapMs: Infinity, costCapUsd: null, tokenCap: manifest.tokenCap,
   ...(manifest.agentMaxTokens === undefined ? {} : { agentMaxTokens: manifest.agentMaxTokens }),
+  ...(manifest.completionNudgeBudget === undefined ? {} : { completionNudgeBudget: manifest.completionNudgeBudget }),
   window: manifest.window, budgets: manifest.budgets ?? { zoneB: 8000, zoneC: 30000 },
   keepSandbox: false, temperature: manifest.temperature ?? null, transportPolicy, transportRetriesDisabled: sdkMaxRetries === 0 && providerAttempts === 1,
   attemptScope: 'ModelProvider.complete', replyPolicy };

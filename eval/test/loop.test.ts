@@ -1058,16 +1058,26 @@ describe('completion gate parity across arms', () => {
     });
 
   it('EVAL_NO_COMPLETION_GATE=1 disables it for every arm, which is the only parity setting that existed before', () => {
-    expect(completionGateOpen(true, false)).toBe(true);
+    expect(completionGateOpen(true, 0)).toBe(true);
     process.env.EVAL_NO_COMPLETION_GATE = '1';
     try {
-      expect(completionGateOpen(true, false)).toBe(false);
+      expect(completionGateOpen(true, 0)).toBe(false);
     } finally {
       delete process.env.EVAL_NO_COMPLETION_GATE;
     }
     // Never fires before tool work: a task answered in one turn is not premature.
-    expect(completionGateOpen(false, false)).toBe(false);
-    // Never fires twice.
-    expect(completionGateOpen(true, true)).toBe(false);
+    expect(completionGateOpen(false, 0)).toBe(false);
+    // Default budget is 1, so a spent nudge closes the gate.
+    expect(completionGateOpen(true, 1)).toBe(false);
+  });
+
+  it('spends nudges up to the declared budget, which is how continue_until_timeout is approximated', () => {
+    // LHTB sets continue_until_timeout on 30 of 46 tasks; upstream Harbor
+    // ignores it and those tasks "run single-shot there and score lower".
+    // Observed here: 6 turns, score 0/11, 15,726 of 1,552,615 tokens spent.
+    for (let used = 0; used < 20; used += 1) expect(completionGateOpen(true, used, 20)).toBe(true);
+    expect(completionGateOpen(true, 20, 20)).toBe(false);
+    // The budget never overrides the preconditions.
+    expect(completionGateOpen(false, 0, 20)).toBe(false);
   });
 });

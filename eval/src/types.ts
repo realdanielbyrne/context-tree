@@ -206,4 +206,16 @@ export interface HarnessOptions {
    * a slow one. Unset preserves the provider's own maximum.
    */
   agentMaxTokens?: number;
+  /**
+   * How many completion nudges one run may spend. 1 is the historical
+   * behaviour. A larger budget approximates LHTB's `continue_until_timeout`
+   * (set on 30 of its 46 tasks), which upstream Harbor ignores — causing those
+   * tasks to "run single-shot there and score lower", exactly as observed here:
+   * an agent stopped after 6 turns and scored 0/11 on 15,726 of a 1,552,615
+   * token budget. It is an APPROXIMATION: no interim verifier runs, so the
+   * agent is asked to continue rather than told it failed, and the conversation
+   * is not reset per phase as LHTB does. Scores under it are comparable BETWEEN
+   * ARMS, never to published LHTB numbers.
+   */
+  completionNudgeBudget?: number;
 }

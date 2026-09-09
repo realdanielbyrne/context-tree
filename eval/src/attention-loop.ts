@@ -323,7 +323,7 @@ export async function runAttentionArm(args: ArmArgs, deps: {
   /** Cadence state lives here so selectAttention stays a pure function. */
   let lastEvictionTurn: number | undefined;
   let toolWorkDone = false;
-  let completionConfirmed = false;
+  let nudgesUsed = 0;
   const tools = [...HARNESS_TOOL_SCHEMAS, ...CONTEXT_TOOL_SCHEMAS];
   const nativeCache = process.env.EVAL_NATIVE_CACHE === '1';
   const ts = () => new Date().toISOString();
@@ -407,8 +407,8 @@ export async function runAttentionArm(args: ArmArgs, deps: {
       if (result.toolCalls.length === 0) {
         // Same gate, same wording, same once-per-run semantics as every other
         // arm (loop.ts COMPLETION_NUDGE) so a bare reply is not an arm effect.
-        if (completionGateOpen(toolWorkDone, completionConfirmed)) {
-          completionConfirmed = true;
+        if (completionGateOpen(toolWorkDone, nudgesUsed, args.options.completionNudgeBudget)) {
+          nudgesUsed += 1;
           const nudgeBlob = handle.blobs.put(COMPLETION_NUDGE);
           const nudgeEvent = append(handle, { type: 'user_message', ts: ts(), blob: nudgeBlob });
           addMessage(nudgeEvent.seq, { role: 'user', content: COMPLETION_NUDGE }, nudgeBlob, `turn:${turnIndex}`, 'steering');

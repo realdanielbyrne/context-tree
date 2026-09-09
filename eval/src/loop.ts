@@ -105,9 +105,31 @@ export const NATIVE_SYSTEM_PROMPT = [
 export const COMPLETION_NUDGE =
   'system: you stopped calling tools. If every step of the task is verifiably done, reply with your final answer again; otherwise continue working.';
 
-/** Shared by every arm so a bare reply is treated identically across arms. */
-export function completionGateOpen(toolWorkDone: boolean, alreadyConfirmed: boolean): boolean {
-  return toolWorkDone && !alreadyConfirmed && process.env.EVAL_NO_COMPLETION_GATE !== '1';
+/**
+ * Shared by every arm so a bare reply is treated identically across arms.
+ *
+ * `nudgesUsed` counts nudges already spent; `budget` is how many this run may
+ * spend. A budget of 1 is the historical behaviour (one nudge, then the next
+ * bare reply ends the run).
+ *
+ * A larger budget approximates LHTB's `continue_until_timeout`, which 30 of its
+ * 46 tasks set: "the agent keeps working until the task timeout instead of
+ * ending the moment it declares the task complete... the harness resumes the
+ * agent with a binary rejection only, repeating until the timeout elapses or
+ * the verifier passes." Upstream Harbor ignores that flag and those tasks
+ * "run single-shot there and score lower" — which is exactly what this harness
+ * did: an agent stopped after 6 turns and scored 0 of 11 having spent 15,726 of
+ * a 1,552,615-token budget.
+ *
+ * This is an APPROXIMATION and must not be reported as an LHTB-comparable
+ * score: it re-prompts on a bare reply without running the interim verifier, so
+ * the agent is not told it failed, only asked to continue. It also keeps one
+ * conversation where LHTB starts a fresh `AgentContext()` per phase. Its
+ * purpose is to make the agent persist far enough that the ARMS discriminate
+ * from each other, which is a within-experiment comparison.
+ */
+export function completionGateOpen(toolWorkDone: boolean, nudgesUsed: number, budget = 1): boolean {
+  return toolWorkDone && nudgesUsed < budget && process.env.EVAL_NO_COMPLETION_GATE !== '1';
 }
 
 /**
@@ -380,7 +402,7 @@ async function runDsaArm(args: ArmArgs): Promise<ArmOutput> {
   const guard = makeRepeatGuard();
   let finalText = '';
   let toolWorkDone = false;
-  let completionConfirmed = false;
+  let nudgesUsed = 0;
   for (let turnIndex = 0; turnIndex < args.options.maxTurns; turnIndex += 1) {
     if (Date.now() >= args.deadlineMs) return { status: 'time_cap', finalText };
     const request: CompletionRequest = {
@@ -404,8 +426,8 @@ async function runDsaArm(args: ArmArgs): Promise<ArmOutput> {
     Object.assign(args.usage, addTotals(args.usage, result.usage));
     messages.push({ role: 'assistant', content: result.text });
     if (result.toolCalls.length === 0) {
-      if (completionGateOpen(toolWorkDone, completionConfirmed)) {
-        completionConfirmed = true;
+      if (completionGateOpen(toolWorkDone, nudgesUsed, args.options.completionNudgeBudget)) {
+        nudgesUsed += 1;
         messages.push({ role: 'user', content: COMPLETION_NUDGE });
         continue;
       }
@@ -498,7 +520,7 @@ async function runPrefixRetrievalArm(args: ArmArgs): Promise<ArmOutput> {
     const fixed = countTokens(system) + countTokens(JSON.stringify(HARNESS_TOOL_SCHEMAS)) + countTokens(task.content);
     let finalText = '';
   let toolWorkDone = false;
-  let completionConfirmed = false;
+  let nudgesUsed = 0;
     let focus = args.scenario.task;
     for (let turnIndex = 0; turnIndex < args.options.maxTurns; turnIndex += 1) {
       if (Date.now() >= args.deadlineMs) return { status: 'time_cap', finalText };
@@ -533,8 +555,8 @@ async function runPrefixRetrievalArm(args: ArmArgs): Promise<ArmOutput> {
       const assistantEvent = appendTo(handle, { type: 'assistant_message', ts: ts(), blob: handle.blobs.put(result.text.length > 0 ? result.text : '(invoking tool)') });
       if (result.text.length > 0) focus = result.text;
       if (result.toolCalls.length === 0) {
-        if (completionGateOpen(toolWorkDone, completionConfirmed)) {
-          completionConfirmed = true;
+        if (completionGateOpen(toolWorkDone, nudgesUsed, args.options.completionNudgeBudget)) {
+          nudgesUsed += 1;
           transcript.push({ role: 'user', content: COMPLETION_NUDGE });
           continue;
         }
@@ -577,7 +599,7 @@ async function runNativeArm(args: ArmArgs): Promise<ArmOutput> {
   const nativeCache = process.env.EVAL_NATIVE_CACHE === '1';
   let finalText = '';
   let toolWorkDone = false;
-  let completionConfirmed = false;
+  let nudgesUsed = 0;
   for (let turnIndex = 0; turnIndex < args.options.maxTurns; turnIndex += 1) {
     if (Date.now() >= args.deadlineMs) return { status: 'time_cap', finalText };
     const turnMessages = [...messages];
@@ -607,8 +629,8 @@ async function runNativeArm(args: ArmArgs): Promise<ArmOutput> {
     Object.assign(args.usage, addTotals(args.usage, result.usage));
     messages.push({ role: 'assistant', content: result.text });
     if (result.toolCalls.length === 0) {
-      if (completionGateOpen(toolWorkDone, completionConfirmed)) {
-        completionConfirmed = true;
+      if (completionGateOpen(toolWorkDone, nudgesUsed, args.options.completionNudgeBudget)) {
+        nudgesUsed += 1;
         messages.push({ role: 'user', content: COMPLETION_NUDGE });
         continue;
       }
@@ -1190,7 +1212,7 @@ async function runTreeArm(
     let tailCounter = 0;
     // Completion-gate state (see the bare-text branch below).
     let toolWorkDone = false;
-    let completionConfirmed = false;
+    let nudgesUsed = 0;
     for (let turnIndex = 0; turnIndex < args.options.maxTurns; turnIndex += 1) {
       if (Date.now() >= args.deadlineMs) return { status: 'time_cap', finalText, lazyCrossed };
       // v5.3 (EVAL_ZONEC_LATEST=1): expand the LATEST branch instead of the
@@ -1314,8 +1336,8 @@ async function runTreeArm(
         // 14 fires and 0 rescues, at a mean 13,793 tokens — the run's most
         // expensive turn, because cacheRead bills the whole prefix and that
         // turn carries the largest prefix the run ever has.
-        if (completionGateOpen(toolWorkDone, completionConfirmed)) {
-          completionConfirmed = true;
+        if (completionGateOpen(toolWorkDone, nudgesUsed, args.options.completionNudgeBudget)) {
+          nudgesUsed += 1;
           const nudge = COMPLETION_NUDGE;
           if (fetchEvents) {
             // v5.8: the nudge is an L0 event like everything else — it rides
