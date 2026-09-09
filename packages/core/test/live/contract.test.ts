@@ -1,10 +1,10 @@
 /**
  * §17's offline half: the §8 summary prompts driven through `RecordedProvider`
- * against the cassettes in `eval-resumption/recorded/`, with no network anywhere.
+ * against the cassettes in `packages/core/test/recorded/`, with no network anywhere.
  *
  * This is §16's M3 acceptance — "real summaries pass the content contract on 5
  * golden branches" — in the only form it can take without an API key. The
- * cassettes it replays are hand-authored (see `eval-resumption/recorded/README.md`), so
+ * cassettes it replays are hand-authored (see `packages/core/test/recorded/README.md`), so
  * what this file proves is that the *contract* holds end to end for realistic
  * replies, not that a real model produced them. `live.test.ts` is the half that
  * proves the second thing, and only when someone runs it with a key.
@@ -257,7 +257,7 @@ describe('cassette keys track the versioned prompts (§11)', () => {
         expect(
           cassette[key],
           `${branch}'s prompt hashes to ${key}, which the cassette does not hold — ` +
-            'the leaf template or the fixture changed; re-record (see eval-resumption/recorded/README.md)',
+            'the leaf template or the fixture changed; re-record (see packages/core/test/recorded/README.md)',
         ).toBeDefined();
       }
     } finally {

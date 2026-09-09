@@ -1,0 +1,254 @@
+[
+  {
+    "arm": "native",
+    "model": "z-ai/glm-5.3-flash",
+    "scenario": "great-expectations-audit",
+    "replicate": 1,
+    "epoch": "5c33aedda33d38db06e60b1071081157d2c9eefa4b5a3789d59b79add4045e41",
+    "configHash": "e1ca1ed3188bd84b9cefe0e610eb98b6e5fee06a5d23a154fe0480b4a5d33d53",
+    "runId": "great-expectations-audit-native-r1",
+    "capturePath": "/Users/danielbyrne/GitHub/rpm/context-tree/reports/metrics/attention-policy-continuation/loop3-pilot-n1/captures/great-expectations-audit-native-r1/lhtb-great-expectations-audit-native",
+    "status": "error",
+    "success": null,
+    "score": null,
+    "evidenceVerified": false,
+    "allModelTokens": null,
+    "observedAllModelTokens": 3818,
+    "costByModel": {
+      "z-ai/glm-5.3-flash": null
+    },
+    "providerErrors": 1,
+    "attempted": 3,
+    "attemptScope": "ModelProvider.complete",
+    "transportAttempts": null,
+    "usageComplete": false,
+    "mechanismEvents": 0,
+    "captureHashes": {
+      "blobs/0439024e343eafe0fec85c81c4bf9095134443b57f452f438d4f33feb24b2cbd": "0439024e343eafe0fec85c81c4bf9095134443b57f452f438d4f33feb24b2cbd",
+      "blobs/06d4571fc6953192a7c8c60c179f13d61f15eadb4393e47e95b249ed8cd26bfe": "06d4571fc6953192a7c8c60c179f13d61f15eadb4393e47e95b249ed8cd26bfe",
+      "blobs/2d39646716e36f4b46cdf5f5fe2df5cc90b23c1ef0c2a168e6aeeb9761eef6c2": "2d39646716e36f4b46cdf5f5fe2df5cc90b23c1ef0c2a168e6aeeb9761eef6c2",
+      "blobs/544d6877f98d64b50d04b412b45c3f1877fb8bf618bb998743667a97c1455ac7": "544d6877f98d64b50d04b412b45c3f1877fb8bf618bb998743667a97c1455ac7",
+      "blobs/59a39aaddd9e8b347329a0801c331bbf1c710780316de57a74eb772f9d2f3e0d": "59a39aaddd9e8b347329a0801c331bbf1c710780316de57a74eb772f9d2f3e0d",
+      "blobs/6a337b9228ce22cf37f740efc5b26889cab2ecbebdf7c6290de64c995279a301": "6a337b9228ce22cf37f740efc5b26889cab2ecbebdf7c6290de64c995279a301",
+      "blobs/728900b643365b358dd3a433523baae1c993fe102b14c53104ae4701c17ab063": "728900b643365b358dd3a433523baae1c993fe102b14c53104ae4701c17ab063",
+      "blobs/b725f4e58664597f86e66a5521218be93df1062ccd74ad8dcb0c80251bba9e79": "b725f4e58664597f86e66a5521218be93df1062ccd74ad8dcb0c80251bba9e79",
+      "blobs/dbcf18b277d8002e11423c9ac058c6821fbbf1cd3789478d0a12b4ccff122fbe": "dbcf18b277d8002e11423c9ac058c6821fbbf1cd3789478d0a12b4ccff122fbe",
+      "blobs/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "events.jsonl": "cece4e9e70842feff6d1a314eeb749f9e77d0daf8ef07ef0da20dc4f2bb0b24e"
+    },
+    "artifactHashes": {},
+    "result": {
+      "runId": "great-expectations-audit-native-r1",
+      "benchmark": "lhtb",
+      "scenarioId": "great-expectations-audit",
+      "arm": "native",
+      "model": "z-ai/glm-5.3-flash",
+      "costByModel": [
+        {
+          "model": "z-ai/glm-5.3-flash",
+          "calls": 3,
+          "usage": {
+            "input": 3201,
+            "output": 233,
+            "cacheRead": 384,
+            "cacheWrite": 0
+          },
+          "usd": 0.000304085,
+          "priceMatched": "z-ai/glm-5.3-flash",
+          "usageComplete": false
+        }
+      ],
+      "status": "error",
+      "success": null,
+      "judge": {
+        "success": null,
+        "score": null,
+        "detail": ""
+      },
+      "metrics": {
+        "tokens": {
+          "input": 3201,
+          "output": 233,
+          "cacheRead": 384,
+          "cacheWrite": 0,
+          "total": 3818
+        },
+        "turns": {
+          "modelTurns": 2,
+          "toolCalls": 4
+        },
+        "speed": {
+          "wallMs": 1112435,
+          "p50TurnMs": 6752,
+          "p95TurnMs": 10556,
+          "outputTokensPerSec": 0.20945043980097713
+        },
+        "costUsd": 0.000304085,
+        "batching": {
+          "trailingBareTurns": 0,
+          "gateFired": false,
+          "gateRescued": false,
+          "callsPerToolUsingTurn": 2,
+          "callsPerTurn": 2,
+          "writesPerWriteBearingTurn": 0,
+          "maxReadBatch": 0,
+          "maxWriteBatch": 0,
+          "runCommandOnlyTurns": 2
+        },
+        "lazyCrossed": false,
+        "finalTextChars": 0,
+        "allModelTokens": {
+          "input": 3201,
+          "output": 233,
+          "cacheRead": 384,
+          "cacheWrite": 0,
+          "total": 3818
+        },
+        "usageComplete": false
+      },
+      "turns": [
+        {
+          "index": 0,
+          "latencyMs": 10556,
+          "usage": {
+            "input": 1483,
+            "output": 102,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 1585
+          },
+          "usageComplete": true,
+          "toolCalls": [
+            "run_command",
+            "run_command"
+          ],
+          "stopReason": "tool_calls",
+          "attempts": 1,
+          "promptTokens": 1453
+        },
+        {
+          "index": 1,
+          "latencyMs": 6752,
+          "usage": {
+            "input": 1718,
+            "output": 131,
+            "cacheRead": 384,
+            "cacheWrite": 0,
+            "total": 2233
+          },
+          "usageComplete": true,
+          "toolCalls": [
+            "run_command",
+            "run_command"
+          ],
+          "stopReason": "tool_calls",
+          "attempts": 1,
+          "promptTokens": 2123
+        }
+      ],
+      "error": "ModelCallError: openrouter chat.completions.create failed after 6 attempt(s): Request timed out.",
+      "capturePath": "/Users/danielbyrne/GitHub/rpm/context-tree/reports/metrics/attention-policy-continuation/loop3-pilot-n1/captures/great-expectations-audit-native-r1/lhtb-great-expectations-audit-native",
+      "configuration": {
+        "provider": "openrouter",
+        "model": "z-ai/glm-5.3-flash",
+        "leafModel": "z-ai/glm-5.3-flash",
+        "rootModel": "z-ai/glm-5.3-flash",
+        "judgeModel": "z-ai/glm-5.3-flash",
+        "maxTurns": null,
+        "timeCapMs": null,
+        "costCapUsd": null,
+        "tokenCap": 1552615,
+        "window": 1310720,
+        "budgets": {
+          "zoneB": 8000,
+          "zoneC": 30000
+        },
+        "keepSandbox": false,
+        "temperature": null,
+        "transportPolicy": {
+          "sdkMaxRetries": 0,
+          "retry": {
+            "attempts": 6
+          },
+          "timeoutMs": 180000
+        },
+        "transportRetriesDisabled": false,
+        "attemptScope": "ModelProvider.complete",
+        "replyPolicy": {
+          "kind": "no-harness-reply-limit",
+          "defaultMaxTokens": null,
+          "confirmationEligible": true
+        },
+        "captureDir": "/Users/danielbyrne/GitHub/rpm/context-tree/reports/metrics/attention-policy-continuation/loop3-pilot-n1/captures/great-expectations-audit-native-r1"
+      },
+      "startedAt": "2026-09-09T04:24:33.323Z",
+      "finishedAt": "2026-09-09T04:43:05.758Z"
+    }
+  },
+  {
+    "arm": "attn-control",
+    "model": "z-ai/glm-5.3-flash",
+    "scenario": "great-expectations-audit",
+    "replicate": 1,
+    "epoch": "5c33aedda33d38db06e60b1071081157d2c9eefa4b5a3789d59b79add4045e41",
+    "configHash": "4c82dab779c51072902f0f735103917e2a76acdf1f7ec3503926f3281ec77d94",
+    "runId": "great-expectations-audit-attn-control-r1",
+    "capturePath": "/Users/danielbyrne/GitHub/rpm/context-tree/reports/metrics/attention-policy-continuation/loop3-pilot-n1/captures/great-expectations-audit-attn-control-r1/lhtb-great-expectations-audit-attention",
+    "status": "interrupted",
+    "success": null,
+    "score": null,
+    "evidenceVerified": false,
+    "allModelTokens": null,
+    "observedAllModelTokens": 15511,
+    "costByModel": null,
+    "providerErrors": 0,
+    "attempted": 5,
+    "attemptScope": "ModelProvider.complete",
+    "transportAttempts": null,
+    "usageComplete": false,
+    "mechanismEvents": 0,
+    "captureHashes": {
+      "blobs/015a4a954299bfa6cc008fa6e94d679873ee5e8bf4737f5e43992197e4c3953d": "015a4a954299bfa6cc008fa6e94d679873ee5e8bf4737f5e43992197e4c3953d",
+      "blobs/071efe25accd4ff2fb18f8ceb611f6fb5d0235d0323c129a881e9c084be58a19": "071efe25accd4ff2fb18f8ceb611f6fb5d0235d0323c129a881e9c084be58a19",
+      "blobs/0f93b8b5d1c24ce187ae3d955f4996975ae0c874de5addf49d24a1df82439509": "0f93b8b5d1c24ce187ae3d955f4996975ae0c874de5addf49d24a1df82439509",
+      "blobs/1b5798753f471b3fb9caa3bd9c45842cee9c56cd6429e09af19ebdf42704ca02": "1b5798753f471b3fb9caa3bd9c45842cee9c56cd6429e09af19ebdf42704ca02",
+      "blobs/20746ba51d4508a6911b33f2790fedbacb4f15672965db115d798ccc88b5c0a6": "20746ba51d4508a6911b33f2790fedbacb4f15672965db115d798ccc88b5c0a6",
+      "blobs/2d89bae4792fbc513366893a3743f09d9c125f9e7ce1e8da225413c9251d32b6": "2d89bae4792fbc513366893a3743f09d9c125f9e7ce1e8da225413c9251d32b6",
+      "blobs/2dbe42d8d5a97692cb27b157c505f47cfd56ee40fd9bef1c4ae2f9a316e0979d": "2dbe42d8d5a97692cb27b157c505f47cfd56ee40fd9bef1c4ae2f9a316e0979d",
+      "blobs/2ff9e72042c68aca5c10efe8d43f3adb70580af507441d9fab040c7d9e59a0e2": "2ff9e72042c68aca5c10efe8d43f3adb70580af507441d9fab040c7d9e59a0e2",
+      "blobs/42c1ddda2a096420f5a6c34a8c15356f38aace1b66b156058b4f58ac9b3a2534": "42c1ddda2a096420f5a6c34a8c15356f38aace1b66b156058b4f58ac9b3a2534",
+      "blobs/4441d697b0cbe111ca5d74423f74ac3a6504b1aaa1d216fdaa2abab0d38c256e": "4441d697b0cbe111ca5d74423f74ac3a6504b1aaa1d216fdaa2abab0d38c256e",
+      "blobs/490f9ba275e0c1ae1d2441a7ce9e8e183247ba2646e7fe907bc4004df41255df": "490f9ba275e0c1ae1d2441a7ce9e8e183247ba2646e7fe907bc4004df41255df",
+      "blobs/4f8071fb42c804d818440a434dbe06c6022c7e834198c2922a06af823c749f63": "4f8071fb42c804d818440a434dbe06c6022c7e834198c2922a06af823c749f63",
+      "blobs/55be41bbc00c3c513fa19d0068bd4761cc68581a3dfa7e5662a9d33198d71468": "55be41bbc00c3c513fa19d0068bd4761cc68581a3dfa7e5662a9d33198d71468",
+      "blobs/570586a3986988ef5d251317b000c822705830a876a66db28bfb4e2b5b09e4a5": "570586a3986988ef5d251317b000c822705830a876a66db28bfb4e2b5b09e4a5",
+      "blobs/5fdcdbfa3062263a7aaaa6fa72f6035a677e9849c3e55f8a902e95db573bfaac": "5fdcdbfa3062263a7aaaa6fa72f6035a677e9849c3e55f8a902e95db573bfaac",
+      "blobs/61673576bdea24f1e1cd686a20e0d91a14b848b03d10520b10c67ab9aac17be1": "61673576bdea24f1e1cd686a20e0d91a14b848b03d10520b10c67ab9aac17be1",
+      "blobs/71e264165f863431b53875cd70f9f97a7640a0657451e647822a18c830c09fb9": "71e264165f863431b53875cd70f9f97a7640a0657451e647822a18c830c09fb9",
+      "blobs/77842834d102e3ad5c92c8a0c288f734e0c9454249a914cd17c227eea79d17ba": "77842834d102e3ad5c92c8a0c288f734e0c9454249a914cd17c227eea79d17ba",
+      "blobs/7ab8237ed4bd0ce49f1a80864eff3675cac877f4b99ad76a3be063569750f996": "7ab8237ed4bd0ce49f1a80864eff3675cac877f4b99ad76a3be063569750f996",
+      "blobs/7b27d7844e9e153ec2a27bcbbc52e093cc3d93848d18d80c0b3d7a9fdd289a62": "7b27d7844e9e153ec2a27bcbbc52e093cc3d93848d18d80c0b3d7a9fdd289a62",
+      "blobs/86549e3a85747233b32d603a3da51c5c4346a71c7ca7401430f3c4ce82d0bfba": "86549e3a85747233b32d603a3da51c5c4346a71c7ca7401430f3c4ce82d0bfba",
+      "blobs/9096fcfcd3b451fd1980632124b518920f1ea7c1216a17da8603515ab365607f": "9096fcfcd3b451fd1980632124b518920f1ea7c1216a17da8603515ab365607f",
+      "blobs/92d972dd349d8c5972bcff261a5fd843560e072f3be92abfe1919e8c3be3c8b9": "92d972dd349d8c5972bcff261a5fd843560e072f3be92abfe1919e8c3be3c8b9",
+      "blobs/ab6c7e177decaffb10b49336f6a4a2e85782a5f7a79b5c1dbbba236420a706b2": "ab6c7e177decaffb10b49336f6a4a2e85782a5f7a79b5c1dbbba236420a706b2",
+      "blobs/b1b6f3c1e5d4135e339c7fe02481c865e263341feb23936a8c2ae48b648aaef1": "b1b6f3c1e5d4135e339c7fe02481c865e263341feb23936a8c2ae48b648aaef1",
+      "blobs/b6b36af219068af5797dbb7994d3b68a84f3ac74a7d3ad4d766c6e7d1cd755f0": "b6b36af219068af5797dbb7994d3b68a84f3ac74a7d3ad4d766c6e7d1cd755f0",
+      "blobs/ba69cb473e4b78cedd3ca623a0274edad12a75dbea449e2cda03584b6a5e2664": "ba69cb473e4b78cedd3ca623a0274edad12a75dbea449e2cda03584b6a5e2664",
+      "blobs/cd4372b7edec958dddd113b52bcc3fecc4cde6c88d737d6b62ab8cc0556b78d6": "cd4372b7edec958dddd113b52bcc3fecc4cde6c88d737d6b62ab8cc0556b78d6",
+      "blobs/cf82cff7a0564779646a73e545b00cae59929d8f8ef95f6debd41160a1f7562f": "cf82cff7a0564779646a73e545b00cae59929d8f8ef95f6debd41160a1f7562f",
+      "blobs/d6bedef9e770fc2c74e63bfdb01d55a4a241dec2cb2915a30a66a2ba23e70432": "d6bedef9e770fc2c74e63bfdb01d55a4a241dec2cb2915a30a66a2ba23e70432",
+      "blobs/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "blobs/e5f285be47838aba12cdab74a84329e00ce8dc5b9dcfaa21c5a3149da1b80c32": "e5f285be47838aba12cdab74a84329e00ce8dc5b9dcfaa21c5a3149da1b80c32",
+      "blobs/e6898162af3506f190d58adae3d0518438a3c8a3711fdc2b251fc1984ecfd74f": "e6898162af3506f190d58adae3d0518438a3c8a3711fdc2b251fc1984ecfd74f",
+      "blobs/f435a501d31feb4a33aee9cb09c08edb3a452f7889d9668a5688c34593566c81": "f435a501d31feb4a33aee9cb09c08edb3a452f7889d9668a5688c34593566c81",
+      "blobs/f5f8c2a6214e2b06b378ec19dcb21a36c5c36d2a943eccbb4cd10a348b41d0f8": "f5f8c2a6214e2b06b378ec19dcb21a36c5c36d2a943eccbb4cd10a348b41d0f8",
+      "blobs/f7f557a6a961f0dc0bf4a68e9966f88e736ea705c4bcb36ef8308e0a29981ce2": "f7f557a6a961f0dc0bf4a68e9966f88e736ea705c4bcb36ef8308e0a29981ce2",
+      "blobs/f8e3e12a92bbae3469c71d80efc2fd250453a09e7b14a5d97a1747620dff3769": "f8e3e12a92bbae3469c71d80efc2fd250453a09e7b14a5d97a1747620dff3769",
+      "blobs/fc213b3116e484b8e93720687b365d75775bc6e4873f3ddd50326a70405b5585": "fc213b3116e484b8e93720687b365d75775bc6e4873f3ddd50326a70405b5585",
+      "events.jsonl": "2c2ed4e1429296025021f4f41b47b95144f11ae2679c567bd40303464cbb9995"
+    },
+    "artifactHashes": {},
+    "interruption": "runner received SIGTERM; pending provider usage is unknown"
+  }
+]

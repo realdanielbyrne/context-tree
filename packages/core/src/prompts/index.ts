@@ -99,10 +99,8 @@ export function renderTemplate(
 /**
  * Contract variants selectable independently of `SYSTEM_CONTRACT_VERSION`
  * (which names the file `loadPrompt('system-contract')` reads by default).
- * `v2` is the loop9-item3 §7 deletion candidate: `v1` minus the "Two ways
- * this goes wrong" section. It exists only to be A/B'd behind
- * `EVAL_CONTRACT_VERSION` (`eval/src/loop.ts`) — v1 stays the default so the
- * transplant experiment's frozen epoch is untouched.
+ * `v2` is `v1` minus the "Two ways this goes wrong" section.
+ * `v1` stays the default.
  */
 export const SYSTEM_CONTRACT_VERSIONS = ['v1', 'v2', 'v3'] as const;
 export type SystemContractVersion = (typeof SYSTEM_CONTRACT_VERSIONS)[number];

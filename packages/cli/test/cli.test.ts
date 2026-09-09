@@ -193,6 +193,38 @@ describe('init', () => {
     };
     expect(Object.keys(doc.mcpServers).sort()).toEqual(['context-tree', 'graft']);
   });
+
+  it('--host opencode writes opencode.json with the right shape and preserves existing servers', () => {
+    const cwd = tempDir();
+    const ocPath = join(cwd, 'opencode.json');
+    writeFileSync(
+      ocPath,
+      JSON.stringify({ mcp: { graft: { type: 'local', command: ['graft-mcp'] } } }, null, 2),
+      'utf8',
+    );
+
+    const result = initCommand({ cwd, host: 'opencode' }, capture());
+
+    const doc = JSON.parse(readFileSync(ocPath, 'utf8')) as {
+      mcp: Record<string, { type: string; command: string[]; cwd: string; enabled: boolean; timeout: number }>;
+    };
+    expect(doc.mcp['context-tree']).toEqual({
+      type: 'local',
+      command: ['context-tree-mcp'],
+      cwd: '.',
+      enabled: true,
+      timeout: 15000,
+    });
+    expect(doc.mcp.graft).toBeDefined();
+    expect(result.preservedServers).toEqual(['graft']);
+  });
+
+  it('--host opencode refuses when opencode.jsonc exists, to avoid stripping comments', () => {
+    const cwd = tempDir();
+    writeFileSync(join(cwd, 'opencode.jsonc'), '// a comment\n{}', 'utf8');
+
+    expect(() => initCommand({ cwd, host: 'opencode' }, capture())).toThrow(/opencode\.jsonc/);
+  });
 });
 
 describe('import', () => {
@@ -330,6 +362,83 @@ describe('import', () => {
     const read = events.find((event) => event.tool === 'Read');
     expect(read?.blob).toBeUndefined();
     expect(read?.parent_seq).toBe(2);
+  });
+});
+
+describe('import --from-opencode', () => {
+  it('maps an opencode export onto L0 with monotonic seqs, epoch-ms -> ISO, and tool linkage', () => {
+    const cwd = tempDir();
+    const root = join(cwd, 'store');
+    const fixture = join(__dirname, 'fixtures', 'opencode-session.json');
+    const result = importCommand(fixture, { cwd, root, fromOpencode: true }, capture());
+
+    expect(result.format).toBe('opencode');
+    expect(result.failures).toEqual([]);
+    // 4 messages yield: user_message, assistant_message + read call/result + edit call/result,
+    // assistant_message + bash call/result, user_message = 10 events
+    // system message is skipped, unknown-future-type is skipped
+    expect(result.events).toBe(10);
+    expect(result.skipped).toBeGreaterThan(0);
+
+    const events = readFileSync(join(root, 'trace.jsonl'), 'utf8')
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line) as Record<string, unknown>);
+
+    // Monotonic gap-free seqs
+    const seqs = events.map((e) => e.seq as number);
+    for (let i = 1; i < seqs.length; i += 1) {
+      expect(seqs[i]).toBe((seqs[i - 1] as number) + 1);
+    }
+
+    // tool_call/tool_result linkage
+    const readCall = events.find((e) => e.tool === 'read');
+    expect(readCall).toBeDefined();
+    expect(readCall?.path).toBe('src/auth.ts');
+    const readResult = events.find((e) => e.type === 'tool_result' && e.call_seq === readCall?.seq);
+    expect(readResult).toBeDefined();
+
+    // edit has blob (whole file content)
+    const editCall = events.find((e) => e.tool === 'edit');
+    expect(editCall).toBeDefined();
+    expect(typeof editCall?.blob).toBe('string');
+
+    // error tool results have error field
+    const bashResult = events.find(
+      (e) => e.type === 'tool_result' && e.error !== undefined,
+    );
+    expect(bashResult).toBeDefined();
+    expect(bashResult?.error).toContain('test failed');
+
+    // epoch-ms -> ISO: 1725868800000 = 2024-09-09T08:00:00.000Z
+    const first = events[0];
+    expect(first?.ts).toBe('2024-09-09T08:00:00.000Z');
+
+    // reasoning parts dropped (counted in skipped, not in events)
+    const reasoningEvents = events.filter(
+      (e) => typeof e.blob === 'string' && (e.blob as string).includes('thinking about'),
+    );
+    expect(reasoningEvents).toHaveLength(0);
+  });
+
+  it('reports failures for a malformed document', () => {
+    const cwd = tempDir();
+    const root = join(cwd, 'store');
+    const path = join(cwd, 'bad.json');
+    writeFileSync(path, '"not an object"', 'utf8');
+    const result = importCommand(path, { cwd, root, fromOpencode: true }, capture());
+    expect(result.events).toBe(0);
+    expect(result.failures.length).toBeGreaterThan(0);
+  });
+
+  it('handles missing messages array', () => {
+    const cwd = tempDir();
+    const root = join(cwd, 'store');
+    const path = join(cwd, 'empty.json');
+    writeFileSync(path, '{"info":{}}', 'utf8');
+    const result = importCommand(path, { cwd, root, fromOpencode: true }, capture());
+    expect(result.events).toBe(0);
+    expect(result.failures.length).toBeGreaterThan(0);
   });
 });
 

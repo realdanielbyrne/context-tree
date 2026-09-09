@@ -2,6 +2,19 @@
 
 # When summaries are written, and under what policy
 
+> **Correction (2026-09-08).** Every occupancy percentage and headroom figure below assumes
+> `W = 200,000` for `claude-sonnet-5`, described in places as "this host's window". **Sonnet 5's
+> context window is 1,000,000 tokens.** No `--window` was passed on these runs — `configuration`
+> is absent from every `eval/results` record — so 200,000 was never the host's window; it was an
+> assumption. Read every "% of window" here as **5x too high**, and every headroom figure as
+> correspondingly understated: the 45,564-token peak leaves 954,436 tokens of headroom, not
+> 154,436. Token counts, turn counts and crossing turns are unaffected, and the reports'
+> central conclusion — that nothing here was in danger of overflowing anything — is made
+> **five times stronger**, not weaker. Statements framed as "at a candidate fraction of a
+> 200,000-token window" remain valid as counterfactual replays at that budget; only the claim
+> that the budget *is* this host's window is wrong. See
+> `metrics/attention-policy-continuation/journal.md`, iteration 1 lens 2.
+
 Context-tree evaluation program · DS-STAR tuning pass, dimension 3 of 4 · September 2, 2026
 
 > *Scope and provenance.* This is the full treatment of the dimension summarised in `reports/algorithm.md` under "What the DS-STAR loop is for". It re-derives every load-bearing number from the run artefacts on disk rather than from the analysis note it publishes (`eval/plans/tuning/03-summary-policy.md`), and §8 lists the figures in that note that did not reproduce as written, together with the reproduced values used here instead. No model was called for this report.

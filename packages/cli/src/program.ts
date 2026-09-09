@@ -14,7 +14,7 @@ import { rebuildCommand } from './commands/rebuild.js';
 import { renderCommand } from './commands/render.js';
 import { summarizeCommand } from './commands/summarize.js';
 import { treeCommand } from './commands/tree.js';
-import { evalCommand } from './commands/eval.js';
+
 import type { GlobalOptions } from './context.js';
 import { CliError, messageOf, scrubSecrets } from './errors.js';
 import { processIo, type Io } from './io.js';
@@ -59,6 +59,7 @@ export function buildProgram(io: Io): Command {
       new Option('--host <host>', 'host to configure; "print" writes nothing').choices([
         'claude-code',
         'codex',
+        'opencode',
         'print',
       ]),
     )
@@ -71,16 +72,22 @@ export function buildProgram(io: Io): Command {
     .description('ingest a trace into L0 + L2 and derive L1')
     .argument('<trace.jsonl>', 'L0 trace, or a Claude Code transcript with --from-claude-code')
     .option('--from-claude-code', 'read the file as a Claude Code session transcript')
+    .option('--from-opencode', 'read the file as an opencode session export (JSON)')
     .option('--strict', 'fail on the first unreadable line instead of importing the rest')
     .action(
       (
         file: string,
-        options: { fromClaudeCode?: boolean; strict?: boolean },
+        options: { fromClaudeCode?: boolean; fromOpencode?: boolean; strict?: boolean },
         command: Command,
       ) => {
         importCommand(
           file,
-          { ...globals(command), fromClaudeCode: options.fromClaudeCode, strict: options.strict },
+          {
+            ...globals(command),
+            fromClaudeCode: options.fromClaudeCode,
+            fromOpencode: options.fromOpencode,
+            strict: options.strict,
+          },
           io,
         );
       },
@@ -116,14 +123,6 @@ export function buildProgram(io: Io): Command {
     .description('one line per node: id, kind, span, staleness, summary version')
     .action((_options: unknown, command: Command) => {
       treeCommand(globals(command), io);
-    });
-
-  withGlobals(program.command('eval'))
-    .description('run the §15 evaluation harness from eval/')
-    .argument('[args...]', 'arguments passed through to the harness')
-    .allowUnknownOption()
-    .action(async (args: string[], _options: unknown, command: Command) => {
-      await evalCommand(args, globals(command), io);
     });
 
   return program;
