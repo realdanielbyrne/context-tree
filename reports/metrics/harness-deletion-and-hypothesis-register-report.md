@@ -1,4 +1,4 @@
-# The instrument was the experiment: a deleted harness, a mis-specified detector, and nothing yet measured about context policy
+# The instrument was the experiment: a deleted harness, a mis-specified detector, and no valid measurement of context policy
 
 **Loop of 2026-09-08 → 2026-09-09.** Companion plan: [`reports/hypothesis-test-ladder.md`](../hypothesis-test-ladder.md).
 
@@ -20,14 +20,18 @@ repaired, because `context-tree` is an MCP adjunct and should not own an agent l
 means running tasks in an external host with and without the server attached. Three separate
 guards — an instrument hash, a derived-ceiling requirement, and an epoch check — each caught the
 author mid-error during the same loop. The loop closes with one measured result and a
-21-test ladder in which 14 tests need no model calls at all: over **1,073 real agent sessions and
+14-test ladder whose first three rungs need no provider budget: over **1,073 real agent sessions and
 14,695 assistant turns**, the shipped sufficiency-signal detector fires on **3.2% of sessions and
 0.245% of turns**, and one of its three patterns fires **zero times**. That measures a
 mis-implementation rather than the hypothesis: the design specified "a small classifier over
 assistant text" and what shipped was four regexes, which cannot work in principle because an LLM is
 probabilistic and every model phrases sufficiency differently. The number's only value is that it
-proves nothing downstream of that code could ever have fired. The principal limitation is that this loop still contains no live comparative measurement
-of any context policy.
+proves nothing downstream of that code could ever have fired. The principal limitation is that no
+context policy has yet been compared live on a working harness. One comparison does exist on
+disk — 18 runs on real Sonnet 5 in which the unmanaged arm matched the tree on success (6/6) at a
+third of the cost, and a retrieval variant lost half its runs — but it ran through the broken
+harness, and the defect falls hardest on the arm that lost, so it is void rather than a null.
+Re-running it on opencode is the first live test the ladder owes.
 
 ---
 
@@ -121,7 +125,7 @@ So the eviction is not a bug to fix. `ChatMessage` lacks a `tool_calls` field be
 was a half-built reimplementation of something mature harnesses already do correctly; fixing the
 type would deepen the wrong thing. Recorded as **D20**, superseding D19.
 
-Deleted: `eval/` (254 tracked files; 5,779 source + 4,374 test lines, 46 scripts) and
+Deleted: `eval/` (254 tracked files; 5,779 source + 4,374 test lines, 44 scripts) and
 `eval-resumption/` (68 files, ~6,362 lines) — about **16,500 lines**, 340 files, 581k lines removed
 in one commit.
 
@@ -201,14 +205,24 @@ work; they should be **rewired to the new detector or deleted**, not tuned.
 
 ## 5. What else was learned, separately from what was decided
 
-**The small-window failures were starvation, not tree failures.** Claude Fable 5.1's production
-system prompt is **274,608 characters = 60,903 cl100k tokens**. At W=65,536 there is effectively no
-room for anything else. Every prior batch at W=32k–65k measured starvation, and what was being
-evicted was the system prompt, steering files, plan files and skills — the always-pinned category.
-So two recorded negatives are artifacts: "tree loses to truncate-tail, 11/60 vs 2–4/60 at
-W=32–65K", and the "16k dead cell, 57/60 stalls". **The valid realistic-host cell is W = 131,072.**
-I was about to re-run a sweep across the starved range and treat those as real negatives to
-confront.
+**Small windows fail for three different reasons, and I collapsed them into one.** Claude Fable
+5.1's production system prompt is **274,608 characters = 60,903 cl100k tokens**, so at W=65,536
+there is effectively no room for anything else. That arithmetic is right, and I over-applied it —
+labelling every recorded small-window negative "starvation", including experiments that never ran
+Fable's prompt. Separating them:
+
+| Cell | What actually happened | Status |
+| --- | --- | --- |
+| **W=16,384** | Zone A + Zone B + one search exceeds the window; 57/60 stalls | **Starvation.** A dead cell, not evidence about the tree. |
+| **W=32,768–65,536** | truncate-tail 11/60, tree-tail-v2 2–4/60, on **Haiku 4.5** (partly Sonnet 5) — *not* Fable. The recorded cause is **tool overhead**: each search/fetch turn adds ~5–10K tokens that the tail arm spends on raw events. "Showing more raw content beats navigating to it at these window sizes." | **A genuine negative**, with a correctly identified mechanism. Not an artifact. |
+| **Fable at W=65,536** | Would be starvation — the prompt alone is 60,903 tokens | **True, but hypothetical.** It describes a deployment, not any experiment that produced the numbers above. |
+
+So the honest reading is narrower than the one I wrote: **one** recorded negative (16K) is an
+artifact; the W=32–65K result stands as a real finding about MCP tool overhead at small windows,
+which the tree must eventually answer rather than reclassify. `live-verification-findings.md:11-16`
+is the source and it names Haiku 4.5 and tool overhead explicitly — I read the conclusion and not
+the attribution. **The valid realistic-host cell remains W = 131,072**, and the reason not to sweep
+32–65K again is that the tail covers the answers there, not that the cell is invalid.
 
 **The recorded blockers conflated two questions.** Every one of H1–H6 and the priority channel was
 marked `eligible: false, status: missing_labels`, needing e.g. "current-turn grounded irrelevance
@@ -241,9 +255,43 @@ The transcript shows it planning correctly and re-issuing the same read three ti
 calls were vanishing. That characterisation was an inference about a model built to do exactly that
 task, and the operator was right to reject it.
 
-## 6. What the loop did NOT test
+## 6. The one comparison that does exist, why it is void, and what remains untested
 
-No live comparative measurement of any context policy. Specifically untested: the umbrella
+**A head-to-head comparison does exist on disk, and omitting it was the worst error in the first
+draft of this report.** `reports/metrics/window-regime-and-retrieval-unit/step8-sonnet/` holds 18
+runs — 3 arms × 2 scenarios × 3 repeats — on **real Sonnet 5**, graded by a test suite:
+
+| arm | success | mean $/run | median $/run | tool calls | model turns |
+| --- | --- | --- | --- | --- | --- |
+| `native` (unmanaged) | **6/6** | $0.1863 | $0.1105 | 218 | 187 |
+| `context-tree` | **6/6** | $0.5751 | $0.2253 | 104 | 94 |
+| `prefix-retrieval` | **3/6** | $0.3480 | $0.1669 | 108 | 101 |
+
+Read naively that is a damaging null: managing context cost **3.1× more** per run and bought
+identical success, while the retrieval variant lost half its runs — all of them on `sw-2-multimod`
+(0/3, every run stalled). I recomputed these from the raw JSON rather than quoting the journal,
+which had recorded the `context-tree` arm at $0.291; the artifacts give $0.5751, so the journal
+understated the cost penalty by about half.
+
+**But these 18 runs went through the deleted harness, so §2's defect applies to them too, and it
+does not apply evenly.** Under `ChatMessage`, tool results returned as user-role text while the
+assistant's own `tool_use` blocks were dropped. In `native` the history is raw event text, so the
+*content* of prior work survives the stripping even though the call framing does not. In
+`prefix-retrieval` that raw history is *replaced* by retrieval summaries and excerpts — so stripping
+removes the call and the policy removes the content it would have pointed at. The failure signature
+matches: all three `sw-2` stalls end in consecutive `run_command` tails (4, 8 and 4 turns), the
+behaviour of a model re-probing for state it cannot see. `native` shows the same tails — up to 6
+consecutive, 37 run-command-only turns in one run — and still converges by brute force at 65 turns,
+which is what having the raw text buys.
+
+That asymmetry is an argument from the recorded turn shapes, not a measurement. It is enough to say
+the comparison **cannot be scored for or against any policy**, and not enough to say the tree would
+have won. The defensible claims are narrow: the arms differ, the harness that produced the
+difference was broken, and the broken part sits closest to the arm that lost. The honest status is
+**void and must be re-run on opencode** — where the same numbers, if they reproduce, would be a real
+refutation of the cost case.
+
+The remaining untested list is unchanged. Specifically untested: the umbrella
 attention-over-history hypothesis; all six of H1–H6; the 25–50% soft occupancy target; Zone B as an
 index; `evictRederivable` and the priority channel (both have passing mechanism-fire gates and
 **zero production callers**); whether the retrieval unit is wrong for structural turns; whether
@@ -258,22 +306,36 @@ is an upper bound, not a transferable number.
 
 ## 7. Open items and recommendations
 
-Ordered by information gained per unit of cost. The full 21-test ladder, with a numeric
+Ordered by information gained per unit of cost. The full 14-test ladder, with a numeric
 falsification condition fixed in advance for each, is in
 [`reports/hypothesis-test-ladder.md`](../hypothesis-test-ladder.md) — **that document is the
 executable next step and is written to be run cold.** Reiterating its head:
 
-1. **Run Rung 0 — fourteen tests, zero model calls, no provider budget.** Everything they need
-   survived: the 1,073-session corpus, the 56-query set (which carries its payload text inline, so
-   it needs no store rebuild), and every offline primitive in `packages/core`. Highest first:
+1. **Run Rung 0 — three tests, and two of them need no model call at all.** (0a and 0c are pure
+   offline sweeps; 0b's topic-shift half is deterministic and only its sufficiency half needs a
+   cheap model.) Everything they need
+   survived: the 1,073-session corpus, the 22-query set (all 22 carry their payload text
+   inline, so it needs no store rebuild; 17 further literals entries do not), and every offline primitive in `packages/core`. Highest first:
    **0a**, the excerpt-window sweep (`excerptChars` × anchor over the surviving queries) — this is
    hand-off item 1's first named defect and it produces a number in about an hour. It must report
    the count of queries with non-empty fingerprint terms, because the prior version of this sweep
    returned a degenerate null on 15 payloads that all had `terms: []`.
-2. **Replace the H4/HR3 detector rather than widening it.** Build the two instruments the design
-   named: deterministic content-word overlap for topic shift (no model calls), and a small
-   classifier or cheap-model judgment for sufficiency, ground-truthed on hand-labelled real turns.
-   §4's number licenses no live work — it only proves the shipped code cannot fire.
+2. **Replace the H4/HR3 detector rather than widening it — and fix the stopping rule now.** Build
+   the two instruments the design named: deterministic content-word overlap for topic shift (no
+   model calls), and a cheap-model judgment for sufficiency, ground-truthed on hand-labelled real
+   turns. §4's number licenses no live work — it only proves the shipped code cannot fire.
+
+   The trap here is that "the detector failed" always admits a stronger detector, so H4 can regress
+   forever without ever being wrong. A regex fails → build a classifier; the classifier fails → use
+   a bigger model. **So the stopping rule is fixed in advance, before the instrument is built:** one
+   cheap-model binary judgment per assistant turn, prompted with the design's own definition,
+   against **200 hand-labelled turns** drawn from the 1,073-session corpus. If that judge cannot
+   reach **κ ≥ 0.6** against the hand labels, **the sufficiency half of H4/HR3 is retired, not
+   iterated** — the conclusion being that the signal is not reliably present in assistant text, not
+   that a better detector is needed. The topic-shift half has no such problem: fingerprint-overlap
+   drop against a within-session permutation null is deterministic and falsifiable on its own terms.
+   Recording this because the previous framing had no such rule, which is what let a null result on
+   four regexes look like a result about a hypothesis.
 3. **Build the opencode plugin for Rungs 1–3, and gate it first.** Two facts read from the shipped
    1.18.27 binary decide whether it works at all: the `experimental.chat.messages.transform`
    trigger's **return value is discarded**, so only in-place array mutation is observable and
@@ -285,11 +347,67 @@ executable next step and is written to be run cold.** Reiterating its head:
    rather than the policy — and that 0.25 is a direct confound for the soft-target hypothesis.
 4. **One variable per test.** Twelve mechanisms at once yields one number and no attribution. The
    combination is the destination, reached by knowing which parts carried an effect.
-5. **Never at W = 32k–65k.** That range is a starvation cell; W = 131,072.
-6. **Spend the long live runs last.** The score hypothesis needs ~4,000–6,000 model calls across
+5. **Run at W = 131,072, and not at W = 32k–65k — but for the right reason.** W=16,384 is a
+   starvation cell. W=32k–65k is *not*: it is a cell where the tail already covers the answers and
+   MCP tool overhead costs more than the raw content it replaces (§5). Re-running there re-measures
+   a known negative rather than an artifact.
+6. **Ejection cannot pay for itself per turn on Anthropic, so stop designing it that way.** With
+   `cacheRead = 0.1×` and `cacheWrite = 1.25×` input (`packages/core/src/models/cost.ts:45-48`, a
+   property of the price table, not a measurement), the break-even for invalidating a cached prefix
+   is `turns = w·keep / (r·(1−keep))` — **12.5 turns at keep=0.5**, 29 at keep=0.7, 112 at keep=0.9.
+   A policy that edits the middle of the prompt every turn to save half of it must then survive 12.5
+   turns before it breaks even, and the eviction is re-paid each time it fires. This retires the
+   **per-turn** forms of H1, H2 and H5 and the per-turn admission loop as *cost* propositions; they
+   survive only as **success** propositions, or at cadences of tens of turns. It also means the
+   OpenRouter numbers in this report flatter ejection: a provider publishing `cacheWrite: 0` charges
+   nothing for the invalidation that dominates the Anthropic bill.
+7. **Compare any attention policy against source-side hygiene, not against naive full history.**
+   Dropping the write echo and capping tool-result bodies at 2,000 tokens cuts prompt volume
+   **−31%** with **no cache invalidation at all**, because it changes what enters the prefix rather
+   than rewriting it (`reports/metrics/attention-policy-continuation/journal.md:732,801`). That is
+   the same order as the reduction the attention policies are meant to deliver, at none of the
+   cache cost, and it is the honest baseline. A policy that beats naive history but not hygiene has
+   not earned its complexity.
+8. **The soft target's mechanism does fire in real use — the corpus was the problem.** Operator
+   `/context` on Opus 5 (1M window) shows **37% occupancy after one prompt and 56% after two**
+   (`reports/algorithm.md:88-89`, 2026-09-08), against a median 1.25% of window across the harness
+   corpus. HA was recorded as untestable on the basis of the corpus, which was ~10× too short. That
+   is an instrument defect, not evidence against the hypothesis.
+9. **Spend the long live runs last.** The score hypothesis needs ~4,000–6,000 model calls across
    ≥2 tasks at n≥5 and is the endpoint that can vindicate the programme. Its parameters come from
    the tests above, so running it early wastes it — and a null from a badly-set arm is weak
    evidence, not a refutation.
+10. **Re-run step8-sonnet first among the live tests.** It is the only existing head-to-head, it is
+   void for a known reason (§6), and it is the cheapest live result available: 18 runs, 2 scenarios,
+   real Sonnet 5. If the unmanaged arm still matches on success at a third of the cost on a working
+   harness, that is a real refutation of the cost case and it should be accepted as one.
+
+## 7a. Provenance: which numbers here a reader can check, and which they cannot
+
+An adversarial pass recomputed the load-bearing numbers. The detector figures (1,073 sessions →
+1,077 today, 14,695 assistant turns, 36 signals, 3.2% of sessions, 0.245% of turns, 17/19/0 by
+kind, 109 sessions ≥100 tool calls) reproduced exactly or within the drift of a corpus that has
+grown by four sessions, and the deletion figures (340 files, 581,359 lines, 16,515 source lines)
+reproduced exactly from `git show --stat 7d459f9`. Three numbers were **wrong** and are corrected
+above: "46 scripts" → 44, "~701 passing" → **692 passed + 9 skipped (701 total)**, and the
+"56-query corpus" → **22 payload-carrying queries** plus 17 literals entries without payload.
+
+Six figures in this report were measured in-session and have **no committed artifact**, so nothing
+in the repo reproduces them:
+
+| Figure | Status |
+| --- | --- |
+| The 12-trial tool-call table (5/12, 11/12, 10/12) | in-session probe, not committed |
+| "56,966 output tokens against 11 tool calls in 37 turns" | from a transcript that was not persisted — §5's own lesson |
+| "64 tok → 1.6 s; 4,096 → 77.7 s; uncapped → past 200 s" | in-session probe (`200007 ms AbortError`), not committed |
+| "GLM sustains 24.5 tok/s, not 52.7" | in-session probe (26.4 and 24.5 tok/s over two trials), not committed |
+| "6 turns, score 0/11, 15,726 of 1,552,615 tokens" | in-session, not committed |
+| The "13-message request" count | in-session, not committed |
+
+They are reported as measured and they are not verifiable, which is a weaker claim than the rest of
+this document carries. The cause is the same instrument defect §5 names — per-run transcripts were
+not persisted — and the fix belongs in the next loop's setup, not in a footnote: **a probe whose
+number will be quoted must write its output under `reports/metrics/` before the number is used.**
 
 ## 8. Methodology lessons worth carrying to other work
 
@@ -311,3 +429,21 @@ executable next step and is written to be run cold.** Reiterating its head:
   measurement therefore reported on a mis-implementation. Worse, the first reading of that
   measurement proposed *widening the regex list* — the same error one step larger. When an
   instrument fails, ask what it was specified to be before asking how to extend it.
+- **"We have not measured it" needs the same evidence as "we measured it."** The first draft of
+  this report said no live comparative measurement of any context policy existed. One did, on the
+  deployment model, in this repo, and it favoured the unmanaged arm. The claim was reached by
+  reasoning from the harness deletion rather than by looking, and it is the kind of error that only
+  ever runs one way: an absence claim that happens to omit the least convenient result. Before
+  writing that something was never measured, search the artifacts for it.
+- **A reclassification is a claim about a specific experiment, and needs its attribution read.**
+  "Those small-window failures were starvation" was applied to experiments run on Haiku 4.5 whose
+  recorded cause was tool overhead, using arithmetic about a different model's system prompt. The
+  correct conclusion was narrower and less convenient: one cell was an artifact, the other is a
+  real negative the design still has to answer. Re-labelling a negative is the most tempting
+  available move and the one most worth distrusting.
+- **A hypothesis needs a stopping rule before its instrument is built.** "The detector failed"
+  always admits a stronger detector, so without a pre-committed threshold a hypothesis can absorb
+  any number of null results without ever being wrong. §7 item 2 now fixes one for H4.
+- **Also worth stating plainly:** the "the design specified a classifier and what shipped was
+  regexes" framing is true, but the spec was committed roughly two hours before the code, in the
+  same working session. The sequence is real; the implied deliberation is not.
