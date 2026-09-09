@@ -1056,3 +1056,62 @@ parallel. Escalation to n=10 only on an ambiguous registered comparison, baselin
 **What this batch still will not test:** models other than GLM (Sonnet confirms winners only),
 windows other than 1M-class, non-terminal task families, and sessions past ~231 episodes. A policy
 that wins here is proven at LHTB scale, not proven.
+
+### Iteration 2, kill gates 1-2 — LHTB qualifies as an instrument, and it is a better one than DeepSWE
+
+Clone: `github.com/zli12321/LHTB`, Apache 2.0, shallow clone into the scratchpad. **Git LFS is not
+installed and turned out not to be needed** for the dev subset: the software-engineering
+`continue_until_timeout` tasks carry **zero LFS pointers** (games tasks carry 2 each). The clone
+does require bypassing the LFS filter locally (`git config filter.lfs.process ""`,
+`smudge/clean = cat`, `required = false`) because git invokes the filter even under
+`GIT_LFS_SKIP_SMUDGE=1` when the binary is absent.
+
+**Kill gate 1 — verifier availability: PASS.** All **47/47** task directories ship `tests/`,
+`solution/` and `task.toml`. The HuggingFace mirror withholds verifiers; the GitHub clone does
+not. The success endpoint is therefore available, which is the condition the instrument was
+selected on.
+
+**The corpus.** 47 tasks, 20 categories, **31 with `continue_until_timeout = true`**. Expert time
+estimates span **30 min (games) to 600 min (management consulting)**; the tool-use "matter" tasks
+are 240-600 min and the software-engineering ones 120-480. For scale reference the paper reports
+9.9M tokens, ~231 episodes and 85.3 min per task, against the operator's measured ~273 turns and
+67 minutes per prompt — the same regime.
+
+**LHTB's submission contract is strictly better than DeepSWE's, and it removes iteration 1's
+confound.** `task.toml` declares an explicit `artifacts` list of output files
+(`outputs/validation_report.json`, `outputs/audit_summary.md`, ...). Grading reads **files**, not a
+git commit. The ABS v4 zero — real work left uncommitted, `model.patch` the SHA-256 of the empty
+string, pristine base graded — **cannot occur in this format.** No submission-readiness gate needs
+to be invented; the benchmark already specifies one.
+
+**The reward is dense, not binary.** `tests/test.sh` runs pytest and writes
+`passed / total` to `/logs/verifier/reward.txt`. The dev task has 11 tests, so granularity is
+~0.09 and the endpoint carries far more statistical power per run than a 0/1 reward. This
+materially lowers the n needed to detect an effect.
+
+**Environments are prebuilt and declarative.** `docker_image = "zli12321/lhtb-<task>:<date>"` on
+Docker Hub, with `cpus`, `memory_mb`, `storage_mb`, `gpus`, `allow_internet` and
+`build_timeout_sec` declared per task; separate `verifier.timeout_sec` (900) and
+`agent.timeout_sec` (3600). Local Docker is 29.5.2 on aarch64, so `DOCKER_DEFAULT_PLATFORM=linux/amd64`
+is required; 267 GB free.
+
+**Development subset (operator instruction: subset only while developing).** Zero-LFS,
+`continue_until_timeout`, software-engineering: `great-expectations-audit` (120 min expert, 11
+tests), `langchain-version-migration` (120 min), `duckdb-optimizer-closure` (300 min) held in
+reserve. The full 47 and the 240-600 min tool-use tasks are out of scope until the pipeline is
+validated on these.
+
+### Constraint change (operator, 2026-09-08 late): OpenRouter cheap models only, no Anthropic
+
+All Anthropic arms are dropped: the planned Sonnet 5 confirmation ($106) and the Opus/Fable
+pricing rows are out. GLM 5.3 Flash on OpenRouter was already the primary at ~$18 for the full
+matrix, so the budget is unaffected.
+
+**This has one scientific consequence that must be carried into every conclusion.** The
+ejection break-even depends on the provider's cache price ratio, and OpenRouter GLM is the most
+ejection-favourable substrate available: `cacheWrite = 0` and `cacheRead = 0.2x` give a **5-turn**
+break-even against Anthropic's **12.5** (`w*keep/(r*(1-keep))`). Lens 4's finding stands —
+**measuring ejection on OpenRouter systematically overstates its benefit relative to an Anthropic
+deployment.** Any token-side win measured here is an upper bound for Anthropic hosts and must be
+reported as such. The success-side endpoint is not affected by pricing, which is a further reason
+the success-gated rule is the right one. Cross-provider confirmation is deferred, not assumed.
