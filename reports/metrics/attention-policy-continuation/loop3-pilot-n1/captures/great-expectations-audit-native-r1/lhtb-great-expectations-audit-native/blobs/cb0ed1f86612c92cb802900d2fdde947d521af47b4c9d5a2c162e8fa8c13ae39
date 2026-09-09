@@ -1,0 +1,22 @@
+            reasons.append(err)
+    return row, reasons
+
+
+def validate_row(dataset: str, row: dict, rules: dict, seen_pks: set) -> list[str]:
+    reasons: list[str] = []
+    rule = rules["datasets"][dataset]
+    pk = PK[dataset]
+    pkv = row.get(pk)
+    if pkv is None or pkv == "":
+        reasons.append("invalid_primary_key")
+    seen: set = set()
+    kept: list[dict] = []
+    quarantine: list[dict] = []
+    keep_index: list[int] = []
+    for i, raw in df_raw.to_dict(orient="index").items():
+        raw = {k: v for k, v in raw.items()}
+        row, reasons = normalize_row(name, raw)
+        record_id = row.get(pk) or ""
+        reasons = reasons + validate_row(name, row, rule, seen)
+        if parent_keys is not None:
+            fk = FK.get(name)

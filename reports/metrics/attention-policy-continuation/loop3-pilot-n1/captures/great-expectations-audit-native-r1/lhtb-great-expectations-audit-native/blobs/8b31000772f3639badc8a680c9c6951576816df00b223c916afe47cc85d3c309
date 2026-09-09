@@ -1,0 +1,406 @@
+"""Great Expectations powered data quality and reconciliation audit pipeline."""
+from __future__ import annotations
+
+import json
+import re
+from collections import Counter, OrderedDict
+from datetime import datetime
+from pathlib import Path
+
+import pandas as pd
+import yaml
+
+DATASETS = ["customers", "orders", "payments", "refunds"]
+COLUMNS = {
+    "customers": ["customer_id", "name", "email", "tier", "signup_date", "country"],
+    "orders": ["order_id", "customer_id", "order_date", "status", "amount_cents", "currency"],
+    "payments": ["payment_id", "order_id", "payment_date", "status", "amount_cents", "method", "currency"],
+    "refunds": ["refund_id", "order_id", "refund_date", "status", "amount_cents", "reason", "currency"],
+}
+PK = {"customers": "customer_id", "orders": "order_id", "payments": "payment_id", "refunds": "refund_id"}
+FK = {"orders": "customer_id", "payments": "order_id", "refunds": "order_id"}
+RAW_AMOUNT_COL = "amount_cents"
+UPPER_COLS = {"customer_id", "order_id", "payment_id", "refund_id", "country", "currency"}
+LOWER_COLS = {"email", "tier", "status", "method", "reason"}
+DATE_COLS = {"signup_date", "order_date", "payment_date", "refund_date"}
+EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
+DATE_FORMATS = ["%Y-%m-%d", "%m/%d/%Y", "%Y/%m/%d", "%d-%m-%Y", "%m-%d-%Y"]
+
+
+# ---------------------------------------------------------------- normalization
+def clean_cell(value):
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return None
+    return re.sub(r"\s+", " ", str(value)).strip()
+
+
+def normalize_date(value):
+    v = clean_cell(value)
+    if v is None:
+        return None, None
+    for fmt in DATE_FORMATS:
+        try:
+            return datetime.strptime(v, fmt).strftime("%Y-%m-%d"), None
+        except ValueError:
+            continue
+    return None, "invalid_date"
+
+
+def normalize_amount(value):
+    v = clean_cell(value)
+    if v is None or v == "":
+        return None, "invalid_amount"
+    s = v.replace(",", "").replace("$", "").strip()
+    if re.fullmatch(r"-?\d+", s):
+        cents = int(s)
+        return (cents, None) if cents >= 1 else (None, "invalid_amount")
+    try:
+        cents = round(float(s) * 100)
+    except ValueError:
+        return None, "invalid_amount"
+    return (cents, None) if cents >= 1 else (None, "invalid_amount")
+
+
+def normalize_row(dataset: str, raw: dict) -> tuple[dict | None, list[str]]:
+    """Normalize one raw row. Returns (row, reasons); row may be partial."""
+    row: dict = {}
+    reasons: list[str] = []
+    for col in COLUMNS[dataset]:
+        src = "amount" if col == "amount_cents" else col
+        v = clean_cell(raw.get(src))
+        if col in UPPER_COLS:
+            v = v.upper() if v is not None else None
+        elif col in LOWER_COLS:
+            v = v.lower() if v is not None else None
+        row[col] = v
+    for col in DATE_COLS:
+        parsed, err = normalize_date(row.get(col))
+        row[col] = parsed
+        if err:
+            reasons.append(err)
+    if "amount_cents" in row:
+        cents, err = normalize_amount(raw.get("amount"))
+        row["amount_cents"] = cents
+        if err:
+            reasons.append(err)
+    return row, reasons
+
+
+def validate_row(dataset: str, row: dict, rules: dict, seen_pks: set) -> list[str]:
+    reasons: list[str] = []
+    rule = rules[dataset]
+    pk = PK[dataset]
+    pkv = row.get(pk)
+    if pkv is None or pkv == "":
+        reasons.append("invalid_primary_key")
+    elif not re.fullmatch(rule["columns"][pk]["regex"], pkv):
+        reasons.append("invalid_primary_key")
+    elif pkv in seen_pks:
+        reasons.append("duplicate_primary_key")
+    colrules = rule["columns"]
+    for col, cr in colrules.items():
+        val = row.get(col)
+        if cr.get("not_null") and (val is None or val == ""):
+            reasons.append(f"missing_{col}")
+            continue
+        if val in (None, ""):
+            continue
+        if col == "email" and not EMAIL_RE.match(val):
+            reasons.append("invalid_email")
+        if "in_set" in cr and val not in cr["in_set"]:
+            if col in ("status", "reason", "method"):
+                reasons.append("invalid_status" if col == "status" else f"invalid_{col}")
+            elif col == "currency":
+                reasons.append("invalid_currency")
+            elif col == "country":
+                reasons.append("invalid_country")
+            elif col == "tier":
+                reasons.append("invalid_tier")
+            else:
+                reasons.append(f"invalid_{col}")
+        if "min" in cr and isinstance(val, int) and val < cr["min"]:
+            reasons.append("invalid_amount")
+    return reasons
+
+
+def clean_dataset(name: str, df_raw: pd.DataFrame, rules: dict, parent_keys: set | None,
+                  order_amounts: dict | None) -> tuple[pd.DataFrame, list[dict], dict]:
+    rule = rules["datasets"][name]
+    pk = PK[name]
+    seen: set = set()
+    kept: list[dict] = []
+    quarantine: list[dict] = []
+    keep_index: list[int] = []
+    for i, raw in df_raw.to_dict(orient="index").items():
+        raw = {k: v for k, v in raw.items()}
+        row, reasons = normalize_row(name, raw)
+        record_id = row.get(pk) or ""
+        reasons = reasons + validate_row(name, row, rule, seen)
+        if parent_keys is not None:
+            fk = FK.get(name)
+            if fk and row.get(fk) not in parent_keys and "invalid_primary_key" not in reasons and "duplicate_primary_key" not in reasons:
+                reasons.append("unknown_customer" if name == "orders" else "unknown_order")
+        if name == "refunds" and order_amounts is not None:
+            if row.get("status") == "processed" and row.get("order_id") in order_amounts:
+                if (row.get("amount_cents") or 0) > order_amounts[row["order_id"]]:
+                    reasons.append("refund_exceeds_order_amount")
+        row_number = int(i) + 2  # 1-based data row, header is line 1
+        if reasons:
+            quarantine.append({
+                "dataset": name,
+                "row_number": row_number,
+                "record_id": record_id,
+                "reason": ";".join(OrderedDict.fromkeys(reasons)),
+            })
+        else:
+            seen.add(row[pk])
+            kept.append(row)
+            keep_index.append(row_number)
+    df = pd.DataFrame(kept, columns=COLUMNS[name]) if kept else pd.DataFrame(columns=COLUMNS[name])
+    return df, quarantine, {"kept_rows": keep_index}
+
+
+# ---------------------------------------------------------------- expectations
+def build_expectations(name: str, rules: dict) -> list[dict]:
+    out = []
+    for col, cr in rules["datasets"][name]["columns"].items():
+        if cr.get("not_null"):
+            out.append({"expectation_type": "expect_column_values_to_not_be_null", "kwargs": {"column": col}})
+        if cr.get("unique"):
+            out.append({"expectation_type": "expect_column_values_to_be_unique", "kwargs": {"column": col}})
+        if cr.get("regex"):
+            out.append({"expectation_type": "expect_column_values_to_match_regex",
+                        "kwargs": {"column": col, "regex": cr["regex"]}})
+        if cr.get("in_set"):
+            out.append({"expectation_type": "expect_column_values_to_be_in_set",
+                        "kwargs": {"column": col, "value_set": cr["in_set"]}})
+        if "min" in cr:
+            out.append({"expectation_type": "expect_column_values_to_be_between",
+                        "kwargs": {"column": col, "min_value": cr["min"], "strict_min": True}})
+    return out
+
+
+def run_gx_validation(cleaned: dict, rules: dict):
+    """Validate cleaned dataframes with Great Expectations (fluent ephemeral API)."""
+    import great_expectations as gx
+
+    context = gx.get_context(mode="ephemeral")
+    datasource = context.sources.add_pandas(name="audit_datasource")
+    results = {}
+    all_pass = True
+    for name in DATASETS:
+        asset = datasource.add_dataframe_asset(name=f"{name}_asset")
+        batch = asset.build_batch_request(dataframe=cleaned[name])
+        suite = context.add_expectation_suite(expectation_suite_name=f"{name}_suite")
+        validator = context.get_validator(batch_request=batch, expectation_suite=suite)
+        exp_results = []
+        for exp in build_expectations(name, rules):
+            method = getattr(validator, exp["expectation_type"])
+            res = method(**exp["kwargs"])
+            exp_results.append({
+                "expectation_type": exp["expectation_type"],
+                "column": exp["kwargs"].get("column"),
+                "kwargs": {k: v for k, v in exp["kwargs"].items() if k != "column"},
+                "success": bool(res.success),
+                "unexpected_count": int(res.result.get("unexpected_count", 0) or 0),
+            })
+            if not res.success:
+                all_pass = False
+        validator.save_expectation_suite(discard_failed_expectations=False)
+        checkpoint = context.add_or_update_checkpoint(name=f"{name}_checkpoint", validations=[{
+            "batch_request": batch, "expectation_suite_name": f"{name}_suite"}])
+        checkpoint_result = checkpoint.run()
+        results[name] = {
+            "rows": int(len(cleaned[name])),
+            "columns": COLUMNS[name],
+            "expectations_total": len(exp_results),
+            "expectations_passed": sum(1 for e in exp_results if e["success"]),
+            "checkpoint_success": bool(checkpoint_result.success),
+            "expectation_results": exp_results,
+        }
+        all_pass = all_pass and checkpoint_result.success
+
+    cross_table = []
+    for ct in rules.get("cross_table", []):
+        left_vals = set(cleaned[ct["left_dataset"]][ct["left_column"]].dropna())
+        right_vals = set(cleaned[ct["right_dataset"]][ct["right_column"]].dropna())
+        orphans = sorted(left_vals - right_vals)
+        passed = not orphans
+        all_pass = all_pass and passed
+        cross_table.append({
+            "name": ct["name"],
+            "left_dataset": ct["left_dataset"],
+            "left_column": ct["left_column"],
+            "right_dataset": ct["right_dataset"],
+            "right_column": ct["right_column"],
+            "orphan_values": orphans,
+            "success": passed,
+        })
+    return results, cross_table, all_pass
+
+
+# ---------------------------------------------------------------- reconciliation
+def reconcile(orders: pd.DataFrame, payments: pd.DataFrame, refunds: pd.DataFrame) -> dict:
+    settled = payments[payments["status"] == "settled"].groupby("order_id")["amount_cents"].sum().to_dict()
+    processed = refunds[refunds["status"] == "processed"].groupby("order_id")["amount_cents"].sum().to_dict()
+    rows = []
+    for r in orders.to_dict(orient="records"):
+        oid = r["order_id"]
+        amt = int(r["amount_cents"])
+        sp = int(settled.get(oid, 0))
+        pr = int(processed.get(oid, 0))
+        net = sp - pr
+        status = r["status"]
+        if status == "completed":
+            balanced = net == amt
+        elif status == "pending":
+            balanced = 0 <= net <= amt
+        else:  # canceled
+            balanced = net == 0
+        rows.append({
+            "order_id": oid,
+            "order_status": status,
+            "order_amount_cents": amt,
+            "settled_payment_cents": sp,
+            "processed_refund_cents": pr,
+            "net_collected_cents": net,
+            "balanced": bool(balanced),
+        })
+    balanced_rows = [x for x in rows if x["balanced"]]
+    return {
+        "totals": {
+            "total_orders": len(rows),
+            "balanced_orders": len(balanced_rows),
+            "unbalanced_orders": len(rows) - len(balanced_rows),
+            "total_order_amount_cents": sum(x["order_amount_cents"] for x in rows),
+            "total_settled_payment_cents": sum(x["settled_payment_cents"] for x in rows),
+            "total_processed_refund_cents": sum(x["processed_refund_cents"] for x in rows),
+            "total_net_collected_cents": sum(x["net_collected_cents"] for x in rows),
+        },
+        "orders": rows,
+    }
+
+
+# ---------------------------------------------------------------- reports
+def write_validation_report(dataset_results, cross_table, gx_pass, recon, cleaned, quarantine, rules_path, dataset_name):
+    quarantine_counts = Counter(q["reason"] for q in quarantine)
+    failed = []
+    for name in DATASETS:
+        for e in dataset_results[name]["expectation_results"]:
+            if not e["success"]:
+                failed.append({"dataset": name, **e})
+    recon_checks = [
+        {"name": "completed_orders_balanced",
+         "success": all(x["balanced"] for x in recon["orders"] if x["order_status"] == "completed")},
+        {"name": "pending_orders_net_between_zero_and_amount",
+         "success": all(x["balanced"] for x in recon["orders"] if x["order_status"] == "pending")},
+        {"name": "canceled_orders_net_zero",
+         "success": all(x["balanced"] for x in recon["orders"] if x["order_status"] == "canceled")},
+    ]
+    overall = bool(gx_pass and all(c["success"] for c in recon_checks) and all(c["success"] for c in cross_table))
+    return {
+        "metadata": {
+            "dataset": dataset_name,
+            "rules_path": str(rules_path),
+            "gx_version": __import__("great_expectations").__version__,
+        },
+        "dataset_row_counts": {name: int(len(cleaned[name])) for name in DATASETS},
+        "datasets": dataset_results,
+        "cross_table_checks": cross_table,
+        "reconciliation_checks": recon_checks,
+        "quarantine_reason_counts": dict(sorted(quarantine_counts.items())),
+        "failed_expectations": failed,
+        "overall_pass": overall,
+    }
+
+
+def write_summary(validation, recon, counts, quarantine, path: Path):
+    qcounts = Counter(q["reason"] for q in quarantine)
+    lines = [
+        "# Data Quality Audit Summary",
+        "## Overall",
+        f"- Overall pass: **{validation['overall_pass']}**",
+        f"- Expectation suites passing: {sum(1 for n in DATASETS if validation['datasets'][n]['checkpoint_success'])}/{len(DATASETS)}",
+        f"- Cross-table checks passed: {sum(1 for c in validation['cross_table_checks'] if c['success'])}/{len(validation['cross_table_checks'])}",
+        f"- Rows quarantined: {len(quarantine)}",
+        "",
+        "## Dataset Counts",
+    ]
+    for name in DATASETS:
+        exp = validation["datasets"][name]
+        lines.append(f"- {name}: {counts[name]} cleaned rows, {exp['expectations_passed']}/{exp['expectations_total']} expectations passed")
+    lines += ["", "## Quarantine Reasons"]
+    if qcounts:
+        for reason, n in sorted(qcounts.items()):
+            lines.append(f"- {reason}: {n}")
+    else:
+        lines.append("- none")
+    t = recon["totals"]
+    lines += [
+        "",
+        "## Reconciliation",
+        f"- Total orders: {t['total_orders']}",
+        f"- Balanced orders: {t['balanced_orders']}",
+        f"- Unbalanced orders: {t['unbalanced_orders']}",
+        f"- Total order amount: {t['total_order_amount_cents']} cents",
+        f"- Total settled payments: {t['total_settled_payment_cents']} cents",
+        f"- Total processed refunds: {t['total_processed_refund_cents']} cents",
+        f"- Total net collected: {t['total_net_collected_cents']} cents",
+        "",
+        "## Failed Expectations",
+    ]
+    if validation["failed_expectations"]:
+        for f in validation["failed_expectations"]:
+            lines.append(f"- {f['dataset']}: {f['expectation_type']} on {f['column']}")
+    else:
+        lines.append("- none")
+    path.write_text("\n".join(lines) + "\n")
+
+
+# ---------------------------------------------------------------- entry point
+def run_audit(config_path: Path, out_dir: Path) -> None:
+    config = yaml.safe_load(config_path.read_text())
+    rules = yaml.safe_load(Path(config["rules_path"]).read_text())
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    raw = {
+        "customers": pd.read_csv(config["customers_path"], dtype=str, keep_default_na=False),
+        "orders": pd.read_csv(config["orders_path"], dtype=str, keep_default_na=False),
+        "payments": pd.read_csv(config["payments_path"], dtype=str, keep_default_na=False),
+        "refunds": pd.read_csv(config["refunds_path"], dtype=str, keep_default_na=False),
+    }
+
+    cleaned, quarantine = {}, []
+    # pass 1: customers (no parent)
+    cleaned["customers"], q, _ = clean_dataset("customers", raw["customers"], rules, None, None)
+    quarantine += q
+    cust_ids = set(cleaned["customers"]["customer_id"])
+    # pass 2: orders need order amounts for refund checks; clean orders first
+    cleaned["orders"], q, _ = clean_dataset("orders", raw["orders"], rules, cust_ids, None)
+    quarantine += q
+    order_ids = set(cleaned["orders"]["order_id"])
+    order_amounts = dict(zip(cleaned["orders"]["order_id"], cleaned["orders"]["amount_cents"].astype(int)))
+    cleaned["payments"], q, _ = clean_dataset("payments", raw["payments"], rules, order_ids, None)
+    quarantine += q
+    cleaned["refunds"], q, _ = clean_dataset("refunds", raw["refunds"], rules, order_ids, order_amounts)
+    quarantine += q
+
+    # write cleaned csvs
+    for name in DATASETS:
+        cleaned[name].to_csv(out_dir / f"cleaned_{name}.csv", index=False)
+    pd.DataFrame(quarantine, columns=["dataset", "row_number", "record_id", "reason"]).to_csv(
+        out_dir / "quarantine_report.csv", index=False)
+
+    # GX validation
+    dataset_results, cross_table, gx_pass = run_gx_validation(cleaned, rules)
+
+    recon = reconcile(cleaned["orders"], cleaned["payments"], cleaned["refunds"])
+    validation = write_validation_report(
+        dataset_results, cross_table, gx_pass, recon, cleaned, quarantine,
+        config["rules_path"], config.get("dataset", "audit"))
+
+    (out_dir / "reconciliation_report.json").write_text(json.dumps(recon, indent=2) + "\n")
+    (out_dir / "validation_report.json").write_text(json.dumps(validation, indent=2) + "\n")
+    counts = {name: int(len(cleaned[name])) for name in DATASETS}
+    write_summary(validation, recon, counts, quarantine, out_dir / "audit_summary.md")
+    print(f"Audit complete. overall_pass={validation['overall_pass']} quarantined={len(quarantine)}")

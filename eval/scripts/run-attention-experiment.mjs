@@ -75,14 +75,20 @@ const gates = scenarios.map((scenario) => verifyEnvironmentGates(scenario, gateD
 // attempt is recorded and `attempted`/`providerErrors` still report the total,
 // which is the same treatment the pre-existing empty-completion retry gets.
 const declaredTransport = manifest.transport ?? {};
-if (Object.keys(declaredTransport).some((key) => !['sdkMaxRetries', 'attempts'].includes(key))) {
-  throw new Error('manifest.transport accepts only sdkMaxRetries and attempts');
+if (Object.keys(declaredTransport).some((key) => !['sdkMaxRetries', 'attempts', 'timeoutMs'].includes(key))) {
+  throw new Error('manifest.transport accepts only sdkMaxRetries, attempts and timeoutMs');
 }
 const sdkMaxRetries = declaredTransport.sdkMaxRetries ?? 0;
 const providerAttempts = declaredTransport.attempts ?? 1;
 if (!Number.isSafeInteger(sdkMaxRetries) || sdkMaxRetries < 0) throw new Error('transport.sdkMaxRetries must be a nonnegative integer');
 if (!Number.isSafeInteger(providerAttempts) || providerAttempts < 1) throw new Error('transport.attempts must be an integer >= 1');
-const transportPolicy = { sdkMaxRetries, retry: { attempts: providerAttempts } };
+// A timeout is declared, not defaulted: the SDK's own default is 10 minutes,
+// which spends 30 minutes over 3 attempts discovering that a 25 KB request is
+// never going to be answered. Fail fast, retry more.
+const timeoutMs = declaredTransport.timeoutMs;
+if (timeoutMs !== undefined && (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0)) throw new Error('transport.timeoutMs must be a positive integer');
+const transportPolicy = { sdkMaxRetries, retry: { attempts: providerAttempts },
+  ...(timeoutMs === undefined ? {} : { timeoutMs }) };
 const replyPolicy = manifest.provider === 'anthropic'
   ? { kind: 'existing-provider-default', defaultMaxTokens: 4096, verifiedModelLimit: false, confirmationEligible: false }
   : { kind: 'no-harness-reply-limit', defaultMaxTokens: null, confirmationEligible: true };

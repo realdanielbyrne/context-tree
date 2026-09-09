@@ -1,0 +1,24 @@
+        reasons.append("invalid_primary_key")
+    elif not re.fullmatch(rule["columns"][pk]["regex"], pkv):
+        reasons.append("invalid_primary_key")
+    elif pkv in seen_pks:
+        reasons.append("duplicate_primary_key")
+    colrules = rule["columns"]
+    for col, cr in colrules.items():
+        val = row.get(col)
+        if cr.get("not_null") and (val is None or val == ""):
+            # skip redundant not-null codes already covered by a parse failure
+            already = {"amount_cents": "invalid_amount", "signup_date": "invalid_date",
+                       "order_date": "invalid_date", "payment_date": "invalid_date",
+                       "refund_date": "invalid_date"}.get(col)
+            if not already or already not in reasons:
+                reasons.append(f"missing_{col}")
+            continue
+        if val in (None, ""):
+            continue
+        if col == "email" and not EMAIL_RE.match(val):
+            reasons.append("invalid_email")
+        if "in_set" in cr and val not in cr["in_set"]:
+            if col in ("status", "reason", "method"):
+                reasons.append("invalid_status" if col == "status" else f"invalid_{col}")
+            elif col == "currency":

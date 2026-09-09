@@ -21,6 +21,8 @@ export interface CreateProviderOptions {
   /** Set 0 with retry.attempts=1 to expose every local transport attempt to the caller. */
   sdkMaxRetries?: number;
   retry?: RetryOptions;
+  /** Per-request timeout in ms. Omitted leaves the SDK default (10 minutes). */
+  timeoutMs?: number;
 }
 
 export function createProvider(config: ContextTreeConfig, apiKeys: ApiKeys, options: CreateProviderOptions = {}): ModelProvider {

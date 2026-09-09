@@ -1,0 +1,17 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/app/src/dq_audit/cli.py", line 23, in <module>
+    main()
+  File "/app/src/dq_audit/cli.py", line 19, in main
+    run_audit(Path(args.config), Path(args.out_dir))
+  File "/app/src/dq_audit/audit.py", line 375, in run_audit
+    cleaned["customers"], q, _ = clean_dataset("customers", raw["customers"], rules, None, None)
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/src/dq_audit/audit.py", line 138, in clean_dataset
+    reasons = reasons + validate_row(name, row, rule, seen)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/src/dq_audit/audit.py", line 91, in validate_row
+    rule = rules["datasets"][dataset]
+           ~~~~~^^^^^^^^^^^^
+KeyError: 'datasets'

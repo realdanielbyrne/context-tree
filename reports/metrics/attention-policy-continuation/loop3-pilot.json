@@ -105,7 +105,8 @@
  "ceilingNote": "Derived from the ABS v4 capture (max measured run + largest single request). That run is 49 turns of DeepSWE, whereas LHTB averages ~9.9M tokens/task, so this ceiling is roughly one sixth of a full-length LHTB run. It is deliberately short: loop 3 is looking for winning patterns cheaply. No published claim may rest on it, and the real batch must derive its ceiling from a completed LHTB pilot.",
  "transport": {
   "sdkMaxRetries": 0,
-  "attempts": 3
+  "attempts": 6,
+  "timeoutMs": 180000
  },
- "transportNote": "Three provider attempts per call. Request timed out voided this pilot native run and 3 of 7 runs in the preceding pass, at prompt sizes ~2% of the window where no context policy could be implicated. SDK-level retries stay at 0 so every attempt is the harness making it and is counted; attempted/providerErrors still report the total. This is an epoch change and is declared here rather than buried in a constant."
+ "transportNote": "Fail fast, retry more. The SDK default timeout is 10 minutes, so the previous 3-attempt policy spent up to 30 minutes discovering a 25 KB request would never be answered -- the attn-control arm managed 4 turns in 26 minutes before exhausting its attempts. An agent turn on a small request either answers in seconds or not at all, so 180s x 6 attempts bounds a dead call at 18 minutes while giving twice the chances. sdkMaxRetries stays 0 so every attempt is one the harness made and counted."
 }

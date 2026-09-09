@@ -1,0 +1,77 @@
+--- exit 0 ---
+--- stdout ---
+=== data/public/messy_customers.csv ===
+17 data/public/messy_customers.csv
+customer_id,name,email,tier,signup_date,country
+ c001 , Alice Smith , ALICE@EXAMPLE.COM , Gold , 2024-01-05 , us
+C002,Bob Stone,bob@example.com,silver,01/12/2024,CA
+C003,Carla Gomez,carla@example.net,bronze,2024/02/03,gb
+C004,Dan Wu,dan.wu@example.org,vip,2024-02-14,US
+C005,Eve Kim,eve_at_example.com,gold,2024-03-01,US
+C006,Frank Moore,frank@example.com,diamond,2024-03-05,US
+C007,Grace Lee,grace@example.com,silver,not-a-date,FR
+C008,Hank Roy,,bronze,2024-03-17,FR
+C009,Ivy Park,ivy@example.com,gold,2024-03-20,ES
+C010,Jack Long,jack@example.com,bronze,2024-03-21,US
+C010,Jack Duplicate,jack2@example.com,bronze,2024-03-22,US
+C011,Kai Chen,kai@example.com, silver ,03-23-2024,CA
+C012,Lena O,lena.o@example.com,enterprise,2024-03-24,GB
+,Missing Id,missing@example.com,gold,2024-03-25,US
+C013,Mona Ray,mona@example.com,bronze,2024-03-26,FR
+C014,Nora Bell,nora@example.com,gold,2024-04-01,FR
+
+=== data/public/messy_orders.csv ===
+19 data/public/messy_orders.csv
+order_id,customer_id,order_date,status,amount,currency
+ o001 , c001 , 2024-04-05 , complete , $120.50 , usd
+O002,C002,04/07/2024,pending,33.10,CAD
+O003,C003,2024/04/09,shipped,44.00,GBP
+O004,C004,2024-04-11,cancelled,0.99,USD
+O005,C005,2024-04-12,completed,15.00,USD
+O006,C006,2024-04-13,pending,11.00,USD
+O007,C001,2024-04-14,pending,-4.50,USD
+O008,C999,2024-04-15,completed,20.00,USD
+O009,C010,2024-04-16,completed,5.25,USD
+O009,C010,2024-04-17,completed,7.25,USD
+O010,C011,17-04-2024,pending,18.00,CAD
+O011,C012,2024-04-18,refunded,42.00,GBP
+O012,C013,2024-04-19,completed,100,EUR
+O013,C014,2024-04-20,pending,$19.95,EUR
+O014,C003,not-a-date,pending,3.50,GBP
+O015,C004,2024-04-21,completed,abc,USD
+O016,C002,2024-04-22,completed,63.01,AUD
+O017,C001,2024-04-23,completed,1,USD
+
+=== data/public/messy_payments.csv ===
+14 data/public/messy_payments.csv
+payment_id,order_id,payment_date,status,amount,method,currency
+ p001 , o001 , 2024-04-05 , settled , $130.50 , Card , usd
+P002,O002,04/07/2024,pending,10.00,ach,CAD
+P003,O003,2024/04/09,settled,44.00,card,GBP
+P004,O004,2024-04-11,failed,0.99,card,USD
+P005,O009,2024-04-16,settled,5.25,paypal,USD
+P006,O012,2024-04-19,settled,100.00,wire,EUR
+P007,O013,2024-04-20,pending,5.00,card,EUR
+P008,O999,2024-04-21,settled,20.00,card,USD
+P009,O001,not-a-date,settled,1.00,card,USD
+P010,O001,2024-04-05,settled,-1.00,card,USD
+P011,O003,2024-04-10,settled,1.00,bitcoin,GBP
+P011,O003,2024-04-11,settled,1.00,card,GBP
+P012,O017,2024-04-23,settled,1,card,USD
+
+=== data/public/messy_refunds.csv ===
+11 data/public/messy_refunds.csv
+refund_id,order_id,refund_date,status,amount,reason,currency
+ r001 , o001 , 2024-04-06 , processed , $10.00 , price_adjustment , usd
+R002,O003,04/10/2024,rejected,2.00,customer_request,GBP
+R003,O004,2024/04/12,pending,0.99,customer_request,USD
+R004,O009,2024-04-18,processed,1.00,duplicate,USD
+R005,O999,2024-04-19,processed,2.00,fraud,USD
+R006,O012,2024-04-20,processed,150.00,customer_request,EUR
+R007,O013,not-a-date,processed,1.00,customer_request,EUR
+R008,O001,2024-04-07,processed,-1,customer_request,USD
+R009,O001,2024-04-08,processed,1.00,unknown,USD
+R009,O001,2024-04-09,processed,1.00,customer_request,USD
+
+
+--- stderr ---

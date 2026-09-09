@@ -783,3 +783,19 @@ describe('createProvider', () => {
     );
   });
 });
+
+describe('per-request timeout (transport)', () => {
+  it('rejects a nonpositive or fractional timeout rather than silently ignoring it', () => {
+    for (const timeoutMs of [0, -1, 1.5]) {
+      expect(() => new OpenRouterProvider({ apiKey: 'k', timeoutMs })).toThrow(RangeError);
+    }
+  });
+
+  it('accepts a positive timeout and leaves the SDK default when omitted', () => {
+    // The SDK default is 10 minutes, which is why omitting it is a decision and
+    // not a neutral choice: 3 attempts at that default spend 30 minutes
+    // discovering a small request will never be answered.
+    expect(() => new OpenRouterProvider({ apiKey: 'k', timeoutMs: 180_000 })).not.toThrow();
+    expect(() => new OpenRouterProvider({ apiKey: 'k' })).not.toThrow();
+  });
+});

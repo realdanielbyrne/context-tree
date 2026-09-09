@@ -1,0 +1,30 @@
+==> outputs/cleaned_customers.csv <==
+customer_id,name,email,tier,signup_date,country
+C001,Alice Smith,alice@example.com,gold,2024-01-05,US
+C002,Bob Stone,bob@example.com,silver,2024-01-12,CA
+C003,Carla Gomez,carla@example.net,bronze,2024-02-03,GB
+
+==> outputs/cleaned_orders.csv <==
+order_id,customer_id,order_date,status,amount_cents,currency
+O002,C002,2024-04-07,pending,3310,CAD
+O009,C010,2024-04-16,completed,525,USD
+O010,C011,2024-04-17,pending,1800,CAD
+
+==> outputs/cleaned_payments.csv <==
+payment_id,order_id,payment_date,status,amount_cents,method,currency
+P002,O002,2024-04-07,pending,1000,ach,CAD
+P005,O009,2024-04-16,settled,525,paypal,USD
+P006,O012,2024-04-19,settled,10000,wire,EUR
+
+==> outputs/cleaned_refunds.csv <==
+refund_id,order_id,refund_date,status,amount_cents,reason,currency
+R004,O009,2024-04-18,processed,100,duplicate,USD
+Audit complete. overall_pass=False quarantined=37
+1308a283e1de975ea6ca91b1a5bbdf4c  outputs/reconciliation_report.json
+1f45ab71e612d7dbcc46df1eea531a82  outputs/cleaned_customers.csv
+2d89063bf419b4100cd8dd02d3a52be8  outputs/cleaned_refunds.csv
+4838d64e284cf7e3291c3406d3c4f4bd  outputs/validation_report.json
+5a85fc53b0a0f06d062217baa2a284a3  outputs/cleaned_payments.csv
+ad6c80c9a12193935be6914302a366c3  outputs/audit_summary.md
+c7382b73b15113536748942c655ca44d  outputs/quarantine_report.csv
+f3cd2588b3dafdcc5248277d19c20a9a  outputs/cleaned_orders.csv
