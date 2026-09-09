@@ -3,7 +3,7 @@
  "stage": "pilot",
  "benchmark": "lhtb",
  "provider": "openrouter",
- "model": "qwen/qwen3.7-flash",
+ "model": "qwen/qwen3.8-flash",
  "window": 1310720,
  "tokenCap": 1552615,
  "ceilingEvidence": {
@@ -101,15 +101,17 @@
   "EVAL_NATIVE_CACHE": "1",
   "EVAL_FETCH_EVENTS": "1"
  },
- "output": "reports/metrics/attention-policy-continuation/loop3-pilot-qwen",
+ "output": "reports/metrics/attention-policy-continuation/loop3-pilot-q38",
  "ceilingNote": "Derived from the ABS v4 capture (max measured run + largest single request). That run is 49 turns of DeepSWE, whereas LHTB averages ~9.9M tokens/task, so this ceiling is roughly one sixth of a full-length LHTB run. It is deliberately short: loop 3 is looking for winning patterns cheaply. No published claim may rest on it, and the real batch must derive its ceiling from a completed LHTB pilot.",
  "transport": {
   "sdkMaxRetries": 0,
   "attempts": 3,
-  "timeoutMs": 300000
+  "timeoutMs": 660000
  },
  "transportNote": "Reply cap and request timeout are one decision, derived not guessed. Measured: z-ai/glm-5.3-flash generates at 52.7 tok/s (4,096 completion tokens in 77.7s, isolated probe). The harness leaves AGENT_MAX_TOKENS unset by design -- \"a host that genuinely needs a bound passes one\" -- and this is such a host: an uncapped reply on a task that asks the agent to write a whole pipeline runs for minutes and exceeds any timeout, which voided three loop3 arms. 8,192 tokens is ~600 lines per turn, generous for one reply, and bounds generation at ~155s; the 300s timeout gives 1.9x headroom, so a call exceeding it is genuinely hung rather than merely slow. The runner refuses a timeout without a cap, and refuses a timeout below what a full reply needs at this rate. The cap applies to EVERY arm -- the attention arm previously set none at all, so the comparison was not at parity.",
- "agentMaxTokens": 8192,
- "generationTokensPerSecond": 75.7,
- "substrateNote": "Substrate switched from z-ai/glm-5.3-flash to qwen/qwen3.7-flash for two independent reasons, both measured. (1) SPEED AND SAFETY: measured generation rates over two 4,096-token trials each -- qwen 75.7/84.2 tok/s, deepseek 66.3/98.3, glm 26.4/24.5. GLM is ~3x slower and its rate is unstable; at its slowest observed 24.5 tok/s a full 8,192-token reply needs 335s, which EXCEEDS the 300s timeout, so legitimate full-length replies were still being killed. An earlier single GLM probe read 52.7 tok/s, which is why the 300s timeout looked sufficient -- one sample of a variable rate. Qwen needs 108s for the same reply, giving 2.8x headroom. (2) ECONOMICS, which matters more: qwen3.7-flash is the ONLY cheap OpenRouter model in the price table with a nonzero cacheWrite (0.038 against input 0.03, i.e. 1.27x). GLM and deepseek publish cacheWrite 0, a free-prefix-rewrite edge case that flatters ejection. Qwen therefore has real eviction economics: its break-even is 6.3 turns against GLM 5.0 and Anthropic 12.5, so results transfer far better. The ejection cadence moves from 5 to 6 accordingly. CAVEAT: the price table holds qwen3.7-flash base tier and notes tiered overrides above 32k prompt tokens, so dollar figures on runs exceeding 32k prompt are underestimates; tokens remain the primary effort endpoint and are unaffected."
+ "agentMaxTokens": 16384,
+ "generationTokensPerSecond": 51.4,
+ "substrateNote": "Substrate qwen/qwen3.8-flash, selected on economics rather than speed. Its cache ratios (cacheRead/input 0.107, cacheWrite/input 1.33) put the eviction break-even at 12.5 turns, effectively identical to claude-sonnet-5 (0.10/1.25, also 12.5). glm-5.3-flash and deepseek-v4-flash publish cacheWrite 0 -- a free-prefix-rewrite edge case that deletes eviction's penalty and flatters the hypothesis -- and qwen3.7-flash sits at 6.3 turns, about half Anthropic. On 3.8-flash a token result needs no cross-provider discount. Health: HTTP 200 in 1,347-1,421ms across three tool-calling trials with 8 schemas, correct tool_calls every time. Prices read live from OpenRouter /api/v1/models on 2026-09-09 and added to the table, because an unpriced model is charged the most expensive first-party tier and would inflate every cost figure.",
+ "replyBudgetNote": "agentMaxTokens 16384 is derived from the task, not chosen. The reference solution's largest file is 17,473 bytes = ~4,992 content tokens = ~6,240 with the JSON tool-call envelope, so 16384 is 2.6x a legitimate largest write. The previous 8192 cap was only 1.3x and was observed to TRUNCATE a write_file mid-JSON: \"tool call has unparseable arguments: Unterminated string in JSON at position 7610\", which errors the run rather than merely shortening a file. These are reasoning models (27-57 reasoning tokens on trivial prompts), so part of the budget is spent thinking before any content is emitted, and the cap must clear the write with room. At the measured slowest 51.4 tok/s a full 16384-token reply needs 319s; the 660s timeout is 2.07x that, so a call exceeding it is hung rather than slow. Cost of that safety: a genuinely dead call now takes up to 33 minutes across 3 attempts, accepted because the model answers small calls in ~1.4s and dead calls should be rare.",
+ "truncationCheck": "finish_reason=length and unparseable-tool-argument errors must be counted per arm before any reward is read. Nonzero and unequal means the cap is a confound and the batch is rerun higher."
 }
