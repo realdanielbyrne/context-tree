@@ -1529,3 +1529,47 @@ believed. And the substantive lesson: **when a transport symptom recurs, measure
 before changing the policy.** Two policy changes were made on inference and the second was a
 regression; a single isolated probe of generation latency — minutes of work, zero model spend
 beyond a few thousand tokens — would have found it first.
+
+### Pre-registered interpretive limit: this pilot tests SAFETY, not benefit
+
+Recorded before the epoch `4813b055` numbers land, so it cannot read as a post-hoc excuse.
+
+**The token budget does not bind on `great-expectations-audit`.** The one native run that completed
+(GLM, epoch `c1c6dc64`) used **596,228 of a 1,552,615-token ceiling across 31 turns** and stopped on
+its own, not at the cap. Peak context never approached the 1M window either. So there is **no
+context pressure for a context policy to relieve** on this task.
+
+Consequences for how the result may be read:
+
+- **A null result means "safe at this scale", NOT "ineffective".** With nothing binding, eviction
+  can only remove tokens the run had room for anyway. Reward parity would show the mechanisms do no
+  harm — which is worth knowing, since lens 3 established that recurrence is common and
+  long-horizon (keep-last-1 breaks 62% of edits) and a careless policy could easily hurt.
+- **A reward DROP would be the informative outcome here**, and it would be a real finding: it would
+  mean the re-derivability classification is wrong somewhere, most likely that something classified
+  re-derivable was not in practice.
+- **A reward GAIN would be surprising and would need explaining**, not celebrating. At 31 turns with
+  a slack budget there is no mechanism by which less context should help unless attention dilution
+  is doing real work — which is the RULER-style effect the literature reports and this repo has only
+  seen at qo05 scale.
+- **The token column is nearly uninformative here.** The cumulative re-send term is quadratic in
+  turn count, and 31 turns is where iteration 1 measured a 3.76x effective multiplier against
+  6.75x at 645 calls. Any token saving measured at this length understates the long-horizon case by
+  design.
+
+**The follow-on batch that actually tests benefit is specified and unblocked.** Four LHTB tasks
+stress context by construction, and all four carry **zero LFS pointers**, so they need no new
+tooling:
+
+| task | expert time | 'stage' mentions | LFS |
+| --- | ---: | ---: | ---: |
+| `apex-management-consulting-matter` | 600 min | 15 | 0 |
+| `apex-law433-matter` | 510 min | 27 | 0 |
+| `apex-openroad-ibex-signoff` | 480 min | 7 | 0 |
+| `apex-investment-banking-matter` | 300 min | 16 | 0 |
+
+These are the 4-10x longer horizons where the quadratic term compounds and a 12.5-turn cadence has
+room to amortise. **The order is deliberate: prove no harm on the short task first, then measure
+benefit on a long one.** Running the long tasks first would have spent hours per run discovering
+harness defects that the short task surfaced in twenty minutes — which is, in fact, what the six
+short-task launches bought.
