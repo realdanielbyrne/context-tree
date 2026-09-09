@@ -1673,3 +1673,84 @@ credentials.** This is why the diagnosis had to be reconstructed from capture bl
 3. **Wire the real Langfuse sink into the experiment runner**, so the next failure is readable
    without blob archaeology.
 4. Re-run the pilot only after (1). Until then there is no measurement, only instrument repair.
+
+## 2026-09-09 — ARCHITECTURE CORRECTION (operator): stop building a harness
+
+Operator judgement, and it is correct: *"This product isn't trying to recreate a coding harness
+anyway, it is supposed to be an adjunct add-on... This product is simple in its design, and you are
+trying to make it more complicated."* Also noted: hundreds of turns across several sessions failed
+to catch the tool-call eviction, and it is not the only oversight.
+
+**The tool-call eviction is not a bug to fix. It is evidence that `eval/` should not exist in its
+current form.** `ChatMessage` has no `tool_calls` field and no `'tool'` role because the eval
+harness is a half-built reimplementation of something several mature projects already do correctly.
+Fixing the type would deepen the wrong thing.
+
+**What the product actually is, per its own code.** `@context-tree/mcp` serves exactly four tools
+over **stdio** (`packages/mcp/src/bin.ts`, `StdioServerTransport`). `packages/cli/src/commands/init.ts`
+exists to "wire the MCP server into a host's config". `packages/cli/src/claude-code.ts` already
+maps **a real Claude Code session transcript (JSONL) into L0 events + L2 blobs**, handling genuine
+`ToolCallEvent` / `ToolResultEvent`. The designed data flow is therefore: **a real harness runs the
+task and emits a real transcript -> context-tree ingests it -> context-tree serves detail back
+through four MCP tools.** `eval/fixtures/transplant/s1/trace.src.jsonl`, the 645-call session
+analysed in iteration 1, is already exactly that input format.
+
+Everything added to `eval/` last night — the shared completion gate, the nudge budget, the reply
+cap, the manifest transport policy, the generation-rate guard — is scaffolding for a harness this
+project should not own. It is retained only as a record; it is not the path forward.
+
+### The correct experiment, and it has one variable
+
+- **Arm A (baseline):** a known-working harness runs the task on a cheap OpenRouter model.
+- **Arm B (treatment):** the same harness, same model, same task, with the context-tree MCP server
+  attached.
+
+Same battle-tested tool-calling implementation on both sides. The only difference is whether the
+adjunct is present, which is the product as actually used and the only comparison that answers
+"does context-tree help".
+
+### Selected host: deepseek-harness (MIT, `deepseek-ai/deepseek-harness`)
+
+Chosen because it satisfies all three constraints without modification:
+
+| requirement | evidence |
+| --- | --- |
+| headless, one task per invocation | `python python/sdk/examples/minimal.py --workspace <abs> --dsh-home <abs> --session-id <id> "<task>"`; isolated workspace and home per run, explicit session id |
+| cheap OpenRouter models | custom provider in `$DSH_HOME/settings.yaml` with `api: openai-completions` and base URL `https://openrouter.ai/api/v1` (`docs/user/guide/providers.md`) |
+| MCP over stdio | one Cordis overlay applied with `--patch`; tools surface as `mcp__<serverName>__<tool>` |
+
+The overlay shape, from `apps/cli/config/examples/mcp-memory/mcp-reference-memory.cordis.yml`:
+
+    - insert:
+        - id: context-tree-mcp
+          name: '@deepseek-ai/dsh-mcp-client'
+          config:
+            serverName: context_tree
+            transport: stdio
+            command: <context-tree mcp bin>
+            cwd: !!js process.cwd()
+
+Because `@context-tree/mcp` is already stdio, it drops in with no adapter.
+
+Rejected alternatives: **Claude Code** — MCP and headless (`claude -p`) both fine, but Anthropic
+models only, which the operator's cost constraint excludes. **Cline** — MCP and OpenRouter both
+fine, but it is a VS Code extension and headless batch execution is not a supported path.
+
+### Known risks, recorded before starting
+
+1. `docs/user/guide/providers.md:144` warns that request shape is inferred from the endpoint URL and
+   "an address it does not recognize is addressed as though it were OpenAI itself. Most
+   OpenAI-compatible gateways refuse at least one thing OpenAI accepts." OpenRouter may need
+   per-model `compat` settings. **Verify with one throwaway task before any batch.**
+2. dsh is in "developer preview" with "COMPATIBILITY-BREAKING CHANGES" declared. Pin the commit.
+3. A **dsh transcript -> L0 mapper** is needed alongside the existing Claude Code one. That is the
+   right kind of code for this product — an importer, not an agent loop — and is small and
+   well-scoped.
+
+### Order
+
+1. One throwaway dsh task on a cheap OpenRouter model. Confirms provider wiring only.
+2. Attach the context-tree MCP overlay; confirm the four tools appear and are callable.
+3. Write the dsh-transcript importer against a real captured session.
+4. Two arms, same task, n>=5. That is the first honest measurement of the product.
+5. Retire the bespoke arms in `eval/` rather than maintaining them.
