@@ -61,7 +61,28 @@ const scenarios = manifest.tasks.map((id) => {
 });
 const gateDocuments = manifest.gates.map((path) => readJson(resolve(path)));
 const gates = scenarios.map((scenario) => verifyEnvironmentGates(scenario, gateDocuments, dockerRuntime));
-const transportPolicy = { sdkMaxRetries: 0, retry: { attempts: 1 } };
+// Transport is a FROZEN, MANIFEST-DECLARED field, not a constant, so a change
+// to it is visible in the manifest, the epoch and the frozen record rather than
+// buried here. The default reproduces the original policy exactly
+// (sdkMaxRetries 0, one provider attempt) so every existing manifest is
+// unaffected.
+//
+// Why a manifest may want more than one attempt: `Request timed out` voided the
+// native run of the loop3 pilot and 3 of 7 runs in the preceding pass, at prompt
+// sizes around 2% of the window where no context policy could be implicated.
+// isRetryableStatus(undefined) already returns true, so a timeout IS retryable
+// and only attempts:1 suppressed it. Retrying does not hide anything: every
+// attempt is recorded and `attempted`/`providerErrors` still report the total,
+// which is the same treatment the pre-existing empty-completion retry gets.
+const declaredTransport = manifest.transport ?? {};
+if (Object.keys(declaredTransport).some((key) => !['sdkMaxRetries', 'attempts'].includes(key))) {
+  throw new Error('manifest.transport accepts only sdkMaxRetries and attempts');
+}
+const sdkMaxRetries = declaredTransport.sdkMaxRetries ?? 0;
+const providerAttempts = declaredTransport.attempts ?? 1;
+if (!Number.isSafeInteger(sdkMaxRetries) || sdkMaxRetries < 0) throw new Error('transport.sdkMaxRetries must be a nonnegative integer');
+if (!Number.isSafeInteger(providerAttempts) || providerAttempts < 1) throw new Error('transport.attempts must be an integer >= 1');
+const transportPolicy = { sdkMaxRetries, retry: { attempts: providerAttempts } };
 const replyPolicy = manifest.provider === 'anthropic'
   ? { kind: 'existing-provider-default', defaultMaxTokens: 4096, verifiedModelLimit: false, confirmationEligible: false }
   : { kind: 'no-harness-reply-limit', defaultMaxTokens: null, confirmationEligible: true };
@@ -70,7 +91,7 @@ const common = { provider: manifest.provider, model: manifest.model,
   leafModel: manifest.leafModel ?? manifest.model, rootModel: manifest.rootModel ?? manifest.model, judgeModel: manifest.model,
   maxTurns: Infinity, timeCapMs: Infinity, costCapUsd: null, tokenCap: manifest.tokenCap,
   window: manifest.window, budgets: manifest.budgets ?? { zoneB: 8000, zoneC: 30000 },
-  keepSandbox: false, temperature: manifest.temperature ?? null, transportPolicy, transportRetriesDisabled: true,
+  keepSandbox: false, temperature: manifest.temperature ?? null, transportPolicy, transportRetriesDisabled: sdkMaxRetries === 0 && providerAttempts === 1,
   attemptScope: 'ModelProvider.complete', replyPolicy };
 const readInstrument = () => {
   const sourceFiles = ['packages/core/src', 'packages/mcp/src', 'eval/src', 'packages/core/dist', 'packages/mcp/dist', 'eval/dist'].flatMap((directory) => files(join(root, directory)));

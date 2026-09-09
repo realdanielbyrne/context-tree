@@ -102,5 +102,10 @@
   "EVAL_FETCH_EVENTS": "1"
  },
  "output": "reports/metrics/attention-policy-continuation/loop3-pilot-n1",
- "ceilingNote": "Derived from the ABS v4 capture (max measured run + largest single request). That run is 49 turns of DeepSWE, whereas LHTB averages ~9.9M tokens/task, so this ceiling is roughly one sixth of a full-length LHTB run. It is deliberately short: loop 3 is looking for winning patterns cheaply. No published claim may rest on it, and the real batch must derive its ceiling from a completed LHTB pilot."
+ "ceilingNote": "Derived from the ABS v4 capture (max measured run + largest single request). That run is 49 turns of DeepSWE, whereas LHTB averages ~9.9M tokens/task, so this ceiling is roughly one sixth of a full-length LHTB run. It is deliberately short: loop 3 is looking for winning patterns cheaply. No published claim may rest on it, and the real batch must derive its ceiling from a completed LHTB pilot.",
+ "transport": {
+  "sdkMaxRetries": 0,
+  "attempts": 3
+ },
+ "transportNote": "Three provider attempts per call. Request timed out voided this pilot native run and 3 of 7 runs in the preceding pass, at prompt sizes ~2% of the window where no context policy could be implicated. SDK-level retries stay at 0 so every attempt is the harness making it and is counted; attempted/providerErrors still report the total. This is an epoch change and is declared here rather than buried in a constant."
 }
