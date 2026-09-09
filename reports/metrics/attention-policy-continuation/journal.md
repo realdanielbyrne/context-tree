@@ -1115,3 +1115,79 @@ break-even against Anthropic's **12.5** (`w*keep/(r*(1-keep))`). Lens 4's findin
 deployment.** Any token-side win measured here is an upper bound for Anthropic hosts and must be
 reported as such. The success-side endpoint is not affected by pricing, which is a further reason
 the success-gated rule is the right one. Cross-provider confirmation is deferred, not assumed.
+
+### Literature anchor — Edge Review, "The Long-Context Conundrum" (operator-supplied, 2026-09-08)
+
+The article's taxonomy maps onto this project's design almost one-for-one at the level of
+*mechanism*, and not at all at the level of *cost*. Both halves matter.
+
+**Its four token-eviction criteria against ours.** The article lists recency-based ("oldest tokens
+first"), attention-based ("tokens with very low attention weights from all other tokens"),
+summary-based (evict detail after summarizing, retain the summary), and **dependency-tracking
+("conditional eviction respecting dependencies"), which it presents as proposed rather than
+built.** Ours are the same four, and our empirical results already discriminate among them:
+
+| article criterion | our analog | status here |
+| --- | --- | --- |
+| recency-based | keep-last-K recency slice | **empirically refuted** (lens 3): keep-last-1 breaks 62% of the run's `edit_file` calls, keep-last-10 still breaks 21%; the longest-lived units are the *earliest and smallest* |
+| attention-based | relevance + priority dual-channel scoring (§15) | untested; per-turn form killed by the cadence bound |
+| summary-based | Zone B branch summaries | measured **inert** on literal recall (flat-events 15/25 vs 16/25) |
+| **dependency-tracking (proposed)** | **re-derivability ranking** — keep coordinates, eject payloads a coordinate can re-derive, never eject observations nothing can re-derive | **our iteration-2 arm; the article proposes this and does not specify it** |
+
+So the one criterion the article flags as an open direction is the one iteration 2 is built on, and
+we have a concrete specification for it plus a measured re-derivation price (29,082 tokens).
+
+**Zone A/B/C is BigBird's sparse-attention pattern lifted to the message level.** BigBird combines
+global attention (a few designated tokens see everything), local/sliding-window attention
+(neighbours within a fixed radius), and random attention. Our layout is global (**pinned** task,
+plan, steering) + local (**recency slice**) + **summarized** distant history — the same
+factorization with summary substituted for random. The article's "eclipsed attention" ("different
+parts of the context are eclipsed from full view according to need") is the general form.
+
+Its chunking family is also ours: "chunk-and-summarize" and hierarchical chunking with fusion are
+the summary-headed tree; the retrieval-augmented variant of "context fusion" is
+`context_search` / `context_fetch` / `context_peek`.
+
+**THE DIFFERENCE THAT DOES NOT TRANSFER, and it is the one that produced our binding constraint.**
+Every eviction and sparse-attention technique in the article operates **inside a single forward
+pass, on the KV cache**. It saves FLOPs and GPU memory, and dropping a token is *free* — you simply
+do not compute it. We operate on the **message list across API calls**, and we are billed for a
+cached prefix. Evicting there is **not** free: it invalidates the prefix suffix and forces a
+cache re-write at 1.25x input, which is the entire origin of the break-even
+
+    turns needed after one ejection = w * keep / (r * (1 - keep))
+
+— 12.5 turns on Anthropic, 5 on OpenRouter GLM. **No token-level technique in the article has an
+analog of this cost, because none of them is paying a provider for a prefix.** Anyone importing
+"token eviction" reasoning into an API-level agent harness inherits a cost model that does not
+apply. This is worth stating in the eventual report: the mechanisms are borrowed legitimately, the
+economics are not.
+
+The article's quadratic claim is about **attention compute** ("every token compares itself to every
+other token"; doubling length roughly quadruples the work). Ours is about **cumulative billed
+tokens** (every turn re-sends the prefix). Different quantities, both O(n^2), and the router
+previously conflated a linear per-turn prompt curve with a refutation of the second — see the
+correction above.
+
+**Its strongest result for us is not an eviction technique at all: it is evidence for the endpoint
+we have not tested.** The article reports NIAH near 100% for GPT-4 and Claude at all tested
+lengths, while the RULER benchmark and a cited enterprise trial show GPT-4 32K and Claude 2.1 100K
+at only **~59% accuracy on realistic long-document QA** — "effective context often much less than
+claimed context." That is external support for the one hypothesis no lens in iteration 1 could
+refute: **that a shorter, better-curated context makes the model reason better.** It is the reason
+the operator's success-gated endpoint is the right primary, and it means the token column is the
+secondary signal rather than the verdict. Also directly relevant: this repo's own qo05 distractor
+result (tail arms answered from a distractor 14/15 times with the whole tail present) is a
+small-scale instance of the same phenomenon.
+
+**Out of reach for us.** LongRoPE positional rescaling (Llama2 128K -> 2,048K), Transformer+Mamba
+hybrids (LongLLaVA, 933 images on one 80GB GPU), V2PE, and mPLUG-Owl3's hyper-attention blocks
+(~88% inference-time and ~48% memory reduction) are all model-internal. We are a harness over
+hosted frontier models — no fine-tuning in v1 — so these are context for why the field cares, not
+candidates.
+
+**What we have that the article's techniques do not.** Versioned `node_summaries` as an audit trail
+of what the model actually saw; the L0/L1/L2 rebuildability invariant (derived layers are
+deterministic functions of the log); and the cache-preserving constraint that makes
+`context_fetch` results append *after* Zone C rather than reorder the prefix. Prefix stability has
+no counterpart in KV-cache eviction, where there is no cached prefix to protect.
