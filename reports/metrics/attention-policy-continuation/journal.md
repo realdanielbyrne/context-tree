@@ -909,3 +909,150 @@ spent. **Cross-arm comparisons of turns or tokens from earlier epochs are not va
 and must either be re-run or read with that +1 in mind. Graded scores are affected wherever a run
 ended on a premature bare reply, which the corpus replay puts at 185 fires across 204 tree runs
 with 23 rescues.
+
+## 2026-09-08 late — TWO ROUTER ERRORS CORRECTED BY OPERATOR EVIDENCE; the corpus is the defect
+
+The operator supplied `/context` output from real Claude Code sessions and challenged the pass's
+statistics. Both challenges land. **The affected conclusions above are withdrawn as marked.**
+
+### Error 1 — "growth is linear, not exponential, so H-B's premise is refuted" was a category error
+
+Lens 2 fitted **prompt length per turn** against turn index and found it linear (R^2 0.978/0.990).
+That fit is correct. The inference drawn from it was not. The growth the literature calls quadratic
+is **cumulative token consumption**, and a linear per-turn prompt curve is exactly its mechanism:
+every turn re-sends the whole prefix, so
+
+    sum_{i<=n} (a + b*i) = a*n + b*n(n+1)/2 = O(n^2)
+
+The pass's own headline numbers *are* that quadratic term and were mislabelled as evidence against
+it: a 23x re-send multiplier on a 49-turn task, 351x on a 645-call session, 1.71M and 112M
+cumulative prompt tokens respectively. **Nothing was refuted.** Prefix caching discounts the term
+by roughly 8x (the effective multipliers are 3.76x and 6.75x) but does not change its order. The
+correct statement is: consumption grows quadratically, caching reduces the constant, and ejection
+is the only intervention that attacks the exponent.
+
+`reports/algorithm.md` rule 9 carried the wrong claim and is corrected.
+
+### Error 2 — the occupancy corpus cannot reach the regime, and that was reported as a finding about the hypothesis
+
+Lens 2's distribution (median peak **1.25% of window**, p99 5.31%, only 2 of 329 runs above 25%)
+is arithmetically right and **describes an invalid instrument**. Operator measurements on
+`claude-opus-5[1m]`, 1M window:
+
+| observation | total context | messages | occupancy |
+| --- | ---: | ---: | ---: |
+| after **1** user prompt | 368.1k | 334k | **37%** |
+| after **2** user prompts (iteration 3, "baked 1h 7m") | 562.5k | 525.3k | **56%** |
+
+Fixed overhead before any message: system 4.6k + system tools 1.3k + MCP tools 4.5k (455 tools)
++ custom agents 2.9k (14) + memory files 14.3k (4) + skills 9.9k (180) = **~37.5k tokens**, with a
+33k autocompact buffer against a 1M auto-compact window.
+
+**The two measurements reconcile exactly, which is what makes the corpus defect precise.** The
+per-turn rate lens 2 measured (600-770 tok/turn, agreeing across two unrelated harnesses) is
+right; so is the operator's ~191k jump per user prompt. 191,300 / 700 ~= **273 model turns per
+user prompt** — consistent with "baked for 1h 7m" driving subagents. The error was reporting
+"median 14 turns" from generated scenarios as though it characterised real sessions. One operator
+prompt is roughly twenty of this repo's benchmark tasks end to end.
+
+Consequences, replacing what iteration 1 concluded:
+
+- **H-A's mechanism fires routinely in real use.** "H-A cannot be tested on this harness" stands
+  only as a statement about the harness. At ~191k/prompt a 1M window autocompacts after roughly
+  four to five operator prompts. The 25-50% band is *inside the operating range*, not 25x beyond it.
+- **The cadence bound stops binding.** The 12.5-turn Anthropic break-even is correct arithmetic but
+  was applied to 49-turn tasks where it dominates. At 273 turns per prompt, ejecting at turn 100
+  leaves a horizon of ~170, clearing the bound by more than 13x. **Phase-boundary ejection is
+  comfortably above water in the real regime; only per-turn re-prioritisation remains dead.**
+- **The step8-sonnet null result (native 6/6 at $0.186, cheapest and equal-best) is a result about
+  31-turn tasks.** It does not transfer to 273-turn sessions, where the quadratic term is ~75x
+  larger.
+
+### The instrument replacement: Long-Horizon-Terminal-Bench (LHTB)
+
+Selection criterion was verifier availability, because success rate is the endpoint that decides
+these hypotheses and a hidden grader forecloses it.
+
+| candidate | scale | verifier | verdict |
+| --- | --- | --- | --- |
+| **LHTB** (arXiv 2607.08964) | 46 tasks, **9.9M tokens, ~231 episodes, 85.3 min per task** | **Apache 2.0, `tests/` + `solution/` in repo** | **selected** |
+| SWE-Marathon | 20 tasks, 27M avg / 877M max tokens | hidden test suite | rejected: no endpoint |
+| Agents' Last Exam | 250+ occupational tasks | not public | rejected: no endpoint |
+| Meta-Agent Challenge | — | dev set only | rejected: partial |
+| AgencyBench (arXiv 2601.11044) | ~90 tool calls, ~1M tokens/scenario | unverified | hold |
+
+LHTB's per-task profile (231 episodes, 85 minutes) matches the operator's regime almost exactly
+(~273 turns, 67 minutes). 30 of 46 tasks set `continue_until_timeout = true`, and the multi-stage
+tasks are the right shape: **law 70 stages, investment banking 38, management consulting 33**.
+Layout is `task.toml` / `instruction.md` / `environment/` (Dockerfile) / `tests/` (hidden verifier)
+/ `solution/` (reference) — which maps onto the DeepSWE integration already built here, including
+the pristine-0 / reference-1 gate pair. Docker plus Git LFS; Colima is already installed.
+Sources: `github.com/zli12321/LHTB`, `huggingface.co/datasets/IntelligenceLab/Long-Horizon-Terminal-Bench`
+(1.18 GB; the HF copy withholds verifiers and solutions, so the GitHub clone is the required one).
+
+Note honestly: none of these benchmarks was built to evaluate context-management policy. That is
+fine and does not weaken the choice — the benchmark supplies a long task and a verifiable outcome,
+and the arms supply the policy contrast. What it does mean is that no published baseline exists to
+compare against on this axis.
+
+### Pre-registration: iteration 2 — LHTB, success-gated
+
+Operator decisions (2026-09-08 late): instrument is **LHTB**; endpoint is **both, success-gated**.
+
+**Endpoint rule, registered before any run.** Task success (verifier reward) and cumulative prompt
+tokens are both reported. **A token win accompanied by any success regression is recorded as a
+regression, never as a tradeoff.** Tokens cannot override success. This is registered now
+precisely because the break-even arithmetic already predicts the token direction, so the token
+column is the cheap signal and not the verdict.
+
+**Why success is load-bearing here.** Nothing in iteration 1 tested whether a shorter context makes
+the model reason better — every lens argued cost, latency or reliability. If ejection raises
+success, the entire cost analysis is beside the point; if it lowers success, no token saving
+redeems it.
+
+**Arms (3, same epoch, equal n).** `native` full history (the practitioner default and the arm that
+won at 31 turns); `context-tree` (the shipped stack); one **mechanism-isolated** phase-boundary
+ejection arm. Per-turn re-prioritisation is excluded by the cadence bound and gets no live tokens.
+One measurable change per candidate.
+
+**Ejection arm specification, from iteration 1's evidence.** Fires only at phase boundaries at
+least 12.5 turns apart (the Anthropic break-even, `w*keep/(r*(1-keep))`, derived not fitted).
+Ranks by **re-derivability, not relevance** (lens 3): a unit whose content is a coordinate into a
+file still on disk is cheap to eject because the agent can re-read it — measured price 29,082
+tokens; a unit whose content is **not** reconstructible (command output, test results, a `git
+stash` A/B establishing which failures pre-existed) is never ejected regardless of age or
+relevance. Task, plan and steering text are pinned. This is the repo's own L0/L2 invariant applied
+to attention: keep coordinates, eject re-derivable payloads, never eject unrepeatable observations.
+
+**Pilot before the matrix.** n=1 on one LHTB task per arm, to derive the token ceiling from
+observed behaviour rather than from the historical 3,027,706 figure (which came from a 49-turn
+task and is ~3x too small if LHTB averages 9.9M).
+
+**Sizing, from LHTB's published 9.9M tokens/task and the ABS-measured 88/12 cache split.**
+
+| model | per run | 3 arms x n=5 x 4 tasks (60) | Sonnet confirmation (15) |
+| --- | ---: | ---: | ---: |
+| GLM 5.3 Flash (primary) | $0.29 | **$18** | — |
+| Sonnet 5 (confirmation) | $7.09 | $425 | **$106** |
+| Opus 5 | $17.72 | $1,063 | $266 |
+
+Wall-clock is the binding constraint, not spend: 85 min/run x 60 = 85 h serial, ~14 h at 6-way
+parallel. Escalation to n=10 only on an ambiguous registered comparison, baseline included.
+
+**Kill gates, as numbered steps before the first scored batch (zero live tokens each).**
+1. LHTB clone + `git lfs pull`; confirm `tests/` and `solution/` are present for the chosen tasks.
+   If verifiers are absent, the success endpoint is unavailable and the instrument is rejected —
+   the HF mirror withholds them, so this is a real risk, not a formality.
+2. Pristine run scores 0 and reference solution scores 1, in a verifier container the agent never
+   touches. A task failing either gate is replaced, not tuned.
+3. Baseline solvability: `native` completes one task with a non-empty submission and a verified
+   reward. Iteration 1's ABS lesson — a 0 caused by an unmet submission contract is not a
+   capability measurement.
+4. Mechanism can fire at all: offline, confirm the ejection arm's boundaries occur >= 12.5 turns
+   apart on a recorded trace of that length and that it would eject a non-zero number of tokens.
+   An arm byte-identical to its own baseline must never be written up as a failed hypothesis.
+5. Turn/token ceiling derived from the pilot, not inherited.
+
+**What this batch still will not test:** models other than GLM (Sonnet confirms winners only),
+windows other than 1M-class, non-terminal task families, and sessions past ~231 episodes. A policy
+that wins here is proven at LHTB scale, not proven.
