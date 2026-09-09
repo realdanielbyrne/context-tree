@@ -1458,3 +1458,74 @@ was protecting:
 with a completed status means the transport was flaky and the run survived it; that must appear in
 any results table rather than being smoothed into a success. And a run that exhausts all three
 attempts still scores **null, never 0** — the endpoint is unknown, not failed.
+
+### Loop 3 diagnosis — the uncapped reply, and four launches that produced no comparison
+
+Four batches were launched and none produced a comparative result. The causes, in the order they
+were found, because the sequence is the lesson:
+
+**1. Self-inflicted: `instrument changed during the batch`.** The router built the topic index and
+ran `npm run build` while a batch was live. `readInstrument()` hashes `eval/src` and `eval/dist`, so
+the guard aborted before the next model call. It was right — mixing instruments mid-experiment
+produces results nobody can attribute. **The fix is to freeze the tree for the duration of a batch,
+not to relax the check.**
+
+**2. Misdiagnosed: `Request timed out`.** Read as provider flakiness, matching the operator's
+report that OpenRouter is not always responsive, and "fixed" by raising `attempts` to 3. Runs kept
+dying.
+
+**3. Wrongly fixed: the 10-minute default.** No timeout had ever been configured, so the OpenAI SDK
+default of 10 minutes applied; three attempts therefore spent up to 30 minutes discovering a call
+would never answer. The router set 180s. **This made things worse** — the native arm had completed
+31 turns under the 10-minute default and then failed under 180s. A symptom was treated twice
+before the mechanism was measured.
+
+**4. The actual cause, measured in isolation.** `z-ai/glm-5.3-flash` generates at **52.7 tok/s**:
+
+| `max_tokens` | latency | outcome |
+| --- | ---: | --- |
+| 64 | 1,624 ms | `finish=length` |
+| 4,096 | **77,665 ms** | `finish=length` |
+| **omitted (the harness's shape)** | **>200,007 ms** | **never finished; aborted at 200s** |
+
+An uncapped reply was still generating past 200 seconds — over 10,500 tokens — on a task that asks
+the agent to write an entire pipeline. `AGENT_MAX_TOKENS` is `undefined` by design in `loop.ts`,
+documented as "a number here is a guess about how much the model needs to say", and the consequence
+is that a single reply can exceed any request timeout.
+
+**The provider was never at fault, and the probes prove it.** Four cheap OpenRouter models returned
+HTTP 200 in 774-1,537 ms. Tool-calling at the native shape (4 tools) returned in 4,643-4,812 ms
+across three trials and at the attention shape (8 tools) in 4,826-5,428 ms, with correct
+`tool_calls` every time. Not the provider, not request size (10-25 KB), not the tool schemas, not
+the context policy.
+
+**A parity defect this exposed, which would have invalidated any result the batch did produce.**
+The attention arm's `makeRequest` set **no `maxTokens` at all** — the field was simply absent, not
+inherited. So the arms were never at parity; both were uncapped, but only the attention arm's turns
+ran long enough to hit the wall. A reward difference measured under that asymmetry would have been
+an artifact of the harness, not of the mechanism, and the control arm was the arm that died.
+
+**The fix, derived rather than guessed.** The harness names its own escape hatch — "a host that
+genuinely needs a bound passes one; nothing here imposes it" — so the bound is declared in the
+manifest and `AGENT_MAX_TOKENS` is left alone. `agentMaxTokens: 8192` (~600 lines per reply) bounds
+generation at ~155s; `timeoutMs: 300000` follows from that at 1.9x headroom, so a call exceeding it
+is genuinely hung rather than merely slow. The runner now **refuses a timeout without a reply cap**
+and **refuses a timeout below what a full reply needs at the declared rate**
+(`generationTokensPerSecond: 52.7`), so the two cannot drift apart again. The cap applies to every
+arm.
+
+**An open risk this introduces, to be checked in the results and not assumed away.** The harness's
+original objection to a reply budget was that "too small truncates the deliverable." A cap of 8,192
+will show as `finish_reason: length` if a turn genuinely wanted more, and a truncated `write_file`
+can leave a broken file. **Before any reward is interpreted, count the turns that finished on
+`length` in each arm.** If that count is nonzero and unequal across arms, the cap is a confound and
+the comparison must be rerun at a higher cap rather than explained. Equal-and-zero is the only
+reading that leaves the comparison clean.
+
+**Methodology lessons for the skill.** Three guards fired during this loop and every one was
+correct: the instrument hash, the derived-ceiling requirement, and "scientific inputs changed;
+start a new epoch". A harness that refuses to run is cheaper than a batch that runs and cannot be
+believed. And the substantive lesson: **when a transport symptom recurs, measure the mechanism
+before changing the policy.** Two policy changes were made on inference and the second was a
+regression; a single isolated probe of generation latency — minutes of work, zero model spend
+beyond a few thousand tokens — would have found it first.
