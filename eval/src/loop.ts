@@ -388,7 +388,7 @@ async function runDsaArm(args: ArmArgs): Promise<ArmOutput> {
       system: NATIVE_SYSTEM_PROMPT,
       messages: selectTopKMessages(messages, taskWords, DSA_TOP_K),
       tools: HARNESS_TOOL_SCHEMAS,
-      maxTokens: AGENT_MAX_TOKENS,
+      maxTokens: args.options.agentMaxTokens ?? AGENT_MAX_TOKENS,
     };
     if (args.options.temperature != null) request.temperature = args.options.temperature;
     const { result, record } = await callModel({
@@ -522,7 +522,7 @@ async function runPrefixRetrievalArm(args: ArmArgs): Promise<ArmOutput> {
         system,
         messages: [task, ...retrieved, ...slice],
         tools: HARNESS_TOOL_SCHEMAS,
-        maxTokens: AGENT_MAX_TOKENS,
+        maxTokens: args.options.agentMaxTokens ?? AGENT_MAX_TOKENS,
         systemCacheBreakpoint: true,
       };
       if (args.options.temperature != null) request.temperature = args.options.temperature;
@@ -590,7 +590,7 @@ async function runNativeArm(args: ArmArgs): Promise<ArmOutput> {
       system: NATIVE_SYSTEM_PROMPT,
       messages: turnMessages,
       tools: HARNESS_TOOL_SCHEMAS,
-      maxTokens: AGENT_MAX_TOKENS,
+      maxTokens: args.options.agentMaxTokens ?? AGENT_MAX_TOKENS,
     };
     if (args.options.temperature != null) request.temperature = args.options.temperature;
     if (nativeCache) request.systemCacheBreakpoint = true;
@@ -1269,12 +1269,12 @@ async function runTreeArm(
         process.env.EVAL_ZONEC_CACHE === '1'
           ? toZoneCCachedRequest(prompt, args.options.model, {
               tools: treeTools,
-              maxTokens: AGENT_MAX_TOKENS,
+              maxTokens: args.options.agentMaxTokens ?? AGENT_MAX_TOKENS,
               ...(args.options.temperature != null ? { temperature: args.options.temperature } : {}),
             })
           : toCompletionRequest(prompt, args.options.model, {
               tools: treeTools,
-              maxTokens: AGENT_MAX_TOKENS,
+              maxTokens: args.options.agentMaxTokens ?? AGENT_MAX_TOKENS,
               ...(args.options.temperature != null ? { temperature: args.options.temperature } : {}),
             });
       const { result, record } = await callModel({

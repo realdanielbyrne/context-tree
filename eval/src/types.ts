@@ -194,4 +194,16 @@ export interface HarnessOptions {
    * variance is controlled with replicates + medians and this stays unset.
    */
   temperature?: number | null;
+  /**
+   * Per-turn reply cap. `AGENT_MAX_TOKENS` in loop.ts is deliberately unset —
+   * "a host that genuinely needs a bound passes one" — and this is a host that
+   * does. Measured on `z-ai/glm-5.3-flash`: generation runs at **52.7 tok/s**
+   * (4,096 completion tokens in 77.7s, isolated probe), so an UNCAPPED reply on
+   * a task that asks the agent to write a whole pipeline runs for minutes and
+   * exceeds any request timeout. That is what voided three loop3 arms, and it
+   * is why the request timeout must be derived from this number rather than
+   * guessed: bounded generation is what makes a hung call distinguishable from
+   * a slow one. Unset preserves the provider's own maximum.
+   */
+  agentMaxTokens?: number;
 }

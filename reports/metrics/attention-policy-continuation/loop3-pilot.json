@@ -101,12 +101,14 @@
   "EVAL_NATIVE_CACHE": "1",
   "EVAL_FETCH_EVENTS": "1"
  },
- "output": "reports/metrics/attention-policy-continuation/loop3-pilot-n1",
+ "output": "reports/metrics/attention-policy-continuation/loop3-pilot-n1c",
  "ceilingNote": "Derived from the ABS v4 capture (max measured run + largest single request). That run is 49 turns of DeepSWE, whereas LHTB averages ~9.9M tokens/task, so this ceiling is roughly one sixth of a full-length LHTB run. It is deliberately short: loop 3 is looking for winning patterns cheaply. No published claim may rest on it, and the real batch must derive its ceiling from a completed LHTB pilot.",
  "transport": {
   "sdkMaxRetries": 0,
-  "attempts": 6,
-  "timeoutMs": 180000
+  "attempts": 3,
+  "timeoutMs": 300000
  },
- "transportNote": "Fail fast, retry more. The SDK default timeout is 10 minutes, so the previous 3-attempt policy spent up to 30 minutes discovering a 25 KB request would never be answered -- the attn-control arm managed 4 turns in 26 minutes before exhausting its attempts. An agent turn on a small request either answers in seconds or not at all, so 180s x 6 attempts bounds a dead call at 18 minutes while giving twice the chances. sdkMaxRetries stays 0 so every attempt is one the harness made and counted."
+ "transportNote": "Reply cap and request timeout are one decision, derived not guessed. Measured: z-ai/glm-5.3-flash generates at 52.7 tok/s (4,096 completion tokens in 77.7s, isolated probe). The harness leaves AGENT_MAX_TOKENS unset by design -- \"a host that genuinely needs a bound passes one\" -- and this is such a host: an uncapped reply on a task that asks the agent to write a whole pipeline runs for minutes and exceeds any timeout, which voided three loop3 arms. 8,192 tokens is ~600 lines per turn, generous for one reply, and bounds generation at ~155s; the 300s timeout gives 1.9x headroom, so a call exceeding it is genuinely hung rather than merely slow. The runner refuses a timeout without a cap, and refuses a timeout below what a full reply needs at this rate. The cap applies to EVERY arm -- the attention arm previously set none at all, so the comparison was not at parity.",
+ "agentMaxTokens": 8192,
+ "generationTokensPerSecond": 52.7
 }

@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "epoch": "c1c6dc64ced2b8f5d3df4c7eb501bc27eb541a0772f5d38ba4a0e3970a92e228",
+  "epoch": "5c33aedda33d38db06e60b1071081157d2c9eefa4b5a3789d59b79add4045e41",
   "science": {
     "version": 2,
     "common": {
@@ -23,8 +23,9 @@
       "transportPolicy": {
         "sdkMaxRetries": 0,
         "retry": {
-          "attempts": 3
-        }
+          "attempts": 6
+        },
+        "timeoutMs": 180000
       },
       "transportRetriesDisabled": false,
       "attemptScope": "ModelProvider.complete",
@@ -381,10 +382,10 @@
       "packages/core/src/models/anthropic.ts": "b7dcc39aea9e41174191cb722106c89255e67f8a32e8dd9f3b26b7d65fefef15",
       "packages/core/src/models/cost.ts": "2c6b37686982ab1ad19f84e6ef062c0e70e38b9a174ca591551228603d216963",
       "packages/core/src/models/embeddings.ts": "68dcd45e1aa88312c64fcc6fd74fbe2167d10a16b75774f8e97366620adcb715",
-      "packages/core/src/models/factory.ts": "255a125dd18098ce58f12313b42f94949c3f23abb8e10a7745fb8f8f1d1f816d",
+      "packages/core/src/models/factory.ts": "59a50fd4b3cf4e79a345eba8fc605b07a86e0aa825690bdd03e8dc01d40e12b6",
       "packages/core/src/models/index.ts": "2efe8cc8cfcbdf89b65155d612e9391df12a2229cb38df0155553de81526d240",
       "packages/core/src/models/mock.ts": "3f70baf2f1165cf6fc16863c14771a31131749ed838b4fe2f490381a00269532",
-      "packages/core/src/models/openrouter.ts": "ffda5037b85ff5106d406d2ae52e6fd6df0871c6e7346117305309347f27eb76",
+      "packages/core/src/models/openrouter.ts": "b2ed6257bed47fabb7be2a8467ddcc607ce078fbee1e9d2452a5a2d3699ece57",
       "packages/core/src/models/recorded.ts": "9ef80e5b3165c8e4fc819fb0e82cffc7a7f695eb0cda29f1ec8c78912c210767",
       "packages/core/src/models/retry.ts": "4a4646cc426175e2da33462e5cf59c7ac442522249fff0db9c7830a9fe57d206",
       "packages/core/src/paths.ts": "636bc86c953d5dee173aa8598a39f1990a6a5632f10d00b46e7fdbb07ba68214",
@@ -624,10 +625,10 @@
       "packages/core/dist/models/embeddings.d.ts.map": "188d4f34178d8295b9ed97d0091d7b5f2321ff5b2bc475e7a8b1c6dd8efcedfd",
       "packages/core/dist/models/embeddings.js": "36d51714bdefbbefcbc7dfffbb8075135bc736266cf70d8329501d29140b4c04",
       "packages/core/dist/models/embeddings.js.map": "2d5661e49e9868fedda9384cbd194c92132f528c5814f055e9aa1d9e83acc53c",
-      "packages/core/dist/models/factory.d.ts": "8cf488256e791e726377a18fcf9825459a8982c422428092d2cd19b64e5fa3ec",
-      "packages/core/dist/models/factory.d.ts.map": "03ddca3699cf0ad4642656bac0cb274f2bad04d5c175120d1ca2ad34f0cb474e",
+      "packages/core/dist/models/factory.d.ts": "c9375f6b14cba4659b8dfbd611efe461b8d9e8c7242ea415c1ce1a56814f0bcc",
+      "packages/core/dist/models/factory.d.ts.map": "324ecd0288d1e0a505c65bba0aadd6373c2dc15dc087912698bd7c113b05c825",
       "packages/core/dist/models/factory.js": "c060ef10707a60068991e7c5363745374b478fd70de84beb55dd0c2c1667c193",
-      "packages/core/dist/models/factory.js.map": "16caa9d4add68d8e7607637d58af6c63124e388e9cab39785d8e7d30013adc68",
+      "packages/core/dist/models/factory.js.map": "1141002b0e3fdfef78f128a5076e82296f5e843f90546dcb1d933e4a8828f2bd",
       "packages/core/dist/models/index.d.ts": "c15feab39d7d4b79b30d20b69c2ef67aa09c54e2147d19923ad4d2af82047d84",
       "packages/core/dist/models/index.d.ts.map": "cd9babae16f8d9e3c8e045ec9f0f6655687b17a1018b992df097dd801d5e68d0",
       "packages/core/dist/models/index.js": "5ca0602ad081c2bee5a4a438a90942bca4f7c80b8dbf37e38e0cfdb18e05d2fc",
@@ -636,10 +637,10 @@
       "packages/core/dist/models/mock.d.ts.map": "ea6bc2a6f28b68fd6e83ad19a338d159c94bc3a83425027ad12ae5c17523cad9",
       "packages/core/dist/models/mock.js": "33a1a1a5ac65d7b0695ab283dba66e45bd0f7a86b9ec7189503184e6d903c6b3",
       "packages/core/dist/models/mock.js.map": "3e9cb5cedc9ea0aaa69c48aebd2acf926f146b130d5658bc4337a8ac5ff36e67",
-      "packages/core/dist/models/openrouter.d.ts": "c4c6a7bd703d966126e6782eaa477ca675b16a9d8d7bc21d143f3066651cf86d",
-      "packages/core/dist/models/openrouter.d.ts.map": "352c38f70e8a77c7f5c01be1aa311b1a261fc46923faaa889ddfbed76709b9a5",
-      "packages/core/dist/models/openrouter.js": "c6409ac10bb91759a7f7461708d0ec6baa23405dd23ea58ecd1973c5593ac707",
-      "packages/core/dist/models/openrouter.js.map": "166dafebc213e7469571807d998b00181986c8015ecf6baeca038f649f1fb199",
+      "packages/core/dist/models/openrouter.d.ts": "54542e920d1c71148bd7074af6aa8172a10e12a542c695dd39746d2a6bf1c65e",
+      "packages/core/dist/models/openrouter.d.ts.map": "027f20c0b9c4d1663c79a7784466f5cee0e5df05e218b952004333130ae96c86",
+      "packages/core/dist/models/openrouter.js": "52e528e43cce55c3e1171871631133c06da60d3b649db0ca4f03371661eb4840",
+      "packages/core/dist/models/openrouter.js.map": "f444d71e8f6225836d18aa8b2f434097fa34662d40c88ffafd6ada0f052fea4c",
       "packages/core/dist/models/recorded.d.ts": "7309e5c8e2c2e2cf0d19315bf241ea096d071ba6368be1355aae2a3a09f10e00",
       "packages/core/dist/models/recorded.d.ts.map": "03bd94b06931d087d2a7df01f85f185302b8b241c3fc0fa4ef1be10cfcc9812d",
       "packages/core/dist/models/recorded.js": "0907f04cf892575762d04910d7c942a326ba4ba7304bf7e1e9365a47e148d663",
@@ -957,7 +958,7 @@
       "eval/dist/types.d.ts.map": "809a797c231e1d874c8f4f6f3fba948ecd22f4bde09363b78a91e54eddfc99b7",
       "eval/dist/types.js": "ec3bd194af76929fc1e3f20eb1a1cd112d0b0d93d0029a7e73d71814ec1330ba",
       "eval/dist/types.js.map": "b5599986c034e90bc2f412899681bbbd3776b9f6a90f6d7dca7b249b43c4a39f",
-      "eval/scripts/run-attention-experiment.mjs": "595d1a0274f4d99a1f7084e3d00e7177aeba44636759e1f13f11688c4d8837d9",
+      "eval/scripts/run-attention-experiment.mjs": "aa5a9feec5a9b512405a49c159919bf302b3089adfc0d2fbf7ba7ec088dae218",
       "package.json": "d27733e6cff0d4e1f6da22bd3f6e25df8c302de712ecca2a36844f6d24771a85",
       "pnpm-lock.yaml": "4fdd5a2d86fd79b0e16aee885045cd2e7173b841b3c656fc251a2d013e36e608",
       "eval/package.json": "45e47d4a63c66beb6f953548ece77ee02b312e7f93c092f36e0f2351fd65a6e5",

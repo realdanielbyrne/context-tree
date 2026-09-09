@@ -330,6 +330,10 @@ export async function runAttentionArm(args: ArmArgs, deps: {
   const makeRequest = (messages: ChatMessage[]): CompletionRequest => ({
     model: args.options.model, system: deps.system, messages, tools,
     ...(args.options.temperature == null ? {} : { temperature: args.options.temperature }),
+    // Same reply cap as every other arm. Without it this arm was uncapped while
+    // the comparison assumed parity, and an uncapped reply on a 52.7 tok/s
+    // model runs past any request timeout.
+    ...(args.options.agentMaxTokens === undefined ? {} : { maxTokens: args.options.agentMaxTokens }),
     ...(nativeCache ? { systemCacheBreakpoint: true } : {}),
   });
   const addMessage = (sourceSeq: number, message: ChatMessage, originalBlob: string, exchangeId: string, role?: AttentionUnit['role'], path?: string): TranscriptEntry => {
