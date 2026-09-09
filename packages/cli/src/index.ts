@@ -20,6 +20,7 @@ export {
   type TranscriptOptions,
   type TranscriptResult,
 } from './claude-code.js';
+export { mapOpencodeExport } from './opencode.js';
 export {
   initCommand,
   type InitHost,

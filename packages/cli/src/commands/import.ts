@@ -29,6 +29,7 @@ import {
   type TraceEventInput,
 } from '@context-tree/core';
 import { mapClaudeCodeTranscript, type LineFailure } from '../claude-code.js';
+import { mapOpencodeExport } from '../opencode.js';
 import { configFor, cwdOf, type GlobalOptions } from '../context.js';
 import { CliError } from '../errors.js';
 import { report, type Io } from '../io.js';
@@ -36,6 +37,8 @@ import { report, type Io } from '../io.js';
 export interface ImportOptions extends GlobalOptions {
   /** Read the file as a Claude Code session transcript instead of L0. */
   fromClaudeCode?: boolean;
+  /** Read the file as an opencode session export instead of L0. */
+  fromOpencode?: boolean;
   /** Fail on the first bad line instead of importing what parsed. */
   strict?: boolean;
 }
@@ -43,7 +46,7 @@ export interface ImportOptions extends GlobalOptions {
 export interface ImportResult {
   source: string;
   root: string;
-  format: 'l0' | 'claude-code';
+  format: 'l0' | 'claude-code' | 'opencode';
   /** Events appended to L0. */
   events: number;
   /** Lines carrying nothing L0 represents. */
@@ -68,9 +71,11 @@ export function importCommand(file: string, opts: ImportOptions, io: Io): Import
   try {
     const startSeq = handle.trace.lastSeq();
     const mapped =
-      opts.fromClaudeCode === true
-        ? mapClaudeCodeTranscript(lines, { startSeq, blobs: handle.blobs })
-        : mapL0Trace(lines, startSeq);
+      opts.fromOpencode === true
+        ? mapOpencodeExport(JSON.parse(readFileSync(source, 'utf8')), { startSeq, blobs: handle.blobs })
+        : opts.fromClaudeCode === true
+          ? mapClaudeCodeTranscript(lines, { startSeq, blobs: handle.blobs })
+          : mapL0Trace(lines, startSeq);
 
     if (opts.strict === true && mapped.failures.length > 0) {
       const first = mapped.failures[0] as LineFailure;
@@ -91,7 +96,7 @@ export function importCommand(file: string, opts: ImportOptions, io: Io): Import
     const result: ImportResult = {
       source,
       root: config.root,
-      format: opts.fromClaudeCode === true ? 'claude-code' : 'l0',
+      format: opts.fromOpencode === true ? 'opencode' : opts.fromClaudeCode === true ? 'claude-code' : 'l0',
       events: mapped.events.length,
       skipped: mapped.skipped,
       failures: mapped.failures,

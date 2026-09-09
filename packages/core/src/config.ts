@@ -15,13 +15,16 @@ import { PHASE_TYPES, type PhaseType } from './contracts/tree.js';
  * it attaches to the open phase rather than opening a node of its own.
  */
 export const DEFAULT_TOOL_PHASE: Readonly<Record<string, PhaseType>> = Object.freeze({
-  // implementation
+  // implementation — Claude Code (PascalCase) + generic (snake_case) + opencode (lowercase)
   edit_file: 'implementation',
   write_file: 'implementation',
   Edit: 'implementation',
   Write: 'implementation',
   NotebookEdit: 'implementation',
   apply_patch: 'implementation',
+  edit: 'implementation',
+  write: 'implementation',
+  patch: 'implementation',
   // verification
   run_tests: 'verification',
   Test: 'verification',
@@ -31,6 +34,10 @@ export const DEFAULT_TOOL_PHASE: Readonly<Record<string, PhaseType>> = Object.fr
   Grep: 'diagnosis',
   Glob: 'diagnosis',
   search_code: 'diagnosis',
+  read: 'diagnosis',
+  grep: 'diagnosis',
+  glob: 'diagnosis',
+  list: 'diagnosis',
   // delivery
   create_ticket: 'delivery',
   push_pr: 'delivery',
@@ -41,6 +48,9 @@ export const DEFAULT_TOOL_PHASE: Readonly<Record<string, PhaseType>> = Object.fr
   // explicitly neutral
   run_command: 'other',
   Bash: 'other',
+  bash: 'other',
+  task: 'other',
+  webfetch: 'other',
 });
 
 /** Tools whose `path` argument keys a file node under the phase (§7). */
@@ -51,6 +61,9 @@ export const DEFAULT_FILE_TOOLS: readonly string[] = Object.freeze([
   'Write',
   'NotebookEdit',
   'apply_patch',
+  'edit',
+  'write',
+  'patch',
 ]);
 
 /** Extension -> tree-sitter grammar module (§12, lazily loaded). */

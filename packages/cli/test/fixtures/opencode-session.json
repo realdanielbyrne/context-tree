@@ -1,0 +1,84 @@
+{
+  "info": {
+    "id": "session-001",
+    "title": "test session",
+    "time": { "created": 1725868800000 }
+  },
+  "messages": [
+    {
+      "info": { "role": "user", "time": { "created": 1725868800000 } },
+      "time": { "created": 1725868800000 },
+      "parts": [
+        { "type": "text", "text": "Fix the bug in auth.ts" }
+      ]
+    },
+    {
+      "info": { "role": "assistant", "time": { "created": 1725868801000 } },
+      "time": { "created": 1725868801000 },
+      "parts": [
+        { "type": "text", "text": "I'll read the file first." },
+        {
+          "type": "tool",
+          "tool": "read",
+          "callID": "call-1",
+          "state": {
+            "status": "completed",
+            "input": { "filePath": "src/auth.ts" },
+            "output": "export function login() { return true; }",
+            "time": { "start": 1725868802000, "end": 1725868803000 }
+          }
+        },
+        {
+          "type": "tool",
+          "tool": "edit",
+          "callID": "call-2",
+          "state": {
+            "status": "completed",
+            "input": { "filePath": "src/auth.ts", "content": "export function login() { return false; }" },
+            "output": "File edited successfully",
+            "time": { "start": 1725868804000, "end": 1725868805000 }
+          }
+        }
+      ]
+    },
+    {
+      "info": { "role": "assistant", "time": { "created": 1725868806000 } },
+      "time": { "created": 1725868806000 },
+      "parts": [
+        { "type": "reasoning", "text": "thinking about next steps..." },
+        { "type": "text", "text": "The bug is fixed." },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "call-3",
+          "state": {
+            "status": "error",
+            "input": { "command": "npm test" },
+            "output": "Error: test failed",
+            "time": { "start": 1725868807000, "end": 1725868808000 }
+          }
+        }
+      ]
+    },
+    {
+      "info": { "role": "user", "time": { "created": 1725868809000 } },
+      "time": { "created": 1725868809000 },
+      "parts": [
+        { "type": "text", "text": "Thanks" }
+      ]
+    },
+    {
+      "info": { "role": "system" },
+      "parts": [
+        { "type": "text", "text": "system notice" }
+      ]
+    },
+    {
+      "info": { "role": "assistant", "time": { "created": 1725868810000 } },
+      "time": { "created": 1725868810000 },
+      "parts": [
+        { "type": "unknown-future-type", "data": "something" }
+      ]
+    }
+  ]
+}
