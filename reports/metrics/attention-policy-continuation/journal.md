@@ -1312,3 +1312,59 @@ answer from itself — and with the headline-fingerprint work already in the rec
 reading the correct Zone B evaluation is **whether it raises the rate of successful retrieval**,
 not whether the model can answer from Zone B directly. Registered as a distinct arm for a later
 loop; no code yet.
+
+### Loop 3 live batch — pre-registered BEFORE the numbers land
+
+Manifest `reports/metrics/attention-policy-continuation/loop3-pilot.json`, epoch
+`74dbe1364cfdf769ffcfbdec67c8a2d270138889b424cb1c598eaf3807ffc425`, output
+`loop3-pilot-n1/`. Task `great-expectations-audit` (11 dense pytest cases).
+Model `z-ai/glm-5.3-flash` via OpenRouter, provider-default sampling. Window 1,310,720.
+
+**Shared budget, not a shared clock.** Every arm gets the same all-model token ceiling —
+**1,552,615**, derived by `max-run-plus-max-request` from the ABS v4 capture (measured run
+1,490,544 + its largest single request), verified by the harness against the source hash rather
+than asserted. The question the design asks is therefore *who gets furthest on equal tokens*, and
+the dense reward answers it. **This ceiling is ~1/6 of LHTB's published 9.9M mean, deliberately:
+loop 3 is looking for winning patterns cheaply. No published claim may rest on it, and the scored
+batch must derive its ceiling from a completed LHTB pilot.**
+
+**Four arms, one measurable change each.**
+
+| arm | policy | isolates |
+| --- | --- | --- |
+| `native` | full history, no policy | the practitioner default |
+| **`attn-control`** | attention arm, payload `whole`, **no attention policy** | **the arm's plumbing** |
+| `attn-priority` | `priority: { boost 1, halfLifeTurns 8 }` | attention-based eviction |
+| `dep-rederive-c5` | `evictRederivable: { minCadenceTurns 5 }` | dependency-tracking eviction |
+
+`attn-control` is the arm that makes the other two readable. Without it, any gap between `native`
+and a policy arm could be the attention arm's own plumbing — its payload selection, its message
+rendering, its L0 round-trip — rather than the mechanism under test. Both policy arms are read
+**against the control**, not against native.
+
+Cadence 5 is chosen because the substrate is OpenRouter GLM (`cacheWrite = 0`, `cacheRead = 0.2x`),
+whose break-even is 5 turns. It is derived, not tuned.
+
+**Endpoint, per the operator's standing rule.** Dense reward (`passed/total`) is primary; prompt
+tokens secondary. **A token win accompanied by any reward regression is recorded as a regression,
+never a tradeoff.** Registered now because the break-even arithmetic already predicts the token
+direction, so the token column cannot be allowed to become the verdict.
+
+**Reading rules, fixed in advance.**
+- n=1 per arm. **This batch cannot settle anything.** It is a pilot: it proves the pipeline live,
+  produces an LHTB-derived ceiling for the scored batch, and gives a first read on whether either
+  mechanism moves the reward at all. Any arm ordering it produces is a hypothesis for n=5, not a
+  result. The harness enforced this — `stage: pilot` implies `n=1` and `scheduleSlots` accepts only
+  n in {1,5,10}, so n=3 was refused. That guard was left intact rather than relaxed.
+- A run whose status is not `completed` has reward **null**, never 0.
+- `mechanismEvents` / `evictedRederivableUnits` / `priorityChangedOrder` must be nonzero for a
+  policy arm's number to mean anything. **An arm whose mechanism never fired is reported as inert,
+  not as a failed hypothesis** — gate 4 already caught one such false negative in this loop.
+- `evidenceVerified` must be true. It was silently `false` for every LHTB run until the
+  `inspectAttempt` fix landed this loop; any run predating that fix is void.
+- Before quoting any reward, confirm it against the raw `reward.txt` in that run's artifacts, per
+  the standing provenance rule.
+
+**What this batch will not test:** any model but GLM 5.3 Flash, any task but one, full-length LHTB
+horizons, Anthropic cache economics (this substrate is the most ejection-favourable available, so a
+token win here is an upper bound), and the Zone-B-as-index arm, which has no code yet.
