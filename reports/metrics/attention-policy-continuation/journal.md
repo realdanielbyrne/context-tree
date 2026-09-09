@@ -1425,3 +1425,36 @@ call and no labels. 4 identifiers were dropped as appearing in more than half th
 **Status: built, unit-tested (8 tests, 43 in the file), NOT yet measured live.** The number above is
 a cost measurement, not an efficacy result. Its efficacy claim is retrieval-success rate and needs
 a live arm with `context_search` available, which is a separate batch from the one now running.
+
+### Standing constraint (operator, 2026-09-08): keep multiple transport retries
+
+> "Yes keep multiple retries. OpenRouter models are not always responsive."
+
+Confirmed as a **standing** decision, not a one-off for this batch. `transport.attempts` stays > 1
+on every OpenRouter manifest. The default in
+`eval/scripts/run-attention-experiment.mjs` remains 1 so no historical manifest is retroactively
+altered, but new OpenRouter manifests declare 3.
+
+Rationale of record, and the reason this does not weaken the accounting the original `attempts: 1`
+was protecting:
+
+- The failures being retried are **transport** failures with no scientific content:
+  `Request timed out` at prompt sizes around 2% of the window, where no context policy could
+  possibly be implicated. Three of seven runs in the preceding pass and the native run of the first
+  loop-3 pilot were voided this way.
+- `isRetryableStatus(undefined)` in `packages/core/src/models/retry.ts:33` already returns `true`,
+  so a timeout was always classified retryable; only `attempts: 1` suppressed the retry.
+- **Nothing is hidden.** Every attempt is recorded; `attempted` and `providerErrors` continue to
+  report the totals. This is the identical treatment the pre-existing empty-completion retry
+  already receives, and both attempts of that retry were always preserved.
+- **SDK-level retries stay at 0.** Every attempt is therefore one the harness made and counted,
+  which is what `attempts: 1` was originally written to guarantee ("expose every local transport
+  attempt to the caller", `models/factory.ts:21`). That guarantee is intact.
+- Transport is now a **frozen manifest field**, so the value is visible in the manifest, the epoch
+  hash and the frozen record rather than buried in a constant. A future reader can see exactly what
+  transport each batch ran under.
+
+**What must still be reported honestly.** A retried run is not a clean run. `providerErrors` > 0
+with a completed status means the transport was flaky and the run survived it; that must appear in
+any results table rather than being smoothed into a success. And a run that exhausts all three
+attempts still scores **null, never 0** — the endpoint is unknown, not failed.
