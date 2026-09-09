@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { detectAttentionSignals, isRederivable, selectAttention, selectPayload } from '../src/attention/index.js';
+import { buildTopicIndex, detectAttentionSignals, isRederivable, renderTopicIndex, selectAttention, selectPayload } from '../src/attention/index.js';
 import type { AttentionInput, AttentionUnit, PayloadSelectionInput } from '../src/attention/index.js';
 import { excerptAround } from '../src/retrieve/excerpt.js';
 
@@ -329,5 +329,79 @@ describe('dependency-tracking eviction (re-derivability)', () => {
     const result = selectAttention({ units, asOfSeq: 1, turn: 99, queryFingerprints: [] });
     expect(result.mechanism.cadenceOpen).toBe(false);
     expect(result.mechanism.evictedRederivableTokens).toBe(0);
+  });
+});
+
+describe('Zone B as a topic index (operator specification)', () => {
+  const regions = [
+    { id: 'b1', text: 'edited evaluator/functions.go to add requireFn and requireCache handling', spanStartSeq: 1, spanEndSeq: 20 },
+    { id: 'b2', text: 'wired valueFlags in repl/repl.go for the CLI, touching evaluator/functions.go once', spanStartSeq: 21, spanEndSeq: 40 },
+    { id: 'b3', text: 'added modulePathEntries and cycleError to evaluator/module.go', spanStartSeq: 41, spanEndSeq: 60 },
+  ];
+
+  it('indexes identifiers, not prose, and carries a retrieval coordinate per region', () => {
+    const index = buildTopicIndex({ regions, keywordsPerRegion: 4, maxRegionFraction: 0.6 });
+    expect(index.entries).toHaveLength(3);
+    for (const entry of index.entries) {
+      expect(entry.spanEndSeq).toBeGreaterThan(entry.spanStartSeq);
+      // Keywords are identifiers/paths, never sentences.
+      for (const kw of entry.keywords) expect(kw).not.toMatch(/\s/);
+    }
+    expect(index.entries[2]!.keywords).toContain('modulePathEntries');
+  });
+
+  it('drops an identifier that appears in too many regions, and says which', () => {
+    // functions.go is in 2 of 3 regions; at a 0.6 fraction the limit is 1, so
+    // it routes nowhere and must be dropped rather than listed everywhere.
+    const index = buildTopicIndex({ regions, keywordsPerRegion: 8, maxRegionFraction: 0.6 });
+    expect(index.droppedCommon).toContain('evaluator/functions.go');
+    for (const entry of index.entries) expect(entry.keywords).not.toContain('evaluator/functions.go');
+    // A rarer path in a single region survives.
+    expect(index.entries[1]!.keywords).toContain('repl/repl.go');
+  });
+
+  it('ranks rarest first, so a keyword resolves to one region unambiguously', () => {
+    const index = buildTopicIndex({ regions, keywordsPerRegion: 2, maxRegionFraction: 1 });
+    const b2 = index.entries.find((e) => e.id === 'b2')!;
+    // With the cap at 1.0 nothing is dropped, so the shared path is eligible —
+    // but it must not outrank an identifier unique to this region.
+    expect(b2.keywords[0]).not.toBe('evaluator/functions.go');
+  });
+
+  it('caps keywords per region so the index is a fixed cost as history grows', () => {
+    const many = Array.from({ length: 40 }, (_, i) => `symbolNumber${i}`).join(' ');
+    const index = buildTopicIndex({ regions: [{ id: 'big', text: many, spanStartSeq: 1, spanEndSeq: 9 }], keywordsPerRegion: 5, maxRegionFraction: 1 });
+    expect(index.entries[0]!.keywords).toHaveLength(5);
+    expect(index.totalKeywords).toBe(5);
+  });
+
+  it('renders pointers with the retrieval instruction, and nothing when empty', () => {
+    const text = renderTopicIndex(buildTopicIndex({ regions, keywordsPerRegion: 3, maxRegionFraction: 0.6 }));
+    expect(text).toContain('These are pointers, not content');
+    expect(text).toContain('call context_search');
+    expect(text).toMatch(/b3 \[41-60\]/);
+    // No prose from the source text leaks in.
+    expect(text).not.toContain('added modulePathEntries and cycleError to');
+    expect(renderTopicIndex(buildTopicIndex({ regions: [], keywordsPerRegion: 3, maxRegionFraction: 1 }))).toBe('');
+    // A region with no distinctive identifiers contributes no line rather than a blank one.
+    expect(renderTopicIndex(buildTopicIndex({ regions: [{ id: 'x', text: 'we talked about it', spanStartSeq: 1, spanEndSeq: 2 }], keywordsPerRegion: 3, maxRegionFraction: 1 }))).toBe('');
+  });
+
+  it('rejects unusable parameters rather than guessing', () => {
+    for (const bad of [{ keywordsPerRegion: 0, maxRegionFraction: 0.5 }, { keywordsPerRegion: 2.5, maxRegionFraction: 0.5 },
+      { keywordsPerRegion: 3, maxRegionFraction: 0 }, { keywordsPerRegion: 3, maxRegionFraction: 1.5 }]) {
+      expect(() => buildTopicIndex({ regions, ...bad })).toThrow(RangeError);
+    }
+  });
+
+  it('measures document frequency over regions, not occurrences', () => {
+    // One region naming a symbol many times must not make it look common.
+    const repeated = [
+      { id: 'r1', text: 'alphaSymbol alphaSymbol alphaSymbol alphaSymbol betaSymbol', spanStartSeq: 1, spanEndSeq: 5 },
+      { id: 'r2', text: 'gammaSymbol', spanStartSeq: 6, spanEndSeq: 9 },
+    ];
+    const index = buildTopicIndex({ regions: repeated, keywordsPerRegion: 5, maxRegionFraction: 0.5 });
+    expect(index.droppedCommon).toEqual([]);
+    expect(index.entries[0]!.keywords).toContain('alphaSymbol');
   });
 });

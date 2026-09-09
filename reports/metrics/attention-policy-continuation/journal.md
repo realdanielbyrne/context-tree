@@ -1368,3 +1368,60 @@ direction, so the token column cannot be allowed to become the verdict.
 **What this batch will not test:** any model but GLM 5.3 Flash, any task but one, full-length LHTB
 horizons, Anthropic cache economics (this substrate is the most ejection-favourable available, so a
 token win here is an upper bound), and the Zone-B-as-index arm, which has no code yet.
+
+### Loop 3, mechanism 3 — Zone B as a topic index, built and measured offline
+
+`packages/core/src/attention/topic-index.ts`, built on the existing
+`extractFingerprints` (file paths, camelCase, PascalCase, UPPER_SNAKE, dotted, backticked).
+Implements the operator's specification verbatim: a summary's only job is to tell the model it
+once worked on X so it can go find X with `context_search`. It is a **pointer, not content**, and
+must never be expected to answer from itself.
+
+That reframing is what the earlier measurements already said and were misread as saying. Zone B
+scored **inert** on literal recall (`flat-events` 15/25 against 16/25 with Zone B present) — which
+is correct behaviour for an index — and showing the model *more* Zone B prose was separately
+**refuted** (+32% tokens, no change in what it selected). So the endpoint changes: the question is
+not whether the model can answer from Zone B but **whether Zone B raises the rate of successful
+retrieval.**
+
+Design decisions, each with a reason rather than a default:
+- **Keywords, never prose.** A test asserts no source sentence leaks into the render.
+- **Document frequency counted over regions, not occurrences** — one region naming a symbol fifty
+  times must not make it look common.
+- **`maxRegionFraction` drops non-discriminating identifiers and reports which.** An identifier
+  present everywhere routes nowhere; that is the same failure that made fusing disjoint indexes
+  harmful (RRF 6/17 against 9/17 for routing to the best single index).
+- **Rarest first**, so a keyword resolves to one region unambiguously.
+- **`keywordsPerRegion` caps cost**, so the index is fixed-size as history grows.
+- Every region line carries its **L0 span**, so a hit is fetchable without a second lookup, and
+  the render closes with the retrieval instruction — an index that does not tell the model what to
+  do with a hit is a list of words.
+
+**Measured on the real ABS trace** (49 turns, 6 phases as lens 3 identified), rendered whole:
+
+| keywords/region | index size |
+| ---: | ---: |
+| 3 | 118 tokens (427 chars) |
+| **5** | **142 tokens (539 chars)** |
+| 8 | 167 tokens (662 chars) |
+
+**142 tokens indexes the entire session.** Against the Zone B budget in this loop's config
+(8,000 tokens) that is **56x cheaper**, and it is **0.19%** of that run's 73,801-token peak
+context. The rendered artifact, verbatim at k=5:
+
+    Earlier work in this session, by identifier. These are pointers, not content:
+    phase1 [1-15] BeginRepl environment.go evaluator.go evaluator/evaluator.go evaluator/stdlib.go
+    phase2 [16-30] ABS_MODULE argsFn GetFns HashPair NULL
+    phase3 [31-45] repl.go repl/repl.go
+    phase4 [46-60] BUILD_OK FAIL TestRequire repl.go repl/repl.go
+    phase5 [61-75] TestStdlib TestRequire
+    phase6 [76-90] evaluator/module_test.go module_test.go resetRequireCache resetRequireCacheForTest TestBase
+    To read any of it, call context_search with the identifiers you need.
+
+That is a legible map of the session — orientation, the `ABS_MODULE`/`requireFn` work, the
+`repl.go` CLI phase, the test-triage phase, then `module_test.go` — recovered from L0 with no LLM
+call and no labels. 4 identifiers were dropped as appearing in more than half the regions.
+
+**Status: built, unit-tested (8 tests, 43 in the file), NOT yet measured live.** The number above is
+a cost measurement, not an efficacy result. Its efficacy claim is retrieval-success rate and needs
+a live arm with `context_search` available, which is a separate batch from the one now running.

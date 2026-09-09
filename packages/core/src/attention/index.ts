@@ -5,3 +5,5 @@ export type { AttentionSignal, AttentionSignalKind } from './signals.js';
 export { selectPayload } from './payload.js';
 export type { PayloadMode, PayloadSection, PayloadSelectionInput, PayloadSelection } from './payload.js';
 export { isRederivable } from './rederive.js';
+export { buildTopicIndex, renderTopicIndex } from './topic-index.js';
+export type { TopicIndex, TopicIndexEntry, TopicIndexInput } from './topic-index.js';
