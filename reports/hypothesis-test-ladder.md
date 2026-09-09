@@ -4,23 +4,30 @@
 > Register confirmed complete by the operator 2026-09-09. Supersedes `docs/IMPLEMENTATION_PLAN.md`
 > §15 (evaluation) per D20.
 
+> **THIS FILE CARRIES NO RESULTS, BY RULE.** It states what to test, how, and what would falsify
+> each claim. Every prior measurement lives in the companion report and in the artifacts under
+> `reports/metrics/`. Where a past finding constrains a design, this plan names the *constraint* and
+> cites where the number lives — it does not reproduce the number, and it never states an expected
+> value. **Do not add results here.** A plan that tells you what you are going to find has
+> pre-decided the experiment; put your numbers in a report under `reports/metrics/<name>/`.
+
 ## START HERE — running this cold
 
-You need no context from any prior session. Read this file, then §0 (settled facts) before
-anything else — it lists the traps that cost two days.
+You need no context from any prior session. Read this file, then §0 before anything else — §0 lists
+the traps that cost two days.
 
 ```sh
 cd /Users/danielbyrne/GitHub/rpm/context-tree
-pnpm install && pnpm run typecheck && pnpm vitest run     # baseline: 692 passed | 9 skipped (701 total), 28 files
+pnpm install && pnpm run typecheck && pnpm vitest run   # record the pass/skip counts as your baseline
 
-# Rung 0 needs no provider and no budget. Recover the question sets:
+# Rung 0 needs no provider and no budget. Recover the question sets (one path per command —
+# there is no `questions-.json`, so do not use brace expansion here):
 mkdir -p /tmp/ct-questions
-for q in deep overflow; do
-  git show 7d459f9^:eval/fixtures/transplant/s1/e1b289c32f40/questions-$q.json \
-    > /tmp/ct-questions/questions-$q.json
+for q in questions questions-deep questions-overflow literals literals-overflow; do
+  git show 7d459f9^:eval/fixtures/transplant/s1/e1b289c32f40/$q.json > /tmp/ct-questions/$q.json
 done
 
-# Rebuild the frozen store from the committed real session (4.6 MB, 645 model calls):
+# Rebuild a store from the committed real session:
 pnpm exec context-tree import packages/cli/test/fixtures/claude-code-session.jsonl \
   --from-claude-code --root /tmp/ct-store
 ```
@@ -35,20 +42,32 @@ see D20). Import the offline primitives from `@context-tree/core`:
 (`attention/policy.ts`).
 
 **Rules that are not negotiable:**
-- **Never run at W = 32k–65k.** W = 131,072. §0/S1 for why — note the reason is that the tail
-  covers the answers there, not that the cell is invalid; W=16k is the starvation cell.
+- **Run at W = 131,072. Never at W = 32k–65k, never at 16k.** §0/S1 for the reasons, which differ
+  per cell.
 - **Never put experiment code in `packages/`.** Scripts live beside their report under `reports/`.
-- **Re-read every number from its raw artifact before quoting it** (standing provenance rule).
+- **Re-read every number from its raw artifact before quoting it** (standing provenance rule). Do
+  not quote a number from a journal, a summary, or this plan.
+- **A probe whose number you will quote must write its output under `reports/metrics/` before you
+  use it.** §0/S5.
+- **Name and version every artifact, and write a manifest beside the results.** A unique run id; an
+  **arm id carrying a version** (`prefix-retrieval@v2`, never bare `prefix-retrieval`); W; model;
+  judge; commit SHA; date; and the falsification condition, recorded before the run. §0/S11 for what
+  the absence has already cost.
 - **One variable per test.** §10/Q2.
+- **Quantify every failure before drawing a conclusion from it.** Context compression demonstrably
+  preserves task continuity, so a failing arm is a bug to be localised, not proof the approach
+  cannot work. At minimum report the arm's window occupancy and what it admitted at the point of
+  failure. "The arm failed every replicate" is not a finding on its own.
+- **Fix each falsification condition before the run, and do not renegotiate it afterwards.**
 - Graft's index may be stale after the harness deletion — if it names a path that is not on disk,
   `graft grep` the symbol instead of chasing the path.
 
 ## Context
 
-Two days produced no tested hypothesis. The causes are known and recorded: a bespoke harness whose
-`ChatMessage` could not represent tool calls (so every arm comparison was void), and before that,
-three passes that measured inside a **starvation cell** — W=32k–65k, where a modern system prompt
-alone is ~61k tokens — while believing they were measuring context policy.
+Two days produced no tested hypothesis. Two causes, both recorded in the companion report: a
+bespoke harness whose `ChatMessage` could not represent a tool call, which voided every arm
+comparison (§0/S4); and before that, passes that ran at window sizes where the thing being measured
+was not the thing intended (§0/S1).
 
 The operator's constraints on this work, stated directly:
 - **"Small, short tests that test that specific hypothesis under test is what we need. Then we can
@@ -60,16 +79,12 @@ The operator's constraints on this work, stated directly:
 - **"We need results."**
 
 What makes this tractable now: opencode exposes `experimental.chat.messages.transform` — a mutable
-`output.messages` — verified present in the shipped 1.18.27 binary. That is full control of the
-prompt with none of the tool-calling risk, because opencode owns that representation on both sides
-of the hook. And several hypotheses need no provider at all.
+`output.messages` — verified present in the shipped 1.18.27 binary. That is control of the prompt
+with none of the tool-calling risk, because opencode owns that representation on both sides of the
+hook. And several hypotheses need no provider at all.
 
-**The intended outcome of the FIRST session of work is a number, not a plan.** Several tests below
+**The intended outcome of the first session of work is a number, not a plan.** Several tests below
 run at zero model cost.
-
-**This file is a PLAN. It carries no results.** Measurements live in the companion report. Where a
-prior measurement constrains a test's design, it appears only in §0 (settled facts) as a
-constraint — never as a finding of this plan.
 
 ---
 
@@ -83,33 +98,37 @@ Everything these need survived the harness deletion.
 
 | asset | path |
 | --- | --- |
-| **1,073 real Claude Code sessions, 1.0 GB** — 109 with ≥100 tool calls | `/Users/danielbyrne/.claude/projects/**/*.jsonl` |
+| real local Claude Code sessions (the long-session corpus) | `/Users/danielbyrne/.claude/projects/**/*.jsonl` |
 | real 645-call session, 4.6 MB (committed) | `packages/cli/test/fixtures/claude-code-session.jsonl` |
-| **22-query corpus** — `questions.json` 12 + `questions-deep.json` 5 + `questions-overflow.json` 5, and **all 22 carry `answer_literals`/`answer_regexes` AND `source_context`/`wide_context` payload text inline**, so 0a and 0c run from `git show` with no store rebuild. A further 17 entries (`literals.json` 9, `literals-overflow.json` 8) carry answers but **no** inline payload — those need the store. | `git show 7d459f9^:eval/fixtures/transplant/s1/e1b289c32f40/questions.json` (then `questions-deep.json`, `questions-overflow.json`, `literals.json`, `literals-overflow.json` — one path per command; **do not** use `questions-{,deep,overflow}.json`, whose brace expansion yields the nonexistent `questions-.json`) |
+| question sets — `answer_literals` / `answer_regexes`, and `source_context` / `wide_context` payload text inline on the `questions*` files, so 0a and 0c run from `git show` with no store rebuild. The `literals*` files carry answers but no inline payload and need the store. **Count the entries and report the count**; do not trust a count quoted anywhere. | `git show 7d459f9^:eval/fixtures/transplant/s1/e1b289c32f40/<name>.json` for `questions`, `questions-deep`, `questions-overflow`, `literals`, `literals-overflow` |
 | fingerprints, excerpting, signals, topic index | `packages/core/src/retrieve/{lexical,excerpt}.ts`, `packages/core/src/attention/{signals,topic-index}.ts` |
 | store rebuild | `context-tree import <transcript> --from-claude-code` |
 
-**Two corpus facts that change what is cheap.**
-- **The overflow regime corpus now exists.** §8 listed "the overflow regime itself — no trace in the
-  repo has ever reached it" as an open item. **That item is retired.** Of the 1,073 real sessions:
-  **109 have ≥100 tool calls**, 55 exceed 131,072 estimated content tokens, 18 exceed 262,144, and
-  2 exceed 1,048,576 (max ≈4.38M estimated tokens over 788 tool calls). `packages/cli/src/claude-code.ts`
-  is the shipped importer for exactly this format, so any of them becomes an L0/L2 store today.
+**Two facts about the corpus that change what is cheap** — both are availability facts, not results:
+- **The overflow regime is reachable from the real-session corpus.** The record listed "no trace in
+  the repo has ever reached the overflow regime" as an open item; the local session corpus contains
+  sessions far longer than anything the old harness produced, and
+  `packages/cli/src/claude-code.ts` is the shipped importer for exactly that format, so any of them
+  becomes an L0/L2 store today. **Measure the distribution yourself and report it** — session count,
+  tool calls, estimated content tokens — rather than reusing a figure.
 - **The s1 store is gone but its queries are not.** `trace.src.jsonl` and the derived store were
-  never committed and died with `eval/` at `7d459f9`. The question rows survive in git **with their
-  payload text inline**, so **D-a's sweep runs from `git show` alone, no store rebuild.**
+  never committed and died with `eval/` at `7d459f9`. The question rows survive in git with their
+  payload text inline, so D-a's sweep runs from `git show` alone.
 
 **0a. D-a — the excerpt window (hand-off item 1's first named defect).**
-Claim: qo02's answer literal sits outside 1,000 characters of a correctly ranked event, so the
-retrieval unit's excerpt is the defect — not the ranking.
-Sweep, offline: every recorded query × `excerptChars` ∈ {500, 1000, 2000, 4000} × anchor ∈
+Claim under test: a correctly ranked event can be selected and still not contain the answer,
+because the excerpt window is too narrow and anchored at the wrong place. If so the retrieval unit's
+excerpt is the defect, not the ranking.
+Sweep, offline: every recovered query × `excerptChars` ∈ {500, 1000, 2000, 4000} × anchor ∈
 {first, rarest-matched-term, matched-line-span}. Metric: **fraction of queries whose
-`answer_literals` appear inside the excerpt.**
-*Falsifies if:* literal-present rate at `excerptChars=1000, anchor=first` is already ≥90% — then
-the excerpt window is not the defect and hand-off item 1a is closed.
-*Note the trap this avoids:* yesterday's version of this sweep reported "rarest changed 0 of 15
-selections" — but all 15 payloads had `terms: []`, no query fingerprints at all. That null was
-degenerate. These question files carry the terms.
+`answer_literals` appear inside the excerpt**, against total tokens returned.
+*Falsifies if:* the literal-present rate at the shipped setting (`excerptChars=1000`,
+`anchor=first`) is already ≥90% — then the excerpt window is not the defect and hand-off item 1a is
+closed.
+*Trap this must avoid:* a prior version of this sweep returned a **degenerate null** because every
+payload it was handed had empty fingerprint `terms`, so no anchor could differ from any other.
+**Report the count of queries with non-empty terms alongside every cell.** A sweep over empty terms
+measures nothing, and it will look like a clean negative.
 
 **0b. HR3 / H4 — the model's own signals. BUILD THE DETECTOR THE DESIGN ALREADY SPECIFIED.**
 
@@ -118,19 +137,19 @@ probabilistic, not deterministic; every model phrases sufficiency differently; a
 need" is a *semantic* state, not a string. Any regex list is a sample of one author's guesses about
 phrasing.
 
-**The shipped `detectAttentionSignals` is a deviation from the design, and measuring it is not a
-test of H4.** §14 specified the instrument
+**The shipped `detectAttentionSignals` is a deviation from the design, so measuring it is not a test
+of H4.** §14 specified the instrument
 (`reports/metrics/window-regime-and-retrieval-unit-report.md:655-659`):
 
 > "Detect them (**a small classifier over assistant text is enough to start**; log the phrases
 > first, zero live tokens, from the recorded runs) … detect topic shift the same way (**a turn whose
 > content words share little with the previous n turns**)"
 
-"Log the phrases first" was a **preliminary look at the corpus**, not the detector. What shipped
-was four regexes — the preliminary step mistaken for the instrument. So any fire-rate number for
-those regexes reports on a mis-implementation, not on the hypothesis. (One such number was measured
-and is recorded in the companion report solely as evidence that the shipped code cannot fire, so
-nothing downstream of it could ever have worked. It is not evidence about H4.)
+"Log the phrases first" was a **preliminary look at the corpus**, not the detector. What shipped was
+four regexes — the preliminary step mistaken for the instrument. Any fire-rate number for those
+regexes therefore reports on a mis-implementation, not on the hypothesis. (One such number was
+measured; it is in the companion report solely as evidence that the shipped code cannot fire. It is
+not evidence about H4, and it must not be used to set an expectation for the instrument you build.)
 
 **The two sub-signals have different right instruments, and only one needs a model.**
 
@@ -142,99 +161,132 @@ nothing downstream of it could ever have worked. It is not evidence about H4.)
   i.e. the measure does not separate a real shift from an arbitrary turn boundary.
 - **Sufficiency — needs semantic judgment, so a model.** A small adjacent classifier reads the
   assistant turn and answers one question: *does this turn assert it has what it needs to proceed?*
-  Cheapest first: a cheap-model call per turn on a sampled subset, or a local sentiment/NLI-style
-  classifier if per-turn cost matters at corpus scale. Ground truth comes from a hand-labelled
-  sample of real turns, not from a phrase list.
-  *Falsifies if:* the classifier cannot beat a majority-class baseline on held-out hand-labelled
-  turns — then sufficiency is not reliably detectable from assistant text and H4's sufficiency half
-  is dead as a signal.
+  Cheapest first: a cheap-model call per turn over a sampled subset, or a local NLI-style classifier
+  if per-turn cost matters at corpus scale. Ground truth is a hand-labelled sample of real turns,
+  never a phrase list.
 
-  **THE STOPPING RULE — fix this before building the instrument, and do not renegotiate it after
+  **THE STOPPING RULE — fix it before building the instrument, and do not renegotiate it after
   seeing the result.** "The detector failed" always admits a stronger detector: a regex fails → try
   a classifier; the classifier fails → try a bigger model. Without a pre-committed threshold H4 can
-  absorb unlimited null results and never be wrong, which is exactly how four regexes came to look
+  absorb unlimited null results and never be wrong, which is how a null on four regexes came to look
   like a result about a hypothesis. So: **one cheap-model binary judgment per assistant turn,
-  prompted with §14's own definition, scored against 200 hand-labelled turns sampled from the
-  1,073-session corpus. If it cannot reach κ ≥ 0.6 against those labels, the sufficiency half of
-  H4/HR3 is RETIRED, not iterated** — the conclusion being that the signal is not reliably present
-  in assistant text, not that a better detector is owed. Retiring it does not touch the topic-shift
-  half, which is deterministic and stands or falls on its own condition above.
+  prompted with §14's own definition, scored against 200 hand-labelled turns sampled from the real
+  session corpus. If it cannot reach κ ≥ 0.6 against those labels, the sufficiency half of H4/HR3 is
+  RETIRED, not iterated** — the conclusion being that the signal is not reliably present in
+  assistant text, not that a better detector is owed. Retiring it does not touch the topic-shift
+  half, which stands or falls on its own condition above.
 
 **Standing constraint, unchanged:** a sufficiency signal is evidence for **reassessment**, never
 permission, and never an irrelevance label. The instrument must not encode it as one.
 
 **Cost.** Topic-shift half: zero model calls. Sufficiency half: a hand-labelled sample plus cheap
-classifier calls over that sample — still far below any live agentic batch. **A live test of
-H4/HR3 is wasted until a detector clears its falsification condition above.**
+classifier calls over that sample — far below any live agentic batch. **A live test of H4/HR3 is
+wasted until a detector clears its falsification condition above.**
 
-**0c. Retrieval-unit constants — `eventHits=5`, `excerptChars=1000`, `retrieval.limit=20`.**
-All three are unvalidated values copied from a published interface. Same sweep harness as 0a.
-Metric: answer-present rate vs total tokens returned, per (hits × chars × limit).
+**0c. Retrieval-unit constants — `eventHits`, `excerptChars`, `retrieval.limit`.**
+All three shipped as values copied from a published interface and were never validated here. Same
+sweep harness as 0a. Metric: answer-present rate vs total tokens returned, per (hits × chars ×
+limit).
 *Produces:* a derivation — hits and chars as functions of headroom and event size — replacing three
-magic numbers. Also tests the recorded untested direction: **shrinking** the hit list, not enriching
-it (enriching is refuted: +32% tokens, no selection change).
+magic numbers.
+*Direction to test:* **shrinking** the hit list. Enriching it is on the do-not-retry list (§0/S3).
+
+**0d. Occupancy across the whole record — was any arm, ever, near its window?**
+Zero model calls. For every `results*.json` under `reports/metrics/`, compute context actually seen
+per turn (`input + cacheRead`) against that run's W, and report peak and final occupancy per run,
+grouped by arm and scenario.
+*Why it matters:* window-management hypotheses assume pressure against the window. If no arm in the
+record ever approached its window, then every occupancy-related result to date is a fact about the
+instrument rather than about the policy, and HA cannot be tested on those traces at all.
+*Metric:* peak occupancy as a fraction of W, per run; and the correlation between occupancy and
+success across runs.
+*Falsifies the "arms were window-constrained" premise if:* peak occupancy is far below W across the
+record. *Falsifies the reverse if:* arms routinely run near W, in which case eviction pressure is
+real and the failure analyses that assume headroom need revisiting.
+*Provenance caveat:* most artifacts **do not record their own W** — recover each cell's window from
+its report prose and **record which values you had to infer, and from where.** Do not silently
+assume 131,072.
+*Then extend it:* where an arm failed, compare its occupancy against the arm that succeeded on the
+same scenario. Equal volume with opposite outcomes localises the defect to content selection; that
+distinction is the difference between a bug report and folklore about the technique.
 
 ### Rung 1 — single-turn probes, cheap live
 
 **1a. HZ — Zone B as an index, endpoint = retrieval success rate.**
-The reframe: a summary's job is to tell the model it once worked on X so it can go find X. Zone B
-measuring inert on literal recall (15/25 vs 16/25) is *correct behaviour for an index* and was
-misread as failure. Cost already measured: 142 tokens indexes a 645-call session, 56× cheaper than
-the 8,000-token Zone B budget. Efficacy never measured.
-Probe: give the model the topic index and a question whose answer is NOT in the index. Measure
+The reframe: a summary's job is to tell the model it once worked on X so it can go find X. On that
+reading, a Zone B that does not itself answer literal-recall questions is behaving correctly as an
+index, and the endpoint must change accordingly — from "can the model answer from Zone B" to "does
+Zone B raise the rate of successful retrieval." Its token cost has been measured (see report); its
+efficacy never has.
+Probe: give the model the topic index and a question whose answer is **not** in the index. Measure
 whether it issues a search naming the right identifiers. Control: same question, no index.
 *Metric:* correct-search rate, not answer rate.
+*Falsifies if:* correct-search rate with the index is within noise of the control.
 
 **1b. HR1 — is the retrieval unit wrong for structural turns?**
-The register's competing explanation for `prefix-retrieval`'s **0/3 on sw-2**: the tool returns 5
-events × 1,000-char excerpts, tuned for literal lookup, when a multi-step task needs file/tree
-structure and API surfaces — so the model probes with `run_command` instead. The record pursued
-only the ledger explanation (D-b). **These must be ablated separately.**
+The register's competing explanation for the retrieval arm's failures on the multi-module scenario:
+the tool returns a handful of best-matching *events* with a short excerpt each, tuned for "find the
+literal", when a multi-step task needs file/tree structure, module layout and API surfaces — so the
+model probes with `run_command` instead. The record pursued only the ledger explanation (D-b).
+**These two must be ablated separately**; both predict the same failure.
 Probe: structural questions ("which files implement X and how do they connect") vs fact questions,
 against excerpt-unit vs whole-structural-payload retrieval.
+*Falsifies if:* structural questions do no better with whole-payload retrieval than with the
+excerpt unit.
 
 ### Rung 2 — short live tasks, ~10–40 turns, W = 131,072
 
 Needs the opencode plugin (below). One hypothesis per arm, each against the same control.
 
-**2z. RUN THIS FIRST — re-run step8-sonnet on opencode.** It is the *only* existing head-to-head and
-it is void for a known reason (S4/S6), so it is the cheapest live result available and it settles
-whether the programme has a cost case at all.
-Design: replicate the recorded cell exactly — arms `native` / `context-tree` / `prefix-retrieval`,
-scenarios `sw-1-jsonc` and `sw-2-multimod`, n=3 each, **18 runs**, real Sonnet 5, graded by the same
-test suite. The artifacts to reproduce are
+**2z. RUN THIS FIRST — re-run the step8-sonnet cell on opencode.**
+A head-to-head across `native` / `context-tree` / `prefix-retrieval` was already run on real Sonnet
+5, and it is void because it went through the deleted harness (§0/S4, §0/S6). Re-running it is the
+cheapest live result available and it settles whether the programme has a cost case at all.
+Design: replicate the recorded cell — the same three arms, scenarios `sw-1-jsonc` and
+`sw-2-multimod`, n=3 each (18 runs), real Sonnet 5, graded by the same test suite. The cell's shape
+is recoverable from
 `reports/metrics/window-regime-and-retrieval-unit/step8-sonnet/results-r{1,2,3}.json`.
-Recorded (void) values to beat: `native` **6/6** at $0.1863/run mean; `context-tree` **6/6** at
-$0.5751/run; `prefix-retrieval` **3/6** at $0.3480/run, with all three `sw-2` losses stalling in
-consecutive `run_command` tails.
-*Falsifies the cost case if:* on a working harness `native` still matches on success while costing
-materially less. **That is a real refutation and must be accepted as one, not re-explained.**
-*Falsifies the void-ness claim if:* `prefix-retrieval` reproduces 3/6 with the same stall
-signature — meaning the tool-call eviction was never the cause and the retrieval unit itself is.
-Note this is the one place a *combined* arm is legitimate: `context-tree` is the shipped product, not
-a single mechanism. Every other rung keeps one variable.
+
+**Protocol — run blind.** Read those artifacts for the *cell definition* (arms, scenarios, n, model,
+judge) and **not for the outcomes**. Record your own success counts and costs, commit them under
+`reports/metrics/`, and only then compare against the prior run. This plan deliberately does not
+state the earlier numbers: they were produced by a broken instrument, and knowing them before you
+measure invites fitting the new run to the old one.
+
+*Endpoints:* success per arm (a non-completed run scores `null`, never 0) and cost per run.
+*Falsifies the cost case if:* on a working harness the unmanaged arm matches the managed arms on
+success while costing materially less. **That is a real refutation. Report it as one.**
+*Bears on the void-ness claim:* whether the retrieval arm's failures reproduce, and whether they
+carry the same stall signature. §0/S6 records the argued reason the defect was asymmetric; that
+argument is itself untested and this run is what tests it.
+Note this is the one place a *combined* arm is legitimate: `context-tree` is the shipped product,
+not a single mechanism. Every other rung keeps one variable.
 
 - **H1** — needs the three-phase non-monotonic scenario §15 specified and nobody built: edit an API
-  → do unrelated work → need the API again. Falsifies if evicting the dormant phase costs success.
+  → do unrelated work → need the API again. *Falsifies if* evicting the dormant phase costs success.
 - **H3** — pin the plan artifact vs not; measure whether the model re-derives steps.
-- **H6** — anchor n ∈ {exchange, subtask, all}.
-- **D-b** — the completed-steps ledger, ablated against **HR1**, since both explain the same 0/3.
-- **evictRederivable** — gate already passed offline: 63.7% of trace tokens eligible, 36.3%
-  structurally protected; fires at every cadence.
-- **HU / priority** — needs reference edges to exist; offline gate showed priority replaces 26 of
-  45 admitted units, and that `boost`/`halfLifeTurns` are **inert in the zero-relevance limit**, so
-  this arm requires query fingerprints to be present or it measures nothing.
+- **H6** — anchor n ∈ {exchange, subtask, all}, at equal n.
+- **D-b** — the completed-steps ledger, ablated against **HR1**, since both explain the same failure.
+- **evictRederivable** — its offline mechanism-fire gate has passed (see report §7 pointer table).
+- **HU / priority** — requires query fingerprints to be present in the live path, or the arm
+  measures nothing: the priority channel's parameters are inert in the zero-relevance limit. Gate it
+  with §0/S10 before the batch.
+
+**Cadence is an arm parameter, not a constant.** Eviction that rewrites a cached prefix has a
+break-even in turns (§0/S7). Choose the cadence you are testing deliberately, state it, and report
+cost at that cadence — per-turn and every-n-turns are different experiments.
 
 ### Rung 3 — long live tasks, only where genuinely required
 
 - **HA — soft target.** Reinterpreted per the operator: `f` is a **floor below which we never
-  evict**, not a level to hold. Requires a session that exceeds the floor.
-- **HU end-to-end**, and **the score hypothesis** — that a shorter, better-curated context makes
-  the model *reason better*. No lens ever refuted it; no experiment ever tested it. This is the
-  endpoint that can vindicate the programme, and every measurement so far argued cost instead.
-- Corpus: **23 zero-LFS `continue_until_timeout` LHTB tasks at ≥240 expert-minutes** (gates already
-  passed: pristine 0.0 / reference 1.0). `vector-db-iterative-build` (360 min) and
-  `duckdb-optimizer-closure` (300 min) are the strongest — iterative, code-heavy, no multimodal
+  evict**, not a level to hold. Requires a session that exceeds the floor, so it needs the
+  real-session corpus rather than the old harness traces (§0/S9).
+- **HU end-to-end**, and **the score hypothesis** — that a shorter, better-curated context makes the
+  model *reason better*. No lens ever refuted it; no experiment ever tested it. This is the endpoint
+  that can vindicate the programme, and every measurement so far argued cost instead.
+- Corpus: the surviving LHTB clone's zero-LFS `continue_until_timeout` tasks at ≥240 expert-minutes
+  (pristine/reference gates already passed — see report). `vector-db-iterative-build` and
+  `duckdb-optimizer-closure` are the strongest candidates: iterative, code-heavy, no multimodal
   dependency.
 
 ---
@@ -256,7 +308,9 @@ Arms are `PluginOptions` objects on one plugin: `plugin: [["@context-tree/openco
 Consumes the orphaned `packages/core/src/attention/*` and `ZoneAssembler`, which currently have
 zero production callers.
 
-### Two seam facts, read from the shipped 1.18.27 binary — get these wrong and the batch is void
+### Four seam facts, read from the shipped 1.18.27 binary — get these wrong and the batch is void
+
+These are facts about the host, not results of any experiment.
 
 `SessionPrompt.run`, verbatim:
 ```js
@@ -272,20 +326,20 @@ hook is visible to the caller.** This is gate 0.
 
 **F2. Zone A is assembled AFTER the transform**, so `z.skills` / `z.environment` / `K.system` /
 `z.mcp` are out of the message hook's reach. **S2's failure mode — evicting the system prompt,
-steering, or skills — is structurally impossible through this seam.** That is good news and it means
-pin-protection for those categories needs no code; only task statement and plan artifacts (which
-*are* messages) need explicit pinning.
+steering, or skills — is structurally impossible through this seam.** So pin-protection for those
+categories needs no code; only the task statement and plan artifacts (which *are* messages) need
+explicit pinning.
 
 **F3. opencode's own compaction must be disabled AND recorded as disabled in every live arm.**
 `SessionCompaction` defaults `preserve_recent_tokens ?? min(…, floor(context * 0.25))` and its
 `prune` mutates `state.time.compacted` on tool parts. Left on, a live arm measures opencode's
-policy, not ours — and that 0.25 is a **direct confound for HA**, whose whole subject is the
+policy, not ours — and that `0.25` is a **direct confound for HA**, whose whole subject is the
 occupancy fraction. Set `experimental.compaction.autocontinue` → false, disable prune, and record
 both in the run manifest.
 
 **F4. `Model.limit.output` and `Model.limit.context` are host-declared** and reachable in
 `experimental.chat.system.transform`'s input — which **retires the reply-fraction sweep by fact**:
-the reserve is `limit.output`, not a fitted `0.05·W`. The residual testable question is whether
+the reserve is `limit.output`, not a fitted fraction of W. The residual testable question is whether
 `output + reasoning` ever exceeds `limit.output` (reasoning tokens are charged on top), measurable
 offline from the corpus's `output_tokens_details.thinking_tokens`.
 
@@ -300,27 +354,30 @@ offline from the corpus's `output_tokens_details.thinking_tokens`.
    and skills need no guard — F2 puts them out of reach.
 3. **Compaction off and recorded (F3).**
 4. **Mechanism fires.** Offline, on a recorded trace: confirm the arm's mechanism does something
-   non-zero. An arm byte-identical to its control must never be written up as a failed hypothesis —
-   and note the inverse trap: yesterday a gate reported an arm "inert" because the gate itself
-   supplied no reference edges. **A mechanism-can-fire gate must be fed the inputs the live path
-   builds.**
-5. **W = 131,072.** Never 32k–65k. The plugin is the window enforcer, so W is an arm parameter and
-   every arm shares one budget-enforcement code path — removing a confound the old arms had.
+   non-zero. An arm byte-identical to its control must never be written up as a failed hypothesis.
+   **And the inverse trap: a mechanism-can-fire gate must be fed the inputs the live path builds**
+   — a gate starved of its inputs reports "inert" about itself, not about the mechanism (§0/S10).
+5. **W = 131,072.** Never 32k–65k, never 16k. The plugin is the window enforcer, so W is an arm
+   parameter and every arm shares one budget-enforcement code path — removing a confound the old
+   arms had.
 6. **Non-completed run scores `null`, never 0.** A token win with any success regression is a
    **regression**, not a tradeoff.
+7. **Source-side hygiene is in the control, not in the treatment** (§0/S8).
 
 ---
 
 ## Verification
 
 - **Rung 0** — a table of numbers per sweep cell, committed under `reports/metrics/`. No provider
-  touched. Each cell's falsification condition evaluated explicitly.
+  touched. Each cell's falsification condition evaluated explicitly, including the ones that pass.
 - **Rung 1–3** — `opencode export <sessionID>` gives per-assistant-message
   `tokens: {input, output, reasoning, cache:{read,write}}`, so token accounting needs no
   instrumentation. Task success from the LHTB verifier (separate container, artifacts-list
   contract — no git-commit requirement, so an external agent grades cleanly).
-- **Every reported score** re-read from the raw artifact before being quoted, per the standing
+- **Every reported score** re-read from its raw artifact before being quoted, per the standing
   provenance rule.
+- **Report what the run showed, including when it contradicts the design.** A refutation reached by
+  a working instrument is the point of the exercise, not a setback to be explained away.
 
 ---
 
@@ -332,102 +389,121 @@ The operator confirmed this list complete. It is the source for every rung above
 
 ## 0. Settled facts — a new agent must NOT re-derive or re-run these
 
-These are the traps I walked into today. Each is measured and closed.
+Each is a constraint on design, with a pointer to where its evidence lives. **The numbers are
+deliberately not repeated here** — read them from the cited artifact if you need them, and never
+carry one into a falsification condition as an expected value.
 
-**S1. Do not sweep small windows — but the three small-window cells failed for three different
-reasons, and only one is an artifact.** Claude Fable 5.1's production system prompt is **274,608
-chars = 60,903 cl100k tokens**, so at W=65k there is effectively no room for anything else. That
-arithmetic is right; applying it to every recorded small-window negative was not.
+**S1. Do not sweep small windows — and the small-window cells failed for *different* reasons, so do
+not collapse them into one story.** Three distinct cells, and only the first is an experimental
+artifact:
+- **W=16,384** — Zone A + Zone B + one search exceeds the window. A dead cell; nothing about context
+  policy can be measured there. (`minimum-window-boundary` memory.)
+- **W=32,768–65,536** — the tree lost to the tail arm on **Haiku 4.5** (partly Sonnet 5), and the
+  recorded cause was **tool overhead**: each search/fetch turn costs tokens the tail arm spends on
+  raw content instead. **This is a real negative, not an artifact**, and the design still owes it an
+  answer. Read `live-verification-findings.md:11-16` before touching this — it names the model and
+  the mechanism. **Do not relabel it as starvation**: the starvation arithmetic is about a
+  Fable-class system prompt, and these runs never used one.
+- **A Fable-class system prompt at W=65,536** — the prompt alone consumes most of the window. True,
+  but it describes a *deployment*, not any experiment that produced the numbers above.
 
-| Cell | What happened | Status |
-| --- | --- | --- |
-| **W=16,384** (`minimum-window-boundary`) | Zone A + Zone B + one search exceeds W; 57/60 stalls | **Artifact.** A dead cell. |
-| **W=32,768–65,536** (`live-verification-findings`) | truncate-tail 11/60 vs tree-tail-v2 2–4/60, on **Haiku 4.5** (partly Sonnet 5), *not* Fable. Recorded cause: **tool overhead** — each search/fetch turn adds ~5–10K tokens the tail arm spends on raw events. "Showing more raw content beats navigating to it at these window sizes." | **A real negative.** Not starvation. The design still has to answer it. |
-| **Fable at W=65,536** | Prompt alone is 60,903 tokens | **True but hypothetical** — describes a deployment, not any experiment above. |
+The realistic-host cell is **W = 131,072** (a 200k host minus a large system prompt). W=200k is not
+an overflow test on the s1 store, because most of its answers sit in the tail. **The reason not to
+re-sweep 32–65K is that the tail already covers the answers there** — not that the cell is invalid.
 
-*The valid realistic-host cell is W = 131,072* (a 200k host minus a Fable-sized prompt). W=200k is
-NOT an overflow test on the s1 store (4/5 answers sit in the tail).
-→ **The reason not to re-sweep 32–65K is that the tail already covers the answers there**, so a
-sweep re-measures a known negative. It is *not* that the cell is invalid. Read
-`live-verification-findings.md:11-16` before touching this — it names the model and the mechanism,
-and an earlier draft of this plan reclassified it away on arithmetic about a model it never ran.
+**S2. At small W the wrong things were being evicted** — portions of the system prompt, steering
+files (CLAUDE.md), plan files and skills, which are precisely the always-pinned category. A policy
+that evicts them is not being tested; it is broken. F2 makes this structurally impossible through
+the opencode seam.
 
-**S2. What was being evicted at small W was the wrong thing.** Portions of the system prompt, the
-agent steering files (CLAUDE.md), plan files, and skills were being evicted. Those are precisely
-the always-pinned category. A policy that evicts them is not being tested — it is being broken.
-
-**S3. Refuted repairs — do not retry.**
-- Recency-only eviction: keep-last-1 breaks **62%** of the run's `edit_file` calls; keep-last-10
-  still breaks 21%. The longest-lived units are the *earliest and smallest*.
-- Zone B prose enrichment (`tree-hit-keywords`): **+32% input tokens, no change in selection**,
-  2× stalls. Fired on 25/25 runs, so a real refutation.
-- Multi-index RRF fusion: **6/17** against **9/17** for routing to the best single index.
-- Compact coordinate display: retired — made the rank-7 correct branch illegible, distractor
-  fetched 5/5.
+**S3. Refuted repairs — do not retry these.** Each was measured and closed; the numbers are in the
+companion report and the metrics artifacts.
+- Recency-only eviction (keep-last-n): breaks a large share of the run's `edit_file` calls, because
+  the longest-lived units are the earliest and smallest.
+- Zone B prose enrichment (`tree-hit-keywords`): more input tokens, no change in selection.
+- Multi-index RRF fusion: worse than routing to the best single index.
+- Compact coordinate display: made the correct branch illegible.
 - Showing the model *more* Zone B prose.
 
 **S4. Every live arm comparison from the deleted harness is void.** `ChatMessage` had no
 `tool_calls` field and no `'tool'` role, so the harness stripped the model's own tool calls from its
-history. Measured: 13-message request carried **0** assistant messages with `tool_calls` and **0**
-`role: 'tool'` messages. Offline analyses (occupancy, re-send multipliers, cache economics) survive;
-anything that ran the loop does not.
+history and replayed results as user text. Offline analyses (occupancy, re-send multipliers, cache
+economics) survive; anything that ran the loop does not.
 
-**S5. Instrument defects to fix before any batch.** qo05 has a non-unique referent (distractor
-decay — 14/15 tree runs answer it without searching); GLM empty-turn provider failures (11/50, 4/25,
-4/25) were kept in denominators; `provenance-audit` did not read the search channel; per-run
-transcripts were not persisted. **Add one rule:** a probe whose number will be quoted must write its
-output under `reports/metrics/` *before* the number is used — six figures in the companion report
-are unverifiable for exactly this reason.
+**S5. Instrument defects to fix before any batch.** One question (`qo05`) has a non-unique referent;
+provider empty-turn failures were kept in denominators; `provenance-audit` did not read the search
+channel; per-run transcripts were not persisted. **Standing rule from the last of these:** a probe
+whose number will be quoted must write its output under `reports/metrics/` *before* the number is
+used — several figures in the companion report are unverifiable for exactly this reason.
 
-**S6. A head-to-head comparison already exists, it is void, and it favoured doing nothing.** Do not
-write "we have never compared the arms." `reports/metrics/window-regime-and-retrieval-unit/step8-sonnet/`
-holds 18 runs on real Sonnet 5: `native` **6/6** at $0.1863/run, `context-tree` **6/6** at
-$0.5751/run, `prefix-retrieval` **3/6** at $0.3480/run. It ran on the deleted harness, so S4 voids
-it — and not evenly: under the stripping, the tail arm keeps prior work as raw text while the
-retrieval arm loses both the call and the content it replaced, which is why the stalls cluster there.
-**Rung 2z re-runs it and it is the first live test to spend money on.** Treat the recorded numbers as
-the target to beat, not as a result.
+**S6. A head-to-head comparison already exists and it is void.** Do not write "we have never
+compared the arms." `reports/metrics/window-regime-and-retrieval-unit/step8-sonnet/` holds 18 runs
+on real Sonnet 5 across `native` / `context-tree` / `prefix-retrieval`. It ran on the deleted
+harness, so S4 voids it. The companion report argues the defect was **asymmetric** — that under the
+stripping a tail arm keeps prior work as raw text while a retrieval arm loses both the call and the
+content it replaced. **That argument is untested; Rung 2z is what tests it.** Treat the recorded
+numbers as a prior run to be reproduced blind, not as a target.
 
-**S7. Ejection cannot pay for itself per turn on Anthropic.** `cacheRead = 0.1×` and
-`cacheWrite = 1.25×` input (`packages/core/src/models/cost.ts:45-48` — a property of the price table,
-not a measurement), so invalidating a cached prefix to save a `keep` fraction breaks even only after
-`turns = w·keep / (r·(1−keep))`: **12.5 turns at keep=0.5**, 29 at 0.7, 112 at 0.9 — re-paid every
-time the eviction fires. **The per-turn forms of H1, H2, H5 and the per-turn admission loop are dead
-as cost propositions**; they survive as *success* propositions, or at cadences of tens of turns.
-Corollary: every OpenRouter number in the record flatters ejection, because a provider publishing
-`cacheWrite: 0` charges nothing for the dominant term.
+**S7. Prefix invalidation has a break-even, so cadence is a design variable.** On Anthropic pricing
+`cacheRead = 0.1×` and `cacheWrite = 1.25×` input (`packages/core/src/models/cost.ts:45-48` — a
+property of the published price table, not a measurement). Evicting to save a `keep` fraction of a
+cached prefix breaks even only after `turns = w·keep / (r·(1−keep))`, and the cost is re-paid every
+time the eviction fires. **Compute this for your provider and cadence before designing an arm, and
+report cost at the cadence you actually ran.** Corollary: a provider that publishes `cacheWrite: 0`
+charges nothing for the dominant term, so token-side results measured there do not transfer to
+Anthropic.
 
-**S8. The honest baseline is source-side hygiene, not naive full history.** Dropping the write echo
-and capping tool-result bodies at 2,000 tokens cuts prompt volume **−31%** with **zero cache
-invalidation**, because it changes what enters the prefix rather than rewriting it
-(`reports/metrics/attention-policy-continuation/journal.md:732,801`). That is the same order as what
-the attention policies are meant to deliver, at none of the cache cost. **An arm that beats naive
-history but not hygiene has not earned its complexity** — so hygiene belongs in the control, not the
-comparison.
+**S8. Source-side hygiene belongs in the control.** Dropping the write echo and capping tool-result
+bodies changes what *enters* the prefix rather than rewriting it, so it reduces prompt volume with
+no cache invalidation at all (`reports/metrics/attention-policy-continuation/journal.md:732,801`).
+It is a cheaper intervention of the same kind, so an attention policy measured only against naive
+full history is measured against the wrong baseline. **Put hygiene in the control arm and let the
+comparison decide** — do not assume in advance which wins.
 
-**S9. The soft target's mechanism fires in real use; the corpus was the defect.** Operator
-`/context` on Opus 5 (1M window): **37% occupancy after one prompt, 56% after two**
-(`reports/algorithm.md:88-89`, 2026-09-08), against a median 1.25% of window across the harness
-corpus. HA was recorded untestable on the strength of that corpus, which was ~10× too short. Do not
-re-derive "nothing reaches 25% of a window" from the old corpus.
+**S9. Use the real-session corpus for occupancy work, not the old harness traces.** The harness
+corpus never reached a meaningful fraction of a real window from task demand, which is why HA was
+recorded untestable; real operator sessions do reach it (`reports/algorithm.md:88-89`). That was an
+instrument limitation, not evidence about HA. Do not re-derive "nothing reaches the soft target"
+from the old corpus.
+
+**S10. A mechanism-can-fire gate is a claim about the gate until its inputs are checked.** One gate
+reported an arm inert because the gate itself supplied no reference edges, so the parameters under
+test could not have changed anything. Feed every gate the inputs the live path builds, and record
+what you fed it.
+
+**S11. Artifacts are under-identified, so provenance must be reconstructed before any comparison.**
+The existing result files record run id, benchmark, scenario, arm, model, status, success, judge,
+metrics and turns — **but not the window size, the arm's implementation version, or the code
+commit.** One consequence is already on the record: a published cell's `W` survives only in a
+paragraph of report prose, and two differently implemented arms (`prefix-retrieval` and
+`prefix-plus-retrieval`) are distinguishable only by name. **Before comparing any new run to an old
+one, reconstruct and write down the old cell's parameters**, and mark which you had to infer. Going
+forward, the manifest rule in START HERE is mandatory.
+
+**S12. A failing arm is a defect to localise, not a verdict on the approach.** Context compression
+demonstrably preserves task continuity — the sessions that produced these reports were themselves
+compacted mid-task and continued. So an arm that scores zero is telling you *something specific went
+wrong*, and the record's habit has been to note the score and move on. The companion report shows
+how much is recoverable offline from per-turn usage alone. **Quantify before concluding**, and prefer
+the explanation that names a mechanism over the one that names the technique.
 
 ---
 
 ## 1. THE UMBRELLA HYPOTHESIS
 
 **HU. Attention over history.** Prioritisation of history is a metric parallel to contextual
-relevance, and priorities change. If we limit context growth by ejecting inconsequential
-contextual data, we save tokens without losing task success. Cumulative consumption is quadratic in
-turn count (every turn re-sends the prefix), so the saving compounds on long sessions.
-**Status: NEVER TESTED.** Its stated premise ("growth is exponential") was mis-refuted by me — I
-fitted per-turn prompt length (linear) against a claim about cumulative consumption (quadratic).
-Nothing was refuted.
+relevance, and priorities change. If we limit context growth by ejecting inconsequential contextual
+data, we save tokens without losing task success. Cumulative consumption is quadratic in turn count
+(every turn re-sends the prefix), so the saving compounds on long sessions.
+**Status: NEVER TESTED.** Its stated premise ("growth is exponential") was mis-refuted in an earlier
+pass by fitting *per-turn prompt length* (linear) against a claim about *cumulative consumption*
+(quadratic). Nothing was refuted; the premise stands as stated.
 
 Encoded (§15) as **two channels per unit per turn**:
 - **relevance** — query-dependent; the turn's fingerprints against the unit's. This is what
   `context_search` already scores (the query·key term).
-- **priority** — query-independent state carried across turns: how much the unit has mattered and
-  is likely to again (the bias term). Derived from L0 only: +boost on fetch/edit, decay with turns
+- **priority** — query-independent state carried across turns: how much the unit has mattered and is
+  likely to again (the bias term). Derived from L0 only: +boost on fetch/edit, decay with turns
   since last reference, 0 on `superseded_by`, dormant reset on topic shift.
 - Admission ranks by relevance + priority, admits until a target is reached; **pinned units (task,
   plan, steering) admitted before ranking.**
@@ -441,7 +517,7 @@ Encoded (§15) as **two channels per unit per turn**:
 
 ## 2. THE SIX NAMED HYPOTHESES (§14, set by the operator 2026-09-05)
 
-All six: **NEVER TESTED.** Recorded blocker for every one was `eligible: false, status:
+All six: **NEVER TESTED.** The recorded blocker for every one was `eligible: false, status:
 missing_labels`.
 
 | ID | Claim | Recorded blocker (verbatim) |
@@ -456,51 +532,54 @@ missing_labels`.
 **Critical note on those blockers.** They conflate two different questions:
 - *"Is the policy's relevance judgment correct?"* — needs ground-truth labels. Hard.
 - *"Does the policy help?"* — needs only the policy to RUN and the outcome measured. **No labels.**
+
 The hypotheses are the second question. The previous pass blocked itself by insisting on validating
 the intermediate signal before ever measuring the outcome. `selectAttention` refuses to infer labels
 by design ("No live host inference invents missing relevance, plan, or reference labels") — which is
 correct for the product and fatal for the experiment unless the experiment measures outcomes.
 
-**H4 detector status:** `detectAttentionSignals` is implemented and fired **0 times across 19 real
-agent responses** on two public tasks. That is a null result for *that phrase list on that corpus*,
-not for the hypothesis. The operator's framing is explicit that a sufficiency phrase is **evidence
-for reassessment, never permission or an irrelevance label.**
+**H4 detector status:** `detectAttentionSignals` is implemented and has been run over a real corpus;
+its fire rate is in the companion report. That number is a result about **four regexes**, not about
+H4 — see Rung 0b, which replaces the instrument. The operator's framing is explicit that a
+sufficiency phrase is **evidence for reassessment, never permission or an irrelevance label.**
 
 ---
 
-## 3. THE OPERATOR'S HYPOTHESES FROM THIS CONVERSATION THAT I DROPPED
+## 3. THE OPERATOR'S HYPOTHESES FROM THIS CONVERSATION THAT WERE DROPPED
 
-I skipped these. They are first-class, not addenda.
+These are first-class, not addenda.
 
-**HR1. The retrieval tool is optimised for FACT retrieval, not structural context — and that, not
-a missing ledger, may be why multi-step tasks starved.**
-`context_search` returns the 5 best-matching *events* with a **1,000-character excerpt** each. That
-is tuned for "find the literal." A multi-step coding task needs **broader contextual data — file
-and tree structure, module layout, API surfaces** — which a 1,000-char event excerpt cannot carry.
-So `prefix-retrieval`'s **0/3 on sw-2** (run-command loops with 90–100k tokens of headroom) has at
-least two competing explanations and the record only pursued one:
+**HR1. The retrieval tool is optimised for FACT retrieval, not structural context — and that, not a
+missing ledger, may be why multi-step tasks starved.**
+`context_search` returns the best-matching *events* with a short excerpt each, which is tuned for
+"find the literal." A multi-step coding task needs **broader contextual data — file and tree
+structure, module layout, API surfaces** — which a short event excerpt cannot carry. So the
+retrieval arm's failures on the multi-module scenario (run-command loops with plenty of headroom)
+have at least two competing explanations, and the record pursued only one:
 - (a) no ledger of completed steps → the model re-investigates
 - (b) **the retrieval unit is wrong for the turn type** → the model never gets structure, so it
   probes with `run_command` instead
-These must be **ablated separately.** I asserted (a) as *the* defect; that was unjustified.
-**Status: NEVER TESTED.** Note this is H2 ("breadth follows the horizon") instantiated concretely —
-a planning/edit turn needs a different retrieval unit than a fact turn.
+
+These must be **ablated separately.** An earlier pass asserted (a) as *the* defect; that was
+unjustified. **Status: NEVER TESTED.** Note this is H2 ("breadth follows the horizon") instantiated
+concretely — a planning/edit turn needs a different retrieval unit than a fact turn.
 
 **HR2. Keep the FULL results of context-retrieval tool calls in context.**
 For structural tools (graft, tree/file listings, `context_search` results), preserve the **whole
 payload** rather than an excerpt. Rationale: excerpting a structural result destroys the structure,
-which is the thing being retrieved. This is distinct from `selectPayload`'s whole-vs-excerpt on
-*file reads* — it is about retrieval/structural results specifically.
-**Status: NEVER TESTED live.** Offline: whole vs excerpt is the one measurable payload intervention
-found (15 file payloads, whole = 24,577 tok vs 1,000-char excerpt = 3,597 tok, **14.6%**);
-structural selection was `unsupported_structure` on 15/15 (no verified partition exists).
+which is the thing being retrieved. Distinct from `selectPayload`'s whole-vs-excerpt on *file
+reads* — this is about retrieval/structural results specifically.
+**Status: NEVER TESTED live.** Offline, whole-vs-excerpt on file payloads is the one payload
+intervention that measured a difference; structural selection reported `unsupported_structure` on
+every payload it was offered, i.e. **no verified structural partition exists yet** — build one
+before treating this as testable.
 
 **HR3. Model-signal-keyed retention (the operator's own framing of H4).**
 When a model researches and then says *"I have enough data to continue"*, that is a signal we can
-key off — both to stop adding exploratory context and to decide what to RETAIN. Also its inverse:
-a topic shift is a signal to release dormant history.
-**Status: NEVER TESTED.** See H4 above; the detector exists and has never run against a corpus
-where it fires.
+key off — both to stop adding exploratory context and to decide what to RETAIN. Also its inverse: a
+topic shift is a signal to release dormant history.
+**Status: NEVER TESTED.** See H4 and Rung 0b: the shipped detector is the wrong instrument, so it
+has never run against a corpus where it could fire.
 
 ---
 
@@ -509,41 +588,41 @@ where it fires.
 **HA. Soft target window.** Operate at a soft target of **25–50% of W_max**, with overruns allowed
 per turn and eviction back to target once results are seen. `f` to be **measured, not set**.
 **Status: NEVER TESTED. Not withdrawn and not rejected** — the operator clarified it is not a hard
-requirement, which is not the same as withdrawing it. I recorded it as "withdrawn by the user" in
-`algorithm.md` and the report; that was a mischaracterisation and is corrected.
+requirement, which is not the same as withdrawing it. `algorithm.md` recorded it as "withdrawn by
+the user"; that was a mischaracterisation, and the standing status is the one stated here.
 Notes:
-- Expressed as a fraction of the **window** it was untestable on every trace available (nothing
-  reached 25% of a real window from task demand). Expressed as a fraction of **measured demand** it
-  is the right axis.
+- Expressed as a fraction of the **window** it was untestable on the traces then available.
+  Expressed as a fraction of **measured demand** it is the right axis. §0/S9: use the real-session
+  corpus.
 - Related unmeasured half: *filling* unused space up to the target, and *pruning* early history to
   hold it, are both testable arms, not rules.
-- The design that scored **25/25** (`prefix-plus-retrieval`) already runs at **15–30% of W** and
-  grows only when a turn needs it — i.e. the soft target is close to an already-winning arm's
-  emergent behaviour, which has never been isolated as a variable.
+- The `prefix-plus-retrieval` design already operates at a low occupancy fraction and grows only
+  when a turn needs it — i.e. something close to the soft target is an already-existing arm's
+  emergent behaviour, and it has never been isolated as a variable. Isolating it is the test.
 
 ---
 
 ## 5. THE HAND-OFF QUEUE (§13) — ordered, and where the loop was supposed to start
 
-1. **`prefix-plus-retrieval`** — the Q&A leader (**25/25**, median 1 turn, 20/25 with no tool call,
-   zero provider empty-turn failures) and the operator's own design. Two named open defects:
-   - **D-a. Excerpt window.** qo02's literal sits **outside 1,000 characters** of a correctly
-     ranked event. Iterate: excerpt centred on the **rarest matched term**, or on the **matched
-     line span**. *(Offline: first-vs-rarest anchoring changed 0 of 15 selections — but every one
-     of those 15 payloads had `terms: []`, i.e. no query fingerprints, so that null is DEGENERATE,
-     not a refutation.)*
-   - **D-b. No ledger of completed steps.** sw-2 **0/3**, stalling in 4–6 consecutive
-     `run_command` turns with 90–100k tokens of headroom. Iterate: a running "done so far" ledger
-     inside the recency slice (branch summaries are the obvious source).
-     **See HR1 — (b) is a competing explanation for the same failure and must be ablated.**
+1. **`prefix-plus-retrieval`** — the Q&A leader on the retrieval question set and the operator's own
+   design. Two named open defects:
+   - **D-a. Excerpt window.** An answer literal can sit outside the excerpt of a correctly ranked
+     event. Iterate: excerpt centred on the **rarest matched term**, or on the **matched line
+     span**. *(A prior offline check of first-vs-rarest anchoring was degenerate — the payloads it
+     was handed had no query fingerprints, so no anchor could differ. Rung 0a fixes that and reports
+     the term counts.)*
+   - **D-b. No ledger of completed steps.** The arm stalled in consecutive `run_command` turns with
+     ample headroom on the multi-module scenario. Iterate: a running "done so far" ledger inside the
+     recency slice (branch summaries are the obvious source).
+     **See HR1 — (b) is a competing explanation for the same failure and must be ablated separately.**
    - Then the soft target `f` of §12.
 2. **Per-turn window management** (eviction shipped in core) — "the mechanism any design runs on."
    Iterate: the soft target; and **layout R** — tail rendered **newest-first** so eviction is a
-   suffix cut and write-free. *(Layout R: NEVER TESTED.)*
-3. **Event-hit `context_search`** (shipped) — the unit. **`retrieval.eventHits = 5` and
-   `retrieval.excerptChars = 1000` are host values from the published interface, unvalidated here.**
-   Iterate: sweep both offline on the 22 payload-carrying queries, then **derive them from headroom and
-   event size** rather than fixing them.
+   suffix cut and write-free. *(Layout R: NEVER TESTED.)* Note §0/S7 on cadence.
+3. **Event-hit `context_search`** (shipped) — the unit. `retrieval.eventHits` and
+   `retrieval.excerptChars` are host values from the published interface, unvalidated here.
+   Iterate: sweep both offline on the recovered queries (Rung 0c), then **derive them from headroom
+   and event size** rather than fixing them.
 4. **Zone B** — demoted from retrieval to two candidate roles, **both unmeasured**: (i) a **task
    ledger** on multi-step work, (ii) **cache-shape** on long sessions. "Do not tune its ranking
    further; the deep set cannot see it."
@@ -555,44 +634,44 @@ Notes:
 **HZ. Zone B is an INDEX, not content.** A summary's only job is to tell the model it once worked on
 X so it can go find X with `context_search`. It is a pointer; it must never be expected to answer
 from itself.
-- This **reinterprets** the existing result rather than contradicting it: Zone B measuring **inert**
-  on literal recall (`flat-events` 15/25 vs 16/25 with Zone B present) is *correct behaviour for an
-  index*, and was previously read as a failure.
+- This **reinterprets** the existing measurement rather than contradicting it: a Zone B that
+  measures inert on *literal recall* is behaving correctly as an index, and was previously read as a
+  failure.
 - Therefore the endpoint changes: **does Zone B raise the rate of successful retrieval**, not can
-  the model answer from Zone B.
-- Implemented as `buildTopicIndex`/`renderTopicIndex`. **Cost measured: 142 tokens indexes a whole
-  49-turn session, 56× cheaper than the 8,000-token Zone B budget, 0.19% of that run's peak
-  context. Efficacy NEVER measured.**
+  the model answer from Zone B. Rung 1a.
+- Implemented as `buildTopicIndex`/`renderTopicIndex`. Its token cost is measured (report §7 pointer
+  table). **Efficacy NEVER measured.**
 - Related: headlines as **keyword fingerprints** (file paths, identifiers), not prose. Offline
-  ranking 2/12 → 5/12 top-3 with event-keyword enrichment; full prose ~4,400 tok vs headline-only
-  ~900 tok (80% reduction). Efficacy of keyword-list headlines never measured live.
+  ranking improved with event-keyword enrichment and headline-only rendering is far smaller than
+  full prose; **efficacy of keyword-list headlines never measured live.**
 
 ---
 
 ## 7. IMPLEMENTED BUT NEVER MEASURED LIVE
 
-Each has passed a mechanism-can-fire gate and has **zero production callers** — `packages/core/src/attention/*`
-and `ZoneAssembler` are orphaned because their consumer (the harness) was deleted.
+Each has a mechanism-can-fire gate on record and **zero production callers** —
+`packages/core/src/attention/*` and `ZoneAssembler` are orphaned because their consumer (the
+harness) was deleted. Gate outputs are in the companion report; what matters here is the gate's
+*standing*, because a gate that was starved of inputs has not actually cleared (§0/S10).
 
-| Mechanism | Gate result | Live status |
+| Mechanism | Gate standing | Live status |
 | --- | --- | --- |
-| `evictRederivable` (dependency-tracking) | On a real 49-turn trace: **63.7%** of tokens re-derivable/eligible, **36.3%** transient/structurally protected. Fires at every cadence (c=5: 7 evictions, 44,748 tok peak; c=12: 3, 12,330). | NEVER |
-| `isRederivable` | Deterministic from tool name; unknown tool → `undefined` → kept, never dropped | NEVER |
-| `selectAttention` priority channel | With 265 real edit-provenance edges: **replaces 26 of 45** admitted units. NOTE: `boost` and `halfLifeTurns` are **inert in the zero-relevance limit** — all four settings identical when no query fingerprints exist | NEVER |
-| `selectPayload` whole/excerpt/structural | whole 24,577 tok vs excerpt 3,597 (14.6%); **structural `unsupported_structure` 15/15** | NEVER |
-| `buildTopicIndex` | 142 tok for a whole session | NEVER |
-| `detectAttentionSignals` | **Fired 0 times in 19 real responses** | NEVER (never fired) |
-| `ZoneAssembler` window enforcement + delivery receipts | Unit-tested; elastic tail replayed offline over 118 runs (0 overflows) | NEVER in production |
+| `evictRederivable` (dependency-tracking) | **Passed** on a real trace; fires at every cadence tested | NEVER |
+| `isRederivable` | **Passed** — deterministic from tool name; unknown tool → `undefined` → kept, never dropped | NEVER |
+| `selectAttention` priority channel | **Passed** on admission with real edit-provenance edges, but `boost`/`halfLifeTurns` were **inert in the zero-relevance limit** — the gate cannot discriminate them without query fingerprints. **Re-gate with fingerprints present before any live arm.** | NEVER |
+| `selectPayload` whole/excerpt/structural | **Partial** — whole-vs-excerpt fires on file payloads; **structural reported `unsupported_structure` on every payload**, so that path has no verified partition | NEVER |
+| `buildTopicIndex` | **Passed** — cost measured | NEVER |
+| `detectAttentionSignals` | **Wrong instrument** (Rung 0b), not a failed gate | NEVER (never fired) |
+| `ZoneAssembler` window enforcement + delivery receipts | **Passed** — unit-tested; elastic tail replayed offline with no overflows | NEVER in production |
 
 ---
 
 ## 8. OTHER UNMEASURED ITEMS ON THE RECORD
 
-- **Reply fraction** `0.05·W` — **unvalidated.** At W=32,768 that is 1,638 tokens; fine when
-  simulated W ≪ the model's real window (all prior experiments), too tight for a reasoning model
-  where W = the actual window. Needs a sweep (.05/.10/.15/.20) where W approximates the real window.
-- **`retrieval.limit = 20`** — unvalidated. The untested direction is **shrinking** the hit list,
-  not enriching it (enriching is refuted, S3). The oracle's one-hit result selected perfectly.
+- **Reply fraction** `0.05·W` — **retired as a sweep by F4**: the reserve is the host-declared
+  `Model.limit.output`, not a fitted fraction of W. Residual question in F4.
+- **`retrieval.limit`** — unvalidated. The untested direction is **shrinking** the hit list, not
+  enriching it (enriching is on the do-not-retry list, §0/S3). Rung 0c.
 - **Mode B / D14** — "Zone A stays frozen and small (3–4 tool schemas instead of the host's full
   toolbox) → larger stable cache prefix" and "eviction/offload centralised". **Never measured**;
   §19 Q5 makes the Mode B default conditional on exactly this evidence.
@@ -601,33 +680,34 @@ and `ZoneAssembler` are orphaned because their consumer (the harness) was delete
   survives in `packages/core/test/`.
 - **D1** — that tool-type-transition segmentation is as good as content clustering. Asserted.
 - **The quadratic-savings value claim** — that savings compound on large windows. Unmeasured.
-- **The overflow regime itself** — the tree's value hypothesis is sessions ≫ window, and **no trace
-  in the repo has ever reached it** (all prior attempts were starvation cells, S1).
+- **The overflow regime itself** — the tree's value hypothesis is sessions ≫ window. No trace *from
+  the old harness* ever reached it; the real-session corpus does (§0/S9, Rung 0 assets).
 - **The score hypothesis** — *that a shorter, better-curated context makes the model reason better.*
-  **No lens ever refuted it and no experiment ever tested it.** External support: NIAH ≈100% while
-  RULER and a cited enterprise trial show ~59% on realistic long-document QA. This is the endpoint
-  that can vindicate the whole programme, and every measurement so far argued cost/latency instead.
+  **No lens ever refuted it and no experiment ever tested it.** External motivation: needle-style
+  retrieval benchmarks saturate near ceiling while RULER-style and realistic long-document QA
+  degrade badly at length. This is the endpoint that can vindicate the whole programme, and every
+  measurement so far argued cost/latency instead.
 
 ---
 
 ## 9. WHAT MAKES ALL OF THIS TESTABLE NOW
 
 opencode exposes the seams, **verified in the shipped 1.18.27 binary** (not just in type
-declarations):
+declarations). Read F1–F4 above before using any of them — two of these rows are wrong without F1.
 
 | hook | gives us |
 | --- | --- |
-| `experimental.chat.messages.transform(input, output)` — `output.messages` is mutable | **rewrite the entire message array before it reaches the LLM** — eviction, admission, soft target, Zone B substitution, ledger injection, layout R |
-| `experimental.chat.system.transform` — `output.system: string[]` | Zone A — and the ability to *protect* it, which S2 says was being violated |
+| `experimental.chat.messages.transform(input, output)` — the array is mutable **in place** (F1) | rewrite the message array before it reaches the LLM — eviction, admission, soft target, Zone B substitution, ledger injection, layout R |
+| `experimental.chat.system.transform` — `output.system: string[]` | Zone A. Note F2: Zone A is assembled *after* the message transform, so it is already out of that hook's reach |
 | `tool.execute.after` | shape tool results — HR2 (whole retrieval payloads), D-a (excerpt centring), H5 (demand expansion) |
 | `chat.message` | observe the model's own text → H4/HR3 sufficiency and topic-shift signals |
-| `experimental.session.compacting` / `.compaction.autocontinue` | replace or disable opencode's own compaction so it is not a confound |
+| `experimental.session.compacting` / `.compaction.autocontinue` | replace or disable opencode's own compaction so it is not a confound (F3) |
 | `tool.definition` | Zone A tool-schema size (Mode B's claim) |
 | PluginOptions `plugin: [[name, {…}]]` | **each arm is one options object on one plugin** |
 
-Three properties that make this safer than what failed:
-1. **opencode owns the tool-call representation on both sides of the hook.** We receive its
-   faithful `{info, parts}` and return the same shape. S4's bug is structurally impossible.
+Four properties that make this safer than what failed:
+1. **opencode owns the tool-call representation on both sides of the hook.** We receive its faithful
+   `{info, parts}` and return the same shape. S4's bug is structurally impossible.
 2. **The gate that would have caught S4 becomes a unit test:** assert no transform ever drops a
    `ToolPart` while keeping the assistant text that announced it.
 3. **Measurement needs no instrumentation** — opencode records
@@ -636,9 +716,9 @@ Three properties that make this safer than what failed:
 4. **The plugin is the window enforcer**, so W is an arm parameter and every arm shares one
    budget-enforcement code path — removing a confound the old arms had.
 
-**Corpus available:** the LHTB clone survived with 47 tasks (gates passed: pristine 0.0 / reference
-1.0). **23 are zero-LFS `continue_until_timeout` at ≥240 expert-minutes** — long enough to reach the
-overflow regime at W=131,072 without a starvation cell.
+**Corpus available:** the LHTB clone survived with its full task set (pristine/reference gates
+passed — see report). Its zero-LFS `continue_until_timeout` tasks at ≥240 expert-minutes are long
+enough to reach the overflow regime at W=131,072.
 
 ---
 

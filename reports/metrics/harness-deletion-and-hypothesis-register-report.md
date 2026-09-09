@@ -26,12 +26,17 @@ author mid-error during the same loop. The loop closes with one measured result 
 mis-implementation rather than the hypothesis: the design specified "a small classifier over
 assistant text" and what shipped was four regexes, which cannot work in principle because an LLM is
 probabilistic and every model phrases sufficiency differently. The number's only value is that it
-proves nothing downstream of that code could ever have fired. The principal limitation is that no
-context policy has yet been compared live on a working harness. One comparison does exist on
-disk — 18 runs on real Sonnet 5 in which the unmanaged arm matched the tree on success (6/6) at a
-third of the cost, and a retrieval variant lost half its runs — but it ran through the broken
-harness, and the defect falls hardest on the arm that lost, so it is void rather than a null.
-Re-running it on opencode is the first live test the ladder owes.
+proves nothing downstream of that code could ever have fired. A second result came from re-reading
+an existing comparison rather than running anything: the programme's one head-to-head
+(`step8-sonnet-r{1,2,3}`, 2026-09-05, W=131,072, Sonnet 5) contains a retrieval arm that failed
+every replicate of a four-module task, and the per-turn usage shows it **stalled at 8–15% window
+occupancy with 85–92% of the window unused**, while the arm that succeeded on the same scenario
+occupied the same range and one succeeding run occupied **5.1%**. Task success in that cell is
+therefore **not a function of context volume**; the defect is content selection, and the failure was
+one of accumulating the wrong context rather than holding too little. That comparison is itself void
+for the harness reason above — and the defect falls hardest on the arm that lost — so re-running it
+on opencode is the first live test the ladder owes. The named repair for the failure it exposed was
+specified four days before this loop and has still never been built.
 
 ---
 
@@ -205,24 +210,28 @@ work; they should be **rewired to the new detector or deleted**, not tuned.
 
 ## 5. What else was learned, separately from what was decided
 
-**Small windows fail for three different reasons, and I collapsed them into one.** Claude Fable
-5.1's production system prompt is **274,608 characters = 60,903 cl100k tokens**, so at W=65,536
-there is effectively no room for anything else. That arithmetic is right, and I over-applied it —
-labelling every recorded small-window negative "starvation", including experiments that never ran
-Fable's prompt. Separating them:
+**"Small windows failed" is three different findings, and only one of them is an artifact.** Claude
+Fable 5.1's production system prompt is **274,608 characters = 60,903 cl100k tokens**, so at
+W=65,536 there is effectively no room for anything else. That arithmetic is sound, and it licenses
+much less than it appears to: it says nothing about experiments that ran a different model's prompt.
+Separating the three cells by their provenance:
 
-| Cell | What actually happened | Status |
-| --- | --- | --- |
-| **W=16,384** | Zone A + Zone B + one search exceeds the window; 57/60 stalls | **Starvation.** A dead cell, not evidence about the tree. |
-| **W=32,768–65,536** | truncate-tail 11/60, tree-tail-v2 2–4/60, on **Haiku 4.5** (partly Sonnet 5) — *not* Fable. The recorded cause is **tool overhead**: each search/fetch turn adds ~5–10K tokens that the tail arm spends on raw events. "Showing more raw content beats navigating to it at these window sizes." | **A genuine negative**, with a correctly identified mechanism. Not an artifact. |
-| **Fable at W=65,536** | Would be starvation — the prompt alone is 60,903 tokens | **True, but hypothetical.** It describes a deployment, not any experiment that produced the numbers above. |
+| Cell | Source | What it showed | Status |
+| --- | --- | --- | --- |
+| **W=16,384** | `minimum-window-boundary` | Zone A + Zone B + one search exceeds the window; 57/60 stalls | **Artifact.** A dead cell, not evidence about the tree. |
+| **W=32,768–65,536** | `live-verification-findings.md:11-16`, 2026-09-03, arms `truncate-tail` vs `tree-tail-v2`, on **Haiku 4.5** with partial Sonnet 5 | truncate-tail 11/60 against tree-tail-v2 2–4/60. Recorded cause: **tool overhead** — each search/fetch turn adds ~5–10K tokens that the tail arm spends on raw events instead. "Showing more raw content beats navigating to it at these window sizes." | **A genuine negative**, with a mechanism its own author identified correctly. |
+| **A Fable-class prompt at W=65,536** | arithmetic, no run | The prompt alone would consume the window | **True but hypothetical.** Describes a deployment, not any experiment above. |
 
-So the honest reading is narrower than the one I wrote: **one** recorded negative (16K) is an
-artifact; the W=32–65K result stands as a real finding about MCP tool overhead at small windows,
-which the tree must eventually answer rather than reclassify. `live-verification-findings.md:11-16`
-is the source and it names Haiku 4.5 and tool overhead explicitly — I read the conclusion and not
-the attribution. **The valid realistic-host cell remains W = 131,072**, and the reason not to sweep
-32–65K again is that the tail covers the answers there, not that the cell is invalid.
+Those runs never used Fable's prompt, so the starvation arithmetic does not reach them. **One
+recorded negative (16K) is an artifact; the W=32–65K result stands as a real finding about MCP tool
+overhead at small windows**, and the design owes it an answer rather than a relabelling. **The valid
+realistic-host cell remains W = 131,072** — which is where §6's step8 cell ran — and the reason not
+to sweep 32–65K again is that the tail already covers the answers there, not that the cell is
+invalid.
+
+Two of those three rows are separable only because the memory file names its model and its arms. The
+cell in §6 does not name its window anywhere in its artifacts, which is the same defect one step
+worse.
 
 **The recorded blockers conflated two questions.** Every one of H1–H6 and the priority channel was
 marked `eligible: false, status: missing_labels`, needing e.g. "current-turn grounded irrelevance
@@ -257,31 +266,96 @@ task, and the operator was right to reject it.
 
 ## 6. The one comparison that does exist, why it is void, and what remains untested
 
-**A head-to-head comparison does exist on disk, and omitting it was the worst error in the first
-draft of this report.** `reports/metrics/window-regime-and-retrieval-unit/step8-sonnet/` holds 18
-runs — 3 arms × 2 scenarios × 3 repeats — on **real Sonnet 5**, graded by a test suite:
+**A head-to-head comparison exists, it is published, and it is not from this loop.** So the claim
+that belongs here is narrow and specific: *this* loop produced no comparative measurement, but the
+programme has one, and it is four days old.
 
-| arm | success | mean $/run | median $/run | tool calls | model turns |
-| --- | --- | --- | --- | --- | --- |
-| `native` (unmanaged) | **6/6** | $0.1863 | $0.1105 | 218 | 187 |
-| `context-tree` | **6/6** | $0.5751 | $0.2253 | 104 | 94 |
-| `prefix-retrieval` | **3/6** | $0.3480 | $0.1669 | 108 | 101 |
+**Provenance.** Runs `step8-sonnet-r1`, `-r2`, `-r3` — plan **step 8** of the
+`window-regime-and-retrieval-unit` loop, executed **2026-09-05**, reported in **§7c of
+`reports/metrics/window-regime-and-retrieval-unit-report.md`**, artifacts at
+`reports/metrics/window-regime-and-retrieval-unit/step8-sonnet/results-r{1,2,3}.json`. Cell: **W =
+131,072** — the valid realistic-host window, *not* one of the starved cells of §5 — Sonnet 5 agent,
+command judges, 3 arms × 2 scenarios × 3 replicates = 18 runs. Scenarios: `sw-1-jsonc` (one module,
+one bug) and `sw-2-multimod` (four modules, fixed in order). Arms as defined there: `native`
+(transcript with prefix caching), `context-tree` (the shipped default, window enforced), and
+`prefix-retrieval` (the loop-arm port of the prefix design — cached prefix of system prompt, tool
+schemas and CLAUDE.md; a recency slice sized by derived slack; a block of events retrieved from the
+run's own log for the current focus, filled to the window).
 
-Read naively that is a damaging null: managing context cost **3.1× more** per run and bought
-identical success, while the retrieval variant lost half its runs — all of them on `sw-2-multimod`
-(0/3, every run stalled). I recomputed these from the raw JSON rather than quoting the journal,
-which had recorded the `context-tree` arm at $0.291; the artifacts give $0.5751, so the journal
-understated the cost penalty by about half.
+§7c's table, which I re-derived from the raw JSON before citing it — all six rows agree:
 
-**But these 18 runs went through the deleted harness, so §2's defect applies to them too, and it
-does not apply evenly.** Under `ChatMessage`, tool results returned as user-role text while the
-assistant's own `tool_use` blocks were dropped. In `native` the history is raw event text, so the
-*content* of prior work survives the stripping even though the call framing does not. In
-`prefix-retrieval` that raw history is *replaced* by retrieval summaries and excerpts — so stripping
-removes the call and the policy removes the content it would have pointed at. The failure signature
-matches: all three `sw-2` stalls end in consecutive `run_command` tails (4, 8 and 4 turns), the
-behaviour of a model re-probing for state it cannot see. `native` shows the same tails — up to 6
-consecutive, 37 run-command-only turns in one run — and still converges by brute force at 65 turns,
+| scenario | arm | success | median turns | mean cost | note |
+| --- | --- | --- | ---: | ---: | --- |
+| `sw-1-jsonc` | native | 3/3 | 22 | $0.118 | one run stalled at 30 turns with tests already passing |
+| `sw-1-jsonc` | context-tree | 3/3 | **8** | $0.208 | fewest turns of any arm |
+| `sw-1-jsonc` | prefix-retrieval | 3/3 | 11 | $0.435 | one run hit the $1 cost cap at 34 turns, tests passing |
+| `sw-2-multimod` | native | 3/3 | 30 | $0.255 | one 65-turn run re-read 1.46M cached tokens |
+| `sw-2-multimod` | context-tree | 3/3 | 24 | $0.943 | one run hit the cap during root summarisation, tests passing |
+| `sw-2-multimod` | prefix-retrieval | **0/3** | 19 | $0.261 | every run stalled in a trailing `run_command` loop |
+
+So the shape is not "managing context is pointless." On the one-module task the tree finished in
+**8 median turns against native's 22** — the bounded prompt did what it was designed to do — and
+still cost more, because its cache writes are charged where native's re-reads are cheap. The
+programme's cost case and its turn-count case point in opposite directions here, and that is the
+real content of the result.
+
+**Quantifying the failure, which is the part the record never did.** Context compression is not a
+speculative technique — it demonstrably preserves task continuity, including in the session that
+produced this report, which was compacted mid-task and continued to completion. So a 0/3 is not
+evidence that a summary-headed context cannot work; it is a defect with a magnitude, and the
+magnitude is recoverable from the per-turn usage already in the artifacts. Context actually seen per
+turn (`input + cacheRead`) against W = 131,072, on `sw-2-multimod`:
+
+| arm | outcome | peak occupancy per run | occupancy during the stall tail |
+| --- | --- | --- | --- |
+| `native` | 3/3 | **5.4% · 27.3% · 5.1%** | — |
+| `context-tree` | 3/3 | **14.8% · 14.6% · 17.9%** | — |
+| `prefix-retrieval` | **0/3** | **12.2% · 14.6% · 8.3%** | r1 11.2→9.3% · r2 9.6→14.6% · r3 7.6→8.3% |
+
+Three things follow, and none of them is "there was not enough context":
+
+1. **Every arm ran in the bottom quarter of the window. `prefix-retrieval` stalled with 85–92% of
+   the window unused** — roughly 112,000–120,000 tokens of headroom it never spent.
+2. **The winning and losing arms occupied the same range.** `context-tree` succeeded 3/3 at
+   14.6–17.9%; `prefix-retrieval` failed 0/3 at 8.3–14.6%. Overlapping volumes, opposite outcomes.
+   And `native` completed one run at **5.1%** — the least context of any run on the scenario. On this
+   cell, task success is **not a function of context volume**.
+3. **During the stall the context was growing, not shrinking.** In r2 occupancy climbed 9.6% → 14.6%
+   across the eight stalled turns. The arm was accumulating context and still failing, so it was not
+   starving — it was admitting the wrong content.
+
+That relocates the defect precisely: it is **content selection, not compression ratio**, and it is
+measurable without a provider. It also means the "err on more context" principle does not explain
+this failure — the losing arm carried more context than the winner in two of three runs.
+
+**Why it took those turns.** On `sw-2` it fixed one or two modules and then fell into repeated
+`run_command` calls: the trailing runs of identical turn shape are **4, 8 and 4 turns** across
+r1/r2/r3 (§7c records the tail as "4–6"; the r2 run is 8). That is a model re-probing the repository
+for state it cannot see in its own history — while, per the table above, having room to hold six
+times what it was carrying. Three explanations are on the record and **none has been tested against
+the others**:
+
+1. **D-b — no ledger of completed steps.** The arm carries no "done so far", so it re-investigates.
+   §7c's own reading, and the hand-off queue's named iteration.
+2. **HR1 — the retrieval unit is wrong for the turn type.** It returns a few best-matching events
+   with a short excerpt each, tuned for literal lookup; a four-module task needs file and tree
+   structure, so the model substitutes `run_command` for the structure it never receives.
+3. **§2's tool-call stripping** — new to this loop, and it predicts this signature directly.
+
+**Did any later design improve on it? No.** The mechanism was identified on 2026-09-05 and no
+candidate fix has been built or measured since: there is **no ledger implementation anywhere in
+`packages/`**, and every commit between that batch and the deletion went to harness repair
+(timeouts, reply caps, model substitutions) or to the root-cause discovery itself. The named
+iteration from the hand-off queue was never run. That is the single most consequential thing this
+report can say about the programme's four days.
+
+**What this loop adds is that §2's defect applies to these 18 runs, and not evenly.** Under
+`ChatMessage`, tool results returned as user-role text while the assistant's own `tool_use` blocks
+were dropped. In `native` the history is raw event text, so the *content* of prior work survives the
+stripping even though the call framing does not. In `prefix-retrieval` that raw history is *replaced*
+by retrieval summaries and excerpts — so the stripping removes the call and the policy removes the
+content it would have pointed at. `native` shows the same trailing `run_command` behaviour (up to 6
+consecutive, 37 run-command-only turns in one run) and still converges by brute force at 65 turns,
 which is what having the raw text buys.
 
 That asymmetry is an argument from the recorded turn shapes, not a measurement. It is enough to say
@@ -291,6 +365,18 @@ difference was broken, and the broken part sits closest to the arm that lost. Th
 **void and must be re-run on opencode** — where the same numbers, if they reproduce, would be a real
 refutation of the cost case.
 
+**A provenance defect this cell exposes, which applies to every future batch.** The run ids
+(`step8-sonnet-r{1,2,3}`) are unique, but the artifacts record only `runId`, `benchmark`,
+`scenarioId`, `arm`, `model`, `status`, `success`, `judge`, `metrics`, `turns` and timestamps. **The
+window size, the arm definitions and the code version are not in the artifact at all** — `W =
+131,072` had to be recovered from prose in §7c, and the arm named `prefix-retrieval` here is a
+*different implementation* from the `prefix-plus-retrieval` arm quoted elsewhere in the same report,
+distinguishable only by name. A comparison whose cell parameters live in prose cannot be verified
+against a later run, and two arms whose lineage differs by one word will eventually be conflated.
+Every experimental artifact must carry a uniquely named, versioned manifest — run id, arm id **with
+a version**, W, model, judge, commit SHA, date, and the falsification condition fixed before the
+run — written next to the results. §7 item 11 makes this a gate.
+
 The remaining untested list is unchanged. Specifically untested: the umbrella
 attention-over-history hypothesis; all six of H1–H6; the 25–50% soft occupancy target; Zone B as an
 index; `evictRederivable` and the priority channel (both have passing mechanism-fire gates and
@@ -299,7 +385,8 @@ keeping full retrieval payloads helps; and the score hypothesis — that a short
 context makes the model *reason* better, which no analysis in this loop could refute and none
 tested. Every measurement here argued cost, latency or instrument integrity.
 
-Also untested: anything on a model other than the cheap OpenRouter tier, anything at a window other
+Also untested by *this* loop: anything on a model other than the cheap OpenRouter tier (the step8
+cell above is the programme's Sonnet 5 evidence, and it predates this loop), anything at a window other
 than 1M-class hosts, and Anthropic cache economics — where `cacheWrite` is billed at 1.25× input
 and `cacheRead` at 0.1×, so a token-side result measured on a provider publishing `cacheWrite: 0`
 is an upper bound, not a transferable number.
@@ -377,20 +464,43 @@ executable next step and is written to be run cold.** Reiterating its head:
    ≥2 tasks at n≥5 and is the endpoint that can vindicate the programme. Its parameters come from
    the tests above, so running it early wastes it — and a null from a badly-set arm is weak
    evidence, not a refutation.
-10. **Re-run step8-sonnet first among the live tests.** It is the only existing head-to-head, it is
-   void for a known reason (§6), and it is the cheapest live result available: 18 runs, 2 scenarios,
-   real Sonnet 5. If the unmanaged arm still matches on success at a third of the cost on a working
-   harness, that is a real refutation of the cost case and it should be accepted as one.
+10. **Re-run the `step8-sonnet` cell first among the live tests.** It is the programme's only
+   head-to-head, it is void for a known reason (§6), and it is the cheapest live result available:
+   18 runs, 2 scenarios, real Sonnet 5, W = 131,072. If the unmanaged arm still matches on success
+   while costing less on a working harness, that is a real refutation of the cost case and it should
+   be accepted as one. Re-run it **blind** — take the cell definition from the artifacts, record
+   your own numbers, and only then compare.
+11. **Name and version every experimental artifact, and write a manifest beside it.** §6 shows what
+   the absence costs: a cell whose window size survives only in prose, and two differently
+   implemented arms separated by one word in their names. Required per batch: a unique run id, an
+   **arm id carrying a version** (`prefix-retrieval@v2`, not `prefix-retrieval`), W, model, judge,
+   commit SHA, date, and the falsification condition fixed before the run. Without it, side-by-side
+   comparison across loops is unverifiable — which is the state §6 is in now.
+12. **Sweep the occupancy analysis of §6 across every committed result artifact — zero model
+   calls.** One cell yielded the finding that success there was uncorrelated with context volume.
+   The same three lines of arithmetic (`input + cacheRead` per turn against that run's W) apply to
+   every `results*.json` in `reports/metrics/`, and would establish whether that holds generally or
+   is specific to `sw-2-multimod`. **This is the cheapest unrun test in the programme** and it
+   subsumes part of HA: if no arm in the entire record ever approached its window, then every
+   occupancy-target result to date describes the instrument, not the policy. Build it as Rung 0d.
+   Caveat to respect: most of those artifacts do not record their own W (item 11), so recover each
+   cell's window from its report and **record which ones you had to infer**.
 
 ## 7a. Provenance: which numbers here a reader can check, and which they cannot
 
-An adversarial pass recomputed the load-bearing numbers. The detector figures (1,073 sessions →
-1,077 today, 14,695 assistant turns, 36 signals, 3.2% of sessions, 0.245% of turns, 17/19/0 by
-kind, 109 sessions ≥100 tool calls) reproduced exactly or within the drift of a corpus that has
-grown by four sessions, and the deletion figures (340 files, 581,359 lines, 16,515 source lines)
-reproduced exactly from `git show --stat 7d459f9`. Three numbers were **wrong** and are corrected
-above: "46 scripts" → 44, "~701 passing" → **692 passed + 9 skipped (701 total)**, and the
-"56-query corpus" → **22 payload-carrying queries** plus 17 literals entries without payload.
+An adversarial pass recomputed every load-bearing number in this report against its source. The
+detector figures (1,073 sessions at measurement time and 1,077 on re-check, 14,695 assistant turns,
+36 signals, 3.2% of sessions, 0.245% of turns, 17/19/0 by kind, 109 sessions ≥100 tool calls)
+reproduced exactly or within the drift of a corpus that grows daily; the deletion figures (340 files,
+581,359 lines removed, 16,515 source lines across the two trees) reproduced exactly from
+`git show --stat 7d459f9`; and §6's table reproduced row-for-row from `results-r{1,2,3}.json`.
+
+Three figures elsewhere in the record disagree with their own artifacts, so quote the artifact and
+not the summary: the deleted tree holds **44** scripts; the vitest baseline is **692 passed + 9
+skipped (701 total)**, not ~701 passing; and the recovered question corpus is **22 entries carrying
+inline payload** plus 17 literals entries without payload, not 56. The journal also records §6's
+`context-tree` arm at $0.291/run where the artifacts give $0.575 — about half the true cost penalty.
+That last one is why the provenance rule exists.
 
 Six figures in this report were measured in-session and have **no committed artifact**, so nothing
 in the repo reproduces them:
@@ -429,12 +539,22 @@ number will be quoted must write its output under `reports/metrics/` before the 
   measurement therefore reported on a mis-implementation. Worse, the first reading of that
   measurement proposed *widening the regex list* — the same error one step larger. When an
   instrument fails, ask what it was specified to be before asking how to extend it.
-- **"We have not measured it" needs the same evidence as "we measured it."** The first draft of
-  this report said no live comparative measurement of any context policy existed. One did, on the
-  deployment model, in this repo, and it favoured the unmanaged arm. The claim was reached by
-  reasoning from the harness deletion rather than by looking, and it is the kind of error that only
-  ever runs one way: an absence claim that happens to omit the least convenient result. Before
-  writing that something was never measured, search the artifacts for it.
+- **"We have not measured it" needs the same evidence as "we measured it."** A claim that no live
+  comparative measurement existed is reachable by reasoning from the harness deletion, and it is
+  wrong: §6's cell ran on the deployment model at the valid window and is published in the prior
+  loop's §7c. Absence claims of this kind fail in one direction only — they omit the least
+  convenient result. Before writing that something was never measured, search the artifacts.
+- **Quantify a failure before concluding an approach cannot work.** Context compression is not
+  speculative — it demonstrably preserves task continuity, including in the session that wrote this
+  report. So "the retrieval arm scored 0/3" is the beginning of an analysis, not the end of one. The
+  per-turn usage was sitting in a committed artifact the whole time and it relocated the defect from
+  compression to content selection in an afternoon, with no provider calls. A failing arm that is
+  never quantified becomes folklore about the technique instead of a bug report about the
+  implementation.
+- **Version and uniquely name every experimental artifact.** §6's cell cannot state its own window
+  size: `W = 131,072` survives only in a paragraph of prose, and two differently implemented arms
+  (`prefix-retrieval`, `prefix-plus-retrieval`) are separated by one word. Side-by-side comparison
+  across loops is only as good as the manifest sitting next to the results.
 - **A reclassification is a claim about a specific experiment, and needs its attribution read.**
   "Those small-window failures were starvation" was applied to experiments run on Haiku 4.5 whose
   recorded cause was tool overhead, using arithmetic about a different model's system prompt. The
