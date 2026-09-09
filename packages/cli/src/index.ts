@@ -38,4 +38,4 @@ export {
   type SummarizeReport,
 } from './commands/summarize.js';
 export { treeCommand, type TreeOptions, type TreeReport, type TreeRow } from './commands/tree.js';
-export { evalCommand, type EvalOptions, type EvalReport } from './commands/eval.js';
+
