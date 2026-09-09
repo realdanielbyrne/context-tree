@@ -108,15 +108,67 @@ import — after checking each solution file against the recorded hash, and runs
 it in a fresh diagnostic container. No scored agent container ever has that
 filesystem.
 
+## Runner integration
+
+`eval/scripts/run-attention-experiment.mjs` resolves its adapter from an
+optional manifest field, `benchmark`, defaulting to `'deepswe'` so every
+manifest written before LHTB existed keeps resolving to exactly the adapter it
+was written against (verified by dry-running `pilot-native-abs-v4.json`
+unchanged). The loaded scenario's own `benchmark` is then re-checked against the
+manifest's claim.
+
+`verifyEnvironmentGates` dispatches on the **scenario's environment kind**, never
+on the manifest, and `GateIdentity` is a discriminated union
+(`DeepSweGateIdentity | LhtbGateIdentity`) rather than optional-everything,
+because the two benchmarks pin genuinely different things.
+
+The LHTB branch enforces, re-reading every value from disk rather than trusting
+the document:
+
+| guarantee | how |
+| --- | --- |
+| task bytes match the pinned import | `canonical(row.source)` vs `environment.source` — covers the whole-task `sourceHash`, every file hash, and the recorded reference-solution hashes |
+| exactly one pristine and one reference gate | row filters on `row.pristine` / `row.reference` |
+| pristine reward 0, reference reward 1 | `parseFloat` of the raw `verifier/reward.txt`, cross-checked against the document's `reward` |
+| reference actually passed | `verifier-outcome.json` exit 0, `passed === total > 0`, no `failedTests` |
+| pristine's nonzero exit is not mistaken for breakage | `timedOut === false` and a recorded integer exit code are the infrastructure signals; exit 0 is required only of the reference gate |
+| the document reproduces the sandbox's own record | compared on `verification.json`'s key set, so the document's additive annotations (`failedTests`, `solveExitCode`) are allowed but an omitted or altered field is not |
+| the graded bytes are the recorded bytes | `submissionDigest()` recomputed over `<gate>/submission/`, matched against `submissionSha256` and the recorded file count |
+| both image identities pinned and live | single-valued `images.task.id` / `images.verifierBase.id`, sha256-shaped, equal across gates, and re-inspected against the running daemon |
+| container policy as declared | `submission.json`'s `verifierMode`, `agentNetwork` and `verifierNetwork` vs the environment |
+| hidden tests never in the agent container | the recorded `isolation` probe must be exit 0 and must contain both `test ! -e /tests` and `test ! -e /solution`; **and** no byte the agent container exported may hash to a pinned hidden test (matched by content, so a renamed copy cannot slip through) |
+
+**The one DEEPSWE check with no LHTB analogue** is the verifier-image ancestry
+label (`inspect '{{index .Config.Labels "context-tree.deepswe.base-image"}}'`),
+because no verifier image is built. It is replaced, not dropped: the hidden
+tests staged into the verifier container are hashed **inside that container** at
+grade time, those hashes are stored in `verification.json` as `stagedTests`, and
+the gate verifier requires them to equal the pinned `tests/` subset of
+`source.files`. `gates.json` carries both `agentIsolation` and
+`stagedTestHashes` for inspection.
+
+`inspectAttempt`'s per-run evidence check is likewise benchmark-aware: LHTB reads
+the dense float from `verifier/reward.txt` and accepts any reward in `[0, 1]`
+with any recorded exit code, where DEEPSWE requires `reward.json` with a reward
+in `{0, 1}` and exit 0. Without that branch every LHTB run would have been
+silently recorded as `evidenceVerified: false`.
+
 ## Deterministic verification
 
 ```sh
-npx vitest run eval/test/lhtb.test.ts eval/test/adapters.test.ts eval/test/deepswe.test.ts
+npx vitest run eval/test/lhtb.test.ts eval/test/experiment-runner.test.ts \
+  eval/test/adapters.test.ts eval/test/deepswe.test.ts
 python3 -m unittest eval.test.lhtb_importer_test
+node eval/scripts/run-attention-experiment.mjs --manifest \
+  reports/metrics/attention-policy-continuation/loop3-smoke.json --dry-run
 ```
 
-18 adapter/sandbox tests + 9 importer tests, all passing; `adapters.test.ts` and
-`deepswe.test.ts` are included because the registry grew by one entry. Container
+64 vitest tests (28 LHTB adapter/sandbox/gate, 15 experiment-runner, 10 registry,
+11 DEEPSWE) + 9 importer tests, all passing; `adapters.test.ts`,
+`deepswe.test.ts` and `experiment-runner.test.ts` are included because the
+registry grew by one entry and `GateIdentity` became a union. The dry run
+exercises adapter resolution, LHTB gate verification against the real artifacts,
+and the frozen epoch, and exits before the provider is constructed. Container
 gates were executed with Docker 29.5.2 on aarch64 with
 `DOCKER_DEFAULT_PLATFORM=linux/amd64`. Task limits come from each task's own
 `task.toml`; no new agent turn, wall-clock or reply limits were introduced.
@@ -131,3 +183,11 @@ gates were executed with Docker 29.5.2 on aarch64 with
   `migration_details.json`, but the harness does not parse it into a metric.
 - `verifierBuildTimeoutSec` is imported and recorded but currently unused,
   because nothing is built.
+- **`loop3-pilot.json` cannot run as written: `n: 3`.** The runner requires
+  `stage: "pilot"` to use `n = 1`, and `scheduleSlots` accepts only `n` in
+  `{1, 5, 10}`. Both are pre-existing replicate-count guards, and relaxing one
+  to admit 3 would weaken a scientific check, so it was left alone. The same
+  manifest dry-runs clean at `n: 1` (stage `pilot`) and at `n: 5` (stage
+  `comparison`) — the epoch is identical either way, since `n` and `output` are
+  deliberately outside it — so `n` is the sole blocker and the choice of which
+  guard to change, if any, is the experiment owner's.

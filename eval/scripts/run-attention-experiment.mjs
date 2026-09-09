@@ -3,7 +3,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, openSync, closeSync, unlinkSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { deepSweAdapter } from '../dist/adapters/deepswe.js';
+import { adapterFor, BENCHMARK_IDS } from '../dist/adapters/index.js';
 import { compareCohorts, summarizeCohort } from '../dist/experiment.js';
 import { loadWorkspaceEnv } from '../dist/env.js';
 import { canonical, sha256, readJson, writeJsonAtomic, configurePolicyEnvironment, deriveCeilingEvidence, deriveHistoricalCeilingEvidence,
@@ -29,6 +29,10 @@ if (manifest.version !== 1 || !['pilot', 'comparison', 'confirmation'].includes(
 if (!['anthropic', 'openrouter'].includes(manifest.provider) || typeof manifest.model !== 'string' || !manifest.model) throw new Error('explicit provider/model required');
 if (!Number.isSafeInteger(manifest.window) || manifest.window <= 0 || !Number.isSafeInteger(manifest.tokenCap) || manifest.tokenCap <= 0) throw new Error('physical window and measured token ceiling required');
 if (!Array.isArray(manifest.tasks) || manifest.tasks.length === 0 || new Set(manifest.tasks).size !== manifest.tasks.length) throw new Error('unique task ids required');
+// Optional and defaulted, so every manifest written before LHTB existed still
+// resolves to exactly the adapter it was written against.
+const benchmark = manifest.benchmark ?? 'deepswe';
+if (!BENCHMARK_IDS.includes(benchmark)) throw new Error(`unknown benchmark "${benchmark}" — known: ${BENCHMARK_IDS.join(', ')}`);
 if (!Array.isArray(manifest.arms) || manifest.arms.length === 0 || new Set(manifest.arms.map((arm) => arm.id)).size !== manifest.arms.length) throw new Error('unique arms required');
 if (!Array.isArray(manifest.gates) || manifest.gates.length === 0 || new Set(manifest.gates.map((path) => resolve(path))).size !== manifest.gates.length) throw new Error('distinct environment gates required');
 if (manifest.stage === 'pilot' ? manifest.n !== 1 : ![5, 10].includes(manifest.n)) throw new Error('pilot n=1; scored comparisons start n=5 and may escalate once to n=10');
@@ -48,10 +52,11 @@ for (const arm of manifest.arms) {
   else if (arm.profile !== undefined) throw new Error('profile only applies to attention arm');
 }
 const ceilingEvidence = verifyCeilingEvidence(manifest.ceilingEvidence, manifest.tokenCap, { allowHistorical: manifest.stage === 'pilot' });
-const loaded = deepSweAdapter.load(resolve(manifest.scenariosDir));
+const loaded = adapterFor(benchmark).load(resolve(manifest.scenariosDir));
 const scenarios = manifest.tasks.map((id) => {
   const scenario = loaded.find((candidate) => candidate.id === id);
   if (!scenario) throw new Error(`unknown public task ${id}`);
+  if (scenario.benchmark !== benchmark) throw new Error(`task ${id} is not a ${benchmark} scenario`);
   return scenario;
 });
 const gateDocuments = manifest.gates.map((path) => readJson(resolve(path)));
@@ -115,7 +120,7 @@ const escalatedCandidates = manifest.n === 10 ? validateEscalation(manifest.esca
 const slots = scheduleSlots(armIds, manifest.tasks, manifest.n, escalatedCandidates);
 if (results.some((row) => !slots.some((slot) => slotKey(slot) === slotKey(row)))) throw new Error('schedule would discard previously recorded attempts');
 if (args.includes('--dry-run')) {
-  console.log(JSON.stringify({ epoch, tasks: manifest.tasks, arms: armIds, n: manifest.n, escalatedCandidates,
+  console.log(JSON.stringify({ epoch, benchmark, tasks: manifest.tasks, arms: armIds, n: manifest.n, escalatedCandidates,
     plannedLogicalRuns: slots.length, existingLogicalRuns: results.length, maximumCallsTokenBudget: manifest.tokenCap * slots.length, ceilingEvidence,
     note: 'Each run may overshoot the measured ceiling by one in-flight response; no model calls made.' }, null, 2));
   process.exit(0);

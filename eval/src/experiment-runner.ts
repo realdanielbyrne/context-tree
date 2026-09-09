@@ -3,6 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, readdirSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { deepSweVerifierImage, type DeepSweEnvironment } from './adapters/deepswe.js';
+import { submissionDigest, submissionLines, type LhtbEnvironment } from './adapters/lhtb.js';
 import { compareCohorts, readCapture, replayCapture, type CaptureEvent, type ExperimentRow } from './experiment.js';
 import type { DockerRuntime } from './sandbox.js';
 import type { Scenario } from './types.js';
@@ -121,12 +122,32 @@ export function verifyCeilingEvidence(evidence: CeilingEvidence, tokenCap: numbe
   return measured.ceilingEvidence;
 }
 
-export interface GateIdentity {
+/**
+ * A benchmark's gate identity. Discriminated rather than optional-everything,
+ * because the two benchmarks pin genuinely different things: DEEPSWE pins a
+ * BUILT verifier image (whose ancestry label is inspectable), LHTB pins the
+ * per-file hashes of hidden tests staged into the verifier container, since no
+ * verifier image is built for it.
+ */
+export interface DeepSweGateIdentity {
+  benchmark: 'deepswe';
   source: DeepSweEnvironment['source'];
   imageId: string;
   verifierImageId: string;
   checks: { kind: 'nop' | 'reference'; path: string; hashes: Record<string, string> }[];
 }
+
+export interface LhtbGateIdentity {
+  benchmark: 'lhtb';
+  source: LhtbEnvironment['source'];
+  imageId: string;
+  verifierImageId: string;
+  /** Substitute for DEEPSWE's verifier-image ancestry label; see below. */
+  stagedTests: Record<string, string>;
+  checks: { kind: 'pristine' | 'reference'; path: string; hashes: Record<string, string> }[];
+}
+
+export type GateIdentity = DeepSweGateIdentity | LhtbGateIdentity;
 
 function verifiedGateResult(result: any, kind: 'nop' | 'reference', environment: DeepSweEnvironment, imageId: string) {
   const path = resolve(String(result?.artifactsDirectory));
@@ -142,7 +163,7 @@ function verifiedGateResult(result: any, kind: 'nop' | 'reference', environment:
 }
 
 /** Match all task bytes and both image identities, not just repository commit. */
-export function verifyEnvironmentGates(scenario: Scenario, documents: readonly any[], runtime: DockerRuntime): GateIdentity {
+function verifyDeepSweGates(scenario: Scenario, documents: readonly any[], runtime: DockerRuntime): DeepSweGateIdentity {
   const environment = scenario.environment;
   if (environment?.kind !== 'deepswe') throw new Error('official DEEPSWE environment required');
   const rows = documents.flatMap((document) => document.tasks ?? []).filter((row) => row.task === scenario.id);
@@ -164,7 +185,106 @@ export function verifyEnvironmentGates(scenario: Scenario, documents: readonly a
   };
   if (inspect('{{.Id}}', environment.image) !== imageId || inspect('{{.Id}}', deepSweVerifierImage(environment)) !== nop.verifierImageId
     || inspect('{{index .Config.Labels "context-tree.deepswe.base-image"}}', nop.verifierImageId) !== imageId) throw new Error(`current Docker images differ from gates: ${scenario.id}`);
-  return { source: environment.source, imageId, verifierImageId: nop.verifierImageId, checks: [nop.check, reference.check] };
+  return { benchmark: 'deepswe', source: environment.source, imageId, verifierImageId: nop.verifierImageId, checks: [nop.check, reference.check] };
+}
+
+/**
+ * One LHTB gate, re-read from disk rather than trusted from the document.
+ *
+ * The dense reward is read from the raw `reward.txt` the official verifier
+ * wrote and is required to be EXACTLY 0 (pristine) or 1 (reference); a
+ * nonzero verifier exit is expected on the pristine gate, because a failing
+ * suite makes `test.sh` exit nonzero by design, so `timedOut` and a recorded
+ * exit code are the infrastructure signals here instead.
+ */
+function verifiedLhtbGate(result: any, kind: 'pristine' | 'reference', environment: LhtbEnvironment, imageId: string) {
+  const path = resolve(String(result?.artifactsDirectory));
+  const rewardRaw = readFileSync(join(path, 'verifier', 'reward.txt'), 'utf8');
+  const outcome = readJson(join(path, 'verifier-outcome.json'));
+  const submission = readJson(join(path, 'submission.json'));
+  const verification = readJson(join(path, 'verification.json'));
+  const expectedReward = kind === 'pristine' ? 0 : 1;
+  const digest = submissionDigest(join(path, 'submission'));
+  const stagedTests = Object.fromEntries(Object.entries(environment.source.files).filter(([name]) => name.startsWith('tests/')));
+  const hiddenTestHashes = new Set(Object.values(stagedTests));
+  if (Number.parseFloat(rewardRaw.trim()) !== expectedReward || result?.reward !== expectedReward
+    || outcome.timedOut !== false || !Number.isSafeInteger(outcome.exitCode)
+    || (kind === 'reference' && (outcome.exitCode !== 0 || result.total <= 0 || result.passed !== result.total || (result.failedTests ?? []).length !== 0))
+    // Every field the sandbox durably recorded must be reproduced in the gate
+    // document; the document's own annotations (failedTests, solveExitCode)
+    // are additive, so compare on verification.json's key set rather than
+    // maintaining an exclusion list that silently rots.
+    || canonical(verification) !== canonical(Object.fromEntries(Object.keys(verification).map((key) => [key, result[key]])))
+    || canonical(submission.source) !== canonical(environment.source) || submission.imageId !== imageId || result.imageId !== imageId
+    || submission.verifierMode !== environment.verifierMode
+    || submission.agentNetwork !== environment.agentNetwork || submission.verifierNetwork !== environment.verifierNetwork
+    || typeof submission.verifierImageId !== 'string' || !/^sha256:[a-f0-9]{64}$/.test(submission.verifierImageId)
+    || digest.submissionSha256 !== result.submissionSha256 || digest.files !== submission.files
+    || canonical(result.stagedTests) !== canonical(stagedTests)
+    // Hidden tests never entered the agent container, so no byte the agent
+    // container exported may hash to a pinned hidden test. Checked by content,
+    // not path, so a renamed copy cannot slip through.
+    || submissionLines(join(path, 'submission')).some((line) => hiddenTestHashes.has(line.slice(0, 64)))) throw new Error(`invalid ${kind} gate artifacts: ${environment.source.taskId}`);
+  return { verifierImageId: submission.verifierImageId, stagedTests, check: { kind, path, hashes: artifactHashes(path) } };
+}
+
+/**
+ * LHTB's gate identity. Enforces the same guarantees as the DEEPSWE branch:
+ * every pinned task byte (including the whole-task `sourceHash` and the
+ * recorded reference-solution hashes) matches the import, exactly one pristine
+ * and one reference gate exist, pristine reward is 0 and reference reward is 1,
+ * and both image identities are pinned in the document and re-inspected live.
+ *
+ * One DEEPSWE check has no LHTB analogue: there is no verifier-image ancestry
+ * label to inspect, because no verifier image is built (the aarch64 host has
+ * no buildx and the legacy builder cannot export a child of a single-platform
+ * amd64 image). It is replaced, not dropped: the hidden tests staged into the
+ * verifier container were hashed INSIDE that container at grade time, and those
+ * hashes must equal the pinned `tests/` hashes here.
+ */
+function verifyLhtbGates(scenario: Scenario, documents: readonly any[], runtime: DockerRuntime): LhtbGateIdentity {
+  const environment = scenario.environment;
+  if (environment?.kind !== 'lhtb') throw new Error('official LHTB environment required');
+  const rows = documents.flatMap((document) => document.tasks ?? []).filter((row) => row.task === scenario.id);
+  if (rows.length === 0 || rows.some((row) => canonical(row.source) !== canonical(environment.source))) throw new Error(`task ${scenario.id} gate source differs from full imported source`);
+  const imageIds = new Set(rows.map((row) => row.images?.task?.id));
+  const verifierBaseIds = new Set(rows.map((row) => row.images?.verifierBase?.id));
+  if (imageIds.size !== 1 || verifierBaseIds.size !== 1) throw new Error(`mixed gate image identities: ${scenario.id}`);
+  const imageId = [...imageIds][0];
+  const verifierBaseId = [...verifierBaseIds][0];
+  for (const id of [imageId, verifierBaseId]) {
+    if (typeof id !== 'string' || !/^sha256:[a-f0-9]{64}$/.test(id)) throw new Error('invalid gate image ID');
+  }
+  const isolationRows = rows.filter((row) => row.isolation);
+  if (isolationRows.length !== 1) throw new Error(`task ${scenario.id} needs exactly one recorded agent-isolation probe`);
+  const isolation = isolationRows[0].isolation;
+  if (isolation.exitCode !== 0 || isolation.agentHasHiddenTests !== false || isolation.agentHasSolution !== false
+    || !String(isolation.probe).includes('test ! -e /tests') || !String(isolation.probe).includes('test ! -e /solution')) {
+    throw new Error(`task ${scenario.id} agent container was not proven free of hidden tests and the reference solution`);
+  }
+  const pristineRows = rows.filter((row) => row.pristine);
+  const referenceRows = rows.filter((row) => row.reference);
+  if (pristineRows.length !== 1 || referenceRows.length !== 1) throw new Error(`task ${scenario.id} needs exactly one pristine and reference gate`);
+  const pristine = verifiedLhtbGate(pristineRows[0].pristine, 'pristine', environment, imageId);
+  const reference = verifiedLhtbGate(referenceRows[0].reference, 'reference', environment, imageId);
+  if (pristine.verifierImageId !== reference.verifierImageId) throw new Error('pristine/reference verifier image identities differ');
+  if (pristine.verifierImageId !== verifierBaseId) throw new Error('gate verifier image differs from the recorded pinned verifier base');
+  const inspect = (name: string) => {
+    const response = runtime.sync(['image', 'inspect', '--format', '{{.Id}}', name]);
+    if (response.exitCode !== 0) throw new Error(`cannot inspect gated image: ${response.stderr}`);
+    return response.stdout.trim();
+  };
+  if (inspect(environment.image) !== imageId || inspect(environment.verifierImage) !== pristine.verifierImageId) {
+    throw new Error(`current Docker images differ from gates: ${scenario.id}`);
+  }
+  return { benchmark: 'lhtb', source: environment.source, imageId, verifierImageId: pristine.verifierImageId,
+    stagedTests: pristine.stagedTests, checks: [pristine.check, reference.check] };
+}
+
+/** Dispatch on the scenario's own environment, never on a manifest claim. */
+export function verifyEnvironmentGates(scenario: Scenario, documents: readonly any[], runtime: DockerRuntime): GateIdentity {
+  if (scenario.environment?.kind === 'lhtb') return verifyLhtbGates(scenario, documents, runtime);
+  return verifyDeepSweGates(scenario, documents, runtime);
 }
 
 export function scientificEpoch(inputs: { common: Record<string, unknown>; arms: readonly unknown[]; scenarios: readonly Scenario[]; environment: Record<string, string>; gates: readonly GateIdentity[]; instrument: Record<string, string>; runtime: unknown }) {
@@ -292,11 +412,19 @@ export function inspectAttempt(marker: AttemptMarker, gate: GateIdentity, result
     const verifierPath = join(marker.capturePath, 'verifier');
     if (existsSync(verifierPath)) {
       verifierHashes = artifactHashes(verifierPath);
-      const reward = readJson(join(verifierPath, 'verifier', 'reward.json'));
       const outcome = readJson(join(verifierPath, 'verifier-outcome.json'));
       const submission = readJson(join(verifierPath, 'submission.json'));
-      evidenceVerified = replay?.complete === true && outcome.exitCode === 0 && outcome.timedOut === false && [0, 1].includes(reward.reward)
-        && result.judge?.score === reward.reward && result.success === (reward.reward === 1)
+      // LHTB's reward is a dense float in a raw reward.txt, and a failing suite
+      // exits nonzero by design, so neither the DEEPSWE reward.json shape nor
+      // its exitCode===0 requirement applies. Everything else is identical.
+      const reward = gate.benchmark === 'lhtb'
+        ? Number.parseFloat(readFileSync(join(verifierPath, 'verifier', 'reward.txt'), 'utf8').trim())
+        : readJson(join(verifierPath, 'verifier', 'reward.json')).reward;
+      const rewardInRange = gate.benchmark === 'lhtb' ? Number.isFinite(reward) && reward >= 0 && reward <= 1 : [0, 1].includes(reward);
+      const exitAcceptable = gate.benchmark === 'lhtb' ? Number.isSafeInteger(outcome.exitCode) : outcome.exitCode === 0;
+      const stagedTestsMatch = gate.benchmark !== 'lhtb' || canonical(readJson(join(verifierPath, 'verification.json')).stagedTests) === canonical(gate.stagedTests);
+      evidenceVerified = replay?.complete === true && exitAcceptable && outcome.timedOut === false && rewardInRange && stagedTestsMatch
+        && result.judge?.score === reward && result.success === (reward === 1)
         && canonical(submission.source) === canonical(gate.source) && submission.imageId === gate.imageId && submission.verifierImageId === gate.verifierImageId
         && canonical(replay.judge) === canonical({ status: result.status, success: result.success, score: result.judge?.score, detail: result.judge?.detail });
     }

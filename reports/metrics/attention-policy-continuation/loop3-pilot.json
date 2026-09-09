@@ -1,0 +1,106 @@
+{
+ "version": 1,
+ "stage": "pilot",
+ "benchmark": "lhtb",
+ "provider": "openrouter",
+ "model": "z-ai/glm-5.3-flash",
+ "window": 1310720,
+ "tokenCap": 1552615,
+ "ceilingEvidence": {
+  "method": "max-run-plus-max-request",
+  "sources": [
+   {
+    "path": "/Users/danielbyrne/GitHub/rpm/context-tree/reports/metrics/attention-policy-continuation/pilot-native-abs-v4/captures/abs-module-cache-flags-native-r1/deepswe-abs-module-cache-flags-native",
+    "sha256": "c31fec26d4fd7ad8576437921c362c0b8c6d0f2ad2877029ef6f9fd9ba24b3ac",
+    "measuredTokens": 1490544
+   }
+  ]
+ },
+ "n": 1,
+ "scenariosDir": "/Users/danielbyrne/GitHub/rpm/context-tree/eval/scenarios/lhtb",
+ "tasks": [
+  "great-expectations-audit"
+ ],
+ "gates": [
+  "/Users/danielbyrne/GitHub/rpm/context-tree/reports/metrics/attention-policy-continuation/lhtb/preflight.json"
+ ],
+ "arms": [
+  {
+   "id": "native",
+   "arm": "native"
+  },
+  {
+   "id": "attn-control",
+   "arm": "attention",
+   "profile": {
+    "version": 1,
+    "id": "whole",
+    "payload": {
+     "mode": "whole",
+     "excerptChars": 1000,
+     "anchor": "first",
+     "producers": [
+      "context",
+      "read_file"
+     ]
+    }
+   }
+  },
+  {
+   "id": "attn-priority",
+   "arm": "attention",
+   "profile": {
+    "version": 1,
+    "id": "attention-priority-b1-h8",
+    "payload": {
+     "mode": "whole",
+     "excerptChars": 1000,
+     "anchor": "first",
+     "producers": [
+      "context",
+      "read_file"
+     ]
+    },
+    "attention": {
+     "priority": {
+      "boost": 1,
+      "halfLifeTurns": 8,
+      "calibrationId": "loop3-unfitted-prior"
+     },
+     "pinPlan": true,
+     "recency": "exchange"
+    }
+   }
+  },
+  {
+   "id": "dep-rederive-c5",
+   "arm": "attention",
+   "profile": {
+    "version": 1,
+    "id": "dependency-rederivable-c5",
+    "payload": {
+     "mode": "whole",
+     "excerptChars": 1000,
+     "anchor": "first",
+     "producers": [
+      "context",
+      "read_file"
+     ]
+    },
+    "attention": {
+     "evictRederivable": {
+      "minCadenceTurns": 5
+     },
+     "pinPlan": true,
+     "recency": "exchange"
+    }
+   }
+  }
+ ],
+ "environment": {
+  "EVAL_NATIVE_CACHE": "1",
+  "EVAL_FETCH_EVENTS": "1"
+ },
+ "output": "reports/metrics/attention-policy-continuation/loop3-pilot-n1",
+ "ceilingNote": "Derived from the ABS v4 capture (max measured run + largest single request). That run is 49 turns of DeepSWE, whereas LHTB averages ~9.9M tokens/task, so this ceiling is roughly one sixth of a full-length LHTB run. It is deliberately short: loop 3 is looking for winning patterns cheaply. No published claim may rest on it, and the real batch must derive its ceiling from a completed LHTB pilot."
+}

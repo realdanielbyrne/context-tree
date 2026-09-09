@@ -10,13 +10,12 @@
  * `passed`/`total` are parsed from the pytest log and reported separately --
  * `reward === 1` is a derived convenience, never the stored score.
  */
-import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { safeJoin, type CommandOutcome, type DockerRuntime, type Sandbox } from '../sandbox.js';
 import { dockerRuntime } from '../sandbox.js';
-import { lhtbArtifactPaths, verifyLhtbFiles, type LhtbEnvironment } from './lhtb.js';
+import { lhtbArtifactPaths, submissionDigest, verifyLhtbFiles, type LhtbEnvironment } from './lhtb.js';
 
 export interface LhtbVerification {
   /** The dense reward exactly as the official verifier wrote it. */
@@ -27,6 +26,13 @@ export interface LhtbVerification {
   /** False when the task's verifier weights gates instead of counting tests. */
   rewardMatchesPassedTotal: boolean;
   rewardRaw: string;
+  /**
+   * SHA256 of every hidden test as read INSIDE the verifier container at grade
+   * time. No verifier image is built (see prepareLhtbEnvironment), so this map
+   * is the hidden-test provenance that a built image's label would otherwise
+   * carry, and the gate verifier checks it against the pinned import.
+   */
+  stagedTests: Record<string, string>;
   artifactsDirectory: string;
   submissionSha256: string;
   missingArtifacts: readonly string[];
@@ -56,15 +62,6 @@ function verifyExportedFiles(root: string, path = root, base = realpathSync(root
   }
   if (!stat.isFile() && !stat.isDirectory()) throw new Error(`lhtb: nonregular exported artifact: ${path}`);
   if (stat.isDirectory()) for (const entry of readdirSync(path)) verifyExportedFiles(root, join(path, entry), base);
-}
-
-/** Stable digest of an exported tree: sorted `sha256  relpath` lines. */
-function treeDigest(root: string, prefix = ''): string[] {
-  if (!existsSync(root)) return [];
-  const stat = lstatSync(root);
-  if (stat.isSymbolicLink()) return [`symlink:${readlinkSync(root)}  ${prefix}`];
-  if (!stat.isDirectory()) return [`${createHash('sha256').update(readFileSync(root)).digest('hex')}  ${prefix}`];
-  return readdirSync(root).sort().flatMap((entry) => treeDigest(join(root, entry), prefix ? `${prefix}/${entry}` : entry));
 }
 
 function countFrom(log: string, pattern: RegExp): number {
@@ -124,7 +121,7 @@ function testFileNames(environment: LhtbEnvironment): string[] {
  * would have carried, and additionally catches a published verifier image
  * whose baked /tests has drifted from the pinned commit.
  */
-function verifyStagedTests(environment: LhtbEnvironment, container: string, runtime: DockerRuntime): void {
+function verifyStagedTests(environment: LhtbEnvironment, container: string, runtime: DockerRuntime): Record<string, string> {
   const names = testFileNames(environment);
   const listed = names.map((name) => `'${name.slice('tests/'.length)}'`).join(' ');
   const outcome = runtime.sync(['exec', '--workdir', '/tests', container, '/bin/sh', '-c', `sha256sum ${listed}`]);
@@ -135,11 +132,15 @@ function verifyStagedTests(environment: LhtbEnvironment, container: string, runt
     if (match === null) throw new Error(`lhtb: unparseable sha256sum line: ${line}`);
     actual.set(`tests/${match[2]}`, match[1] ?? '');
   }
+  const staged: Record<string, string> = {};
   for (const name of names) {
-    if (actual.get(name) !== environment.source.files[name]) {
+    const hash = actual.get(name) ?? '';
+    if (hash !== environment.source.files[name]) {
       throw new Error(`lhtb: staged hidden test differs from the pinned import: ${name}`);
     }
+    staged[name] = hash;
   }
+  return staged;
 }
 
 /**
@@ -210,23 +211,23 @@ export function createLhtbSandbox(
         requireDocker(runtime.sync(['cp', '--archive', `${agent}:${transfer.from}`, destination]), `export submission ${transfer.from}`);
       }
       verifyExportedFiles(submission);
-      const lines = treeDigest(submission);
-      const submissionSha256 = createHash('sha256').update(lines.join('\n')).digest('hex');
+      const { submissionSha256, files } = submissionDigest(submission);
       writeFileSync(join(output, 'submission.json'), JSON.stringify({
         source: environment.source, imageId, verifierImageId, verifierMode: environment.verifierMode,
-        artifacts, missingArtifacts, transfers, submissionSha256, files: lines.length,
+        artifacts, missingArtifacts, transfers, submissionSha256, files,
         agentNetwork: environment.agentNetwork, verifierNetwork: environment.verifierNetwork,
       }, null, 2) + '\n');
 
       const verifier = create(verifierImageId, environment.verifierCpus, environment.verifierMemoryMb, environment.verifierNetwork);
       let outcome: CommandOutcome;
+      let stagedTests: Record<string, string> = {};
       try {
         // Hidden tests enter the VERIFIER container only, and only here.
         if (runtime.sync(['exec', verifier, '/bin/sh', '-c', 'test -f /tests/test.sh']).exitCode !== 0) {
           requireDocker(runtime.sync(['exec', verifier, 'mkdir', '-p', '/tests']), 'create verifier test directory');
           requireDocker(runtime.sync(['cp', '--archive', `${join(environment.taskDirectory, 'tests')}/.`, `${verifier}:/tests`]), 'stage hidden tests into the verifier');
         }
-        verifyStagedTests(environment, verifier, runtime);
+        stagedTests = verifyStagedTests(environment, verifier, runtime);
         if (environment.verifierMode === 'shared') {
           requireDocker(runtime.sync(['exec', verifier, '/bin/sh', '-c', 'rm -rf /app && mkdir -p /app']), 'reset verifier workspace');
         }
@@ -265,7 +266,7 @@ export function createLhtbSandbox(
       const { passed, total } = parsePytestCounts(existsSync(logPath) ? readFileSync(logPath, 'utf8') : `${outcome.stdout}\n${outcome.stderr}`);
       const rewardMatchesPassedTotal = total > 0 && Math.abs(reward - passed / total) < 1e-9;
       const verification: LhtbVerification = {
-        reward, passed, total, rewardMatchesPassedTotal, rewardRaw, artifactsDirectory: output,
+        reward, passed, total, rewardMatchesPassedTotal, rewardRaw, stagedTests, artifactsDirectory: output,
         submissionSha256, missingArtifacts, imageId, verifierImageId, verifier: outcome,
       };
       writeFileSync(join(output, 'verification.json'), JSON.stringify(verification, null, 2) + '\n');

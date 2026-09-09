@@ -83,11 +83,16 @@ for (const scenario of scenarios) {
   if (args.includes('--pristine')) {
     const sandbox = createLhtbSandbox(environment, `pristine-${scenario.id}`);
     try {
-      const isolation = await sandbox.run('test ! -e /tests && test ! -e /solution && ls -A /app | head -50', 0);
+      // Recorded, not merely asserted: the gate verifier re-checks this field
+      // rather than inferring the property from the absence of a thrown error.
+      const probe = 'test ! -e /tests && test ! -e /solution && ls -A /app | head -50';
+      const isolation = await sandbox.run(probe, 0);
       if (isolation.exitCode !== 0) throw new Error(`${scenario.id}: hidden verifier/solution leaked into agent`);
+      row.isolation = { probe, exitCode: isolation.exitCode, agentHasHiddenTests: false, agentHasSolution: false,
+        agentWorkspace: isolation.stdout.trim().split('\n') };
       const artifacts = join(outputRoot, `${scenario.id}-pristine`);
       const verification = await sandbox.verifyLhtb(artifacts);
-      row.pristine = { ...verification, failedTests: failedTests(artifacts), agentWorkspace: isolation.stdout.trim().split('\n') };
+      row.pristine = { ...verification, failedTests: failedTests(artifacts) };
       console.log(JSON.stringify({ task: scenario.id, stage: 'pristine-complete', reward: verification.reward, passed: verification.passed, total: verification.total }));
     } finally {
       sandbox.cleanup();

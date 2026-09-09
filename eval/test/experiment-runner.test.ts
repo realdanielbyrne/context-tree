@@ -68,7 +68,7 @@ async function captured(options: { pending?: boolean; unknown?: boolean; status?
   const result = { runId: marker.runId, scenarioId: 'task', model: 'model', arm: 'native', capturePath: path,
     configuration: expectedManifest.options, status, success: true, judge: { score: 1, detail: 'official verifier' },
     costByModel: [{ model: 'model', usd: 0.1, usageComplete: true, priceMatched: 'model' }] };
-  const gate: GateIdentity = { source, imageId, verifierImageId, checks: [] };
+  const gate: GateIdentity = { benchmark: 'deepswe', source, imageId, verifierImageId, checks: [] };
   return { root, path, capture, marker, result, gate };
 }
 
@@ -186,7 +186,7 @@ describe('restarts preserve denominator and verify evidence', () => {
   it('preserves a pre-provider crash as a logical run with zero observed calls', () => {
     const root = temp();
     const marker = { version: 1, arm: 'native', scenario: 'task', replicate: 1, runId: 'run', epoch: 'epoch', model: 'model', configHash: 'config', capturePath: join(root, 'absent'), expectedManifest: {}, state: 'running', startedAt: 'now' } as AttemptMarker;
-    const row = inspectAttempt(marker, { source, imageId, verifierImageId, checks: [] }, undefined, 'container startup failed');
+    const row = inspectAttempt(marker, { benchmark: 'deepswe', source, imageId, verifierImageId, checks: [] }, undefined, 'container startup failed');
     expect(row.status).toBe('interrupted'); expect(row.attempted).toBe(0); expect(row.usageComplete).toBe(false);
     expect(row.captureHashes).toEqual({});
   });

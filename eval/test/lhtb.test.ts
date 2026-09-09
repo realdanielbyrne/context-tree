@@ -3,7 +3,8 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { LHTB_REPOSITORY, lhtbAdapter, lhtbArtifactPaths, verifyLhtbFiles } from '../src/adapters/lhtb.js';
+import { LHTB_REPOSITORY, lhtbAdapter, lhtbArtifactPaths, submissionDigest, verifyLhtbFiles } from '../src/adapters/lhtb.js';
+import { verifyEnvironmentGates } from '../src/experiment-runner.js';
 import { createLhtbSandbox, parsePytestCounts, prepareLhtbEnvironment } from '../src/adapters/lhtb-sandbox.js';
 import type { CommandOutcome, DockerRuntime } from '../src/sandbox.js';
 
@@ -12,6 +13,8 @@ afterEach(() => { for (const path of temporary.splice(0)) rmSync(path, { recursi
 const success = (stdout = ''): CommandOutcome => ({ exitCode: 0, stdout, stderr: '', timedOut: false });
 const ARTIFACTS = ['outputs/report.json', '/app/src'];
 const TESTS = 'mkdir -p /logs/verifier; echo 0.75 > /logs/verifier/reward.txt';
+const AGENT_IMAGE = `sha256:${'1'.repeat(64)}`;
+const VERIFIER_IMAGE = `sha256:${'2'.repeat(64)}`;
 
 function fixture(overrides: Record<string, unknown> = {}) {
   const root = mkdtempSync(join(tmpdir(), 'lhtb-test-'));
@@ -313,5 +316,140 @@ describe('LHTB verifier isolation', () => {
     expect(prepared.imageId).toBe('sha256:agent-image');
     expect(calls.some((call) => call.args[0] === 'build')).toBe(false);
     expect(calls.filter((call) => call.args[0] === 'pull').map((call) => call.args[1])).toEqual(['task-image:version']);
+  });
+});
+
+describe('LHTB environment gates', () => {
+  /**
+   * A gate document with the exact shape eval/scripts/preflight-lhtb.mjs
+   * writes, plus the on-disk artifacts the verifier re-reads rather than
+   * trusting. Built from the same fixture the adapter loads, so a tampered
+   * byte anywhere fails the same way it would in a real batch.
+   */
+  function gateFixture(mutate: (parts: any) => void = () => {}) {
+    // A distinct verifier image is the general case; both dev tasks happen to
+    // reuse the task image, which this fixture's tag mapping also covers.
+    const { root, environment, files } = fixture({ verifierImage: 'verifier-image:version' });
+    const stagedTests = Object.fromEntries(Object.entries(files).filter(([name]) => name.startsWith('tests/')));
+    const gate = (kind: 'pristine' | 'reference') => {
+      const path = join(root, kind);
+      mkdirSync(join(path, 'verifier'), { recursive: true });
+      mkdirSync(join(path, 'submission', 'app', 'outputs'), { recursive: true });
+      writeFileSync(join(path, 'submission', 'app', 'outputs', 'report.json'), kind === 'reference' ? '{"ok":true}' : '');
+      const digest = submissionDigest(join(path, 'submission'));
+      const reward = kind === 'pristine' ? 0 : 1;
+      writeFileSync(join(path, 'verifier', 'reward.txt'), `${reward}.0`);
+      writeFileSync(join(path, 'verifier-outcome.json'), JSON.stringify({ exitCode: reward === 1 ? 0 : 1, timedOut: false }));
+      writeFileSync(join(path, 'submission.json'), JSON.stringify({
+        source: environment.source, imageId: AGENT_IMAGE, verifierImageId: VERIFIER_IMAGE,
+        verifierMode: environment.verifierMode, agentNetwork: environment.agentNetwork,
+        verifierNetwork: environment.verifierNetwork, files: digest.files,
+      }));
+      const verification = {
+        reward, passed: reward === 1 ? 11 : 0, total: 11, rewardMatchesPassedTotal: true, rewardRaw: `${reward}.0`,
+        stagedTests, artifactsDirectory: path, submissionSha256: digest.submissionSha256, missingArtifacts: [],
+        imageId: AGENT_IMAGE, verifierImageId: VERIFIER_IMAGE, verifier: { exitCode: reward === 1 ? 0 : 1, stdout: '', stderr: '', timedOut: false },
+      };
+      writeFileSync(join(path, 'verification.json'), JSON.stringify(verification));
+      return { ...verification, failedTests: [] };
+    };
+    const parts = {
+      pristine: gate('pristine'), reference: gate('reference'),
+      isolation: { probe: 'test ! -e /tests && test ! -e /solution && ls -A /app | head -50', exitCode: 0,
+        agentHasHiddenTests: false, agentHasSolution: false, agentWorkspace: ['src'] },
+      images: { task: { id: AGENT_IMAGE }, verifierBase: { id: VERIFIER_IMAGE } },
+    };
+    mutate(parts);
+    const document = { tasks: [{ task: 'test-task', source: environment.source, ...parts }] };
+    const runtime: DockerRuntime = {
+      sync: (args) => success(String(args.at(-1)) === 'verifier-image:version' ? VERIFIER_IMAGE : AGENT_IMAGE),
+      async run() { throw new Error('no container/model work allowed in evidence checks'); },
+    };
+    const scenario = { id: 'test-task', benchmark: 'lhtb', task: 'x', judge: { kind: 'lhtb' as const }, environment };
+    return { root, environment, document, runtime, scenario, stagedTests, parts };
+  }
+
+  it('accepts the document preflight-lhtb.mjs writes and pins both image identities', () => {
+    const { document, runtime, scenario, stagedTests } = gateFixture();
+    const identity = verifyEnvironmentGates(scenario, [document], runtime);
+    expect(identity.benchmark).toBe('lhtb');
+    expect(identity.imageId).toBe(AGENT_IMAGE);
+    expect(identity.verifierImageId).toBe(VERIFIER_IMAGE);
+    // No verifier image is built, so these hashes are the hidden-test provenance.
+    expect(identity.stagedTests).toEqual(stagedTests);
+    expect(identity.checks.map((check) => check.kind)).toEqual(['pristine', 'reference']);
+  });
+
+  it('rejects a task byte that differs from the pinned import even when the commit matches', () => {
+    const { document, runtime, scenario } = gateFixture();
+    const changed = { ...scenario, environment: { ...scenario.environment, source: { ...scenario.environment.source, sourceHash: '9'.repeat(64) } } };
+    expect(() => verifyEnvironmentGates(changed, [document], runtime)).toThrow('full imported source');
+  });
+
+  it('refuses anything but reward 0 pristine and reward 1 reference', () => {
+    for (const [kind, value] of [['pristine', '0.09090909090909091'], ['reference', '0.9090909090909091']] as const) {
+      const { document, runtime, scenario, parts } = gateFixture();
+      writeFileSync(join(parts[kind].artifactsDirectory, 'verifier', 'reward.txt'), value);
+      expect(() => verifyEnvironmentGates(scenario, [document], runtime)).toThrow(`invalid ${kind} gate artifacts`);
+    }
+  });
+
+  it('refuses a reference gate whose suite did not fully pass', () => {
+    const { document, runtime, scenario, parts } = gateFixture((p) => { p.reference.failedTests = ['tests/test_outputs.py::test_x']; });
+    void parts;
+    expect(() => verifyEnvironmentGates(scenario, [document], runtime)).toThrow('invalid reference gate artifacts');
+  });
+
+  it('refuses a submission tree edited after the gate ran', () => {
+    const { document, runtime, scenario, parts } = gateFixture();
+    writeFileSync(join(parts.reference.artifactsDirectory, 'submission', 'app', 'outputs', 'report.json'), 'tampered');
+    expect(() => verifyEnvironmentGates(scenario, [document], runtime)).toThrow('invalid reference gate artifacts');
+  });
+
+  it('refuses a hidden test byte the verifier container did not confirm', () => {
+    const { document, runtime, scenario, parts } = gateFixture((p) => { p.reference.stagedTests = { 'tests/test.sh': 'a'.repeat(64) }; });
+    void parts;
+    expect(() => verifyEnvironmentGates(scenario, [document], runtime)).toThrow('invalid reference gate artifacts');
+  });
+
+  it('refuses a submission carrying a hidden test, matched by content and not by path', () => {
+    const { document, runtime, scenario, parts } = gateFixture();
+    // The agent could only have this byte if the hidden tests reached its container.
+    writeFileSync(join(parts.reference.artifactsDirectory, 'submission', 'app', 'harmless-name.txt'), TESTS);
+    const verification = JSON.parse(readFileSync(join(parts.reference.artifactsDirectory, 'verification.json'), 'utf8'));
+    const digest = submissionDigest(join(parts.reference.artifactsDirectory, 'submission'));
+    verification.submissionSha256 = digest.submissionSha256;
+    parts.reference.submissionSha256 = digest.submissionSha256;
+    writeFileSync(join(parts.reference.artifactsDirectory, 'verification.json'), JSON.stringify(verification));
+    const submission = JSON.parse(readFileSync(join(parts.reference.artifactsDirectory, 'submission.json'), 'utf8'));
+    submission.files = digest.files;
+    writeFileSync(join(parts.reference.artifactsDirectory, 'submission.json'), JSON.stringify(submission));
+    expect(() => verifyEnvironmentGates(scenario, [document], runtime)).toThrow('invalid reference gate artifacts');
+  });
+
+  it('requires the recorded agent-isolation probe, and refuses a weakened one', () => {
+    for (const mutate of [
+      (p: any) => { delete p.isolation; },
+      (p: any) => { p.isolation.exitCode = 1; },
+      (p: any) => { p.isolation.agentHasHiddenTests = true; },
+      (p: any) => { p.isolation.probe = 'ls -A /app'; },
+    ]) {
+      const { document, runtime, scenario } = gateFixture(mutate);
+      expect(() => verifyEnvironmentGates(scenario, [document], runtime)).toThrow(/isolation probe|free of hidden tests/);
+    }
+  });
+
+  it('requires exactly one pristine and one reference gate', () => {
+    const { document, runtime, scenario } = gateFixture((p) => { delete p.reference; });
+    expect(() => verifyEnvironmentGates(scenario, [document], runtime)).toThrow('exactly one pristine and reference gate');
+  });
+
+  it('refuses live images that no longer match the gated identities', () => {
+    const { document, scenario } = gateFixture();
+    const drifted: DockerRuntime = {
+      sync: () => success(`sha256:${'9'.repeat(64)}`),
+      async run() { throw new Error('unreachable'); },
+    };
+    expect(() => verifyEnvironmentGates(scenario, [document], drifted)).toThrow('current Docker images differ from gates');
   });
 });

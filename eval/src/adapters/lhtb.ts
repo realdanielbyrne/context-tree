@@ -12,7 +12,7 @@
  *    `passed`/`total` are reported alongside it (see `LhtbVerification`).
  */
 import { createHash } from 'node:crypto';
-import { lstatSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync, readdirSync, readlinkSync } from 'node:fs';
 import { isAbsolute, join, relative, resolve } from 'node:path';
 import type { Adapter, Scenario } from '../types.js';
 
@@ -124,6 +124,26 @@ export function verifyLhtbFiles(environment: LhtbEnvironment): void {
   if (expected.some((name) => name.startsWith('solution/'))) {
     throw new Error(`lhtb: reference solution present in the agent-visible import: ${environment.source.taskId}`);
   }
+}
+
+/**
+ * Stable digest of an exported submission tree: sorted `sha256  relpath` lines,
+ * with symlinks recorded by target rather than dereferenced. This is LHTB's
+ * analogue of DEEPSWE's `sha256(model.patch)` -- the one value that ties a
+ * recorded gate to the bytes actually graded -- so it lives here, where the
+ * gate verifier can recompute it without depending on the sandbox.
+ */
+export function submissionLines(root: string, prefix = ''): string[] {
+  if (!existsSync(root)) return [];
+  const stat = lstatSync(root);
+  if (stat.isSymbolicLink()) return [`symlink:${readlinkSync(root)}  ${prefix}`];
+  if (!stat.isDirectory()) return [`${createHash('sha256').update(readFileSync(root)).digest('hex')}  ${prefix}`];
+  return readdirSync(root).sort().flatMap((entry) => submissionLines(join(root, entry), prefix ? `${prefix}/${entry}` : entry));
+}
+
+export function submissionDigest(root: string): { submissionSha256: string; files: number } {
+  const lines = submissionLines(root);
+  return { submissionSha256: createHash('sha256').update(lines.join('\n')).digest('hex'), files: lines.length };
 }
 
 /**

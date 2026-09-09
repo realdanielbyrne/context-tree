@@ -124,12 +124,30 @@
           "platform": "amd64/linux"
         }
       },
+      "isolation": {
+        "probe": "test ! -e /tests && test ! -e /solution && ls -A /app | head -50",
+        "exitCode": 0,
+        "agentHasHiddenTests": false,
+        "agentHasSolution": false,
+        "agentWorkspace": [
+          "configs",
+          "data",
+          "experiments",
+          "pyproject.toml",
+          "rules",
+          "src"
+        ]
+      },
       "pristine": {
         "reward": 0,
         "passed": 0,
         "total": 11,
         "rewardMatchesPassedTotal": true,
         "rewardRaw": "0.0",
+        "stagedTests": {
+          "tests/test.sh": "1fbe0db92527f8d8738992bfaa1492d44540ffbe5290d2de1f225979616f776e",
+          "tests/test_outputs.py": "a2c70c5854ba5a95cdd1fc3027b8b449a81c5de54df653fb1486768c7acefb60"
+        },
         "artifactsDirectory": "/Users/danielbyrne/GitHub/rpm/context-tree/reports/metrics/attention-policy-continuation/lhtb/great-expectations-audit-pristine",
         "submissionSha256": "cca2ce1ae94b81923cbc1b634a765e44c530762065cdfb366e05161c51bb8ce0",
         "missingArtifacts": [
@@ -162,14 +180,6 @@
           "../tests/test_outputs.py::test_summary_agrees_with_json_reports",
           "../tests/test_outputs.py::test_pipeline_is_deterministic",
           "../tests/test_outputs.py::test_report_metadata_has_stable_checksum_not_timestamp"
-        ],
-        "agentWorkspace": [
-          "configs",
-          "data",
-          "experiments",
-          "pyproject.toml",
-          "rules",
-          "src"
         ]
       },
       "reference": {
@@ -178,8 +188,12 @@
         "total": 11,
         "rewardMatchesPassedTotal": true,
         "rewardRaw": "1.0",
+        "stagedTests": {
+          "tests/test.sh": "1fbe0db92527f8d8738992bfaa1492d44540ffbe5290d2de1f225979616f776e",
+          "tests/test_outputs.py": "a2c70c5854ba5a95cdd1fc3027b8b449a81c5de54df653fb1486768c7acefb60"
+        },
         "artifactsDirectory": "/Users/danielbyrne/GitHub/rpm/context-tree/reports/metrics/attention-policy-continuation/lhtb/great-expectations-audit-reference",
-        "submissionSha256": "2aeaef9fae32490b473e8bdcb785330d4a475e1a402a9b245f3d63d1d599995d",
+        "submissionSha256": "a54b9fa2798c491ce5d44e58f89ae398f6c60c1d7c2d7a350ddd225495f91a3c",
         "missingArtifacts": [],
         "imageId": "sha256:aaf6c349caf62e887b982a3f5b706bdc3300b7619ba48817e6183c2391867b01",
         "verifierImageId": "sha256:aaf6c349caf62e887b982a3f5b706bdc3300b7619ba48817e6183c2391867b01",
@@ -192,7 +206,7 @@
         "failedTests": [],
         "solveExitCode": 0
       },
-      "elapsedMs": 47204
+      "elapsedMs": 46018
     },
     {
       "task": "langchain-version-migration",
@@ -283,12 +297,40 @@
           "platform": "amd64/linux"
         }
       },
+      "isolation": {
+        "probe": "test ! -e /tests && test ! -e /solution && ls -A /app | head -50",
+        "exitCode": 0,
+        "agentHasHiddenTests": false,
+        "agentHasSolution": false,
+        "agentWorkspace": [
+          "configs",
+          "data",
+          "outputs",
+          "prompt_registry",
+          "pyproject.toml",
+          "requirements.txt",
+          "src"
+        ]
+      },
       "pristine": {
         "reward": 0,
         "passed": 0,
         "total": 0,
         "rewardMatchesPassedTotal": false,
         "rewardRaw": "0\n",
+        "stagedTests": {
+          "tests/Dockerfile": "f5b634e21464f2889cb67f456bdf57aef74dc70adb1ac2fbaae84f712b100f9b",
+          "tests/capture_legacy_golden.py": "1471e81712863a39ed06c0ade0f6fc51da0d3db7bb026d1a2462e7b65bf529a1",
+          "tests/fixtures/golden/answers.jsonl": "5055713fe4c392d631a65186731ca0aba0a2c61d06ac452de1e21a25aefee96b",
+          "tests/fixtures/golden/replay_private.jsonl": "e3186ba36c36ed706038f426c7528ed8fab948f2f1038a695416b650e24008bf",
+          "tests/fixtures/golden/replay_public.jsonl": "1fcd91da90e26597a3e785302627893e9802ff49289f8d97db3f61c61fa028e8",
+          "tests/fixtures/golden/routes.jsonl": "78b68b7859102fcbf5b1cecc6ce14bcc1670e1b8a21dab48901299b6e27c45a5",
+          "tests/fixtures/history_private/session_private_001.jsonl": "8d4a6e601bac2324bcdc6d989876ce67cd49ce89825dcfa1bba927a444ec0db8",
+          "tests/fixtures/history_private/session_private_002.jsonl": "d185f9babe5d7cf8d2c8b44db289f5fa823c1f4913e78b0d82ae408249cb2974",
+          "tests/test.sh": "455c33e681bb6ca2caec6f645f3b901f8bb3c8b777187b42af2d48d4ac86af01",
+          "tests/test_hardening_guards.py": "eee2b59019b5fbb767092c9247a1167d3c57a68d50f7b8f48101d6c8e7062762",
+          "tests/test_outputs.py": "7ec51c1927474db0eebf4a440fde0b45ff6c2ddbdf390ea877643ff9704ed787"
+        },
         "artifactsDirectory": "/Users/danielbyrne/GitHub/rpm/context-tree/reports/metrics/attention-policy-continuation/lhtb/langchain-version-migration-pristine",
         "submissionSha256": "64d8b8d6d37448032b0cd76558ecad80af758f94fed1a041ad5e0eeb7f4aed05",
         "missingArtifacts": [
@@ -302,16 +344,7 @@
           "stderr": "offline installation from submitted metadata failed\n",
           "timedOut": false
         },
-        "failedTests": [],
-        "agentWorkspace": [
-          "configs",
-          "data",
-          "outputs",
-          "prompt_registry",
-          "pyproject.toml",
-          "requirements.txt",
-          "src"
-        ]
+        "failedTests": []
       },
       "reference": {
         "reward": 1,
@@ -319,21 +352,34 @@
         "total": 1,
         "rewardMatchesPassedTotal": true,
         "rewardRaw": "1.0",
+        "stagedTests": {
+          "tests/Dockerfile": "f5b634e21464f2889cb67f456bdf57aef74dc70adb1ac2fbaae84f712b100f9b",
+          "tests/capture_legacy_golden.py": "1471e81712863a39ed06c0ade0f6fc51da0d3db7bb026d1a2462e7b65bf529a1",
+          "tests/fixtures/golden/answers.jsonl": "5055713fe4c392d631a65186731ca0aba0a2c61d06ac452de1e21a25aefee96b",
+          "tests/fixtures/golden/replay_private.jsonl": "e3186ba36c36ed706038f426c7528ed8fab948f2f1038a695416b650e24008bf",
+          "tests/fixtures/golden/replay_public.jsonl": "1fcd91da90e26597a3e785302627893e9802ff49289f8d97db3f61c61fa028e8",
+          "tests/fixtures/golden/routes.jsonl": "78b68b7859102fcbf5b1cecc6ce14bcc1670e1b8a21dab48901299b6e27c45a5",
+          "tests/fixtures/history_private/session_private_001.jsonl": "8d4a6e601bac2324bcdc6d989876ce67cd49ce89825dcfa1bba927a444ec0db8",
+          "tests/fixtures/history_private/session_private_002.jsonl": "d185f9babe5d7cf8d2c8b44db289f5fa823c1f4913e78b0d82ae408249cb2974",
+          "tests/test.sh": "455c33e681bb6ca2caec6f645f3b901f8bb3c8b777187b42af2d48d4ac86af01",
+          "tests/test_hardening_guards.py": "eee2b59019b5fbb767092c9247a1167d3c57a68d50f7b8f48101d6c8e7062762",
+          "tests/test_outputs.py": "7ec51c1927474db0eebf4a440fde0b45ff6c2ddbdf390ea877643ff9704ed787"
+        },
         "artifactsDirectory": "/Users/danielbyrne/GitHub/rpm/context-tree/reports/metrics/attention-policy-continuation/lhtb/langchain-version-migration-reference",
-        "submissionSha256": "990f9ceff46df216e61d5859ab34c390083f9da0bfbcfb2135d889f5e09837df",
+        "submissionSha256": "995dc9ba83c007315529523337e6e16222588326e902b0391f9ca6383519cd90",
         "missingArtifacts": [],
         "imageId": "sha256:cf31f3848d622f3445e9644f5200bab766f0c7144467c5323d21d629185eb13c",
         "verifierImageId": "sha256:cf31f3848d622f3445e9644f5200bab766f0c7144467c5323d21d629185eb13c",
         "verifier": {
           "exitCode": 0,
-          "stdout": "Found existing installation: langchain 0.0.1\nUninstalling langchain-0.0.1:\n  Successfully uninstalled langchain-0.0.1\n============================= test session starts ==============================\nplatform linux -- Python 3.11.15, pytest-8.4.1, pluggy-1.6.0\nrootdir: /tests\nplugins: langsmith-0.8.16, anyio-4.14.0\ncollected 1 item\n\n../tests/test_outputs.py .                                               [100%]\n\n==================================== PASSES ====================================\n=========================== short test summary info ============================\nPASSED ../tests/test_outputs.py::test_langchain_runtime_migration\n============================== 1 passed in 2.95s ===============================\n",
+          "stdout": "Found existing installation: langchain 0.0.1\nUninstalling langchain-0.0.1:\n  Successfully uninstalled langchain-0.0.1\n============================= test session starts ==============================\nplatform linux -- Python 3.11.15, pytest-8.4.1, pluggy-1.6.0\nrootdir: /tests\nplugins: langsmith-0.8.16, anyio-4.14.0\ncollected 1 item\n\n../tests/test_outputs.py .                                               [100%]\n\n==================================== PASSES ====================================\n=========================== short test summary info ============================\nPASSED ../tests/test_outputs.py::test_langchain_runtime_migration\n============================== 1 passed in 2.89s ===============================\n",
           "stderr": "",
           "timedOut": false
         },
         "failedTests": [],
         "solveExitCode": 0
       },
-      "elapsedMs": 26176
+      "elapsedMs": 25747
     }
   ]
 }
