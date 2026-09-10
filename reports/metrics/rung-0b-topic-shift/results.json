@@ -1,0 +1,218 @@
+{
+  "runId": "rung-0b-topic-shift-2026-09-09",
+  "armId": "topic-shift-detector@v1",
+  "rung": "0b",
+  "offline": true,
+  "model": null,
+  "session": "packages/cli/test/fixtures/claude-code-session.jsonl",
+  "commit": "d6a7f2cd424ac9c5a26cd4215f076f5a1f379757",
+  "date": "2026-09-09T21:24:52.035Z",
+  "corpus": {
+    "toolTurnsWithFingerprints": 287
+  },
+  "permutations": 2000,
+  "seed": 12345,
+  "falsification": "PASS if flagged boundaries are ≥0.5σ below baseline AND permutation p<0.05 (real low-overlap structure beyond chance)",
+  "perWindow": [
+    {
+      "n": 1,
+      "boundaries": 286,
+      "mu": 0.1818,
+      "sigma": 0.2704,
+      "threshold": 0.0466,
+      "flaggedCount": 124,
+      "flaggedMeanOverlap": 0.0019,
+      "effectSigma": 0.665,
+      "realBelowThreshold": 135,
+      "nullMeanBelow": 225.21,
+      "nullSd": 5.46,
+      "permZ": -16.53,
+      "permP": 1,
+      "pass": false,
+      "topFlagged": [
+        {
+          "t": 6,
+          "overlap": 0
+        },
+        {
+          "t": 8,
+          "overlap": 0
+        },
+        {
+          "t": 9,
+          "overlap": 0
+        },
+        {
+          "t": 13,
+          "overlap": 0
+        },
+        {
+          "t": 14,
+          "overlap": 0
+        },
+        {
+          "t": 15,
+          "overlap": 0
+        }
+      ]
+    },
+    {
+      "n": 3,
+      "boundaries": 282,
+      "mu": 0.125,
+      "sigma": 0.1277,
+      "threshold": 0.0612,
+      "flaggedCount": 64,
+      "flaggedMeanOverlap": 0.021,
+      "effectSigma": 0.814,
+      "realBelowThreshold": 101,
+      "nullMeanBelow": 192.34,
+      "nullSd": 9.58,
+      "permZ": -9.54,
+      "permP": 1,
+      "pass": false,
+      "topFlagged": [
+        {
+          "t": 6,
+          "overlap": 0
+        },
+        {
+          "t": 9,
+          "overlap": 0
+        },
+        {
+          "t": 13,
+          "overlap": 0
+        },
+        {
+          "t": 16,
+          "overlap": 0
+        },
+        {
+          "t": 32,
+          "overlap": 0
+        },
+        {
+          "t": 33,
+          "overlap": 0
+        }
+      ]
+    },
+    {
+      "n": 5,
+      "boundaries": 278,
+      "mu": 0.117,
+      "sigma": 0.0997,
+      "threshold": 0.0671,
+      "flaggedCount": 51,
+      "flaggedMeanOverlap": 0.0303,
+      "effectSigma": 0.87,
+      "realBelowThreshold": 105,
+      "nullMeanBelow": 176.55,
+      "nullSd": 11.62,
+      "permZ": -6.16,
+      "permP": 1,
+      "pass": false,
+      "topFlagged": [
+        {
+          "t": 32,
+          "overlap": 0
+        },
+        {
+          "t": 53,
+          "overlap": 0
+        },
+        {
+          "t": 54,
+          "overlap": 0
+        },
+        {
+          "t": 66,
+          "overlap": 0
+        },
+        {
+          "t": 172,
+          "overlap": 0
+        },
+        {
+          "t": 226,
+          "overlap": 0
+        }
+      ]
+    }
+  ],
+  "flaggedContext": [
+    {
+      "t": 6,
+      "overlap": 0,
+      "before": [
+        "Bash loop.ts,run.js",
+        "Read loop.ts"
+      ],
+      "after": [
+        "Bash report.md,results.json",
+        "Bash report.md"
+      ]
+    },
+    {
+      "t": 9,
+      "overlap": 0,
+      "before": [
+        "Bash report.md",
+        "Bash run.ts"
+      ],
+      "after": [
+        "Bash",
+        "Bash"
+      ]
+    },
+    {
+      "t": 13,
+      "overlap": 0,
+      "before": [
+        "Bash",
+        "Bash run.js,iter4.log"
+      ],
+      "after": [
+        "Bash segmenter.ts,config.ts",
+        "Bash segment.ts"
+      ]
+    },
+    {
+      "t": 16,
+      "overlap": 0,
+      "before": [
+        "Bash segment.ts",
+        "Bash config.ts"
+      ],
+      "after": [
+        "Read build-jsonc-scenario.py",
+        "Bash build-jsonc-scenario.py,agents-last-exam.jsonl"
+      ]
+    },
+    {
+      "t": 32,
+      "overlap": 0,
+      "before": [
+        "Bash run.js,iter5-rep2.log",
+        "Bash run.js,iter5-rep3.log"
+      ],
+      "after": [
+        "Bash summarizer.ts",
+        "Bash detail.ts,index.ts"
+      ]
+    },
+    {
+      "t": 33,
+      "overlap": 0,
+      "before": [
+        "Bash run.js,iter5-rep3.log",
+        "Bash summarizer.ts"
+      ],
+      "after": [
+        "Bash detail.ts,index.ts",
+        "Bash detail.ts,index.ts"
+      ]
+    }
+  ]
+}
