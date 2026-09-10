@@ -121,8 +121,7 @@ outcome. The point is a real result on the NEW design, not a re-run of the old o
 `reports/metrics/{excerpt-window-0a, rung-0e-retrievers, rung-0b-topic-shift, assembler-zone-io,
 assembler-flex-buffer}/`. The one-line conclusions are in the PROGRESS table just below.
 
-**OPEN (needs a model or a live run):** the **sufficiency** signal (a cheap zero-shot detector, validated
-UNSUPERVISED against the trace's own exploration→action behaviour — no hand labels, see Rung 0b); the **soft
+**OPEN (needs a model or a live run):** the **soft
 target on an overflowing session** (the cache sim only reached ~44% occupancy); and the headline
 live question — **does the pipeline save tokens without losing the task.**
 
@@ -175,7 +174,7 @@ Status only; numbers live in the cited `reports/metrics/<dir>/` reports, never h
 | item | status | one-line result / what remains | reports dir |
 | --- | --- | --- | --- |
 | **0a** excerpt/retrieval unit | **TESTED (offline)** | Retrieval unit is a solved off-the-shelf problem — retire `excerptAround` + D-a anchor-tuning; use a standard chunker + BM25. General-web rerank hurt on code. | `excerpt-window-0a/` |
-| **0b** topic-shift classifier | **TESTED (offline); classifier CLOSED** | Signal is real/cheap; classifier = `z(lexical)+z(semantic)` (kNN ≈ embedding, interchangeable; merged = robust). **Sufficiency half OPEN** (unsupervised behavioural null; no hand labels). | `rung-0b-topic-shift/` |
+| **0b** topic-shift classifier | **TESTED (offline); classifier CLOSED** | Signal is real/cheap; classifier = `z(lexical)+z(semantic)` (kNN ≈ embedding, interchangeable; merged = robust). **Sufficiency half DISSOLVED** by the on-demand redesign (no job left; not needed). | `rung-0b-topic-shift/` |
 | **0c** retrieval constants | **SUPERSEDED by 0a** | Off-the-shelf chunker replaces constant-tuning. Residual: provider-interface integration only. | (see 0a) |
 | **0d** occupancy audit | **NOT RUN — deprioritised** | A retrospective audit whose answer S9 already gives (old traces ~10× too short; real sessions reach 37–56%). Build assembler on real sessions instead. | — |
 | **0e** retriever isolation + combination | **TESTED (offline)** | Coverage-overlap sets fusion's sign (refines S3); default RRF; graft strongest single + best span-precision; vector owns semantics but shallow spans. | `rung-0e-retrievers/` |
@@ -237,7 +236,7 @@ measures nothing, and it will look like a clean negative.
 **0b. HR3 / H4 — the model's own signals. BUILD THE DETECTOR THE DESIGN ALREADY SPECIFIED.**
 > **STATUS: topic-shift half TESTED 2026-09-09 (offline); classifier CLOSED.** Signal is real and cheap;
 > classifier = `z(lexical)+z(semantic)` (kNN ≈ embedding-drift, interchangeable; merged = robust). The
-> **sufficiency half remains OPEN** — validated UNSUPERVISED against the trace's own exploration→action behaviour (permutation null), no hand labels. `reports/metrics/rung-0b-topic-shift/`.
+> **sufficiency half DISSOLVED** by the on-demand redesign (the model gates its own retrieval; top-k is a budget param; as an eviction cue it collapses into topic-shift) — no sufficiency detector is needed. `reports/metrics/rung-0b-topic-shift/`.
 
 **Do not sweep a bigger regex list. A lexical matcher cannot work here in principle.** An LLM is
 probabilistic, not deterministic; every model phrases sufficiency differently; and "I have what I
@@ -258,7 +257,7 @@ regexes therefore reports on a mis-implementation, not on the hypothesis. (One s
 measured; it is in the companion report solely as evidence that the shipped code cannot fire. It is
 not evidence about H4, and it must not be used to set an expectation for the instrument you build.)
 
-**The two sub-signals have different right instruments, and only one needs a model.**
+**Of H4's two sub-signals, only TOPIC-SHIFT survives (below); sufficiency is DISSOLVED by the on-demand redesign.**
 
 - **Topic shift — deterministic, no model.** §14 already gives the measure: a turn whose content
   words share little with the previous *n* turns. Compute fingerprint Jaccard (`extractFingerprints`)
@@ -266,31 +265,20 @@ not evidence about H4, and it must not be used to set an expectation for the ins
   baseline. Validate against a **within-session permutation null**.
   *Falsifies if:* flagged boundaries show a forward-overlap drop < 0.5 SD below session baseline —
   i.e. the measure does not separate a real shift from an arbitrary turn boundary.
-- **Sufficiency — a semantic read of the assistant turn, validated UNSUPERVISED (no hand labels).**
-  A cheap zero-shot detector (a local NLI-style classifier, or a cheap-model call) reads the assistant
-  turn and answers one question: *does this turn assert it has what it needs to proceed?* That is the
-  DETECTOR. **We do not validate it against a hand-labelled set** — hand labels are one author's guesses
-  about phrasing, they make the signal fragile, and every classifier we have built here (topic-shift:
-  lexical, embedding, kNN) is unsupervised. Validate sufficiency the SAME way, against the session's own
-  structure:
+- **Sufficiency — DISSOLVED 2026-09-09 by the on-demand pipeline. Do not build.** H4's second signal
+  ("I have enough info to implement X") had two jobs: (a) stop the *system* adding exploratory context,
+  and (b) move the top-k breakpoint. Neither exists in the redesign: retrieval is **on-demand**, so the
+  MODEL gates its own searching (nothing is being pushed to stop), and top-k is a budget/RRF parameter of
+  the ensemble retriever, not a sufficiency-gated one. As an eviction cue it collapses into topic-shift
+  anyway — "I have enough about X and I'm moving on" *is* a topic shift, which the ensemble classifier
+  already catches. So there is no distinct job left, and no sufficiency detector (and no hand-labelled or
+  behavioural-null validation of one) is needed. The classification branch is therefore just the single
+  unsupervised **topic-shift ensemble** above.
 
-  **The behavioural null (unsupervised).** A genuine "I have enough to proceed" should *precede the
-  model's own transition from exploration to action* — a switch from investigation tools (search, read)
-  to action tools (edit, write). So flag sufficiency turns, then measure whether a flag reliably precedes
-  an exploration→action transition **more than a random turn does**, via a within-session permutation
-  null — exactly the topic-shift validation, on the trace's own behaviour rather than on labels.
-  *Falsifies if:* flagged turns precede an exploration→action transition no more than the permutation
-  baseline — i.e. the "sufficiency" text does not track what the model actually does next. Then the
-  sufficiency half is RETIRED (the signal is not behaviourally real), not iterated with a bigger model.
-  The **final** validation is the live outcome: keying on the signal (stop exploring / allow eviction)
-  must not cost task success. No hand-labelled dataset appears anywhere in this.
+**Standing constraint, unchanged:** any such signal is evidence for **reassessment**, never permission,
+and never an irrelevance label — which is one more reason sufficiency earns no gate here.
 
-**Standing constraint, unchanged:** a sufficiency signal is evidence for **reassessment**, never
-permission, and never an irrelevance label. The instrument must not encode it as one.
-
-**Cost.** Topic-shift half: zero model calls. Sufficiency half: cheap zero-shot detector calls over the
-recorded corpus plus a deterministic permutation null — no labelling, far below any live batch. **A live
-test of H4/HR3 is wasted until the detector clears the behavioural null above.**
+**Cost.** Topic-shift half: zero model calls (the whole classifier). Sufficiency half: none — dissolved.
 
 **0c. Retrieval-unit constants — `eventHits`, `excerptChars`, `retrieval.limit`.**
 > **STATUS: SUPERSEDED by 0a 2026-09-09.** Tuning these magic numbers is the bespoke work 0a showed is
@@ -726,10 +714,11 @@ the intermediate signal before ever measuring the outcome. `selectAttention` ref
 by design ("No live host inference invents missing relevance, plan, or reference labels") — which is
 correct for the product and fatal for the experiment unless the experiment measures outcomes.
 
-**H4 detector status:** `detectAttentionSignals` is implemented and has been run over a real corpus;
-its fire rate is in the companion report. That number is a result about **four regexes**, not about
-H4 — see Rung 0b, which replaces the instrument. The operator's framing is explicit that a
-sufficiency phrase is **evidence for reassessment, never permission or an irrelevance label.**
+**H4 status (updated 2026-09-09):** H4 splits into two signals — **topic-shift** (BUILT: the unsupervised
+ensemble classifier `z(lexical)+z(semantic)`, Rung 0b) and **sufficiency** (DISSOLVED by the on-demand
+redesign — the model gates its own retrieval, top-k is a budget param, and as an eviction cue it
+collapses into topic-shift). So the actionable part of H4/HR3 is the topic-shift classifier only; the
+old `detectAttentionSignals` regex instrument is retired, and no sufficiency detector is built.
 
 ---
 
@@ -916,7 +905,7 @@ declarations). Read F1–F4 above before using any of them — two of these rows
 | `experimental.chat.messages.transform(input, output)` — the array is mutable **in place** (F1) | rewrite the message array before it reaches the LLM — eviction, admission, soft target, Zone B substitution, ledger injection, layout R |
 | `experimental.chat.system.transform` — `output.system: string[]` | Zone A. Note F2: Zone A is assembled *after* the message transform, so it is already out of that hook's reach |
 | `tool.execute.after` | shape tool results — HR2 (whole retrieval payloads), D-a (excerpt centring), H5 (demand expansion) |
-| `chat.message` | observe the model's own text → H4/HR3 sufficiency and topic-shift signals |
+| `chat.message` | observe the model's own text → the topic-shift signal (sufficiency dissolved 2026-09-09) |
 | `experimental.session.compacting` / `.compaction.autocontinue` | replace or disable opencode's own compaction so it is not a confound (F3) |
 | `tool.definition` | Zone A tool-schema size (Mode B's claim) |
 | PluginOptions `plugin: [[name, {…}]]` | **each arm is one options object on one plugin** |
