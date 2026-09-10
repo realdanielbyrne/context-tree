@@ -42,7 +42,8 @@ see D20). Import the offline primitives from `@context-tree/core`:
 (`attention/policy.ts`).
 
 **Rules that are not negotiable:**
-- **Run at W = 131,072. Never at W = 32k–65k, never at 16k.** §0/S1 for the reasons, which differ
+
+- **Target window at W = 131,072. Avoid at W = 32k–65k, never at 16k.** §0/S1 for the reasons, which differ
   per cell.
 - **Never put experiment code in `packages/`.** Scripts live beside their report under `reports/`.
 - **Re-read every number from its raw artifact before quoting it** (standing provenance rule). Do
@@ -70,6 +71,7 @@ comparison (§0/S4); and before that, passes that ran at window sizes where the 
 was not the thing intended (§0/S1).
 
 The operator's constraints on this work, stated directly:
+
 - **"Small, short tests that test that specific hypothesis under test is what we need. Then we can
   intelligently combine the techniques."** Testing twelve mechanisms at once yields one number and
   no attribution. One variable per test; combine afterwards, informed by which carried an effect.
@@ -88,6 +90,27 @@ run at zero model cost.
 
 ---
 
+## PROGRESS — as of 2026-09-09 (what is TESTED, what REMAINS)
+
+Status only; numbers live in the cited `reports/metrics/<dir>/` reports, never here.
+
+| item | status | one-line result / what remains | reports dir |
+| --- | --- | --- | --- |
+| **0a** excerpt/retrieval unit | **TESTED (offline)** | Retrieval unit is a solved off-the-shelf problem — retire `excerptAround` + D-a anchor-tuning; use a standard chunker + BM25. General-web rerank hurt on code. | `excerpt-window-0a/` |
+| **0b** topic-shift classifier | **TESTED (offline); classifier CLOSED** | Signal is real/cheap; classifier = `z(lexical)+z(semantic)` (kNN ≈ embedding, interchangeable; merged = robust). **Sufficiency half OPEN** (needs labels). | `rung-0b-topic-shift/` |
+| **0c** retrieval constants | **SUPERSEDED by 0a** | Off-the-shelf chunker replaces constant-tuning. Residual: provider-interface integration only. | (see 0a) |
+| **0d** occupancy audit | **NOT RUN — deprioritised** | A retrospective audit whose answer S9 already gives (old traces ~10× too short; real sessions reach 37–56%). Build assembler on real sessions instead. | — |
+| **0e** retriever isolation + combination | **TESTED (offline)** | Coverage-overlap sets fusion's sign (refines S3); default RRF; graft strongest single + best span-precision; vector owns semantics but shallow spans. | `rung-0e-retrievers/` |
+| **Assembler zone I/O** | **TESTED (offline mechanics)** | Zone A cache-stable; **Zone B capped/non-adaptive**, tail protected, large-W under-fill (headroom-fill is not in the library). "Should we have Zone B?" — negative prior, overflow role untested. | `assembler-zone-io/` |
+| **Assembler flex-buffer redesign** | **TESTED (cache mechanics offline)** | Cache economics CLOSE: `flex-append-sticky` (Zone A = system+steering+all user prompts append-only; creation-order buffer; secondary breakpoint; soft target) beats current zones; free re-mix is cache-death. **OPEN: task quality (live); soft target on an overflowing session.** | `assembler-flex-buffer/` |
+| **Rung 1** (HZ, HR1) | **NOT STARTED** (cheap live) | — | — |
+| **Rung 2** (2z, H1, H3, H6, D-b, HU/priority) | **NOT STARTED** (live) | The umbrella (HU) and every named hypothesis remain untested live. | — |
+| **Rung 3** (HA soft target, score hypothesis) | **NOT STARTED** (live) | The endpoints that vindicate the programme. | — |
+
+**One-line meta-finding across the offline rungs:** the proxies rank *large* differences (retriever
+families, layouts, cache mechanics) but cannot settle *task quality* or resolve *small* marginals — those
+need labels or the live outcome. The live path (opencode plugin, Rung 2z) is the standing next step.
+
 ## THE LADDER — ordered by information gained per unit of cost
 
 Each rung: one hypothesis, one variable, a falsification condition fixed before the run.
@@ -105,6 +128,7 @@ Everything these need survived the harness deletion.
 | store rebuild | `context-tree import <transcript> --from-claude-code` |
 
 **Two facts about the corpus that change what is cheap** — both are availability facts, not results:
+
 - **The overflow regime is reachable from the real-session corpus.** The record listed "no trace in
   the repo has ever reached the overflow regime" as an open item; the local session corpus contains
   sessions far longer than anything the old harness produced, and
@@ -116,6 +140,8 @@ Everything these need survived the harness deletion.
   payload text inline, so D-a's sweep runs from `git show` alone.
 
 **0a. D-a — the excerpt window (hand-off item 1's first named defect).**
+> **STATUS: TESTED 2026-09-09 (offline).** Retrieval unit is off-the-shelf — retire `excerptAround` +
+> anchor-tuning. Bespoke sweep and off-the-shelf chunk/retrieve/rank/rerank in `reports/metrics/excerpt-window-0a/`.
 Claim under test: a correctly ranked event can be selected and still not contain the answer,
 because the excerpt window is too narrow and anchored at the wrong place. If so the retrieval unit's
 excerpt is the defect, not the ranking.
@@ -131,6 +157,9 @@ payload it was handed had empty fingerprint `terms`, so no anchor could differ f
 measures nothing, and it will look like a clean negative.
 
 **0b. HR3 / H4 — the model's own signals. BUILD THE DETECTOR THE DESIGN ALREADY SPECIFIED.**
+> **STATUS: topic-shift half TESTED 2026-09-09 (offline); classifier CLOSED.** Signal is real and cheap;
+> classifier = `z(lexical)+z(semantic)` (kNN ≈ embedding-drift, interchangeable; merged = robust). The
+> **sufficiency half remains OPEN** (needs the labelled set + κ≥0.6 gate below). `reports/metrics/rung-0b-topic-shift/`.
 
 **Do not sweep a bigger regex list. A lexical matcher cannot work here in principle.** An LLM is
 probabilistic, not deterministic; every model phrases sufficiency differently; and "I have what I
@@ -184,6 +213,11 @@ classifier calls over that sample — far below any live agentic batch. **A live
 wasted until a detector clears its falsification condition above.**
 
 **0c. Retrieval-unit constants — `eventHits`, `excerptChars`, `retrieval.limit`.**
+> **STATUS: SUPERSEDED by 0a 2026-09-09.** Tuning these magic numbers is the bespoke work 0a showed is
+> unnecessary — a standard off-the-shelf chunker + BM25 behind the provider interface replaces the whole
+> "derive the constants" exercise. Residual is provider-interface integration, not a constant sweep. See
+> `reports/metrics/excerpt-window-0a/`.
+
 All three shipped as values copied from a published interface and were never validated here. Same
 sweep harness as 0a. Metric: answer-present rate vs total tokens returned, per (hits × chars ×
 limit).
@@ -192,6 +226,11 @@ magic numbers.
 *Direction to test:* **shrinking** the hit list. Enriching it is on the do-not-retry list (§0/S3).
 
 **0d. Occupancy across the whole record — was any arm, ever, near its window?**
+> **STATUS: NOT RUN — deprioritised 2026-09-09.** This is a retrospective audit of the *old* record, and
+> S9 already answers it: the old harness traces are ~10× too short and real operator sessions do reach a
+> meaningful window fraction. So the forward move is to build assembler work on the real-session corpus,
+> not to audit the dead traces. Left here for completeness, not as a gate.
+
 Zero model calls. For every `results*.json` under `reports/metrics/`, compute context actually seen
 per turn (`input + cacheRead`) against that run's W, and report peak and final occupancy per run,
 grouped by arm and scenario.
@@ -210,9 +249,82 @@ assume 131,072.
 same scenario. Equal volume with opposite outcomes localises the defect to content selection; that
 distinction is the difference between a bug report and folklore about the technique.
 
+**0e. Retriever isolation, then combination — which single retriever, and does combining beat it?**
+Zero live model cost (local retrievers; local embeddings). Runs on the same pooled-slice corpus and
+harness as 0a (`experiments/rung-0a-excerpt-window/offtheshelf-sweep.mjs`). Two phases, in order —
+the second is meaningless without the first.
+
+*Phase 1 — each retriever ALONE (one variable per arm).* Same corpus, same chunker, same top-k
+budget; vary only the retriever. Text-applicable retrievers: BM25 (done, 0a off-the-shelf), dense
+vector (isolate; the embedding model is itself a sub-sweep — MiniLM / bge-small / gte-small /
+e5-small), grep/exact-substring, the repo's own TF-IDF beam (`lexicalScore`), and fuzzy. Metric:
+answer-present rate vs tokens returned, per retriever. *Produces:* the **best single index** — the bar
+every combination must clear.
+*Structural retrievers (graft/tree-sitter, Serena/LSP) are OUT of this rung:* they retrieve from a
+parseable code repo, not from conversation-trace text slices, so "same transcript" is not
+apples-to-apples. That is HR1 / Rung 1b, on a code-repo corpus.
+
+*Phase 2 — combination arms, one variable each, all at the SAME total top-k as the best single
+(token-neutral by construction — retrieval is local, only admitted content costs tokens):*
+
+- **best-single-index** — the bar (from Phase 1).
+- **RRF over same-index rankers** (e.g. BM25 + vector over the one chunk index). Predicted to help:
+  fusion is the right combinator for multiple rankers over the *same* index (hybrid grep+beam already
+  did, `ds-star-search-ranking-report`), the wrong one across *disjoint* indexes.
+- **round-robin / position interleave** across retrievers — reserves one slot per source, so it
+  cannot demote the right source's top hit the way score-fusion does. This is the operator's variant
+  and is NOT the refuted RRF-across-indexes arm.
+- **interleave + source labels** — each block prefixed "content from the {tool} retriever," to isolate
+  whether the label earns its tokens. Prior caution: added display text has twice moved tokens
+  without moving selection (§0/S3).
+*Falsifies the combination case if:* no combination arm beats best-single-index on answer-present rate
+at equal top-k. *The mechanism to respect (identified, not folklore):* rank-only RRF across
+disjoint-coverage indexes demotes already-found answers (rank 3→12, 7→26, measured in
+`reports/metrics/ds-star-multi-index-report.md` §8) because it cannot tell "rank 1 in the index that
+matters" from "rank 1 in an irrelevant one." Routing beat fusion there 9/17 vs 6/17 — so a **router**
+(turn-type → best retriever) is the standing alternative any combination arm is also measured against.
+
+**STATUS — 0e RUN 2026-09-09. Numbers in `reports/metrics/rung-0e-retrievers/` (five reports); read
+them there, not here. Directional (small n) but internally consistent. Settled conclusions, as design
+guidance:**
+
+- **The retrieval unit is a solved, off-the-shelf problem** (Rung 0a companion): retire the bespoke
+  `excerptAround` + D-a anchor-tuning; a standard chunker (recursive/token) + BM25 behind the
+  `RetrievalProvider` interface matches it. General-web cross-encoder rerank HURT on code (out of
+  domain). `report-offtheshelf.md`.
+- **Coverage overlap is the variable that sets fusion's sign — this REFINES §0/S3, does not overturn
+  it.** Multiple retrievers over ONE corpus with overlapping coverage → **RRF wins** (beats best-single
+  and routing on mixed traffic). One-retriever-covers queries (e.g. paraphrase-only semantics) → RRF
+  *demotes* the sole covering hit and **loses to that retriever alone** — the S3 disjoint-index
+  mechanism, reproduced within a stratum. S3's "fusion refuted" is scoped to *disjoint indexes*; it is
+  not a blanket rule. `report-repo-benchmark.md`, `report-semantic-hardening.md`.
+- **Default combinator = plain RRF; confidence-gated fusion is REFUTED here** (a top-1→top-2 margin gate
+  hurt at every setting); a feature router works (17/20) but does not beat RRF on mixed traffic. Route
+  only when the workload is single-coverage-dominant. `report-combinators.md`.
+- **Per-style specialisation is real and sharp** (so HR1/H2 stand): graft/structural owns
+  structure and typos and is the **best single retriever and best span precision** on code; vector owns
+  paraphrase semantics but returns **shallow spans** (finds the file, not the answer line);
+  lexical owns exact literals. `report-repo-benchmark.md`, `report-span-scoring.md`.
+- **File-level scoring overstates quality; judge at span level.** On code, structural (graft) returns
+  symbol spans so file-hit ≈ span-hit; chunk retrievers (esp. dense) need a span-refinement stage —
+  which is exactly the Rung 0a chunker, now shown necessary. `report-span-scoring.md`.
+- **SCOPE CAVEAT that governs transfer:** Phase 2–2d ran on the **code repo** as corpus. Those results
+  bind the *structural* retriever (HR1/HR2) and general fusion/routing, but their transfer to
+  *conversation-trace event* retrieval (what shipped `context_search` does) is a hypothesis, not
+  established — the two corpora differ. The coverage-overlap rule is corpus-agnostic; the graft/span
+  numbers are code-scoped.
+- **Not yet done:** the embedding-model sub-sweep (bge/gte/e5 vs MiniLM); source-label arm; a
+  calibrated-confidence fuser (the margin gate that failed is not the last word); and any *live* run.
+
 ### Rung 1 — single-turn probes, cheap live
 
 **1a. HZ — Zone B as an index, endpoint = retrieval success rate.**
+> **STATUS: partial offline evidence 2026-09-09; efficacy still UNTESTED (live).** The assembler zone-I/O
+> characterization found the shipped Zone B is **capped and does not expand with the window**, and the
+> record has it inert-to-harmful on literal recall — so its *structural cost* is characterized and its
+> prior is negative. But this rung's actual endpoint — does Zone B *raise the retrieval-success rate* —
+> is a live probe and remains unrun. `reports/metrics/assembler-zone-io/`.
+
 The reframe: a summary's job is to tell the model it once worked on X so it can go find X. On that
 reading, a Zone B that does not itself answer literal-recall questions is behaving correctly as an
 index, and the endpoint must change accordingly — from "can the model answer from Zone B" to "does
@@ -224,6 +336,13 @@ whether it issues a search naming the right identifiers. Control: same question,
 *Falsifies if:* correct-search rate with the index is within noise of the control.
 
 **1b. HR1 — is the retrieval unit wrong for structural turns?**
+> **STATUS: partial offline evidence 2026-09-09; live probe still UNRUN.** The 0e repo benchmark (real
+> graft CLI, code corpus) supports HR1's premise: per-style specialisation is real — structural (graft)
+> is the strongest single retriever and best at span precision, while chunk/dense retrievers find the
+> file but not the answer span. So a structural unit plausibly helps structural turns. But the *specific*
+> excerpt-unit-vs-whole-structural-payload ablation, and the transfer to conversation-trace retrieval
+> (this was a code corpus), remain untested. `reports/metrics/rung-0e-retrievers/`.
+
 The register's competing explanation for the retrieval arm's failures on the multi-module scenario:
 the tool returns a handful of best-matching *events* with a short excerpt each, tuned for "find the
 literal", when a multi-step task needs file/tree structure, module layout and API surfaces — so the
@@ -264,6 +383,9 @@ not a single mechanism. Every other rung keeps one variable.
 
 - **H1** — needs the three-phase non-monotonic scenario §15 specified and nobody built: edit an API
   → do unrelated work → need the API again. *Falsifies if* evicting the dormant phase costs success.
+  *(Offline 2026-09-09: 0b confirmed the topic-shift **trigger** H1's eviction keys on is real and cheap
+  — `reports/metrics/rung-0b-topic-shift/`. H1's own premise, "do real sessions revisit dormant topics"
+  (the kNN return-rate), is specced but UNRUN, and H1 itself is live-untested.)*
 - **H3** — pin the plan artifact vs not; measure whether the model re-derives steps.
 - **H6** — anchor n ∈ {exchange, subtask, all}, at equal n.
 - **D-b** — the completed-steps ledger, ablated against **HR1**, since both explain the same failure.
@@ -281,6 +403,11 @@ cost at that cadence — per-turn and every-n-turns are different experiments.
 - **HA — soft target.** Reinterpreted per the operator: `f` is a **floor below which we never
   evict**, not a level to hold. Requires a session that exceeds the floor, so it needs the
   real-session corpus rather than the old harness traces (§0/S9).
+  > **STATUS: partial offline evidence 2026-09-09; efficacy UNTESTED (live).** The flex-buffer redesign
+  > exercised the soft target on the *cache* axis: a loose target (0.4–0.5) is cache-competitive, and a
+  > tighter one trades occupancy for a little cache churn — so `f` is a viable knob mechanically. Its real
+  > payoff (bounding token *volume* on an overflowing session) and its task-quality effect are both unrun;
+  > the sim peaked at ~44% occupancy so the floor barely bound. `reports/metrics/assembler-flex-buffer/`.
 - **HU end-to-end**, and **the score hypothesis** — that a shorter, better-curated context makes the
   model *reason better*. No lens ever refuted it; no experiment ever tested it. This is the endpoint
   that can vindicate the programme, and every measurement so far argued cost instead.
@@ -313,6 +440,7 @@ zero production callers.
 These are facts about the host, not results of any experiment.
 
 `SessionPrompt.run`, verbatim:
+
 ```js
 yield* d.trigger("experimental.chat.messages.transform", {}, { messages: C });
 let [ae,Fe,Ue,ko,is] = yield* s.all([z.skills(Y), z.environment(Z), K.system(), z.mcp(…), …]);
@@ -347,6 +475,7 @@ offline from the corpus's `output_tokens_details.thinking_tokens`.
 0. **Mutation visibility (F1).** A unit test proving an in-place edit inside
    `experimental.chat.messages.transform` reaches the provider call. Without this, every arm may be
    silently inert.
+
 1. **Tool-call fidelity.** Assert no transform drops a `ToolPart` while keeping the assistant text
    that announced it, and never orphans a result from its call. This is the exact bug that voided
    two days; it becomes a unit test.
@@ -396,6 +525,7 @@ carry one into a falsification condition as an expected value.
 **S1. Do not sweep small windows — and the small-window cells failed for *different* reasons, so do
 not collapse them into one story.** Three distinct cells, and only the first is an experimental
 artifact:
+
 - **W=16,384** — Zone A + Zone B + one search exceeds the window. A dead cell; nothing about context
   policy can be measured there. (`minimum-window-boundary` memory.)
 - **W=32,768–65,536** — the tree lost to the tail arm on **Haiku 4.5** (partly Sonnet 5), and the
@@ -418,6 +548,7 @@ the opencode seam.
 
 **S3. Refuted repairs — do not retry these.** Each was measured and closed; the numbers are in the
 companion report and the metrics artifacts.
+
 - Recency-only eviction (keep-last-n): breaks a large share of the run's `edit_file` calls, because
   the longest-lived units are the earliest and smallest.
 - Zone B prose enrichment (`tree-hit-keywords`): more input tokens, no change in selection.
@@ -500,6 +631,7 @@ pass by fitting *per-turn prompt length* (linear) against a claim about *cumulat
 (quadratic). Nothing was refuted; the premise stands as stated.
 
 Encoded (§15) as **two channels per unit per turn**:
+
 - **relevance** — query-dependent; the turn's fingerprints against the unit's. This is what
   `context_search` already scores (the query·key term).
 - **priority** — query-independent state carried across turns: how much the unit has mattered and is
@@ -530,6 +662,7 @@ missing_labels`.
 | **H6** | **The last n turns are the anchor.** Whatever else is evicted, the model's most recent exchanges stay; n must cover the whole current sub-task, not only the last exchange. | "source-linked current-subtask boundaries"; "exchange/subtask/all ablations at equal n" |
 
 **Critical note on those blockers.** They conflate two different questions:
+
 - *"Is the policy's relevance judgment correct?"* — needs ground-truth labels. Hard.
 - *"Does the policy help?"* — needs only the policy to RUN and the outcome measured. **No labels.**
 
@@ -556,6 +689,7 @@ missing ledger, may be why multi-step tasks starved.**
 structure, module layout, API surfaces** — which a short event excerpt cannot carry. So the
 retrieval arm's failures on the multi-module scenario (run-command loops with plenty of headroom)
 have at least two competing explanations, and the record pursued only one:
+
 - (a) no ledger of completed steps → the model re-investigates
 - (b) **the retrieval unit is wrong for the turn type** → the model never gets structure, so it
   probes with `run_command` instead
@@ -574,6 +708,31 @@ intervention that measured a difference; structural selection reported `unsuppor
 every payload it was offered, i.e. **no verified structural partition exists yet** — build one
 before treating this as testable.
 
+**HR2-INVARIANT (not a hypothesis — a design rule; operator-set 2026-09-09). Do NOT re-retrieve a
+tool result.** When the *model* calls a retrieval-shaped tool (graft, Serena/LSP, tree/file listings,
+`context_search`), that tool has already run search→retrieve→rank and returned a minimal, ordered,
+structure-preserving payload — it *is* a retriever. Interception of that result is for **retention**
+(admit / evict the whole unit across turns, topic-scoped per HR3), **never for re-retrieval**. Running
+a curated tool output back through our own chunker + grep/vector + ranker is damaging and can only lose
+information: (1) it re-ranks with a weaker surface signal on top of graft's code-graph ranking; (2) it
+fragments coherent structural units (a char chunker splits a function mid-body); (3) it can demote the
+very content the model explicitly fetched out of the window (the §8 demotion mechanism, now applied to
+a deliberate fetch); (4) it is a redundant second retrieval over an already-retrieved result (data-
+processing inequality — post-processing adds no signal). This is the same principle as HR2 ("excerpting
+a structural result destroys the structure") and the D15 ingestion boundary ("ingestion produces
+coordinates, retrieval answers questions"): a live tool result is captured to L0 **verbatim** and its
+*lifetime* is managed, not its *content*.
+*Where each stage applies:* our chunk/rank pipeline runs only on **retrieval we initiate** from history
+(`context_fetch`/`context_search` over L0), never on inbound live tool results. In opencode-plugin
+terms: `tool.execute.after` = capture + provenance-tag + (if it overflows) size-bound **by the source's
+own ranking**, never re-rank with a competing retriever; `experimental.chat.messages.transform` =
+admit/evict the whole unit. *Corollary for the interleave/fusion arms (Rung 0e Phase 2):* fusion is for
+candidates from retrievers **we** run and assemble; a single tool the model invoked is already one
+retriever's curated result — retain or evict it whole, do not dilute it by fusing or re-ranking.
+*The one legitimate reduction* of a huge tool result is truncation that preserves the source's order
+(keep graft's top-N units, drop the tail it already ranked last) — a structure-preserving cut, not a
+re-rank.
+
 **HR3. Model-signal-keyed retention (the operator's own framing of H4).**
 When a model researches and then says *"I have enough data to continue"*, that is a signal we can
 key off — both to stop adding exploratory context and to decide what to RETAIN. Also its inverse: a
@@ -591,6 +750,7 @@ per turn and eviction back to target once results are seen. `f` to be **measured
 requirement, which is not the same as withdrawing it. `algorithm.md` recorded it as "withdrawn by
 the user"; that was a mischaracterisation, and the standing status is the one stated here.
 Notes:
+
 - Expressed as a fraction of the **window** it was untestable on the traces then available.
   Expressed as a fraction of **measured demand** it is the right axis. §0/S9: use the real-session
   corpus.
@@ -634,6 +794,7 @@ Notes:
 **HZ. Zone B is an INDEX, not content.** A summary's only job is to tell the model it once worked on
 X so it can go find X with `context_search`. It is a pointer; it must never be expected to answer
 from itself.
+
 - This **reinterprets** the existing measurement rather than contradicting it: a Zone B that
   measures inert on *literal recall* is behaving correctly as an index, and was previously read as a
   failure.
@@ -706,6 +867,7 @@ declarations). Read F1–F4 above before using any of them — two of these rows
 | PluginOptions `plugin: [[name, {…}]]` | **each arm is one options object on one plugin** |
 
 Four properties that make this safer than what failed:
+
 1. **opencode owns the tool-call representation on both sides of the hook.** We receive its faithful
    `{info, parts}` and return the same shape. S4's bug is structurally impossible.
 2. **The gate that would have caught S4 becomes a unit test:** assert no transform ever drops a
@@ -730,6 +892,7 @@ A new hypothesis needs an operator decision, not an inference from the code.
 **Q2. Does the order of the ladder matter?** — **No.** "Order doesn't matter. We need results. The
 likely end result is combining two or more of these techniques."
 Two consequences, and they pull in opposite directions, so hold both:
+
 - The ladder is ordered by *information per unit of cost*, not by dependency. Any rung may be run
   first. Rung 0 is at the top only because it costs nothing.
 - **But do NOT test the combination first.** "If we test 12 things at once then how do we know
@@ -751,6 +914,7 @@ data decides.** Operator, verbatim:
 > experiment."
 
 This fixes three things in the design:
+
 1. **Retention is topic-scoped.** A tool result is live while its topic is live. The five files'
    graft excerpts are applicable *together* during the cross-file edit — and become ejectable when
    the model shifts to writing a report or updating the task list.
