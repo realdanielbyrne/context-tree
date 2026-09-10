@@ -184,6 +184,7 @@ Status only; numbers live in the cited `reports/metrics/<dir>/` reports, never h
 | **0c** retrieval constants | **SUPERSEDED by 0a** | Off-the-shelf chunker replaces constant-tuning. Residual: provider-interface integration only. | (see 0a) |
 | **0d** occupancy audit | **NOT RUN — deprioritised** | A retrospective audit whose answer S9 already gives (old traces ~10× too short; real sessions reach 37–56%). Build assembler on real sessions instead. | — |
 | **0e** retriever isolation + combination | **TESTED (offline)** | Coverage-overlap sets fusion's sign (refines S3); default RRF; graft strongest single + best span-precision; vector owns semantics but shallow spans. | `rung-0e-retrievers/` |
+| **retriever isolation + ensemble, LIVE model** | **TESTED (live, CODE corpus)** | Promotes 0e to real-model end-to-end RAG. RRF ensemble 13/20 > best single 9/20 (overlap win) but demotes grep's literal 4/4→1/4 (disjoint-coverage demote, reproduced live). Sharp per-style split: grep=literals, vector=semantics, fuzzy/graft=typos. graft best at file-location (gt-file@k .55) but mid-pack accuracy via uniform `graft ask`. **OPEN: coverage-aware router; routed graft; transfer to a TRANSCRIPT corpus (this was a code repo).** | `rung-2-retriever-live/` |
 | **Assembler zone I/O** | **TESTED (offline mechanics)** | Zone A cache-stable; **Zone B capped/non-adaptive**, tail protected, large-W under-fill (headroom-fill is not in the library). "Should we have Zone B?" — negative prior, overflow role untested. | `assembler-zone-io/` |
 | **Assembler flex-buffer redesign** | **TESTED (cache mechanics offline)** | Cache economics CLOSE: `flex-append-sticky` (Zone A = system+steering+all user prompts append-only; creation-order buffer; secondary breakpoint; soft target) beats current zones; free re-mix is cache-death. **OPEN: task quality (live); soft target on an overflowing session.** | `assembler-flex-buffer/` |
 | **Rung 1** (HZ, HR1) | **NOT STARTED** (cheap live) | — | — |
@@ -372,6 +373,12 @@ guidance:**
   *demotes* the sole covering hit and **loses to that retriever alone** — the S3 disjoint-index
   mechanism, reproduced within a stratum. S3's "fusion refuted" is scoped to *disjoint indexes*; it is
   not a blanket rule. `report-repo-benchmark.md`, `report-semantic-hardening.md`.
+  **Mechanism — do NOT describe it as a scaling problem.** RRF is *reciprocal-rank* fusion (sums
+  `1/(k+rank)` over ranks only): it is scale-free and never puts disjoint scores on a common axis — that
+  scale problem belongs to score-normalisation fusion, not RRF. The disjoint-coverage loss is a
+  *coverage/voting* effect: a doc ranked mediocre by several non-covering retrievers outvotes the one
+  retriever's genuine top hit. **Confirmed LIVE 2026-09-09 on a real model** (`rung-2-retriever-live/`):
+  RRF ensemble beat best-single overall (13/20 vs 9/20) yet demoted grep's literal monopoly (4/4 → 1/4).
 - **Default combinator = plain RRF; confidence-gated fusion is REFUTED here** (a top-1→top-2 margin gate
   hurt at every setting); a feature router works (17/20) but does not beat RRF on mixed traffic. Route
   only when the workload is single-coverage-dominant. `report-combinators.md`.

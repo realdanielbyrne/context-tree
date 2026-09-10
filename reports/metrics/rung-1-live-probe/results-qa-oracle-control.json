@@ -1,0 +1,234 @@
+{
+  "manifest": {
+    "experiment": "rung-1-live-probe / qa-oracle-control",
+    "purpose": "Retrieval-ceiling control: is the gold answer literally present in the handed context? Decomposes model accuracy = retrieval ceiling x extraction.",
+    "grader": "deterministic answer-presence (regex OR exact literal substring) in the context",
+    "model_run": "qa-naive-1789009495919",
+    "commit": "32243646268b4d86c1f3086d1d567cd8deeea897",
+    "date": "2026-09-10T03:12:57.931Z"
+  },
+  "source": {
+    "n": 22,
+    "retrieval_ceiling": 1,
+    "model_accuracy": 0.6364,
+    "extraction_given_present": 0.6364,
+    "present": 22,
+    "present_correct": 14,
+    "present_wrong": 8,
+    "absent": 0,
+    "absent_correct": 0,
+    "absent_wrong": 0
+  },
+  "wide": {
+    "n": 22,
+    "retrieval_ceiling": 1,
+    "model_accuracy": 0.6818,
+    "extraction_given_present": 0.6818,
+    "present": 22,
+    "present_correct": 15,
+    "present_wrong": 7,
+    "absent": 0,
+    "absent_correct": 0,
+    "absent_wrong": 0
+  },
+  "rows": [
+    {
+      "id": "s1-q01-head",
+      "kind": "path",
+      "stratum": "head",
+      "present_source": true,
+      "present_wide": true,
+      "model_source": false,
+      "model_wide": false
+    },
+    {
+      "id": "s1-q02-head",
+      "kind": "quoted",
+      "stratum": "head",
+      "present_source": true,
+      "present_wide": true,
+      "model_source": true,
+      "model_wide": true
+    },
+    {
+      "id": "s1-q03-head",
+      "kind": "quoted",
+      "stratum": "head",
+      "present_source": true,
+      "present_wide": true,
+      "model_source": false,
+      "model_wide": false
+    },
+    {
+      "id": "s1-q04-tail",
+      "kind": "quoted",
+      "stratum": "tail",
+      "present_source": true,
+      "present_wide": true,
+      "model_source": false,
+      "model_wide": false
+    },
+    {
+      "id": "s1-q05-tail",
+      "kind": "quoted",
+      "stratum": "tail",
+      "present_source": true,
+      "present_wide": true,
+      "model_source": false,
+      "model_wide": false
+    },
+    {
+      "id": "s1-q06-tail",
+      "kind": "quoted",
+      "stratum": "tail",
+      "present_source": true,
+      "present_wide": true,
+      "model_source": true,
+      "model_wide": true
+    },
+    {
+      "id": "s1-q07-deep",
+      "kind": "quoted",
+      "stratum": "deep",
+      "present_source": true,
+      "present_wide": true,
+      "model_source": false,
+      "model_wide": false
+    },
+    {
+      "id": "s1-q08-deep",
+      "kind": "ident",
+      "stratum": "deep",
+      "present_source": true,
+      "present_wide": true,
+      "model_source": true,
+      "model_wide": true
+    },
+    {
+      "id": "s1-q09-deep",
+      "kind": "ident",
+      "stratum": "deep",
+      "present_source": true,
+      "present_wide": true,
+      "model_source": true,
+      "model_wide": true
+    },
+    {
+      "id": "s1-q10-spanning",
+      "kind": "path",
+      "stratum": "spanning",
+      "present_source": true,
+      "present_wide": true,
+      "model_source": true,
+      "model_wide": true
+    },
+    {
+      "id": "s1-q11-spanning",
+      "kind": "path",
+      "stratum": "spanning",
+      "present_source": true,
+      "present_wide": true,
+      "model_source": false,
+      "model_wide": false
+    },
+    {
+      "id": "s1-q12-spanning",
+      "kind": "number",
+      "stratum": "spanning",
+      "present_source": true,
+      "present_wide": true,
+      "model_source": true,
+      "model_wide": true
+    },
+    {
+      "id": "s1-qo01-overflow",
+      "kind": "ident",
+      "stratum": "overflow",
+      "present_source": true,
+      "present_wide": true,
+      "model_source": true,
+      "model_wide": true
+    },
+    {
+      "id": "s1-qo02-overflow",
+      "kind": "ident",
+      "stratum": "overflow",
+      "present_source": true,
+      "present_wide": true,
+      "model_source": true,
+      "model_wide": true
+    },
+    {
+      "id": "s1-qo03-overflow",
+      "kind": "quoted",
+      "stratum": "overflow",
+      "present_source": true,
+      "present_wide": true,
+      "model_source": true,
+      "model_wide": true
+    },
+    {
+      "id": "s1-qo04-overflow",
+      "kind": "quoted",
+      "stratum": "overflow",
+      "present_source": true,
+      "present_wide": true,
+      "model_source": false,
+      "model_wide": true
+    },
+    {
+      "id": "s1-qo05-overflow",
+      "kind": "quoted",
+      "stratum": "overflow",
+      "present_source": true,
+      "present_wide": true,
+      "model_source": true,
+      "model_wide": true
+    },
+    {
+      "id": "s1-qo01-overflow",
+      "kind": "ident",
+      "stratum": "overflow",
+      "present_source": true,
+      "present_wide": true,
+      "model_source": true,
+      "model_wide": true
+    },
+    {
+      "id": "s1-qo02-overflow",
+      "kind": "quoted",
+      "stratum": "overflow",
+      "present_source": true,
+      "present_wide": true,
+      "model_source": true,
+      "model_wide": true
+    },
+    {
+      "id": "s1-qo03-overflow",
+      "kind": "path",
+      "stratum": "overflow",
+      "present_source": true,
+      "present_wide": true,
+      "model_source": false,
+      "model_wide": false
+    },
+    {
+      "id": "s1-qo04-overflow",
+      "kind": "path",
+      "stratum": "overflow",
+      "present_source": true,
+      "present_wide": true,
+      "model_source": true,
+      "model_wide": true
+    },
+    {
+      "id": "s1-qo06-overflow",
+      "kind": "ident",
+      "stratum": "overflow",
+      "present_source": true,
+      "present_wide": true,
+      "model_source": true,
+      "model_wide": true
+    }
+  ]
+}

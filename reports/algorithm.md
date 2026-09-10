@@ -144,19 +144,22 @@ per turn:
    → reports/metrics/assembler-flex-buffer/, assembler-zone-io/
 
 3. retrieve on demand — the ENSEMBLE RETRIEVER (query relevance)   [OFFLINE]
-   fan out BM25 / grep / vector / graft over ONE shared corpus, fuse by RRF
-     overlapping coverage → fuse (RRF wins); single-coverage query → route to the coverer
-   a tool result the MODEL fetched is retained WHOLE, never re-chunked (HR2-INVARIANT)
+   fan out BM25 / grep / vector(kNN) over the TRANSCRIPT (L0), fuse by RRF
+     overlapping coverage → fuse (RRF is rank-based/scale-free, wins); single-coverage query → route to the coverer
+   a tool result the MODEL fetched (its own graft/LSP call) is retained WHOLE, never re-chunked (HR2-INVARIANT)
    the fetched unit appends after the buffer — the cached prefix is untouched
-   → reports/metrics/rung-0e-retrievers/, excerpt-window-0a/
+   → reports/metrics/rung-0e-retrievers/, rung-2-retriever-live/, excerpt-window-0a/
 ```
 
 **What each stage settled (offline; pointers, not numbers — the rule below still holds):**
 
-- **Retriever.** The retrieval *unit* is an off-the-shelf chunker + BM25, not bespoke `excerptAround`;
-  RRF over a shared corpus beats best-single and routing on mixed traffic (coverage overlap sets
-  fusion's sign — refines the disjoint-index result in Boundary conditions); graft is the strongest
-  single retriever and best at span precision on code; general-web cross-encoder rerank hurt on code.
+- **Retriever.** Ours searches the TRANSCRIPT (L0) — off-the-shelf chunker + BM25 + vector(kNN), not
+  bespoke `excerptAround`. RRF (rank-based, scale-free) over a shared corpus beats best-single and
+  routing on mixed traffic; a single-coverage stratum demotes the sole covering hit, so route those
+  (coverage overlap sets fusion's sign — refines the disjoint-index result in Boundary conditions);
+  general-web cross-encoder rerank hurt on code. **Corpus caveat: the mechanism tests ran on a CODE
+  corpus (`rung-0e-retrievers/`, and live `rung-2-retriever-live/`: RRF ensemble 13/20 > best single
+  9/20, yet demoted grep's literal monopoly 4/4→1/4); transfer to the transcript corpus is untested.**
 - **Classifier.** The topic-shift signal is real and cheap; `z(lexical)+z(semantic)` is the robust
   merge (kNN-drift is interchangeable with the semantic term, not additive).
 - **Assembler.** Zone B as a fixed band is capped and inert-to-harmful; the flex buffer *subsumes* it
@@ -345,7 +348,7 @@ measurement, would be worth more than another boundary condition.
 | A search hit rendered without its ranking evidence | Hits render on title plus `meta.files`/`meta.symbols`, routinely empty for a phase node, so the fingerprints the hit was ranked on never reach the model. Attaching the matched fingerprints does **not** repair selection and costs input tokens. Open. |
 | Fingerprint set used as a keyword list | Not one — entries may be whole slabs of source. Rank by the query's share of a fingerprint's own tokens. Bites overlap-ranked consumers only; Zone B headlines checked clean. |
 | Facet index with high-cardinality key | Cheap-unit economics fail. 66 file / 311 command entries cost 2.7K / 7.5K tokens; 3,969 line entries cost 77K — as much as the content, so "return more candidates" is unavailable and ranking binds again. |
-| Fusing indexes with disjoint coverage | **Harmful.** RRF across four indexes scores 6/17 where routing to the best single index scores 9/17; answers already found are demoted (rank 3→12, 7→25). Fuse rankers over one index, route across indexes. **Refined 2026-09-09 (offline, `rung-0e-retrievers/`): coverage OVERLAP sets fusion's sign.** Multiple retrievers over ONE shared corpus with overlapping coverage → RRF *wins* (beats best-single and routing on mixed traffic); a single-coverage query (only one retriever can answer) → RRF *demotes* the sole hit and loses to routing. So "fusion refuted" is scoped to disjoint coverage only; on a shared corpus RRF is the default combinator. Confidence-gated fusion (margin gate) was refuted here. |
+| Fusing indexes with disjoint coverage | **Harmful.** RRF across four indexes scores 6/17 where routing to the best single index scores 9/17; answers already found are demoted (rank 3→12, 7→25). Fuse rankers over one index, route across indexes. **Refined 2026-09-09 (offline, `rung-0e-retrievers/`): coverage OVERLAP sets fusion's sign.** Multiple retrievers over ONE shared corpus with overlapping coverage → RRF *wins* (beats best-single and routing on mixed traffic); a single-coverage query (only one retriever can answer) → RRF *demotes* the sole hit and loses to routing. So "fusion refuted" is scoped to disjoint coverage only; on a shared corpus RRF is the default combinator. Confidence-gated fusion (margin gate) was refuted here. **Mechanism, stated precisely (do not mis-describe it as a scaling problem): RRF is _reciprocal-rank_ fusion — it sums `1/(k+rank)` over ranks alone, so it is scale-free and never normalizes disjoint scores onto a common axis.** The disjoint-coverage loss is a _coverage/voting_ effect: a document ranked mediocre by several non-covering retrievers can outvote the one retriever's genuine top hit. **Live confirmation 2026-09-09 (`rung-2-retriever-live/`, real model, one shared code corpus): the RRF ensemble beat every single retriever overall (13/20 vs 9/20 best single) yet _demoted_ grep's literal monopoly (grep 4/4 → ensemble 1/4) — the sole-coverer outvoted, reproduced at stratum granularity.** |
 | Fact needing two literals from two places | No single-entry index can serve it. Three of 17 questions; needs a join or an explicit second hop. Open. |
 | Zone B on a literal-recall task | **Inert, measured 2026-09-05.** `flat-events` (Zone A + elastic raw tail, events scored over the whole trace, no summaries, no branch ranking) 15/25 against 16/25 for the same stack with Zone B, one batch, n=5. Zone B's remaining candidate roles — a ledger of completed steps on multi-step tasks, and cache shape on long sessions — are unmeasured. |
 | Operating point of the window | The tail-filling arms run at 80-95% of W by construction; the design that scored 25/25 (`prefix-plus-retrieval`: cached prefix + recency slice + retrieval fill) runs at 15-30% and grows only when a turn needs it, and was the only arm with zero provider empty-turn failures. The 25–50% soft target is **not withdrawn and not rejected** — it is an open hypothesis alongside ejection-saves-tokens; neither has been measured. **Its mechanism demonstrably fires in real use** (37%/56% of a 1M window after one/two operator prompts); the reason no run in this repo's corpus reaches it is that the corpus is ~10x too short, which is an instrument defect, not evidence. |
