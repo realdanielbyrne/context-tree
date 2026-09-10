@@ -95,6 +95,12 @@ run at zero model cost.
 **Everything here is in development. Nothing is "shipped." The old Zone A/B/C tree is being replaced,
 not defended — do not treat it as an authoritative baseline to protect.**
 
+> **⚠ The cheap offline phase is COMPLETE. The remaining value is LIVE.** Do NOT run a rung merely
+> because it is cheap or because "cheapest instrument first" says so — that heuristic was for a phase
+> that is over; the useful offline experiments are done and the cheap rungs that remain are mostly
+> DEAD (see DO NOT RUN). Before starting anything, check **DIRECTION** and **DO NOT RUN** below. If a
+> task is not on **DO NEXT**, do not invent a cheap offline version of it to run first.
+
 **DIRECTION.** The algorithm is being restructured as a pipeline (`reports/algorithm.md` →
 "Pipeline (TENTATIVE)"): an **ensemble classifier** (topic-shift `z(lexical)+z(semantic)`) and an
 **ensemble retriever** (RRF over BM25/vector/graft on one shared corpus) feed a **cache
