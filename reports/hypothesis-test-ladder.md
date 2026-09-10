@@ -90,6 +90,47 @@ run at zero model cost.
 
 ---
 
+## FOR THE NEXT AGENT — read this first (2026-09-09)
+
+**Everything here is in development. Nothing is "shipped." The old Zone A/B/C tree is being replaced,
+not defended — do not treat it as an authoritative baseline to protect.**
+
+**DIRECTION.** The algorithm is being restructured as a pipeline (`reports/algorithm.md` →
+"Pipeline (TENTATIVE)"): an **ensemble classifier** (topic-shift `z(lexical)+z(semantic)`) and an
+**ensemble retriever** (RRF over BM25/vector/graft on one shared corpus) feed a **cache
+assembler/ejector** (flex buffer: Zone A = system + steering + all user prompts, append-only; a
+creation-order buffer of sticky representations — ref | summary | raw — to a soft target, with a
+secondary cache breakpoint so it caches). Every stage has offline support; **none is live-validated.**
+
+**DO NEXT (live).** Build the opencode plugin (see "The instrument for rungs 2–3" below) and test
+**this** pipeline live — the flex-buffer assembler + the ensemble retriever/classifier. Order:
+gate 0 (F1 mutation-visibility unit test) → gate 1 (tool-call fidelity) → a short live task graded by
+outcome. The point is a real result on the NEW design, not a re-run of the old one.
+
+**DO NOT RUN — rejected / obsolete (do not spend a session on these):**
+- **Re-running the prior arms** (old `context-tree` Zone A/B/C, `native`, `prefix-retrieval` — the
+  former "Rung 2z"). The operator rejected re-testing the prior failed design. Test the new pipeline.
+- **Zone B as a fixed index band** (former Rung 1a / HZ) — dissolved: a summary is now one
+  representation in the flex buffer, not a zone.
+- **Excerpt anchor-tuning** (D-a) and **retrieval-constant tuning** (Rung 0c) — the retrieval unit is
+  off-the-shelf now; don't tune the bespoke one.
+- **Occupancy audit of the old harness traces** (Rung 0d) — dead retrospective; build on real sessions.
+- **Confidence-gated fusion** (margin gate) — refuted. Plus the §0/S3 refuted-repairs list.
+
+**TESTED already (offline — read the report, don't re-run):**
+`reports/metrics/{excerpt-window-0a, rung-0e-retrievers, rung-0b-topic-shift, assembler-zone-io,
+assembler-flex-buffer}/`. The one-line conclusions are in the PROGRESS table just below.
+
+**OPEN (needs a model or a live run):** the **sufficiency** signal (needs a labelled set); the **soft
+target on an overflowing session** (the cache sim only reached ~44% occupancy); and the headline
+live question — **does the pipeline save tokens without losing the task.**
+
+The §0 settled facts (S1–S12) and the instrument facts (F1–F4) below are still the "traps to avoid."
+Everything after the ladder is reference; a fresh agent needs only this block plus the instrument
+section to start.
+
+---
+
 ## PROGRESS — as of 2026-09-09 (what is TESTED, what REMAINS)
 
 Status only; numbers live in the cited `reports/metrics/<dir>/` reports, never here.
@@ -318,22 +359,13 @@ guidance:**
 
 ### Rung 1 — single-turn probes, cheap live
 
-**1a. HZ — Zone B as an index, endpoint = retrieval success rate.**
-> **STATUS: partial offline evidence 2026-09-09; efficacy still UNTESTED (live).** The assembler zone-I/O
-> characterization found the shipped Zone B is **capped and does not expand with the window**, and the
-> record has it inert-to-harmful on literal recall — so its *structural cost* is characterized and its
-> prior is negative. But this rung's actual endpoint — does Zone B *raise the retrieval-success rate* —
-> is a live probe and remains unrun. `reports/metrics/assembler-zone-io/`.
-
-The reframe: a summary's job is to tell the model it once worked on X so it can go find X. On that
-reading, a Zone B that does not itself answer literal-recall questions is behaving correctly as an
-index, and the endpoint must change accordingly — from "can the model answer from Zone B" to "does
-Zone B raise the rate of successful retrieval." Its token cost has been measured (see report); its
-efficacy never has.
-Probe: give the model the topic index and a question whose answer is **not** in the index. Measure
-whether it issues a search naming the right identifiers. Control: same question, no index.
-*Metric:* correct-search rate, not answer rate.
-*Falsifies if:* correct-search rate with the index is within noise of the control.
+**1a. HZ — Zone B as an index. DISSOLVED 2026-09-09, do not run as written.** The rung asked whether a
+fixed Zone B summary band raises retrieval success. The flex-buffer redesign **removes the fixed band**:
+a summary is now one representation option a unit can take in the buffer, chosen by value, not a zone.
+So "does the Zone B band help" is a question about a component being replaced. The surviving, reframed
+question — *do summaries-as-a-representation earn their tokens vs a raw or ref representation* — is a
+knob inside the flex buffer and is tested there, live, not as a standalone Zone B probe.
+`reports/metrics/assembler-zone-io/` records why the fixed band was capped and inert.
 
 **1b. HR1 — is the retrieval unit wrong for structural turns?**
 > **STATUS: partial offline evidence 2026-09-09; live probe still UNRUN.** The 0e repo benchmark (real
@@ -357,29 +389,13 @@ excerpt unit.
 
 Needs the opencode plugin (below). One hypothesis per arm, each against the same control.
 
-**2z. RUN THIS FIRST — re-run the step8-sonnet cell on opencode.**
-A head-to-head across `native` / `context-tree` / `prefix-retrieval` was already run on real Sonnet
-5, and it is void because it went through the deleted harness (§0/S4, §0/S6). Re-running it is the
-cheapest live result available and it settles whether the programme has a cost case at all.
-Design: replicate the recorded cell — the same three arms, scenarios `sw-1-jsonc` and
-`sw-2-multimod`, n=3 each (18 runs), real Sonnet 5, graded by the same test suite. The cell's shape
-is recoverable from
-`reports/metrics/window-regime-and-retrieval-unit/step8-sonnet/results-r{1,2,3}.json`.
-
-**Protocol — run blind.** Read those artifacts for the *cell definition* (arms, scenarios, n, model,
-judge) and **not for the outcomes**. Record your own success counts and costs, commit them under
-`reports/metrics/`, and only then compare against the prior run. This plan deliberately does not
-state the earlier numbers: they were produced by a broken instrument, and knowing them before you
-measure invites fitting the new run to the old one.
-
-*Endpoints:* success per arm (a non-completed run scores `null`, never 0) and cost per run.
-*Falsifies the cost case if:* on a working harness the unmanaged arm matches the managed arms on
-success while costing materially less. **That is a real refutation. Report it as one.**
-*Bears on the void-ness claim:* whether the retrieval arm's failures reproduce, and whether they
-carry the same stall signature. §0/S6 records the argued reason the defect was asymmetric; that
-argument is itself untested and this run is what tests it.
-Note this is the one place a *combined* arm is legitimate: `context-tree` is the shipped product,
-not a single mechanism. Every other rung keeps one variable.
+**2z. REJECTED 2026-09-09 — do NOT re-run the prior arms.** The former plan was to re-run the void
+step8-sonnet head-to-head (`native` / old `context-tree` Zone A/B/C / `prefix-retrieval`) as the first
+live result. The operator has rejected re-testing the prior failed design. **The first live run tests
+the NEW pipeline instead** (ensemble retriever/classifier → flex-buffer assembler; see FOR THE NEXT
+AGENT at the top). Keep these protocol rules for that new run: **run blind** (define the cell before
+seeing any prior numbers), **a non-completed run scores `null`, never 0**, report **cost per run**, and
+**one variable per arm** except the whole-pipeline arm, which is legitimately combined.
 
 - **H1** — needs the three-phase non-monotonic scenario §15 specified and nobody built: edit an API
   → do unrelated work → need the API again. *Falsifies if* evicting the dormant phase costs success.

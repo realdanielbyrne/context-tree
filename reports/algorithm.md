@@ -111,11 +111,12 @@ branch index in Zone C all benefit from keyword headlines over prose.
 
 ## Pipeline (TENTATIVE — restructure proposed 2026-09-09)
 
-> **TENTATIVE. This is not yet the shipped algorithm.** It reorganizes the loop (Tier 1) into a
-> three-stage pipeline and folds in the 2026-09-09 offline findings. The shipped algorithm today is
-> still the Zone A/B/C loop below. Every stage carries its evidence tag: `[SHIPPED]` runs in
-> `packages/`; `[OFFLINE]` validated on a proxy only; `[PROPOSED]` designed, not tested. **Nothing
-> here is live-validated** — promote a stage into Tier 1 only when a live run clears it.
+> **TENTATIVE. Nothing here is shipped — this is all in development.** It reorganizes the loop
+> (Tier 1) into a three-stage pipeline and folds in the 2026-09-09 offline findings. The current
+> code still runs the Zone A/B/C loop below, but that loop is being *replaced*, not defended — it is
+> not an authoritative baseline. Evidence tags: `[BUILT]` = code exists in `packages/`;
+> `[OFFLINE]` = validated on a proxy only; `[DESIGN]` = designed, not built. **Nothing here is
+> live-validated** — promote a stage only when a live run clears it.
 
 Two scorers feed one decider; retrieval serves on demand. The classifier scores query-independent
 state (has the topic shifted); the retriever scores query-dependent relevance (what matches this
@@ -124,7 +125,7 @@ turn); the assembler-ejector decides what to keep, cache-stable, to a soft targe
 ```
 per turn:
 
-0. ingest                                                          [SHIPPED]
+0. ingest                                                          [BUILT]
    append→L0, store→L2, segment by tool→phase, extract fingerprints,
    summarise closed phases (a summary is ONE representation option, not a zone)
 
@@ -134,7 +135,7 @@ per turn:
    (sufficiency signal — a cheap-model judgment — not built; needs labels)
    → reports/metrics/rung-0b-topic-shift/
 
-2. assemble + eject — the CACHE ASSEMBLER / EJECTOR               [PROPOSED]
+2. assemble + eject — the CACHE ASSEMBLER / EJECTOR               [DESIGN]
    Zone A (frozen, cached): system + steering + ALL user prompts, append-only
    flex buffer: units in creation order, sticky representation (ref|summary|raw),
      newest raw; a secondary breakpoint after the stable head so it caches
@@ -484,7 +485,7 @@ so the negative result is not rebuilt).
 
 - **2026-09-09 20:20** — TENTATIVE pipeline section added (operator request): the loop restructured as
   three stages — ensemble classifier (query-independent state) + ensemble retriever (query relevance)
-  → cache assembler/ejector — with per-stage evidence tags (`[SHIPPED]`/`[OFFLINE]`/`[PROPOSED]`).
+  → cache assembler/ejector — with per-stage evidence tags (`[BUILT]`/`[OFFLINE]`/`[DESIGN]`).
   Folds in the 2026-09-09 offline findings: retrieval unit is off-the-shelf (retire `excerptAround`);
   RRF over a shared corpus wins, coverage overlap sets fusion's sign (refines the disjoint-index
   result); topic-shift classifier `z(lexical)+z(semantic)`; flex-buffer assembler subsumes Zone B and
