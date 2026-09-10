@@ -109,6 +109,63 @@ identifiers). The same idea applies wherever content must be compressed:
 tool schemas in Zone A, branch summaries in Zone B, and the active
 branch index in Zone C all benefit from keyword headlines over prose.
 
+## Pipeline (TENTATIVE — restructure proposed 2026-09-09)
+
+> **TENTATIVE. This is not yet the shipped algorithm.** It reorganizes the loop (Tier 1) into a
+> three-stage pipeline and folds in the 2026-09-09 offline findings. The shipped algorithm today is
+> still the Zone A/B/C loop below. Every stage carries its evidence tag: `[SHIPPED]` runs in
+> `packages/`; `[OFFLINE]` validated on a proxy only; `[PROPOSED]` designed, not tested. **Nothing
+> here is live-validated** — promote a stage into Tier 1 only when a live run clears it.
+
+Two scorers feed one decider; retrieval serves on demand. The classifier scores query-independent
+state (has the topic shifted); the retriever scores query-dependent relevance (what matches this
+turn); the assembler-ejector decides what to keep, cache-stable, to a soft target.
+
+```
+per turn:
+
+0. ingest                                                          [SHIPPED]
+   append→L0, store→L2, segment by tool→phase, extract fingerprints,
+   summarise closed phases (a summary is ONE representation option, not a zone)
+
+1. classify — the ENSEMBLE CLASSIFIER (query-independent state)    [OFFLINE]
+   topic-shift = z(lexical fingerprint-Jaccard) + z(semantic embedding drift)
+   mark units whose topic has moved away as DORMANT; err toward keeping
+   (sufficiency signal — a cheap-model judgment — not built; needs labels)
+   → reports/metrics/rung-0b-topic-shift/
+
+2. assemble + eject — the CACHE ASSEMBLER / EJECTOR               [PROPOSED]
+   Zone A (frozen, cached): system + steering + ALL user prompts, append-only
+   flex buffer: units in creation order, sticky representation (ref|summary|raw),
+     newest raw; a secondary breakpoint after the stable head so it caches
+   eject to a SOFT TARGET: drop DORMANT first, oldest-first, never the open topic
+   nothing reorders a cached prefix; a freely re-mixed buffer is cache-death
+   → reports/metrics/assembler-flex-buffer/, assembler-zone-io/
+
+3. retrieve on demand — the ENSEMBLE RETRIEVER (query relevance)   [OFFLINE]
+   fan out BM25 / grep / vector / graft over ONE shared corpus, fuse by RRF
+     overlapping coverage → fuse (RRF wins); single-coverage query → route to the coverer
+   a tool result the MODEL fetched is retained WHOLE, never re-chunked (HR2-INVARIANT)
+   the fetched unit appends after the buffer — the cached prefix is untouched
+   → reports/metrics/rung-0e-retrievers/, excerpt-window-0a/
+```
+
+**What each stage settled (offline; pointers, not numbers — the rule below still holds):**
+
+- **Retriever.** The retrieval *unit* is an off-the-shelf chunker + BM25, not bespoke `excerptAround`;
+  RRF over a shared corpus beats best-single and routing on mixed traffic (coverage overlap sets
+  fusion's sign — refines the disjoint-index result in Boundary conditions); graft is the strongest
+  single retriever and best at span precision on code; general-web cross-encoder rerank hurt on code.
+- **Classifier.** The topic-shift signal is real and cheap; `z(lexical)+z(semantic)` is the robust
+  merge (kNN-drift is interchangeable with the semantic term, not additive).
+- **Assembler.** Zone B as a fixed band is capped and inert-to-harmful; the flex buffer *subsumes* it
+  (summary becomes one representation), and its cache economics beat the current zones **only** when
+  the buffer is append-mostly with a secondary breakpoint. Free re-mixing is cache-death.
+
+**Open, and live-only:** does eviction save tokens without losing the task; the soft target on an
+*overflowing* session (the cache sim peaked at ~44% occupancy, so the floor barely bound); the
+sufficiency signal. Until a live run clears them, the shipped Tier 1 loop stands.
+
 ## Tier 0 — invariants
 
 If one of these is false, the thing running is not this algorithm.
@@ -120,6 +177,9 @@ If one of these is false, the thing running is not this algorithm.
 3. Summaries are versioned, never overwritten.
 4. The prompt is Zone A → Zone B → Zone C, creation order within B.
    Retrieved results append after C. Nothing reorders a cached prefix.
+   *(The TENTATIVE pipeline above reorganizes Zone B/C into one flex buffer — a summary
+   becomes one representation option — but keeps the load-bearing clause intact: **nothing
+   reorders a cached prefix.** That clause survives the restructure; the zone layout does not.)*
 5. Ingestion is hermetic: L0, L2, and a parser. No network.
 
 ## Tier 1 — the loop
@@ -284,7 +344,7 @@ measurement, would be worth more than another boundary condition.
 | A search hit rendered without its ranking evidence | Hits render on title plus `meta.files`/`meta.symbols`, routinely empty for a phase node, so the fingerprints the hit was ranked on never reach the model. Attaching the matched fingerprints does **not** repair selection and costs input tokens. Open. |
 | Fingerprint set used as a keyword list | Not one — entries may be whole slabs of source. Rank by the query's share of a fingerprint's own tokens. Bites overlap-ranked consumers only; Zone B headlines checked clean. |
 | Facet index with high-cardinality key | Cheap-unit economics fail. 66 file / 311 command entries cost 2.7K / 7.5K tokens; 3,969 line entries cost 77K — as much as the content, so "return more candidates" is unavailable and ranking binds again. |
-| Fusing indexes with disjoint coverage | **Harmful.** RRF across four indexes scores 6/17 where routing to the best single index scores 9/17; answers already found are demoted (rank 3→12, 7→25). Fuse rankers over one index, route across indexes. |
+| Fusing indexes with disjoint coverage | **Harmful.** RRF across four indexes scores 6/17 where routing to the best single index scores 9/17; answers already found are demoted (rank 3→12, 7→25). Fuse rankers over one index, route across indexes. **Refined 2026-09-09 (offline, `rung-0e-retrievers/`): coverage OVERLAP sets fusion's sign.** Multiple retrievers over ONE shared corpus with overlapping coverage → RRF *wins* (beats best-single and routing on mixed traffic); a single-coverage query (only one retriever can answer) → RRF *demotes* the sole hit and loses to routing. So "fusion refuted" is scoped to disjoint coverage only; on a shared corpus RRF is the default combinator. Confidence-gated fusion (margin gate) was refuted here. |
 | Fact needing two literals from two places | No single-entry index can serve it. Three of 17 questions; needs a join or an explicit second hop. Open. |
 | Zone B on a literal-recall task | **Inert, measured 2026-09-05.** `flat-events` (Zone A + elastic raw tail, events scored over the whole trace, no summaries, no branch ranking) 15/25 against 16/25 for the same stack with Zone B, one batch, n=5. Zone B's remaining candidate roles — a ledger of completed steps on multi-step tasks, and cache shape on long sessions — are unmeasured. |
 | Operating point of the window | The tail-filling arms run at 80-95% of W by construction; the design that scored 25/25 (`prefix-plus-retrieval`: cached prefix + recency slice + retrieval fill) runs at 15-30% and grows only when a turn needs it, and was the only arm with zero provider empty-turn failures. The 25–50% soft target is **not withdrawn and not rejected** — it is an open hypothesis alongside ejection-saves-tokens; neither has been measured. **Its mechanism demonstrably fires in real use** (37%/56% of a 1M window after one/two operator prompts); the reason no run in this repo's corpus reaches it is that the corpus is ~10x too short, which is an instrument defect, not evidence. |
@@ -421,6 +481,18 @@ so the negative result is not rebuilt).
 | 2026-09-05 | The append cap stops being the mechanism: the window is enforced by eviction (tail, then seen results, then Zone C events) in one place per turn; the tail-fill line in `assemble` becomes per-turn and latched instead of build-once |
 
 ## Change log
+
+- **2026-09-09 20:20** — TENTATIVE pipeline section added (operator request): the loop restructured as
+  three stages — ensemble classifier (query-independent state) + ensemble retriever (query relevance)
+  → cache assembler/ejector — with per-stage evidence tags (`[SHIPPED]`/`[OFFLINE]`/`[PROPOSED]`).
+  Folds in the 2026-09-09 offline findings: retrieval unit is off-the-shelf (retire `excerptAround`);
+  RRF over a shared corpus wins, coverage overlap sets fusion's sign (refines the disjoint-index
+  result); topic-shift classifier `z(lexical)+z(semantic)`; flex-buffer assembler subsumes Zone B and
+  its cache economics beat the current zones; the HR2-invariant (a fetched tool result is retained
+  whole, never re-retrieved). **Nothing here is live-validated**; the shipped Tier 1 loop stands until
+  a live run promotes a stage. Invariant 4 annotated (flex buffer reorganizes Zone B/C; the
+  "nothing reorders a cached prefix" clause survives). Reports: `reports/metrics/{excerpt-window-0a,
+  rung-0e-retrievers,rung-0b-topic-shift,assembler-zone-io,assembler-flex-buffer}/`.
 
 - **2026-09-05 08:20** — Rules 8 and 9 added as user-set guiding principles for the next loop:
   attend only to what bears on the turn (context-level DSA; history categorised and prioritised
