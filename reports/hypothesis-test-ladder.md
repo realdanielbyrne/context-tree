@@ -131,6 +131,42 @@ section to start.
 
 ---
 
+## HOW WE TEST — one idea, one small test, one short report
+
+This is the working loop the 2026-09-09 rungs followed; keep to it. The templates are the existing
+runs under `experiments/` and `reports/metrics/` (e.g. `experiments/rung-0e-retrievers/`, which shares
+a `lib.mjs` so its scripts can't drift).
+
+1. **Isolate one variable.** One hypothesis per test. If you must combine (e.g. a whole-pipeline arm),
+   say so and hold everything else fixed. Testing twelve things at once yields one number and no
+   attribution.
+2. **Cheapest instrument first.** Prefer *offline + deterministic* (seeded, no model) → a *cheap local
+   model* (MiniLM, a small classifier) → a *cheap hosted model* → *live*. Most retrieval/classifier/cache
+   questions are answerable offline; spend a live run only on what only a live run can settle.
+3. **Pre-register the falsification condition** — write "this fails if …" *before* running, and do not
+   renegotiate it after seeing the result. If it fails on a technicality (e.g. a sign error), report the
+   failure as written, then add the corrected reading separately. Fail loud.
+4. **Write a small, self-contained, rerunnable script** under `experiments/<name>/`. It recovers its own
+   fixtures (e.g. `git show`), is deterministic (seed any RNG), imports offline primitives from
+   `@context-tree/core`'s built `dist/`, and **never lives in `packages/`** (the product ships no
+   experiment code). A header comment states what it tests, the falsification, and how to rerun.
+5. **Write output under `reports/metrics/<name>/` before quoting any number.** `results.json` carries the
+   manifest — run id, arm id + version, commit SHA, date, model/judge, the falsification, caveats — plus
+   the raw cells. Never quote a number that isn't in a committed artifact.
+6. **Run it; get a result.** Quantify failures — a null is a bug to localise, not proof the idea can't
+   work. Report window occupancy / what was admitted at the point of failure, not just "it failed."
+7. **Write a SHORT report** (`report.md`): the question, the result *as conclusions + pointers* (numbers
+   stay in `results.json`, not in this plan), honest caveats (small-n, proxy objective, scope), and an
+   explicit **tested vs. open** line. Know the proxy's limit: offline proxies rank *large* differences,
+   not *small* marginals or task quality — say so.
+8. **Close the loop.** Report the result in chat; update this plan's status (PROGRESS table + the rung's
+   STATUS line, or mark it REJECTED with a one-line reason); commit **by experiment run** (script +
+   its reports together).
+
+The whole point: a session should end with a *number and a short honest report*, not a longer plan.
+
+---
+
 ## PROGRESS — as of 2026-09-09 (what is TESTED, what REMAINS)
 
 Status only; numbers live in the cited `reports/metrics/<dir>/` reports, never here.
