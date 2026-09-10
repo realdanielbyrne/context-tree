@@ -121,7 +121,8 @@ outcome. The point is a real result on the NEW design, not a re-run of the old o
 `reports/metrics/{excerpt-window-0a, rung-0e-retrievers, rung-0b-topic-shift, assembler-zone-io,
 assembler-flex-buffer}/`. The one-line conclusions are in the PROGRESS table just below.
 
-**OPEN (needs a model or a live run):** the **sufficiency** signal (needs a labelled set); the **soft
+**OPEN (needs a model or a live run):** the **sufficiency** signal (a cheap zero-shot detector, validated
+UNSUPERVISED against the trace's own exploration→action behaviour — no hand labels, see Rung 0b); the **soft
 target on an overflowing session** (the cache sim only reached ~44% occupancy); and the headline
 live question — **does the pipeline save tokens without losing the task.**
 
@@ -174,7 +175,7 @@ Status only; numbers live in the cited `reports/metrics/<dir>/` reports, never h
 | item | status | one-line result / what remains | reports dir |
 | --- | --- | --- | --- |
 | **0a** excerpt/retrieval unit | **TESTED (offline)** | Retrieval unit is a solved off-the-shelf problem — retire `excerptAround` + D-a anchor-tuning; use a standard chunker + BM25. General-web rerank hurt on code. | `excerpt-window-0a/` |
-| **0b** topic-shift classifier | **TESTED (offline); classifier CLOSED** | Signal is real/cheap; classifier = `z(lexical)+z(semantic)` (kNN ≈ embedding, interchangeable; merged = robust). **Sufficiency half OPEN** (needs labels). | `rung-0b-topic-shift/` |
+| **0b** topic-shift classifier | **TESTED (offline); classifier CLOSED** | Signal is real/cheap; classifier = `z(lexical)+z(semantic)` (kNN ≈ embedding, interchangeable; merged = robust). **Sufficiency half OPEN** (unsupervised behavioural null; no hand labels). | `rung-0b-topic-shift/` |
 | **0c** retrieval constants | **SUPERSEDED by 0a** | Off-the-shelf chunker replaces constant-tuning. Residual: provider-interface integration only. | (see 0a) |
 | **0d** occupancy audit | **NOT RUN — deprioritised** | A retrospective audit whose answer S9 already gives (old traces ~10× too short; real sessions reach 37–56%). Build assembler on real sessions instead. | — |
 | **0e** retriever isolation + combination | **TESTED (offline)** | Coverage-overlap sets fusion's sign (refines S3); default RRF; graft strongest single + best span-precision; vector owns semantics but shallow spans. | `rung-0e-retrievers/` |
@@ -236,7 +237,7 @@ measures nothing, and it will look like a clean negative.
 **0b. HR3 / H4 — the model's own signals. BUILD THE DETECTOR THE DESIGN ALREADY SPECIFIED.**
 > **STATUS: topic-shift half TESTED 2026-09-09 (offline); classifier CLOSED.** Signal is real and cheap;
 > classifier = `z(lexical)+z(semantic)` (kNN ≈ embedding-drift, interchangeable; merged = robust). The
-> **sufficiency half remains OPEN** (needs the labelled set + κ≥0.6 gate below). `reports/metrics/rung-0b-topic-shift/`.
+> **sufficiency half remains OPEN** — validated UNSUPERVISED against the trace's own exploration→action behaviour (permutation null), no hand labels. `reports/metrics/rung-0b-topic-shift/`.
 
 **Do not sweep a bigger regex list. A lexical matcher cannot work here in principle.** An LLM is
 probabilistic, not deterministic; every model phrases sufficiency differently; and "I have what I
@@ -265,29 +266,31 @@ not evidence about H4, and it must not be used to set an expectation for the ins
   baseline. Validate against a **within-session permutation null**.
   *Falsifies if:* flagged boundaries show a forward-overlap drop < 0.5 SD below session baseline —
   i.e. the measure does not separate a real shift from an arbitrary turn boundary.
-- **Sufficiency — needs semantic judgment, so a model.** A small adjacent classifier reads the
-  assistant turn and answers one question: *does this turn assert it has what it needs to proceed?*
-  Cheapest first: a cheap-model call per turn over a sampled subset, or a local NLI-style classifier
-  if per-turn cost matters at corpus scale. Ground truth is a hand-labelled sample of real turns,
-  never a phrase list.
+- **Sufficiency — a semantic read of the assistant turn, validated UNSUPERVISED (no hand labels).**
+  A cheap zero-shot detector (a local NLI-style classifier, or a cheap-model call) reads the assistant
+  turn and answers one question: *does this turn assert it has what it needs to proceed?* That is the
+  DETECTOR. **We do not validate it against a hand-labelled set** — hand labels are one author's guesses
+  about phrasing, they make the signal fragile, and every classifier we have built here (topic-shift:
+  lexical, embedding, kNN) is unsupervised. Validate sufficiency the SAME way, against the session's own
+  structure:
 
-  **THE STOPPING RULE — fix it before building the instrument, and do not renegotiate it after
-  seeing the result.** "The detector failed" always admits a stronger detector: a regex fails → try
-  a classifier; the classifier fails → try a bigger model. Without a pre-committed threshold H4 can
-  absorb unlimited null results and never be wrong, which is how a null on four regexes came to look
-  like a result about a hypothesis. So: **one cheap-model binary judgment per assistant turn,
-  prompted with §14's own definition, scored against 200 hand-labelled turns sampled from the real
-  session corpus. If it cannot reach κ ≥ 0.6 against those labels, the sufficiency half of H4/HR3 is
-  RETIRED, not iterated** — the conclusion being that the signal is not reliably present in
-  assistant text, not that a better detector is owed. Retiring it does not touch the topic-shift
-  half, which stands or falls on its own condition above.
+  **The behavioural null (unsupervised).** A genuine "I have enough to proceed" should *precede the
+  model's own transition from exploration to action* — a switch from investigation tools (search, read)
+  to action tools (edit, write). So flag sufficiency turns, then measure whether a flag reliably precedes
+  an exploration→action transition **more than a random turn does**, via a within-session permutation
+  null — exactly the topic-shift validation, on the trace's own behaviour rather than on labels.
+  *Falsifies if:* flagged turns precede an exploration→action transition no more than the permutation
+  baseline — i.e. the "sufficiency" text does not track what the model actually does next. Then the
+  sufficiency half is RETIRED (the signal is not behaviourally real), not iterated with a bigger model.
+  The **final** validation is the live outcome: keying on the signal (stop exploring / allow eviction)
+  must not cost task success. No hand-labelled dataset appears anywhere in this.
 
 **Standing constraint, unchanged:** a sufficiency signal is evidence for **reassessment**, never
 permission, and never an irrelevance label. The instrument must not encode it as one.
 
-**Cost.** Topic-shift half: zero model calls. Sufficiency half: a hand-labelled sample plus cheap
-classifier calls over that sample — far below any live agentic batch. **A live test of H4/HR3 is
-wasted until a detector clears its falsification condition above.**
+**Cost.** Topic-shift half: zero model calls. Sufficiency half: cheap zero-shot detector calls over the
+recorded corpus plus a deterministic permutation null — no labelling, far below any live batch. **A live
+test of H4/HR3 is wasted until the detector clears the behavioural null above.**
 
 **0c. Retrieval-unit constants — `eventHits`, `excerptChars`, `retrieval.limit`.**
 > **STATUS: SUPERSEDED by 0a 2026-09-09.** Tuning these magic numbers is the bespoke work 0a showed is
