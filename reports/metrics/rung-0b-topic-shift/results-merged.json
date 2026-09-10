@@ -1,0 +1,156 @@
+{
+  "runId": "rung-0b-merged-2026-09-09",
+  "armId": "topic-shift-merged@v1",
+  "rung": "0b-merged",
+  "offline": true,
+  "model": "Xenova/all-MiniLM-L6-v2",
+  "session": "packages/cli/test/fixtures/claude-code-session.jsonl",
+  "commit": "d6a7f2cd424ac9c5a26cd4215f076f5a1f379757",
+  "date": "2026-09-09T21:36:49.636Z",
+  "corpus": {
+    "toolTurns": 287
+  },
+  "window": 3,
+  "Ks": [
+    20,
+    40,
+    60
+  ],
+  "merge": "mergedDrop = z(lexicalDrop) + z(semanticDrop), equal weight",
+  "objective": "segmentation quality = intra_segment_similarity − cross_boundary_similarity, scored in BOTH lexical(Jaccard) and semantic(cosine) space; higher is crisper; boundary count K matched across detectors",
+  "caveat": "One session; segmentation quality is a proxy objective (no shift labels). The claim tested: is the merged signal robust across BOTH spaces where each single signal wins only its own?",
+  "results": {
+    "20": {
+      "lexical": {
+        "boundaries": 20,
+        "segments": 21,
+        "lexicalSpace": {
+          "intra": 0.0706,
+          "cross": 0.031,
+          "quality": 0.0396
+        },
+        "semanticSpace": {
+          "intra": 0.4197,
+          "cross": 0.3364,
+          "quality": 0.0833
+        }
+      },
+      "embedding": {
+        "boundaries": 20,
+        "segments": 21,
+        "lexicalSpace": {
+          "intra": 0.0605,
+          "cross": 0.0454,
+          "quality": 0.015
+        },
+        "semanticSpace": {
+          "intra": 0.4447,
+          "cross": 0.4094,
+          "quality": 0.0353
+        }
+      },
+      "merged": {
+        "boundaries": 20,
+        "segments": 21,
+        "lexicalSpace": {
+          "intra": 0.0682,
+          "cross": 0.0454,
+          "quality": 0.0228
+        },
+        "semanticSpace": {
+          "intra": 0.4455,
+          "cross": 0.4093,
+          "quality": 0.0363
+        }
+      }
+    },
+    "40": {
+      "lexical": {
+        "boundaries": 40,
+        "segments": 41,
+        "lexicalSpace": {
+          "intra": 0.1096,
+          "cross": 0.035,
+          "quality": 0.0746
+        },
+        "semanticSpace": {
+          "intra": 0.4544,
+          "cross": 0.421,
+          "quality": 0.0334
+        }
+      },
+      "embedding": {
+        "boundaries": 40,
+        "segments": 41,
+        "lexicalSpace": {
+          "intra": 0.0829,
+          "cross": 0.0529,
+          "quality": 0.03
+        },
+        "semanticSpace": {
+          "intra": 0.4754,
+          "cross": 0.4141,
+          "quality": 0.0613
+        }
+      },
+      "merged": {
+        "boundaries": 40,
+        "segments": 41,
+        "lexicalSpace": {
+          "intra": 0.0995,
+          "cross": 0.0456,
+          "quality": 0.054
+        },
+        "semanticSpace": {
+          "intra": 0.4832,
+          "cross": 0.4263,
+          "quality": 0.0569
+        }
+      }
+    },
+    "60": {
+      "lexical": {
+        "boundaries": 60,
+        "segments": 61,
+        "lexicalSpace": {
+          "intra": 0.1363,
+          "cross": 0.0321,
+          "quality": 0.1042
+        },
+        "semanticSpace": {
+          "intra": 0.4666,
+          "cross": 0.4176,
+          "quality": 0.049
+        }
+      },
+      "embedding": {
+        "boundaries": 60,
+        "segments": 61,
+        "lexicalSpace": {
+          "intra": 0.1033,
+          "cross": 0.038,
+          "quality": 0.0654
+        },
+        "semanticSpace": {
+          "intra": 0.4984,
+          "cross": 0.425,
+          "quality": 0.0735
+        }
+      },
+      "merged": {
+        "boundaries": 60,
+        "segments": 61,
+        "lexicalSpace": {
+          "intra": 0.1226,
+          "cross": 0.0355,
+          "quality": 0.0871
+        },
+        "semanticSpace": {
+          "intra": 0.5084,
+          "cross": 0.4156,
+          "quality": 0.0928
+        }
+      }
+    }
+  }
+}

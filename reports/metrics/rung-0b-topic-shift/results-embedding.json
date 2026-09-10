@@ -1,0 +1,203 @@
+{
+  "runId": "rung-0b-embedding-2026-09-09",
+  "armId": "topic-shift-embedding@v1",
+  "rung": "0b-nondeterministic",
+  "offline": true,
+  "model": "Xenova/all-MiniLM-L6-v2",
+  "session": "packages/cli/test/fixtures/claude-code-session.jsonl",
+  "commit": "d6a7f2cd424ac9c5a26cd4215f076f5a1f379757",
+  "date": "2026-09-09T21:30:09.071Z",
+  "corpus": {
+    "toolTurnsWithFingerprints": 287
+  },
+  "permutations": 2000,
+  "seed": 12345,
+  "perWindow": [
+    {
+      "n": 1,
+      "boundaries": 286,
+      "mu": 0.5251,
+      "sigma": 0.2046,
+      "flaggedCount": 61,
+      "effectSigma": 1.156,
+      "realBelowThreshold": 103,
+      "nullMeanBelow": 161.03,
+      "permZ": -8.46,
+      "topFlagged": [
+        {
+          "t": 211,
+          "sim": 0.025
+        },
+        {
+          "t": 106,
+          "sim": 0.13
+        },
+        {
+          "t": 219,
+          "sim": 0.139
+        },
+        {
+          "t": 285,
+          "sim": 0.143
+        },
+        {
+          "t": 282,
+          "sim": 0.162
+        },
+        {
+          "t": 98,
+          "sim": 0.169
+        },
+        {
+          "t": 25,
+          "sim": 0.189
+        },
+        {
+          "t": 71,
+          "sim": 0.205
+        }
+      ]
+    },
+    {
+      "n": 3,
+      "boundaries": 282,
+      "mu": 0.6948,
+      "sigma": 0.132,
+      "flaggedCount": 47,
+      "effectSigma": 1.422,
+      "realBelowThreshold": 76,
+      "nullMeanBelow": 79.42,
+      "permZ": -0.44,
+      "topFlagged": [
+        {
+          "t": 106,
+          "sim": 0.21
+        },
+        {
+          "t": 109,
+          "sim": 0.251
+        },
+        {
+          "t": 212,
+          "sim": 0.385
+        },
+        {
+          "t": 114,
+          "sim": 0.391
+        },
+        {
+          "t": 245,
+          "sim": 0.398
+        },
+        {
+          "t": 131,
+          "sim": 0.416
+        },
+        {
+          "t": 168,
+          "sim": 0.418
+        },
+        {
+          "t": 164,
+          "sim": 0.42
+        }
+      ]
+    },
+    {
+      "n": 5,
+      "boundaries": 278,
+      "mu": 0.7544,
+      "sigma": 0.0956,
+      "flaggedCount": 37,
+      "effectSigma": 1.523,
+      "realBelowThreshold": 76,
+      "nullMeanBelow": 36.94,
+      "permZ": 5.08,
+      "topFlagged": [
+        {
+          "t": 109,
+          "sim": 0.419
+        },
+        {
+          "t": 104,
+          "sim": 0.423
+        },
+        {
+          "t": 111,
+          "sim": 0.435
+        },
+        {
+          "t": 131,
+          "sim": 0.505
+        },
+        {
+          "t": 114,
+          "sim": 0.523
+        },
+        {
+          "t": 77,
+          "sim": 0.552
+        },
+        {
+          "t": 32,
+          "sim": 0.554
+        },
+        {
+          "t": 147,
+          "sim": 0.574
+        }
+      ]
+    }
+  ],
+  "agreementN3": {
+    "semanticFlagged": 47,
+    "lexicalFlagged": 64,
+    "both": 34,
+    "semanticOnly": 13,
+    "lexicalOnly": 30,
+    "semanticOnlyExamples": [
+      {
+        "t": 40,
+        "ctx": "Edit loop.ts → Bash loop.test.ts"
+      },
+      {
+        "t": 43,
+        "ctx": "Bash loop.test.ts → Edit loop.test.ts"
+      },
+      {
+        "t": 114,
+        "ctx": "Edit tree-vs-transcript.html → Bash"
+      },
+      {
+        "t": 117,
+        "ctx": "Bash tree-vs-transcript.html,tree-vs-transcript.html → Bash"
+      },
+      {
+        "t": 131,
+        "ctx": "Bash tree-vs-transcript.html → Artifact tree-vs-transcript.html"
+      }
+    ],
+    "lexicalOnlyExamples": [
+      {
+        "t": 4,
+        "ctx": "Read README.md → Bash loop.ts,run.js"
+      },
+      {
+        "t": 33,
+        "ctx": "Bash summarizer.ts → Bash detail.ts,index.ts"
+      },
+      {
+        "t": 44,
+        "ctx": "Edit loop.test.ts → Bash results.json"
+      },
+      {
+        "t": 54,
+        "ctx": "Bash → Bash assembler.ts"
+      },
+      {
+        "t": 61,
+        "ctx": "Bash → Bash"
+      }
+    ]
+  }
+}
