@@ -1,0 +1,321 @@
+{
+  "runId": "rung-0e-combinators-2026-09-09",
+  "armId": "coverage-aware-combinators@v1",
+  "rung": "0e-phase2c",
+  "offline": true,
+  "corpus": "context-tree repo (each package src TypeScript)",
+  "graft": "real CLI 0.8.2",
+  "setup": {
+    "chunker": "RecursiveCharacterTextSplitter(800/100)",
+    "chunks": 1063,
+    "files": 110,
+    "topK": [
+      1,
+      3,
+      5
+    ],
+    "gates": [
+      0,
+      0.1,
+      0.25,
+      0.5
+    ],
+    "embedModel": "Xenova/all-MiniLM-L6-v2"
+  },
+  "judge": "ground-truth answer FILE in top-k",
+  "commit": "d6a7f2cd424ac9c5a26cd4215f076f5a1f379757",
+  "date": "2026-09-09T21:04:47.888Z",
+  "questions": 20,
+  "strata": [
+    "structural",
+    "literal",
+    "semantic",
+    "fuzzy"
+  ],
+  "stratumCounts": {
+    "structural": 4,
+    "literal": 4,
+    "semantic": 8,
+    "fuzzy": 4
+  },
+  "caveat": "n=20 mixed (semantic=8 hardened, others=4 each). File-level judge. gate=0 gated-rrf ≡ plain rrf. router-feature uses surface form only, not the gold stratum.",
+  "vectorAvailable": true,
+  "overall": {
+    "best-single": {
+      "1": 0.25,
+      "3": 0.5,
+      "5": 0.55
+    },
+    "rrf": {
+      "1": 0.3,
+      "3": 0.75,
+      "5": 0.8
+    },
+    "router-oracle": {
+      "1": 0.25,
+      "3": 0.55,
+      "5": 0.8
+    },
+    "router-feature": {
+      "1": 0.3,
+      "3": 0.55,
+      "5": 0.8
+    },
+    "gated-rrf@0": {
+      "1": 0.3,
+      "3": 0.75,
+      "5": 0.8
+    },
+    "gated-rrf@0.1": {
+      "1": 0.25,
+      "3": 0.7,
+      "5": 0.7
+    },
+    "gated-rrf@0.25": {
+      "1": 0.35,
+      "3": 0.6,
+      "5": 0.6
+    },
+    "gated-rrf@0.5": {
+      "1": 0.25,
+      "3": 0.65,
+      "5": 0.7
+    }
+  },
+  "byStratum": {
+    "best-single": {
+      "structural@1": 2,
+      "literal@1": 3,
+      "semantic@1": 1,
+      "fuzzy@1": 2,
+      "structural@3": 3,
+      "literal@3": 4,
+      "semantic@3": 3,
+      "fuzzy@3": 4,
+      "structural@5": 3,
+      "literal@5": 4,
+      "semantic@5": 5,
+      "fuzzy@5": 4
+    },
+    "rrf": {
+      "structural@1": 1,
+      "literal@1": 3,
+      "semantic@1": 1,
+      "fuzzy@1": 1,
+      "structural@3": 4,
+      "literal@3": 4,
+      "semantic@3": 3,
+      "fuzzy@3": 4,
+      "structural@5": 4,
+      "literal@5": 4,
+      "semantic@5": 4,
+      "fuzzy@5": 4
+    },
+    "router-oracle": {
+      "structural@1": 2,
+      "literal@1": 2,
+      "semantic@1": 1,
+      "fuzzy@1": 0,
+      "structural@3": 3,
+      "literal@3": 3,
+      "semantic@3": 3,
+      "fuzzy@3": 2,
+      "structural@5": 3,
+      "literal@5": 4,
+      "semantic@5": 5,
+      "fuzzy@5": 4
+    },
+    "router-feature": {
+      "structural@1": 2,
+      "literal@1": 3,
+      "semantic@1": 1,
+      "fuzzy@1": 0,
+      "structural@3": 2,
+      "literal@3": 4,
+      "semantic@3": 3,
+      "fuzzy@3": 2,
+      "structural@5": 3,
+      "literal@5": 4,
+      "semantic@5": 5,
+      "fuzzy@5": 4
+    },
+    "gated-rrf@0": {
+      "structural@1": 1,
+      "literal@1": 3,
+      "semantic@1": 1,
+      "fuzzy@1": 1,
+      "structural@3": 4,
+      "literal@3": 4,
+      "semantic@3": 3,
+      "fuzzy@3": 4,
+      "structural@5": 4,
+      "literal@5": 4,
+      "semantic@5": 4,
+      "fuzzy@5": 4
+    },
+    "gated-rrf@0.1": {
+      "structural@1": 2,
+      "literal@1": 2,
+      "semantic@1": 1,
+      "fuzzy@1": 0,
+      "structural@3": 3,
+      "literal@3": 3,
+      "semantic@3": 4,
+      "fuzzy@3": 4,
+      "structural@5": 3,
+      "literal@5": 3,
+      "semantic@5": 4,
+      "fuzzy@5": 4
+    },
+    "gated-rrf@0.25": {
+      "structural@1": 2,
+      "literal@1": 2,
+      "semantic@1": 1,
+      "fuzzy@1": 2,
+      "structural@3": 3,
+      "literal@3": 3,
+      "semantic@3": 2,
+      "fuzzy@3": 4,
+      "structural@5": 3,
+      "literal@5": 3,
+      "semantic@5": 2,
+      "fuzzy@5": 4
+    },
+    "gated-rrf@0.5": {
+      "structural@1": 2,
+      "literal@1": 1,
+      "semantic@1": 1,
+      "fuzzy@1": 1,
+      "structural@3": 3,
+      "literal@3": 3,
+      "semantic@3": 3,
+      "fuzzy@3": 4,
+      "structural@5": 3,
+      "literal@5": 3,
+      "semantic@5": 4,
+      "fuzzy@5": 4
+    }
+  },
+  "routing": [
+    {
+      "id": "st1",
+      "stratum": "structural",
+      "routedTo": "graft",
+      "routedCorrect": true
+    },
+    {
+      "id": "st2",
+      "stratum": "structural",
+      "routedTo": "vector",
+      "routedCorrect": false
+    },
+    {
+      "id": "st3",
+      "stratum": "structural",
+      "routedTo": "vector",
+      "routedCorrect": false
+    },
+    {
+      "id": "st4",
+      "stratum": "structural",
+      "routedTo": "graft",
+      "routedCorrect": true
+    },
+    {
+      "id": "li1",
+      "stratum": "literal",
+      "routedTo": "grep",
+      "routedCorrect": true
+    },
+    {
+      "id": "li2",
+      "stratum": "literal",
+      "routedTo": "grep",
+      "routedCorrect": true
+    },
+    {
+      "id": "li3",
+      "stratum": "literal",
+      "routedTo": "grep",
+      "routedCorrect": true
+    },
+    {
+      "id": "li4",
+      "stratum": "literal",
+      "routedTo": "vector",
+      "routedCorrect": false
+    },
+    {
+      "id": "fz1",
+      "stratum": "fuzzy",
+      "routedTo": "fuzzy",
+      "routedCorrect": true
+    },
+    {
+      "id": "fz2",
+      "stratum": "fuzzy",
+      "routedTo": "fuzzy",
+      "routedCorrect": true
+    },
+    {
+      "id": "fz3",
+      "stratum": "fuzzy",
+      "routedTo": "fuzzy",
+      "routedCorrect": true
+    },
+    {
+      "id": "fz4",
+      "stratum": "fuzzy",
+      "routedTo": "fuzzy",
+      "routedCorrect": true
+    },
+    {
+      "id": "h1",
+      "stratum": "semantic",
+      "routedTo": "vector",
+      "routedCorrect": true
+    },
+    {
+      "id": "h2",
+      "stratum": "semantic",
+      "routedTo": "vector",
+      "routedCorrect": true
+    },
+    {
+      "id": "h3",
+      "stratum": "semantic",
+      "routedTo": "vector",
+      "routedCorrect": true
+    },
+    {
+      "id": "h4",
+      "stratum": "semantic",
+      "routedTo": "vector",
+      "routedCorrect": true
+    },
+    {
+      "id": "h5",
+      "stratum": "semantic",
+      "routedTo": "vector",
+      "routedCorrect": true
+    },
+    {
+      "id": "h6",
+      "stratum": "semantic",
+      "routedTo": "vector",
+      "routedCorrect": true
+    },
+    {
+      "id": "h7",
+      "stratum": "semantic",
+      "routedTo": "vector",
+      "routedCorrect": true
+    },
+    {
+      "id": "h8",
+      "stratum": "semantic",
+      "routedTo": "vector",
+      "routedCorrect": true
+    }
+  ]
+}

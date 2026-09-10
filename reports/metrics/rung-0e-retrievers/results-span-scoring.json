@@ -1,0 +1,344 @@
+{
+  "runId": "rung-0e-span-scoring-2026-09-09",
+  "armId": "span-scoring@v1",
+  "rung": "0e-phase2d",
+  "offline": true,
+  "corpus": "context-tree repo (each package src TypeScript)",
+  "graft": "real CLI 0.8.2",
+  "setup": {
+    "chunker": "RecursiveCharacterTextSplitter(800/100)",
+    "chunks": 1063,
+    "files": 110,
+    "topK": [
+      1,
+      3,
+      5
+    ],
+    "embedModel": "Xenova/all-MiniLM-L6-v2"
+  },
+  "judge": "span-level: a top-k unit in the right file whose line range contains the answer line",
+  "commit": "d6a7f2cd424ac9c5a26cd4215f076f5a1f379757",
+  "date": "2026-09-09T21:08:30.571Z",
+  "questions": 9,
+  "caveat": "n=9 crisp-line questions (structural/literal/fuzzy). bm25 omitted (needs chunk index). Chunk line ranges recovered by forward-search (±1 line).",
+  "vectorAvailable": true,
+  "results": {
+    "grep": {
+      "1": {
+        "fileHit": 0.222,
+        "spanHit": 0.111,
+        "spanGivenFile": 0.5,
+        "fileHitCount": 2,
+        "spanHitCount": 1
+      },
+      "3": {
+        "fileHit": 0.444,
+        "spanHit": 0.222,
+        "spanGivenFile": 0.5,
+        "fileHitCount": 4,
+        "spanHitCount": 2
+      },
+      "5": {
+        "fileHit": 0.556,
+        "spanHit": 0.333,
+        "spanGivenFile": 0.6,
+        "fileHitCount": 5,
+        "spanHitCount": 3
+      }
+    },
+    "fuzzy": {
+      "1": {
+        "fileHit": 0.111,
+        "spanHit": 0,
+        "spanGivenFile": 0,
+        "fileHitCount": 1,
+        "spanHitCount": 0
+      },
+      "3": {
+        "fileHit": 0.444,
+        "spanHit": 0.222,
+        "spanGivenFile": 0.5,
+        "fileHitCount": 4,
+        "spanHitCount": 2
+      },
+      "5": {
+        "fileHit": 0.556,
+        "spanHit": 0.333,
+        "spanGivenFile": 0.6,
+        "fileHitCount": 5,
+        "spanHitCount": 3
+      }
+    },
+    "graft": {
+      "1": {
+        "fileHit": 0.444,
+        "spanHit": 0.333,
+        "spanGivenFile": 0.75,
+        "fileHitCount": 4,
+        "spanHitCount": 3
+      },
+      "3": {
+        "fileHit": 0.778,
+        "spanHit": 0.556,
+        "spanGivenFile": 0.714,
+        "fileHitCount": 7,
+        "spanHitCount": 5
+      },
+      "5": {
+        "fileHit": 0.778,
+        "spanHit": 0.556,
+        "spanGivenFile": 0.714,
+        "fileHitCount": 7,
+        "spanHitCount": 5
+      }
+    },
+    "vector": {
+      "1": {
+        "fileHit": 0.333,
+        "spanHit": 0,
+        "spanGivenFile": 0,
+        "fileHitCount": 3,
+        "spanHitCount": 0
+      },
+      "3": {
+        "fileHit": 0.444,
+        "spanHit": 0.111,
+        "spanGivenFile": 0.25,
+        "fileHitCount": 4,
+        "spanHitCount": 1
+      },
+      "5": {
+        "fileHit": 0.444,
+        "spanHit": 0.111,
+        "spanGivenFile": 0.25,
+        "fileHitCount": 4,
+        "spanHitCount": 1
+      }
+    }
+  },
+  "perQuery": [
+    {
+      "id": "st1",
+      "file": "packages/core/src/retrieve/retriever.ts",
+      "line": 206,
+      "topUnits": {
+        "grep": [
+          "excerpt.ts:12-28",
+          "retriever.ts:1-24",
+          "retriever.ts:266-283"
+        ],
+        "fuzzy": [
+          "index.ts:136-140",
+          "detail.ts:54-59",
+          "summarizer.ts:371-373"
+        ],
+        "graft": [
+          "excerpt.ts:13-39",
+          "result.ts:71-76",
+          "result.ts:71-76"
+        ],
+        "vector": [
+          "payload.ts:63-72",
+          "markdown.ts:1-10",
+          "payload.ts:19-33"
+        ]
+      }
+    },
+    {
+      "id": "st2",
+      "file": "packages/core/src/spans/extractor.ts",
+      "line": 20,
+      "topUnits": {
+        "grep": [
+          "spans.ts:1-17",
+          "extractor.ts:1-14",
+          "spans.ts:24-43"
+        ],
+        "fuzzy": [
+          "spans.ts:1-17",
+          "spans.ts:24-43",
+          "extractor.ts:1-14"
+        ],
+        "graft": [
+          "extractor.ts:20-83",
+          "extractor.ts:20-83",
+          "grammars.ts:95-97"
+        ],
+        "vector": [
+          "extractor.ts:1-14",
+          "detail.ts:1-20",
+          "ingest.ts:49-68"
+        ]
+      }
+    },
+    {
+      "id": "li1",
+      "file": "packages/core/src/retrieve/retriever.ts",
+      "line": 836,
+      "topUnits": {
+        "grep": [
+          "retriever.ts:836-860"
+        ],
+        "fuzzy": [
+          "format.ts:135-138",
+          "summarizer.ts:371-373",
+          "import.ts:255-260"
+        ],
+        "graft": [
+          "retriever.ts:838-867",
+          "index.ts:256-261",
+          "index.ts:256-261"
+        ],
+        "vector": [
+          "budgets.ts:1-13",
+          "budgets.ts:23-27",
+          "retriever.ts:836-860"
+        ]
+      }
+    },
+    {
+      "id": "li2",
+      "file": "packages/core/src/config.ts",
+      "line": 139,
+      "topUnits": {
+        "grep": [
+          "config.ts:98-114",
+          "config.ts:114-122",
+          "config.ts:124-142"
+        ],
+        "fuzzy": [
+          "context-search.ts:79-84",
+          "context-search.ts:152-156",
+          "import.ts:255-260"
+        ],
+        "graft": [
+          "init.ts:284-304",
+          "init.ts:284-304"
+        ],
+        "vector": [
+          "config.ts:114-122",
+          "context-search.ts:79-84",
+          "types.ts:82-90"
+        ]
+      }
+    },
+    {
+      "id": "li3",
+      "file": "packages/core/src/providers/graft.ts",
+      "line": 16,
+      "topUnits": {
+        "grep": [
+          "augment.ts:17-30",
+          "augment.ts:105-116",
+          "grep.ts:17-37"
+        ],
+        "fuzzy": [
+          "graft.ts:100-107",
+          "graft.ts:16-20",
+          "grep.ts:106-123"
+        ],
+        "graft": [
+          "opencode.ts:161-171",
+          "graft.ts:90-167",
+          "graft.ts:90-167"
+        ],
+        "vector": [
+          "graft.ts:100-107",
+          "graft.ts:80-98",
+          "graft.ts:150-164"
+        ]
+      }
+    },
+    {
+      "id": "fz1",
+      "file": "packages/core/src/retrieve/excerpt.ts",
+      "line": 13,
+      "topUnits": {
+        "grep": [],
+        "fuzzy": [
+          "retriever.ts:266-283",
+          "summarizer.ts:256-259",
+          "types.ts:109-115"
+        ],
+        "graft": [
+          "excerpt.ts:13-39",
+          "retriever.ts:206-283"
+        ],
+        "vector": [
+          "openrouter.ts:156-167",
+          "openrouter.ts:1-19",
+          "openrouter.ts:231-243"
+        ]
+      }
+    },
+    {
+      "id": "fz2",
+      "file": "packages/core/src/attention/signals.ts",
+      "line": 15,
+      "topUnits": {
+        "grep": [],
+        "fuzzy": [
+          "policy.ts:1-1",
+          "index.ts:1-9",
+          "policy.ts:26-31"
+        ],
+        "graft": [
+          "signals.ts:15-41",
+          "signals.ts:5-11",
+          "signals.ts:3-3"
+        ],
+        "vector": [
+          "assembler.ts:563-570",
+          "policy.ts:56-74",
+          "server.ts:126-139"
+        ]
+      }
+    },
+    {
+      "id": "fz3",
+      "file": "packages/core/src/spans/extractor.ts",
+      "line": 20,
+      "topUnits": {
+        "grep": [],
+        "fuzzy": [
+          "spans.ts:15-26",
+          "index.ts:1-6",
+          "extractor.ts:12-18"
+        ],
+        "graft": [
+          "tree.ts:36-58",
+          "tree.ts:36-58",
+          "extractor.ts:20-83"
+        ],
+        "vector": [
+          "retriever.ts:104-113",
+          "retriever.ts:19-43",
+          "index.ts:1-6"
+        ]
+      }
+    },
+    {
+      "id": "fz4",
+      "file": "packages/core/src/attention/topic-index.ts",
+      "line": 52,
+      "topUnits": {
+        "grep": [],
+        "fuzzy": [
+          "index.ts:1-9",
+          "topic-index.ts:52-64",
+          "topic-index.ts:23-31"
+        ],
+        "graft": [
+          "program.ts:42-129",
+          "program.ts:42-129",
+          "topic-index.ts:52-79"
+        ],
+        "vector": [
+          "rebuild.ts:1-19",
+          "rebuild.ts:21-38",
+          "apply.ts:13-26"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,193 @@
+{
+  "runId": "rung-0e-isolation-2026-09-09",
+  "armId": "retriever-isolation@v1",
+  "rung": "0e-phase1",
+  "offline": true,
+  "setup": {
+    "chunker": "RecursiveCharacterTextSplitter(512/128)",
+    "topK": [
+      1,
+      3,
+      5
+    ],
+    "embedModel": "Xenova/all-MiniLM-L6-v2"
+  },
+  "judge": "literal-substring-match over union of top-k returned chunks",
+  "commit": "d6a7f2cd424ac9c5a26cd4215f076f5a1f379757",
+  "fixtureCommit": "7d459f9^",
+  "date": "2026-09-09T18:56:41.615Z",
+  "caveat": "Corpus = pooled answer-windowed slices (<=~2.1KB); real s1 event store deleted at 7d459f9. Relative per-retriever comparison is the deliverable. Structural retrievers (graft/Serena) excluded — wrong corpus type (HR1/1b).",
+  "corpus": {
+    "files": {
+      "questions.json": 12,
+      "questions-deep.json": 5,
+      "questions-overflow.json": 5
+    },
+    "docs": 21,
+    "chunks": 69
+  },
+  "vectorAvailable": true,
+  "vectorSkipReason": null,
+  "bestSingleIndex": {
+    "retriever": "grep-exact",
+    "topK": 5,
+    "nChunks": 69,
+    "allPresentRate": 0.7143,
+    "allPresentCount": 15,
+    "meanReturnedTokens": 375,
+    "oracleAllPresentRate": 0.7619,
+    "oracleMeanReturnedTokens": 182
+  },
+  "cells": [
+    {
+      "retriever": "bm25",
+      "topK": 1,
+      "nChunks": 69,
+      "allPresentRate": 0.5238,
+      "allPresentCount": 11,
+      "meanReturnedTokens": 98,
+      "oracleAllPresentRate": 0.5238,
+      "oracleMeanReturnedTokens": 98
+    },
+    {
+      "retriever": "bm25",
+      "topK": 3,
+      "nChunks": 69,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "meanReturnedTokens": 301,
+      "oracleAllPresentRate": 0.7619,
+      "oracleMeanReturnedTokens": 188
+    },
+    {
+      "retriever": "bm25",
+      "topK": 5,
+      "nChunks": 69,
+      "allPresentRate": 0.7143,
+      "allPresentCount": 15,
+      "meanReturnedTokens": 496,
+      "oracleAllPresentRate": 0.7619,
+      "oracleMeanReturnedTokens": 196
+    },
+    {
+      "retriever": "grep-exact",
+      "topK": 1,
+      "nChunks": 69,
+      "allPresentRate": 0.4762,
+      "allPresentCount": 10,
+      "meanReturnedTokens": 92,
+      "oracleAllPresentRate": 0.5238,
+      "oracleMeanReturnedTokens": 93
+    },
+    {
+      "retriever": "grep-exact",
+      "topK": 3,
+      "nChunks": 69,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "meanReturnedTokens": 269,
+      "oracleAllPresentRate": 0.7143,
+      "oracleMeanReturnedTokens": 178
+    },
+    {
+      "retriever": "grep-exact",
+      "topK": 5,
+      "nChunks": 69,
+      "allPresentRate": 0.7143,
+      "allPresentCount": 15,
+      "meanReturnedTokens": 375,
+      "oracleAllPresentRate": 0.7619,
+      "oracleMeanReturnedTokens": 182
+    },
+    {
+      "retriever": "tfidf-beam",
+      "topK": 1,
+      "nChunks": 69,
+      "allPresentRate": 0.4286,
+      "allPresentCount": 9,
+      "meanReturnedTokens": 99,
+      "oracleAllPresentRate": 0.5238,
+      "oracleMeanReturnedTokens": 98
+    },
+    {
+      "retriever": "tfidf-beam",
+      "topK": 3,
+      "nChunks": 69,
+      "allPresentRate": 0.5238,
+      "allPresentCount": 11,
+      "meanReturnedTokens": 316,
+      "oracleAllPresentRate": 0.8571,
+      "oracleMeanReturnedTokens": 222
+    },
+    {
+      "retriever": "tfidf-beam",
+      "topK": 5,
+      "nChunks": 69,
+      "allPresentRate": 0.5238,
+      "allPresentCount": 11,
+      "meanReturnedTokens": 533,
+      "oracleAllPresentRate": 0.8571,
+      "oracleMeanReturnedTokens": 254
+    },
+    {
+      "retriever": "fuzzy",
+      "topK": 1,
+      "nChunks": 69,
+      "allPresentRate": 0.4286,
+      "allPresentCount": 9,
+      "meanReturnedTokens": 96,
+      "oracleAllPresentRate": 0.4762,
+      "oracleMeanReturnedTokens": 97
+    },
+    {
+      "retriever": "fuzzy",
+      "topK": 3,
+      "nChunks": 69,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "meanReturnedTokens": 286,
+      "oracleAllPresentRate": 0.8571,
+      "oracleMeanReturnedTokens": 244
+    },
+    {
+      "retriever": "fuzzy",
+      "topK": 5,
+      "nChunks": 69,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "meanReturnedTokens": 484,
+      "oracleAllPresentRate": 0.9524,
+      "oracleMeanReturnedTokens": 324
+    },
+    {
+      "retriever": "vector",
+      "topK": 1,
+      "nChunks": 69,
+      "allPresentRate": 0.4762,
+      "allPresentCount": 10,
+      "meanReturnedTokens": 101,
+      "oracleAllPresentRate": 0.5238,
+      "oracleMeanReturnedTokens": 97
+    },
+    {
+      "retriever": "vector",
+      "topK": 3,
+      "nChunks": 69,
+      "allPresentRate": 0.5238,
+      "allPresentCount": 11,
+      "meanReturnedTokens": 274,
+      "oracleAllPresentRate": 0.8571,
+      "oracleMeanReturnedTokens": 239
+    },
+    {
+      "retriever": "vector",
+      "topK": 5,
+      "nChunks": 69,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "meanReturnedTokens": 453,
+      "oracleAllPresentRate": 0.9524,
+      "oracleMeanReturnedTokens": 329
+    }
+  ]
+}

@@ -1,0 +1,652 @@
+{
+  "runId": "rung-0e-repo-benchmark-2026-09-09",
+  "armId": "style-tailored-repo-benchmark@v1",
+  "rung": "0e-phase2",
+  "offline": true,
+  "corpus": "context-tree repo (each package src TypeScript)",
+  "graft": "real CLI 0.8.2",
+  "setup": {
+    "chunker": "RecursiveCharacterTextSplitter(800/100)",
+    "chunks": 1063,
+    "files": 110,
+    "topK": [
+      1,
+      3,
+      5
+    ],
+    "embedModel": "Xenova/all-MiniLM-L6-v2"
+  },
+  "judge": "ground-truth answer FILE appears in top-k retrieved files",
+  "commit": "d6a7f2cd424ac9c5a26cd4215f076f5a1f379757",
+  "date": "2026-09-09T21:09:14.466Z",
+  "questions": 16,
+  "strata": [
+    "structural",
+    "literal",
+    "semantic",
+    "fuzzy"
+  ],
+  "expectedWinner": {
+    "structural": "graft",
+    "literal": "grep",
+    "semantic": "vector",
+    "fuzzy": "fuzzy"
+  },
+  "caveats": "File-level judge (not span). 16 Qs, 4/stratum — directional. Semantic stratum lexically contaminated (see semantic-hardening.mjs).",
+  "vectorAvailable": true,
+  "vectorSkipReason": null,
+  "individual": {
+    "graft": {
+      "overall": {
+        "1": 0.375,
+        "3": 0.688,
+        "5": 0.75
+      },
+      "byStratum": {
+        "structural@1": 2,
+        "literal@1": 1,
+        "semantic@1": 1,
+        "fuzzy@1": 2,
+        "structural@3": 3,
+        "literal@3": 3,
+        "semantic@3": 1,
+        "fuzzy@3": 4,
+        "structural@5": 3,
+        "literal@5": 3,
+        "semantic@5": 2,
+        "fuzzy@5": 4
+      }
+    },
+    "bm25": {
+      "overall": {
+        "1": 0.188,
+        "3": 0.438,
+        "5": 0.625
+      },
+      "byStratum": {
+        "structural@1": 0,
+        "literal@1": 3,
+        "semantic@1": 0,
+        "fuzzy@1": 0,
+        "structural@3": 2,
+        "literal@3": 3,
+        "semantic@3": 2,
+        "fuzzy@3": 0,
+        "structural@5": 3,
+        "literal@5": 4,
+        "semantic@5": 3,
+        "fuzzy@5": 0
+      }
+    },
+    "grep": {
+      "overall": {
+        "1": 0.25,
+        "3": 0.5,
+        "5": 0.563
+      },
+      "byStratum": {
+        "structural@1": 0,
+        "literal@1": 2,
+        "semantic@1": 2,
+        "fuzzy@1": 0,
+        "structural@3": 2,
+        "literal@3": 3,
+        "semantic@3": 3,
+        "fuzzy@3": 0,
+        "structural@5": 2,
+        "literal@5": 4,
+        "semantic@5": 3,
+        "fuzzy@5": 0
+      }
+    },
+    "fuzzy": {
+      "overall": {
+        "1": 0.063,
+        "3": 0.313,
+        "5": 0.625
+      },
+      "byStratum": {
+        "structural@1": 0,
+        "literal@1": 1,
+        "semantic@1": 0,
+        "fuzzy@1": 0,
+        "structural@3": 2,
+        "literal@3": 1,
+        "semantic@3": 0,
+        "fuzzy@3": 2,
+        "structural@5": 2,
+        "literal@5": 3,
+        "semantic@5": 1,
+        "fuzzy@5": 4
+      }
+    },
+    "vector": {
+      "overall": {
+        "1": 0.313,
+        "3": 0.438,
+        "5": 0.563
+      },
+      "byStratum": {
+        "structural@1": 1,
+        "literal@1": 3,
+        "semantic@1": 1,
+        "fuzzy@1": 0,
+        "structural@3": 1,
+        "literal@3": 4,
+        "semantic@3": 2,
+        "fuzzy@3": 0,
+        "structural@5": 2,
+        "literal@5": 4,
+        "semantic@5": 3,
+        "fuzzy@5": 0
+      }
+    }
+  },
+  "combos": {
+    "rrf": {
+      "1": 0.5,
+      "3": 0.938,
+      "5": 0.938
+    },
+    "interleave": {
+      "1": 0.375,
+      "3": 0.688,
+      "5": 0.875
+    },
+    "router-oracle": {
+      "1": 0.313,
+      "3": 0.625,
+      "5": 0.875
+    },
+    "best-single": {
+      "1": 0.375,
+      "3": 0.688,
+      "5": 0.75
+    }
+  },
+  "perQuery": [
+    {
+      "id": "st1",
+      "stratum": "structural",
+      "q": "What functions call excerptAround?",
+      "file": "packages/core/src/retrieve/retriever.ts",
+      "topFilePerRetriever": {
+        "graft": [
+          "packages/core/src/retrieve/excerpt.ts",
+          "packages/mcp/src/result.ts",
+          "packages/cli/src/claude-code.ts"
+        ],
+        "bm25": [
+          "packages/core/src/models/openrouter.ts",
+          "packages/core/src/retrieve/excerpt.ts",
+          "packages/core/src/retrieve/retriever.ts"
+        ],
+        "grep": [
+          "packages/core/src/retrieve/excerpt.ts",
+          "packages/core/src/retrieve/retriever.ts",
+          "packages/core/src/retrieve/index.ts"
+        ],
+        "fuzzy": [
+          "packages/core/src/trace/index.ts",
+          "packages/core/src/summarize/detail.ts",
+          "packages/core/src/summarize/summarizer.ts"
+        ],
+        "vector": [
+          "packages/core/src/attention/payload.ts",
+          "packages/core/src/render/markdown.ts",
+          "packages/mcp/src/tools/context-search.ts"
+        ]
+      }
+    },
+    {
+      "id": "st2",
+      "stratum": "structural",
+      "q": "Which file parses edited blobs into minimal enclosing named spans using tree-sitter grammars?",
+      "file": "packages/core/src/spans/extractor.ts",
+      "topFilePerRetriever": {
+        "graft": [
+          "packages/core/src/spans/extractor.ts",
+          "packages/core/src/spans/grammars.ts"
+        ],
+        "bm25": [
+          "packages/core/src/ingest/spans.ts",
+          "packages/core/src/contracts/spans.ts",
+          "packages/core/src/spans/extractor.ts"
+        ],
+        "grep": [
+          "packages/core/src/ingest/spans.ts",
+          "packages/core/src/spans/extractor.ts",
+          "packages/core/src/contracts/spans.ts"
+        ],
+        "fuzzy": [
+          "packages/core/src/ingest/spans.ts",
+          "packages/core/src/contracts/spans.ts",
+          "packages/core/src/spans/extractor.ts"
+        ],
+        "vector": [
+          "packages/core/src/spans/extractor.ts",
+          "packages/core/src/summarize/detail.ts",
+          "packages/core/src/ingest/ingest.ts"
+        ]
+      }
+    },
+    {
+      "id": "st3",
+      "stratum": "structural",
+      "q": "Where is the lexical index built and which function consumes it during search?",
+      "file": "packages/core/src/retrieve/retriever.ts",
+      "topFilePerRetriever": {
+        "graft": [
+          "packages/core/src/retrieve/lexical.ts",
+          "packages/core/src/retrieve/retriever.ts",
+          "packages/core/src/retrieve/types.ts"
+        ],
+        "bm25": [
+          "packages/core/src/config.ts",
+          "packages/core/src/retrieve/lexical.ts",
+          "packages/core/src/retrieve/vector-provider.ts"
+        ],
+        "grep": [
+          "packages/core/src/retrieve/lexical.ts",
+          "packages/core/src/attention/topic-index.ts",
+          "packages/core/src/contracts/store.ts"
+        ],
+        "fuzzy": [
+          "packages/core/src/assemble/budgets.ts",
+          "packages/mcp/src/observe.ts",
+          "packages/core/src/ingest/spans.ts"
+        ],
+        "vector": [
+          "packages/core/src/retrieve/lexical.ts",
+          "packages/core/src/attention/topic-index.ts",
+          "packages/core/src/retrieve/excerpt.ts"
+        ]
+      }
+    },
+    {
+      "id": "st4",
+      "stratum": "structural",
+      "q": "How does the MCP context_search tool connect to the retriever and providers?",
+      "file": "packages/mcp/src/tools/context-search.ts",
+      "topFilePerRetriever": {
+        "graft": [
+          "packages/mcp/src/tools/context-search.ts",
+          "packages/cli/src/claude-code.ts",
+          "packages/mcp/src/server.ts"
+        ],
+        "bm25": [
+          "packages/core/src/retrieve/types.ts",
+          "packages/core/src/assemble/assembler.ts",
+          "packages/mcp/src/types.ts"
+        ],
+        "grep": [
+          "packages/core/src/retrieve/types.ts",
+          "packages/mcp/src/types.ts",
+          "packages/mcp/src/server.ts"
+        ],
+        "fuzzy": [
+          "packages/core/src/attention/topic-index.ts",
+          "packages/mcp/src/tools/context-search.ts",
+          "packages/core/src/retrieve/vector-provider.ts"
+        ],
+        "vector": [
+          "packages/core/src/retrieve/types.ts",
+          "packages/mcp/src/types.ts",
+          "packages/mcp/src/observe.ts"
+        ]
+      }
+    },
+    {
+      "id": "li1",
+      "stratum": "literal",
+      "q": "What is the value of the constant RRF_K?",
+      "file": "packages/core/src/retrieve/retriever.ts",
+      "topFilePerRetriever": {
+        "graft": [
+          "packages/core/src/retrieve/retriever.ts",
+          "packages/core/src/prompts/index.ts",
+          "packages/core/src/models/recorded.ts"
+        ],
+        "bm25": [
+          "packages/core/src/retrieve/retriever.ts",
+          "packages/core/src/assemble/format.ts",
+          "packages/core/src/assemble/budgets.ts"
+        ],
+        "grep": [
+          "packages/core/src/retrieve/retriever.ts"
+        ],
+        "fuzzy": [
+          "packages/core/src/assemble/format.ts",
+          "packages/core/src/summarize/summarizer.ts",
+          "packages/cli/src/commands/import.ts"
+        ],
+        "vector": [
+          "packages/core/src/assemble/budgets.ts",
+          "packages/core/src/retrieve/retriever.ts",
+          "packages/core/src/models/cost.ts"
+        ]
+      }
+    },
+    {
+      "id": "li2",
+      "stratum": "literal",
+      "q": "What is the default excerptChars in the retrieval config?",
+      "file": "packages/core/src/config.ts",
+      "topFilePerRetriever": {
+        "graft": [
+          "packages/cli/src/commands/init.ts"
+        ],
+        "bm25": [
+          "packages/core/src/retrieve/types.ts",
+          "packages/mcp/src/tools/context-search.ts",
+          "packages/mcp/src/server.ts"
+        ],
+        "grep": [
+          "packages/core/src/config.ts",
+          "packages/core/src/retrieve/types.ts",
+          "packages/core/src/retrieve/retriever.ts"
+        ],
+        "fuzzy": [
+          "packages/mcp/src/tools/context-search.ts",
+          "packages/cli/src/commands/import.ts",
+          "packages/cli/src/commands/init.ts"
+        ],
+        "vector": [
+          "packages/core/src/config.ts",
+          "packages/mcp/src/tools/context-search.ts",
+          "packages/core/src/retrieve/types.ts"
+        ]
+      }
+    },
+    {
+      "id": "li3",
+      "stratum": "literal",
+      "q": "What DEFAULT_TIMEOUT_MS does the graft provider use?",
+      "file": "packages/core/src/providers/graft.ts",
+      "topFilePerRetriever": {
+        "graft": [
+          "packages/cli/src/opencode.ts",
+          "packages/core/src/providers/graft.ts",
+          "packages/mcp/src/tools/context-search.ts"
+        ],
+        "bm25": [
+          "packages/core/src/providers/graft.ts",
+          "packages/core/src/contracts/providers.ts",
+          "packages/cli/src/commands/summarize.ts"
+        ],
+        "grep": [
+          "packages/core/src/providers/augment.ts",
+          "packages/core/src/providers/grep.ts",
+          "packages/core/src/providers/graft.ts"
+        ],
+        "fuzzy": [
+          "packages/core/src/providers/graft.ts",
+          "packages/core/src/providers/grep.ts",
+          "packages/core/src/providers/augment.ts"
+        ],
+        "vector": [
+          "packages/core/src/providers/graft.ts",
+          "packages/core/src/providers/shell.ts",
+          "packages/core/src/providers/registry.ts"
+        ]
+      }
+    },
+    {
+      "id": "li4",
+      "stratum": "literal",
+      "q": "What are the default retrieval provider names in the config?",
+      "file": "packages/core/src/config.ts",
+      "topFilePerRetriever": {
+        "graft": [
+          "packages/cli/src/commands/init.ts",
+          "packages/mcp/src/observe.ts",
+          "packages/core/src/config.ts"
+        ],
+        "bm25": [
+          "packages/core/src/config.ts",
+          "packages/mcp/src/server.ts",
+          "packages/mcp/src/types.ts"
+        ],
+        "grep": [
+          "packages/core/src/providers/augment.ts",
+          "packages/core/src/ingest/enrich.ts",
+          "packages/core/src/ingest/ingest.ts"
+        ],
+        "fuzzy": [
+          "packages/cli/src/commands/import.ts",
+          "packages/cli/src/commands/init.ts",
+          "packages/core/src/providers/registry.ts"
+        ],
+        "vector": [
+          "packages/core/src/config.ts",
+          "packages/core/src/retrieve/types.ts",
+          "packages/mcp/src/tools/context-search.ts"
+        ]
+      }
+    },
+    {
+      "id": "se1",
+      "stratum": "semantic",
+      "q": "Where is the logic that keeps a cached prompt prefix stable when earlier content changes?",
+      "file": "packages/core/src/cache/prefix.ts",
+      "topFilePerRetriever": {
+        "graft": [
+          "packages/core/src/cache/prefix.ts",
+          "packages/core/src/models/openrouter.ts"
+        ],
+        "bm25": [
+          "packages/core/src/summarize/compose-root.ts",
+          "packages/core/src/contracts/assemble.ts",
+          "packages/core/src/cache/simulator.ts"
+        ],
+        "grep": [
+          "packages/core/src/contracts/assemble.ts",
+          "packages/core/src/assemble/assembler.ts",
+          "packages/core/src/models/openrouter.ts"
+        ],
+        "fuzzy": [
+          "packages/core/src/summarize/compose-root.ts",
+          "packages/core/src/cache/simulator.ts",
+          "packages/core/src/store/sqlite.ts"
+        ],
+        "vector": [
+          "packages/core/src/cache/simulator.ts",
+          "packages/core/src/assemble/assembler.ts",
+          "packages/core/src/contracts/assemble.ts"
+        ]
+      }
+    },
+    {
+      "id": "se2",
+      "stratum": "semantic",
+      "q": "Which component decides what to drop from history when the conversation moves to a new topic?",
+      "file": "packages/core/src/attention/policy.ts",
+      "topFilePerRetriever": {
+        "graft": [
+          "packages/core/src/attention/topic-index.ts"
+        ],
+        "bm25": [
+          "packages/core/src/cache/simulator.ts",
+          "packages/core/src/attention/index.ts",
+          "packages/core/src/attention/topic-index.ts"
+        ],
+        "grep": [
+          "packages/core/src/attention/topic-index.ts",
+          "packages/core/src/cache/simulator.ts",
+          "packages/core/src/attention/policy.ts"
+        ],
+        "fuzzy": [
+          "packages/core/src/summarize/compose-root.ts",
+          "packages/mcp/src/tools/annotate.ts",
+          "packages/core/src/cache/prefix.ts"
+        ],
+        "vector": [
+          "packages/core/src/retrieve/excerpt.ts",
+          "packages/core/src/ingest/ingest.ts",
+          "packages/core/src/cache/prefix.ts"
+        ]
+      }
+    },
+    {
+      "id": "se3",
+      "stratum": "semantic",
+      "q": "Where is the raw linear event log divided into phases for summarization?",
+      "file": "packages/core/src/segment/segment.ts",
+      "topFilePerRetriever": {
+        "graft": [
+          "packages/mcp/src/bin.ts"
+        ],
+        "bm25": [
+          "packages/core/src/trace/index.ts",
+          "packages/core/src/segment/segment.ts",
+          "packages/core/src/summarize/summarizer.ts"
+        ],
+        "grep": [
+          "packages/core/src/segment/segment.ts",
+          "packages/core/src/config.ts",
+          "packages/core/src/contracts/segment.ts"
+        ],
+        "fuzzy": [
+          "packages/core/src/retrieve/vector-provider.ts",
+          "packages/core/src/assemble/budgets.ts",
+          "packages/core/src/retrieve/types.ts"
+        ],
+        "vector": [
+          "packages/core/src/segment/segment.ts",
+          "packages/core/src/summarize/summarizer.ts",
+          "packages/core/src/config.ts"
+        ]
+      }
+    },
+    {
+      "id": "se4",
+      "stratum": "semantic",
+      "q": "How are branches ranked by term overlap when embedding vectors are unavailable?",
+      "file": "packages/core/src/retrieve/lexical.ts",
+      "topFilePerRetriever": {
+        "graft": [
+          "packages/core/src/models/embeddings.ts",
+          "packages/core/src/ingest/enrich.ts",
+          "packages/core/src/providers/merge.ts"
+        ],
+        "bm25": [
+          "packages/core/src/retrieve/retriever.ts",
+          "packages/core/src/retrieve/lexical.ts",
+          "packages/mcp/src/tools/context-search.ts"
+        ],
+        "grep": [
+          "packages/core/src/retrieve/lexical.ts",
+          "packages/core/src/retrieve/retriever.ts",
+          "packages/mcp/src/tools/context-search.ts"
+        ],
+        "fuzzy": [
+          "packages/core/src/retrieve/retriever.ts",
+          "packages/core/src/ingest/enrich.ts",
+          "packages/core/src/retrieve/types.ts"
+        ],
+        "vector": [
+          "packages/core/src/ingest/enrich.ts",
+          "packages/core/src/retrieve/lexical.ts",
+          "packages/core/src/segment/text-fallback.ts"
+        ]
+      }
+    },
+    {
+      "id": "fz1",
+      "stratum": "fuzzy",
+      "q": "excrptAround",
+      "file": "packages/core/src/retrieve/excerpt.ts",
+      "topFilePerRetriever": {
+        "graft": [
+          "packages/core/src/retrieve/excerpt.ts",
+          "packages/core/src/retrieve/retriever.ts"
+        ],
+        "bm25": [],
+        "grep": [],
+        "fuzzy": [
+          "packages/core/src/retrieve/retriever.ts",
+          "packages/core/src/summarize/summarizer.ts",
+          "packages/core/src/retrieve/types.ts"
+        ],
+        "vector": [
+          "packages/core/src/models/openrouter.ts",
+          "packages/core/src/attention/policy.ts",
+          "packages/core/src/providers/shell.ts"
+        ]
+      }
+    },
+    {
+      "id": "fz2",
+      "stratum": "fuzzy",
+      "q": "detctAttentionSignals",
+      "file": "packages/core/src/attention/signals.ts",
+      "topFilePerRetriever": {
+        "graft": [
+          "packages/core/src/attention/signals.ts",
+          "packages/core/src/attention/policy.ts"
+        ],
+        "bm25": [],
+        "grep": [],
+        "fuzzy": [
+          "packages/core/src/attention/policy.ts",
+          "packages/core/src/attention/index.ts",
+          "packages/core/src/index.ts"
+        ],
+        "vector": [
+          "packages/core/src/assemble/assembler.ts",
+          "packages/core/src/attention/policy.ts",
+          "packages/mcp/src/server.ts"
+        ]
+      }
+    },
+    {
+      "id": "fz3",
+      "stratum": "fuzzy",
+      "q": "TreeSiterSpanExtractor",
+      "file": "packages/core/src/spans/extractor.ts",
+      "topFilePerRetriever": {
+        "graft": [
+          "packages/cli/src/commands/tree.ts",
+          "packages/core/src/spans/extractor.ts",
+          "packages/core/src/contracts/spans.ts"
+        ],
+        "bm25": [],
+        "grep": [],
+        "fuzzy": [
+          "packages/core/src/ingest/spans.ts",
+          "packages/core/src/spans/index.ts",
+          "packages/core/src/spans/extractor.ts"
+        ],
+        "vector": [
+          "packages/core/src/retrieve/retriever.ts",
+          "packages/core/src/spans/index.ts",
+          "packages/mcp/src/tools/context-search.ts"
+        ]
+      }
+    },
+    {
+      "id": "fz4",
+      "stratum": "fuzzy",
+      "q": "buildTopicIndx",
+      "file": "packages/core/src/attention/topic-index.ts",
+      "topFilePerRetriever": {
+        "graft": [
+          "packages/cli/src/program.ts",
+          "packages/core/src/attention/topic-index.ts"
+        ],
+        "bm25": [],
+        "grep": [],
+        "fuzzy": [
+          "packages/core/src/attention/index.ts",
+          "packages/core/src/attention/topic-index.ts",
+          "packages/cli/src/index.ts"
+        ],
+        "vector": [
+          "packages/cli/src/commands/rebuild.ts",
+          "packages/core/src/ingest/apply.ts",
+          "packages/core/src/contracts/assemble.ts"
+        ]
+      }
+    }
+  ]
+}
