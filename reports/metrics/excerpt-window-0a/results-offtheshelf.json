@@ -1,0 +1,2860 @@
+{
+  "runId": "excerpt-window-0a-offtheshelf-2026-09-09",
+  "armId": "offtheshelf-chunk-retrieve-rank@v1",
+  "rung": "0a",
+  "offline": true,
+  "stack": {
+    "chunkers": "LangChain RecursiveCharacterTextSplitter/TokenTextSplitter; semantic percentile-breakpoint (MiniLM); sentence-window",
+    "rankers": "BM25 (wink-bm25-text-search); dense vector (Xenova/all-MiniLM-L6-v2 cosine)",
+    "reranker": "cross-encoder Xenova/ms-marco-MiniLM-L-6-v2 over first-stage top-20",
+    "embedModel": "Xenova/all-MiniLM-L6-v2"
+  },
+  "rankers": [
+    "bm25",
+    "vector",
+    "bm25+rerank",
+    "vector+rerank"
+  ],
+  "judge": "literal-substring-match over union of top-k returned chunks",
+  "commit": "d6a7f2cd424ac9c5a26cd4215f076f5a1f379757",
+  "fixtureCommit": "7d459f9^",
+  "date": "2026-09-09T18:17:28.440Z",
+  "caveat": "Corpus = pooled answer-windowed wide_context slices (<=~2.1KB); real s1 event store deleted at 7d459f9. Absolute rates optimistic; relative chunker/ranker comparison is the deliverable.",
+  "corpus": {
+    "files": {
+      "questions.json": 12,
+      "questions-deep.json": 5,
+      "questions-overflow.json": 5
+    },
+    "docs": 21
+  },
+  "embedderAvailable": true,
+  "embedderSkipReason": null,
+  "best": {
+    "chunker": "recursive(chunkSize=1024,chunkOverlap=0)",
+    "chunkerKind": "recursive",
+    "params": {
+      "chunkSize": 1024,
+      "chunkOverlap": 0
+    },
+    "ranker": "vector",
+    "topK": 5,
+    "nChunks": 36,
+    "allPresentRate": 0.8095,
+    "allPresentCount": 17,
+    "anyPresentRate": 0.8571,
+    "meanReturnedTokens": 753,
+    "oracleAllPresentRate": 1,
+    "oracleMeanReturnedTokens": 319
+  },
+  "cells": [
+    {
+      "chunker": "recursive(chunkSize=256,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 0
+      },
+      "ranker": "bm25",
+      "topK": 1,
+      "nChunks": 116,
+      "allPresentRate": 0.381,
+      "allPresentCount": 8,
+      "anyPresentRate": 0.4286,
+      "meanReturnedTokens": 58,
+      "oracleAllPresentRate": 0.381,
+      "oracleMeanReturnedTokens": 58
+    },
+    {
+      "chunker": "recursive(chunkSize=256,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 0
+      },
+      "ranker": "bm25",
+      "topK": 3,
+      "nChunks": 116,
+      "allPresentRate": 0.5238,
+      "allPresentCount": 11,
+      "anyPresentRate": 0.619,
+      "meanReturnedTokens": 157,
+      "oracleAllPresentRate": 0.6667,
+      "oracleMeanReturnedTokens": 118
+    },
+    {
+      "chunker": "recursive(chunkSize=256,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 0
+      },
+      "ranker": "bm25",
+      "topK": 5,
+      "nChunks": 116,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7143,
+      "meanReturnedTokens": 263,
+      "oracleAllPresentRate": 0.6667,
+      "oracleMeanReturnedTokens": 143
+    },
+    {
+      "chunker": "recursive(chunkSize=256,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 0
+      },
+      "ranker": "vector",
+      "topK": 1,
+      "nChunks": 116,
+      "allPresentRate": 0.3333,
+      "allPresentCount": 7,
+      "anyPresentRate": 0.381,
+      "meanReturnedTokens": 58,
+      "oracleAllPresentRate": 0.381,
+      "oracleMeanReturnedTokens": 59
+    },
+    {
+      "chunker": "recursive(chunkSize=256,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 0
+      },
+      "ranker": "vector",
+      "topK": 3,
+      "nChunks": 116,
+      "allPresentRate": 0.4286,
+      "allPresentCount": 9,
+      "anyPresentRate": 0.4762,
+      "meanReturnedTokens": 159,
+      "oracleAllPresentRate": 0.5714,
+      "oracleMeanReturnedTokens": 137
+    },
+    {
+      "chunker": "recursive(chunkSize=256,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 0
+      },
+      "ranker": "vector",
+      "topK": 5,
+      "nChunks": 116,
+      "allPresentRate": 0.4286,
+      "allPresentCount": 9,
+      "anyPresentRate": 0.4762,
+      "meanReturnedTokens": 266,
+      "oracleAllPresentRate": 0.7143,
+      "oracleMeanReturnedTokens": 215
+    },
+    {
+      "chunker": "recursive(chunkSize=256,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 0
+      },
+      "ranker": "bm25+rerank",
+      "topK": 1,
+      "nChunks": 116,
+      "allPresentRate": 0.3333,
+      "allPresentCount": 7,
+      "anyPresentRate": 0.381,
+      "meanReturnedTokens": 59,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=256,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 0
+      },
+      "ranker": "bm25+rerank",
+      "topK": 3,
+      "nChunks": 116,
+      "allPresentRate": 0.4286,
+      "allPresentCount": 9,
+      "anyPresentRate": 0.4762,
+      "meanReturnedTokens": 168,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=256,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 0
+      },
+      "ranker": "bm25+rerank",
+      "topK": 5,
+      "nChunks": 116,
+      "allPresentRate": 0.4762,
+      "allPresentCount": 10,
+      "anyPresentRate": 0.5238,
+      "meanReturnedTokens": 263,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=256,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 0
+      },
+      "ranker": "vector+rerank",
+      "topK": 1,
+      "nChunks": 116,
+      "allPresentRate": 0.3333,
+      "allPresentCount": 7,
+      "anyPresentRate": 0.381,
+      "meanReturnedTokens": 59,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=256,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 0
+      },
+      "ranker": "vector+rerank",
+      "topK": 3,
+      "nChunks": 116,
+      "allPresentRate": 0.381,
+      "allPresentCount": 8,
+      "anyPresentRate": 0.4286,
+      "meanReturnedTokens": 167,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=256,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 0
+      },
+      "ranker": "vector+rerank",
+      "topK": 5,
+      "nChunks": 116,
+      "allPresentRate": 0.4762,
+      "allPresentCount": 10,
+      "anyPresentRate": 0.5238,
+      "meanReturnedTokens": 258,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=256,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 128
+      },
+      "ranker": "bm25",
+      "topK": 1,
+      "nChunks": 157,
+      "allPresentRate": 0.381,
+      "allPresentCount": 8,
+      "anyPresentRate": 0.4286,
+      "meanReturnedTokens": 58,
+      "oracleAllPresentRate": 0.381,
+      "oracleMeanReturnedTokens": 58
+    },
+    {
+      "chunker": "recursive(chunkSize=256,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 128
+      },
+      "ranker": "bm25",
+      "topK": 3,
+      "nChunks": 157,
+      "allPresentRate": 0.5714,
+      "allPresentCount": 12,
+      "anyPresentRate": 0.6667,
+      "meanReturnedTokens": 165,
+      "oracleAllPresentRate": 0.6667,
+      "oracleMeanReturnedTokens": 129
+    },
+    {
+      "chunker": "recursive(chunkSize=256,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 128
+      },
+      "ranker": "bm25",
+      "topK": 5,
+      "nChunks": 157,
+      "allPresentRate": 0.6667,
+      "allPresentCount": 14,
+      "anyPresentRate": 0.7619,
+      "meanReturnedTokens": 265,
+      "oracleAllPresentRate": 0.7619,
+      "oracleMeanReturnedTokens": 169
+    },
+    {
+      "chunker": "recursive(chunkSize=256,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 128
+      },
+      "ranker": "vector",
+      "topK": 1,
+      "nChunks": 157,
+      "allPresentRate": 0.4286,
+      "allPresentCount": 9,
+      "anyPresentRate": 0.4762,
+      "meanReturnedTokens": 58,
+      "oracleAllPresentRate": 0.4762,
+      "oracleMeanReturnedTokens": 59
+    },
+    {
+      "chunker": "recursive(chunkSize=256,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 128
+      },
+      "ranker": "vector",
+      "topK": 3,
+      "nChunks": 157,
+      "allPresentRate": 0.4762,
+      "allPresentCount": 10,
+      "anyPresentRate": 0.5238,
+      "meanReturnedTokens": 163,
+      "oracleAllPresentRate": 0.6667,
+      "oracleMeanReturnedTokens": 142
+    },
+    {
+      "chunker": "recursive(chunkSize=256,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 128
+      },
+      "ranker": "vector",
+      "topK": 5,
+      "nChunks": 157,
+      "allPresentRate": 0.4762,
+      "allPresentCount": 10,
+      "anyPresentRate": 0.5238,
+      "meanReturnedTokens": 269,
+      "oracleAllPresentRate": 0.7143,
+      "oracleMeanReturnedTokens": 222
+    },
+    {
+      "chunker": "recursive(chunkSize=256,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 128
+      },
+      "ranker": "bm25+rerank",
+      "topK": 1,
+      "nChunks": 157,
+      "allPresentRate": 0.3333,
+      "allPresentCount": 7,
+      "anyPresentRate": 0.381,
+      "meanReturnedTokens": 59,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=256,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 128
+      },
+      "ranker": "bm25+rerank",
+      "topK": 3,
+      "nChunks": 157,
+      "allPresentRate": 0.4762,
+      "allPresentCount": 10,
+      "anyPresentRate": 0.5238,
+      "meanReturnedTokens": 169,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=256,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 128
+      },
+      "ranker": "bm25+rerank",
+      "topK": 5,
+      "nChunks": 157,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.6667,
+      "meanReturnedTokens": 277,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=256,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 128
+      },
+      "ranker": "vector+rerank",
+      "topK": 1,
+      "nChunks": 157,
+      "allPresentRate": 0.3333,
+      "allPresentCount": 7,
+      "anyPresentRate": 0.381,
+      "meanReturnedTokens": 59,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=256,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 128
+      },
+      "ranker": "vector+rerank",
+      "topK": 3,
+      "nChunks": 157,
+      "allPresentRate": 0.4762,
+      "allPresentCount": 10,
+      "anyPresentRate": 0.5238,
+      "meanReturnedTokens": 173,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=256,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 128
+      },
+      "ranker": "vector+rerank",
+      "topK": 5,
+      "nChunks": 157,
+      "allPresentRate": 0.5714,
+      "allPresentCount": 12,
+      "anyPresentRate": 0.6667,
+      "meanReturnedTokens": 270,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=512,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 512,
+        "chunkOverlap": 0
+      },
+      "ranker": "bm25",
+      "topK": 1,
+      "nChunks": 64,
+      "allPresentRate": 0.5238,
+      "allPresentCount": 11,
+      "anyPresentRate": 0.619,
+      "meanReturnedTokens": 96,
+      "oracleAllPresentRate": 0.5238,
+      "oracleMeanReturnedTokens": 96
+    },
+    {
+      "chunker": "recursive(chunkSize=512,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 512,
+        "chunkOverlap": 0
+      },
+      "ranker": "bm25",
+      "topK": 3,
+      "nChunks": 64,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7619,
+      "meanReturnedTokens": 294,
+      "oracleAllPresentRate": 0.7619,
+      "oracleMeanReturnedTokens": 181
+    },
+    {
+      "chunker": "recursive(chunkSize=512,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 512,
+        "chunkOverlap": 0
+      },
+      "ranker": "bm25",
+      "topK": 5,
+      "nChunks": 64,
+      "allPresentRate": 0.7143,
+      "allPresentCount": 15,
+      "anyPresentRate": 0.8571,
+      "meanReturnedTokens": 482,
+      "oracleAllPresentRate": 0.7619,
+      "oracleMeanReturnedTokens": 191
+    },
+    {
+      "chunker": "recursive(chunkSize=512,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 512,
+        "chunkOverlap": 0
+      },
+      "ranker": "vector",
+      "topK": 1,
+      "nChunks": 64,
+      "allPresentRate": 0.381,
+      "allPresentCount": 8,
+      "anyPresentRate": 0.4762,
+      "meanReturnedTokens": 101,
+      "oracleAllPresentRate": 0.4762,
+      "oracleMeanReturnedTokens": 93
+    },
+    {
+      "chunker": "recursive(chunkSize=512,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 512,
+        "chunkOverlap": 0
+      },
+      "ranker": "vector",
+      "topK": 3,
+      "nChunks": 64,
+      "allPresentRate": 0.5238,
+      "allPresentCount": 11,
+      "anyPresentRate": 0.619,
+      "meanReturnedTokens": 276,
+      "oracleAllPresentRate": 0.8095,
+      "oracleMeanReturnedTokens": 234
+    },
+    {
+      "chunker": "recursive(chunkSize=512,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 512,
+        "chunkOverlap": 0
+      },
+      "ranker": "vector",
+      "topK": 5,
+      "nChunks": 64,
+      "allPresentRate": 0.5714,
+      "allPresentCount": 12,
+      "anyPresentRate": 0.7143,
+      "meanReturnedTokens": 444,
+      "oracleAllPresentRate": 0.9048,
+      "oracleMeanReturnedTokens": 303
+    },
+    {
+      "chunker": "recursive(chunkSize=512,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 512,
+        "chunkOverlap": 0
+      },
+      "ranker": "bm25+rerank",
+      "topK": 1,
+      "nChunks": 64,
+      "allPresentRate": 0.4762,
+      "allPresentCount": 10,
+      "anyPresentRate": 0.5714,
+      "meanReturnedTokens": 97,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=512,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 512,
+        "chunkOverlap": 0
+      },
+      "ranker": "bm25+rerank",
+      "topK": 3,
+      "nChunks": 64,
+      "allPresentRate": 0.5714,
+      "allPresentCount": 12,
+      "anyPresentRate": 0.6667,
+      "meanReturnedTokens": 281,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=512,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 512,
+        "chunkOverlap": 0
+      },
+      "ranker": "bm25+rerank",
+      "topK": 5,
+      "nChunks": 64,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7143,
+      "meanReturnedTokens": 468,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=512,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 512,
+        "chunkOverlap": 0
+      },
+      "ranker": "vector+rerank",
+      "topK": 1,
+      "nChunks": 64,
+      "allPresentRate": 0.4762,
+      "allPresentCount": 10,
+      "anyPresentRate": 0.5714,
+      "meanReturnedTokens": 97,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=512,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 512,
+        "chunkOverlap": 0
+      },
+      "ranker": "vector+rerank",
+      "topK": 3,
+      "nChunks": 64,
+      "allPresentRate": 0.5714,
+      "allPresentCount": 12,
+      "anyPresentRate": 0.6667,
+      "meanReturnedTokens": 285,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=512,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 512,
+        "chunkOverlap": 0
+      },
+      "ranker": "vector+rerank",
+      "topK": 5,
+      "nChunks": 64,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7143,
+      "meanReturnedTokens": 466,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=512,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 512,
+        "chunkOverlap": 128
+      },
+      "ranker": "bm25",
+      "topK": 1,
+      "nChunks": 69,
+      "allPresentRate": 0.5238,
+      "allPresentCount": 11,
+      "anyPresentRate": 0.619,
+      "meanReturnedTokens": 98,
+      "oracleAllPresentRate": 0.5238,
+      "oracleMeanReturnedTokens": 98
+    },
+    {
+      "chunker": "recursive(chunkSize=512,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 512,
+        "chunkOverlap": 128
+      },
+      "ranker": "bm25",
+      "topK": 3,
+      "nChunks": 69,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7619,
+      "meanReturnedTokens": 301,
+      "oracleAllPresentRate": 0.7619,
+      "oracleMeanReturnedTokens": 188
+    },
+    {
+      "chunker": "recursive(chunkSize=512,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 512,
+        "chunkOverlap": 128
+      },
+      "ranker": "bm25",
+      "topK": 5,
+      "nChunks": 69,
+      "allPresentRate": 0.7143,
+      "allPresentCount": 15,
+      "anyPresentRate": 0.8571,
+      "meanReturnedTokens": 496,
+      "oracleAllPresentRate": 0.7619,
+      "oracleMeanReturnedTokens": 196
+    },
+    {
+      "chunker": "recursive(chunkSize=512,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 512,
+        "chunkOverlap": 128
+      },
+      "ranker": "vector",
+      "topK": 1,
+      "nChunks": 69,
+      "allPresentRate": 0.4762,
+      "allPresentCount": 10,
+      "anyPresentRate": 0.5714,
+      "meanReturnedTokens": 101,
+      "oracleAllPresentRate": 0.5238,
+      "oracleMeanReturnedTokens": 97
+    },
+    {
+      "chunker": "recursive(chunkSize=512,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 512,
+        "chunkOverlap": 128
+      },
+      "ranker": "vector",
+      "topK": 3,
+      "nChunks": 69,
+      "allPresentRate": 0.5238,
+      "allPresentCount": 11,
+      "anyPresentRate": 0.619,
+      "meanReturnedTokens": 274,
+      "oracleAllPresentRate": 0.8571,
+      "oracleMeanReturnedTokens": 239
+    },
+    {
+      "chunker": "recursive(chunkSize=512,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 512,
+        "chunkOverlap": 128
+      },
+      "ranker": "vector",
+      "topK": 5,
+      "nChunks": 69,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7143,
+      "meanReturnedTokens": 453,
+      "oracleAllPresentRate": 0.9524,
+      "oracleMeanReturnedTokens": 329
+    },
+    {
+      "chunker": "recursive(chunkSize=512,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 512,
+        "chunkOverlap": 128
+      },
+      "ranker": "bm25+rerank",
+      "topK": 1,
+      "nChunks": 69,
+      "allPresentRate": 0.4762,
+      "allPresentCount": 10,
+      "anyPresentRate": 0.5714,
+      "meanReturnedTokens": 98,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=512,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 512,
+        "chunkOverlap": 128
+      },
+      "ranker": "bm25+rerank",
+      "topK": 3,
+      "nChunks": 69,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7143,
+      "meanReturnedTokens": 282,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=512,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 512,
+        "chunkOverlap": 128
+      },
+      "ranker": "bm25+rerank",
+      "topK": 5,
+      "nChunks": 69,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7143,
+      "meanReturnedTokens": 471,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=512,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 512,
+        "chunkOverlap": 128
+      },
+      "ranker": "vector+rerank",
+      "topK": 1,
+      "nChunks": 69,
+      "allPresentRate": 0.4762,
+      "allPresentCount": 10,
+      "anyPresentRate": 0.5714,
+      "meanReturnedTokens": 98,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=512,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 512,
+        "chunkOverlap": 128
+      },
+      "ranker": "vector+rerank",
+      "topK": 3,
+      "nChunks": 69,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7143,
+      "meanReturnedTokens": 287,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=512,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 512,
+        "chunkOverlap": 128
+      },
+      "ranker": "vector+rerank",
+      "topK": 5,
+      "nChunks": 69,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7143,
+      "meanReturnedTokens": 478,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=1024,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 1024,
+        "chunkOverlap": 0
+      },
+      "ranker": "bm25",
+      "topK": 1,
+      "nChunks": 36,
+      "allPresentRate": 0.7143,
+      "allPresentCount": 15,
+      "anyPresentRate": 0.8095,
+      "meanReturnedTokens": 167,
+      "oracleAllPresentRate": 0.7143,
+      "oracleMeanReturnedTokens": 167
+    },
+    {
+      "chunker": "recursive(chunkSize=1024,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 1024,
+        "chunkOverlap": 0
+      },
+      "ranker": "bm25",
+      "topK": 3,
+      "nChunks": 36,
+      "allPresentRate": 0.7619,
+      "allPresentCount": 16,
+      "anyPresentRate": 0.8571,
+      "meanReturnedTokens": 509,
+      "oracleAllPresentRate": 0.8571,
+      "oracleMeanReturnedTokens": 250
+    },
+    {
+      "chunker": "recursive(chunkSize=1024,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 1024,
+        "chunkOverlap": 0
+      },
+      "ranker": "bm25",
+      "topK": 5,
+      "nChunks": 36,
+      "allPresentRate": 0.7619,
+      "allPresentCount": 16,
+      "anyPresentRate": 0.8571,
+      "meanReturnedTokens": 864,
+      "oracleAllPresentRate": 0.8571,
+      "oracleMeanReturnedTokens": 250
+    },
+    {
+      "chunker": "recursive(chunkSize=1024,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 1024,
+        "chunkOverlap": 0
+      },
+      "ranker": "vector",
+      "topK": 1,
+      "nChunks": 36,
+      "allPresentRate": 0.5238,
+      "allPresentCount": 11,
+      "anyPresentRate": 0.619,
+      "meanReturnedTokens": 166,
+      "oracleAllPresentRate": 0.7143,
+      "oracleMeanReturnedTokens": 167
+    },
+    {
+      "chunker": "recursive(chunkSize=1024,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 1024,
+        "chunkOverlap": 0
+      },
+      "ranker": "vector",
+      "topK": 3,
+      "nChunks": 36,
+      "allPresentRate": 0.7143,
+      "allPresentCount": 15,
+      "anyPresentRate": 0.8095,
+      "meanReturnedTokens": 459,
+      "oracleAllPresentRate": 1,
+      "oracleMeanReturnedTokens": 319
+    },
+    {
+      "chunker": "recursive(chunkSize=1024,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 1024,
+        "chunkOverlap": 0
+      },
+      "ranker": "vector",
+      "topK": 5,
+      "nChunks": 36,
+      "allPresentRate": 0.8095,
+      "allPresentCount": 17,
+      "anyPresentRate": 0.8571,
+      "meanReturnedTokens": 753,
+      "oracleAllPresentRate": 1,
+      "oracleMeanReturnedTokens": 319
+    },
+    {
+      "chunker": "recursive(chunkSize=1024,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 1024,
+        "chunkOverlap": 0
+      },
+      "ranker": "bm25+rerank",
+      "topK": 1,
+      "nChunks": 36,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7143,
+      "meanReturnedTokens": 168,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=1024,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 1024,
+        "chunkOverlap": 0
+      },
+      "ranker": "bm25+rerank",
+      "topK": 3,
+      "nChunks": 36,
+      "allPresentRate": 0.7143,
+      "allPresentCount": 15,
+      "anyPresentRate": 0.8095,
+      "meanReturnedTokens": 499,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=1024,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 1024,
+        "chunkOverlap": 0
+      },
+      "ranker": "bm25+rerank",
+      "topK": 5,
+      "nChunks": 36,
+      "allPresentRate": 0.7143,
+      "allPresentCount": 15,
+      "anyPresentRate": 0.8095,
+      "meanReturnedTokens": 848,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=1024,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 1024,
+        "chunkOverlap": 0
+      },
+      "ranker": "vector+rerank",
+      "topK": 1,
+      "nChunks": 36,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7143,
+      "meanReturnedTokens": 168,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=1024,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 1024,
+        "chunkOverlap": 0
+      },
+      "ranker": "vector+rerank",
+      "topK": 3,
+      "nChunks": 36,
+      "allPresentRate": 0.7143,
+      "allPresentCount": 15,
+      "anyPresentRate": 0.8095,
+      "meanReturnedTokens": 502,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=1024,chunkOverlap=0)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 1024,
+        "chunkOverlap": 0
+      },
+      "ranker": "vector+rerank",
+      "topK": 5,
+      "nChunks": 36,
+      "allPresentRate": 0.7143,
+      "allPresentCount": 15,
+      "anyPresentRate": 0.8095,
+      "meanReturnedTokens": 823,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=1024,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 1024,
+        "chunkOverlap": 128
+      },
+      "ranker": "bm25",
+      "topK": 1,
+      "nChunks": 36,
+      "allPresentRate": 0.7143,
+      "allPresentCount": 15,
+      "anyPresentRate": 0.8095,
+      "meanReturnedTokens": 167,
+      "oracleAllPresentRate": 0.7143,
+      "oracleMeanReturnedTokens": 167
+    },
+    {
+      "chunker": "recursive(chunkSize=1024,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 1024,
+        "chunkOverlap": 128
+      },
+      "ranker": "bm25",
+      "topK": 3,
+      "nChunks": 36,
+      "allPresentRate": 0.7619,
+      "allPresentCount": 16,
+      "anyPresentRate": 0.8571,
+      "meanReturnedTokens": 511,
+      "oracleAllPresentRate": 0.8571,
+      "oracleMeanReturnedTokens": 254
+    },
+    {
+      "chunker": "recursive(chunkSize=1024,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 1024,
+        "chunkOverlap": 128
+      },
+      "ranker": "bm25",
+      "topK": 5,
+      "nChunks": 36,
+      "allPresentRate": 0.7619,
+      "allPresentCount": 16,
+      "anyPresentRate": 0.8571,
+      "meanReturnedTokens": 868,
+      "oracleAllPresentRate": 0.8571,
+      "oracleMeanReturnedTokens": 254
+    },
+    {
+      "chunker": "recursive(chunkSize=1024,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 1024,
+        "chunkOverlap": 128
+      },
+      "ranker": "vector",
+      "topK": 1,
+      "nChunks": 36,
+      "allPresentRate": 0.5238,
+      "allPresentCount": 11,
+      "anyPresentRate": 0.619,
+      "meanReturnedTokens": 162,
+      "oracleAllPresentRate": 0.7143,
+      "oracleMeanReturnedTokens": 167
+    },
+    {
+      "chunker": "recursive(chunkSize=1024,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 1024,
+        "chunkOverlap": 128
+      },
+      "ranker": "vector",
+      "topK": 3,
+      "nChunks": 36,
+      "allPresentRate": 0.7143,
+      "allPresentCount": 15,
+      "anyPresentRate": 0.8095,
+      "meanReturnedTokens": 444,
+      "oracleAllPresentRate": 1,
+      "oracleMeanReturnedTokens": 328
+    },
+    {
+      "chunker": "recursive(chunkSize=1024,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 1024,
+        "chunkOverlap": 128
+      },
+      "ranker": "vector",
+      "topK": 5,
+      "nChunks": 36,
+      "allPresentRate": 0.8095,
+      "allPresentCount": 17,
+      "anyPresentRate": 0.8571,
+      "meanReturnedTokens": 761,
+      "oracleAllPresentRate": 1,
+      "oracleMeanReturnedTokens": 328
+    },
+    {
+      "chunker": "recursive(chunkSize=1024,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 1024,
+        "chunkOverlap": 128
+      },
+      "ranker": "bm25+rerank",
+      "topK": 1,
+      "nChunks": 36,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7143,
+      "meanReturnedTokens": 168,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=1024,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 1024,
+        "chunkOverlap": 128
+      },
+      "ranker": "bm25+rerank",
+      "topK": 3,
+      "nChunks": 36,
+      "allPresentRate": 0.7143,
+      "allPresentCount": 15,
+      "anyPresentRate": 0.8095,
+      "meanReturnedTokens": 501,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=1024,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 1024,
+        "chunkOverlap": 128
+      },
+      "ranker": "bm25+rerank",
+      "topK": 5,
+      "nChunks": 36,
+      "allPresentRate": 0.7143,
+      "allPresentCount": 15,
+      "anyPresentRate": 0.8095,
+      "meanReturnedTokens": 846,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=1024,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 1024,
+        "chunkOverlap": 128
+      },
+      "ranker": "vector+rerank",
+      "topK": 1,
+      "nChunks": 36,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7143,
+      "meanReturnedTokens": 168,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=1024,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 1024,
+        "chunkOverlap": 128
+      },
+      "ranker": "vector+rerank",
+      "topK": 3,
+      "nChunks": 36,
+      "allPresentRate": 0.7143,
+      "allPresentCount": 15,
+      "anyPresentRate": 0.8095,
+      "meanReturnedTokens": 508,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "recursive(chunkSize=1024,chunkOverlap=128)",
+      "chunkerKind": "recursive",
+      "params": {
+        "chunkSize": 1024,
+        "chunkOverlap": 128
+      },
+      "ranker": "vector+rerank",
+      "topK": 5,
+      "nChunks": 36,
+      "allPresentRate": 0.7143,
+      "allPresentCount": 15,
+      "anyPresentRate": 0.8095,
+      "meanReturnedTokens": 827,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "token(chunkSize=128,chunkOverlap=0)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 128,
+        "chunkOverlap": 0
+      },
+      "ranker": "bm25",
+      "topK": 1,
+      "nChunks": 75,
+      "allPresentRate": 0.4762,
+      "allPresentCount": 10,
+      "anyPresentRate": 0.5238,
+      "meanReturnedTokens": 86,
+      "oracleAllPresentRate": 0.4762,
+      "oracleMeanReturnedTokens": 84
+    },
+    {
+      "chunker": "token(chunkSize=128,chunkOverlap=0)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 128,
+        "chunkOverlap": 0
+      },
+      "ranker": "bm25",
+      "topK": 3,
+      "nChunks": 75,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7143,
+      "meanReturnedTokens": 249,
+      "oracleAllPresentRate": 0.7619,
+      "oracleMeanReturnedTokens": 174
+    },
+    {
+      "chunker": "token(chunkSize=128,chunkOverlap=0)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 128,
+        "chunkOverlap": 0
+      },
+      "ranker": "bm25",
+      "topK": 5,
+      "nChunks": 75,
+      "allPresentRate": 0.7143,
+      "allPresentCount": 15,
+      "anyPresentRate": 0.8095,
+      "meanReturnedTokens": 417,
+      "oracleAllPresentRate": 0.7619,
+      "oracleMeanReturnedTokens": 183
+    },
+    {
+      "chunker": "token(chunkSize=128,chunkOverlap=0)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 128,
+        "chunkOverlap": 0
+      },
+      "ranker": "vector",
+      "topK": 1,
+      "nChunks": 75,
+      "allPresentRate": 0.4762,
+      "allPresentCount": 10,
+      "anyPresentRate": 0.5238,
+      "meanReturnedTokens": 83,
+      "oracleAllPresentRate": 0.4762,
+      "oracleMeanReturnedTokens": 83
+    },
+    {
+      "chunker": "token(chunkSize=128,chunkOverlap=0)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 128,
+        "chunkOverlap": 0
+      },
+      "ranker": "vector",
+      "topK": 3,
+      "nChunks": 75,
+      "allPresentRate": 0.5238,
+      "allPresentCount": 11,
+      "anyPresentRate": 0.619,
+      "meanReturnedTokens": 240,
+      "oracleAllPresentRate": 0.7619,
+      "oracleMeanReturnedTokens": 212
+    },
+    {
+      "chunker": "token(chunkSize=128,chunkOverlap=0)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 128,
+        "chunkOverlap": 0
+      },
+      "ranker": "vector",
+      "topK": 5,
+      "nChunks": 75,
+      "allPresentRate": 0.5238,
+      "allPresentCount": 11,
+      "anyPresentRate": 0.619,
+      "meanReturnedTokens": 414,
+      "oracleAllPresentRate": 0.8571,
+      "oracleMeanReturnedTokens": 281
+    },
+    {
+      "chunker": "token(chunkSize=128,chunkOverlap=0)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 128,
+        "chunkOverlap": 0
+      },
+      "ranker": "bm25+rerank",
+      "topK": 1,
+      "nChunks": 75,
+      "allPresentRate": 0.4762,
+      "allPresentCount": 10,
+      "anyPresentRate": 0.5238,
+      "meanReturnedTokens": 85,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "token(chunkSize=128,chunkOverlap=0)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 128,
+        "chunkOverlap": 0
+      },
+      "ranker": "bm25+rerank",
+      "topK": 3,
+      "nChunks": 75,
+      "allPresentRate": 0.5238,
+      "allPresentCount": 11,
+      "anyPresentRate": 0.619,
+      "meanReturnedTokens": 263,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "token(chunkSize=128,chunkOverlap=0)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 128,
+        "chunkOverlap": 0
+      },
+      "ranker": "bm25+rerank",
+      "topK": 5,
+      "nChunks": 75,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7143,
+      "meanReturnedTokens": 413,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "token(chunkSize=128,chunkOverlap=0)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 128,
+        "chunkOverlap": 0
+      },
+      "ranker": "vector+rerank",
+      "topK": 1,
+      "nChunks": 75,
+      "allPresentRate": 0.4762,
+      "allPresentCount": 10,
+      "anyPresentRate": 0.5238,
+      "meanReturnedTokens": 85,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "token(chunkSize=128,chunkOverlap=0)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 128,
+        "chunkOverlap": 0
+      },
+      "ranker": "vector+rerank",
+      "topK": 3,
+      "nChunks": 75,
+      "allPresentRate": 0.5238,
+      "allPresentCount": 11,
+      "anyPresentRate": 0.619,
+      "meanReturnedTokens": 263,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "token(chunkSize=128,chunkOverlap=0)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 128,
+        "chunkOverlap": 0
+      },
+      "ranker": "vector+rerank",
+      "topK": 5,
+      "nChunks": 75,
+      "allPresentRate": 0.5714,
+      "allPresentCount": 12,
+      "anyPresentRate": 0.6667,
+      "meanReturnedTokens": 418,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "token(chunkSize=128,chunkOverlap=32)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 128,
+        "chunkOverlap": 32
+      },
+      "ranker": "bm25",
+      "topK": 1,
+      "nChunks": 92,
+      "allPresentRate": 0.4762,
+      "allPresentCount": 10,
+      "anyPresentRate": 0.5238,
+      "meanReturnedTokens": 85,
+      "oracleAllPresentRate": 0.4762,
+      "oracleMeanReturnedTokens": 86
+    },
+    {
+      "chunker": "token(chunkSize=128,chunkOverlap=32)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 128,
+        "chunkOverlap": 32
+      },
+      "ranker": "bm25",
+      "topK": 3,
+      "nChunks": 92,
+      "allPresentRate": 0.6667,
+      "allPresentCount": 14,
+      "anyPresentRate": 0.7619,
+      "meanReturnedTokens": 254,
+      "oracleAllPresentRate": 0.7619,
+      "oracleMeanReturnedTokens": 189
+    },
+    {
+      "chunker": "token(chunkSize=128,chunkOverlap=32)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 128,
+        "chunkOverlap": 32
+      },
+      "ranker": "bm25",
+      "topK": 5,
+      "nChunks": 92,
+      "allPresentRate": 0.7143,
+      "allPresentCount": 15,
+      "anyPresentRate": 0.8095,
+      "meanReturnedTokens": 428,
+      "oracleAllPresentRate": 0.7619,
+      "oracleMeanReturnedTokens": 225
+    },
+    {
+      "chunker": "token(chunkSize=128,chunkOverlap=32)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 128,
+        "chunkOverlap": 32
+      },
+      "ranker": "vector",
+      "topK": 1,
+      "nChunks": 92,
+      "allPresentRate": 0.3333,
+      "allPresentCount": 7,
+      "anyPresentRate": 0.381,
+      "meanReturnedTokens": 82,
+      "oracleAllPresentRate": 0.4286,
+      "oracleMeanReturnedTokens": 84
+    },
+    {
+      "chunker": "token(chunkSize=128,chunkOverlap=32)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 128,
+        "chunkOverlap": 32
+      },
+      "ranker": "vector",
+      "topK": 3,
+      "nChunks": 92,
+      "allPresentRate": 0.4762,
+      "allPresentCount": 10,
+      "anyPresentRate": 0.619,
+      "meanReturnedTokens": 246,
+      "oracleAllPresentRate": 0.7143,
+      "oracleMeanReturnedTokens": 224
+    },
+    {
+      "chunker": "token(chunkSize=128,chunkOverlap=32)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 128,
+        "chunkOverlap": 32
+      },
+      "ranker": "vector",
+      "topK": 5,
+      "nChunks": 92,
+      "allPresentRate": 0.5714,
+      "allPresentCount": 12,
+      "anyPresentRate": 0.7143,
+      "meanReturnedTokens": 410,
+      "oracleAllPresentRate": 0.7619,
+      "oracleMeanReturnedTokens": 321
+    },
+    {
+      "chunker": "token(chunkSize=128,chunkOverlap=32)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 128,
+        "chunkOverlap": 32
+      },
+      "ranker": "bm25+rerank",
+      "topK": 1,
+      "nChunks": 92,
+      "allPresentRate": 0.4286,
+      "allPresentCount": 9,
+      "anyPresentRate": 0.4762,
+      "meanReturnedTokens": 86,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "token(chunkSize=128,chunkOverlap=32)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 128,
+        "chunkOverlap": 32
+      },
+      "ranker": "bm25+rerank",
+      "topK": 3,
+      "nChunks": 92,
+      "allPresentRate": 0.5238,
+      "allPresentCount": 11,
+      "anyPresentRate": 0.619,
+      "meanReturnedTokens": 263,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "token(chunkSize=128,chunkOverlap=32)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 128,
+        "chunkOverlap": 32
+      },
+      "ranker": "bm25+rerank",
+      "topK": 5,
+      "nChunks": 92,
+      "allPresentRate": 0.6667,
+      "allPresentCount": 14,
+      "anyPresentRate": 0.7619,
+      "meanReturnedTokens": 421,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "token(chunkSize=128,chunkOverlap=32)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 128,
+        "chunkOverlap": 32
+      },
+      "ranker": "vector+rerank",
+      "topK": 1,
+      "nChunks": 92,
+      "allPresentRate": 0.4286,
+      "allPresentCount": 9,
+      "anyPresentRate": 0.4762,
+      "meanReturnedTokens": 86,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "token(chunkSize=128,chunkOverlap=32)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 128,
+        "chunkOverlap": 32
+      },
+      "ranker": "vector+rerank",
+      "topK": 3,
+      "nChunks": 92,
+      "allPresentRate": 0.5238,
+      "allPresentCount": 11,
+      "anyPresentRate": 0.619,
+      "meanReturnedTokens": 267,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "token(chunkSize=128,chunkOverlap=32)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 128,
+        "chunkOverlap": 32
+      },
+      "ranker": "vector+rerank",
+      "topK": 5,
+      "nChunks": 92,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7143,
+      "meanReturnedTokens": 418,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "token(chunkSize=256,chunkOverlap=0)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 0
+      },
+      "ranker": "bm25",
+      "topK": 1,
+      "nChunks": 43,
+      "allPresentRate": 0.5714,
+      "allPresentCount": 12,
+      "anyPresentRate": 0.7143,
+      "meanReturnedTokens": 140,
+      "oracleAllPresentRate": 0.5714,
+      "oracleMeanReturnedTokens": 140
+    },
+    {
+      "chunker": "token(chunkSize=256,chunkOverlap=0)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 0
+      },
+      "ranker": "bm25",
+      "topK": 3,
+      "nChunks": 43,
+      "allPresentRate": 0.7143,
+      "allPresentCount": 15,
+      "anyPresentRate": 0.8571,
+      "meanReturnedTokens": 431,
+      "oracleAllPresentRate": 0.8095,
+      "oracleMeanReturnedTokens": 222
+    },
+    {
+      "chunker": "token(chunkSize=256,chunkOverlap=0)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 0
+      },
+      "ranker": "bm25",
+      "topK": 5,
+      "nChunks": 43,
+      "allPresentRate": 0.7143,
+      "allPresentCount": 15,
+      "anyPresentRate": 0.8571,
+      "meanReturnedTokens": 719,
+      "oracleAllPresentRate": 0.8095,
+      "oracleMeanReturnedTokens": 222
+    },
+    {
+      "chunker": "token(chunkSize=256,chunkOverlap=0)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 0
+      },
+      "ranker": "vector",
+      "topK": 1,
+      "nChunks": 43,
+      "allPresentRate": 0.4762,
+      "allPresentCount": 10,
+      "anyPresentRate": 0.619,
+      "meanReturnedTokens": 167,
+      "oracleAllPresentRate": 0.5714,
+      "oracleMeanReturnedTokens": 143
+    },
+    {
+      "chunker": "token(chunkSize=256,chunkOverlap=0)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 0
+      },
+      "ranker": "vector",
+      "topK": 3,
+      "nChunks": 43,
+      "allPresentRate": 0.6667,
+      "allPresentCount": 14,
+      "anyPresentRate": 0.7619,
+      "meanReturnedTokens": 404,
+      "oracleAllPresentRate": 1,
+      "oracleMeanReturnedTokens": 287
+    },
+    {
+      "chunker": "token(chunkSize=256,chunkOverlap=0)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 0
+      },
+      "ranker": "vector",
+      "topK": 5,
+      "nChunks": 43,
+      "allPresentRate": 0.7143,
+      "allPresentCount": 15,
+      "anyPresentRate": 0.8095,
+      "meanReturnedTokens": 665,
+      "oracleAllPresentRate": 1,
+      "oracleMeanReturnedTokens": 319
+    },
+    {
+      "chunker": "token(chunkSize=256,chunkOverlap=0)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 0
+      },
+      "ranker": "bm25+rerank",
+      "topK": 1,
+      "nChunks": 43,
+      "allPresentRate": 0.5714,
+      "allPresentCount": 12,
+      "anyPresentRate": 0.7143,
+      "meanReturnedTokens": 138,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "token(chunkSize=256,chunkOverlap=0)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 0
+      },
+      "ranker": "bm25+rerank",
+      "topK": 3,
+      "nChunks": 43,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7619,
+      "meanReturnedTokens": 442,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "token(chunkSize=256,chunkOverlap=0)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 0
+      },
+      "ranker": "bm25+rerank",
+      "topK": 5,
+      "nChunks": 43,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7619,
+      "meanReturnedTokens": 725,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "token(chunkSize=256,chunkOverlap=0)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 0
+      },
+      "ranker": "vector+rerank",
+      "topK": 1,
+      "nChunks": 43,
+      "allPresentRate": 0.5714,
+      "allPresentCount": 12,
+      "anyPresentRate": 0.7143,
+      "meanReturnedTokens": 144,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "token(chunkSize=256,chunkOverlap=0)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 0
+      },
+      "ranker": "vector+rerank",
+      "topK": 3,
+      "nChunks": 43,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7619,
+      "meanReturnedTokens": 445,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "token(chunkSize=256,chunkOverlap=0)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 0
+      },
+      "ranker": "vector+rerank",
+      "topK": 5,
+      "nChunks": 43,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7619,
+      "meanReturnedTokens": 708,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "token(chunkSize=256,chunkOverlap=32)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 32
+      },
+      "ranker": "bm25",
+      "topK": 1,
+      "nChunks": 46,
+      "allPresentRate": 0.5238,
+      "allPresentCount": 11,
+      "anyPresentRate": 0.6667,
+      "meanReturnedTokens": 135,
+      "oracleAllPresentRate": 0.5238,
+      "oracleMeanReturnedTokens": 136
+    },
+    {
+      "chunker": "token(chunkSize=256,chunkOverlap=32)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 32
+      },
+      "ranker": "bm25",
+      "topK": 3,
+      "nChunks": 46,
+      "allPresentRate": 0.7143,
+      "allPresentCount": 15,
+      "anyPresentRate": 0.8571,
+      "meanReturnedTokens": 435,
+      "oracleAllPresentRate": 0.7619,
+      "oracleMeanReturnedTokens": 236
+    },
+    {
+      "chunker": "token(chunkSize=256,chunkOverlap=32)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 32
+      },
+      "ranker": "bm25",
+      "topK": 5,
+      "nChunks": 46,
+      "allPresentRate": 0.7143,
+      "allPresentCount": 15,
+      "anyPresentRate": 0.8571,
+      "meanReturnedTokens": 710,
+      "oracleAllPresentRate": 0.8095,
+      "oracleMeanReturnedTokens": 244
+    },
+    {
+      "chunker": "token(chunkSize=256,chunkOverlap=32)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 32
+      },
+      "ranker": "vector",
+      "topK": 1,
+      "nChunks": 46,
+      "allPresentRate": 0.4762,
+      "allPresentCount": 10,
+      "anyPresentRate": 0.5714,
+      "meanReturnedTokens": 158,
+      "oracleAllPresentRate": 0.5714,
+      "oracleMeanReturnedTokens": 138
+    },
+    {
+      "chunker": "token(chunkSize=256,chunkOverlap=32)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 32
+      },
+      "ranker": "vector",
+      "topK": 3,
+      "nChunks": 46,
+      "allPresentRate": 0.6667,
+      "allPresentCount": 14,
+      "anyPresentRate": 0.8095,
+      "meanReturnedTokens": 407,
+      "oracleAllPresentRate": 0.9048,
+      "oracleMeanReturnedTokens": 298
+    },
+    {
+      "chunker": "token(chunkSize=256,chunkOverlap=32)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 32
+      },
+      "ranker": "vector",
+      "topK": 5,
+      "nChunks": 46,
+      "allPresentRate": 0.6667,
+      "allPresentCount": 14,
+      "anyPresentRate": 0.8095,
+      "meanReturnedTokens": 667,
+      "oracleAllPresentRate": 1,
+      "oracleMeanReturnedTokens": 346
+    },
+    {
+      "chunker": "token(chunkSize=256,chunkOverlap=32)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 32
+      },
+      "ranker": "bm25+rerank",
+      "topK": 1,
+      "nChunks": 46,
+      "allPresentRate": 0.5238,
+      "allPresentCount": 11,
+      "anyPresentRate": 0.619,
+      "meanReturnedTokens": 132,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "token(chunkSize=256,chunkOverlap=32)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 32
+      },
+      "ranker": "bm25+rerank",
+      "topK": 3,
+      "nChunks": 46,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7619,
+      "meanReturnedTokens": 431,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "token(chunkSize=256,chunkOverlap=32)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 32
+      },
+      "ranker": "bm25+rerank",
+      "topK": 5,
+      "nChunks": 46,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7619,
+      "meanReturnedTokens": 714,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "token(chunkSize=256,chunkOverlap=32)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 32
+      },
+      "ranker": "vector+rerank",
+      "topK": 1,
+      "nChunks": 46,
+      "allPresentRate": 0.5238,
+      "allPresentCount": 11,
+      "anyPresentRate": 0.619,
+      "meanReturnedTokens": 139,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "token(chunkSize=256,chunkOverlap=32)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 32
+      },
+      "ranker": "vector+rerank",
+      "topK": 3,
+      "nChunks": 46,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7619,
+      "meanReturnedTokens": 436,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "token(chunkSize=256,chunkOverlap=32)",
+      "chunkerKind": "token",
+      "params": {
+        "chunkSize": 256,
+        "chunkOverlap": 32
+      },
+      "ranker": "vector+rerank",
+      "topK": 5,
+      "nChunks": 46,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7619,
+      "meanReturnedTokens": 681,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "semantic(percentileP=90)",
+      "chunkerKind": "semantic",
+      "params": {
+        "percentileP": 90
+      },
+      "ranker": "bm25",
+      "topK": 1,
+      "nChunks": 56,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7143,
+      "meanReturnedTokens": 132,
+      "oracleAllPresentRate": 0.619,
+      "oracleMeanReturnedTokens": 132
+    },
+    {
+      "chunker": "semantic(percentileP=90)",
+      "chunkerKind": "semantic",
+      "params": {
+        "percentileP": 90
+      },
+      "ranker": "bm25",
+      "topK": 3,
+      "nChunks": 56,
+      "allPresentRate": 0.7143,
+      "allPresentCount": 15,
+      "anyPresentRate": 0.8095,
+      "meanReturnedTokens": 398,
+      "oracleAllPresentRate": 0.8095,
+      "oracleMeanReturnedTokens": 216
+    },
+    {
+      "chunker": "semantic(percentileP=90)",
+      "chunkerKind": "semantic",
+      "params": {
+        "percentileP": 90
+      },
+      "ranker": "bm25",
+      "topK": 5,
+      "nChunks": 56,
+      "allPresentRate": 0.7143,
+      "allPresentCount": 15,
+      "anyPresentRate": 0.8095,
+      "meanReturnedTokens": 669,
+      "oracleAllPresentRate": 0.8095,
+      "oracleMeanReturnedTokens": 216
+    },
+    {
+      "chunker": "semantic(percentileP=90)",
+      "chunkerKind": "semantic",
+      "params": {
+        "percentileP": 90
+      },
+      "ranker": "vector",
+      "topK": 1,
+      "nChunks": 56,
+      "allPresentRate": 0.4762,
+      "allPresentCount": 10,
+      "anyPresentRate": 0.5714,
+      "meanReturnedTokens": 108,
+      "oracleAllPresentRate": 0.619,
+      "oracleMeanReturnedTokens": 125
+    },
+    {
+      "chunker": "semantic(percentileP=90)",
+      "chunkerKind": "semantic",
+      "params": {
+        "percentileP": 90
+      },
+      "ranker": "vector",
+      "topK": 3,
+      "nChunks": 56,
+      "allPresentRate": 0.5714,
+      "allPresentCount": 12,
+      "anyPresentRate": 0.6667,
+      "meanReturnedTokens": 318,
+      "oracleAllPresentRate": 0.8571,
+      "oracleMeanReturnedTokens": 262
+    },
+    {
+      "chunker": "semantic(percentileP=90)",
+      "chunkerKind": "semantic",
+      "params": {
+        "percentileP": 90
+      },
+      "ranker": "vector",
+      "topK": 5,
+      "nChunks": 56,
+      "allPresentRate": 0.6667,
+      "allPresentCount": 14,
+      "anyPresentRate": 0.7143,
+      "meanReturnedTokens": 515,
+      "oracleAllPresentRate": 0.9048,
+      "oracleMeanReturnedTokens": 296
+    },
+    {
+      "chunker": "semantic(percentileP=90)",
+      "chunkerKind": "semantic",
+      "params": {
+        "percentileP": 90
+      },
+      "ranker": "bm25+rerank",
+      "topK": 1,
+      "nChunks": 56,
+      "allPresentRate": 0.5238,
+      "allPresentCount": 11,
+      "anyPresentRate": 0.619,
+      "meanReturnedTokens": 115,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "semantic(percentileP=90)",
+      "chunkerKind": "semantic",
+      "params": {
+        "percentileP": 90
+      },
+      "ranker": "bm25+rerank",
+      "topK": 3,
+      "nChunks": 56,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7143,
+      "meanReturnedTokens": 394,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "semantic(percentileP=90)",
+      "chunkerKind": "semantic",
+      "params": {
+        "percentileP": 90
+      },
+      "ranker": "bm25+rerank",
+      "topK": 5,
+      "nChunks": 56,
+      "allPresentRate": 0.7619,
+      "allPresentCount": 16,
+      "anyPresentRate": 0.8095,
+      "meanReturnedTokens": 618,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "semantic(percentileP=90)",
+      "chunkerKind": "semantic",
+      "params": {
+        "percentileP": 90
+      },
+      "ranker": "vector+rerank",
+      "topK": 1,
+      "nChunks": 56,
+      "allPresentRate": 0.5238,
+      "allPresentCount": 11,
+      "anyPresentRate": 0.619,
+      "meanReturnedTokens": 116,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "semantic(percentileP=90)",
+      "chunkerKind": "semantic",
+      "params": {
+        "percentileP": 90
+      },
+      "ranker": "vector+rerank",
+      "topK": 3,
+      "nChunks": 56,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7143,
+      "meanReturnedTokens": 370,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "semantic(percentileP=90)",
+      "chunkerKind": "semantic",
+      "params": {
+        "percentileP": 90
+      },
+      "ranker": "vector+rerank",
+      "topK": 5,
+      "nChunks": 56,
+      "allPresentRate": 0.7143,
+      "allPresentCount": 15,
+      "anyPresentRate": 0.8095,
+      "meanReturnedTokens": 607,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "semantic(percentileP=95)",
+      "chunkerKind": "semantic",
+      "params": {
+        "percentileP": 95
+      },
+      "ranker": "bm25",
+      "topK": 1,
+      "nChunks": 35,
+      "allPresentRate": 0.6667,
+      "allPresentCount": 14,
+      "anyPresentRate": 0.7619,
+      "meanReturnedTokens": 167,
+      "oracleAllPresentRate": 0.6667,
+      "oracleMeanReturnedTokens": 167
+    },
+    {
+      "chunker": "semantic(percentileP=95)",
+      "chunkerKind": "semantic",
+      "params": {
+        "percentileP": 95
+      },
+      "ranker": "bm25",
+      "topK": 3,
+      "nChunks": 35,
+      "allPresentRate": 0.7143,
+      "allPresentCount": 15,
+      "anyPresentRate": 0.8095,
+      "meanReturnedTokens": 569,
+      "oracleAllPresentRate": 0.8095,
+      "oracleMeanReturnedTokens": 233
+    },
+    {
+      "chunker": "semantic(percentileP=95)",
+      "chunkerKind": "semantic",
+      "params": {
+        "percentileP": 95
+      },
+      "ranker": "bm25",
+      "topK": 5,
+      "nChunks": 35,
+      "allPresentRate": 0.7143,
+      "allPresentCount": 15,
+      "anyPresentRate": 0.8095,
+      "meanReturnedTokens": 964,
+      "oracleAllPresentRate": 0.8095,
+      "oracleMeanReturnedTokens": 233
+    },
+    {
+      "chunker": "semantic(percentileP=95)",
+      "chunkerKind": "semantic",
+      "params": {
+        "percentileP": 95
+      },
+      "ranker": "vector",
+      "topK": 1,
+      "nChunks": 35,
+      "allPresentRate": 0.4762,
+      "allPresentCount": 10,
+      "anyPresentRate": 0.5714,
+      "meanReturnedTokens": 144,
+      "oracleAllPresentRate": 0.6667,
+      "oracleMeanReturnedTokens": 167
+    },
+    {
+      "chunker": "semantic(percentileP=95)",
+      "chunkerKind": "semantic",
+      "params": {
+        "percentileP": 95
+      },
+      "ranker": "vector",
+      "topK": 3,
+      "nChunks": 35,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7143,
+      "meanReturnedTokens": 428,
+      "oracleAllPresentRate": 0.9524,
+      "oracleMeanReturnedTokens": 291
+    },
+    {
+      "chunker": "semantic(percentileP=95)",
+      "chunkerKind": "semantic",
+      "params": {
+        "percentileP": 95
+      },
+      "ranker": "vector",
+      "topK": 5,
+      "nChunks": 35,
+      "allPresentRate": 0.7619,
+      "allPresentCount": 16,
+      "anyPresentRate": 0.8095,
+      "meanReturnedTokens": 669,
+      "oracleAllPresentRate": 1,
+      "oracleMeanReturnedTokens": 310
+    },
+    {
+      "chunker": "semantic(percentileP=95)",
+      "chunkerKind": "semantic",
+      "params": {
+        "percentileP": 95
+      },
+      "ranker": "bm25+rerank",
+      "topK": 1,
+      "nChunks": 35,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7143,
+      "meanReturnedTokens": 154,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "semantic(percentileP=95)",
+      "chunkerKind": "semantic",
+      "params": {
+        "percentileP": 95
+      },
+      "ranker": "bm25+rerank",
+      "topK": 3,
+      "nChunks": 35,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7143,
+      "meanReturnedTokens": 554,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "semantic(percentileP=95)",
+      "chunkerKind": "semantic",
+      "params": {
+        "percentileP": 95
+      },
+      "ranker": "bm25+rerank",
+      "topK": 5,
+      "nChunks": 35,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7143,
+      "meanReturnedTokens": 893,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "semantic(percentileP=95)",
+      "chunkerKind": "semantic",
+      "params": {
+        "percentileP": 95
+      },
+      "ranker": "vector+rerank",
+      "topK": 1,
+      "nChunks": 35,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7143,
+      "meanReturnedTokens": 169,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "semantic(percentileP=95)",
+      "chunkerKind": "semantic",
+      "params": {
+        "percentileP": 95
+      },
+      "ranker": "vector+rerank",
+      "topK": 3,
+      "nChunks": 35,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7143,
+      "meanReturnedTokens": 532,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "semantic(percentileP=95)",
+      "chunkerKind": "semantic",
+      "params": {
+        "percentileP": 95
+      },
+      "ranker": "vector+rerank",
+      "topK": 5,
+      "nChunks": 35,
+      "allPresentRate": 0.6667,
+      "allPresentCount": 14,
+      "anyPresentRate": 0.7619,
+      "meanReturnedTokens": 908,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "sentence-window(window=1)",
+      "chunkerKind": "sentence-window",
+      "params": {
+        "window": 1
+      },
+      "ranker": "bm25",
+      "topK": 1,
+      "nChunks": 456,
+      "allPresentRate": 0.4286,
+      "allPresentCount": 9,
+      "anyPresentRate": 0.4762,
+      "meanReturnedTokens": 60,
+      "oracleAllPresentRate": 0.4286,
+      "oracleMeanReturnedTokens": 59
+    },
+    {
+      "chunker": "sentence-window(window=1)",
+      "chunkerKind": "sentence-window",
+      "params": {
+        "window": 1
+      },
+      "ranker": "bm25",
+      "topK": 3,
+      "nChunks": 456,
+      "allPresentRate": 0.6667,
+      "allPresentCount": 14,
+      "anyPresentRate": 0.7619,
+      "meanReturnedTokens": 173,
+      "oracleAllPresentRate": 0.6667,
+      "oracleMeanReturnedTokens": 136
+    },
+    {
+      "chunker": "sentence-window(window=1)",
+      "chunkerKind": "sentence-window",
+      "params": {
+        "window": 1
+      },
+      "ranker": "bm25",
+      "topK": 5,
+      "nChunks": 456,
+      "allPresentRate": 0.6667,
+      "allPresentCount": 14,
+      "anyPresentRate": 0.7619,
+      "meanReturnedTokens": 265,
+      "oracleAllPresentRate": 0.8095,
+      "oracleMeanReturnedTokens": 190
+    },
+    {
+      "chunker": "sentence-window(window=1)",
+      "chunkerKind": "sentence-window",
+      "params": {
+        "window": 1
+      },
+      "ranker": "vector",
+      "topK": 1,
+      "nChunks": 456,
+      "allPresentRate": 0.3333,
+      "allPresentCount": 7,
+      "anyPresentRate": 0.3333,
+      "meanReturnedTokens": 62,
+      "oracleAllPresentRate": 0.4286,
+      "oracleMeanReturnedTokens": 65
+    },
+    {
+      "chunker": "sentence-window(window=1)",
+      "chunkerKind": "sentence-window",
+      "params": {
+        "window": 1
+      },
+      "ranker": "vector",
+      "topK": 3,
+      "nChunks": 456,
+      "allPresentRate": 0.5714,
+      "allPresentCount": 12,
+      "anyPresentRate": 0.5714,
+      "meanReturnedTokens": 149,
+      "oracleAllPresentRate": 0.6667,
+      "oracleMeanReturnedTokens": 160
+    },
+    {
+      "chunker": "sentence-window(window=1)",
+      "chunkerKind": "sentence-window",
+      "params": {
+        "window": 1
+      },
+      "ranker": "vector",
+      "topK": 5,
+      "nChunks": 456,
+      "allPresentRate": 0.5714,
+      "allPresentCount": 12,
+      "anyPresentRate": 0.5714,
+      "meanReturnedTokens": 242,
+      "oracleAllPresentRate": 0.8095,
+      "oracleMeanReturnedTokens": 235
+    },
+    {
+      "chunker": "sentence-window(window=1)",
+      "chunkerKind": "sentence-window",
+      "params": {
+        "window": 1
+      },
+      "ranker": "bm25+rerank",
+      "topK": 1,
+      "nChunks": 456,
+      "allPresentRate": 0.4762,
+      "allPresentCount": 10,
+      "anyPresentRate": 0.5238,
+      "meanReturnedTokens": 64,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "sentence-window(window=1)",
+      "chunkerKind": "sentence-window",
+      "params": {
+        "window": 1
+      },
+      "ranker": "bm25+rerank",
+      "topK": 3,
+      "nChunks": 456,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7143,
+      "meanReturnedTokens": 159,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "sentence-window(window=1)",
+      "chunkerKind": "sentence-window",
+      "params": {
+        "window": 1
+      },
+      "ranker": "bm25+rerank",
+      "topK": 5,
+      "nChunks": 456,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7143,
+      "meanReturnedTokens": 265,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "sentence-window(window=1)",
+      "chunkerKind": "sentence-window",
+      "params": {
+        "window": 1
+      },
+      "ranker": "vector+rerank",
+      "topK": 1,
+      "nChunks": 456,
+      "allPresentRate": 0.4286,
+      "allPresentCount": 9,
+      "anyPresentRate": 0.4762,
+      "meanReturnedTokens": 54,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "sentence-window(window=1)",
+      "chunkerKind": "sentence-window",
+      "params": {
+        "window": 1
+      },
+      "ranker": "vector+rerank",
+      "topK": 3,
+      "nChunks": 456,
+      "allPresentRate": 0.4762,
+      "allPresentCount": 10,
+      "anyPresentRate": 0.5238,
+      "meanReturnedTokens": 128,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "sentence-window(window=1)",
+      "chunkerKind": "sentence-window",
+      "params": {
+        "window": 1
+      },
+      "ranker": "vector+rerank",
+      "topK": 5,
+      "nChunks": 456,
+      "allPresentRate": 0.5238,
+      "allPresentCount": 11,
+      "anyPresentRate": 0.619,
+      "meanReturnedTokens": 206,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "sentence-window(window=2)",
+      "chunkerKind": "sentence-window",
+      "params": {
+        "window": 2
+      },
+      "ranker": "bm25",
+      "topK": 1,
+      "nChunks": 456,
+      "allPresentRate": 0.5238,
+      "allPresentCount": 11,
+      "anyPresentRate": 0.5714,
+      "meanReturnedTokens": 77,
+      "oracleAllPresentRate": 0.5238,
+      "oracleMeanReturnedTokens": 76
+    },
+    {
+      "chunker": "sentence-window(window=2)",
+      "chunkerKind": "sentence-window",
+      "params": {
+        "window": 2
+      },
+      "ranker": "bm25",
+      "topK": 3,
+      "nChunks": 456,
+      "allPresentRate": 0.6667,
+      "allPresentCount": 14,
+      "anyPresentRate": 0.7619,
+      "meanReturnedTokens": 235,
+      "oracleAllPresentRate": 0.6667,
+      "oracleMeanReturnedTokens": 188
+    },
+    {
+      "chunker": "sentence-window(window=2)",
+      "chunkerKind": "sentence-window",
+      "params": {
+        "window": 2
+      },
+      "ranker": "bm25",
+      "topK": 5,
+      "nChunks": 456,
+      "allPresentRate": 0.6667,
+      "allPresentCount": 14,
+      "anyPresentRate": 0.7619,
+      "meanReturnedTokens": 371,
+      "oracleAllPresentRate": 0.8095,
+      "oracleMeanReturnedTokens": 272
+    },
+    {
+      "chunker": "sentence-window(window=2)",
+      "chunkerKind": "sentence-window",
+      "params": {
+        "window": 2
+      },
+      "ranker": "vector",
+      "topK": 1,
+      "nChunks": 456,
+      "allPresentRate": 0.4762,
+      "allPresentCount": 10,
+      "anyPresentRate": 0.4762,
+      "meanReturnedTokens": 78,
+      "oracleAllPresentRate": 0.5714,
+      "oracleMeanReturnedTokens": 81
+    },
+    {
+      "chunker": "sentence-window(window=2)",
+      "chunkerKind": "sentence-window",
+      "params": {
+        "window": 2
+      },
+      "ranker": "vector",
+      "topK": 3,
+      "nChunks": 456,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.619,
+      "meanReturnedTokens": 205,
+      "oracleAllPresentRate": 0.7143,
+      "oracleMeanReturnedTokens": 226
+    },
+    {
+      "chunker": "sentence-window(window=2)",
+      "chunkerKind": "sentence-window",
+      "params": {
+        "window": 2
+      },
+      "ranker": "vector",
+      "topK": 5,
+      "nChunks": 456,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.619,
+      "meanReturnedTokens": 348,
+      "oracleAllPresentRate": 0.8095,
+      "oracleMeanReturnedTokens": 340
+    },
+    {
+      "chunker": "sentence-window(window=2)",
+      "chunkerKind": "sentence-window",
+      "params": {
+        "window": 2
+      },
+      "ranker": "bm25+rerank",
+      "topK": 1,
+      "nChunks": 456,
+      "allPresentRate": 0.5238,
+      "allPresentCount": 11,
+      "anyPresentRate": 0.5714,
+      "meanReturnedTokens": 83,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "sentence-window(window=2)",
+      "chunkerKind": "sentence-window",
+      "params": {
+        "window": 2
+      },
+      "ranker": "bm25+rerank",
+      "topK": 3,
+      "nChunks": 456,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7143,
+      "meanReturnedTokens": 223,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "sentence-window(window=2)",
+      "chunkerKind": "sentence-window",
+      "params": {
+        "window": 2
+      },
+      "ranker": "bm25+rerank",
+      "topK": 5,
+      "nChunks": 456,
+      "allPresentRate": 0.6667,
+      "allPresentCount": 14,
+      "anyPresentRate": 0.7619,
+      "meanReturnedTokens": 382,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "sentence-window(window=2)",
+      "chunkerKind": "sentence-window",
+      "params": {
+        "window": 2
+      },
+      "ranker": "vector+rerank",
+      "topK": 1,
+      "nChunks": 456,
+      "allPresentRate": 0.5238,
+      "allPresentCount": 11,
+      "anyPresentRate": 0.5714,
+      "meanReturnedTokens": 83,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "sentence-window(window=2)",
+      "chunkerKind": "sentence-window",
+      "params": {
+        "window": 2
+      },
+      "ranker": "vector+rerank",
+      "topK": 3,
+      "nChunks": 456,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.6667,
+      "meanReturnedTokens": 200,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    },
+    {
+      "chunker": "sentence-window(window=2)",
+      "chunkerKind": "sentence-window",
+      "params": {
+        "window": 2
+      },
+      "ranker": "vector+rerank",
+      "topK": 5,
+      "nChunks": 456,
+      "allPresentRate": 0.619,
+      "allPresentCount": 13,
+      "anyPresentRate": 0.7143,
+      "meanReturnedTokens": 317,
+      "oracleAllPresentRate": null,
+      "oracleMeanReturnedTokens": null
+    }
+  ]
+}

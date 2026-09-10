@@ -1,0 +1,2057 @@
+{
+  "runId": "excerpt-window-0a-2026-09-09",
+  "armId": "excerpt-window-sweep@v1",
+  "rung": "0a",
+  "hypothesis": "D-a — excerpt window/anchor loses the answer of a correctly ranked event",
+  "offline": true,
+  "model": null,
+  "judge": "literal-substring-match (answer_literals)",
+  "window_W": "N/A — offline excerpt sweep has no prompt window; excerptChars is the swept variable",
+  "commit": "d6a7f2cd424ac9c5a26cd4215f076f5a1f379757",
+  "fixtureCommit": "7d459f9^",
+  "date": "2026-09-09T17:54:52.773Z",
+  "falsification": {
+    "condition": "allPresentRate at shipped (excerptChars=1000, anchor=first) >= 0.90",
+    "shippedKey": "1000|first",
+    "shippedAllPresentRate": 0.9048,
+    "met": true,
+    "caveat": "text=wide_context is answer-windowed (<=~2.1KB), so this rate is an UPPER BOUND on production. A rate >=0.90 does NOT close item 1a; only a rate <0.90 is conclusive."
+  },
+  "corpus": {
+    "files": {
+      "questions.json": 12,
+      "questions-deep.json": 5,
+      "questions-overflow.json": 5
+    },
+    "rawRows": 22,
+    "dedupedRows": 21,
+    "queriesWithNonEmptyTerms": 21,
+    "queriesWithTermInText": 21,
+    "wideContextCharsMax": 2135,
+    "wideContextCharsMin": 215
+  },
+  "aggregate": {
+    "500|first": {
+      "allPresentRate": 0.5238,
+      "allPresentCount": 11,
+      "anyPresentRate": 0.6667,
+      "anyPresentCount": 14,
+      "meanExcerptChars": 451,
+      "meanEstTokens": 113
+    },
+    "500|rarest": {
+      "allPresentRate": 0.5714,
+      "allPresentCount": 12,
+      "anyPresentRate": 0.7143,
+      "anyPresentCount": 15,
+      "meanExcerptChars": 451,
+      "meanEstTokens": 113
+    },
+    "500|matched-line-span": {
+      "allPresentRate": 0.5238,
+      "allPresentCount": 11,
+      "anyPresentRate": 0.6667,
+      "anyPresentCount": 14,
+      "meanExcerptChars": 451,
+      "meanEstTokens": 113
+    },
+    "1000|first": {
+      "allPresentRate": 0.9048,
+      "allPresentCount": 19,
+      "anyPresentRate": 1,
+      "anyPresentCount": 21,
+      "meanExcerptChars": 783,
+      "meanEstTokens": 196
+    },
+    "1000|rarest": {
+      "allPresentRate": 0.9048,
+      "allPresentCount": 19,
+      "anyPresentRate": 1,
+      "anyPresentCount": 21,
+      "meanExcerptChars": 783,
+      "meanEstTokens": 196
+    },
+    "1000|matched-line-span": {
+      "allPresentRate": 0.9048,
+      "allPresentCount": 19,
+      "anyPresentRate": 1,
+      "anyPresentCount": 21,
+      "meanExcerptChars": 783,
+      "meanEstTokens": 196
+    },
+    "2000|first": {
+      "allPresentRate": 1,
+      "allPresentCount": 21,
+      "anyPresentRate": 1,
+      "anyPresentCount": 21,
+      "meanExcerptChars": 1059,
+      "meanEstTokens": 265
+    },
+    "2000|rarest": {
+      "allPresentRate": 1,
+      "allPresentCount": 21,
+      "anyPresentRate": 1,
+      "anyPresentCount": 21,
+      "meanExcerptChars": 1059,
+      "meanEstTokens": 265
+    },
+    "2000|matched-line-span": {
+      "allPresentRate": 1,
+      "allPresentCount": 21,
+      "anyPresentRate": 1,
+      "anyPresentCount": 21,
+      "meanExcerptChars": 1059,
+      "meanEstTokens": 265
+    },
+    "4000|first": {
+      "allPresentRate": 1,
+      "allPresentCount": 21,
+      "anyPresentRate": 1,
+      "anyPresentCount": 21,
+      "meanExcerptChars": 1069,
+      "meanEstTokens": 267
+    },
+    "4000|rarest": {
+      "allPresentRate": 1,
+      "allPresentCount": 21,
+      "anyPresentRate": 1,
+      "anyPresentCount": 21,
+      "meanExcerptChars": 1069,
+      "meanEstTokens": 267
+    },
+    "4000|matched-line-span": {
+      "allPresentRate": 1,
+      "allPresentCount": 21,
+      "anyPresentRate": 1,
+      "anyPresentCount": 21,
+      "meanExcerptChars": 1069,
+      "meanEstTokens": 267
+    }
+  },
+  "perQuery": [
+    {
+      "id": "s1-q01-head",
+      "file": "questions.json",
+      "kind": "path",
+      "stratum": "head",
+      "wideContextChars": 1396,
+      "literals": 1,
+      "termCount": 1,
+      "termSource": "fingerprint",
+      "termsInTextCount": 1,
+      "terms": [
+        "trace"
+      ],
+      "cells": {
+        "500|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 502,
+          "estTokens": 126
+        },
+        "500|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 502,
+          "estTokens": 126
+        },
+        "500|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 502,
+          "estTokens": 126
+        },
+        "1000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1002,
+          "estTokens": 251
+        },
+        "1000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1002,
+          "estTokens": 251
+        },
+        "1000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1002,
+          "estTokens": 251
+        },
+        "2000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1396,
+          "estTokens": 349
+        },
+        "2000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1396,
+          "estTokens": 349
+        },
+        "2000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1396,
+          "estTokens": 349
+        },
+        "4000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1396,
+          "estTokens": 349
+        },
+        "4000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1396,
+          "estTokens": 349
+        },
+        "4000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1396,
+          "estTokens": 349
+        }
+      }
+    },
+    {
+      "id": "s1-q02-head",
+      "file": "questions.json",
+      "kind": "quoted",
+      "stratum": "head",
+      "wideContextChars": 215,
+      "literals": 1,
+      "termCount": 1,
+      "termSource": "fingerprint",
+      "termsInTextCount": 1,
+      "terms": [
+        "packages/core/test/summarize.test.ts"
+      ],
+      "cells": {
+        "500|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 215,
+          "estTokens": 54
+        },
+        "500|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 215,
+          "estTokens": 54
+        },
+        "500|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 215,
+          "estTokens": 54
+        },
+        "1000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 215,
+          "estTokens": 54
+        },
+        "1000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 215,
+          "estTokens": 54
+        },
+        "1000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 215,
+          "estTokens": 54
+        },
+        "2000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 215,
+          "estTokens": 54
+        },
+        "2000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 215,
+          "estTokens": 54
+        },
+        "2000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 215,
+          "estTokens": 54
+        },
+        "4000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 215,
+          "estTokens": 54
+        },
+        "4000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 215,
+          "estTokens": 54
+        },
+        "4000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 215,
+          "estTokens": 54
+        }
+      }
+    },
+    {
+      "id": "s1-q03-head",
+      "file": "questions.json",
+      "kind": "quoted",
+      "stratum": "head",
+      "wideContextChars": 866,
+      "literals": 1,
+      "termCount": 8,
+      "termSource": "word-fallback",
+      "termsInTextCount": 4,
+      "terms": [
+        "name",
+        "contract",
+        "file",
+        "referenced",
+        "description",
+        "harness",
+        "agent",
+        "loop"
+      ],
+      "cells": {
+        "500|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 501,
+          "estTokens": 125
+        },
+        "500|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 501,
+          "estTokens": 125
+        },
+        "500|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 502,
+          "estTokens": 126
+        },
+        "1000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 866,
+          "estTokens": 217
+        },
+        "1000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 866,
+          "estTokens": 217
+        },
+        "1000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 866,
+          "estTokens": 217
+        },
+        "2000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 866,
+          "estTokens": 217
+        },
+        "2000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 866,
+          "estTokens": 217
+        },
+        "2000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 866,
+          "estTokens": 217
+        },
+        "4000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 866,
+          "estTokens": 217
+        },
+        "4000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 866,
+          "estTokens": 217
+        },
+        "4000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 866,
+          "estTokens": 217
+        }
+      }
+    },
+    {
+      "id": "s1-q04-tail",
+      "file": "questions.json",
+      "kind": "quoted",
+      "stratum": "tail",
+      "wideContextChars": 298,
+      "literals": 1,
+      "termCount": 1,
+      "termSource": "fingerprint",
+      "termsInTextCount": 1,
+      "terms": [
+        "tree-vs-transcript.html"
+      ],
+      "cells": {
+        "500|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 298,
+          "estTokens": 75
+        },
+        "500|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 298,
+          "estTokens": 75
+        },
+        "500|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 298,
+          "estTokens": 75
+        },
+        "1000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 298,
+          "estTokens": 75
+        },
+        "1000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 298,
+          "estTokens": 75
+        },
+        "1000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 298,
+          "estTokens": 75
+        },
+        "2000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 298,
+          "estTokens": 75
+        },
+        "2000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 298,
+          "estTokens": 75
+        },
+        "2000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 298,
+          "estTokens": 75
+        },
+        "4000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 298,
+          "estTokens": 75
+        },
+        "4000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 298,
+          "estTokens": 75
+        },
+        "4000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 298,
+          "estTokens": 75
+        }
+      }
+    },
+    {
+      "id": "s1-q05-tail",
+      "file": "questions.json",
+      "kind": "quoted",
+      "stratum": "tail",
+      "wideContextChars": 1521,
+      "literals": 1,
+      "termCount": 8,
+      "termSource": "word-fallback",
+      "termsInTextCount": 5,
+      "terms": [
+        "team",
+        "discussing",
+        "token-level",
+        "selection",
+        "viable",
+        "cache-free",
+        "point",
+        "identified"
+      ],
+      "cells": {
+        "500|first": {
+          "allPresent": false,
+          "anyPresent": false,
+          "excerptChars": 501,
+          "estTokens": 125
+        },
+        "500|rarest": {
+          "allPresent": false,
+          "anyPresent": false,
+          "excerptChars": 502,
+          "estTokens": 126
+        },
+        "500|matched-line-span": {
+          "allPresent": false,
+          "anyPresent": false,
+          "excerptChars": 502,
+          "estTokens": 126
+        },
+        "1000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1001,
+          "estTokens": 250
+        },
+        "1000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1002,
+          "estTokens": 251
+        },
+        "1000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1002,
+          "estTokens": 251
+        },
+        "2000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1521,
+          "estTokens": 380
+        },
+        "2000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1521,
+          "estTokens": 380
+        },
+        "2000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1521,
+          "estTokens": 380
+        },
+        "4000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1521,
+          "estTokens": 380
+        },
+        "4000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1521,
+          "estTokens": 380
+        },
+        "4000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1521,
+          "estTokens": 380
+        }
+      }
+    },
+    {
+      "id": "s1-q06-tail",
+      "file": "questions.json",
+      "kind": "quoted",
+      "stratum": "tail",
+      "wideContextChars": 1569,
+      "literals": 1,
+      "termCount": 3,
+      "termSource": "fingerprint",
+      "termsInTextCount": 3,
+      "terms": [
+        "zoneC()",
+        "C:map:${active.id}",
+        "zoneC"
+      ],
+      "cells": {
+        "500|first": {
+          "allPresent": false,
+          "anyPresent": false,
+          "excerptChars": 502,
+          "estTokens": 126
+        },
+        "500|rarest": {
+          "allPresent": false,
+          "anyPresent": false,
+          "excerptChars": 502,
+          "estTokens": 126
+        },
+        "500|matched-line-span": {
+          "allPresent": false,
+          "anyPresent": false,
+          "excerptChars": 502,
+          "estTokens": 126
+        },
+        "1000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1002,
+          "estTokens": 251
+        },
+        "1000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1002,
+          "estTokens": 251
+        },
+        "1000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1002,
+          "estTokens": 251
+        },
+        "2000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1569,
+          "estTokens": 392
+        },
+        "2000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1569,
+          "estTokens": 392
+        },
+        "2000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1569,
+          "estTokens": 392
+        },
+        "4000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1569,
+          "estTokens": 392
+        },
+        "4000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1569,
+          "estTokens": 392
+        },
+        "4000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1569,
+          "estTokens": 392
+        }
+      }
+    },
+    {
+      "id": "s1-q07-deep",
+      "file": "questions.json",
+      "kind": "quoted",
+      "stratum": "deep",
+      "wideContextChars": 1530,
+      "literals": 1,
+      "termCount": 2,
+      "termSource": "fingerprint",
+      "termsInTextCount": 2,
+      "terms": [
+        "numparse",
+        "from wordwrap import wrap_text"
+      ],
+      "cells": {
+        "500|first": {
+          "allPresent": false,
+          "anyPresent": false,
+          "excerptChars": 501,
+          "estTokens": 125
+        },
+        "500|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 502,
+          "estTokens": 126
+        },
+        "500|matched-line-span": {
+          "allPresent": false,
+          "anyPresent": false,
+          "excerptChars": 502,
+          "estTokens": 126
+        },
+        "1000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1001,
+          "estTokens": 250
+        },
+        "1000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1002,
+          "estTokens": 251
+        },
+        "1000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1001,
+          "estTokens": 250
+        },
+        "2000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1530,
+          "estTokens": 383
+        },
+        "2000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1530,
+          "estTokens": 383
+        },
+        "2000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1530,
+          "estTokens": 383
+        },
+        "4000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1530,
+          "estTokens": 383
+        },
+        "4000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1530,
+          "estTokens": 383
+        },
+        "4000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1530,
+          "estTokens": 383
+        }
+      }
+    },
+    {
+      "id": "s1-q08-deep",
+      "file": "questions.json",
+      "kind": "ident",
+      "stratum": "deep",
+      "wideContextChars": 1510,
+      "literals": 1,
+      "termCount": 4,
+      "termSource": "fingerprint",
+      "termsInTextCount": 4,
+      "terms": [
+        "'ghost'",
+        "summary.meta.symbols",
+        "a path inside the branch",
+        "ghost"
+      ],
+      "cells": {
+        "500|first": {
+          "allPresent": false,
+          "anyPresent": false,
+          "excerptChars": 501,
+          "estTokens": 125
+        },
+        "500|rarest": {
+          "allPresent": false,
+          "anyPresent": false,
+          "excerptChars": 501,
+          "estTokens": 125
+        },
+        "500|matched-line-span": {
+          "allPresent": false,
+          "anyPresent": false,
+          "excerptChars": 502,
+          "estTokens": 126
+        },
+        "1000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1001,
+          "estTokens": 250
+        },
+        "1000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1001,
+          "estTokens": 250
+        },
+        "1000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1001,
+          "estTokens": 250
+        },
+        "2000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1510,
+          "estTokens": 378
+        },
+        "2000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1510,
+          "estTokens": 378
+        },
+        "2000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1510,
+          "estTokens": 378
+        },
+        "4000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1510,
+          "estTokens": 378
+        },
+        "4000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1510,
+          "estTokens": 378
+        },
+        "4000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1510,
+          "estTokens": 378
+        }
+      }
+    },
+    {
+      "id": "s1-q09-deep",
+      "file": "questions.json",
+      "kind": "ident",
+      "stratum": "deep",
+      "wideContextChars": 1097,
+      "literals": 1,
+      "termCount": 5,
+      "termSource": "fingerprint",
+      "termsInTextCount": 5,
+      "terms": [
+        "DEFAULT_TOOL_PHASE",
+        "§11 configuration",
+        "PhaseType",
+        "'./contracts/tree.js'",
+        "./contracts/tree.js"
+      ],
+      "cells": {
+        "500|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 501,
+          "estTokens": 125
+        },
+        "500|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 502,
+          "estTokens": 126
+        },
+        "500|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 502,
+          "estTokens": 126
+        },
+        "1000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1001,
+          "estTokens": 250
+        },
+        "1000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1001,
+          "estTokens": 250
+        },
+        "1000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1001,
+          "estTokens": 250
+        },
+        "2000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1097,
+          "estTokens": 274
+        },
+        "2000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1097,
+          "estTokens": 274
+        },
+        "2000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1097,
+          "estTokens": 274
+        },
+        "4000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1097,
+          "estTokens": 274
+        },
+        "4000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1097,
+          "estTokens": 274
+        },
+        "4000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1097,
+          "estTokens": 274
+        }
+      }
+    },
+    {
+      "id": "s1-q10-spanning",
+      "file": "questions.json",
+      "kind": "path",
+      "stratum": "spanning",
+      "wideContextChars": 2135,
+      "literals": 2,
+      "termCount": 2,
+      "termSource": "fingerprint",
+      "termsInTextCount": 1,
+      "terms": [
+        "s, what is the path of the file in the replyBody that contains the invented symbol ",
+        "replyBody"
+      ],
+      "cells": {
+        "500|first": {
+          "allPresent": false,
+          "anyPresent": true,
+          "excerptChars": 502,
+          "estTokens": 126
+        },
+        "500|rarest": {
+          "allPresent": false,
+          "anyPresent": true,
+          "excerptChars": 502,
+          "estTokens": 126
+        },
+        "500|matched-line-span": {
+          "allPresent": false,
+          "anyPresent": true,
+          "excerptChars": 502,
+          "estTokens": 126
+        },
+        "1000|first": {
+          "allPresent": false,
+          "anyPresent": true,
+          "excerptChars": 1002,
+          "estTokens": 251
+        },
+        "1000|rarest": {
+          "allPresent": false,
+          "anyPresent": true,
+          "excerptChars": 1002,
+          "estTokens": 251
+        },
+        "1000|matched-line-span": {
+          "allPresent": false,
+          "anyPresent": true,
+          "excerptChars": 1002,
+          "estTokens": 251
+        },
+        "2000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 2001,
+          "estTokens": 500
+        },
+        "2000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 2001,
+          "estTokens": 500
+        },
+        "2000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 2002,
+          "estTokens": 501
+        },
+        "4000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 2135,
+          "estTokens": 534
+        },
+        "4000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 2135,
+          "estTokens": 534
+        },
+        "4000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 2135,
+          "estTokens": 534
+        }
+      }
+    },
+    {
+      "id": "s1-q11-spanning",
+      "file": "questions.json",
+      "kind": "path",
+      "stratum": "spanning",
+      "wideContextChars": 1212,
+      "literals": 2,
+      "termCount": 9,
+      "termSource": "word-fallback",
+      "termsInTextCount": 6,
+      "terms": [
+        "value",
+        "turn",
+        "output",
+        "command",
+        "checked",
+        "whether",
+        "core",
+        "resolves",
+        "dist"
+      ],
+      "cells": {
+        "500|first": {
+          "allPresent": false,
+          "anyPresent": true,
+          "excerptChars": 501,
+          "estTokens": 125
+        },
+        "500|rarest": {
+          "allPresent": false,
+          "anyPresent": true,
+          "excerptChars": 501,
+          "estTokens": 125
+        },
+        "500|matched-line-span": {
+          "allPresent": false,
+          "anyPresent": true,
+          "excerptChars": 501,
+          "estTokens": 125
+        },
+        "1000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1001,
+          "estTokens": 250
+        },
+        "1000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1001,
+          "estTokens": 250
+        },
+        "1000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1001,
+          "estTokens": 250
+        },
+        "2000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1212,
+          "estTokens": 303
+        },
+        "2000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1212,
+          "estTokens": 303
+        },
+        "2000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1212,
+          "estTokens": 303
+        },
+        "4000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1212,
+          "estTokens": 303
+        },
+        "4000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1212,
+          "estTokens": 303
+        },
+        "4000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1212,
+          "estTokens": 303
+        }
+      }
+    },
+    {
+      "id": "s1-q12-spanning",
+      "file": "questions.json",
+      "kind": "number",
+      "stratum": "spanning",
+      "wideContextChars": 2075,
+      "literals": 2,
+      "termCount": 1,
+      "termSource": "fingerprint",
+      "termsInTextCount": 1,
+      "terms": [
+        "tool_result for seq 690"
+      ],
+      "cells": {
+        "500|first": {
+          "allPresent": false,
+          "anyPresent": true,
+          "excerptChars": 501,
+          "estTokens": 125
+        },
+        "500|rarest": {
+          "allPresent": false,
+          "anyPresent": true,
+          "excerptChars": 501,
+          "estTokens": 125
+        },
+        "500|matched-line-span": {
+          "allPresent": false,
+          "anyPresent": true,
+          "excerptChars": 501,
+          "estTokens": 125
+        },
+        "1000|first": {
+          "allPresent": false,
+          "anyPresent": true,
+          "excerptChars": 1001,
+          "estTokens": 250
+        },
+        "1000|rarest": {
+          "allPresent": false,
+          "anyPresent": true,
+          "excerptChars": 1001,
+          "estTokens": 250
+        },
+        "1000|matched-line-span": {
+          "allPresent": false,
+          "anyPresent": true,
+          "excerptChars": 1001,
+          "estTokens": 250
+        },
+        "2000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 2001,
+          "estTokens": 500
+        },
+        "2000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 2001,
+          "estTokens": 500
+        },
+        "2000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 2001,
+          "estTokens": 500
+        },
+        "4000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 2075,
+          "estTokens": 519
+        },
+        "4000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 2075,
+          "estTokens": 519
+        },
+        "4000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 2075,
+          "estTokens": 519
+        }
+      }
+    },
+    {
+      "id": "s1-qo01-overflow",
+      "file": "questions-deep.json",
+      "kind": "ident",
+      "stratum": "overflow",
+      "wideContextChars": 1369,
+      "literals": 1,
+      "termCount": 6,
+      "termSource": "fingerprint",
+      "termsInTextCount": 5,
+      "terms": [
+        "ProviderCacheSimulator",
+        "ExactTokenizer('bytes-v0', ...)",
+        "bytes",
+        "'bytes-v0'",
+        "bytes-v0",
+        "ExactTokenizer"
+      ],
+      "cells": {
+        "500|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 502,
+          "estTokens": 126
+        },
+        "500|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 502,
+          "estTokens": 126
+        },
+        "500|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 502,
+          "estTokens": 126
+        },
+        "1000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1001,
+          "estTokens": 250
+        },
+        "1000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1001,
+          "estTokens": 250
+        },
+        "1000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1002,
+          "estTokens": 251
+        },
+        "2000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1369,
+          "estTokens": 342
+        },
+        "2000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1369,
+          "estTokens": 342
+        },
+        "2000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1369,
+          "estTokens": 342
+        },
+        "4000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1369,
+          "estTokens": 342
+        },
+        "4000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1369,
+          "estTokens": 342
+        },
+        "4000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1369,
+          "estTokens": 342
+        }
+      }
+    },
+    {
+      "id": "s1-qo02-overflow",
+      "file": "questions-deep.json",
+      "kind": "ident",
+      "stratum": "overflow",
+      "wideContextChars": 1509,
+      "literals": 1,
+      "termCount": 2,
+      "termSource": "fingerprint",
+      "termsInTextCount": 2,
+      "terms": [
+        "armArgs",
+        "deadlineMs"
+      ],
+      "cells": {
+        "500|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 502,
+          "estTokens": 126
+        },
+        "500|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 502,
+          "estTokens": 126
+        },
+        "500|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 502,
+          "estTokens": 126
+        },
+        "1000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1002,
+          "estTokens": 251
+        },
+        "1000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1002,
+          "estTokens": 251
+        },
+        "1000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1002,
+          "estTokens": 251
+        },
+        "2000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1509,
+          "estTokens": 377
+        },
+        "2000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1509,
+          "estTokens": 377
+        },
+        "2000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1509,
+          "estTokens": 377
+        },
+        "4000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1509,
+          "estTokens": 377
+        },
+        "4000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1509,
+          "estTokens": 377
+        },
+        "4000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1509,
+          "estTokens": 377
+        }
+      }
+    },
+    {
+      "id": "s1-qo03-overflow",
+      "file": "questions-deep.json",
+      "kind": "quoted",
+      "stratum": "overflow",
+      "wideContextChars": 596,
+      "literals": 1,
+      "termCount": 3,
+      "termSource": "fingerprint",
+      "termsInTextCount": 3,
+      "terms": [
+        "all-runs.json",
+        "iter5",
+        "iter6"
+      ],
+      "cells": {
+        "500|first": {
+          "allPresent": false,
+          "anyPresent": false,
+          "excerptChars": 501,
+          "estTokens": 125
+        },
+        "500|rarest": {
+          "allPresent": false,
+          "anyPresent": false,
+          "excerptChars": 501,
+          "estTokens": 125
+        },
+        "500|matched-line-span": {
+          "allPresent": false,
+          "anyPresent": false,
+          "excerptChars": 502,
+          "estTokens": 126
+        },
+        "1000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 596,
+          "estTokens": 149
+        },
+        "1000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 596,
+          "estTokens": 149
+        },
+        "1000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 596,
+          "estTokens": 149
+        },
+        "2000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 596,
+          "estTokens": 149
+        },
+        "2000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 596,
+          "estTokens": 149
+        },
+        "2000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 596,
+          "estTokens": 149
+        },
+        "4000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 596,
+          "estTokens": 149
+        },
+        "4000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 596,
+          "estTokens": 149
+        },
+        "4000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 596,
+          "estTokens": 149
+        }
+      }
+    },
+    {
+      "id": "s1-qo04-overflow",
+      "file": "questions-deep.json",
+      "kind": "quoted",
+      "stratum": "overflow",
+      "wideContextChars": 796,
+      "literals": 1,
+      "termCount": 3,
+      "termSource": "fingerprint",
+      "termsInTextCount": 3,
+      "terms": [
+        "sw-1-jsonc.jsonl.bak",
+        "agents-last-exam.jsonl",
+        "JSONL"
+      ],
+      "cells": {
+        "500|first": {
+          "allPresent": false,
+          "anyPresent": false,
+          "excerptChars": 501,
+          "estTokens": 125
+        },
+        "500|rarest": {
+          "allPresent": false,
+          "anyPresent": false,
+          "excerptChars": 501,
+          "estTokens": 125
+        },
+        "500|matched-line-span": {
+          "allPresent": false,
+          "anyPresent": false,
+          "excerptChars": 502,
+          "estTokens": 126
+        },
+        "1000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 796,
+          "estTokens": 199
+        },
+        "1000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 796,
+          "estTokens": 199
+        },
+        "1000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 796,
+          "estTokens": 199
+        },
+        "2000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 796,
+          "estTokens": 199
+        },
+        "2000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 796,
+          "estTokens": 199
+        },
+        "2000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 796,
+          "estTokens": 199
+        },
+        "4000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 796,
+          "estTokens": 199
+        },
+        "4000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 796,
+          "estTokens": 199
+        },
+        "4000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 796,
+          "estTokens": 199
+        }
+      }
+    },
+    {
+      "id": "s1-qo05-overflow",
+      "file": "questions-deep.json",
+      "kind": "quoted",
+      "stratum": "overflow",
+      "wideContextChars": 235,
+      "literals": 1,
+      "termCount": 10,
+      "termSource": "word-fallback",
+      "termsInTextCount": 8,
+      "terms": [
+        "description",
+        "bash",
+        "command",
+        "pnpm",
+        "build",
+        "vitest",
+        "test",
+        "specific",
+        "test",
+        "files"
+      ],
+      "cells": {
+        "500|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 235,
+          "estTokens": 59
+        },
+        "500|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 235,
+          "estTokens": 59
+        },
+        "500|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 235,
+          "estTokens": 59
+        },
+        "1000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 235,
+          "estTokens": 59
+        },
+        "1000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 235,
+          "estTokens": 59
+        },
+        "1000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 235,
+          "estTokens": 59
+        },
+        "2000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 235,
+          "estTokens": 59
+        },
+        "2000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 235,
+          "estTokens": 59
+        },
+        "2000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 235,
+          "estTokens": 59
+        },
+        "4000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 235,
+          "estTokens": 59
+        },
+        "4000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 235,
+          "estTokens": 59
+        },
+        "4000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 235,
+          "estTokens": 59
+        }
+      }
+    },
+    {
+      "id": "s1-qo02-overflow",
+      "file": "questions-overflow.json",
+      "kind": "quoted",
+      "stratum": "overflow",
+      "wideContextChars": 708,
+      "literals": 1,
+      "termCount": 10,
+      "termSource": "fingerprint",
+      "termsInTextCount": 10,
+      "terms": [
+        "description",
+        "node -e",
+        "suite-rep1",
+        "suite-rep2",
+        "suite-rep3",
+        "results.json",
+        "eval/results/suite-final/",
+        "suite spend",
+        "eval/results/suite-final",
+        "JSON"
+      ],
+      "cells": {
+        "500|first": {
+          "allPresent": false,
+          "anyPresent": false,
+          "excerptChars": 501,
+          "estTokens": 125
+        },
+        "500|rarest": {
+          "allPresent": false,
+          "anyPresent": false,
+          "excerptChars": 501,
+          "estTokens": 125
+        },
+        "500|matched-line-span": {
+          "allPresent": false,
+          "anyPresent": false,
+          "excerptChars": 502,
+          "estTokens": 126
+        },
+        "1000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 708,
+          "estTokens": 177
+        },
+        "1000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 708,
+          "estTokens": 177
+        },
+        "1000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 708,
+          "estTokens": 177
+        },
+        "2000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 708,
+          "estTokens": 177
+        },
+        "2000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 708,
+          "estTokens": 177
+        },
+        "2000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 708,
+          "estTokens": 177
+        },
+        "4000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 708,
+          "estTokens": 177
+        },
+        "4000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 708,
+          "estTokens": 177
+        },
+        "4000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 708,
+          "estTokens": 177
+        }
+      }
+    },
+    {
+      "id": "s1-qo03-overflow",
+      "file": "questions-overflow.json",
+      "kind": "path",
+      "stratum": "overflow",
+      "wideContextChars": 279,
+      "literals": 1,
+      "termCount": 2,
+      "termSource": "fingerprint",
+      "termsInTextCount": 2,
+      "terms": [
+        "seqRange(active)",
+        "seqRange"
+      ],
+      "cells": {
+        "500|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 279,
+          "estTokens": 70
+        },
+        "500|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 279,
+          "estTokens": 70
+        },
+        "500|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 279,
+          "estTokens": 70
+        },
+        "1000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 279,
+          "estTokens": 70
+        },
+        "1000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 279,
+          "estTokens": 70
+        },
+        "1000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 279,
+          "estTokens": 70
+        },
+        "2000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 279,
+          "estTokens": 70
+        },
+        "2000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 279,
+          "estTokens": 70
+        },
+        "2000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 279,
+          "estTokens": 70
+        },
+        "4000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 279,
+          "estTokens": 70
+        },
+        "4000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 279,
+          "estTokens": 70
+        },
+        "4000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 279,
+          "estTokens": 70
+        }
+      }
+    },
+    {
+      "id": "s1-qo04-overflow",
+      "file": "questions-overflow.json",
+      "kind": "path",
+      "stratum": "overflow",
+      "wideContextChars": 424,
+      "literals": 1,
+      "termCount": 14,
+      "termSource": "word-fallback",
+      "termsInTextCount": 5,
+      "terms": [
+        "tool",
+        "result",
+        "shows",
+        "budget",
+        "definitions",
+        "across",
+        "several",
+        "files",
+        "exact",
+        "file",
+        "path",
+        "budgets",
+        "type",
+        "declared"
+      ],
+      "cells": {
+        "500|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 424,
+          "estTokens": 106
+        },
+        "500|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 424,
+          "estTokens": 106
+        },
+        "500|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 424,
+          "estTokens": 106
+        },
+        "1000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 424,
+          "estTokens": 106
+        },
+        "1000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 424,
+          "estTokens": 106
+        },
+        "1000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 424,
+          "estTokens": 106
+        },
+        "2000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 424,
+          "estTokens": 106
+        },
+        "2000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 424,
+          "estTokens": 106
+        },
+        "2000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 424,
+          "estTokens": 106
+        },
+        "4000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 424,
+          "estTokens": 106
+        },
+        "4000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 424,
+          "estTokens": 106
+        },
+        "4000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 424,
+          "estTokens": 106
+        }
+      }
+    },
+    {
+      "id": "s1-qo06-overflow",
+      "file": "questions-overflow.json",
+      "kind": "ident",
+      "stratum": "overflow",
+      "wideContextChars": 1115,
+      "literals": 1,
+      "termCount": 2,
+      "termSource": "fingerprint",
+      "termsInTextCount": 2,
+      "terms": [
+        "JSON_FENCE",
+        "JSON"
+      ],
+      "cells": {
+        "500|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 501,
+          "estTokens": 125
+        },
+        "500|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 501,
+          "estTokens": 125
+        },
+        "500|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 502,
+          "estTokens": 126
+        },
+        "1000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1001,
+          "estTokens": 250
+        },
+        "1000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1001,
+          "estTokens": 250
+        },
+        "1000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1002,
+          "estTokens": 251
+        },
+        "2000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1115,
+          "estTokens": 279
+        },
+        "2000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1115,
+          "estTokens": 279
+        },
+        "2000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1115,
+          "estTokens": 279
+        },
+        "4000|first": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1115,
+          "estTokens": 279
+        },
+        "4000|rarest": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1115,
+          "estTokens": 279
+        },
+        "4000|matched-line-span": {
+          "allPresent": true,
+          "anyPresent": true,
+          "excerptChars": 1115,
+          "estTokens": 279
+        }
+      }
+    }
+  ]
+}
