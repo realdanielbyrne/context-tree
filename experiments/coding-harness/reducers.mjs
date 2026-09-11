@@ -37,4 +37,13 @@ export function reduceChunkRetrieve({ out, task }) {
   return `[middleware:chunk_retrieve — top spans for the task query, verbatim]\n${top.join('\n…\n')}`;
 }
 
-export const REDUCERS = { none: reduceNone, summarize: reduceSummarize, chunk_retrieve: reduceChunkRetrieve };
+// The ROUTER — the plugin's decision logic: pick the reducer per query. A detail-seeking task
+// (asks for a specific value/price/number/name) → chunk_retrieve (preserve the localized span);
+// otherwise → summarize (gist). Default toward chunk (err toward more context, per the operator).
+export function reduceRouter({ out, task }) {
+  if (out.length < OVERFLOW_CHARS) return out;
+  const detailSeeking = /\bprice|cost|value|number|rate|limit|count|exact|specific|how many|what is the\b|\d/i.test(task || '');
+  return detailSeeking ? reduceChunkRetrieve({ out, task }) : reduceSummarize({ out });
+}
+
+export const REDUCERS = { none: reduceNone, summarize: reduceSummarize, chunk_retrieve: reduceChunkRetrieve, router: reduceRouter };

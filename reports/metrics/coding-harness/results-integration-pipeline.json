@@ -1,0 +1,46 @@
+{
+  "manifest": {
+    "run_id": "integration-1789143325511",
+    "experiment": "coding-harness / integration (full middleware vs truncate-tail, hard window)",
+    "model": "unsloth/Qwen3.8-27B-GGUF",
+    "window_budget": 6800,
+    "task": "4-doc read + sum under a hard window, no grep",
+    "maxTurns": 40,
+    "correct_sum": 139,
+    "pieces": "router reducer (tool.execute.after) + priority eviction (chat.transform) + faithful tool loop",
+    "commit": "d34264439c49737a0014aaf88defa48ffff907c3",
+    "date": "2026-09-11T16:15:25.515Z",
+    "caveats": [
+      "n=1 per arm, temp 0. Weak 8.2K model. Exploratory integration — the goal is to find breaks.",
+      "read_file+write_file only (no grep) so the middleware is the only defense."
+    ]
+  },
+  "arms": [
+    {
+      "config": "truncate-tail",
+      "success": false,
+      "answer": "100",
+      "turns": 41,
+      "stop": "maxTurns",
+      "evictions": 11,
+      "peak_history_tokens": 6575,
+      "reads": 22,
+      "rereads": 18,
+      "total_prompt_tokens": 155098,
+      "error": null
+    },
+    {
+      "config": "full-pipeline",
+      "success": false,
+      "answer": "(none)",
+      "turns": 41,
+      "stop": "maxTurns",
+      "evictions": 20,
+      "peak_history_tokens": 6386,
+      "reads": 40,
+      "rereads": 36,
+      "total_prompt_tokens": 147678,
+      "error": null
+    }
+  ]
+}

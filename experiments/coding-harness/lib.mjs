@@ -148,7 +148,7 @@ export async function runAgent({ system, task, ws, maxTurns = 40, think = false,
   const readSeen = new Set(); let breakouts = 0;
   const tools = allowedTools ? TOOL_SCHEMAS.filter((t) => allowedTools.includes(t.function.name)) : TOOL_SCHEMAS;
   for (turns = 0; turns < maxTurns; turns++) {
-    if (hook) hook(messages, turns);
+    if (hook) await hook(messages, turns); // may be async (ensemble classifier needs embeddings)
     const j = await callModel(messages, { think, tools });
     const choice = j.choices?.[0]; const msg = choice?.message || {};
     usage.push({ turn: turns, prompt_tokens: j.usage?.prompt_tokens ?? null, completion_tokens: j.usage?.completion_tokens ?? null });
@@ -159,7 +159,7 @@ export async function runAgent({ system, task, ws, maxTurns = 40, think = false,
         let args = {}; try { args = JSON.parse(tc.function.arguments || '{}'); } catch {}
         let out = execTool(ws, tc.function.name, args);
         if (summarizeReads && tc.function.name === 'read_file' && !/^error/.test(out)) out = summarizePy(out);
-        if (reducer && !/^error/.test(out)) out = reducer({ name: tc.function.name, args, out, task }); // MIDDLEWARE seam
+        if (reducer && !/^error/.test(out)) out = await reducer({ name: tc.function.name, args, out, task }); // MIDDLEWARE seam (may be async: ensemble retriever)
         // BREAK-OUT: a re-read of an already-read file is the thrash signal — return the
         // content but nudge the agent to stop re-fetching evicted content and make progress.
         if (dethrash && tc.function.name === 'read_file' && args.path) {
