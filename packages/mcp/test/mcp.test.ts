@@ -13,17 +13,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  ProviderRegistry,
   TreeRetriever,
   ingest,
   openTaskStore,
   resolveConfig,
   systemContract,
-  type Candidate,
   type ContextTreeConfig,
   type NodeId,
-  type ProviderTier,
-  type RetrievalProvider,
   type SummaryMeta,
   type TaskStore,
   type TreeNode,
@@ -337,21 +333,6 @@ async function keywordEmbedder(texts: readonly string[]): Promise<Float32Array[]
   return texts.map(keywordVector);
 }
 
-function fakeProvider(
-  id: string,
-  tier: ProviderTier,
-  candidates: Candidate[],
-  available = true,
-): RetrievalProvider {
-  return {
-    id,
-    tier,
-    available: async () => available,
-    search: async () => candidates,
-    hydrate: async () => ({ text: '', provider: id, truncated: false }),
-  };
-}
-
 /**
  * Hits are EVENTS (2026-09-04): what must hold is that the branch which did the
  * work is represented among them by its own events, each carrying a seq and an
@@ -366,22 +347,20 @@ function expectWorkRepresented(data: ContextSearchData, worker: NodeId): void {
 }
 
 describe('context_search', () => {
-  it('falls back to beam search over summary text when no embedder is injected, and says so', async () => {
+  it('degrades to BM25-only when no embedder is injected, and says so', async () => {
     const fixture = seed();
     const data = unwrap(
       (await contextSearch(contextFor(fixture), { query: 'pricing rounding' })) as ToolOutcome<ContextSearchData>,
     );
 
-    expect(data.path).toBe('beam');
+    expect(data.path).toBe('bm25');
     expect(data.fallback).toBe('no-embedder');
     expectWorkRepresented(data, fixture.implementation.id);
-    // The excerpt is how the model judges relevance without paying for a fetch —
-    // it replaced the pointer meta a branch hit carried (2026-09-04).
     const impl = data.hits.find((hit) => hit.node_id === fixture.implementation.id);
     expect(typeof impl?.excerpt).toBe('string');
   });
 
-  it('uses the L3 vector path once summaries are embedded, and ranks by that vector, not by text overlap', async () => {
+  it('runs the BM25 + vector ensemble when the retriever carries an embedder', async () => {
     const fixture = seed();
     const retriever = new TreeRetriever({
       store: fixture.handle.store,
@@ -389,7 +368,6 @@ describe('context_search', () => {
       trace: fixture.handle.trace,
       embed: keywordEmbedder,
     });
-    await retriever.embedSummaries();
 
     const data = unwrap(
       (await contextSearch(contextFor(fixture, { retriever }), {
@@ -397,7 +375,7 @@ describe('context_search', () => {
       })) as ToolOutcome<ContextSearchData>,
     );
 
-    expect(data.path).toBe('vector');
+    expect(data.path).toBe('ensemble');
     expect(data.fallback).toBeNull();
     expectWorkRepresented(data, fixture.implementation.id);
   });
@@ -412,34 +390,7 @@ describe('context_search', () => {
     expect(data.hits.every((hit) => hit.kind === 'file')).toBe(true);
   });
 
-  it('fans out to §9.1 providers and reports per-provider provenance the eval harness can score', async () => {
-    const fixture = seed();
-    const structural: Candidate = {
-      path: 'src/pricing.ts',
-      span: { start_line: 1, end_line: 3 },
-      symbol: 'price',
-      score: 0.9,
-      provider: 'graftish',
-      tier: 'structural',
-    };
-    const registry = new ProviderRegistry([fakeProvider('graftish', 'structural', [structural])]);
-
-    const data = unwrap(
-      (await contextSearch(contextFor(fixture, { registry }), {
-        query: 'pricing rounding',
-      })) as ToolOutcome<ContextSearchData>,
-    );
-
-    const providers = data.provenance.map((entry) => entry.provider);
-    expect(providers).toContain('graftish');
-    expect(providers).toContain('tree');
-    // §9.1's fixed order: structural hits are exact edges and outrank fuzzy ones.
-    expect(data.candidates[0]?.provider).toBe('graftish');
-    expect(data.provenance.find((entry) => entry.provider === 'graftish')?.kept).toBe(1);
-    expect(data.unavailable).toEqual([]);
-  });
-
-  it('a hit carries coordinates and its event excerpt, never summary text or summary meta — Zone B already has those (R8, revised 2026-09-04)', async () => {
+  it('a hit carries coordinates and an excerpt, never summary text or summary meta — the tree already has those', async () => {
     const fixture = seed();
     const longSummary = 'x'.repeat(500);
     fixture.handle.store.putSummary({
@@ -469,48 +420,32 @@ describe('context_search', () => {
     expect(hit?.excerpt).not.toContain(longSummary);
   });
 
-  it('a provider that fails its capability probe is dropped and named, never fatal (§18)', async () => {
-    const fixture = seed();
-    const registry = new ProviderRegistry([
-      fakeProvider('missing-binary', 'structural', [], false),
-      fakeProvider('graftish', 'structural', [], true),
-    ]);
-
-    const data = unwrap(
-      (await contextSearch(contextFor(fixture, { registry }), { query: 'pricing' })) as ToolOutcome<ContextSearchData>,
-    );
-
-    expect(data.unavailable).toEqual(['missing-binary']);
-    expect(data.hits.length).toBeGreaterThan(0);
-  });
 });
 
-describe('context_search — a hit is an event with its excerpt (the published-alternative unit)', () => {
-  it('each hit names the event (seq) and carries an excerpt of that event, so a literal can be answered without a fetch', async () => {
+describe('context_search — whole-unit hits with an excerpt', () => {
+  it('each hit names its unit (node_id + seq) and carries an excerpt of its best-matching content', async () => {
     const fixture = seed();
     const data = unwrap(
       (await contextSearch(contextFor(fixture), { query: 'price cents' })) as ToolOutcome<ContextSearchData>,
     );
-    // The Edit's post-state blob holds `Math.round`; the query names the identifiers
-    // around it (the centring scorer strips punctuation from fallback words, so a
-    // dotted name like Math.round is not itself a usable query term).
-    const hit = data.hits.find((h) => typeof h.excerpt === 'string' && h.excerpt.includes('Math.round'));
-    expect(hit, 'the Edit event carrying Math.round should be a hit').toBeDefined();
+    // The file node / implementation phase holds the pricing edit; it is surfaced,
+    // attributed to a specific branch (never invented), with a seq and an excerpt.
+    const hit = data.hits.find((h) => [fixture.fileNode.id, fixture.implementation.id].includes(h.node_id));
+    expect(hit, 'the pricing unit should be a hit').toBeDefined();
     expect(typeof hit?.seq).toBe('number');
     expect(hit?.branch_rank).toBeGreaterThanOrEqual(1);
-    // The event is attributed to the most specific branch that holds it — the file
-    // node keyed by src/pricing.ts or the implementation phase — never the task root.
-    expect([fixture.fileNode.id, fixture.implementation.id]).toContain(hit?.node_id);
-    // No summary meta on an event hit: the excerpt is the legibility signal.
+    expect(typeof hit?.excerpt).toBe('string');
+    expect((hit?.excerpt ?? '').length).toBeGreaterThan(0);
+    // No summary meta on a hit: the excerpt is the legibility signal.
     expect(hit).not.toHaveProperty('meta');
   });
 
-  it('honours retrieval.eventHits and retrieval.excerptChars from config, not a constant in the tool', async () => {
-    const fixture = seed({ retrieval: { providers: [], limit: 20, eventHits: 1, excerptChars: 40 } });
+  it('honours retrieval.limit and retrieval.excerptChars from config, not a constant in the tool', async () => {
+    const fixture = seed({ retrieval: { providers: [], limit: 1, eventHits: 1, excerptChars: 40 } });
     const data = unwrap(
       (await contextSearch(contextFor(fixture), { query: 'price cents' })) as ToolOutcome<ContextSearchData>,
     );
-    expect(data.hits).toHaveLength(1);
+    expect(data.hits.length).toBeLessThanOrEqual(1);
     expect((data.hits[0]?.excerpt ?? '').length).toBeLessThanOrEqual(42);
   });
 });

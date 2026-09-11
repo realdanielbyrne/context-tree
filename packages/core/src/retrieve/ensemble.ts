@@ -34,16 +34,23 @@ export interface EnsembleOptions {
 export interface RetrievedUnit {
   unitId: string;
   score: number;
+  /** The unit's best-matching chunk text — a ready-to-show excerpt. */
+  excerpt: string;
 }
 
 /**
  * Retrieve the best whole units for `query`. Returns unit ids ranked by fused
- * score (best first). A unit's score is its best-ranked chunk's fused score.
+ * score (best first), each with the excerpt of its best-ranked chunk. A unit's
+ * score is its best-ranked chunk's fused score.
+ *
+ * `embed` is OPTIONAL: with an embedder this is the full BM25 + vector ensemble;
+ * without one it degrades to BM25-only (RRF over a single list = BM25 order), so
+ * it works offline / with no embedding key.
  */
 export async function ensembleRetrieve(
   query: string,
   units: readonly EnsembleUnit[],
-  embed: SummaryEmbedder,
+  embed?: SummaryEmbedder,
   options: EnsembleOptions = {},
 ): Promise<RetrievedUnit[]> {
   const { topK } = options;
@@ -55,32 +62,36 @@ export async function ensembleRetrieve(
 
   // BM25 (lexical) ranking over the chunks; chunk id = its global index.
   const bm25 = new BM25(chunks.map((c) => ({ id: String(c.index), text: c.text })));
-  const bm25Ranking = bm25.search(query).map((s) => s.id);
+  const rankings: string[][] = [bm25.search(query).map((s) => s.id)];
 
-  // Vector kNN (cosine) over the SAME chunks. Embed [query, ...chunks] in bounded,
-  // shape-validated batches (embedInBatches) so a large corpus never exceeds the
-  // provider's per-request limits and a malformed embedder fails loud.
-  const vectors = await embedInBatches(embed, [query, ...chunks.map((c) => c.text)]);
-  const qVec = vectors[0]!;
-  const vecRanking = chunks
-    .map((c, i) => ({ id: String(c.index), score: cosine(qVec, vectors[i + 1]!) }))
-    .sort((a, b) => b.score - a.score)
-    .map((s) => s.id);
+  // Vector kNN (cosine) over the SAME chunks, when an embedder is supplied. Embed
+  // [query, ...chunks] in bounded, shape-validated batches so a large corpus never
+  // exceeds the provider's per-request limits and a malformed embedder fails loud.
+  if (embed !== undefined) {
+    const vectors = await embedInBatches(embed, [query, ...chunks.map((c) => c.text)]);
+    const qVec = vectors[0]!;
+    rankings.push(
+      chunks
+        .map((c, i) => ({ id: String(c.index), score: cosine(qVec, vectors[i + 1]!) }))
+        .sort((a, b) => b.score - a.score)
+        .map((s) => s.id),
+    );
+  }
 
-  // Fuse the two chunk rankings; overlapping coverage fuses, single-coverage routes.
-  const fused = reciprocalRankFusion([bm25Ranking, vecRanking], options.rrfK);
+  // Fuse the chunk rankings; overlapping coverage fuses, single-coverage routes.
+  const fused = reciprocalRankFusion(rankings, options.rrfK);
 
-  // Collapse chunks → whole units: a unit's score is its best-ranked chunk (fused
-  // is sorted desc, so the first chunk seen for a unit is its best).
+  // Collapse chunks → whole units: a unit's score + excerpt come from its best-ranked
+  // chunk (fused is sorted desc, so the first chunk seen for a unit is its best).
   const byIndex = new Map(chunks.map((c) => [String(c.index), c]));
-  const unitBest = new Map<string, number>();
+  const unitBest = new Map<string, { score: number; excerpt: string }>();
   for (const { id, score } of fused) {
-    const unitId = byIndex.get(id)!.unitId;
-    if (!unitBest.has(unitId)) unitBest.set(unitId, score);
+    const chunk = byIndex.get(id)!;
+    if (!unitBest.has(chunk.unitId)) unitBest.set(chunk.unitId, { score, excerpt: chunk.text });
   }
 
   const ranked = [...unitBest.entries()]
-    .map(([unitId, score]) => ({ unitId, score }))
+    .map(([unitId, v]) => ({ unitId, score: v.score, excerpt: v.excerpt }))
     .sort((a, b) => b.score - a.score);
   return topK !== undefined ? ranked.slice(0, topK) : ranked;
 }

@@ -24,6 +24,7 @@ export {
 export {
   mapFlexUnits,
   buildFlexSource,
+  readNodeText,
   type FlexEntry,
   type MapFlexOptions,
   type FlexSourceDeps,

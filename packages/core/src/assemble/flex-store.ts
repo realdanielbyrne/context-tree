@@ -102,8 +102,8 @@ export interface FlexSource {
   corpus: EnsembleUnit[];
 }
 
-/** Read a phase node's raw text out of L0 — the same span read `ZoneAssembler` used. */
-function nodeRawText(node: TreeNode, trace: TraceLog, blobs: BlobStore): string {
+/** Read a node's raw text out of L0 — the same span read `ZoneAssembler` used. */
+export function readNodeText(node: TreeNode, trace: TraceLog, blobs: BlobStore): string {
   if (node.span_start_seq === null) return '';
   const from = node.span_start_seq;
   const recorded = node.span_end_seq ?? from;
@@ -147,7 +147,7 @@ export async function buildFlexSource(
     return {
       nodeId: node.id,
       order,
-      rawText: nodeRawText(node, trace, blobs),
+      rawText: readNodeText(node, trace, blobs),
       ...(summary !== null ? { summaryText: summary.text } : {}),
       wrote,
       lastReferencedTurn: order,

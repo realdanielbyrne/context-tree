@@ -126,6 +126,18 @@ describe('ensembleRetrieve', () => {
     expect(r).toHaveLength(1);
   });
 
+  it('returns an excerpt (the best-matching chunk text) with each unit', async () => {
+    const r = await ensembleRetrieve('retry on error', units, fakeEmbed, { topK: 1 });
+    expect(typeof r[0]!.excerpt).toBe('string');
+    expect(r[0]!.excerpt).toContain('retry');
+  });
+
+  it('degrades to BM25-only when no embedder is supplied', async () => {
+    const r = await ensembleRetrieve('retry on error', units); // no embedder
+    expect(r[0]!.unitId).toBe('u_retry');
+    expect(typeof r[0]!.excerpt).toBe('string');
+  });
+
   it('rejects a negative topK instead of returning almost everything', async () => {
     await expect(ensembleRetrieve('cache', units, fakeEmbed, { topK: -1 })).rejects.toThrow();
   });

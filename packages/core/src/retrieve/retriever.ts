@@ -131,6 +131,11 @@ export class TreeRetriever {
     this.observeFetch = deps.observeFetch;
   }
 
+  /** The injected embedder, if any — used by the RRF ensemble's vector arm at query time. */
+  get embedder(): SummaryEmbedder | undefined {
+    return this.embed;
+  }
+
   /**
    * Extract fingerprints (file paths, identifiers, symbols) from raw events
    * for all phase nodes. Computed once, cached for subsequent searches.
