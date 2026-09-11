@@ -1,0 +1,42 @@
+{
+  "manifest": {
+    "run_id": "strength-ranked-1789047532957",
+    "experiment": "online-segmentation / strength-ranked (topic-shift ranking vs tool-phase at coarse K)",
+    "arms": {
+      "topic": "topic-shift@v1 top-K by drift",
+      "tool": "tool-phase@v1 random-K (unranked)"
+    },
+    "model": "unsloth/Qwen3.8-27B-GGUF",
+    "oracle": "local model SAME/DIFFERENT, blind, tool-stripped, thinking off, temp 0",
+    "corpus": "claude-code-session-2.jsonl",
+    "turns": 739,
+    "K_list": [
+      8,
+      16,
+      32
+    ],
+    "tool_sample": 40,
+    "interior_sample": 24,
+    "seed": 1234,
+    "commit": "f0f9e80760ade26861d3ba370ce19e1463bf0aea",
+    "date": "2026-09-10T13:38:52.966Z",
+    "falsification": "ranking helps iff topic-shift P@16 >= tool-phase P + 0.10",
+    "caveats": [
+      "n small, directional; base rate of shifts is low (coherent session).",
+      "tool-phase precision is K-invariant (unranked) — a random sample estimates it.",
+      "Same single-27B thinking-off oracle as the D1 run."
+    ]
+  },
+  "topic_shift_precision_at_k": {
+    "P@8": 0.125,
+    "P@16": 0.1875,
+    "P@32": 0.1875
+  },
+  "tool_phase_precision": 0.05,
+  "base_rate_interior": 0,
+  "verdict": {
+    "ranking_helps": true,
+    "topic_best": 0.1875,
+    "tool": 0.05
+  }
+}

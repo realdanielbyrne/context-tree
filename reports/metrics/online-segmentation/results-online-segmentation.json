@@ -1,0 +1,72 @@
+{
+  "manifest": {
+    "run_id": "online-seg-1789047464002",
+    "experiment": "online-segmentation / D1 tool-phase vs topic-shift",
+    "arms": {
+      "tool": "tool-phase@v1",
+      "topic": "topic-shift@v1",
+      "random": "random@v1"
+    },
+    "model": "unsloth/Qwen3.8-27B-GGUF",
+    "oracle": "local model SAME/DIFFERENT, blind, tool-name-stripped, thinking off, temp 0",
+    "corpus": "packages/cli/test/fixtures/claude-code-session-2.jsonl",
+    "turns": 739,
+    "drift_window_W": 3,
+    "seed": 1234,
+    "cap": 80,
+    "commit": "f0f9e80760ade26861d3ba370ce19e1463bf0aea",
+    "date": "2026-09-10T13:37:44.012Z",
+    "confound_controls": [
+      "C1 matched boundary count",
+      "C2 blind pooled+shuffled positions",
+      "C3 tool names stripped from oracle input",
+      "C4 shared labeled sample",
+      "C5 random floor + base rate",
+      "C6 fixed oracle prompt/temp/thinking",
+      "C7 seeded RNG",
+      "C8 causal (online) drift"
+    ],
+    "falsification": {
+      "instrument_valid": "both real arms F1 > random floor + 0.05",
+      "d1_holds": "|toolF1 - topicF1| <= 0.10",
+      "d1_fails": "topicF1 - toolF1 > 0.10"
+    },
+    "caveats": [
+      "n≈labeled positions, directional.",
+      "Oracle is a single 27B model, thinking off — coarse binary judge; base rate + random floor gauge its informativeness.",
+      "topic-shift and the oracle are both content-based (correlated); tool-phase agreement is the load-bearing quantity.",
+      "Segmenter modeling choices (phase carry-forward, W, 50/50 lex/sem) are fixed, not swept."
+    ]
+  },
+  "n_positions": 288,
+  "base_rate_shift": 0.0278,
+  "arms": {
+    "tool-phase": {
+      "n_boundaries_total": 180,
+      "n_in_sample": 103,
+      "precision": 0.0583,
+      "recall": 0.75,
+      "f1": 0.1081
+    },
+    "topic-shift": {
+      "n_boundaries_total": 180,
+      "n_in_sample": 99,
+      "precision": 0.0707,
+      "recall": 0.875,
+      "f1": 0.1308
+    },
+    "random": {
+      "n_boundaries_total": 180,
+      "n_in_sample": 99,
+      "precision": 0.0303,
+      "recall": 0.375,
+      "f1": 0.0561
+    }
+  },
+  "random_floor_f1": 0.0561,
+  "verdict": {
+    "instrument_valid": true,
+    "d1_holds": true,
+    "d1_fails_content_better": false
+  }
+}
