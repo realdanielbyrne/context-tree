@@ -5,9 +5,19 @@
  */
 import type { NodeId } from './ids.js';
 
-export type Zone = 'A' | 'B' | 'C' | 'tail';
+/**
+ * Prompt regions, in prefix order. `head` / `flex` are the current (flex-buffer)
+ * model — a frozen head (system + steering + all user prompts) then a
+ * creation-order flex buffer of units; `tail` holds retrieved results appended
+ * after it. `A` / `B` / `C` are the SUPERSEDED Zone A/B/C model kept only until
+ * `ZoneAssembler` is removed (its layout was tested-and-lost on cache economics —
+ * see `reports/metrics/assembler-flex-buffer/report.md`). New code uses
+ * `head` / `flex` / `tail`. Ordering below satisfies both models (a prompt uses
+ * one vocabulary or the other, never both).
+ */
+export type Zone = 'head' | 'flex' | 'A' | 'B' | 'C' | 'tail';
 
-export const ZONES: readonly Zone[] = ['A', 'B', 'C', 'tail'] as const;
+export const ZONES: readonly Zone[] = ['head', 'flex', 'A', 'B', 'C', 'tail'] as const;
 
 export interface PromptBlock {
   zone: Zone;

@@ -10,6 +10,27 @@ export {
   type CompletionRequestOptions,
   type ZoneAssemblerDeps,
 } from './assembler.js';
+// Current (flex-buffer) assembler — replaces ZoneAssembler; see flex.ts provenance.
+export {
+  assembleFlex,
+  DEFAULT_SOFT_TARGET_FRAC,
+  DEFAULT_ANCHOR,
+  DEFAULT_PRIORITY_HALFLIFE,
+  type FlexUnit,
+  type FlexHead,
+  type FlexAssembleOptions,
+  type Representation,
+} from './flex.js';
+export {
+  scoreUnits,
+  planEviction,
+  minMaxNormalize,
+  DEFAULT_EVICTION_WEIGHTS,
+  type EvictionSignals,
+  type EvictionWeights,
+  type EvictionCandidate,
+  type EvictionPlan,
+} from './eviction.js';
 export {
   ZONE_FRACTIONS,
   deriveZoneBudgets,

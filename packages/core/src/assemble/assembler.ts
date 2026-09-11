@@ -1,4 +1,15 @@
 /**
+ * ⚠️ SUPERSEDED — pending removal. This is the Zone A/B/C assembler. Its layout
+ * was TESTED-AND-LOST on cache economics (flex-append-sticky is ~14% cheaper —
+ * `reports/metrics/assembler-flex-buffer/report.md`). The canonical assembler is
+ * now `assembleFlex` in `./flex.ts` (frozen head + creation-order flex buffer +
+ * D-EV eviction + drift dormancy). This class and the `Zone='A'|'B'|'C'` vocabulary
+ * remain ONLY until the swap completes; that swap is blocked on a flex store-adapter
+ * which is blocked on the retrieval/embedding rewrite (local MiniLM). Do not build
+ * new callers on this — see `reports/session-handoff.md` → reconciliation. `toMessages`
+ * / `toCompletionRequest` below are the only pieces still worth reusing (generalize
+ * them to the flex vocabulary during the swap).
+ *
  * §10 — cache-aware prompt assembly (D5).
  *
  * The layout is fixed and the content migrates through it:

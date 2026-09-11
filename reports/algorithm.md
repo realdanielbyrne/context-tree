@@ -82,10 +82,11 @@ last `K` units, default K=5):
 ```
 drift(u) = 0.5·(1 − Jaccard(fingerprints(u), fingerprints(recent))) + 0.5·(1 − cosine(emb(u), centroid(recent)))
 ```
-z-scored against the session's own running mean/std of drift (causal). **Dormancy is this drift**,
-min-max normalized to [0,1] across the current units. A unit is coarsely "dormant" when its z-drift
-exceeds a conservative threshold `τ` (default: running mean + 1 SD — err toward keeping), but eviction
-uses the continuous magnitude, not the boolean. Embeddings are a small local encoder (MiniLM-class),
+z-scored against the session's own running mean/std of drift (causal), so a unit's z-drift is measured
+in standard deviations above the session's mean drift. **Dormancy is this drift**, min-max normalized to
+[0,1] across the current units. A unit is coarsely "dormant" when its z-drift exceeds a conservative
+threshold `τ = 1` (one SD above the running mean — err toward keeping), but eviction uses the continuous
+magnitude, not the boolean. Embeddings are a small local encoder (MiniLM-class),
 one per unit, cached in L3.
 
 **2 — Assemble + eject.** The prompt is a **frozen cached head** (system + steering + all user prompts,
@@ -113,7 +114,10 @@ the head so the head caches.
   Relevance (the retriever's query-match) is weighted **0** here — it is an *admission* signal, not an
   eviction one (on non-monotonic history it drops exactly the unit that returns). Never drop the open
   topic, the recency anchor, or the pinned head.
-- **Reduce-on-overflow.** A **raw** unit too large for the per-unit budget is shrunk by a **query-aware
+- **Reduce-on-overflow.** A **raw** unit larger than the **per-unit budget** `b` — the floor's raw space
+  shared across the raw slots, `b = (f − reply reserve) ÷ (A + 1)` (the active phase plus the `A`
+  anchor units are the units kept raw, so no single raw unit may claim more than its share of the floor)
+  — is shrunk by a **query-aware
   router**, decided by a heuristic on the current task/query: seeks a localized value/detail (a name,
   number, specific fact) → `chunk+retrieve`; a gist/overview suffices → `summarize`; **default
   `chunk+retrieve`** (err toward preserving detail). `ref` when a pointer suffices and the content is
@@ -166,8 +170,9 @@ Derived from the host's limits, not guessed:
 | Soft target `f` | 25–50% of `W`, as a floor below which eviction does not fire |
 | Recency anchor `A` | 4 most-recent units, always raw / never evicted |
 | Recent window `K` (drift) | last 5 units |
-| Drift threshold `τ` (coarse "dormant") | running mean + 1 SD (conservative) |
+| Drift threshold `τ` (coarse "dormant") | z-drift > 1 — one SD above the session's running mean (conservative) |
 | Signal normalization | per-turn min-max across candidate units, before weighting |
+| Per-unit budget `b` | `(f − reply reserve) ÷ (A + 1)` — the floor's raw space shared across the active phase + the `A` anchor units; a raw unit over `b` triggers reduce-on-overflow |
 | Eviction weights | priority 2, recency 1, reference-recency 0.5, dormancy −1, relevance 0 — a *linear* mix |
 | Reduce-on-overflow | a unit is reduced once it exceeds its per-unit budget; router picks chunk (detail) vs summarize (gist), default chunk |
 | Embedding model | small local encoder, MiniLM-class (dim ~384) |
