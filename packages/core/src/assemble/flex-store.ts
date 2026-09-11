@@ -13,7 +13,7 @@
  * L0-span read `ZoneAssembler` used (so a unit's raw text is identical).
  */
 import type { BlobStore, NodeId, TraceLog, TreeNode, TreeStore } from '../contracts/index.js';
-import { renderEvent } from './format.js';
+import { renderEvent, renderSummaryBlock } from './format.js';
 import { extractFingerprints } from '../retrieve/lexical.js';
 import { embedInBatches } from '../models/embeddings.js';
 import type { SummaryEmbedder } from '../retrieve/types.js';
@@ -148,7 +148,9 @@ export async function buildFlexSource(
       nodeId: node.id,
       order,
       rawText: readNodeText(node, trace, blobs),
-      ...(summary !== null ? { summaryText: summary.text } : {}),
+      // Render the summary WITH its rehydration pointers (files+spans, symbols,
+      // tests, PR/ticket) — the spec's "summary must carry rehydration pointers".
+      ...(summary !== null ? { summaryText: renderSummaryBlock(node, summary, node.kind === 'task') } : {}),
       wrote,
       lastReferencedTurn: order,
     };

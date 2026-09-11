@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { HeuristicTokenizer } from '../src/tokens/index.js';
-import { assembleFlex, type FlexUnit } from '../src/assemble/index.js';
+import { assembleFlex, toMessages, toCompletionRequest, type FlexUnit } from '../src/assemble/index.js';
 import { assertPrefixStable } from '../src/cache/index.js';
 
 const tok = new HeuristicTokenizer();
@@ -97,14 +97,14 @@ describe('assembleFlex — eviction to the floor', () => {
     expect(kept).toContain('anchor'); // anchor survives despite dormancy=1
     expect(kept).toContain('wrote');
     expect(kept).not.toContain('dormant'); // the lowest-scoring unit is evicted
-    expect(p.budgets.droppedFromZoneB).toContain('dormant');
+    expect(p.budgets.evicted).toContain('dormant');
   });
 
   it('below the floor, keeps everything', () => {
     const units = [unit(0, { dormancy: 1 }), unit(1), unit(2)];
     const p = assembleFlex({ system: 'S', userPrompts: [] }, units, tok, bigWindow);
     expect(p.blocks.filter((b) => b.zone === 'flex')).toHaveLength(3);
-    expect(p.budgets.droppedFromZoneB).toEqual([]);
+    expect(p.budgets.evicted).toEqual([]);
   });
 });
 
@@ -166,5 +166,39 @@ describe('assembleFlex — stable-run cache invariant (through the secondary bre
     const before = assembleFlex(head, [unit(0), unit(1), unit(2), unit(3)], tok, { ...bigWindow, anchor: 1 });
     const after = assembleFlex(head, [unit(0), unit(1), unit(2), unit(3), unit(4)], tok, { ...bigWindow, anchor: 1 });
     assertStable(before, after);
+  });
+});
+
+describe('toMessages / toCompletionRequest — provider projection', () => {
+  const head = { system: 'SYS', steering: 'STEER', userPrompts: ['p0'] };
+  const p = assembleFlex(head, [unit(0), unit(1), unit(2), unit(3)], tok, { ...bigWindow, anchor: 1 });
+
+  it('the head ships as system, never as a message; flex + tail ship as user messages', () => {
+    expect(p.system).toContain('SYS');
+    const msgs = toMessages(p);
+    expect(msgs.every((m) => m.role === 'user')).toBe(true);
+    // No head content leaks into the messages.
+    expect(msgs.every((m) => !m.content.includes('SYS'))).toBe(true);
+    // The flex units are present.
+    expect(msgs.some((m) => m.content.includes('SUM0') || m.content.includes('RAW3'))).toBe(true);
+  });
+
+  it('splits the flex zone at its secondary breakpoint: a cached message then the rest', () => {
+    const msgs = toMessages(p);
+    // n0,n1,n2 summaries (stable) with a breakpoint after n2; n3 raw anchor after it.
+    const cached = msgs.find((m) => m.cacheBreakpoint === true);
+    expect(cached).toBeDefined();
+    expect(cached!.content).toContain('SUM2');
+    expect(cached!.content).not.toContain('RAW3'); // the volatile anchor is in the second message
+  });
+
+  it('toCompletionRequest carries the head breakpoint as systemCacheBreakpoint and passes knobs through', () => {
+    const req = toCompletionRequest(p, 'test-model', { maxTokens: 100, temperature: 0, json: true });
+    expect(req.model).toBe('test-model');
+    expect(req.system).toContain('STEER');
+    expect(req.systemCacheBreakpoint).toBe(true); // head ends at a breakpoint
+    expect(req.maxTokens).toBe(100);
+    expect(req.json).toBe(true);
+    expect(req.messages.length).toBeGreaterThan(0);
   });
 });

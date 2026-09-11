@@ -104,7 +104,6 @@ export interface ContextTreeConfig {
   neutralPhases: PhaseType[];
   fileTools: string[];
   languages: Record<string, string>;
-  budgets: { zoneB: number; zoneC: number };
   /** D17: max branch headlines the composed root renders; older members fold into one line. */
   rootKeep: number;
   summarize: { concurrency: number; maxSummaryTokens: number };
@@ -133,7 +132,6 @@ export const DEFAULT_CONFIG: ContextTreeConfig = {
   neutralPhases: ['other'],
   fileTools: [...DEFAULT_FILE_TOOLS],
   languages: { ...DEFAULT_LANGUAGES },
-  budgets: { zoneB: 8_000, zoneC: 30_000 },
   rootKeep: 40,
   summarize: { concurrency: 8, maxSummaryTokens: 1_024 },
   retrieval: { providers: ['graft', 'serena', 'augment', 'vector', 'grep'], limit: 20, eventHits: 5, excerptChars: 1_000 },
@@ -187,7 +185,6 @@ export function resolveConfig(
     ...partial,
     toolPhase: { ...DEFAULT_CONFIG.toolPhase, ...(partial.toolPhase ?? {}) },
     languages: { ...DEFAULT_CONFIG.languages, ...(partial.languages ?? {}) },
-    budgets: { ...DEFAULT_CONFIG.budgets, ...(partial.budgets ?? {}) },
     summarize: { ...DEFAULT_CONFIG.summarize, ...(partial.summarize ?? {}) },
     retrieval: { ...DEFAULT_CONFIG.retrieval, ...(partial.retrieval ?? {}) },
     neutralPhases: partial.neutralPhases ? [...partial.neutralPhases] : [...DEFAULT_CONFIG.neutralPhases],
@@ -210,9 +207,6 @@ export function resolveConfig(
 
   if (merged.summarize.concurrency <= 0) throw new ConfigError('summarize.concurrency must be > 0');
   if (merged.rootKeep <= 0) throw new ConfigError('rootKeep must be > 0');
-  if (merged.budgets.zoneB <= 0 || merged.budgets.zoneC <= 0) {
-    throw new ConfigError('budgets must be > 0');
-  }
 
   merged.root = isAbsolute(merged.root) ? merged.root : resolve(cwd, merged.root);
   return merged;

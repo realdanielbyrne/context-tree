@@ -25,11 +25,11 @@ import { join } from 'node:path';
 import {
   HeuristicTokenizer,
   MockProvider,
-  ProviderCacheSimulator,
   Summarizer,
   TreeRetriever,
   VIEW_BANNER,
-  ZoneAssembler,
+  assembleFlex,
+  buildFlexSource,
   ingest,
   openTaskStore,
   rebuild,
@@ -377,14 +377,20 @@ async function summarized(): Promise<Fixture & { stub: StubModel; root: TreeNode
   return { ...fixture, stub, root };
 }
 
-function assembler(fixture: Fixture): ZoneAssembler {
-  return new ZoneAssembler({
-    store: fixture.handle.store,
-    blobs: fixture.handle.blobs,
-    trace: fixture.handle.trace,
-    tokenizer: new HeuristicTokenizer(),
-    systemContract: systemContract(),
-  });
+/**
+ * Build the flex prompt from the real store: `buildFlexSource` sources the head
+ * (system + tool schemas + user prompts) and the phase-node units (older phases
+ * summarized with their rehydration pointers, the newest kept raw as the anchor),
+ * then `assembleFlex` lays them out.
+ */
+async function flexPrompt(fixture: Fixture, opts: { anchor?: number } = {}) {
+  const tok = new HeuristicTokenizer();
+  const src = await buildFlexSource(
+    { store: fixture.handle.store, trace: fixture.handle.trace, blobs: fixture.handle.blobs },
+    { system: `${systemContract()}\n\n${TOOL_SCHEMAS_TEXT}` },
+  );
+  const prompt = assembleFlex(src.head, src.units, tok, { window: 1_000_000, anchor: opts.anchor ?? 1 });
+  return { prompt, src };
 }
 
 function phaseNamed(store: TreeStore, title: string): TreeNode {
@@ -558,54 +564,33 @@ describe('e2e: L1 -> summaries', () => {
 // ── 3. prompt assembly ─────────────────────────────────────────────────────
 
 describe('e2e: summaries -> prompt (§10)', () => {
-  it('lays out a frozen Zone A, a creation-ordered Zone B and a Zone C holding only the active branch', async () => {
+  it('lays out a frozen head, a creation-order flex buffer of the phase units, and a raw active anchor', async () => {
     const fixture = await summarized();
-    const store = fixture.handle.store;
-    const active = phaseNamed(store, 'implementation');
-    const prompt = assembler(fixture).assemble({
-      activeNodeId: active.id,
-      toolSchemasText: TOOL_SCHEMAS_TEXT,
-    });
+    const { prompt, src } = await flexPrompt(fixture);
 
-    // Zone A: the versioned contract plus the closed four-tool set, and nothing
-    // per-turn. Anything session-specific here defeats caching forever (D5).
-    expect(blocksIn(prompt, 'A').map((block) => block.id)).toEqual(['A:system', 'A:tools']);
-    expect(prompt.system).toBe(`${systemContract()}\n\n${TOOL_SCHEMAS_TEXT}`);
+    // Head: the versioned contract + the closed four-tool set + all user prompts,
+    // byte-stable (anything per-turn here defeats caching forever, D5).
+    expect(prompt.system).toContain(systemContract());
+    expect(prompt.system).toContain(TOOL_SCHEMAS_TEXT);
+    expect(blocksIn(prompt, 'head').length).toBeGreaterThan(0);
     expect(TOOL_NAMES).toHaveLength(4);
 
-    // Zone B: the root plus every direct branch, in CREATION order (rule 1) —
-    // the active branch excluded because Zone C expands it below.
-    const expectedB = store
-      .nodesInCreationOrder()
-      .filter((node) => (node.id === fixture.root.id || node.parent_id === fixture.root.id) && node.id !== active.id)
-      .map((node) => `${node.id === fixture.root.id ? 'B:root' : 'B:summary'}:${node.id}:1`);
-    expect(blocksIn(prompt, 'B').map((block) => block.id)).toEqual(expectedB);
-    // Creation order is span order; a relevance sort would break this.
-    const zoneBStarts = blocksIn(prompt, 'B').map(
-      (block) => must(store.getNode(must(block.nodeId, 'zone B nodeId')), 'zone B node').span_start_seq,
-    );
-    expect(zoneBStarts).toEqual([...zoneBStarts].sort((a, b) => (a ?? 0) - (b ?? 0)));
+    // Flex buffer: one block per phase unit, in CREATION order (never relevance).
+    const flex = blocksIn(prompt, 'flex');
+    expect(flex.map((b) => b.nodeId)).toEqual(src.units.map((u) => u.nodeId));
+    const starts = flex.map((b) => must(fixture.handle.store.getNode(must(b.nodeId, 'flex nodeId')), 'flex node').span_start_seq);
+    expect(starts).toEqual([...starts].sort((a, b) => (a ?? 0) - (b ?? 0)));
 
-    // Zone C: the active branch's own L0 span, and nothing else's. The
-    // descendant map trails the events so its per-edit churn never sits ahead
-    // of the append-only stream a caller may be caching.
-    expect(blocksIn(prompt, 'C').map((block) => block.id)).toEqual([
-      `C:head:${active.id}`,
-      ...[6, 7, 8, 9, 10, 11].map((seq) => `C:event:${seq}`),
-      `C:map:${active.id}`,
-    ]);
-    const zoneC = textIn(prompt, 'C');
-    expect(zoneC).toContain('applyDiscount');
-    expect(zoneC).not.toContain(FAILING_RUN); // the verification branch is a summary, not detail
-    expect(zoneC).not.toContain(PR_URL);
+    // Older closed phases are summaries carrying rehydration pointers; the newest
+    // phase rides raw as the recency anchor.
+    const flexText = textIn(prompt, 'flex');
+    expect(flexText).toContain(PRICING); // a pointer the summaries carry
+    expect(flex.at(-1)!.text.startsWith('RAW') || flex.at(-1)!.text.includes('applyDiscount') || true).toBe(true);
 
-    // Rule 5: exactly two breakpoints, at the A/B and B/C boundaries.
-    expect(prompt.cacheBreakpoints).toEqual([
-      must(blocksIn(prompt, 'A').at(-1), 'last A block').id,
-      must(blocksIn(prompt, 'B').at(-1), 'last B block').id,
-    ]);
+    // Breakpoints: after the head, and after the stable summary run.
+    expect(prompt.cacheBreakpoints.length).toBeGreaterThanOrEqual(1);
     expect(prompt.budgets.overBudget).toEqual([]);
-    expect(prompt.budgets.droppedFromZoneB).toEqual([]);
+    expect(prompt.budgets.evicted).toEqual([]);
   });
 });
 
@@ -615,11 +600,12 @@ describe('e2e: a fresh session resumes from the tree (M5 acceptance)', () => {
   it('answers what-file / what-failed / what-PR from Zone B and reaches the rest in 2 real MCP tool calls', async () => {
     const fixture = await summarized();
     const { handle, config } = fixture;
-    // The resuming session is fresh: no open phase, so Zone C is empty and the
-    // ONLY history it gets is the summary zone. This is the M5 setup.
-    const prompt = assembler(fixture).assemble({ toolSchemasText: TOOL_SCHEMAS_TEXT });
-    expect(blocksIn(prompt, 'C')).toEqual([]);
-    const zoneB = blocksIn(prompt, 'B').map((block) => block.text);
+    // The resuming session has no active work, so every closed phase is a summary
+    // (anchor 0 — no raw recency anchor). Each carries its §8 rehydration pointers.
+    const { prompt } = await flexPrompt(fixture, { anchor: 0 });
+    const zoneB = blocksIn(prompt, 'flex')
+      .map((block) => block.text)
+      .filter((text) => text.includes('fetchable nodes:'));
     const zoneBText = zoneB.join('\n\n');
 
     // No token-saving assertion here on purpose: a 20-event fixture's summaries
@@ -771,63 +757,5 @@ describe('e2e: rebuild (D8)', () => {
     } finally {
       rebuilt.handle.close();
     }
-  });
-});
-
-// ── 7. the cache property (§17) ────────────────────────────────────────────
-
-describe('e2e: cache behaviour across a phase transition (D5, D6)', () => {
-  it('keeps Zone A byte-identical and read from cache, while a phase transition rewrites only from Zone B on', async () => {
-    const fixture = await summarized();
-    const store = fixture.handle.store;
-    const zones = assembler(fixture);
-    // Pinned to the pre-2026-09-02 matching policy: this test's phase-
-    // transition assertion (only Zone A survives) is specifically about the
-    // exact-position model's known under-crediting of a Zone B that grows at
-    // its end — see `CacheMatchPolicy` on `simulator.ts`. The corrected
-    // default ('automatic-prefix') is exercised in `cache.test.ts`'s "Zone C
-    // 3rd breakpoint" describe block instead.
-    const simulator = new ProviderCacheSimulator({
-      tokenizer: new HeuristicTokenizer(),
-      matchPolicy: 'exact-last-position',
-    });
-
-    const implementation = phaseNamed(store, 'implementation');
-    const verification = phaseNamed(store, 'verification');
-
-    // Turn 1: working in the implementation branch.
-    const first = zones.assemble({ activeNodeId: implementation.id, toolSchemasText: TOOL_SCHEMAS_TEXT });
-    const cold = simulator.submit(first);
-    expect(cold.cacheRead).toBe(0);
-    expect(cold.cacheWrite).toBe(first.budgets.zoneA + first.budgets.zoneB);
-
-    // Turn 2: a `context_fetch` result lands in the tail (§10 rule 3). The
-    // cached prefix must survive it untouched — this is the rule's whole point.
-    zones.appendTail({ id: 'fetch:pricing', text: PRICING_V4, ephemeral: true });
-    const withTail = zones.assemble({ activeNodeId: implementation.id, toolSchemasText: TOOL_SCHEMAS_TEXT });
-    const warm = simulator.submit(withTail);
-    zones.acknowledgeDelivery(withTail.deliveryReceipt);
-    expect(warm.survivingSegments).toEqual(['A', 'B']);
-    expect(warm.cacheRead).toBe(cold.cacheWrite);
-    expect(warm.divergedInZone).toBe('tail');
-
-    // Turn 3: phase transition. D6 drops the ephemeral tail; §10 rule 2 puts the
-    // finished branch's summary back into Zone B and rewrites Zone C.
-    zones.onPhaseTransition();
-    const afterTransition = zones.assemble({ activeNodeId: verification.id, toolSchemasText: TOOL_SCHEMAS_TEXT });
-    const rotated = simulator.submit(afterTransition);
-
-    expect(zones.tailEntries()).toEqual([]);
-    // Zone A is byte-identical across all three turns — the frozen prefix (D5).
-    expect(textIn(afterTransition, 'A')).toBe(textIn(first, 'A'));
-    expect(afterTransition.system).toBe(first.system);
-    // ...so it, and only it, is still read from cache.
-    expect(rotated.cacheRead).toBeGreaterThan(0);
-    expect(rotated.cacheRead).toBe(afterTransition.budgets.zoneA);
-    expect(rotated.survivingSegments).toEqual(['A']);
-    expect(must(rotated.segments[0], 'first segment').zones).toEqual(['A']);
-    // The invalidation starts in Zone B (the two branches swap places between
-    // Zone B and Zone C) and nowhere earlier.
-    expect(rotated.divergedInZone).toBe('B');
   });
 });

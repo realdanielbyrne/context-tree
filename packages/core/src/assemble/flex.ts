@@ -27,18 +27,20 @@
  * not yet chunked/summarized, so a single oversized raw unit can still exceed the floor
  * and the window.
  *
- * Also NOT YET WIRED: the provider projection. `toMessages`/`toCompletionRequest`
- * (assembler.ts) still serialize only the Zone `B`/`C`/`tail` blocks, so passing THIS
- * prompt to them would silently drop the `head`/`flex` content. A flex-aware projection
- * is part of the swap (`reports/session-handoff.md`); until then, consume `blocks`
- * directly rather than routing a flex prompt through the legacy projection.
+ * `toMessages` / `toCompletionRequest` project an assembled prompt to a provider
+ * request: the head ships as `system` (its cache breakpoint as a request flag), and
+ * the flex + tail blocks ship as messages, split at the secondary breakpoint.
  */
 import type {
   AssembledPrompt,
   BudgetReport,
+  ChatMessage,
+  CompletionRequest,
   NodeId,
   PromptBlock,
   Tokenizer,
+  ToolSchema,
+  Zone,
 } from '../contracts/index.js';
 import {
   planEviction,
@@ -241,24 +243,19 @@ export function assembleFlex(
   const tailTokens = sumTokens(tailBlocks);
   const total = headTokens + flexTokens + tailTokens;
 
-  // BudgetReport is the legacy shape (its zoneA/B/C fields are renamed in the
-  // final swap that removes ZoneAssembler): head → zoneA, flex → zoneB, zoneC 0.
   const budgets: BudgetReport = {
-    zoneA: headTokens,
-    zoneB: flexTokens,
-    zoneC: 0,
+    head: headTokens,
+    flex: flexTokens,
     tail: tailTokens,
     total,
     overBudget: [],
-    droppedFromZoneB: plan.evict.map((i) => units[i]!.nodeId),
+    evicted: plan.evict.map((i) => units[i]!.nodeId),
     window,
     windowRemaining: window - total,
-    // Contract meaning: the prompt itself exceeds the window (matches ZoneAssembler
-    // and the BudgetReport doc). Reply room is reported separately via replyAllowance.
+    // The prompt itself exceeds the window; reply room is reported via replyAllowance.
     overWindow: total > window,
     replyAllowance: Math.max(0, window - total),
     evictedFromTail: [],
-    droppedFromZoneC: 0,
   };
 
   return {
@@ -267,4 +264,84 @@ export function assembleFlex(
     budgets,
     cacheBreakpoints,
   };
+}
+
+// ── provider projection ──────────────────────────────────────────────────────
+
+function isMarked(prompt: AssembledPrompt, block: PromptBlock): boolean {
+  return block.cacheBreakpointAfter === true || prompt.cacheBreakpoints.includes(block.id);
+}
+
+/** Does `zone` end at a cache breakpoint? */
+function zoneEndsAtBreakpoint(prompt: AssembledPrompt, zone: Zone): boolean {
+  const last = prompt.blocks.filter((b) => b.zone === zone).at(-1);
+  return last !== undefined && isMarked(prompt, last);
+}
+
+/**
+ * Split a zone's blocks at its LAST marked block, so a breakpoint planted inside a
+ * zone (the flex buffer's secondary breakpoint after the stable summary run) still
+ * lands on a message boundary: everything through the marked block is one cacheable
+ * message, the remainder is a second, uncached message.
+ */
+function splitAtLastMark(
+  prompt: AssembledPrompt,
+  blocks: readonly PromptBlock[],
+): { cached: readonly PromptBlock[]; rest: readonly PromptBlock[] } {
+  let cut = -1;
+  for (let i = 0; i < blocks.length; i += 1) if (isMarked(prompt, blocks[i]!)) cut = i;
+  if (cut === -1) return { cached: [], rest: blocks };
+  return { cached: blocks.slice(0, cut + 1), rest: blocks.slice(cut + 1) };
+}
+
+/**
+ * Provider-facing projection: the head ships as `AssembledPrompt.system` (its
+ * cache breakpoint is the system/messages boundary — carried by
+ * `toCompletionRequest`, not here), and the `flex` and `tail` blocks ship as user
+ * messages, one per zone, splitting a zone at its internal breakpoint.
+ */
+export function toMessages(prompt: AssembledPrompt): ChatMessage[] {
+  const messages: ChatMessage[] = [];
+  for (const zone of ['flex', 'tail'] as const) {
+    const blocks = prompt.blocks.filter((b) => b.zone === zone);
+    if (blocks.length === 0) continue;
+    const { cached, rest } = splitAtLastMark(prompt, blocks);
+    if (cached.length > 0) {
+      messages.push({ role: 'user', content: cached.map((b) => b.text).join('\n\n'), cacheBreakpoint: true });
+    }
+    if (rest.length > 0) {
+      messages.push({ role: 'user', content: rest.map((b) => b.text).join('\n\n') });
+    }
+  }
+  return messages;
+}
+
+/** Per-call knobs that are not the assembler's business (§11). */
+export interface CompletionRequestOptions {
+  maxTokens?: number;
+  temperature?: number;
+  /** Tool schemas as the provider's native tool list, not as prompt text. */
+  tools?: readonly ToolSchema[];
+  json?: boolean;
+}
+
+/**
+ * The whole prompt as one provider request — the frozen head as `system`, the
+ * flex + tail blocks as messages, and both cache breakpoints attached (the head's
+ * as `systemCacheBreakpoint`, the buffer's on its message).
+ */
+export function toCompletionRequest(
+  prompt: AssembledPrompt,
+  model: string,
+  options: CompletionRequestOptions = {},
+): CompletionRequest {
+  const request: CompletionRequest = { model, system: prompt.system, messages: toMessages(prompt) };
+  if (prompt.system !== '' && zoneEndsAtBreakpoint(prompt, 'head')) {
+    request.systemCacheBreakpoint = true;
+  }
+  if (options.maxTokens !== undefined) request.maxTokens = options.maxTokens;
+  if (options.temperature !== undefined) request.temperature = options.temperature;
+  if (options.tools !== undefined) request.tools = options.tools;
+  if (options.json !== undefined) request.json = options.json;
+  return request;
 }

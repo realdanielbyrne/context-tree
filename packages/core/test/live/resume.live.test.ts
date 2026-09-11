@@ -32,7 +32,7 @@ import { join } from 'node:path';
 import { loadApiKeys, loadDotEnv, resolveConfig } from '../../src/config.js';
 import { AnthropicProvider, InMemoryCostMeter, OpenRouterProvider } from '../../src/models/index.js';
 import { HeuristicTokenizer } from '../../src/tokens/index.js';
-import { ZoneAssembler } from '../../src/assemble/index.js';
+import { assembleFlex, buildFlexSource } from '../../src/assemble/index.js';
 import { systemContract } from '../../src/prompts/index.js';
 import { Summarizer } from '../../src/summarize/index.js';
 import { ingest, openTaskStore } from '../../src/ingest/index.js';
@@ -190,17 +190,16 @@ describe.skipIf(!enabled)('live: a real model resumes a task from the tree', () 
       expect(implFiles).toEqual(store.descendants(implementation.id).flatMap((node) => node.meta_json.spans ?? []));
       expect(implFiles?.length).toBeGreaterThan(0);
 
-      // Resumption, same shape as the offline test: a fresh session sees Zone B
-      // only, finds the file and its fetch target there, and pulls the current
-      // content back with one narrowed call.
-      const prompt = new ZoneAssembler({
-        store,
-        blobs,
-        trace,
-        tokenizer: new HeuristicTokenizer(),
-        systemContract: systemContract(),
-      }).assemble();
-      const zoneB = prompt.blocks.filter((block) => block.zone === 'B').map((block) => block.text);
+      // Resumption, same shape as the offline test: a fresh session reads the
+      // flex buffer's summary blocks (closed phases with their §8 pointers), finds
+      // the file and its fetch target there, and pulls the current content back
+      // with one narrowed call.
+      const src = await buildFlexSource({ store, trace, blobs }, { system: systemContract() });
+      const prompt = assembleFlex(src.head, src.units, new HeuristicTokenizer(), { window: 1_000_000, anchor: 0 });
+      const zoneB = prompt.blocks
+        .filter((block) => block.zone === 'flex')
+        .map((block) => block.text)
+        .filter((text) => text.includes('fetchable nodes:'));
       const pricingBlock = [...zoneB].reverse().find((block) => /^files:.*src\/pricing\.ts/m.test(block));
       expect(pricingBlock, 'no Zone B block lists the edited file').toBeDefined();
       const branchId = /fetchable nodes: ([^,\n]+)/.exec(pricingBlock ?? '')?.[1];
