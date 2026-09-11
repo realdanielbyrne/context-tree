@@ -89,37 +89,45 @@ Environment note: the DB-backed tests need Node ≥ 22 (`better-sqlite3` native 
 runtime they segfault/`ERR_IPC_CHANNEL_CLOSED`. Run the suite single-fork in a sandboxed shell:
 `vitest run packages/core --pool=forks --poolOptions.forks.singleFork=true` (a worker-teardown quirk).
 
-**Done and verified (all green — core suite 616 passed / 9 skipped, `tsc -b` clean):**
-- ✅ `attention/` → `experiments/attention-over-history/snapshot/` (+ README); `attention.test.ts` removed.
+**Done and verified (all green — core suite 632 passed / 9 skipped, `tsc -b` clean). Commits on
+`live-model-retriever-probes`: `5cfdfe3`, `08fa1ab`, `654c029`:**
+- ✅ `attention/` → `experiments/attention-over-history/snapshot/` (+ README); `attention.test.ts` removed. `5cfdfe3`
 - ✅ **Eviction scorer** `assemble/eviction.ts` — D-EV shape, coefficients flagged provisional (12 tests).
 - ✅ **Drift classifier** `classify/drift.ts` — settled drift signal; z-score/τ flagged provisional,
   owes the corrected permutation re-run (11 tests).
 - ✅ **Flex assembler** `assemble/flex.ts` — `assembleFlex` (frozen head + creation-order buffer +
-  eviction + dormancy + two breakpoints), cache-stability asserted via `assertPrefixStable` (9 tests).
+  eviction + dormancy + two breakpoints). Code-review fixes applied (`08fa1ab`): the secondary
+  breakpoint sits after only the **leading contiguous summary run** (a raw hole — un-latched old unit or
+  anchor — closes the stable run, so an async summary latch can't rewrite the cached prefix);
+  stable-run cache invariant tested via the cached-prefix assertion; `overWindow` = `total > window`
+  (contract-consistent). **reduce-on-overflow / per-unit budget `b` is NOT implemented** — marked
+  in-code, phased (see order below) (12 tests).
+- ✅ **RRF ensemble retriever** `654c029` — `retrieve/{chunk,bm25,rrf,ensemble}.ts`: recursive splitter +
+  Okapi BM25 + RRF fusion over L0-unit chunks → whole units, embedder-agnostic (13 tests). Tested-and-lost
+  / never-compared code FENCED in-code: `retriever.ts` summary-rank path (partly superseded, fetch/peek
+  kept), `lexical.ts` IDF, `models/embeddings.ts` (remote → NOT-CARRIED-FORWARD), `providers/` (never-compared).
 - ✅ `Zone` contract widened (`head|flex` added, `A|B|C` kept + marked SUPERSEDED); `ZoneAssembler`
   marked SUPERSEDED-pending-removal in-code.
 
-**Blocked / reordered — the swap dependency discovered at the cut:** completing the assembler swap
-(deleting `ZoneAssembler`, narrowing `Zone` to `head|flex|tail`, migrating `BudgetReport` field names,
-and rewriting the four Zone tests `assemble`/`cache`/`budgets`/`e2e`) requires a **flex store-adapter**
-that turns store nodes into `FlexUnit`s and runs the classifier — and the classifier's semantic drift
-needs **per-unit embeddings**, which the retrieval/embedding rewrite settles (remote → local MiniLM).
-`cache.test.ts` and `e2e.test.ts` also exercise *real* machinery (the §17 cache harness, the
-L0→L1→summary→prompt pipeline), so they must be *migrated* onto the adapter, not deleted. **So the
-plan's ordering flips: do the retrieval/embedding rewrite before the assembler deletion.**
-
-**Remaining execution order (revised):**
-1. **Retrieval/embedding rewrite** (was step 4): switch `models/embeddings.ts` to a local MiniLM
-   embedder; add the L0-unit recursive-char chunker + BM25; **promote RRF** as the live retriever (params
-   flagged provisional); rewire `context_search`; retire the tested-and-lost rank path
-   (`TreeRetriever` summary-ranking + `lexical.ts` IDF); leave `providers/` marked never-compared.
-2. **Flex store-adapter**: `assembleFlex` sourcing `FlexUnit`s from `nodesInCreationOrder`/
-   `currentSummary`/`trace` + a classifier pass over L3 embeddings (degrade to lexical-only drift when
-   an embedding is absent, so the adapter is not hard-blocked).
+**Remaining execution order — the two integration steps now CONVERGE on the store-adapter:**
+The assembler swap and the `context_search` rewiring were both blocked on the same missing piece: a
+**flex store-adapter** turning store nodes into the `FlexUnit`s / L0-unit corpus the new code consumes.
+That is now the single next step; everything else follows it.
+1. **Flex store-adapter (the convergence point).** Source units from `nodesInCreationOrder` /
+   `currentSummary` / `trace`; run the drift classifier over L3 embeddings (degrade to lexical-only
+   drift when an embedding is absent, so it is not hard-blocked on the embedder); expose the same
+   unit list as (a) `FlexUnit`s for `assembleFlex` and (b) the `EnsembleUnit` corpus for `ensembleRetrieve`.
+2. **Rewire `context_search`** onto `ensembleRetrieve` (using the adapter's corpus); retire the
+   `TreeRetriever` rank path; migrate `retrieve.test.ts` / `providers.test.ts` / `mcp.test.ts`.
 3. **Reduce-on-overflow router** (chunk vs summarize, default chunk) — reducers settled; router flagged.
-4. **Complete the swap**: generalize `toMessages`/`toCompletionRequest` to `head|flex|tail`; migrate
-   `assemble`/`cache`/`budgets`/`e2e` tests onto the flex adapter (preserving their real cache/pipeline
-   coverage); delete `ZoneAssembler`; narrow `Zone` to `head|flex|tail`; rename `BudgetReport` fields.
+   Implement the per-unit budget `b` and wire it into `assembleFlex` (the flagged gap there).
+4. **Complete the assembler swap**: generalize `toMessages`/`toCompletionRequest` to `head|flex|tail`;
+   migrate `assemble`/`cache`/`budgets`/`e2e` tests onto the flex adapter (preserving their real
+   cache/pipeline coverage); delete `ZoneAssembler`; narrow `Zone` to `head|flex|tail`; rename the
+   `BudgetReport` zone fields (`head`/`flex`).
+5. **Deployment / validation follow-ups** (do not gate the swap): add the local MiniLM `SummaryEmbedder`
+   implementation (needs a native dep); run the transcript-corpus RRF validation + sweep `RRF_K`/chunk
+   size; refit the eviction coefficients; run the drift classifier's corrected permutation test.
 
 ## Untested-hypothesis experiment backlog
 
