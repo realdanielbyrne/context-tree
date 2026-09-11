@@ -120,17 +120,20 @@ runtime they segfault/`ERR_IPC_CHANNEL_CLOSED`. Run the suite single-fork in a s
   *Also noted:* `extractFingerprints` matches camelCase/PascalCase/paths but NOT snake_case (a spec-vs-impl
   gap worth reconciling).
 
-**Remaining execution order (store-adapter done — next is the `context_search` rewiring):**
-1. **Rewire `context_search`** onto `ensembleRetrieve` (build the corpus via `buildFlexSource`/
-   `mapFlexUnits`); retire the `TreeRetriever` rank path; migrate `retrieve.test.ts` /
-   `providers.test.ts` / `mcp.test.ts`. (This also gives `buildFlexSource` its populated-DB coverage.)
-2. **Reduce-on-overflow router** (chunk vs summarize, default chunk) — reducers settled; router flagged.
-   Implement the per-unit budget `b` and wire it into `assembleFlex` (the flagged gap there).
-3. **Complete the assembler swap**: generalize `toMessages`/`toCompletionRequest` to `head|flex|tail`;
+**Remaining execution order** (settled-result builds only — untested hypotheses live in the backlog below):
+- ✅ **`context_search` rewired** onto `ensembleRetrieve` (`8c5b595`) — whole-unit hits, provider
+  fan-out + summary-rank path retired, mcp suite green (39/39). This also gave `buildFlexSource` its
+  populated-DB coverage.
+
+1. **Reduce-on-overflow — the *reducers* + per-unit budget `b` only** (the SETTLED parts). Wire the
+   validated reducers (chunk / summarize, default chunk) and the per-unit budget `b` trigger into
+   `assembleFlex` (the flagged gap there). The auto-selecting **router** (which reducer to pick) is
+   NOT part of this — it is untested and belongs in the experiment backlog (item 4), not here.
+2. **Complete the assembler swap**: generalize `toMessages`/`toCompletionRequest` to `head|flex|tail`;
    migrate `assemble`/`cache`/`budgets`/`e2e` tests onto the flex adapter (preserving their real
    cache/pipeline coverage); delete `ZoneAssembler`; narrow `Zone` to `head|flex|tail`; rename the
    `BudgetReport` zone fields (`head`/`flex`).
-4. **Deployment / validation follow-ups** (do not gate the swap): add the local MiniLM `SummaryEmbedder`
+3. **Deployment / validation follow-ups** (do not gate the swap): add the local MiniLM `SummaryEmbedder`
    implementation (needs a native dep); run the transcript-corpus RRF validation + sweep `RRF_K`/chunk
    size; refit the eviction coefficients; run the drift classifier's corrected permutation test.
 
