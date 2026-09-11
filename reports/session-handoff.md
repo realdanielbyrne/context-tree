@@ -106,8 +106,13 @@ runtime they segfault/`ERR_IPC_CHANNEL_CLOSED`. Run the suite single-fork in a s
   Okapi BM25 + RRF fusion over L0-unit chunks → whole units, embedder-agnostic (13 tests). Tested-and-lost
   / never-compared code FENCED in-code: `retriever.ts` summary-rank path (partly superseded, fetch/peek
   kept), `lexical.ts` IDF, `models/embeddings.ts` (remote → NOT-CARRIED-FORWARD), `providers/` (never-compared).
-- ✅ `Zone` contract widened (`head|flex` added, `A|B|C` kept + marked SUPERSEDED); `ZoneAssembler`
-  marked SUPERSEDED-pending-removal in-code.
+- ✅ **Assembler swap complete** — `Zone` contract narrowed to `head|flex|tail`; `ZoneAssembler` and its
+  1160-line test DELETED; `toMessages`/`toCompletionRequest` generalized to the flex vocabulary; zone
+  budgets (`ZONE_FRACTIONS`/`deriveZoneBudgets`/`zoneBRemainder`) and `config.budgets` retired;
+  `BudgetReport` renamed (`head`/`flex`/`evicted`); `buildFlexSource` renders summaries WITH their §8
+  rehydration pointers; the `assemble`/`cache`/`budgets`/`e2e`/`resume.live` tests migrated to the flex
+  model. Net −2,780 lines. `ocr` review: 1 non-actionable finding (the intended source break, moot on a
+  private pre-1.0 repo). Full suite green (31 files, 639 passed / 9 skipped); `tsc -b` clean.
 - ✅ **Flex store-adapter** `assemble/flex-store.ts` (`b3766f5`) — the convergence point.
   `mapFlexUnits` (pure): store entries → `FlexUnit[]` (fingerprints, dormancy via the classifier,
   priority signals) + the `EnsembleUnit` corpus; `buildFlexSource` (glue): store/trace/blobs → frozen
@@ -125,15 +130,14 @@ runtime they segfault/`ERR_IPC_CHANNEL_CLOSED`. Run the suite single-fork in a s
   fan-out + summary-rank path retired, mcp suite green (39/39). This also gave `buildFlexSource` its
   populated-DB coverage.
 
-1. **Reduce-on-overflow — the *reducers* + per-unit budget `b` only** (the SETTLED parts). Wire the
-   validated reducers (chunk / summarize, default chunk) and the per-unit budget `b` trigger into
-   `assembleFlex` (the flagged gap there). The auto-selecting **router** (which reducer to pick) is
-   NOT part of this — it is untested and belongs in the experiment backlog (item 4), not here.
-2. **Complete the assembler swap**: generalize `toMessages`/`toCompletionRequest` to `head|flex|tail`;
-   migrate `assemble`/`cache`/`budgets`/`e2e` tests onto the flex adapter (preserving their real
-   cache/pipeline coverage); delete `ZoneAssembler`; narrow `Zone` to `head|flex|tail`; rename the
-   `BudgetReport` zone fields (`head`/`flex`).
-3. **Deployment / validation follow-ups** (do not gate the swap): add the local MiniLM `SummaryEmbedder`
+- ✅ **Assembler swap complete** (see above) — the migration is essentially done; only the small
+  reduce-on-overflow *reducers* build remains before the handoff collapses to the experiment backlog.
+
+1. **Reduce-on-overflow — the *reducers* + per-unit budget `b` only** (the SETTLED parts; the LAST
+   migration build). Wire the validated reducers (chunk / summarize, default chunk) and the per-unit
+   budget `b` trigger into `assembleFlex` (the flagged gap there). The auto-selecting **router** (which
+   reducer to pick) is NOT part of this — it is untested and belongs in the experiment backlog, not here.
+2. **Deployment / validation follow-ups** (do not gate anything): add the local MiniLM `SummaryEmbedder`
    implementation (needs a native dep); run the transcript-corpus RRF validation + sweep `RRF_K`/chunk
    size; refit the eviction coefficients; run the drift classifier's corrected permutation test.
 
