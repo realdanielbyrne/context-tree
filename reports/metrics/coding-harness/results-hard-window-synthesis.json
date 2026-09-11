@@ -1,0 +1,52 @@
+{
+  "manifest": {
+    "run_id": "hard-window-1789141088168",
+    "experiment": "coding-harness / hard-window multi-doc synthesis",
+    "model": "unsloth/Qwen3.8-Flash-Next-GGUF",
+    "window": 8192,
+    "n_docs": 4,
+    "raw_total_tokens": 20145,
+    "correct_sum": 139,
+    "seam": "middleware reducer per document (plugin tool.execute.after payload)",
+    "commit": "4884d6a41f527cdb050f2718452aabbd106ab17a",
+    "date": "2026-09-11T15:38:08.173Z",
+    "falsification": "middleware REQUIRED under a hard window IFF raw cannot send AND summarize loses the prices AND chunk_retrieve keeps them",
+    "caveats": [
+      "n=1 per arm, temp 0.",
+      "prices_present is the MECHANISM metric; model_correct (the sum) is arithmetic on a possibly low-quant model.",
+      "Chunk retrieval is a weak lexical proxy.",
+      "Text-only stand-in for the PDF/excel/report (session-3) task."
+    ]
+  },
+  "mechanism_confirmed": true,
+  "end_to_end": true,
+  "arms": [
+    {
+      "reducer": "raw",
+      "fits_window": false,
+      "prices_present": true,
+      "model_correct": false,
+      "answer": "",
+      "ctx_tokens": 20149,
+      "error": "context 20149 tok exceeds window 8192 — cannot send"
+    },
+    {
+      "reducer": "summarize",
+      "fits_window": true,
+      "prices_present": false,
+      "model_correct": false,
+      "answer": "UNKNOWN",
+      "ctx_tokens": 1621,
+      "error": null
+    },
+    {
+      "reducer": "chunk_retrieve",
+      "fits_window": true,
+      "prices_present": true,
+      "model_correct": true,
+      "answer": "139",
+      "ctx_tokens": 1118,
+      "error": null
+    }
+  ]
+}
