@@ -109,14 +109,16 @@ identifiers). The same idea applies wherever content must be compressed:
 tool schemas in Zone A, branch summaries in Zone B, and the active
 branch index in Zone C all benefit from keyword headlines over prose.
 
-## Pipeline (TENTATIVE — restructure proposed 2026-09-09)
+## The pipeline — current best design
 
-> **TENTATIVE. Nothing here is shipped — this is all in development.** It reorganizes the loop
-> (Tier 1) into a three-stage pipeline and folds in the 2026-09-09 offline findings. The current
-> code still runs the Zone A/B/C loop below, but that loop is being *replaced*, not defended — it is
-> not an authoritative baseline. Evidence tags: `[BUILT]` = code exists in `packages/`;
-> `[OFFLINE]` = validated on a proxy only; `[DESIGN]` = designed, not built. **Nothing here is
-> live-validated** — promote a stage only when a live run clears it.
+> **This is the algorithm as our evidence currently supports it — and what the paper argues.**
+> Nothing here is a shipped product: the whole repository is one running experiment heading toward a
+> research paper, not a release. This pipeline **supersedes** the older Zone A/B/C loop; that loop is
+> kept below only as a *superseded reference* (some of its mechanics — hermetic ingest, summarize-on-
+> overflow, the append/window cap — carry forward and are noted). Evidence tags per stage: `[LIVE]`
+> = validated on a live model; `[OFFLINE]` = validated on a proxy only; `[DESIGN]` = designed, not
+> yet validated. A stage is promoted only when the evidence clears it — see "What each stage has
+> established" and "Open questions" below.
 
 Two scorers feed one decider; retrieval serves on demand. The classifier scores query-independent
 state (has the topic shifted); the retriever scores query-dependent relevance (what matches this
@@ -125,7 +127,7 @@ turn); the assembler-ejector decides what to keep, cache-stable, to a soft targe
 ```
 per turn:
 
-0. ingest                                                          [BUILT]
+0. ingest                                                          [OFFLINE]
    append→L0, store→L2, segment by tool→phase, extract fingerprints,
    summarise closed phases (a summary is ONE representation option, not a zone)
 
@@ -135,7 +137,7 @@ per turn:
    (sufficiency signal — a cheap-model judgment — not built; needs labels)
    → reports/metrics/rung-0b-topic-shift/
 
-2. assemble + eject — the CACHE ASSEMBLER / EJECTOR               [DESIGN]
+2. assemble + eject — the CACHE ASSEMBLER / EJECTOR               [LIVE]
    Zone A (frozen, cached): system + steering + ALL user prompts, append-only
    flex buffer: units in creation order, sticky representation (ref | summary | retrieved-span | raw),
      newest raw; a secondary breakpoint after the stable head so it caches
@@ -195,9 +197,14 @@ per turn:
   (its own on-demand retrieval), so the reducer matters most under forced overflow or for weaker agents.
   The reducer is a pure `tool.execute.after` transform — the plugin seam onto opencode/Claude Code/Cline.
 
-**Open, and live-only:** does eviction save tokens without losing the task; the soft target on an
-*overflowing* session (the cache sim peaked at ~44% occupancy, so the floor barely bound); the
-sufficiency signal. Until a live run clears them, the shipped Tier 1 loop stands.
+**Now closed (live, this session):** eviction *does* save tokens without losing the task, causally on
+a coding task (`coding-harness/report-eviction.md`); the reducer router preserves the answer where
+summarize loses it (`report-buried-detail.md`); the middleware is *required* under a hard window
+(`report-hard-window-synthesis.md`).
+**Still open, live-only:** the soft target `f` on an *overflowing* session (the cache sim peaked at
+~44% occupancy, so the floor barely bound); the sufficiency signal; the **read-loop-B progress
+mechanism** (agent indecision under a restricted toolset — the footprint middleware does not fix it,
+`report-integration.md`); and transfer of the retriever from a code corpus to the transcript.
 
 ## Tier 0 — invariants
 
@@ -208,14 +215,23 @@ If one of these is false, the thing running is not this algorithm.
 2. L1 stores coordinates, not content. A node names a sequence range; the
    text lives in L2.
 3. Summaries are versioned, never overwritten.
-4. The prompt is Zone A → Zone B → Zone C, creation order within B.
-   Retrieved results append after C. Nothing reorders a cached prefix.
-   *(The TENTATIVE pipeline above reorganizes Zone B/C into one flex buffer — a summary
-   becomes one representation option — but keeps the load-bearing clause intact: **nothing
-   reorders a cached prefix.** That clause survives the restructure; the zone layout does not.)*
+4. The prompt is a frozen cached head (Zone A: system + steering + all user prompts, append-only)
+   followed by a **creation-order flex buffer** of history units — each carried as one representation
+   (`ref | summary | retrieved-span | raw`) — and retrieved results appended after it. **Nothing
+   reorders a cached prefix** — the load-bearing clause; the buffer only appends and evicts in place,
+   never re-mixes (a freely re-mixed buffer is cache-death). *(This replaces the earlier
+   Zone A → Zone B → Zone C layout: the flex buffer subsumes Zone B/C — a summary is one
+   representation option, not a band.)*
 5. Ingestion is hermetic: L0, L2, and a parser. No network.
 
-## Tier 1 — the loop
+## Prior loop (SUPERSEDED) — mechanics that carry forward
+
+> **Superseded by the pipeline above. Do NOT read this as the current design.** This is the earlier
+> Zone A/B/C loop, kept only because several *mechanics* still hold and are documented in detail here:
+> hermetic ingest (segment→phase, fingerprints), summarize-on-overflow with a latch, and the
+> append/window cap. Its **prompt layout (Zone A → Zone B → Zone C) is retired** — the flex buffer
+> replaces it (invariant 4). References to "shipped" / `packages/` below describe an *earlier
+> prototype implementation*, not a product; nothing in this repository is shipped.
 
 ```
 ingest
@@ -301,12 +317,17 @@ a fusion of two retrievers, and its constant carries none of RRF's justification
 RRF overstated what it does; the behaviour is unchanged and the name in Tier 2 is now
 qualified.
 
-## Tier 2 — parameters
+## Parameters (prior prototype — superseded)
 
-Every value that affects behaviour in the SHIPPED library, classified by rule 2, plus the
-harness values Tier 1 depends on (marked *harness*). It is not yet complete — the summarizer
-and provider timeouts below were absent until 2026-09-03 and more may be — so treat a value
-found in code and missing here as a defect in this table, not a licence.
+> This inventories the constants of the **earlier prototype** (the superseded loop above), kept for
+> the *principle* it records — rule 2/4: a value must be derived, not guessed, and the backlog below
+> shows how many never were — so those defects are not silently rebuilt. It is **not** the current
+> pipeline's parameter set; the current ones (D-EV eviction weights, the reduce-on-overflow budget,
+> the classifier drift threshold, `RRF_K`) live in the stage reports and the experiment scripts.
+
+Every value that affected behaviour in that prototype, classified by rule 2, plus the
+harness values it depended on (marked *harness*). Treat a value found in that code and missing here
+as a defect in this table, not a licence.
 
 | Value | State | Derives from |
 |---|---|---|
@@ -449,9 +470,9 @@ candidate — embeddings, KNN, autoencoder latents, learned ranking — at the s
 
 ## Candidates with a verdict
 
-Three states are listed together below and the labels distinguish them: **landed in code**
-(shipped, running now), unmarked (measured, not yet default), and **Retired** (refuted, kept
-so the negative result is not rebuilt).
+States below: **landed** (implemented as a prototype), unmarked (measured, not yet a default), and
+**Retired** (refuted, kept so the negative result is not rebuilt). "Landed" / "shipped" here mean
+prototype code existed, **not** a product — nothing in this repository is shipped.
 
 - **Fingerprint-enriched search + hybrid grep**: 2/12 → 10/12 top-3 for the shipped
   deterministic ranker (11/12 required a MOCKED query rewriter, never a live one).
@@ -514,6 +535,32 @@ so the negative result is not rebuilt).
 | 2026-09-05 | The append cap stops being the mechanism: the window is enforced by eviction (tail, then seen results, then Zone C events) in one place per turn; the tail-fill line in `assemble` becomes per-turn and latched instead of build-once |
 
 ## Change log
+
+- **2026-09-11** — Live-model session (transcript: `packages/cli/test/fixtures/claude-code-session-4.jsonl`).
+  **Doc reconciled:** the pipeline is now the canonical algorithm; the old Zone A/B/C loop is marked
+  SUPERSEDED (not "shipped/current"); invariant 4 rewritten to the flex buffer; the "shipped/product"
+  framing corrected throughout — nothing here is a product, this is one experiment toward a *paper*.
+  Live findings folded in:
+  - **ASSEMBLER** — eviction *does* save tokens without losing the task, causally on a coding task
+    (`coding-harness/report-eviction.md`). Recorded eviction defaults **D-EV1–5** (priority-dominant +
+    recency + reference-recency; relevance is an ADMISSION signal, not eviction) from an offline sweep +
+    cross-session LR (`assembler-weighting/`). **D-EV6:** eviction alone THRASHES (working-set > budget →
+    read-loop A), broken by a **footprint reducer**, not a nudge (`report-readloop.md`).
+  - **REDUCER ROUTER** — summarize (gist) vs chunk+retrieve (localized detail); summarize is
+    insufficient for a buried detail, chunk wins on correctness AND tokens (`report-buried-detail.md`);
+    the router reduces RAW overflow only (curated retriever results stay whole, HR2). It is a pure
+    `tool.execute.after` middleware transform — the plugin seam onto opencode/Claude Code/Cline.
+  - **HARD WINDOW** — on an 8.2K-window model the middleware is REQUIRED to fit AND preserve the answer
+    (`report-hard-window-synthesis.md`).
+  - **CLASSIFIER/RETRIEVER** — ensemble retriever (RRF BM25+vector) + ensemble classifier
+    (z(lexical)+z(semantic) drift) wired into one middleware (`middleware.mjs`); integration exposed
+    **read-loop B** (agent indecision under a restricted toolset, on BOTH weak and strong local models)
+    which the footprint middleware does NOT fix — a progress mechanism is owed (`report-integration.md`).
+  - **INGEST** — D1 tested: tool-phase ≈ topic-shift at fine granularity; content-drift's value is its
+    *ranking* at coarse granularity (`online-segmentation/`).
+  - **OPEN** — the retrieval ORDER (on-demand-last vs retrieve-first) is asserted, never A/B-tested;
+    prior DS-STAR evidence shows on-demand-from-summaries loses BELOW overflow and the tree wins only IN
+    overflow, previously economically unreachable — the 8.2K model now makes that A/B affordable.
 
 - **2026-09-09 20:20** — TENTATIVE pipeline section added (operator request): the loop restructured as
   three stages — ensemble classifier (query-independent state) + ensemble retriever (query relevance)
