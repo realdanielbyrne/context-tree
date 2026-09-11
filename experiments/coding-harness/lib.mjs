@@ -47,10 +47,10 @@ export function execTool(ws, name, args) {
   } catch (e) { return `error executing ${name}: ${e.message}`; }
 }
 
-async function callModel(messages, { think = false, maxTokens = 1024 }) {
+async function callModel(messages, { think = false, maxTokens = 1024, tools = TOOL_SCHEMAS }) {
   const res = await fetch(`${BASE_URL}/chat/completions`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${API_KEY}` },
-    body: JSON.stringify({ model: MODEL, messages, tools: TOOL_SCHEMAS, tool_choice: 'auto', parallel_tool_calls: false, max_tokens: maxTokens, temperature: 0, chat_template_kwargs: { enable_thinking: think } }),
+    body: JSON.stringify({ model: MODEL, messages, tools, tool_choice: 'auto', parallel_tool_calls: false, max_tokens: maxTokens, temperature: 0, chat_template_kwargs: { enable_thinking: think } }),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0, 300)}`);
   return res.json();
@@ -142,13 +142,14 @@ function summarizePy(content) {
  *   reducer({ name, args, out, task }) -> reducedOut
  * It never touches the agent loop; it only shrinks the footprint of what returns.
  */
-export async function runAgent({ system, task, ws, maxTurns = 40, think = false, hook = null, dethrash = false, summarizeReads = false, reducer = null }) {
+export async function runAgent({ system, task, ws, maxTurns = 40, think = false, hook = null, dethrash = false, summarizeReads = false, reducer = null, allowedTools = null }) {
   const messages = [{ role: 'system', content: system }, { role: 'user', content: task }];
   const usage = []; const toolLog = []; let turns = 0, stop = 'maxTurns';
   const readSeen = new Set(); let breakouts = 0;
+  const tools = allowedTools ? TOOL_SCHEMAS.filter((t) => allowedTools.includes(t.function.name)) : TOOL_SCHEMAS;
   for (turns = 0; turns < maxTurns; turns++) {
     if (hook) hook(messages, turns);
-    const j = await callModel(messages, { think });
+    const j = await callModel(messages, { think, tools });
     const choice = j.choices?.[0]; const msg = choice?.message || {};
     usage.push({ turn: turns, prompt_tokens: j.usage?.prompt_tokens ?? null, completion_tokens: j.usage?.completion_tokens ?? null });
     // append the assistant message VERBATIM (with tool_calls if present)

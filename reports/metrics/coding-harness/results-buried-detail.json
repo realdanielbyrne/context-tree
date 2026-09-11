@@ -1,0 +1,45 @@
+{
+  "manifest": {
+    "run_id": "buried-detail-1789140305896",
+    "experiment": "coding-harness / buried-detail (single-turn QA on reduced doc)",
+    "model": "unsloth/Qwen3.8-27B-GGUF",
+    "buried_value": 137,
+    "seam": "middleware reducer (plugin tool.execute.after payload)",
+    "full_spec_tokens": 1473,
+    "commit": "6e43e0540b0f39e19f2d9d94726ed8dedda11c1c",
+    "date": "2026-09-11T15:25:05.901Z",
+    "falsification": "summarize is insufficient for a buried detail IFF summarize FAILS while chunk_retrieve PASSES (answer present + model answers)",
+    "caveats": [
+      "n=1 per arm, temp 0 (deterministic). Single model/task.",
+      "Single-turn isolates the reducer (no agent loop / no grep bypass).",
+      "Chunk retrieval is BM25-ish overlap vs the question — a weak retriever; a real one is stronger.",
+      "Text-only; PDF/vision needs an image model."
+    ]
+  },
+  "arms": [
+    {
+      "reducer": "none",
+      "answer_present_in_reduced": true,
+      "model_success": true,
+      "answer": "137",
+      "ctx_tokens": 1473,
+      "prompt_tokens": 1076
+    },
+    {
+      "reducer": "summarize",
+      "answer_present_in_reduced": false,
+      "model_success": false,
+      "answer": "UNKNOWN",
+      "ctx_tokens": 361,
+      "prompt_tokens": 358
+    },
+    {
+      "reducer": "chunk_retrieve",
+      "answer_present_in_reduced": true,
+      "model_success": true,
+      "answer": "137",
+      "ctx_tokens": 278,
+      "prompt_tokens": 280
+    }
+  ]
+}

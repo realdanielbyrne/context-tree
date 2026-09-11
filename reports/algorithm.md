@@ -137,11 +137,15 @@ per turn:
 
 2. assemble + eject — the CACHE ASSEMBLER / EJECTOR               [DESIGN]
    Zone A (frozen, cached): system + steering + ALL user prompts, append-only
-   flex buffer: units in creation order, sticky representation (ref|summary|raw),
+   flex buffer: units in creation order, sticky representation (ref | summary | retrieved-span | raw),
      newest raw; a secondary breakpoint after the stable head so it caches
    eject to a SOFT TARGET: drop DORMANT first, oldest-first, never the open topic
+   reduce-on-overflow (D-EV6, live): eviction ALONE thrashes when a unit's working set > budget
+     (the agent re-fetches evicted content forever). A RAW unit that overflows is REDUCED by a
+     query-aware router: summary (gist-sufficient) | retrieved-span (localized detail) | ref | drop.
+     This touches RAW content only — a CURATED retriever result stays whole (HR2-INVARIANT, stage 3).
    nothing reorders a cached prefix; a freely re-mixed buffer is cache-death
-   → reports/metrics/assembler-flex-buffer/, assembler-zone-io/
+   → reports/metrics/assembler-flex-buffer/, assembler-zone-io/, coding-harness/ (read-loop + buried-detail)
 
 3. retrieve on demand — the ENSEMBLE RETRIEVER (query relevance)   [OFFLINE]
    fan out BM25 / grep / vector(kNN) over the TRANSCRIPT (L0), fuse by RRF
@@ -178,10 +182,18 @@ per turn:
   its context shows, not exhortation). Eviction must be paired with a **footprint reducer**, and there
   are two, chosen by the query↔content relationship: **summarize** (lossy → gist) when the need survives
   abstraction (structural/navigational — verified on docstrings), and **chunk + retrieve** (lossless →
-  span) when the need is a *localized buried detail* a summary would drop. These are the two arms of the
-  summary-headed tree — summary as index, on-demand chunk retrieval as the drill-down; the read-loop is
-  direct evidence both are needed. (Summarize-fails-on-buried-detail → chunk is pending: the
-  buried-detail experiment.)
+  span) when the need is a *localized buried detail* a summary would drop. **Confirmed live
+  (`coding-harness/report-buried-detail.md`): on a buried detail summarize FAILS (drops it; the model
+  abstains "UNKNOWN") while chunk+retrieve PASSES at the *lowest* token cost** — for a localized query
+  chunk dominates summarize on both axes. So the reducer is a **query-aware router** over
+  {summary | retrieved-span | ref | drop}. These are the arms of the summary-headed tree — summary as
+  index, chunk retrieval as the drill-down; the read-loop is direct evidence both are needed.
+  **Reconciliation with HR2-INVARIANT (no contradiction):** the router reduces only **RAW** overflowing
+  content (a file read, a big raw output — a first-pass reduction); a **CURATED** retriever result
+  (graft/LSP/`context_search`, already ranked) is retained whole, never re-chunked (HR2, stage 3).
+  *Corollary observed:* an agent WITH a search tool routes around lossy summarization by re-fetching
+  (its own on-demand retrieval), so the reducer matters most under forced overflow or for weaker agents.
+  The reducer is a pure `tool.execute.after` transform — the plugin seam onto opencode/Claude Code/Cline.
 
 **Open, and live-only:** does eviction save tokens without losing the task; the soft target on an
 *overflowing* session (the cache sim peaked at ~44% occupancy, so the floor barely bound); the
