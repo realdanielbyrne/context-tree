@@ -31,18 +31,32 @@ the pinned task) — what it loses and re-fetches is the *content*.
   **Verified:** at the loop config (ANCHOR=1) the task **completes** — budget 2000 → 20 turns, budget
   1500 → 22 turns, each ref read **once**; the raw-read control loops (41 turns, fail) at both budgets.
 
-## Implication for context-tree — the break-out is retention-as-summary
+## Implication for context-tree — the break-out is FOOTPRINT REDUCTION, and it has two operators
 
 The read-loop is not a model-reasoning bug to be prompted away; it is **a capacity failure** —
 eviction alone, on raw tool results, *thrashes* whenever the required working set exceeds the budget.
-The fix is the project's own thesis: **compress tool results into retention-friendly summaries so the
-working set fits**; then eviction stops thrashing. This is HR2 / summary, validated on a live failure
-mode, and it sharpens the recorded eviction defaults:
+The break-out is to **reduce the resident footprint of a large result to what the task needs**. There
+are **two reducers**, and *which one works depends on the query↔content relationship* — this is the
+exact mechanism:
 
-- **D-EV6 (new): eviction is necessary but not sufficient — pair it with tool-result summarization.**
-  When a fetched result is too large to retain within the budget, keep a **structure-preserving
-  summary** (docstring + signatures / headline), not the raw bytes. This is exactly the HR2-INVARIANT
-  "structure-preserving cut," now shown to be load-bearing: without it, eviction livelocks.
+| reducer | keeps | works WHEN | FAILS when |
+| --- | --- | --- | --- |
+| **summarize** (lossy → gist) | shape/abstraction (docstring, signatures, headline, TL;DR) | the needed info **survives abstraction** — structural/navigational facts, "what is this / what does it expose" | the need is a **specific buried detail** the summary drops (a price in row 47, a value in §8.3) — thrash continues or the model answers wrong |
+| **chunk + retrieve** (lossless → span) | the exact relevant span, verbatim | the need is **localized** to a findable span the query can select | the need is **distributed** across the whole doc (no single span suffices), or retrieval misses the span |
+| **neither alone; use the TREE** | summary as *index* → drill to chunk on demand | **whole-document synthesis** or unknown-locus detail | — (this is the general case the summary-headed tree + on-demand retrieval is built for) |
+
+**What this verified failure establishes for the design:**
+
+- **D-EV6: eviction is necessary but NOT sufficient — pair it with a footprint reducer.** When a
+  fetched result overflows the budget, reduce it by a *structure-preserving* operation (HR2-INVARIANT):
+  **summarize** if the need survives abstraction, **chunk+retrieve** if the need is a localized detail.
+  Without a reducer, eviction livelocks. This test proved summarize on gist-sufficient content
+  (docstrings); it did **not** prove summarize on buried detail — where **chunking is the right reducer**
+  (see the follow-up experiment).
+- **The two reducers are the two arms of the summary-headed tree.** Summary = navigational index (gist);
+  on-demand chunk retrieval = the detail drill-down. The read-loop failure is direct evidence that
+  *both* are needed — a summary-only system loses buried detail; a chunk-only system loses the cheap
+  gist/index. The tree (summary → drill to chunk) is the general break-out.
 - A **behavioral nudge / instruction is not a break-out** — the agent follows context, not exhortation.
 
 ## Tested vs. open

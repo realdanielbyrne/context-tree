@@ -135,7 +135,14 @@ function summarizePy(content) {
   return `[summary — docstring + signatures]\n${doc}\n${sigs}`.slice(0, 500);
 }
 
-export async function runAgent({ system, task, ws, maxTurns = 40, think = false, hook = null, dethrash = false, summarizeReads = false }) {
+/**
+ * `reducer` is the MIDDLEWARE seam: a pure function applied to every tool RESULT
+ * before it enters the context — exactly what a context-tree plugin would run in
+ * opencode's `tool.execute.after` / Claude Code's PostToolUse hook. Signature:
+ *   reducer({ name, args, out, task }) -> reducedOut
+ * It never touches the agent loop; it only shrinks the footprint of what returns.
+ */
+export async function runAgent({ system, task, ws, maxTurns = 40, think = false, hook = null, dethrash = false, summarizeReads = false, reducer = null }) {
   const messages = [{ role: 'system', content: system }, { role: 'user', content: task }];
   const usage = []; const toolLog = []; let turns = 0, stop = 'maxTurns';
   const readSeen = new Set(); let breakouts = 0;
@@ -151,6 +158,7 @@ export async function runAgent({ system, task, ws, maxTurns = 40, think = false,
         let args = {}; try { args = JSON.parse(tc.function.arguments || '{}'); } catch {}
         let out = execTool(ws, tc.function.name, args);
         if (summarizeReads && tc.function.name === 'read_file' && !/^error/.test(out)) out = summarizePy(out);
+        if (reducer && !/^error/.test(out)) out = reducer({ name: tc.function.name, args, out, task }); // MIDDLEWARE seam
         // BREAK-OUT: a re-read of an already-read file is the thrash signal — return the
         // content but nudge the agent to stop re-fetching evicted content and make progress.
         if (dethrash && tc.function.name === 'read_file' && args.path) {

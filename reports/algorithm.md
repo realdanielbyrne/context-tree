@@ -172,6 +172,16 @@ per turn:
   the non-monotonic/dormant-return case (H1) it is the *worst* signal (drops exactly the returning
   unit), so eviction keys on priority/recency + the **classifier's dormancy**, not the retriever's
   relevance. This corrects the earlier "assembler needs the retriever's signal to evict."
+  **Break-out from the read-loop (live, `coding-harness/report-readloop.md`; D-EV6):** eviction alone
+  THRASHES when a fetched result's working set exceeds the budget — the agent re-fetches evicted
+  content endlessly (verified livelock; a behavioral nudge does NOT break it — the model follows what
+  its context shows, not exhortation). Eviction must be paired with a **footprint reducer**, and there
+  are two, chosen by the query↔content relationship: **summarize** (lossy → gist) when the need survives
+  abstraction (structural/navigational — verified on docstrings), and **chunk + retrieve** (lossless →
+  span) when the need is a *localized buried detail* a summary would drop. These are the two arms of the
+  summary-headed tree — summary as index, on-demand chunk retrieval as the drill-down; the read-loop is
+  direct evidence both are needed. (Summarize-fails-on-buried-detail → chunk is pending: the
+  buried-detail experiment.)
 
 **Open, and live-only:** does eviction save tokens without losing the task; the soft target on an
 *overflowing* session (the cache sim peaked at ~44% occupancy, so the floor barely bound); the
