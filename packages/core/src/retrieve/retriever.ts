@@ -1,4 +1,12 @@
 /**
+ * ⚠️ PARTLY SUPERSEDED — pending removal. The SEARCH/RANK path here (ranking over
+ * node SUMMARIES: `searchSummaries`, `beamSearch`, `mergeWithGrep`) was
+ * TESTED-AND-LOST (`reports/metrics/ds-star-retrieval-pass-report.md`) and is
+ * replaced by the RRF ensemble over L0-unit chunks (`retrieve/ensemble.ts`). The
+ * L0-replay / expansion machinery (`fetchBranch`, `peek`) is VALID SCAFFOLDING and
+ * survives the swap. Retiring the rank path + rewiring `context_search` is the
+ * retrieval-swap step — see `reports/session-handoff.md`.
+ *
  * §9 tree-side read paths: collapsed-tree (RAPTOR) retrieval, the beam-search
  * fallback, and the two expansion tools.
  *

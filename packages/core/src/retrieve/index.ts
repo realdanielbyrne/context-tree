@@ -10,6 +10,16 @@
 export { TreeRetriever, type TreeRetrieverDeps } from './retriever.js';
 export { createVectorProvider } from './vector-provider.js';
 export { excerptAround } from './excerpt.js';
+// Current (RRF ensemble) retriever — replaces the summary-ranking + IDF path.
+export { splitText, chunkUnits, DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_OVERLAP, type ChunkOptions, type UnitChunk } from './chunk.js';
+export { BM25, tokenize, BM25_K1, BM25_B, type Scored } from './bm25.js';
+export { reciprocalRankFusion, DEFAULT_RRF_K } from './rrf.js';
+export {
+  ensembleRetrieve,
+  type EnsembleUnit,
+  type EnsembleOptions,
+  type RetrievedUnit,
+} from './ensemble.js';
 export type {
   BeamFallbackReason,
   EmbedSummariesResult,

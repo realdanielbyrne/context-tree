@@ -1,4 +1,10 @@
 /**
+ * NOTE (deployment): this remote `/embeddings` client is the current default, but
+ * remote-vs-local was NOT-CARRIED-FORWARD (a deployment choice, never A/B'd). The
+ * intended deployment default is a LOCAL MiniLM-class embedder (hermetic, offline),
+ * added as a `SummaryEmbedder` implementation without changing the ensemble
+ * retriever, which is embedder-agnostic. `reports/session-handoff.md`.
+ *
  * §11 embeddings client — the OpenAI-compatible `/embeddings` endpoint. Same
  * `openai` npm client `OpenRouterProvider` already uses for chat completions
  * (`openrouter.ts:66-77`), just pointed at `.embeddings.create()` instead of

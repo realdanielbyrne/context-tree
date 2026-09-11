@@ -1,4 +1,10 @@
 /**
+ * ⚠️ SUPERSEDED (the IDF ranker) — pending removal. `lexicalScore` (IDF-weighted
+ * term overlap) was TESTED-AND-LOST to BM25 (`reports/metrics/rung-0e-retrievers/
+ * report-isolation.md`); the canonical lexical ranker is now `retrieve/bm25.ts`.
+ * `extractFingerprints` here is still reusable scaffolding. Removed with the
+ * retrieval swap — see `reports/session-handoff.md`.
+ *
  * Deterministic lexical scoring for the §9 beam-search fallback.
  *
  * §9 mandates a fallback for "L3 is absent", and L3 is absent for most of CI:
