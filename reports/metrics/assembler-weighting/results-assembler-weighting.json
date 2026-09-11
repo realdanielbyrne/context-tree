@@ -1,0 +1,194 @@
+{
+  "manifest": {
+    "run_id": "assembler-weighting-1789060367568",
+    "experiment": "assembler-weighting / signal weighting sweep",
+    "corpus": "claude-code-session-2.jsonl",
+    "turns": 741,
+    "fingerprinted_units": 569,
+    "eval_turns": 550,
+    "params": {
+      "K_RECENT": 5,
+      "H": 3,
+      "D_DORMANT": 10,
+      "START": 20,
+      "M_LIST": [
+        8,
+        16,
+        32,
+        64
+      ]
+    },
+    "offline": true,
+    "model": null,
+    "signals": "rec(recency) rel(relevance-to-recent) prio(priority=recurrence) refrec(reference-recency)",
+    "ground_truth": "needed = fingerprint overlap within horizon H (observational identifier overlap, not causal)",
+    "falsification": "a signal earns weight iff it lifts keep-needed recall (esp. non-monotonic) over recency-only by >=0.03 at equal M",
+    "commit": "f0f9e80760ade26861d3ba370ce19e1463bf0aea",
+    "date": "2026-09-10T17:12:47.575Z",
+    "caveats": [
+      "Ground truth is identifier-overlap (observational), the standing DSA proxy — not causal usefulness.",
+      "Units = turns (fixed); segmentation not varied here.",
+      "One session; fingerprint extraction is heuristic."
+    ]
+  },
+  "named_arms": {
+    "recency-only": {
+      "8": {
+        "recall": 0.0381,
+        "nonmono_recall": 0.0031
+      },
+      "16": {
+        "recall": 0.0706,
+        "nonmono_recall": 0.0346
+      },
+      "32": {
+        "recall": 0.1332,
+        "nonmono_recall": 0.1099
+      },
+      "64": {
+        "recall": 0.2461,
+        "nonmono_recall": 0.235
+      }
+    },
+    "relevance-only": {
+      "8": {
+        "recall": 0.044,
+        "nonmono_recall": 0.0003
+      },
+      "16": {
+        "recall": 0.0873,
+        "nonmono_recall": 0.0037
+      },
+      "32": {
+        "recall": 0.1687,
+        "nonmono_recall": 0.0218
+      },
+      "64": {
+        "recall": 0.3272,
+        "nonmono_recall": 0.0561
+      }
+    },
+    "priority-only": {
+      "8": {
+        "recall": 0.0474,
+        "nonmono_recall": 0.0092
+      },
+      "16": {
+        "recall": 0.0943,
+        "nonmono_recall": 0.0226
+      },
+      "32": {
+        "recall": 0.1838,
+        "nonmono_recall": 0.0515
+      },
+      "64": {
+        "recall": 0.3479,
+        "nonmono_recall": 0.14
+      }
+    },
+    "rel+prio": {
+      "8": {
+        "recall": 0.0484,
+        "nonmono_recall": 0.006
+      },
+      "16": {
+        "recall": 0.0954,
+        "nonmono_recall": 0.0155
+      },
+      "32": {
+        "recall": 0.1861,
+        "nonmono_recall": 0.0395
+      },
+      "64": {
+        "recall": 0.3533,
+        "nonmono_recall": 0.1108
+      }
+    },
+    "rel+prio+refrec": {
+      "8": {
+        "recall": 0.0487,
+        "nonmono_recall": 0.0043
+      },
+      "16": {
+        "recall": 0.0959,
+        "nonmono_recall": 0.0114
+      },
+      "32": {
+        "recall": 0.1871,
+        "nonmono_recall": 0.0358
+      },
+      "64": {
+        "recall": 0.3553,
+        "nonmono_recall": 0.0987
+      }
+    },
+    "rec+rel+prio+refrec": {
+      "8": {
+        "recall": 0.0484,
+        "nonmono_recall": 0.0014
+      },
+      "16": {
+        "recall": 0.0954,
+        "nonmono_recall": 0.0054
+      },
+      "32": {
+        "recall": 0.1873,
+        "nonmono_recall": 0.0323
+      },
+      "64": {
+        "recall": 0.3598,
+        "nonmono_recall": 0.0962
+      }
+    }
+  },
+  "best_grid_by_M": {
+    "8": {
+      "arm": "g_0.5_0.5_1_1",
+      "weights": [
+        0.5,
+        0.5,
+        1,
+        1
+      ],
+      "recall": 0.0494,
+      "nonmono": 0.0023,
+      "lift_over_recency": 0.0113
+    },
+    "16": {
+      "arm": "g_0.5_0_0.5_1",
+      "weights": [
+        0.5,
+        0,
+        0.5,
+        1
+      ],
+      "recall": 0.0971,
+      "nonmono": 0.0043,
+      "lift_over_recency": 0.0265
+    },
+    "32": {
+      "arm": "g_0.5_0_0.5_1",
+      "weights": [
+        0.5,
+        0,
+        0.5,
+        1
+      ],
+      "recall": 0.1887,
+      "nonmono": 0.0292,
+      "lift_over_recency": 0.0555
+    },
+    "64": {
+      "arm": "g_1_0_1_0.5",
+      "weights": [
+        1,
+        0,
+        1,
+        0.5
+      ],
+      "recall": 0.3631,
+      "nonmono": 0.1076,
+      "lift_over_recency": 0.117
+    }
+  }
+}

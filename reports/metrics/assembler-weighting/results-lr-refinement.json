@@ -1,0 +1,77 @@
+{
+  "manifest": {
+    "run_id": "lr-refinement-1789060233394",
+    "experiment": "assembler-weighting / LR refinement",
+    "corpus": "claude-code-session(-2).jsonl",
+    "validation": "cross-session (train one, test the other)",
+    "params": {
+      "K_RECENT": 5,
+      "H": 3,
+      "D_DORMANT": 10,
+      "START": 20,
+      "CAP": 30000,
+      "ITERS": 700,
+      "LR": 0.4,
+      "L2": 1,
+      "SEED": 7
+    },
+    "ground_truth": "needed = fingerprint overlap within H (observational proxy)",
+    "commit": "f0f9e80760ade26861d3ba370ce19e1463bf0aea",
+    "date": "2026-09-10T17:10:33.401Z",
+    "caveats": [
+      "Proxy label (fingerprint overlap), not causal.",
+      "Two sessions → one cross-session fold each way.",
+      "Coefficients on per-turn min-max-normalized signals (comparable magnitudes)."
+    ]
+  },
+  "linear": {
+    "base_rate": {
+      "s1": 0.2971,
+      "s2": 0.4474
+    },
+    "test_auc": {
+      "train_s1_test_s2": 0.9028,
+      "train_s2_test_s1": 0.8395
+    },
+    "train_auc": {
+      "s1": 0.8452,
+      "s2": 0.9014
+    },
+    "coefficients_pooled": {
+      "rec": 2.42,
+      "rel": 2.369,
+      "prio": 4.115,
+      "refrec": 1.038
+    },
+    "bias_pooled": -4.097
+  },
+  "interactions": {
+    "base_rate": {
+      "s1": 0.2997,
+      "s2": 0.4444
+    },
+    "test_auc": {
+      "train_s1_test_s2": 0.9019,
+      "train_s2_test_s1": 0.8455
+    },
+    "train_auc": {
+      "s1": 0.8477,
+      "s2": 0.9006
+    },
+    "coefficients_pooled": {
+      "rec": 2.304,
+      "rel": 1.698,
+      "prio": 3.988,
+      "refrec": 0.96,
+      "prio×dormancy": -0.212,
+      "rel×refrec": 1.703,
+      "prio×rel": 0.522
+    },
+    "bias_pooled": -4.011
+  },
+  "interaction_auc_lift": {
+    "train_s1_test_s2": -0.0009,
+    "train_s2_test_s1": 0.006
+  },
+  "interactions_help": false
+}

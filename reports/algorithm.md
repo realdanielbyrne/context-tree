@@ -165,6 +165,13 @@ per turn:
 - **Assembler.** Zone B as a fixed band is capped and inert-to-harmful; the flex buffer *subsumes* it
   (summary becomes one representation), and its cache economics beat the current zones **only** when
   the buffer is append-mostly with a secondary breakpoint. Free re-mixing is cache-death.
+  **Eviction weighting (offline-derived defaults, `assembler-weighting/`; validate live):** the eviction
+  score is a *linear* mix (no FFN — interactions gave no held-out lift; LR cross-session AUC 0.84–0.90)
+  of **priority (dominant, ~2×) + recency + reference-recency**, with **relevance down-weighted**.
+  Relevance is an *admission* signal (the retriever's query-relevance), **not** an eviction signal: on
+  the non-monotonic/dormant-return case (H1) it is the *worst* signal (drops exactly the returning
+  unit), so eviction keys on priority/recency + the **classifier's dormancy**, not the retriever's
+  relevance. This corrects the earlier "assembler needs the retriever's signal to evict."
 
 **Open, and live-only:** does eviction save tokens without losing the task; the soft target on an
 *overflowing* session (the cache sim peaked at ~44% occupancy, so the floor barely bound); the
