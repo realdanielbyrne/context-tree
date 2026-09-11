@@ -13,7 +13,8 @@
     "typecheck": "tsc --build packages/core packages/mcp packages/cli && tsc -p tsconfig.test.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "pnpm run typecheck && pnpm run test"
+    "check": "pnpm run typecheck && pnpm run test",
+    "postinstall": "bash scripts/rebuild-tree-sitter.sh || true"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
