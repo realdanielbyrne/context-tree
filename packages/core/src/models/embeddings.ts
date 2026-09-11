@@ -26,6 +26,35 @@ import { withRetry, type RetryOptions } from './retry.js';
 
 export const DEFAULT_EMBED_MODEL = 'text-embedding-3-small';
 
+/**
+ * Embed `texts` through any `SummaryEmbedder` in bounded batches, validating the
+ * response shape. Shared by the retriever and the flex store-adapter so both
+ * bound request size and fail loud on a malformed embedder (wrong vector count or
+ * empty/mixed dimensions) rather than silently degrading. Empty input → [].
+ */
+export async function embedInBatches(
+  embed: SummaryEmbedder,
+  texts: readonly string[],
+  batchSize = 256,
+): Promise<Float32Array[]> {
+  if (texts.length === 0) return [];
+  if (!Number.isInteger(batchSize) || batchSize < 1) {
+    throw new RangeError('batchSize must be a positive integer');
+  }
+  const vectors: Float32Array[] = [];
+  for (let i = 0; i < texts.length; i += batchSize) {
+    for (const v of await embed(texts.slice(i, i + batchSize))) vectors.push(v);
+  }
+  if (vectors.length !== texts.length) {
+    throw new ModelCallError(`embedder returned ${vectors.length} vector(s) for ${texts.length} input(s)`);
+  }
+  const dim = vectors[0]?.length ?? 0;
+  if (dim === 0 || vectors.some((v) => v.length !== dim)) {
+    throw new ModelCallError('embedder returned empty or mixed-dimension vectors');
+  }
+  return vectors;
+}
+
 export interface EmbeddingClientLike {
   embeddings: {
     create(

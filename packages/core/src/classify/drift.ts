@@ -33,11 +33,16 @@ export const DRIFT_K = 5;
  */
 export const DRIFT_TAU = 1;
 
-/** One unit's inputs: its fingerprint set and its single reduced embedding. */
+/** One unit's inputs: its fingerprint set and (optionally) its reduced embedding. */
 export interface ClassifyUnit {
   fingerprints: ReadonlySet<string>;
-  /** One vector per unit (the caller does the unit-embedding reduction). */
-  embedding: Float32Array;
+  /**
+   * One vector per unit (the caller does the unit-embedding reduction). OPTIONAL:
+   * when any unit lacks an embedding, `driftScores` degrades to LEXICAL-ONLY drift
+   * (`drift = 1 − Jaccard`, no semantic term), so the classifier runs offline / with
+   * no embedder. `reports/session-handoff.md`.
+   */
+  embedding?: Float32Array;
 }
 
 export interface DriftResult {
@@ -104,25 +109,31 @@ export function driftScores(units: readonly ClassifyUnit[], k: number = DRIFT_K)
   const recentFp = new Set<string>();
   for (let i = lo; i < n; i += 1) for (const f of units[i]!.fingerprints) recentFp.add(f);
 
-  const dim = units[0]!.embedding.length;
-  for (const u of units) {
-    if (u.embedding.length !== dim) {
-      throw new RangeError('all unit embeddings must share one dimension');
+  // Full drift needs an embedding on every unit; otherwise degrade to lexical-only.
+  const semantic = units.every((u) => u.embedding !== undefined && u.embedding.length > 0);
+  let centroid: Float32Array | null = null;
+  if (semantic) {
+    const dim = units[0]!.embedding!.length;
+    for (const u of units) {
+      if (u.embedding!.length !== dim) {
+        throw new RangeError('all unit embeddings must share one dimension');
+      }
     }
+    const centroidAcc = new Float64Array(dim);
+    const m = n - lo;
+    for (let i = lo; i < n; i += 1) {
+      const e = units[i]!.embedding!;
+      for (let d = 0; d < dim; d += 1) centroidAcc[d]! += (e[d] ?? 0) / m;
+    }
+    centroid = Float32Array.from(centroidAcc);
   }
-  const centroidAcc = new Float64Array(dim);
-  const m = n - lo;
-  for (let i = lo; i < n; i += 1) {
-    const e = units[i]!.embedding;
-    for (let d = 0; d < dim; d += 1) centroidAcc[d]! += (e[d] ?? 0) / m;
-  }
-  const centroid = Float32Array.from(centroidAcc);
 
   return units.map((u) => {
     const lex = 1 - jaccard(u.fingerprints, recentFp);
+    if (!semantic) return lex; // lexical-only degradation (drift = lexical distance)
     // cosine ∈ [-1,1]; clamp negatives to 0 so a dissimilar unit is distance 1 and
     // the semantic term (and drift) stays in [0,1] as the contract promises.
-    const sem = 1 - Math.max(0, cosine(u.embedding, centroid));
+    const sem = 1 - Math.max(0, cosine(u.embedding!, centroid!));
     return 0.5 * lex + 0.5 * sem;
   });
 }

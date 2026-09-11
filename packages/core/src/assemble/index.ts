@@ -22,6 +22,15 @@ export {
   type Representation,
 } from './flex.js';
 export {
+  mapFlexUnits,
+  buildFlexSource,
+  type FlexEntry,
+  type MapFlexOptions,
+  type FlexSourceDeps,
+  type FlexSourceOptions,
+  type FlexSource,
+} from './flex-store.js';
+export {
   scoreUnits,
   planEviction,
   minMaxNormalize,
