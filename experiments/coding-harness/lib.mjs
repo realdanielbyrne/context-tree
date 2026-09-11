@@ -58,6 +58,7 @@ async function callModel(messages, { think = false, maxTokens = 1024 }) {
 
 // ===================== eviction (the assembler under test) =====================
 export const estTokens = (msgs) => Math.ceil(msgs.reduce((s, m) => s + (m.content || '').length + JSON.stringify(m.tool_calls || '').length, 0) / 4);
+const ANCHOR = +(process.env.CT_ANCHOR || 4); // recency anchor: # most-recent units eviction never drops (working set)
 
 /**
  * Split the message array into pinned head (system + first user task) + UNITS.
@@ -95,7 +96,7 @@ export function evictRecency(messages, budget, reserve = 512) {
   const avail = budget - estTokens(pinned) - reserve;
   if (avail <= 0 || estTokens(units.flatMap((u) => u.slice)) <= avail) return false;
   const kept = []; let used = 0;
-  for (let k = units.length - 1; k >= 0; k--) { const t = estTokens(units[k].slice); if (used + t <= avail || kept.length < 4) { kept.unshift(units[k]); used += t; } else break; }
+  for (let k = units.length - 1; k >= 0; k--) { const t = estTokens(units[k].slice); if (used + t <= avail || kept.length < ANCHOR) { kept.unshift(units[k]); used += t; } else break; }
   if (kept.length === units.length) return false;
   rebuild(messages, pinned, kept); return true;
 }
@@ -114,7 +115,7 @@ export function evictPriority(messages, budget, reserve = 512) {
   const pN = norm(prio), rN = norm(units.map((_, i) => i)), fN = norm(lastCo);
   const score = units.map((_, i) => 2 * pN[i] + 1 * rN[i] + 0.5 * fN[i]);
   const order = units.map((u, i) => i).sort((a, b) => score[b] - score[a]);
-  const forceKeep = new Set([N - 1, N - 2, N - 3, N - 4]); // recency anchor (keep the working set)
+  const forceKeep = new Set(Array.from({length: Math.min(ANCHOR, N)}, (_, k) => N - 1 - k)); // recency anchor (keep the working set)
   const keepIdx = new Set(forceKeep); let used = [...forceKeep].reduce((s, i) => s + estTokens(units[i].slice), 0);
   for (const i of order) { if (keepIdx.has(i)) continue; const t = estTokens(units[i].slice); if (used + t <= avail) { keepIdx.add(i); used += t; } }
   if (keepIdx.size === N) return false;
@@ -126,9 +127,18 @@ export function evictPriority(messages, budget, reserve = 512) {
  * message array in place before each model call (this is where eviction plugs in).
  * Returns transcript, per-call usage, and tool-call log.
  */
-export async function runAgent({ system, task, ws, maxTurns = 40, think = false, hook = null }) {
+// Compress a file read to its docstring + signatures — a retention-friendly summary that
+// shrinks the working set below the budget so the agent need not re-fetch (attacks the thrash root).
+function summarizePy(content) {
+  const doc = (content.match(/"""[\s\S]*?"""|'''[\s\S]*?'''/) || [''])[0].replace(/\s+/g, ' ').slice(0, 280);
+  const sigs = (content.match(/^\s*(def |class ).*/gm) || []).map((s) => s.trim()).join('\n');
+  return `[summary — docstring + signatures]\n${doc}\n${sigs}`.slice(0, 500);
+}
+
+export async function runAgent({ system, task, ws, maxTurns = 40, think = false, hook = null, dethrash = false, summarizeReads = false }) {
   const messages = [{ role: 'system', content: system }, { role: 'user', content: task }];
   const usage = []; const toolLog = []; let turns = 0, stop = 'maxTurns';
+  const readSeen = new Set(); let breakouts = 0;
   for (turns = 0; turns < maxTurns; turns++) {
     if (hook) hook(messages, turns);
     const j = await callModel(messages, { think });
@@ -139,7 +149,14 @@ export async function runAgent({ system, task, ws, maxTurns = 40, think = false,
     if (msg.tool_calls?.length) {
       for (const tc of msg.tool_calls) {
         let args = {}; try { args = JSON.parse(tc.function.arguments || '{}'); } catch {}
-        const out = execTool(ws, tc.function.name, args);
+        let out = execTool(ws, tc.function.name, args);
+        if (summarizeReads && tc.function.name === 'read_file' && !/^error/.test(out)) out = summarizePy(out);
+        // BREAK-OUT: a re-read of an already-read file is the thrash signal — return the
+        // content but nudge the agent to stop re-fetching evicted content and make progress.
+        if (dethrash && tc.function.name === 'read_file' && args.path) {
+          if (readSeen.has(args.path)) { out = `[NOTE: you already read ${args.path} earlier this session; its content is unchanged, shown below. Do NOT keep re-reading reference files — you have the information; proceed to the NEXT unfinished step of the task (create the next file).]\n${out}`; breakouts++; }
+          readSeen.add(args.path);
+        }
         toolLog.push({ turn: turns, name: tc.function.name, args, out: out.slice(0, 200) });
         messages.push({ role: 'tool', tool_call_id: tc.id, content: String(out) });
       }
@@ -147,5 +164,5 @@ export async function runAgent({ system, task, ws, maxTurns = 40, think = false,
     } else { stop = 'end_turn'; process.stderr.write('·'); break; }
   }
   process.stderr.write('\n');
-  return { messages, usage, toolLog, turns: turns + 1, stop };
+  return { messages, usage, toolLog, turns: turns + 1, stop, breakouts };
 }
