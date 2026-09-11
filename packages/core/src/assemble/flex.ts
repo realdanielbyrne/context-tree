@@ -26,6 +26,12 @@
  * A raw unit larger than `b` — including the recency anchor, which is never evicted — is
  * not yet chunked/summarized, so a single oversized raw unit can still exceed the floor
  * and the window.
+ *
+ * Also NOT YET WIRED: the provider projection. `toMessages`/`toCompletionRequest`
+ * (assembler.ts) still serialize only the Zone `B`/`C`/`tail` blocks, so passing THIS
+ * prompt to them would silently drop the `head`/`flex` content. A flex-aware projection
+ * is part of the swap (`reports/session-handoff.md`); until then, consume `blocks`
+ * directly rather than routing a flex prompt through the legacy projection.
  */
 import type {
   AssembledPrompt,
@@ -104,7 +110,7 @@ function sumTokens(blocks: readonly PromptBlock[]): number {
 }
 
 /** Number of other units sharing at least one fingerprint (recurrence). */
-function corecurrence(units: readonly FlexUnit[], i: number): number {
+function coOccurrence(units: readonly FlexUnit[], i: number): number {
   const fp = units[i]!.fingerprints;
   let n = 0;
   for (let j = 0; j < units.length; j += 1) {
@@ -140,6 +146,17 @@ export function assembleFlex(
   const weights = options.weights ?? DEFAULT_EVICTION_WEIGHTS;
   const halfLife = options.priorityHalfLife ?? DEFAULT_PRIORITY_HALFLIFE;
   const currentTurn = options.currentTurn ?? (units.length > 0 ? units[units.length - 1]!.order : 0);
+  if (!Number.isFinite(softFrac) || softFrac < 0 || softFrac > 1) {
+    throw new RangeError('softTargetFrac must be in [0, 1]');
+  }
+  if (!Number.isInteger(anchor) || anchor < 0) throw new RangeError('anchor must be a non-negative integer');
+  if (!Number.isFinite(halfLife) || halfLife <= 0) throw new RangeError('priorityHalfLife must be > 0');
+  // The buffer's cache discipline and anchor/eviction logic depend on creation order.
+  for (let i = 1; i < units.length; i += 1) {
+    if (units[i]!.order < units[i - 1]!.order) {
+      throw new RangeError('units must be supplied in creation order (non-decreasing order)');
+    }
+  }
 
   const block = (zone: PromptBlock['zone'], id: string, text: string, nodeId?: NodeId): PromptBlock => {
     const b: PromptBlock = { zone, id, text, tokens: tokenizer.count(text) };
@@ -171,7 +188,7 @@ export function assembleFlex(
       tokens: unitTokens(i),
       anchor: i >= anchorFrom,
       signals: {
-        priority: ((u.wrote ? 2 : 0) + corecurrence(units, i)) * decay,
+        priority: ((u.wrote ? 2 : 0) + coOccurrence(units, i)) * decay,
         recency: u.order,
         refRecency: -(currentTurn - u.lastReferencedTurn),
         dormancy: u.dormancy,

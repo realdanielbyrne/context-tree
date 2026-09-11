@@ -2,8 +2,9 @@
  * BM25 lexical ranker over the chunk corpus (spec stage 3). Replaces the
  * tested-and-lost IDF term-overlap ranker (`lexical.ts`): BM25 beat plain
  * IDF-beam directionally (`reports/metrics/rung-0e-retrievers/report-isolation.md`).
- * Standard Okapi BM25 with the non-negative idf variant (BM25+), so a term in
- * most documents never contributes a negative score.
+ * Standard Okapi BM25 with a non-negative idf form (`ln(1 + (N−df+0.5)/(df+0.5))`),
+ * so a term in most documents never contributes a negative score. This is NOT
+ * BM25+ (there is no δ lower-bound term).
  */
 export const BM25_K1 = 1.2;
 export const BM25_B = 0.75;
@@ -34,6 +35,8 @@ export class BM25 {
     private readonly k1: number = BM25_K1,
     private readonly b: number = BM25_B,
   ) {
+    if (!Number.isFinite(k1) || k1 < 0) throw new RangeError('BM25 k1 must be finite and ≥ 0');
+    if (!Number.isFinite(b) || b < 0 || b > 1) throw new RangeError('BM25 b must be in [0, 1]');
     let totalLen = 0;
     for (const { id, text } of corpus) {
       const tokens = tokenize(text);

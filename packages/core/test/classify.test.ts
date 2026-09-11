@@ -59,6 +59,23 @@ describe('driftScores', () => {
   it('empty input yields empty output', () => {
     expect(driftScores([])).toEqual([]);
   });
+
+  it('stays within [0,1] for an anti-correlated embedding (cosine clamp)', () => {
+    const units = [
+      unit(['x'], [-1, 0]), // opposite direction to the recent window
+      unit(['foo'], [1, 0]),
+      unit(['bar'], [1, 0]),
+    ];
+    for (const d of driftScores(units, 2)) {
+      expect(d).toBeGreaterThanOrEqual(0);
+      expect(d).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('rejects a bad window k and mismatched embedding dimensions', () => {
+    expect(() => driftScores([unit(['a'], [1, 0])], 0)).toThrow();
+    expect(() => driftScores([unit(['a'], [1, 0]), unit(['b'], [1, 0, 0])])).toThrow();
+  });
 });
 
 describe('DriftClassifier', () => {

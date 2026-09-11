@@ -13,6 +13,7 @@
  * `reports/session-handoff.md`.
  */
 import type { SummaryEmbedder } from './types.js';
+import { ModelCallError } from '../contracts/index.js';
 import { cosine } from '../classify/drift.js';
 import { chunkUnits, type ChunkOptions } from './chunk.js';
 import { BM25 } from './bm25.js';
@@ -45,6 +46,10 @@ export async function ensembleRetrieve(
   embed: SummaryEmbedder,
   options: EnsembleOptions = {},
 ): Promise<RetrievedUnit[]> {
+  const { topK } = options;
+  if (topK !== undefined && (!Number.isInteger(topK) || topK < 0)) {
+    throw new RangeError('topK must be a non-negative integer');
+  }
   const chunks = chunkUnits(units, options.chunk);
   if (chunks.length === 0) return [];
 
@@ -52,8 +57,21 @@ export async function ensembleRetrieve(
   const bm25 = new BM25(chunks.map((c) => ({ id: String(c.index), text: c.text })));
   const bm25Ranking = bm25.search(query).map((s) => s.id);
 
-  // Vector kNN (cosine) over the SAME chunks. One batched embed call: [query, ...chunks].
-  const vectors = await embed([query, ...chunks.map((c) => c.text)]);
+  // Vector kNN (cosine) over the SAME chunks. Embed [query, ...chunks] in bounded
+  // batches so a large corpus never exceeds the provider's per-request limits.
+  const texts = [query, ...chunks.map((c) => c.text)];
+  const vectors: Float32Array[] = [];
+  const BATCH = 256;
+  for (let i = 0; i < texts.length; i += BATCH) {
+    for (const v of await embed(texts.slice(i, i + BATCH))) vectors.push(v);
+  }
+  if (vectors.length !== texts.length) {
+    throw new ModelCallError(`embedder returned ${vectors.length} vector(s) for ${texts.length} input(s)`);
+  }
+  const dim = vectors[0]?.length ?? 0;
+  if (dim === 0 || vectors.some((v) => v.length !== dim)) {
+    throw new ModelCallError('embedder returned empty or mixed-dimension vectors');
+  }
   const qVec = vectors[0]!;
   const vecRanking = chunks
     .map((c, i) => ({ id: String(c.index), score: cosine(qVec, vectors[i + 1]!) }))
@@ -75,5 +93,5 @@ export async function ensembleRetrieve(
   const ranked = [...unitBest.entries()]
     .map(([unitId, score]) => ({ unitId, score }))
     .sort((a, b) => b.score - a.score);
-  return options.topK !== undefined ? ranked.slice(0, options.topK) : ranked;
+  return topK !== undefined ? ranked.slice(0, topK) : ranked;
 }

@@ -125,4 +125,25 @@ describe('ensembleRetrieve', () => {
     const r = await ensembleRetrieve('cache prefix', units, fakeEmbed, { topK: 1 });
     expect(r).toHaveLength(1);
   });
+
+  it('rejects a negative topK instead of returning almost everything', async () => {
+    await expect(ensembleRetrieve('cache', units, fakeEmbed, { topK: -1 })).rejects.toThrow();
+  });
+
+  it('throws on a malformed embedder (wrong vector count)', async () => {
+    const badEmbed = async (texts: readonly string[]): Promise<Float32Array[]> =>
+      texts.slice(1).map(() => Float32Array.from([1])); // one short
+    await expect(ensembleRetrieve('cache', units, badEmbed)).rejects.toThrow();
+  });
+});
+
+describe('retrieval param validation', () => {
+  it('whitespace-only text yields no chunks (not a blank chunk)', () => {
+    expect(splitText('   \n  ')).toEqual([]);
+  });
+  it('rejects invalid BM25 / RRF params', () => {
+    expect(() => new BM25([], -1)).toThrow();
+    expect(() => new BM25([], 1.2, 2)).toThrow(); // b out of [0,1]
+    expect(() => reciprocalRankFusion([['a']], -5)).toThrow();
+  });
 });

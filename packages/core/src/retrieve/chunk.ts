@@ -95,11 +95,17 @@ function recurse(
 export function splitText(text: string, options: ChunkOptions = {}): string[] {
   const chunkSize = options.chunkSize ?? DEFAULT_CHUNK_SIZE;
   const chunkOverlap = options.chunkOverlap ?? DEFAULT_CHUNK_OVERLAP;
-  const separators = options.separators ?? DEFAULT_SEPARATORS;
   if (chunkSize <= 0) throw new RangeError('chunkSize must be positive');
   if (chunkOverlap < 0 || chunkOverlap >= chunkSize) {
     throw new RangeError('chunkOverlap must be in [0, chunkSize)');
   }
+  // Whitespace-only text carries no retrievable content — yield nothing (no ' ' chunks).
+  if (text.trim().length === 0) return [];
+  let separators = options.separators ?? DEFAULT_SEPARATORS;
+  if (separators.length === 0) throw new RangeError('separators must be non-empty');
+  // Guarantee a character-level fallback so an unbreakable oversized piece cannot
+  // survive larger than chunkSize.
+  if (!separators.includes('')) separators = [...separators, ''];
   return recurse(text, separators, chunkSize, chunkOverlap);
 }
 

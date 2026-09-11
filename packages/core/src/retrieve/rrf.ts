@@ -25,6 +25,7 @@ export function reciprocalRankFusion(
   rankings: readonly (readonly string[])[],
   k: number = DEFAULT_RRF_K,
 ): Scored[] {
+  if (!Number.isFinite(k) || k < 0) throw new RangeError('RRF k must be finite and ≥ 0');
   const scores = new Map<string, number>();
   for (const ranking of rankings) {
     ranking.forEach((id, i) => {

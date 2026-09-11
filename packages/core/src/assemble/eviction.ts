@@ -112,10 +112,14 @@ export interface EvictionPlan {
 
 /**
  * Decide what to keep to fit `budget` tokens. Eviction fires only when the
- * candidates exceed the budget (the soft-target floor `f` — never prune below
- * it); above it, evict the LOWEST-scoring first; anchors and pinned units are
- * always kept. Kept indices are returned in ascending (creation) order so the
- * caller re-emits the buffer append-only, never re-mixed (cache discipline).
+ * candidates exceed the budget (the soft-target floor `f` — never prune below it).
+ * Above it, this is a **greedy score-priority packing**, matching the D-EV
+ * experiment: process candidates highest-score first and keep each that still fits,
+ * evicting the rest. This maximizes retained context to the floor (principle: err
+ * toward MORE context) rather than strictly evicting the single lowest scorer — so a
+ * small low-scoring unit can survive when a larger higher-scoring one no longer fits.
+ * Anchors and pinned units are always kept. Kept indices are returned in ascending
+ * (creation) order so the caller re-emits the buffer append-only (cache discipline).
  *
  * `budget` is the soft-target floor `f` — a fraction of the window (spec: 25–50%
  * of W), NOT the window minus head/reserve. The buffer is evicted down to `f`.
