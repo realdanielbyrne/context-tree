@@ -117,9 +117,9 @@ export interface EvictionPlan {
  * always kept. Kept indices are returned in ascending (creation) order so the
  * caller re-emits the buffer append-only, never re-mixed (cache discipline).
  *
- * `budget` here is the space available to the flex buffer (the caller subtracts
- * the frozen head + reply reserve first). Anchors count against it but are never
- * dropped, matching the spec's "never drop the recency anchor".
+ * `budget` is the soft-target floor `f` — a fraction of the window (spec: 25–50%
+ * of W), NOT the window minus head/reserve. The buffer is evicted down to `f`.
+ * Anchors count against `f` but are never dropped ("never drop the recency anchor").
  */
 export function planEviction(
   candidates: readonly EvictionCandidate[],

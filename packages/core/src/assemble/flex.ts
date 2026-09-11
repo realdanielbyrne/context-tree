@@ -19,6 +19,13 @@
  * The buffer only appends and evicts in place; it never re-mixes (re-ordering the
  * prefix is cache-death). Dormancy comes from the classifier (stage 1); this stage
  * consumes it and never computes embeddings itself.
+ *
+ * NOT YET IMPLEMENTED (phased — `reports/session-handoff.md`): the reduce-on-overflow
+ * router and the per-unit budget `b` (spec §"Reduce-on-overflow"). Eviction to the soft
+ * floor is implemented; the overflow VALVE for an individual oversized raw unit is not.
+ * A raw unit larger than `b` — including the recency anchor, which is never evicted — is
+ * not yet chunked/summarized, so a single oversized raw unit can still exceed the floor
+ * and the window.
  */
 import type {
   AssembledPrompt,
@@ -27,7 +34,6 @@ import type {
   PromptBlock,
   Tokenizer,
 } from '../contracts/index.js';
-import { replyHeadroom } from './budgets.js';
 import {
   planEviction,
   DEFAULT_EVICTION_WEIGHTS,
@@ -85,8 +91,6 @@ export interface FlexAssembleOptions {
   window: number;
   softTargetFrac?: number;
   anchor?: number;
-  /** Reply reservation; defaults to `replyHeadroom({ window })`. */
-  reserve?: number;
   weights?: EvictionWeights;
   /** Current turn index, for priority decay + reference-recency. Defaults to max unit order. */
   currentTurn?: number;
@@ -134,7 +138,6 @@ export function assembleFlex(
   const anchor = options.anchor ?? DEFAULT_ANCHOR;
   const softFrac = options.softTargetFrac ?? DEFAULT_SOFT_TARGET_FRAC;
   const weights = options.weights ?? DEFAULT_EVICTION_WEIGHTS;
-  const reserve = options.reserve ?? replyHeadroom({ window }).tokens;
   const halfLife = options.priorityHalfLife ?? DEFAULT_PRIORITY_HALFLIFE;
   const currentTurn = options.currentTurn ?? (units.length > 0 ? units[units.length - 1]!.order : 0);
 
@@ -180,15 +183,22 @@ export function assembleFlex(
   const keptIndices = new Set(plan.keep);
 
   // ── flex blocks, CREATION ORDER, kept units only (append-only, never remixed) ─
+  // The stable run is the LEADING CONTIGUOUS run of summary blocks; the secondary
+  // breakpoint falls after it. A raw block — an anchor OR an old unit whose summary
+  // has not latched yet (summarization is async) — CLOSES the stable run, so a later
+  // raw→summary latch can never rewrite a block inside the cached prefix. Placing the
+  // breakpoint after the last summary *anywhere* would trap such a raw hole before it.
   const flexBlocks: PromptBlock[] = [];
   let lastStableId: string | null = null;
+  let stableRunOpen = true;
   for (let i = 0; i < n; i += 1) {
     if (!keptIndices.has(i)) continue;
     const u = units[i]!;
     const isSummary = repr(i) === 'summary';
     const b = block('flex', `flex:${u.nodeId}`, unitText(i), u.nodeId);
     flexBlocks.push(b);
-    if (isSummary) lastStableId = b.id; // stable (summary) run precedes the raw tail
+    if (stableRunOpen && isSummary) lastStableId = b.id;
+    else if (!isSummary) stableRunOpen = false;
   }
 
   // ── tail: retrieved results, appended after the buffer ──────────────────────
@@ -226,7 +236,9 @@ export function assembleFlex(
     droppedFromZoneB: plan.evict.map((i) => units[i]!.nodeId),
     window,
     windowRemaining: window - total,
-    overWindow: total + reserve > window,
+    // Contract meaning: the prompt itself exceeds the window (matches ZoneAssembler
+    // and the BudgetReport doc). Reply room is reported separately via replyAllowance.
+    overWindow: total > window,
     replyAllowance: Math.max(0, window - total),
     evictedFromTail: [],
     droppedFromZoneC: 0,

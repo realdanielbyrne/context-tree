@@ -126,3 +126,45 @@ describe('assembleFlex — cache stability', () => {
     expect(headIds).toEqual(['head:system', 'head:user:0', 'head:user:1']);
   });
 });
+
+describe('assembleFlex — stable-run cache invariant (through the secondary breakpoint)', () => {
+  const head = { system: 'SYS', userPrompts: ['p0'] };
+  // Blocks up to and including the secondary (flex) breakpoint — the cached stable prefix.
+  const cachedPrefix = (p: ReturnType<typeof assembleFlex>) => {
+    const bpId = p.cacheBreakpoints.at(-1)!;
+    const idx = p.blocks.findIndex((b) => b.id === bpId);
+    return p.blocks.slice(0, idx + 1);
+  };
+  const assertStable = (before: ReturnType<typeof assembleFlex>, after: ReturnType<typeof assembleFlex>) => {
+    for (const b of cachedPrefix(before)) {
+      const a = after.blocks.find((x) => x.id === b.id);
+      expect(a, `block ${b.id} still present`).toBeDefined();
+      expect(a!.text, `block ${b.id} byte-stable`).toBe(b.text);
+    }
+  };
+
+  it('places the breakpoint after the LEADING contiguous summary run, not after a summary trailing a raw hole', () => {
+    // unit 2 has no summary yet (async latch pending); 3,4,5 do; 6 is the raw anchor.
+    const units = [unit(0), unit(1), unit(2, { noSummary: true }), unit(3), unit(4), unit(5), unit(6)];
+    const p = assembleFlex(head, units, tok, { ...bigWindow, anchor: 1 });
+    expect(p.cacheBreakpoints).toContain('flex:n1'); // after the leading run n0,n1
+    expect(p.cacheBreakpoints).not.toContain('flex:n5'); // a summary behind the raw hole is NOT the breakpoint
+  });
+
+  it('a late summary latch on an old unit does not rewrite the cached stable prefix', () => {
+    const mk = (latched: boolean) =>
+      assembleFlex(
+        head,
+        [unit(0), unit(1), unit(2, latched ? {} : { noSummary: true }), unit(3), unit(4), unit(5), unit(6)],
+        tok,
+        { ...bigWindow, anchor: 1 },
+      );
+    assertStable(mk(false), mk(true)); // unit 2 raw → its summary latches: prefix must stay byte-stable
+  });
+
+  it('appending a new unit leaves the cached stable prefix byte-identical', () => {
+    const before = assembleFlex(head, [unit(0), unit(1), unit(2), unit(3)], tok, { ...bigWindow, anchor: 1 });
+    const after = assembleFlex(head, [unit(0), unit(1), unit(2), unit(3), unit(4)], tok, { ...bigWindow, anchor: 1 });
+    assertStable(before, after);
+  });
+});
