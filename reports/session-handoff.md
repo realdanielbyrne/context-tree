@@ -89,8 +89,8 @@ Environment note: the DB-backed tests need Node ≥ 22 (`better-sqlite3` native 
 runtime they segfault/`ERR_IPC_CHANNEL_CLOSED`. Run the suite single-fork in a sandboxed shell:
 `vitest run packages/core --pool=forks --poolOptions.forks.singleFork=true` (a worker-teardown quirk).
 
-**Done and verified (all green — core suite 632 passed / 9 skipped, `tsc -b` clean). Commits on
-`live-model-retriever-probes`: `5cfdfe3`, `08fa1ab`, `654c029`:**
+**Done and verified (all green — core suite 645 passed / 9 skipped, `tsc -b` clean). Commits on
+`live-model-retriever-probes`: `5cfdfe3`, `08fa1ab`, `654c029`, `51c03c9`, `b3766f5`:**
 - ✅ `attention/` → `experiments/attention-over-history/snapshot/` (+ README); `attention.test.ts` removed. `5cfdfe3`
 - ✅ **Eviction scorer** `assemble/eviction.ts` — D-EV shape, coefficients flagged provisional (12 tests).
 - ✅ **Drift classifier** `classify/drift.ts` — settled drift signal; z-score/τ flagged provisional,
@@ -108,24 +108,29 @@ runtime they segfault/`ERR_IPC_CHANNEL_CLOSED`. Run the suite single-fork in a s
   kept), `lexical.ts` IDF, `models/embeddings.ts` (remote → NOT-CARRIED-FORWARD), `providers/` (never-compared).
 - ✅ `Zone` contract widened (`head|flex` added, `A|B|C` kept + marked SUPERSEDED); `ZoneAssembler`
   marked SUPERSEDED-pending-removal in-code.
+- ✅ **Flex store-adapter** `assemble/flex-store.ts` (`b3766f5`) — the convergence point.
+  `mapFlexUnits` (pure): store entries → `FlexUnit[]` (fingerprints, dormancy via the classifier,
+  priority signals) + the `EnsembleUnit` corpus; `buildFlexSource` (glue): store/trace/blobs → frozen
+  head (system + steering + all L0 `user_message` prompts) + phase-node units in creation order (same
+  `trace.read`+`renderEvent` span `ZoneAssembler` used). Classifier degrades to lexical-only when no
+  embedder is supplied (`ClassifyUnit.embedding` optional). Shared `embedInBatches` (validated + bounded)
+  used by both the adapter and `ensembleRetrieve` (`51c03c9`/`b3766f5` fold in the two `ocr` reviews).
+  *Note:* `buildFlexSource`'s store-reading glue is typechecked + reuses the proven read pattern but is
+  not yet covered by a populated-DB integration test — that arrives with the `context_search` rewiring.
+  *Also noted:* `extractFingerprints` matches camelCase/PascalCase/paths but NOT snake_case (a spec-vs-impl
+  gap worth reconciling).
 
-**Remaining execution order — the two integration steps now CONVERGE on the store-adapter:**
-The assembler swap and the `context_search` rewiring were both blocked on the same missing piece: a
-**flex store-adapter** turning store nodes into the `FlexUnit`s / L0-unit corpus the new code consumes.
-That is now the single next step; everything else follows it.
-1. **Flex store-adapter (the convergence point).** Source units from `nodesInCreationOrder` /
-   `currentSummary` / `trace`; run the drift classifier over L3 embeddings (degrade to lexical-only
-   drift when an embedding is absent, so it is not hard-blocked on the embedder); expose the same
-   unit list as (a) `FlexUnit`s for `assembleFlex` and (b) the `EnsembleUnit` corpus for `ensembleRetrieve`.
-2. **Rewire `context_search`** onto `ensembleRetrieve` (using the adapter's corpus); retire the
-   `TreeRetriever` rank path; migrate `retrieve.test.ts` / `providers.test.ts` / `mcp.test.ts`.
-3. **Reduce-on-overflow router** (chunk vs summarize, default chunk) — reducers settled; router flagged.
+**Remaining execution order (store-adapter done — next is the `context_search` rewiring):**
+1. **Rewire `context_search`** onto `ensembleRetrieve` (build the corpus via `buildFlexSource`/
+   `mapFlexUnits`); retire the `TreeRetriever` rank path; migrate `retrieve.test.ts` /
+   `providers.test.ts` / `mcp.test.ts`. (This also gives `buildFlexSource` its populated-DB coverage.)
+2. **Reduce-on-overflow router** (chunk vs summarize, default chunk) — reducers settled; router flagged.
    Implement the per-unit budget `b` and wire it into `assembleFlex` (the flagged gap there).
-4. **Complete the assembler swap**: generalize `toMessages`/`toCompletionRequest` to `head|flex|tail`;
+3. **Complete the assembler swap**: generalize `toMessages`/`toCompletionRequest` to `head|flex|tail`;
    migrate `assemble`/`cache`/`budgets`/`e2e` tests onto the flex adapter (preserving their real
    cache/pipeline coverage); delete `ZoneAssembler`; narrow `Zone` to `head|flex|tail`; rename the
    `BudgetReport` zone fields (`head`/`flex`).
-5. **Deployment / validation follow-ups** (do not gate the swap): add the local MiniLM `SummaryEmbedder`
+4. **Deployment / validation follow-ups** (do not gate the swap): add the local MiniLM `SummaryEmbedder`
    implementation (needs a native dep); run the transcript-corpus RRF validation + sweep `RRF_K`/chunk
    size; refit the eviction coefficients; run the drift classifier's corrected permutation test.
 
