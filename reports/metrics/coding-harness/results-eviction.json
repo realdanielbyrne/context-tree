@@ -1,0 +1,106 @@
+{
+  "manifest": {
+    "run_id": "eviction-1789077738713",
+    "experiment": "coding-harness / eviction (non-monotonic causal test)",
+    "model": "unsloth/Qwen3.8-27B-GGUF",
+    "budget": 3500,
+    "maxTurns": 60,
+    "task": "non-monotonic tsutil→filler→report",
+    "thinking": false,
+    "n_per_arm": 1,
+    "eviction_defaults": "priority = 2·prio + 1·recency + 0.5·refrec, relevance 0 (D-EV2..4)",
+    "commit": "f0f9e80760ade26861d3ba370ce19e1463bf0aea",
+    "date": "2026-09-10T22:02:18.716Z",
+    "caveats": [
+      "n=1 per arm, temp 0 — directional; agent path can vary run to run.",
+      "Budget 5000 (policy test), not the 262K ceiling.",
+      "Re-reading a dropped file is CORRECT recovery — cost shows as tokens/turns, not always failure."
+    ]
+  },
+  "arms": [
+    {
+      "policy": "none",
+      "success": true,
+      "printed": "02:02:03",
+      "turns": 24,
+      "stop": "end_turn",
+      "evictions": 0,
+      "peak_history_tokens": 4636,
+      "total_prompt_tokens": 108748,
+      "tsutil_rereads": 0,
+      "ts_present_at_end": true,
+      "files": [
+        "m1.py",
+        "m2.py",
+        "m3.py",
+        "m4.py",
+        "m5.py",
+        "m6.py",
+        "r1.py",
+        "r2.py",
+        "r3.py",
+        "r4.py",
+        "r5.py",
+        "r6.py",
+        "report.py",
+        "tsutil.py"
+      ]
+    },
+    {
+      "policy": "recency",
+      "success": true,
+      "printed": "02:02:03",
+      "turns": 26,
+      "stop": "end_turn",
+      "evictions": 5,
+      "peak_history_tokens": 3150,
+      "total_prompt_tokens": 94299,
+      "tsutil_rereads": 0,
+      "ts_present_at_end": false,
+      "files": [
+        "m1.py",
+        "m2.py",
+        "m3.py",
+        "m4.py",
+        "m5.py",
+        "m6.py",
+        "r1.py",
+        "r2.py",
+        "r3.py",
+        "r4.py",
+        "r5.py",
+        "r6.py",
+        "report.py",
+        "tsutil.py"
+      ]
+    },
+    {
+      "policy": "priority",
+      "success": true,
+      "printed": "02:02:03",
+      "turns": 23,
+      "stop": "end_turn",
+      "evictions": 4,
+      "peak_history_tokens": 3107,
+      "total_prompt_tokens": 80823,
+      "tsutil_rereads": 0,
+      "ts_present_at_end": false,
+      "files": [
+        "m1.py",
+        "m2.py",
+        "m3.py",
+        "m4.py",
+        "m5.py",
+        "m6.py",
+        "r1.py",
+        "r2.py",
+        "r3.py",
+        "r4.py",
+        "r5.py",
+        "r6.py",
+        "report.py",
+        "tsutil.py"
+      ]
+    }
+  ]
+}
