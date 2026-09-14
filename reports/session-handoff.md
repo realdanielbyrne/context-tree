@@ -204,7 +204,8 @@ Keeping a unit costs `r·B` per turn; re-fetching one costs `w·B` once. Break-e
 is within `w/r` turns (size-independent). Backward **idle** (turns since a unit's file was last touched)
 is the trivially-countable proxy — Tier 1 puts per-decision precision ≈ **85%**, only **+1–2pp over a
 no-skill constant predictor** (MCC 0.235); the earlier "98% precision" was an artifact of scoring every
-resident turn. **Caution:** Tier 1 also found the transcript turn-clock counts JSONL *content-block lines*,
+resident turn. ⚠️ **The live A/B (item 8) then found idle does NOT beat positional recency as an
+eviction signal** (pooled p=1.000), so treat `g*`-on-idle as an unproven policy, not a validated one. **Caution:** Tier 1 also found the transcript turn-clock counts JSONL *content-block lines*,
 not API turns (2–2.4× inflation) — check any transcript analysis for the same defect.
 
 ### 1. Attention over history (highest-value survivor) — `experiments/attention-over-history/`
@@ -248,11 +249,14 @@ touched most recently — LRU on `idleOf`) beat positional recency and a volume-
 tight cap (n=3: 3/3 vs 1/3 vs 1/3, ~half the re-reads at matched eviction volume; n=10 confirmation in
 flight). `report-ab-longbuild.md`.
 
-So the tuning question is no longer "what are the four coefficients?" but the cheaper, sharper one:
-**does the 4-term D-EV score beat pure LRU-at-`g*`?** Run pure reference-recency as the BASELINE arm and
-make each additional term (priority, positional recency, dormancy) earn its place by beating it. If it
-cannot, D-EV is over-engineered and the assembler/evictor should be driven by the idle signal, with the
-other terms retired rather than re-fitted. Only if the multi-term score wins does a coefficient re-fit
+⚠️ **Updated by item 8's n=10 outcome.** Pure reference-recency did **NOT** beat positional recency
+live (pooled 7/13 vs 6/13, **p=1.000**), so **the case for retiring the other terms in favour of idle is
+NOT made** — an earlier version of this item leaned that way on n=3 evidence that turned out to be noise.
+The sharpened question stands, but with **no presumed winner**: does the 4-term D-EV score beat *either*
+single-signal baseline (idle, or plain positional recency)? Run both single-signal policies as baselines
+and make each extra term earn its place. The live evidence so far says the two single signals are
+**indistinguishable from each other**, and both beat no-signal — consistent with "some ordering matters,
+which one matters less". Only if the multi-term score wins does a coefficient re-fit
 matter — and then it must be cross-session-validated before any value is canon. (`assembler-weighting/`,
 `experiments/context-dedup/policies.mjs` for the tested LRU implementation.)
 
@@ -314,16 +318,28 @@ hot-set target rather than a fixed fraction?** Arms: (a) no eviction until `wind
 *(HR1 — structural retrieval unit, excerpt-vs-whole-payload ablation — is untouched by these results and
 still unrun; it is now tracked on its own as item 10.)*
 
-### 8. A/B window-cap sweep — confirm the LRU eviction result at n=10 *(IN FLIGHT)*
-The headline new result. At a tight cap (W=4,700 ≈ 25% of measured peak) selection by reference recency
-passed **3/3** where positional recency and the volume-matched random control each passed **1/3**, with
-~half the re-reads at matched eviction volume (37/39/40); at W=9,500 it self-terminated 3/3 in 54 turns
-(uncapped: 53) while holding 43% of the context for 31% fewer tokens. **Not significant at n=3**
-(Fisher p=0.40 pairwise, 0.167 pooled) — an n=10 run at the decisive cap is running; pooled n=13 is the
-deciding number. Combined report generator: `experiments/context-dedup/report-ab-combined.mjs`.
-If it holds, this is what drives item 2's retirement of the multi-term score and feeds the assembler.
-Falsification stands as pre-registered: no separation outside the noise band, or no beat over random,
-retires reference-recency as a distinct signal.
+### 8. A/B window-cap sweep — **RESOLVED: the LRU effect did NOT replicate at n=10**
+**OUTCOME: the pre-registered falsification is MET.** Reference recency adds nothing over positional
+recency on this task.
+
+| arm | n=3 | n=10 | pooled n=13 | pooled re-reads (med) |
+|---|---|---|---|---|
+| idle (reference recency) | 3/3 | **4/10** | 7/13 (54%) | 7 |
+| truncate-tail (positional) | 1/3 | **5/10** | 6/13 (46%) | 4 |
+| random (control) | 1/3 | 1/10 | 2/13 (15%) | 9 |
+
+- **idle vs truncate-tail, pooled: Fisher p = 1.000.** No evidence of any difference — at n=10
+  truncate-tail was in fact slightly *ahead*. The n=3 split was noise, **and so was the mechanism**: the
+  "halved re-reads" that made the n=3 story look coherent **inverted** (pooled idle 7 vs truncate-tail 4).
+- **What survives, and it is weaker and different:** a selection signal beats no signal —
+  **both signal arms vs random, 13/26 vs 2/13, p = 0.045**. Individually neither clears 0.05
+  (idle vs random p=0.097; truncate-tail vs random p=0.202). So *some* ordering matters; *which* one
+  matters less than expected.
+- **Consequence:** do **not** drive the assembler/evictor from the idle signal on the strength of this.
+  Authoritative writeup: `report-ab-combined.{md,html}`; the n=3-only report is bannered as superseded.
+- **Methodological note worth keeping:** n=3 produced a clean 3/3-vs-1/3 story *with* a coherent
+  mechanism and it was entirely noise. Pre-registering the falsification and paying for n=10 is what
+  caught it — the cheap version of this experiment would have shipped a false finding.
 
 ### 9. Port the window experiments onto SWE-bench Verified *(substrate now available)*
 `experiments/context-dedup/swebench_provision.py` is a validated **non-Docker** SWE-bench harness

@@ -1,4 +1,15 @@
-# A/B window-cap sweep — reference-recency eviction survives a tight cap that positional recency does not (n=3, underpowered)
+# A/B window-cap sweep — n=3 result (SUPERSEDED by n=10: the effect did NOT replicate)
+
+> ⚠️ **CORRECTED BY THE n=10 RUN — do not cite this report's headline.** The n=3 finding below
+> (idle 3/3 vs truncate-tail 1/3, with halved re-reads) **failed to replicate**. At n=10:
+> truncate-tail **5/10**, idle **4/10**, random **1/10**. Pooled n=13: idle 7/13 vs truncate-tail 6/13,
+> **Fisher p = 1.000** — zero evidence of any difference. The predicted *mechanism* also inverted
+> (pooled median re-reads: idle 7, truncate-tail 4). The pre-registered falsification is **MET**:
+> reference recency adds nothing over positional recency on this task. What survives is weaker and
+> different: **both signal arms beat the random control** (13/26 vs 2/13, p=0.045). See
+> `report-ab-combined.md` for the combined, authoritative analysis. This file is kept for provenance.
+
+*(original n=3 report follows)*
 
 **Question (one variable — the SELECTION signal):** when a coding agent's context is
 capped, does keeping units by **reference recency** (how long since that file was last

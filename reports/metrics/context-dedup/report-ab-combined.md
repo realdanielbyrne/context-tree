@@ -23,15 +23,30 @@ Rerun: `node experiments/context-dedup/ab-window-sweep.mjs` then `node experimen
 | random (control) | 3 | 1/3 (33%) | 61 (61–61) | 9 (8–9) | 40 | 0/3 | 275,546 |
 | idle (reference recency) | 3 | 3/3 (100%) | 59 (57–61) | 4 (1–4) | 37 | 2/3 | 265,174 |
 
-_n=10 batch not present yet._
+### n=10 batch
+| arm | n | pass | turns med (min–max) | re-reads med (min–max) | evictions | self-terminated | tokens |
+|---|---|---|---|---|---|---|---|
+| truncate-tail (positional) | 10 | 5/10 (50%) | 61 (46–61) | 2.5 (0–13) | 40 | 3/10 | 275,915 |
+| random (control) | 10 | 1/10 (10%) | 61 (56–61) | 10 (0–46) | 41 | 1/10 | 284,204.5 |
+| idle (reference recency) | 10 | 4/10 (40%) | 61 (55–61) | 10 (4–23) | 39.5 | 3/10 | 273,869.5 |
+
+### Pooled (n=13)
+| arm | n | pass | turns med (min–max) | re-reads med (min–max) | evictions | self-terminated | tokens |
+|---|---|---|---|---|---|---|---|
+| truncate-tail (positional) | 13 | 6/13 (46%) | 61 (46–61) | 4 (0–13) | 40 | 4/13 | 273,290 |
+| random (control) | 13 | 2/13 (15%) | 61 (56–61) | 9 (0–46) | 41 | 1/13 | 280,848 |
+| idle (reference recency) | 13 | 7/13 (54%) | 61 (55–61) | 7 (1–23) | 39 | 5/13 | 273,774 |
+
 
 ## Significance (Fisher exact, two-tailed)
 
 | batch | n/cell | idle vs truncate-tail | idle vs random | idle vs both pooled |
 |---|---|---|---|---|
 | n=3 | 3 | 0.400 | 0.400 | 0.167 |
+| n=10 | 10 | 1.000 | 0.303 | 0.690 |
+| pooled n=13 | 13 | 1.000 | 0.097 | 0.185 |
 
-**Even pooled the difference does NOT reach significance (Fisher p=0.167 vs the other two arms combined); it remains an effect size, not an established claim.**
+**Even pooled the difference does NOT reach significance (Fisher p=0.185 vs the other two arms combined); it remains an effect size, not an established claim.**
 
 ## Charts
 See the HTML twin (`report-ab-combined.html`) for the rendered SVG charts: pass rate by batch,

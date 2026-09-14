@@ -104,4 +104,24 @@ rrrrrrrrwrrrrrrwrrreerrreerrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr
     -> FAIL turns=61 evict=33 rereads=0 peak=4183 tok=285527
 
 --- rep8 W=4700 idle ---
-rrrrrrrrwrrrrrrrwrrrr
+rrrrrrrrwrrrrrrrwrrrreerrrreerrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr
+    -> FAIL turns=61 evict=43 rereads=23 peak=4176 tok=277693
+
+--- rep9 W=4700 truncate-tail ---
+rrrrrrrrwrrrrrrwrreerrrreerrrreerrerrrrrrrerrerrrreerrrrewr·
+    -> PASS turns=60 evict=40 rereads=4 peak=4179 tok=269862
+
+--- rep9 W=4700 random ---
+rrrrrrrrwrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrwrrwr
+    -> FAIL turns=61 evict=43 rereads=24 peak=4177 tok=267047
+
+--- rep9 W=4700 idle ---
+rrrrrrrrwrrrrrrwrrerrrrwrrrrwrrrrrrrrrrrerrrrrrrrrrrrrwrrrrr
+    -> FAIL turns=61 evict=41 rereads=7 peak=4182 tok=276399
+
+=== A/B WINDOW SWEEP v2 [longbuild(ledger, 6 stages, stdlib unittest)] model=unsloth/Qwen3.8-27B-GGUF n=10 ===
+  cell                     n  pass  turns(med/min-max)  rereads  evict  peak    tokens
+  truncate-tail@4700       10   50%     61 (46-61)     2.5     40    4181  275915
+  random@4700              10   10%     61 (56-61)      10     41  4180.5  284204.5
+  idle@4700                10   40%     61 (55-61)      10   39.5    4182  273869.5
+  written: /home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/results-ab-longbuild-v2.json
