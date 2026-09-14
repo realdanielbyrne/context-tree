@@ -1,0 +1,160 @@
+{
+  "run_id": "dup-read-1789352342612",
+  "experiment": "context-dedup / duplicate-read-analysis",
+  "date": "2026-09-14T02:19:02.612Z",
+  "chars_per_token": 4,
+  "pooled": {
+    "reads": 71,
+    "distinct": 29,
+    "reReads": 42,
+    "reReadPct": 0.5915492957746479
+  },
+  "sessions": [
+    {
+      "name": "claude-code-session-2.jsonl",
+      "reads": 27,
+      "distinct": 8,
+      "reReads": 19,
+      "reReadPct": 0.7037037037037037,
+      "filesReadTwicePlus": 5,
+      "wholeFileReads": 3,
+      "worstFileCount": 13,
+      "edits": 58,
+      "loadedChars": 138652,
+      "redundantChars": 57837,
+      "uniqueChars": 80815,
+      "loadedTokens": 34663,
+      "redundantTokens": 14459,
+      "redundantPct": 0.4171378703516718
+    },
+    {
+      "name": "claude-code-session-3.jsonl",
+      "reads": 3,
+      "distinct": 1,
+      "reReads": 2,
+      "reReadPct": 0.6666666666666666,
+      "filesReadTwicePlus": 1,
+      "wholeFileReads": 3,
+      "worstFileCount": 3,
+      "edits": 0,
+      "loadedChars": 303,
+      "redundantChars": 202,
+      "uniqueChars": 101,
+      "loadedTokens": 76,
+      "redundantTokens": 51,
+      "redundantPct": 0.6666666666666666
+    },
+    {
+      "name": "claude-code-session-4.jsonl",
+      "reads": 19,
+      "distinct": 5,
+      "reReads": 14,
+      "reReadPct": 0.7368421052631579,
+      "filesReadTwicePlus": 3,
+      "wholeFileReads": 4,
+      "worstFileCount": 10,
+      "edits": 67,
+      "loadedChars": 147222,
+      "redundantChars": 53388,
+      "uniqueChars": 93834,
+      "loadedTokens": 36806,
+      "redundantTokens": 13347,
+      "redundantPct": 0.36263601907323634
+    },
+    {
+      "name": "claude-code-session.jsonl",
+      "reads": 22,
+      "distinct": 15,
+      "reReads": 7,
+      "reReadPct": 0.3181818181818182,
+      "filesReadTwicePlus": 4,
+      "wholeFileReads": 12,
+      "worstFileCount": 4,
+      "edits": 34,
+      "loadedChars": 98195,
+      "redundantChars": 17376,
+      "uniqueChars": 80819,
+      "loadedTokens": 24549,
+      "redundantTokens": 4344,
+      "redundantPct": 0.1769540200621213
+    }
+  ],
+  "topFiles": [
+    {
+      "path": "/Users/danielbyrne/GitHub/rpm/context-tree/reports/hypothesis-test-ladder.md",
+      "base": "hypothesis-test-ladder.md",
+      "count": 13
+    },
+    {
+      "path": "/home/realdanielbyrne/GitHub/context-tree/reports/algorithm.md",
+      "base": "algorithm.md",
+      "count": 10
+    },
+    {
+      "path": "/home/realdanielbyrne/GitHub/context-tree/reports/hypothesis-test-ladder.md",
+      "base": "hypothesis-test-ladder.md",
+      "count": 5
+    },
+    {
+      "path": "/Users/danielbyrne/GitHub/rpm/context-tree/reports/algorithm.md",
+      "base": "algorithm.md",
+      "count": 4
+    },
+    {
+      "path": "/Users/danielbyrne/GitHub/rpm/context-tree/eval/src/loop.ts",
+      "base": "loop.ts",
+      "count": 4
+    },
+    {
+      "path": "/Users/danielbyrne/GitHub/rpm/context-tree/packages/core/src/retrieve/retriever.ts",
+      "base": "retriever.ts",
+      "count": 3
+    },
+    {
+      "path": "/home/realdanielbyrne/GitHub/context-tree/docs/WA900.pdf",
+      "base": "WA900.pdf",
+      "count": 3
+    },
+    {
+      "path": "/Users/danielbyrne/GitHub/rpm/context-tree/packages/core/src/assemble/assembler.ts",
+      "base": "assembler.ts",
+      "count": 3
+    }
+  ],
+  "histogram": [
+    {
+      "reads": 1,
+      "files": 16
+    },
+    {
+      "reads": 2,
+      "files": 5
+    },
+    {
+      "reads": 3,
+      "files": 3
+    },
+    {
+      "reads": 4,
+      "files": 2
+    },
+    {
+      "reads": 5,
+      "files": 1
+    },
+    {
+      "reads": 10,
+      "files": 1
+    },
+    {
+      "reads": 13,
+      "files": 1
+    }
+  ],
+  "caveats": [
+    "Counts the Read tool only — content also enters via Edit, Bash (cat), and Grep, which are not counted.",
+    "Some re-reads are legitimate: the file was changed by an intervening Edit, or a different line range was read.",
+    "Token counts are the chars/4 estimate used by the harness, not a real tokenizer.",
+    "Redundant = every copy of a file beyond the single largest copy kept."
+  ]
+}

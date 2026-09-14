@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Duplicate-content analysis</title>
+<style>
+  :root { color-scheme: light; }
+  body { margin:0; background:#fafafc; color:#2b2b38; font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 32px 20px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; } h2 { font-size: 19px; margin: 34px 0 10px; border-bottom:1px solid #e6e6ef; padding-bottom:6px; }
+  .sub { color:#7a7a8c; margin:0 0 20px; }
+  .kpis { display:flex; flex-wrap:wrap; gap:12px; margin:18px 0 8px; }
+  .kpi { flex:1 1 150px; background:#fff; border:1px solid #e6e6ef; border-radius:10px; padding:14px 16px; }
+  .kpi .n { font-size:26px; font-weight:700; } .kpi .l { color:#7a7a8c; font-size:13px; }
+  .chart { background:#fff; border:1px solid #e6e6ef; border-radius:10px; padding:14px; margin:14px 0; overflow-x:auto; }
+  table { border-collapse: collapse; width:100%; margin:12px 0; font-size:14px; background:#fff; }
+  th,td { border:1px solid #e6e6ef; padding:7px 10px; text-align:left; } th { background:#f2f3fa; }
+  td:last-child, td:nth-child(n+2) { white-space:nowrap; }
+  code { background:#f0f0f6; padding:1px 5px; border-radius:4px; font-size:13px; }
+  .callout { background:#fff5f0; border-left:4px solid #e4572e; padding:12px 16px; border-radius:6px; margin:14px 0; }
+  ul.caveats li { color:#7a7a8c; }
+  footer { color:#7a7a8c; font-size:12px; margin-top:36px; }
+</style></head>
+<body><main>
+<h1>Duplicate-content analysis</h1>
+<p class="sub">How often a coding agent re-reads the same file into its context over a session — and what it costs. Source: 4 committed Claude&nbsp;Code session fixtures. Generated 2026-09-14.</p>
+
+<h2>Executive summary</h2>
+<div class="callout"><strong>59.2% of all file reads were re-reads</strong> of a file already in context (42 of 71 across 4 sessions). Redundant re-loaded content runs to tens of thousands of tokens per session — up to <strong>66.7%</strong> of everything read. A single file was pulled in as many as <strong>13×</strong>. Because every copy persists in the window, this is pure, recoverable context bloat — the motivation for a "one copy per external reference" rule (experiment E3).</div>
+<div class="kpis">
+  <div class="kpi"><div class="n">59.2%</div><div class="l">reads that were re-reads (pooled)</div></div>
+  <div class="kpi"><div class="n">42/71</div><div class="l">re-reads / total reads</div></div>
+  <div class="kpi"><div class="n">32.2k</div><div class="l">redundant tokens (all sessions)</div></div>
+  <div class="kpi"><div class="n">13×</div><div class="l">most-read single file</div></div>
+</div>
+
+<h2>Method &amp; caveats</h2>
+<p>For each fixture we pair every <code>Read</code> tool call with its result and key it by file path (and, where present, the <code>offset</code>/<code>limit</code> line range). A re-read is any read of a path already read earlier in the same session. "Redundant" tokens = every copy of a file beyond the single largest copy kept (≈ what a keep-latest dedup would remove). Token counts use the harness's <code>chars/4</code> estimate. Read-only; reproducible via <code>node experiments/context-dedup/analyze-duplicate-reads.mjs</code>.</p>
+<ul class="caveats"><li>Counts the Read tool only — content also enters via Edit, Bash (cat), and Grep, which are not counted.</li><li>Some re-reads are legitimate: the file was changed by an intervening Edit, or a different line range was read.</li><li>Token counts are the chars/4 estimate used by the harness, not a real tokenizer.</li><li>Redundant = every copy of a file beyond the single largest copy kept.</li></ul>
+
+<h2>Re-read rate per session</h2>
+<div class="chart"><svg viewBox="0 0 720 300" role="img" aria-label="Re-read rate per session (share of Read calls that hit an already-read file)" style="max-width:100%;height:auto"><text x="48" y="20" font-size="14" font-weight="600" fill="#2b2b38">Re-read rate per session (share of Read calls that hit an already-read file)</text><rect x="72.6" y="96.8" width="114.8" height="149.2" fill="#4f7cff" rx="3"/><text x="130.0" y="90.8" font-size="12" fill="#2b2b38" text-anchor="middle">70.4%</text><text x="130.0" y="264.0" font-size="12" fill="#7a7a8c" text-anchor="middle">session-2</text><rect x="236.6" y="104.7" width="114.8" height="141.3" fill="#4f7cff" rx="3"/><text x="294.0" y="98.7" font-size="12" fill="#2b2b38" text-anchor="middle">66.7%</text><text x="294.0" y="264.0" font-size="12" fill="#7a7a8c" text-anchor="middle">session-3</text><rect x="400.6" y="89.8" width="114.8" height="156.2" fill="#4f7cff" rx="3"/><text x="458.0" y="83.8" font-size="12" fill="#2b2b38" text-anchor="middle">73.7%</text><text x="458.0" y="264.0" font-size="12" fill="#7a7a8c" text-anchor="middle">session-4</text><rect x="564.6" y="178.5" width="114.8" height="67.5" fill="#4f7cff" rx="3"/><text x="622.0" y="172.5" font-size="12" fill="#2b2b38" text-anchor="middle">31.8%</text><text x="622.0" y="264.0" font-size="12" fill="#7a7a8c" text-anchor="middle">session</text><line x1="48" y1="120.6" x2="704" y2="120.6" stroke="#e4572e" stroke-width="1.5" stroke-dasharray="6 4"/><text x="704" y="115.6" font-size="11" fill="#e4572e" text-anchor="end">pooled 59.2%</text></svg></div>
+
+<h2>Wasted tokens: unique vs redundant</h2>
+<div class="chart"><svg viewBox="0 0 720 300" role="img" aria-label="Read tokens per session: unique vs redundant (re-read)" style="max-width:100%;height:auto"><text x="60" y="20" font-size="14" font-weight="600" fill="#2b2b38">Read tokens per session: unique vs redundant (re-read)</text><rect x="84.2" y="140.2" width="112.7" height="105.8" fill="#c9d6ff" rx="2"/><rect x="84.2" y="64.5" width="112.7" height="75.7" fill="#e4572e" rx="2"/><text x="140.5" y="58.5" font-size="11" fill="#2b2b38" text-anchor="middle">14.5k</text><text x="140.5" y="264.0" font-size="12" fill="#7a7a8c" text-anchor="middle">session-2</text><rect x="245.2" y="245.9" width="112.7" height="0.1" fill="#c9d6ff" rx="2"/><rect x="245.2" y="245.6" width="112.7" height="0.3" fill="#e4572e" rx="2"/><text x="301.5" y="239.6" font-size="11" fill="#2b2b38" text-anchor="middle">0.1k</text><text x="301.5" y="264.0" font-size="12" fill="#7a7a8c" text-anchor="middle">session-3</text><rect x="406.1" y="123.2" width="112.7" height="122.8" fill="#c9d6ff" rx="2"/><rect x="406.1" y="53.3" width="112.7" height="69.9" fill="#e4572e" rx="2"/><text x="462.5" y="47.3" font-size="11" fill="#2b2b38" text-anchor="middle">13.3k</text><text x="462.5" y="264.0" font-size="12" fill="#7a7a8c" text-anchor="middle">session-4</text><rect x="567.1" y="140.2" width="112.7" height="105.8" fill="#c9d6ff" rx="2"/><rect x="567.1" y="117.5" width="112.7" height="22.7" fill="#e4572e" rx="2"/><text x="623.5" y="111.5" font-size="11" fill="#2b2b38" text-anchor="middle">4.3k</text><text x="623.5" y="264.0" font-size="12" fill="#7a7a8c" text-anchor="middle">session</text><rect x="60" y="280" width="12" height="12" fill="#c9d6ff"/><text x="78" y="290" font-size="11" fill="#7a7a8c">unique read tokens</text><rect x="220" y="280" width="12" height="12" fill="#e4572e"/><text x="238" y="290" font-size="11" fill="#7a7a8c">redundant (re-read) tokens</text></svg></div>
+
+<h2>Worst offenders</h2>
+<div class="chart"><svg viewBox="0 0 720 286" role="img" aria-label="Most re-read files (pooled across all fixtures)" style="max-width:100%;height:auto"><text x="16" y="20" font-size="14" font-weight="600" fill="#2b2b38">Most re-read files (pooled across all fixtures)</text><text x="212" y="53.0" font-size="12" fill="#2b2b38" text-anchor="end">hypothesis-test-ladder.md</text><rect x="220" y="38.0" width="440.0" height="20" fill="#4f7cff" rx="3"/><text x="666.0" y="53.0" font-size="12" fill="#2b2b38">13×</text><text x="212" y="83.0" font-size="12" fill="#2b2b38" text-anchor="end">algorithm.md</text><rect x="220" y="68.0" width="338.5" height="20" fill="#4f7cff" rx="3"/><text x="564.5" y="83.0" font-size="12" fill="#2b2b38">10×</text><text x="212" y="113.0" font-size="12" fill="#2b2b38" text-anchor="end">hypothesis-test-ladder.md</text><rect x="220" y="98.0" width="169.2" height="20" fill="#4f7cff" rx="3"/><text x="395.2" y="113.0" font-size="12" fill="#2b2b38">5×</text><text x="212" y="143.0" font-size="12" fill="#2b2b38" text-anchor="end">algorithm.md</text><rect x="220" y="128.0" width="135.4" height="20" fill="#4f7cff" rx="3"/><text x="361.4" y="143.0" font-size="12" fill="#2b2b38">4×</text><text x="212" y="173.0" font-size="12" fill="#2b2b38" text-anchor="end">loop.ts</text><rect x="220" y="158.0" width="135.4" height="20" fill="#4f7cff" rx="3"/><text x="361.4" y="173.0" font-size="12" fill="#2b2b38">4×</text><text x="212" y="203.0" font-size="12" fill="#2b2b38" text-anchor="end">retriever.ts</text><rect x="220" y="188.0" width="101.5" height="20" fill="#4f7cff" rx="3"/><text x="327.5" y="203.0" font-size="12" fill="#2b2b38">3×</text><text x="212" y="233.0" font-size="12" fill="#2b2b38" text-anchor="end">WA900.pdf</text><rect x="220" y="218.0" width="101.5" height="20" fill="#4f7cff" rx="3"/><text x="327.5" y="233.0" font-size="12" fill="#2b2b38">3×</text><text x="212" y="263.0" font-size="12" fill="#2b2b38" text-anchor="end">assembler.ts</text><rect x="220" y="248.0" width="101.5" height="20" fill="#4f7cff" rx="3"/><text x="327.5" y="263.0" font-size="12" fill="#2b2b38">3×</text></svg></div>
+
+<h2>How many times is a file read?</h2>
+<div class="chart"><svg viewBox="0 0 720 300" role="img" aria-label="Reads-per-file distribution (pooled): how many files were read k times" style="max-width:100%;height:auto"><text x="48" y="20" font-size="14" font-weight="600" fill="#2b2b38">Reads-per-file distribution (pooled): how many files were read k times</text><rect x="62.1" y="53.3" width="65.6" height="192.7" fill="#4f7cff" rx="3"/><text x="94.9" y="47.3" font-size="12" fill="#2b2b38" text-anchor="middle">16</text><text x="94.9" y="264.0" font-size="12" fill="#7a7a8c" text-anchor="middle">1×</text><rect x="155.8" y="185.8" width="65.6" height="60.2" fill="#4f7cff" rx="3"/><text x="188.6" y="179.8" font-size="12" fill="#2b2b38" text-anchor="middle">5</text><text x="188.6" y="264.0" font-size="12" fill="#7a7a8c" text-anchor="middle">2×</text><rect x="249.5" y="209.9" width="65.6" height="36.1" fill="#4f7cff" rx="3"/><text x="282.3" y="203.9" font-size="12" fill="#2b2b38" text-anchor="middle">3</text><text x="282.3" y="264.0" font-size="12" fill="#7a7a8c" text-anchor="middle">3×</text><rect x="343.2" y="221.9" width="65.6" height="24.1" fill="#4f7cff" rx="3"/><text x="376.0" y="215.9" font-size="12" fill="#2b2b38" text-anchor="middle">2</text><text x="376.0" y="264.0" font-size="12" fill="#7a7a8c" text-anchor="middle">4×</text><rect x="436.9" y="234.0" width="65.6" height="12.0" fill="#4f7cff" rx="3"/><text x="469.7" y="228.0" font-size="12" fill="#2b2b38" text-anchor="middle">1</text><text x="469.7" y="264.0" font-size="12" fill="#7a7a8c" text-anchor="middle">5×</text><rect x="530.6" y="234.0" width="65.6" height="12.0" fill="#4f7cff" rx="3"/><text x="563.4" y="228.0" font-size="12" fill="#2b2b38" text-anchor="middle">1</text><text x="563.4" y="264.0" font-size="12" fill="#7a7a8c" text-anchor="middle">10×</text><rect x="624.3" y="234.0" width="65.6" height="12.0" fill="#4f7cff" rx="3"/><text x="657.1" y="228.0" font-size="12" fill="#2b2b38" text-anchor="middle">1</text><text x="657.1" y="264.0" font-size="12" fill="#7a7a8c" text-anchor="middle">13×</text></svg></div>
+
+<h2>Per-session detail</h2>
+<table><thead><tr><th>session</th><th>reads</th><th>distinct</th><th>re-reads</th><th>files ≥2×</th><th>redundant / loaded tokens</th><th>worst</th><th>edits</th></tr></thead>
+<tbody><tr><td>session-2</td><td>27</td><td>8</td><td>19 (70.4%)</td><td>5</td><td>14.5k / 34.7k (41.7%)</td><td>13×</td><td>58</td></tr>
+<tr><td>session-3</td><td>3</td><td>1</td><td>2 (66.7%)</td><td>1</td><td>51 / 76 (66.7%)</td><td>3×</td><td>0</td></tr>
+<tr><td>session-4</td><td>19</td><td>5</td><td>14 (73.7%)</td><td>3</td><td>13.3k / 36.8k (36.3%)</td><td>10×</td><td>67</td></tr>
+<tr><td>session</td><td>22</td><td>15</td><td>7 (31.8%)</td><td>4</td><td>4.3k / 24.5k (17.7%)</td><td>4×</td><td>34</td></tr></tbody></table>
+
+<h2>Most re-read files</h2>
+<table><thead><tr><th>count</th><th>file</th><th>path</th></tr></thead><tbody><tr><td>13×</td><td>hypothesis-test-ladder.md</td><td>/Users/danielbyrne/GitHub/rpm/context-tree/reports/hypothesis-test-ladder.md</td></tr>
+<tr><td>10×</td><td>algorithm.md</td><td>/home/realdanielbyrne/GitHub/context-tree/reports/algorithm.md</td></tr>
+<tr><td>5×</td><td>hypothesis-test-ladder.md</td><td>/home/realdanielbyrne/GitHub/context-tree/reports/hypothesis-test-ladder.md</td></tr>
+<tr><td>4×</td><td>algorithm.md</td><td>/Users/danielbyrne/GitHub/rpm/context-tree/reports/algorithm.md</td></tr>
+<tr><td>4×</td><td>loop.ts</td><td>/Users/danielbyrne/GitHub/rpm/context-tree/eval/src/loop.ts</td></tr>
+<tr><td>3×</td><td>retriever.ts</td><td>/Users/danielbyrne/GitHub/rpm/context-tree/packages/core/src/retrieve/retriever.ts</td></tr>
+<tr><td>3×</td><td>WA900.pdf</td><td>/home/realdanielbyrne/GitHub/context-tree/docs/WA900.pdf</td></tr>
+<tr><td>3×</td><td>assembler.ts</td><td>/Users/danielbyrne/GitHub/rpm/context-tree/packages/core/src/assemble/assembler.ts</td></tr></tbody></table>
+
+<h2>Conclusion</h2>
+<p>Re-reading dominates file access in long sessions (59.2% of reads pooled; 73.7% in the worst session), and every duplicate copy stays resident in the context window. A naive assembler rule — <strong>keep only the most-recent copy of any external reference</strong> — would reclaim on the order of a third of all read tokens with no new information lost, provided the dropped copies are genuinely superseded. Whether that holds without hurting task success (an older read of a <em>different</em> section still being needed) is exactly what experiment&nbsp;E3 tests before any package change.</p>
+
+<footer>context-tree · duplicate-content analysis · data in <code>results-duplicate-read-analysis.json</code></footer>
+</main></body></html>
