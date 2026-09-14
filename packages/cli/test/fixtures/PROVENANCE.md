@@ -298,3 +298,47 @@ same day, with one difference: the live suite grades by running hidden tests
 against a sandbox, so a stopped run there can still demonstrably have done the
 work and a passing grade is kept; here the grader matches the model's final
 text, so a stopped run cannot have passed and `null` is the only honest value.
+
+---
+
+## `claude-code-session-5.jsonl` — added 2026-09-14 (REDACTED)
+
+A snapshot of the live Claude Code session that produced the `context-dedup`
+experiment series (DV1–DV3, Tier 1/1b, the A/B window-cap sweeps, the non-Docker
+SWE-bench provisioner). Captured mid-session, so it ends wherever the session had
+reached at copy time rather than at a natural close. 20,433,605 bytes / 7,823 lines
+— the largest fixture here, and the only one recorded on the Linux workstation
+(`/home/realdanielbyrne/...`) rather than the Mac, which is why paths in it do not
+share the `/Users/danielbyrne/...` prefix of sessions 1–4.
+
+**This file is NOT byte-identical to the raw session: it has been redacted.** The
+raw transcript captured shell-expanded command text, so live credential values from
+the repo's `.env` were embedded verbatim — measured before redaction:
+
+| key | occurrences |
+|---|---|
+| `UNSLOTH_API_KEY` | 42 |
+| `OPENAI_API_KEY` | 4 |
+| `OPENROUTER_API_KEY` | 2 |
+| `ANTHROPIC_API_KEY` | 2 |
+| `LANGFUSE_SECRET_KEY` / `LANGFUSE_PUBLIC_KEY` | 2 / 2 |
+
+Each exact value was replaced with `<REDACTED:KEYNAME>` by
+`experiments/context-dedup/redact-transcript.py`, which additionally sweeps
+credential-shaped literals (`sk-proj-`, `sk-ant-`, `sk-unsloth-`, `sk-or-`, `sk-lf-`,
+`gh[pos]_`, `AKIA…`) that might never have appeared in `.env`, and refuses to write
+unless a re-scan shows zero remaining matches AND every line still parses as JSON.
+Result: **65 redactions, 0 remaining secret occurrences, 0 unparseable lines**,
+independently re-verified against the written file.
+
+**Consequences for use as a corpus.** The tool_use/tool_result structure, turn
+sequence, file paths, and message content are untouched, so it remains valid for
+segmentation, retrieval and assembler work — the analyses in
+`reports/metrics/context-dedup/` were computed on the *unredacted* original and the
+redaction touches only 65 opaque literals inside command strings. Anything measuring
+raw byte-identity against a live session, or reasoning about credential handling,
+should not use this file.
+
+**The keys that appeared here should be treated as compromised and rotated**,
+independently of this redaction: they existed in plaintext on disk in the raw
+transcript before it was scrubbed.
