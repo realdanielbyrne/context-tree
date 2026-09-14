@@ -1,0 +1,95 @@
+
+--- rep0 uncapped ---
+rrrrrrrrwrwrrrwrerreererreereerrrrrrrreerrerrerrewr·
+    -> PASS turns=52 peak=20152 tok=612362
+
+--- rep0 W=9500 truncate-tail ---
+rrrrrrrrwrwrrreeerrrreerrrreererrrrrrrreeerrrreerrrrrrrrrrwr
+    -> PASS turns=61 evict=27 rereads=3 peak=8973 tok=523371
+
+--- rep0 W=9500 random ---
+rrrrrrrrwrrrrerrrwrerreererreereerrrrereerrrerrrewr·
+    -> PASS turns=52 evict=23 rereads=2 peak=8966 tok=421218
+
+--- rep0 W=9500 idle ---
+rrrrrrrrwerrrrerrrwrerreererreererrrrrreererrererrwr·
+    -> PASS turns=53 evict=24 rereads=0 peak=8977 tok=422786
+
+--- rep0 W=4700 truncate-tail ---
+rrrrrrrrwrrrrrrrwrrrreerrrreerrrrrrrrrrrrrrrrrrrrrrrrrreerrr
+    -> FAIL turns=61 evict=42 rereads=11 peak=4184 tok=273290
+
+--- rep0 W=4700 random ---
+rrrrrrrrwrrrrrrwrrreerreerreeerrrrrrrrrrrereerererrrrerrrerr
+    -> PASS turns=61 evict=40 rereads=9 peak=4180 tok=268749
+
+--- rep0 W=4700 idle ---
+rrrrrrrrwrrrrrrwrrrrrrrerrrrrreerrrereerrerrrrrrerrerrrreerr
+    -> PASS turns=61 evict=38 rereads=4 peak=4184 tok=275246
+
+--- rep1 uncapped ---
+rrrrrrrrwrrrrerrrwrerrwrerrwrerrrrrrrreeerrerrwrrewr·
+    -> PASS turns=53 peak=20994 tok=632225
+
+--- rep1 W=9500 truncate-tail ---
+rrrrrrrrwrrrrerrrweererreerererreererrrrrrreererrerrrrrrrewr
+    -> PASS turns=61 evict=25 rereads=3 peak=8971 tok=498553
+
+--- rep1 W=9500 random ---
+rrrrrrrrwrrrrerrrwrerreererreererrrrrrrrrrrrrrrrrerrrrrrrrrr
+    -> FAIL turns=61 evict=25 rereads=2 peak=8971 tok=514469
+
+--- rep1 W=9500 idle ---
+rrrrrrrrwrrrrerrrwrerreererreererrrrrreerrrrerrrrrrwr·
+    -> PASS turns=54 evict=25 rereads=2 peak=8977 tok=436860
+
+--- rep1 W=4700 truncate-tail ---
+rrrrrrrrwrrrrrrwrreeerrrreerrrreererrrrrrrrrrrrerrerrrerrrre
+    -> FAIL turns=61 evict=39 rereads=8 peak=4178 tok=269995
+
+--- rep1 W=4700 random ---
+rrrrrrrrwrrwrrrwrerreererreerrerrerrrrrrrrrrrrrrrerrererrrre
+    -> FAIL turns=61 evict=39 rereads=9 peak=4183 tok=280848
+
+--- rep1 W=4700 idle ---
+rrrrrrrrwrrrrrrwrrrrrrrerrwrrwrrrererrrerrrrerrrerrrrrrrwr·
+    -> PASS turns=59 evict=35 rereads=1 peak=4185 tok=265174
+
+--- rep2 uncapped ---
+rrrrrrrrwrrrrerrrwrerrwrerrwrerrrrrrrreeerrerrwrrewr·
+    -> PASS turns=53 peak=20993 tok=632244
+
+--- rep2 W=9500 truncate-tail ---
+rrrrrrrrwrrrrerrrweererreerererreererrrrrrreerrerreerrrrwrre
+    -> PASS turns=61 evict=24 rereads=4 peak=8969 tok=499612
+
+--- rep2 W=9500 random ---
+rrrrrrrrwrrrrerrrwrerreererreereerreerrrerewr·
+    -> PASS turns=46 evict=16 rereads=0 peak=8970 tok=353499
+
+--- rep2 W=9500 idle ---
+rrrrrrrrwrrrrerrrwrerreererreererrrrrreerrrrerrlrrrrrrrwr·
+    -> PASS turns=58 evict=26 rereads=4 peak=8977 tok=477501
+
+--- rep2 W=4700 truncate-tail ---
+rrrrrrrrwrrrrrrwrreeerrrreerrrreerrerrrrrrrrreerrrerrrwr·
+    -> PASS turns=57 evict=36 rereads=4 peak=4182 tok=253794
+
+--- rep2 W=4700 random ---
+rrrrrrrrwrrrrrrreeererrrreerrrreerrerrrrrrrrrrrrrrrrrrrrrrrr
+    -> FAIL turns=61 evict=41 rereads=8 peak=4179 tok=275546
+
+--- rep2 W=4700 idle ---
+rrrrrrrrwrrrrrrwrrrreerrrreererrrrrrrrrrrreerrrreerrrewr·
+    -> PASS turns=57 evict=37 rereads=4 peak=4182 tok=256816
+
+=== A/B WINDOW SWEEP v2 [longbuild(ledger, 6 stages, stdlib unittest)] model=unsloth/Qwen3.8-27B-GGUF n=3 ===
+  cell                     n  pass  turns(med/min-max)  rereads  evict  peak    tokens
+  uncapped@inf             3  100%     53 (52-53)       0      0   20993  632225
+  truncate-tail@9500       3  100%     61 (61-61)       3     25    8971  499612
+  random@9500              3   67%     52 (46-61)       2     23    8970  421218
+  idle@9500                3  100%     54 (53-58)       2     25    8977  436860
+  truncate-tail@4700       3   33%     61 (57-61)       8     39    4182  269995
+  random@4700              3   33%     61 (61-61)       9     40    4180  275546
+  idle@4700                3  100%     59 (57-61)       4     37    4184  265174
+  written: /home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/results-ab-longbuild-v2.json

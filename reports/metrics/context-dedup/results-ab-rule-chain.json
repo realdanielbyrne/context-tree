@@ -1,0 +1,64 @@
+{
+  "manifest": {
+    "run_id": "ab-window-sweep-rule-chain-1789369530101",
+    "experiment": "context-dedup / A/B window-cap sweep (rule-chain)",
+    "model": "unsloth/Qwen3.8-27B-GGUF",
+    "task": "rule-chain(N=8)",
+    "windows": [
+      4000
+    ],
+    "g_star": 12,
+    "max_turns": 15,
+    "anchor": 4,
+    "commit": "64a6d4ff4cdadffeee4b94df2deda12f708043fe",
+    "date": "2026-09-14T07:05:30.105Z",
+    "hypothesis": "idle-gstar completes at a SMALLER window (and/or in fewer turns) than truncate-tail, and beats the random control — because it retains re-referenced-but-positionally-old units that truncate-tail evicts.",
+    "falsification": "if idle-gstar does not complete at a smaller window than truncate-tail, nor in fewer turns at equal window, and does not beat random, the derived rule adds nothing over the baseline harness.",
+    "caveats": [
+      "n=1 per cell, temp 0.",
+      "total_prompt_tokens is RAW (local server caching unknown).",
+      "FULL tools kept — self-heal makes truncation cost turns/re-reads, not hard failure; the frontier is (window × turns)."
+    ]
+  },
+  "cells": [
+    {
+      "arm": "uncapped",
+      "window": null,
+      "pass": true,
+      "turns": 5,
+      "stop": "end_turn",
+      "evictions": 0,
+      "peak_history_tokens": 1035,
+      "reads": 0,
+      "rereads": 0,
+      "total_prompt_tokens": 6238,
+      "error": null
+    },
+    {
+      "arm": "truncate-tail",
+      "window": 4000,
+      "pass": true,
+      "turns": 5,
+      "stop": "end_turn",
+      "evictions": 0,
+      "peak_history_tokens": 1035,
+      "reads": 0,
+      "rereads": 0,
+      "total_prompt_tokens": 6238,
+      "error": null
+    },
+    {
+      "arm": "idle-gstar",
+      "window": 4000,
+      "pass": true,
+      "turns": 5,
+      "stop": "end_turn",
+      "evictions": 0,
+      "peak_history_tokens": 1035,
+      "reads": 0,
+      "rereads": 0,
+      "total_prompt_tokens": 6238,
+      "error": null
+    }
+  ]
+}

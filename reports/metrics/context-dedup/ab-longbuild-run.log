@@ -1,0 +1,30 @@
+
+--- uncapped ---
+rrrrrrrrwerrrrerrrwrerreererreerrrrrreererreerewr·
+
+--- W=9500 truncate-tail ---
+rrrrrrrrwrrrrerrrweererrwrerrwrrrrrreerrerrwrrrrrrewr·
+
+--- W=9500 random ---
+rrrrrrrrwrrrrerrrwrerreererreererrrrrrrrrrrrerereererrerrewr
+
+--- W=9500 idle-gstar ---
+rrrrrrrrwrrrrerrrwrerreererreereerrrrreererrerrew
+--- W=4700 truncate-tail ---
+rrrrrrrrwrrrrrrwrreeeerrrreerrreerrrerrreerrerrrrrerrerrrrrr
+
+--- W=4700 random ---
+rrrrrrrrwrrrrrrwrrrrrwrrrrrerererrereerrrreerrrrrrrrrrrrrrrr
+
+--- W=4700 idle-gstar ---
+rrrrrrrrwrrrrrrwrrrerrrreerrrreerrerrrrrrrrrrrrerrrrwrrrrrrr
+
+=== A/B WINDOW SWEEP [longbuild(ledger, 6 stages, stdlib unittest)] model=unsloth/Qwen3.8-27B-GGUF g*=12 ===  [pass|turns|evict|reads|rereads|peak|total]
+  W=      ∞ uncapped      PASS  turns=50  evict=0  reads=19  rereads=0  peak=18325  total=530033  
+  W=   9500 truncate-tail PASS  turns=54  evict=18  reads=20  rereads=2  peak=9791  total=423319  
+  W=   9500 random        PASS  turns=61  evict=28  reads=22  rereads=2  peak=9715  total=504884  
+  W=   9500 idle-gstar    PASS  turns=null  evict=19  reads=0  rereads=0  peak=9847  total=0  ERR=HTTP 500: {"error":{"message":"llama-server error: {\"error\":{\"code\":500,\"message\":\"Failed to parse tool call arguments as JSON: [json.exception.parse_error.101] parse error at line 1, column 39
+  W=   4700 truncate-tail PASS  turns=61  evict=37  reads=23  rereads=6  peak=4972  total=267285  
+  W=   4700 random        FAIL  turns=61  evict=40  reads=25  rereads=8  peak=5029  total=275502  
+  W=   4700 idle-gstar    FAIL  turns=61  evict=32  reads=25  rereads=7  peak=4903  total=267364  
+  written: /home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/results-ab-longbuild.json

@@ -1,0 +1,117 @@
+{
+  "manifest": {
+    "run_id": "ab-window-sweep-longbuild-1789391530806",
+    "experiment": "context-dedup / A/B window-cap sweep (longbuild)",
+    "model": "unsloth/Qwen3.8-27B-GGUF",
+    "task": "longbuild(ledger, 6 stages, stdlib unittest)",
+    "windows": [
+      9500,
+      4700
+    ],
+    "g_star": 12,
+    "max_turns": 60,
+    "anchor": 4,
+    "commit": "64a6d4ff4cdadffeee4b94df2deda12f708043fe",
+    "date": "2026-09-14T13:12:10.810Z",
+    "hypothesis": "idle-gstar completes at a SMALLER window (and/or in fewer turns) than truncate-tail, and beats the random control — because it retains re-referenced-but-positionally-old units that truncate-tail evicts.",
+    "falsification": "if idle-gstar does not complete at a smaller window than truncate-tail, nor in fewer turns at equal window, and does not beat random, the derived rule adds nothing over the baseline harness.",
+    "caveats": [
+      "n=1 per cell, temp 0.",
+      "total_prompt_tokens is RAW (local server caching unknown).",
+      "FULL tools kept — self-heal makes truncation cost turns/re-reads, not hard failure; the frontier is (window × turns)."
+    ]
+  },
+  "cells": [
+    {
+      "arm": "uncapped",
+      "window": null,
+      "pass": true,
+      "turns": 50,
+      "stop": "end_turn",
+      "evictions": 0,
+      "peak_history_tokens": 18325,
+      "reads": 19,
+      "rereads": 0,
+      "total_prompt_tokens": 530033,
+      "error": null
+    },
+    {
+      "arm": "truncate-tail",
+      "window": 9500,
+      "pass": true,
+      "turns": 54,
+      "stop": "end_turn",
+      "evictions": 18,
+      "peak_history_tokens": 9791,
+      "reads": 20,
+      "rereads": 2,
+      "total_prompt_tokens": 423319,
+      "error": null
+    },
+    {
+      "arm": "random",
+      "window": 9500,
+      "pass": true,
+      "turns": 61,
+      "stop": "maxTurns",
+      "evictions": 28,
+      "peak_history_tokens": 9715,
+      "reads": 22,
+      "rereads": 2,
+      "total_prompt_tokens": 504884,
+      "error": null
+    },
+    {
+      "arm": "idle-gstar",
+      "window": 9500,
+      "pass": true,
+      "turns": null,
+      "stop": "error",
+      "evictions": 19,
+      "peak_history_tokens": 9847,
+      "reads": 0,
+      "rereads": 0,
+      "total_prompt_tokens": 0,
+      "error": "HTTP 500: {\"error\":{\"message\":\"llama-server error: {\\\"error\\\":{\\\"code\\\":500,\\\"message\\\":\\\"Failed to parse tool call arguments as JSON: [json.exception.parse_error.101] parse error at line 1, column 39"
+    },
+    {
+      "arm": "truncate-tail",
+      "window": 4700,
+      "pass": true,
+      "turns": 61,
+      "stop": "maxTurns",
+      "evictions": 37,
+      "peak_history_tokens": 4972,
+      "reads": 23,
+      "rereads": 6,
+      "total_prompt_tokens": 267285,
+      "error": null
+    },
+    {
+      "arm": "random",
+      "window": 4700,
+      "pass": false,
+      "turns": 61,
+      "stop": "maxTurns",
+      "evictions": 40,
+      "peak_history_tokens": 5029,
+      "reads": 25,
+      "rereads": 8,
+      "total_prompt_tokens": 275502,
+      "error": null
+    },
+    {
+      "arm": "idle-gstar",
+      "window": 4700,
+      "pass": false,
+      "turns": 61,
+      "stop": "maxTurns",
+      "evictions": 32,
+      "peak_history_tokens": 4903,
+      "reads": 25,
+      "rereads": 7,
+      "total_prompt_tokens": 267364,
+      "error": null
+    }
+  ]
+}

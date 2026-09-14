@@ -1,0 +1,38 @@
+{
+  "manifest": {
+    "run_id": "ab-window-sweep-longbuild-1789391767227",
+    "experiment": "context-dedup / A/B window-cap sweep (longbuild)",
+    "model": "unsloth/Qwen3.8-27B-GGUF",
+    "task": "longbuild(ledger, 6 stages, stdlib unittest)",
+    "windows": [
+      9500
+    ],
+    "g_star": 12,
+    "max_turns": 60,
+    "anchor": 4,
+    "commit": "64a6d4ff4cdadffeee4b94df2deda12f708043fe",
+    "date": "2026-09-14T13:16:07.231Z",
+    "hypothesis": "idle-gstar completes at a SMALLER window (and/or in fewer turns) than truncate-tail, and beats the random control — because it retains re-referenced-but-positionally-old units that truncate-tail evicts.",
+    "falsification": "if idle-gstar does not complete at a smaller window than truncate-tail, nor in fewer turns at equal window, and does not beat random, the derived rule adds nothing over the baseline harness.",
+    "caveats": [
+      "n=1 per cell, temp 0.",
+      "total_prompt_tokens is RAW (local server caching unknown).",
+      "FULL tools kept — self-heal makes truncation cost turns/re-reads, not hard failure; the frontier is (window × turns)."
+    ]
+  },
+  "cells": [
+    {
+      "arm": "idle-gstar",
+      "window": 9500,
+      "pass": true,
+      "turns": 51,
+      "stop": "end_turn",
+      "evictions": 19,
+      "peak_history_tokens": 9834,
+      "reads": 20,
+      "rereads": 1,
+      "total_prompt_tokens": 400867,
+      "error": null
+    }
+  ]
+}
