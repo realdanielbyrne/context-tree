@@ -250,8 +250,13 @@ re-reads with min–max whiskers, turns to completion, the eviction-volume check
 ${['uncapped', ...ARMS].filter((a) => CTX[a]).map((a) => { const d = CTX[a]; return `| ${a === 'uncapped' ? 'uncapped (reference)' : `${LABEL[a]} @9,500`} | ${d.pass}/${d.n} | ${d.turns} (${d.turnsMin}–${d.turnsMax}) | ${d.rereads} | ${d.peak.toLocaleString()} | ${d.tokens.toLocaleString()} | ${d.selfTerm}/${d.n} |`; }).join('\n')}
 
 ## Caveats
-- Single local model, single synthetic task — **not a published benchmark**. A non-Docker SWE-bench
-  harness is validated (\`swebench_provision.py\`) and is the proper next substrate.
+- **ONE PROBLEM.** All ${(b3.cells.length + (b10?b10.cells.length:0))} runs used a single task
+  (\`${b3.manifest.task}\`). This is n repeats of one problem per arm, **not n problems** — so the
+  variance measured is within-problem (model nondeterminism) only, and *no* result here speaks to
+  between-problem variance. "p=1.000" means *indistinguishable on this problem*, not *never different*;
+  more repeats cannot fix it. The SWE-bench substrate (500 instances / 12 repos, 156 runnable,
+  \`swebench_provision.py\`) exists precisely to sample problems instead of re-rolling one.
+- Single local model; synthetic task — **not a published benchmark**.
 - \`turns = 61\` means the 60-turn budget was exhausted ("did not finish in 60"), not "cannot finish".
 - Grading is all-or-nothing, so FAIL cells are not distinguished by how close they came.
 - \`total_prompt_tokens\` is raw; the local server's caching behaviour is unknown, so this measures

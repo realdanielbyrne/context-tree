@@ -62,8 +62,13 @@ re-reads with min–max whiskers, turns to completion, the eviction-volume check
 | idle (reference recency) @9,500 | 3/3 | 54 (53–58) | 2 | 8,977 | 436,860 | 3/3 |
 
 ## Caveats
-- Single local model, single synthetic task — **not a published benchmark**. A non-Docker SWE-bench
-  harness is validated (`swebench_provision.py`) and is the proper next substrate.
+- **ONE PROBLEM.** All 51 runs used a single task
+  (`longbuild(ledger, 6 stages, stdlib unittest)`). This is n repeats of one problem per arm, **not n problems** — so the
+  variance measured is within-problem (model nondeterminism) only, and *no* result here speaks to
+  between-problem variance. "p=1.000" means *indistinguishable on this problem*, not *never different*;
+  more repeats cannot fix it. The SWE-bench substrate (500 instances / 12 repos, 156 runnable,
+  `swebench_provision.py`) exists precisely to sample problems instead of re-rolling one.
+- Single local model; synthetic task — **not a published benchmark**.
 - `turns = 61` means the 60-turn budget was exhausted ("did not finish in 60"), not "cannot finish".
 - Grading is all-or-nothing, so FAIL cells are not distinguished by how close they came.
 - `total_prompt_tokens` is raw; the local server's caching behaviour is unknown, so this measures

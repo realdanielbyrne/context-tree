@@ -193,6 +193,14 @@ cache *even on subscription allowances* (Codex meters messages, not tokens), so 
 right metric for those plans too. **Any backlog item premised on "this saves tokens" must be re-stated as
 "this fits more of the right content in a bounded window."**
 
+**C0 — EVERY live result so far is SINGLE-PROBLEM.** The entire A/B series (51 runs, n=3 + n=10, all
+arms) ran one task, `longbuild`. That is n repeats of one problem, **not n problems**: it measures
+within-problem nondeterminism and says nothing about between-problem variance, which is the larger term in
+agentic coding. Item 8's `p=1.000` means "indistinguishable **on this problem**", not "never different" —
+and more repeats cannot fix it. **Design rule for every live item below: sample PROBLEMS, not just seeds.**
+Item 9's SWE-bench substrate (500 instances / 12 repos, 156 runnable here) is the instrument for that, and
+this is now the strongest argument for prioritising it.
+
 **C3 — The eviction threshold is DERIVED, not guessed: `g* = w/r` turns.** *(ANALYTIC — pure algebra on
 published price multipliers; the 12.5 operating point has NEVER been validated in a live run, and no
 experiment has shown it is the right place to stand.)* **It is also not one number:** the multiplier
