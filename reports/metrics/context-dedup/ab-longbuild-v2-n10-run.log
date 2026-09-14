@@ -1,0 +1,107 @@
+
+--- rep0 W=4700 truncate-tail ---
+rrrrrrrrwrrrrwrerrwrwrrrrrrrerrerrreerrrrrwwr·
+    -> PASS turns=46 evict=27 rereads=1 peak=4185 tok=201605
+
+--- rep0 W=4700 random ---
+rrrrrrrrwrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr
+    -> FAIL turns=61 evict=45 rereads=14 peak=4184 tok=289107
+
+--- rep0 W=4700 idle ---
+rrrrrrrrwrrrrrrwrrrrrrrwrwrrereereerrerrrererrrerrerwr·
+    -> PASS turns=55 evict=33 rereads=4 peak=4182 tok=250597
+
+--- rep1 W=4700 truncate-tail ---
+rrrrrrrrwrrrrrrwrrrrerrrreerrrreerrerrrrrrrrrreeerrerrrrerrr
+    -> PASS turns=61 evict=40 rereads=8 peak=4181 tok=272715
+
+--- rep1 W=4700 random ---
+rrrrrrrrwrrwrrrwrerreererreerrerrrrrrrrrrrrrrrrrrrrrrrrrrrre
+    -> FAIL turns=61 evict=41 rereads=12 peak=4183 tok=282882
+
+--- rep1 W=4700 idle ---
+rrrrrrrrwrrrrrrwrrerrrreerrrreerrerrrrrrrrrrrrrrrrrrrrrrrrrr
+    -> FAIL turns=61 evict=40 rereads=12 peak=4175 tok=276761
+
+--- rep2 W=4700 truncate-tail ---
+rrrrrrrrwerrrrrrwrerrrreerrrreerrrrrrrrrrrrrrrrrrrrrrreerrrr
+    -> FAIL turns=61 evict=40 rereads=13 peak=4177 tok=276305
+
+--- rep2 W=4700 random ---
+rrrrrrrrwrrrrrwrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr
+    -> FAIL turns=61 evict=20 rereads=0 peak=4170 tok=299690
+
+--- rep2 W=4700 idle ---
+rrrrrrrrwrrrrrrrwrrrreerrrreereerrrrrrrrrrrrrrrrrrrrrrrrrrrr
+    -> FAIL turns=61 evict=43 rereads=12 peak=4184 tok=280443
+
+--- rep3 W=4700 truncate-tail ---
+rrrrrrrrwrrrrwrrrerrrwrrwrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr
+    -> FAIL turns=61 evict=46 rereads=0 peak=4178 tok=278254
+
+--- rep3 W=4700 random ---
+rrrrrrrrwrrrwrrrrwrrrwrreerrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr
+    -> FAIL turns=61 evict=38 rereads=8 peak=4178 tok=285679
+
+--- rep3 W=4700 idle ---
+rrrrrrrrwrrrrrrwrrerrrrwrrrrwrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr
+    -> FAIL turns=61 evict=39 rereads=22 peak=4176 tok=273774
+
+--- rep4 W=4700 truncate-tail ---
+rrrrrrrrwrrrrrrwrrerrrreerrrreerrerrrrrrrrrrerrerrrrerrrrrew
+    -> PASS turns=61 evict=38 rereads=4 peak=4181 tok=275930
+
+--- rep4 W=4700 random ---
+rrrrrrrrwrrrrreeerrrreerrreerrereereerrrerrrerrreerrrwr·
+    -> PASS turns=56 evict=32 rereads=3 peak=4178 tok=253870
+
+--- rep4 W=4700 idle ---
+rrrrrrrrwrrrrrrwrrerrrrwrrrrwrrrrrrrrrrreerrrrrwrrrrrrerrlrr
+    -> PASS turns=61 evict=37 rereads=8 peak=4185 tok=272437
+
+--- rep5 W=4700 truncate-tail ---
+rrrrrrrrwrrrrwrerrreerrreerrrerrrrrrrrrrrrrrrrrrwrrrwr·
+    -> PASS turns=55 evict=33 rereads=0 peak=4184 tok=249304
+
+--- rep5 W=4700 random ---
+rrrrrrrrwrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr
+    -> FAIL turns=61 evict=49 rereads=46 peak=4184 tok=269782
+
+--- rep5 W=4700 idle ---
+rrrrrrrrwrrrrrrwrreeerrrreerrrreerrerrrrrrrrrrrrrrrrrrrrrrrr
+    -> FAIL turns=61 evict=39 rereads=14 peak=4184 tok=273965
+
+--- rep6 W=4700 truncate-tail ---
+rrrrrrrrwerrrrrrwrrreerrreerrreerrerrrrrrrrrrrrrrrrrrrrrrrrr
+    -> FAIL turns=61 evict=40 rereads=1 peak=4183 tok=279192
+
+--- rep6 W=4700 random ---
+rrrrrrrrwrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr
+    -> FAIL turns=61 evict=48 rereads=39 peak=4178 tok=275761
+
+--- rep6 W=4700 idle ---
+rrrrrrrrwrrrrrrwrrerrrreerrrreerrrrrrrrrrerererrrerrrewr·
+    -> PASS turns=57 evict=38 rereads=7 peak=4182 tok=253371
+
+--- rep7 W=4700 truncate-tail ---
+rrrrrrrrwrrrrrrwrrerrrreerrreerrerrrrrrrrrrrrrrrrrrrrrrrrrrr
+    -> FAIL turns=61 evict=42 rereads=1 peak=4181 tok=275900
+
+--- rep7 W=4700 random ---
+rrrrrrrrwrrrrwrrreererwrrrrrrrrrrwrrrrrrrrrrrrrrrrrrrrrrrrrr
+    -> FAIL turns=61 evict=41 rereads=1 peak=4184 tok=292581
+
+--- rep7 W=4700 idle ---
+rrrrrrrrwrrrrrrwrerrrreerrrreerrerrrrereerrerrrrerreerrrrwr·
+    -> PASS turns=60 evict=41 rereads=4 peak=4181 tok=267034
+
+--- rep8 W=4700 truncate-tail ---
+rrrrrrrrwrrrrrrwrrrrrrerreerreerrrrerrrrrrrrrrrrrrrrrrrrrrrr
+    -> FAIL turns=61 evict=42 rereads=9 peak=4184 tok=284331
+
+--- rep8 W=4700 random ---
+rrrrrrrrwrrrrrrwrrreerrreerrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr
+    -> FAIL turns=61 evict=33 rereads=0 peak=4183 tok=285527
+
+--- rep8 W=4700 idle ---
+rrrrrrrrwrrrrrrrwrrrr
