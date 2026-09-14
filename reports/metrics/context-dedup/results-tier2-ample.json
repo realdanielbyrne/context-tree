@@ -1,0 +1,62 @@
+{
+  "manifest": {
+    "run_id": "tier2-idle-eviction-ample-1789368049249",
+    "experiment": "context-dedup / Tier 2 idle-eviction (ample)",
+    "regime": "ample",
+    "model": "unsloth/Qwen3.8-27B-GGUF",
+    "budget": 200000,
+    "g_star": 12,
+    "max_turns": 40,
+    "anchor": 4,
+    "correct_sum": 139,
+    "commit": "8a8b85773259bbd7f6b6dfbea5ded3f5e3a00534",
+    "date": "2026-09-14T06:40:49.253Z",
+    "falsification": "idle-gstar must PASS in the overflow regime (like recency, unlike append-all) AND not lose PASS vs append-all in the ample regime; otherwise the derived g* threshold is not usable as-is.",
+    "caveats": [
+      "n=1 per arm, temp 0.",
+      "total_prompt_tokens is RAW (the local server may not do Anthropic-style prompt caching); this measures task survival + raw context, not cached cost (DV2 covers cached cost).",
+      "g* in whole turns (12 ≈ w/r 12.5)."
+    ]
+  },
+  "arms": [
+    {
+      "arm": "none",
+      "success": true,
+      "answer": "139",
+      "turns": 7,
+      "stop": "end_turn",
+      "evictions": 0,
+      "peak_history_tokens": 928,
+      "reads": 1,
+      "rereads": 0,
+      "total_prompt_tokens": 7963,
+      "error": null
+    },
+    {
+      "arm": "recency",
+      "success": true,
+      "answer": "139",
+      "turns": 7,
+      "stop": "end_turn",
+      "evictions": 0,
+      "peak_history_tokens": 928,
+      "reads": 1,
+      "rereads": 0,
+      "total_prompt_tokens": 7963,
+      "error": null
+    },
+    {
+      "arm": "idle-gstar",
+      "success": true,
+      "answer": "139",
+      "turns": 7,
+      "stop": "end_turn",
+      "evictions": 0,
+      "peak_history_tokens": 928,
+      "reads": 1,
+      "rereads": 0,
+      "total_prompt_tokens": 7963,
+      "error": null
+    }
+  ]
+}

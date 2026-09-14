@@ -1,5 +1,13 @@
 # Duplicate-content analysis
 
+> ⚠️ **SUPERSEDED — do not cite these numbers.** An adversarial review found two real defects in the
+> generator: redundancy was computed keep-*largest* while the prose describes keep-*latest* (they differ
+> ~2×), and files were keyed by absolute path, so the same repo file read under a Mac and a Linux root was
+> double-counted (distinct-file and re-read-rate figures are off). The corrected, rigorous successors are
+> **`report-dv1-version-collapse.md`** (gross opportunity), **`report-dv2-cache-cost.md`** (cache-adjusted
+> cost — the result *inverts* under caching), and **`report-tier1-idle-predicts-cold.md`** (the idle→cold
+> signal). This file is kept only for provenance.
+
 *How often a coding agent re-reads the same file into its context over a session — and what it costs.*
 Source: 4 committed Claude Code session fixtures (`packages/cli/test/fixtures/claude-code-session*.jsonl`).
 Generated 2026-09-14. Rerun: `node experiments/context-dedup/analyze-duplicate-reads.mjs`.

@@ -1,0 +1,52 @@
+{
+  "experiment": "DV1 / single-version gross opportunity",
+  "date": "2026-09-14T05:28:23.420Z",
+  "sessions": [
+    {
+      "name": "session-2",
+      "turns": 651,
+      "finalAppendTok": 32709,
+      "finalSvTok": 5439,
+      "finalReductionPct": 0.8337142202010166,
+      "multiAppendTok": 13984443,
+      "multiSvTok": 4683782,
+      "multiReductionPct": 0.6650719660411215
+    },
+    {
+      "name": "session-3",
+      "turns": 98,
+      "finalAppendTok": 76,
+      "finalSvTok": 25,
+      "finalReductionPct": 0.6666666666666667,
+      "multiAppendTok": 6388,
+      "multiSvTok": 2172,
+      "multiReductionPct": 0.6600790513833992
+    },
+    {
+      "name": "session-4",
+      "turns": 735,
+      "finalAppendTok": 35077,
+      "finalSvTok": 2569,
+      "finalReductionPct": 0.9267611255238475,
+      "multiAppendTok": 15130019,
+      "multiSvTok": 1242971,
+      "multiReductionPct": 0.917847341032663
+    },
+    {
+      "name": "session",
+      "turns": 645,
+      "finalAppendTok": 22807,
+      "finalSvTok": 11075,
+      "finalReductionPct": 0.5144087954488157,
+      "multiAppendTok": 11643561,
+      "multiSvTok": 8301834,
+      "multiReductionPct": 0.28700210972833207
+    }
+  ],
+  "caveats": [
+    "Read-content only (system, tool schemas, assistant turns, edit diffs are equal across policies and excluded).",
+    "GROSS: ignores prompt caching — append-all re-sends a cached prefix at ~0.1x, so multi-turn reduction is an upper bound on volume, not on cost. DV2 models the cache-adjusted cost.",
+    "Single-version here retains one copy of EVERY file ever read (no eviction) — a conservative floor; relevance-eviction would shrink it further.",
+    "chars/4 token estimate."
+  ]
+}

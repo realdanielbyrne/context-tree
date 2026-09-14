@@ -1,0 +1,224 @@
+{
+  "experiment": "Tier 1 / idle-predicts-cold (LRU-at-g* signal validation)",
+  "date": "2026-09-14T06:33:19.698Z",
+  "g_star": 12.5,
+  "sessions": [
+    {
+      "name": "session-2",
+      "turns": 651,
+      "files": 18,
+      "gapsLe": 53,
+      "gapsGt": 14,
+      "gapLeShare": 0.7910447761194029,
+      "hazard": [
+        {
+          "idle": "0-2",
+          "p": 0.47107438016528924,
+          "n": 121
+        },
+        {
+          "idle": "3-6",
+          "p": 0.2621951219512195,
+          "n": 164
+        },
+        {
+          "idle": "7-12",
+          "p": 0.21182266009852216,
+          "n": 203
+        },
+        {
+          "idle": "13-25",
+          "p": 0.1232876712328767,
+          "n": 365
+        },
+        {
+          "idle": "26+",
+          "p": 0.013100436681222707,
+          "n": 6412
+        }
+      ],
+      "classifier": {
+        "tp": 6648,
+        "fp": 129,
+        "tn": 143,
+        "fn": 345,
+        "precision": 0.9809650287737938,
+        "recall": 0.9506649506649507,
+        "accuracy": 0.934755677907777
+      }
+    },
+    {
+      "name": "session-3",
+      "turns": 98,
+      "files": 1,
+      "gapsLe": 2,
+      "gapsGt": 0,
+      "gapLeShare": 1,
+      "hazard": [
+        {
+          "idle": "0-2",
+          "p": 0.3333333333333333,
+          "n": 3
+        },
+        {
+          "idle": "3-6",
+          "p": 0,
+          "n": 4
+        },
+        {
+          "idle": "7-12",
+          "p": 0,
+          "n": 6
+        },
+        {
+          "idle": "13-25",
+          "p": 0,
+          "n": 13
+        },
+        {
+          "idle": "26+",
+          "p": 0,
+          "n": 58
+        }
+      ],
+      "classifier": {
+        "tp": 71,
+        "fp": 0,
+        "tn": 1,
+        "fn": 12,
+        "precision": 1,
+        "recall": 0.8554216867469879,
+        "accuracy": 0.8571428571428571
+      }
+    },
+    {
+      "name": "session-4",
+      "turns": 735,
+      "files": 19,
+      "gapsLe": 49,
+      "gapsGt": 18,
+      "gapLeShare": 0.7313432835820896,
+      "hazard": [
+        {
+          "idle": "0-2",
+          "p": 0.35964912280701755,
+          "n": 114
+        },
+        {
+          "idle": "3-6",
+          "p": 0.1566265060240964,
+          "n": 166
+        },
+        {
+          "idle": "7-12",
+          "p": 0.15283842794759825,
+          "n": 229
+        },
+        {
+          "idle": "13-25",
+          "p": 0.1310344827586207,
+          "n": 435
+        },
+        {
+          "idle": "26+",
+          "p": 0.019222303741746147,
+          "n": 6815
+        }
+      ],
+      "classifier": {
+        "tp": 7062,
+        "fp": 188,
+        "tn": 102,
+        "fn": 407,
+        "precision": 0.9740689655172414,
+        "recall": 0.9455081001472754,
+        "accuracy": 0.9233148601623921
+      }
+    },
+    {
+      "name": "session",
+      "turns": 645,
+      "files": 20,
+      "gapsLe": 19,
+      "gapsGt": 17,
+      "gapLeShare": 0.5277777777777778,
+      "hazard": [
+        {
+          "idle": "0-2",
+          "p": 0.14942528735632185,
+          "n": 87
+        },
+        {
+          "idle": "3-6",
+          "p": 0.08917197452229299,
+          "n": 157
+        },
+        {
+          "idle": "7-12",
+          "p": 0.09606986899563319,
+          "n": 229
+        },
+        {
+          "idle": "13-25",
+          "p": 0.061269146608315096,
+          "n": 457
+        },
+        {
+          "idle": "26+",
+          "p": 0.024640657084188913,
+          "n": 6331
+        }
+      ],
+      "classifier": {
+        "tp": 6604,
+        "fp": 184,
+        "tn": 49,
+        "fn": 424,
+        "precision": 0.9728933411903359,
+        "recall": 0.9396698918611269,
+        "accuracy": 0.9162649772758573
+      }
+    }
+  ],
+  "pooledHazard": [
+    {
+      "idle": "0-2",
+      "p": 0.3446153846153846,
+      "n": 325
+    },
+    {
+      "idle": "3-6",
+      "p": 0.1690427698574338,
+      "n": 491
+    },
+    {
+      "idle": "7-12",
+      "p": 0.14992503748125938,
+      "n": 667
+    },
+    {
+      "idle": "13-25",
+      "p": 0.10236220472440945,
+      "n": 1270
+    },
+    {
+      "idle": "26+",
+      "p": 0.018913132137030997,
+      "n": 19616
+    }
+  ],
+  "pooledClassifier": {
+    "tp": 20385,
+    "fp": 501,
+    "tn": 295,
+    "fn": 1188,
+    "precision": 0.9760126400459638,
+    "recall": 0.9449311639549437,
+    "accuracy": 0.9244937189860968
+  },
+  "caveats": [
+    "OFFLINE signal validation only — tests whether backward idle predicts forward cold. Does NOT test task success or cost; that is Tier 2 (live).",
+    "A \"reference\" is a Read or Edit of a file; turn clock = assistant model calls. File granularity (not sub-file ranges).",
+    "These fixtures largely fit the window (not the extreme-overflow corpus); the reuse structure in a stressed session may differ."
+  ]
+}

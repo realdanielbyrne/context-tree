@@ -1,0 +1,267 @@
+{
+  "experiment": "DV2 / cache-adjusted cost of a single-version working set",
+  "date": "2026-09-14T05:35:34.069Z",
+  "profile": "anthropic",
+  "multipliers": {
+    "read": 0.1,
+    "write": 1.25,
+    "fresh": 1
+  },
+  "sessions": [
+    {
+      "name": "session-2",
+      "editedFiles": 12,
+      "submissions": 651,
+      "arms": {
+        "append": {
+          "tokenizerId": "chars4",
+          "profileId": "anthropic",
+          "submissions": 651,
+          "cacheRead": 76941951,
+          "cacheWrite": 219227,
+          "fresh": 0,
+          "total": 77161178,
+          "cacheReadRatio": 0.9971588432721957
+        },
+        "flat": {
+          "tokenizerId": "chars4",
+          "profileId": "anthropic",
+          "submissions": 651,
+          "cacheRead": 62005372,
+          "cacheWrite": 5942679,
+          "fresh": 0,
+          "total": 67948051,
+          "cacheReadRatio": 0.9125408468301762
+        },
+        "placed": {
+          "tokenizerId": "chars4",
+          "profileId": "anthropic",
+          "submissions": 651,
+          "cacheRead": 61455726,
+          "cacheWrite": 6492325,
+          "fresh": 0,
+          "total": 67948051,
+          "cacheReadRatio": 0.9044516376194514
+        },
+        "tail": {
+          "tokenizerId": "chars4",
+          "profileId": "anthropic",
+          "submissions": 651,
+          "cacheRead": 62987414,
+          "cacheWrite": 4960637,
+          "fresh": 0,
+          "total": 67948051,
+          "cacheReadRatio": 0.9269936822764792
+        }
+      },
+      "effs": {
+        "append": 7968228.850000001,
+        "flat": 13628885.95,
+        "placed": 14260978.850000001,
+        "tail": 12499537.65
+      },
+      "raws": {
+        "append": 77161178,
+        "flat": 67948051,
+        "placed": 67948051,
+        "tail": 67948051
+      },
+      "cachedBest": "append",
+      "tailCachedVsAppend": -0.5686720205080456,
+      "tailRawVsAppend": 0.11940106720506527
+    },
+    {
+      "name": "session-3",
+      "editedFiles": 0,
+      "submissions": 98,
+      "arms": {
+        "append": {
+          "tokenizerId": "chars4",
+          "profileId": "anthropic",
+          "submissions": 98,
+          "cacheRead": 1972241,
+          "cacheWrite": 42160,
+          "fresh": 0,
+          "total": 2014401,
+          "cacheReadRatio": 0.9790707014144652
+        },
+        "flat": {
+          "tokenizerId": "chars4",
+          "profileId": "anthropic",
+          "submissions": 98,
+          "cacheRead": 1967895,
+          "cacheWrite": 42164,
+          "fresh": 0,
+          "total": 2010059,
+          "cacheReadRatio": 0.9790235013002105
+        },
+        "placed": {
+          "tokenizerId": "chars4",
+          "profileId": "anthropic",
+          "submissions": 98,
+          "cacheRead": 1966591,
+          "cacheWrite": 43468,
+          "fresh": 0,
+          "total": 2010059,
+          "cacheReadRatio": 0.9783747641238392
+        },
+        "tail": {
+          "tokenizerId": "chars4",
+          "profileId": "anthropic",
+          "submissions": 98,
+          "cacheRead": 1965741,
+          "cacheWrite": 44318,
+          "fresh": 0,
+          "total": 2010059,
+          "cacheReadRatio": 0.9779518909643946
+        }
+      },
+      "effs": {
+        "append": 249924.1,
+        "flat": 249494.5,
+        "placed": 250994.1,
+        "tail": 251971.6
+      },
+      "raws": {
+        "append": 2014401,
+        "flat": 2010059,
+        "placed": 2010059,
+        "tail": 2010059
+      },
+      "cachedBest": "flat",
+      "tailCachedVsAppend": -0.00819248723912569,
+      "tailRawVsAppend": 0.002155479470075772
+    },
+    {
+      "name": "session-4",
+      "editedFiles": 17,
+      "submissions": 735,
+      "arms": {
+        "append": {
+          "tokenizerId": "chars4",
+          "profileId": "anthropic",
+          "submissions": 735,
+          "cacheRead": 87159035,
+          "cacheWrite": 221434,
+          "fresh": 0,
+          "total": 87380469,
+          "cacheReadRatio": 0.9974658639106183
+        },
+        "flat": {
+          "tokenizerId": "chars4",
+          "profileId": "anthropic",
+          "submissions": 735,
+          "cacheRead": 70172536,
+          "cacheWrite": 3436517,
+          "fresh": 0,
+          "total": 73609053,
+          "cacheReadRatio": 0.9533139354475869
+        },
+        "placed": {
+          "tokenizerId": "chars4",
+          "profileId": "anthropic",
+          "submissions": 735,
+          "cacheRead": 70077216,
+          "cacheWrite": 3531837,
+          "fresh": 0,
+          "total": 73609053,
+          "cacheReadRatio": 0.9520189860342314
+        },
+        "tail": {
+          "tokenizerId": "chars4",
+          "profileId": "anthropic",
+          "submissions": 735,
+          "cacheRead": 72062942,
+          "cacheWrite": 1546111,
+          "fresh": 0,
+          "total": 73609053,
+          "cacheReadRatio": 0.9789956406584934
+        }
+      },
+      "effs": {
+        "append": 8992696,
+        "flat": 11312899.850000001,
+        "placed": 11422517.850000001,
+        "tail": 9138932.95
+      },
+      "raws": {
+        "append": 87380469,
+        "flat": 73609053,
+        "placed": 73609053,
+        "tail": 73609053
+      },
+      "cachedBest": "append",
+      "tailCachedVsAppend": -0.01626174731137353,
+      "tailRawVsAppend": 0.15760290780769326
+    },
+    {
+      "name": "session",
+      "editedFiles": 9,
+      "submissions": 645,
+      "arms": {
+        "append": {
+          "tokenizerId": "chars4",
+          "profileId": "anthropic",
+          "submissions": 645,
+          "cacheRead": 52016995,
+          "cacheWrite": 148262,
+          "fresh": 0,
+          "total": 52165257,
+          "cacheReadRatio": 0.9971578401310282
+        },
+        "flat": {
+          "tokenizerId": "chars4",
+          "profileId": "anthropic",
+          "submissions": 645,
+          "cacheRead": 47146926,
+          "cacheWrite": 1728466,
+          "fresh": 0,
+          "total": 48875392,
+          "cacheReadRatio": 0.9646352503934904
+        },
+        "placed": {
+          "tokenizerId": "chars4",
+          "profileId": "anthropic",
+          "submissions": 645,
+          "cacheRead": 46486678,
+          "cacheWrite": 2388714,
+          "fresh": 0,
+          "total": 48875392,
+          "cacheReadRatio": 0.951126448254369
+        },
+        "tail": {
+          "tokenizerId": "chars4",
+          "profileId": "anthropic",
+          "submissions": 645,
+          "cacheRead": 40393853,
+          "cacheWrite": 8481539,
+          "fresh": 0,
+          "total": 48875392,
+          "cacheReadRatio": 0.8264660670138462
+        }
+      },
+      "effs": {
+        "append": 5387027,
+        "flat": 6875275.100000001,
+        "placed": 7634560.3,
+        "tail": 14641309.05
+      },
+      "raws": {
+        "append": 52165257,
+        "flat": 48875392,
+        "placed": 48875392,
+        "tail": 48875392
+      },
+      "cachedBest": "append",
+      "tailCachedVsAppend": -1.7178829900054335,
+      "tailRawVsAppend": 0.06306620899040138
+    }
+  ],
+  "caveats": [
+    "Cached cost = cacheRead*0.1 + cacheWrite*1.25 + fresh*1.0 (Anthropic input multipliers). No-cache cost = total tokens transmitted.",
+    "Simulator: ProviderCacheSimulator, ANTHROPIC_PROFILE, automatic-prefix matching; chars/4 tokenizer.",
+    "No WINDOW LIMIT is modelled: append-all is allowed to cache an unbounded, ever-growing prefix. This structurally favours append-all — its whole advantage here is that nothing is ever dropped, which a real hard window forbids. The single-version case for a bounded window (fitting more relevant content) is NOT what this measures; see E1/DV3.",
+    "sv-placed/tail use ORACLE placement (whole-session knowledge of which files are edited) — an upper bound a deterministic online policy would approach.",
+    "An edit yields no post-edit full content, so a file block is version-bumped with a marker; reads carry real content. Non-file tool outputs are kept identically in all arms."
+  ]
+}

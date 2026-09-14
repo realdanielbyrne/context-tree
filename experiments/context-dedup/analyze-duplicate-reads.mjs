@@ -19,6 +19,20 @@ const FIX = join(ROOT, 'packages', 'cli', 'test', 'fixtures');
 const OUT = join(ROOT, 'reports', 'metrics', 'context-dedup');
 const CHARS_PER_TOKEN = 4; // the harness estimate (lib.mjs estTokens)
 
+/**
+ * Repo-relative key for a file path. The fixtures were recorded on two machines
+ * (a Mac under /Users/danielbyrne/GitHub/rpm/context-tree and this Linux box
+ * under /home/realdanielbyrne/GitHub/context-tree), so the SAME repo file appears
+ * under two absolute paths. Keying by the repo-relative tail collapses them to one
+ * file — without over-merging distinct files that merely share a basename.
+ */
+function normalizePath(p) {
+  if (typeof p !== 'string' || p === '') return '(unknown)';
+  const marker = 'context-tree/';
+  const i = p.lastIndexOf(marker);
+  return i >= 0 ? p.slice(i + marker.length) : p;
+}
+
 /** Parse one session fixture into its Read calls (path, offset, limit, resultChars) + edit count. */
 function analyzeSession(file) {
   const calls = new Map(); // tool_use_id -> {path, offset, limit}
@@ -51,27 +65,42 @@ function analyzeSession(file) {
       }
     }
   }
+  // Map insertion order is chronological (order the tool_use lines appeared), so
+  // the last read of a file in a group is its most-recent copy — what keep-latest keeps.
   const reads = [];
   for (const [id, meta] of calls) {
-    reads.push({ path: meta.path, offset: meta.offset, limit: meta.limit, chars: resultLen.get(id) ?? 0 });
+    reads.push({
+      path: meta.path,
+      key: normalizePath(meta.path),
+      offset: meta.offset,
+      limit: meta.limit,
+      chars: resultLen.get(id) ?? 0,
+    });
   }
   return { reads, edits };
 }
 
-/** Per-session metrics from its reads. Redundant chars = every copy of a file beyond the largest one. */
+/**
+ * Per-session metrics. Redundant chars are computed under the rule the report (and
+ * experiment E3) actually propose: KEEP THE MOST-RECENT copy of each file, drop the
+ * rest. Groups are in chronological order, so redundant = every copy except the last.
+ * This is the gross tokens such a rule would remove — an upper bound on what is
+ * safely reclaimable (an older copy may hold a section the latest read does not;
+ * that risk is exactly what E3 tests).
+ */
 function sessionStats(name, reads, edits) {
   const byPath = new Map();
   for (const r of reads) {
-    if (!byPath.has(r.path)) byPath.set(r.path, []);
-    byPath.get(r.path).push(r);
+    if (!byPath.has(r.key)) byPath.set(r.key, []);
+    byPath.get(r.key).push(r);
   }
   const total = reads.length;
   const distinct = byPath.size;
   const loadedChars = reads.reduce((s, r) => s + r.chars, 0);
   let redundantChars = 0;
   for (const [, group] of byPath) {
-    const sizes = group.map((r) => r.chars).sort((a, b) => b - a);
-    redundantChars += sizes.slice(1).reduce((s, n) => s + n, 0); // keep the largest copy; the rest is waste
+    // keep-latest: the last read in chronological order stays; earlier copies are redundant.
+    redundantChars += group.slice(0, -1).reduce((s, r) => s + r.chars, 0);
   }
   const wholeFile = reads.filter((r) => r.offset === null && r.limit === null).length;
   const filesDup = [...byPath.values()].filter((g) => g.length > 1).length;
@@ -101,19 +130,24 @@ const files = readdirSync(FIX)
   .sort();
 
 const sessions = [];
-const pooledByPath = new Map(); // path -> total count across all fixtures
+const pooledByPath = new Map(); // repo-relative key -> total count across all fixtures
 let pooledReads = 0;
 for (const f of files) {
   const { reads, edits } = analyzeSession(join(FIX, f));
   sessions.push(sessionStats(f, reads, edits));
   pooledReads += reads.length;
-  for (const r of reads) pooledByPath.set(r.path, (pooledByPath.get(r.path) ?? 0) + 1);
+  for (const r of reads) pooledByPath.set(r.key, (pooledByPath.get(r.key) ?? 0) + 1);
 }
 const pooledDistinct = pooledByPath.size;
 const pooledReReadPct = pooledReads ? (pooledReads - pooledDistinct) / pooledReads : 0;
+const pooledWorst = Math.max(0, ...pooledByPath.values());
+// Redundant is per-session (dedup operates within one context), so pooled = the sum.
+const pooledLoadedTokens = sessions.reduce((s, x) => s + x.loadedTokens, 0);
+const pooledRedundantTokens = sessions.reduce((s, x) => s + x.redundantTokens, 0);
+const pooledRedundantPct = pooledLoadedTokens ? pooledRedundantTokens / pooledLoadedTokens : 0;
 
 const topFiles = [...pooledByPath.entries()]
-  .map(([path, count]) => ({ path, base: basename(path), count }))
+  .map(([key, count]) => ({ path: key, base: basename(key), count }))
   .filter((x) => x.count > 1)
   .sort((a, b) => b.count - a.count)
   .slice(0, 8);
