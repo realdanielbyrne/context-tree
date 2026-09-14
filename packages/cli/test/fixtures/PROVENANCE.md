@@ -305,8 +305,9 @@ text, so a stopped run cannot have passed and `null` is the only honest value.
 
 A snapshot of the live Claude Code session that produced the `context-dedup`
 experiment series (DV1–DV3, Tier 1/1b, the A/B window-cap sweeps, the non-Docker
-SWE-bench provisioner). Captured mid-session, so it ends wherever the session had
-reached at copy time rather than at a natural close. 20,433,605 bytes / 7,823 lines
+SWE-bench provisioner). Captured mid-session and REFRESHED in place as the session continued, so it ends
+wherever the session had reached at the last copy rather than at a natural close.
+20,610,074 bytes / 7,894 lines
 — the largest fixture here, and the only one recorded on the Linux workstation
 (`/home/realdanielbyrne/...`) rather than the Mac, which is why paths in it do not
 share the `/Users/danielbyrne/...` prefix of sessions 1–4.
@@ -328,14 +329,15 @@ Each exact value was replaced with `<REDACTED:KEYNAME>` by
 credential-shaped literals (`sk-proj-`, `sk-ant-`, `sk-unsloth-`, `sk-or-`, `sk-lf-`,
 `gh[pos]_`, `AKIA…`) that might never have appeared in `.env`, and refuses to write
 unless a re-scan shows zero remaining matches AND every line still parses as JSON.
-Result: **65 redactions, 0 remaining secret occurrences, 0 unparseable lines**,
+Result (latest refresh): **69 redactions, 0 remaining secret occurrences, 0 unparseable
+lines**,
 independently re-verified against the written file.
 
 **Consequences for use as a corpus.** The tool_use/tool_result structure, turn
 sequence, file paths, and message content are untouched, so it remains valid for
 segmentation, retrieval and assembler work — the analyses in
 `reports/metrics/context-dedup/` were computed on the *unredacted* original and the
-redaction touches only 65 opaque literals inside command strings. Anything measuring
+redaction touches only the 69 opaque literals inside command strings. Anything measuring
 raw byte-identity against a live session, or reasoning about credential handling,
 should not use this file.
 
