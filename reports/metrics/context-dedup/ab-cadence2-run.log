@@ -1,0 +1,29 @@
+
+--- rep0 W=4700 truncate-tail ---
+rrrrrrrrwrrrrrwrrererreererreerrerrrrrereerrerrrrrerrrrrrrrr
+    -> PASS turns=61 evict=24 rereads=7 peak=4926 tok=287323
+
+--- rep0 W=4700 idle ---
+rrrrrrrrwrrrrrwrrererreerererreerrrrrrrrrrreererrrrrererrrre
+    -> PASS turns=61 evict=24 rereads=8 peak=4926 tok=289996
+
+--- rep1 W=4700 truncate-tail ---
+rrrrrrrrwrrrrrwrrererreererreerrerrrrrrrrrrrrrrrrrrrrrrrrrrr
+    -> FAIL turns=61 evict=24 rereads=16 peak=4926 tok=296478
+
+--- rep1 W=4700 idle ---
+rrrrrrrrwrrrerrrwrrereererrwrerrwrrrrrrrrrrrrreereerrrrrerrr
+    -> FAIL turns=61 evict=25 rereads=9 peak=4871 tok=286366
+
+--- rep2 W=4700 truncate-tail ---
+rrrrrrrrwrrerrrwrererrererrerrerrrrrrreererrrerrlrr    -> PASS turns=null evict=20 rereads=0 peak=4777 tok=0
+
+--- rep2 W=4700 idle ---
+rrrrrrrrwerrrrrrwrerrreerrreerrrrrrrrrrrerrrrrrrrrrrrrrrrrrr
+    -> FAIL turns=61 evict=22 rereads=4 peak=4891 tok=291200
+
+=== A/B WINDOW SWEEP v2 [longbuild(ledger, 6 stages, stdlib unittest)] model=unsloth/Qwen3.8-27B-GGUF n=3 ===
+  cell                     n  pass  turns(med/min-max)  rereads  evict  peak    tokens
+  truncate-tail@4700       3   67%     61 (60-61)       7     24    4926  287323
+  idle@4700                3   33%     61 (61-61)       8     24    4891  289996
+  written: /home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/results-ab-longbuild-cadence2.json

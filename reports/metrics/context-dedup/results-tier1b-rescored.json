@@ -1,0 +1,69 @@
+{
+  "experiment": "Tier 1b / idle-predicts-cold, CORRECTED unit of analysis and turn clock",
+  "date": "2026-09-14T20:01:59.057Z",
+  "g_star_api_turns": 12.5,
+  "sessions": [
+    {
+      "name": "session-2",
+      "apiTurns": 291,
+      "lineTurns": 651,
+      "clockInflation": 2.24,
+      "decisions": 13,
+      "tp": 13,
+      "fp": 0,
+      "precision": 1,
+      "noDecision": 14,
+      "prematureRate": 0
+    },
+    {
+      "name": "session-3",
+      "apiTurns": 44,
+      "lineTurns": 98,
+      "clockInflation": 2.23,
+      "decisions": 1,
+      "tp": 1,
+      "fp": 0,
+      "precision": 1,
+      "noDecision": 2,
+      "prematureRate": 0
+    },
+    {
+      "name": "session-4",
+      "apiTurns": 307,
+      "lineTurns": 735,
+      "clockInflation": 2.39,
+      "decisions": 13,
+      "tp": 9,
+      "fp": 4,
+      "precision": 0.6923076923076923,
+      "noDecision": 6,
+      "prematureRate": 0.3076923076923077
+    },
+    {
+      "name": "session",
+      "apiTurns": 331,
+      "lineTurns": 645,
+      "clockInflation": 1.95,
+      "decisions": 17,
+      "tp": 16,
+      "fp": 1,
+      "precision": 0.9411764705882353,
+      "noDecision": 5,
+      "prematureRate": 0.058823529411764705
+    }
+  ],
+  "pooled": {
+    "decisions": 44,
+    "tp": 39,
+    "fp": 5,
+    "noDecision": 27,
+    "precision": 0.8863636363636364
+  },
+  "supersedes": "results-tier1.json (precision 98% / recall 94% were artifacts)",
+  "caveats": [
+    "One row per eviction DECISION (idle crossing g*), not per resident turn — the earlier framing let a single file contribute hundreds of near-certain true positives.",
+    "Turn clock groups on message.id (API turns). tier1 counted JSONL content-block lines, running 2.0-2.4x fast.",
+    "Accuracy and recall are deliberately not reported: with the vast majority of episodes cold they are uninformative, and a constant predictor beats the rule on both.",
+    "Offline signal check only — the LIVE A/B (handoff item 8) separately found idle does NOT beat positional recency as an eviction signal (pooled p=1.000)."
+  ]
+}

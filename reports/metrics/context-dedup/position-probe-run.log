@@ -1,0 +1,31 @@
+......  len=5000 depth=0% -> 6/6
+......  len=5000 depth=25% -> 6/6
+......  len=5000 depth=50% -> 6/6
+......  len=5000 depth=75% -> 6/6
+......  len=5000 depth=100% -> 6/6
+......  len=10000 depth=0% -> 6/6
+......  len=10000 depth=25% -> 6/6
+......  len=10000 depth=50% -> 6/6
+......  len=10000 depth=75% -> 6/6
+......  len=10000 depth=100% -> 6/6
+......  len=20000 depth=0% -> 6/6
+......  len=20000 depth=25% -> 6/6
+......  len=20000 depth=50% -> 6/6
+......  len=20000 depth=75% -> 6/6
+......  len=20000 depth=100% -> 6/6
+
+=== POSITION PROBE (needle-in-haystack) ===
+model=unsloth/Qwen3.8-27B-GGUF  needles/cell=6  temp=0
+ctx\depth       0%      25%      50%      75%     100%
+     5000      6/6      6/6      6/6      6/6      6/6   (real prompt tok ~6572)
+    10000      6/6      6/6      6/6      6/6      6/6   (real prompt tok ~13054)
+    20000      6/6      6/6      6/6      6/6      6/6   (real prompt tok ~25989)
+
+pooled by depth:
+  depth   0%  100%  (n=18)
+  depth  25%  100%  (n=18)
+  depth  50%  100%  (n=18)
+  depth  75%  100%  (n=18)
+  depth 100%  100%  (n=18)
+
+wrote results-position-probe.json -> /home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup

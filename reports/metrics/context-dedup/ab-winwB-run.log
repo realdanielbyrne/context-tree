@@ -1,0 +1,30 @@
+
+--- rep0 W=7500 truncate-tail ---
+rrrrrrrrwerrlrerrrwrerreererreererrrrrrrrrerrerrerrererwr·
+    -> PASS turns=58 evict=32 rereads=2 peak=6977 tok=409130
+
+--- rep0 W=8500 truncate-tail ---
+rrrrrrrrwrwrrrwrerreererreererrrrrrrrereerrrrerrrrwr·
+    -> PASS turns=53 evict=25 rereads=2 peak=7969 tok=406230
+
+--- rep1 W=7500 truncate-tail ---
+rrrrrrrrwerrlrerrrwrerreererreererrrrrrrrrerrerrerrererwr·
+    -> PASS turns=58 evict=33 rereads=2 peak=6979 tok=409065
+
+--- rep1 W=8500 truncate-tail ---
+rrrrrrrrwerrlrerrrwrerreererreeerrrrrrrrrereerrrerrrrwr·
+    -> PASS turns=56 evict=26 rereads=3 peak=7977 tok=426197
+
+--- rep2 W=7500 truncate-tail ---
+rrrrrrrrwrrrrerrrwrerreerererreererrrrrrerererrrrrerrrrwr·
+    -> PASS turns=58 evict=32 rereads=5 peak=6967 tok=399038
+
+--- rep2 W=8500 truncate-tail ---
+rrrrrrrrwrrrrerrrwrerreererreereerrrrrrrrrrrrrrrerrerrrreeer
+    -> PASS turns=61 evict=25 rereads=2 peak=7972 tok=466496
+
+=== A/B WINDOW SWEEP v2 [longbuild(ledger, 6 stages, stdlib unittest)] model=unsloth/Qwen3.8-27B-GGUF n=3 ===
+  cell                     n  pass  turns(med/min-max)  rereads  evict  peak    tokens
+  truncate-tail@7500       3  100%     58 (58-58)       2     32    6977  409065
+  truncate-tail@8500       3  100%     56 (53-61)       2     25    7972  426197
+  written: /home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/results-ab-longbuild-winwB.json

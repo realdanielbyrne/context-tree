@@ -123,6 +123,28 @@ export const rankRandom = (rng = makeRng()) => (units, anchorIdx) => {
 export const rankIdle = (units, anchorIdx, idle) =>
   nonAnchor(units, anchorIdx).sort((a, b) => (idle[a] - idle[b]) || (b - a));
 
+/**
+ * BLEND: interpolate between positional recency (alpha=0) and reference recency
+ * (alpha=1). Ranks each unit by both and keeps the lowest weighted rank, so the
+ * "strength of the LRU signal" becomes a continuous dial rather than on/off.
+ */
+export const rankBlend = (alpha) => (units, anchorIdx, idle) => {
+  const rest = nonAnchor(units, anchorIdx);
+  const posRank = new Map(); [...rest].sort((a, b) => b - a).forEach((i, r) => posRank.set(i, r));
+  const idleRank = new Map(); [...rest].sort((a, b) => (idle[a] - idle[b]) || (b - a)).forEach((i, r) => idleRank.set(i, r));
+  return rest.sort((a, b) =>
+    (alpha * idleRank.get(a) + (1 - alpha) * posRank.get(a)) -
+    (alpha * idleRank.get(b) + (1 - alpha) * posRank.get(b)));
+};
+
+/** PROTECTION: units fresher than `g` are never evicted, even under budget pressure. */
+export const rankProtect = (g) => (units, anchorIdx, idle) =>
+  nonAnchor(units, anchorIdx).sort((a, b) => {
+    const pa = idle[a] <= g ? 0 : 1, pb = idle[b] <= g ? 0 : 1;   // protected first
+    return (pa - pb) || (idle[a] - idle[b]) || (b - a);
+  });
+
+export const evictByBlend = (messages, W, alpha, opts) => evictToBudget(messages, W, rankBlend(alpha), opts);
 export const evictByRecency = (messages, W, opts) => evictToBudget(messages, W, rankRecency, opts);
 export const evictByRandom = (messages, W, rng, opts) => evictToBudget(messages, W, rankRandom(rng), opts);
 export const evictByIdle = (messages, W, opts) => evictToBudget(messages, W, rankIdle, opts);

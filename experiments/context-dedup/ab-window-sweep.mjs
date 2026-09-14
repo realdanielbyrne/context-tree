@@ -35,7 +35,7 @@ import { execSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runAgent, makeWorkspace, estTokens, MODEL } from '../coding-harness/lib.mjs';
-import { evictByRecency, evictByRandom, evictByIdle, makeRng } from './policies.mjs';
+import { evictByRecency, evictByRandom, evictByIdle, evictByBlend, makeRng } from './policies.mjs';
 import { writeResults, gitSha, nowISO } from '../rung-1-live-probe/lib.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -45,6 +45,12 @@ const MAX_TURNS = +(process.env.CT_MAX_TURNS || 60);
 const ANCHOR = +(process.env.CT_ANCHOR || 4);
 const ARMS = (process.env.CT_ARMS || 'uncapped,truncate-tail,random,idle').split(',');
 const TASK_NAME = process.env.CT_TASK || 'longbuild';
+const TAG = process.env.CT_TAG || 'v2';   // distinguishes concurrent runs' output files
+// CADENCE: only check/evict every N turns. N=1 is DV2's worst case; larger N lets the
+// context overshoot W between events, so cadence and effective window are ENTANGLED —
+// peak_history_tokens is recorded so the two can be told apart.
+const CADENCE = +(process.env.CT_CADENCE || 1);
+const ALPHA = process.env.CT_ALPHA === undefined ? null : +process.env.CT_ALPHA;
 
 const NOOP = { changed: false, kept: null, evicted: 0, capViolated: false };
 function evictorFor(arm, W, repeat) {
@@ -52,6 +58,7 @@ function evictorFor(arm, W, repeat) {
   if (arm === 'uncapped') return () => NOOP;
   if (arm === 'truncate-tail') return (m) => evictByRecency(m, W, opts);
   if (arm === 'idle') return (m) => evictByIdle(m, W, opts);
+  if (arm === 'blend') return (m) => evictByBlend(m, W, ALPHA ?? 0.5, opts);
   if (arm === 'random') { const rng = makeRng(1000 + repeat); return (m) => evictByRandom(m, W, rng, opts); }
   throw new Error(`unknown arm ${arm}`);
 }
@@ -62,9 +69,11 @@ async function runCell(task, arm, W, repeat) {
   const track = { peak: 0, peakPre: 0, evictions: 0, capViolations: 0, keptLast: null };
   const evict = evictorFor(arm, W, repeat);
   // peak is sampled AFTER eviction: that is what is actually sent to the model.
+  let turnNo = 0;
   const hook = async (m) => {
     track.peakPre = Math.max(track.peakPre, estTokens(m));
-    const r = evict(m);
+    const fire = (turnNo++ % CADENCE) === 0;          // cadence gate
+    const r = fire ? evict(m) : NOOP;
     if (r.changed) track.evictions += 1;
     if (r.capViolated) track.capViolations += 1;
     track.keptLast = r.kept;
@@ -132,7 +141,7 @@ async function main() {
       run_id: `ab-window-sweep-v2-${TASK_NAME}-${Date.now()}`,
       experiment: `context-dedup / A/B window-cap sweep v2 (${TASK_NAME})`,
       model: MODEL, task: task.name, windows: WINDOWS, repeats: REPEATS,
-      max_turns: MAX_TURNS, anchor: ANCHOR, commit: gitSha(), date: nowISO(),
+      max_turns: MAX_TURNS, anchor: ANCHOR, cadence: CADENCE, alpha: ALPHA, commit: gitSha(), date: nowISO(),
       hypothesis: 'At a binding cap, keeping units by REFERENCE recency (idle) completes with fewer turns/re-reads than keeping by POSITIONAL recency (truncate-tail), and both beat the random control. All capped arms are volume-matched (same budget, same anchor).',
       falsification: 'if idle does not beat truncate-tail outside the measured run-to-run noise band, and/or does not beat random, reference-recency adds nothing over positional recency.',
       caveats: [
@@ -143,7 +152,7 @@ async function main() {
       ],
     }, summary, cells,
   };
-  const path = writeResults('context-dedup', `results-ab-${TASK_NAME}-v2.json`, out);
+  const path = writeResults('context-dedup', `results-ab-${TASK_NAME}-${TAG}.json`, out);
   console.error(`\n=== A/B WINDOW SWEEP v2 [${task.name}] model=${MODEL} n=${REPEATS} ===`);
   console.error('  cell                     n  pass  turns(med/min-max)  rereads  evict  peak    tokens');
   for (const s of summary) {
