@@ -40,6 +40,16 @@ export {
 } from './eviction.js';
 export { replyAllowance, replyHeadroom, REPLY_WINDOW_FRACTION } from './budgets.js';
 export {
+  reduceChunk,
+  reduceSummarize,
+  resolveReducer,
+  DEFAULT_REDUCER,
+  type Reducer,
+  type ReducerName,
+  type ReduceInput,
+  type ReduceContext,
+} from './reduce.js';
+export {
   ARGS_CAP_WITH_BLOB,
   elision,
   renderEvent,

@@ -35,6 +35,12 @@ export interface BudgetReport {
   /** Units evicted from the flex buffer this turn (lowest-scoring first). */
   evicted: NodeId[];
   /**
+   * Raw units shrunk in place by reduce-on-overflow this turn — each exceeded the
+   * per-unit budget `b` and was chunked/summarized down to it (anchors included:
+   * they are never evicted but can still be reduced).
+   */
+  reduced: NodeId[];
+  /**
    * The host's context window, when supplied, and what this prompt leaves of it.
    * The only real constraint in the report: a prompt over the window fails at the
    * provider. `null` when the host supplied no window (honest about not knowing).

@@ -169,6 +169,83 @@ describe('assembleFlex — stable-run cache invariant (through the secondary bre
   });
 });
 
+describe('assembleFlex — reduce-on-overflow (per-unit budget b)', () => {
+  // A raw unit far larger than its per-unit budget b = (f − reply reserve)/(A+1).
+  const bigRaw = (order: number, nodeId: string, tokens: number): FlexUnit => ({
+    ...unit(order, { nodeId, rawTok: tokens, noSummary: true }),
+  });
+
+  it('shrinks a raw ANCHOR unit that exceeds b, and reports it as reduced', () => {
+    // window 400, floor .5 → 200; A=1 → b = 200/2 = 100. The anchor unit is ~300
+    // tokens raw — never evicted, but must be reduced under b.
+    const units = [unit(0, { rawTok: 20 }), bigRaw(1, 'huge', 300)];
+    const p = assembleFlex({ system: 'S', userPrompts: [] }, units, tok, {
+      window: 400,
+      softTargetFrac: 0.5,
+      anchor: 1,
+    });
+    expect(p.budgets.reduced).toContain('huge');
+    const hugeBlock = p.blocks.find((b) => b.id === 'flex:huge')!;
+    expect(hugeBlock.tokens).toBeLessThanOrEqual(100); // now within b
+  });
+
+  it('leaves raw units that already fit b untouched (no reduction)', () => {
+    const units = [unit(0, { rawTok: 20 }), unit(1, { rawTok: 20, noSummary: true })];
+    const p = assembleFlex({ system: 'S', userPrompts: [] }, units, tok, {
+      window: 1000,
+      softTargetFrac: 0.5,
+      anchor: 2,
+    });
+    expect(p.budgets.reduced).toEqual([]);
+  });
+
+  it('reply reserve tightens b (a bigger reserve reduces more aggressively)', () => {
+    const units = [bigRaw(0, 'a', 120)];
+    const lean = assembleFlex({ system: 'S', userPrompts: [] }, units, tok, {
+      window: 400,
+      softTargetFrac: 0.5,
+      anchor: 0, // b = (200 − reserve)/1
+    });
+    const reserved = assembleFlex({ system: 'S', userPrompts: [] }, units, tok, {
+      window: 400,
+      softTargetFrac: 0.5,
+      anchor: 0,
+      replyReserve: 150, // b = 50
+    });
+    const leanTok = lean.blocks.find((b) => b.id === 'flex:a')!.tokens;
+    const reservedTok = reserved.blocks.find((b) => b.id === 'flex:a')!.tokens;
+    expect(reservedTok).toBeLessThan(leanTok);
+    expect(reservedTok).toBeLessThanOrEqual(50);
+  });
+
+  it('the summarize reducer folds an oversized raw unit to its summary', () => {
+    // The unit has a summary; forced raw by the anchor, over b → summarize picks the gist.
+    const withSummary: FlexUnit = { ...unit(0, { rawTok: 300 }), summary: 'GIST of the unit' };
+    const p = assembleFlex({ system: 'S', userPrompts: [] }, [withSummary], tok, {
+      window: 400,
+      softTargetFrac: 0.5,
+      anchor: 1,
+      reducer: 'summarize',
+    });
+    const b = p.blocks.find((x) => x.zone === 'flex')!;
+    expect(b.text).toContain('GIST');
+    expect(p.budgets.reduced).toContain('n0');
+  });
+
+  it('the chunk reducer keeps a query-relevant span of an oversized raw unit', () => {
+    const raw = `${'padding word '.repeat(60)} NEEDLE_TOKEN marker ${'padding word '.repeat(60)}`;
+    const u: FlexUnit = { ...unit(0, {}), raw, summary: undefined, nodeId: 'q' };
+    const p = assembleFlex({ system: 'S', userPrompts: ['find the NEEDLE_TOKEN'] }, [u], tok, {
+      window: 400,
+      softTargetFrac: 0.5,
+      anchor: 1,
+      chunkOptions: { chunkSize: 80, chunkOverlap: 16 },
+    });
+    const b = p.blocks.find((x) => x.id === 'flex:q')!;
+    expect(b.text).toContain('NEEDLE_TOKEN'); // query (last user prompt) drove selection
+  });
+});
+
 describe('toMessages / toCompletionRequest — provider projection', () => {
   const head = { system: 'SYS', steering: 'STEER', userPrompts: ['p0'] };
   const p = assembleFlex(head, [unit(0), unit(1), unit(2), unit(3)], tok, { ...bigWindow, anchor: 1 });

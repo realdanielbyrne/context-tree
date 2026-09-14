@@ -20,12 +20,13 @@
  * prefix is cache-death). Dormancy comes from the classifier (stage 1); this stage
  * consumes it and never computes embeddings itself.
  *
- * NOT YET IMPLEMENTED (phased — `reports/session-handoff.md`): the reduce-on-overflow
- * router and the per-unit budget `b` (spec §"Reduce-on-overflow"). Eviction to the soft
- * floor is implemented; the overflow VALVE for an individual oversized raw unit is not.
- * A raw unit larger than `b` — including the recency anchor, which is never evicted — is
- * not yet chunked/summarized, so a single oversized raw unit can still exceed the floor
- * and the window.
+ * Reduce-on-overflow (spec §"Reduce-on-overflow") is implemented (`reduce.ts`): a raw
+ * unit larger than the per-unit budget `b = (f − reply reserve) ÷ (A + 1)` — including
+ * the recency anchor, which is never evicted — is shrunk in place by a reducer (default
+ * `chunk`: keep the query-relevant spans; or `summarize`: fold to the §8 summary). The
+ * query→reducer ROUTER that would auto-pick between them is deliberately NOT here — it is
+ * an untested hypothesis (`reports/session-handoff.md`, backlog item 4). The assembler
+ * applies the single default; a caller may override it but nothing auto-selects.
  *
  * `toMessages` / `toCompletionRequest` project an assembled prompt to a provider
  * request: the head ships as `system` (its cache breakpoint as a request flag), and
@@ -48,6 +49,8 @@ import {
   type EvictionCandidate,
   type EvictionWeights,
 } from './eviction.js';
+import { resolveReducer, type Reducer, type ReducerName } from './reduce.js';
+import type { ChunkOptions } from '../retrieve/chunk.js';
 
 /**
  * Soft-target floor `f`, as a fraction of the window: the buffer is evicted down
@@ -105,6 +108,22 @@ export interface FlexAssembleOptions {
   /** Retrieved results to append after the buffer (untouched prefix). */
   tail?: readonly { id: string; text: string }[];
   priorityHalfLife?: number;
+  /**
+   * Room reserved for the reply, in tokens — the host-declared `Model.limit.output`
+   * (spec). Subtracted from the floor to size the per-unit budget `b`. Default 0
+   * (no reserve known → `b` is the whole floor's raw share).
+   */
+  replyReserve?: number;
+  /**
+   * The reduce-on-overflow reducer for oversized raw units. `'chunk'` (default,
+   * detail-preserving), `'summarize'` (gist), or a custom function. NOT a router:
+   * the assembler applies this one reducer; it never auto-selects (backlog item 4).
+   */
+  reducer?: ReducerName | Reducer;
+  /** The current task/query driving chunk ranking. Defaults to the last user prompt. */
+  query?: string;
+  chunkOptions?: ChunkOptions;
+  rrfK?: number;
 }
 
 function sumTokens(blocks: readonly PromptBlock[]): number {
@@ -178,8 +197,31 @@ export function assembleFlex(
   const anchorFrom = Math.max(0, n - anchor);
   const repr = (i: number): Representation =>
     i >= anchorFrom || units[i]!.summary === undefined ? 'raw' : 'summary';
-  const unitText = (i: number): string =>
-    repr(i) === 'summary' ? units[i]!.summary! : units[i]!.raw;
+
+  // ── reduce-on-overflow: shrink any RAW unit over the per-unit budget `b` ─────
+  // `b = (f − reply reserve) ÷ (A + 1)`: the floor's raw space, shared across the
+  // active phase + the `A` anchor units (the units kept raw), so no single raw
+  // unit claims more than its share. Applies to raw units only — a summary is
+  // already the `summarize` reduction — and to anchors too: they are never
+  // evicted but can still be reduced. The default reducer is `chunk` (keep the
+  // query-relevant spans); the router that would pick chunk-vs-summarize is an
+  // untested hypothesis and lives in the backlog, so nothing auto-selects here.
+  const floor = Math.max(0, softFrac * window);
+  const replyReserve = options.replyReserve ?? 0;
+  const perUnitBudget = Math.max(0, (floor - replyReserve) / (anchor + 1));
+  const reducer = resolveReducer(options.reducer);
+  const query = options.query ?? head.userPrompts.at(-1);
+  const reducedIds: NodeId[] = [];
+  const rendered: string[] = units.map((u, i) => {
+    const base = repr(i) === 'summary' ? u.summary! : u.raw;
+    if (repr(i) === 'raw' && perUnitBudget > 0 && tokenizer.count(base) > perUnitBudget) {
+      reducedIds.push(u.nodeId);
+      const reduceCtx = { budgetTokens: perUnitBudget, tokenizer, query, chunkOptions: options.chunkOptions, rrfK: options.rrfK };
+      return reducer({ raw: u.raw, summary: u.summary }, reduceCtx);
+    }
+    return base;
+  });
+  const unitText = (i: number): string => rendered[i]!;
   const unitTokens = (i: number): number => tokenizer.count(unitText(i));
 
   // ── eviction: score every non-anchor unit; keep down to the floor `f` ───────
@@ -197,7 +239,6 @@ export function assembleFlex(
       },
     };
   });
-  const floor = Math.max(0, softFrac * window);
   const plan = planEviction(candidates, floor, weights);
   const keptIndices = new Set(plan.keep);
 
@@ -250,6 +291,7 @@ export function assembleFlex(
     total,
     overBudget: [],
     evicted: plan.evict.map((i) => units[i]!.nodeId),
+    reduced: reducedIds,
     window,
     windowRemaining: window - total,
     // The prompt itself exceeds the window; reply room is reported via replyAllowance.

@@ -130,16 +130,25 @@ runtime they segfault/`ERR_IPC_CHANNEL_CLOSED`. Run the suite single-fork in a s
   fan-out + summary-rank path retired, mcp suite green (39/39). This also gave `buildFlexSource` its
   populated-DB coverage.
 
-- ✅ **Assembler swap complete** (see above) — the migration is essentially done; only the small
-  reduce-on-overflow *reducers* build remains before the handoff collapses to the experiment backlog.
+- ✅ **Assembler swap complete** (see above).
 
-1. **Reduce-on-overflow — the *reducers* + per-unit budget `b` only** (the SETTLED parts; the LAST
-   migration build). Wire the validated reducers (chunk / summarize, default chunk) and the per-unit
-   budget `b` trigger into `assembleFlex` (the flagged gap there). The auto-selecting **router** (which
-   reducer to pick) is NOT part of this — it is untested and belongs in the experiment backlog, not here.
-2. **Deployment / validation follow-ups** (do not gate anything): add the local MiniLM `SummaryEmbedder`
-   implementation (needs a native dep); run the transcript-corpus RRF validation + sweep `RRF_K`/chunk
-   size; refit the eviction coefficients; run the drift classifier's corrected permutation test.
+- ✅ **Reduce-on-overflow — the *reducers* + per-unit budget `b`** (the LAST migration build).
+  `assemble/reduce.ts`: the SETTLED chunk (detail-preserving) + summarize (gist) reducers, `chunk` the
+  default. Built on the package's own settled primitives (recursive `splitText` + Okapi `BM25` + `RRF`
+  fusion + tokenizer-aware budgeting), an improvement over the experiment's crude fixed-slice reducer;
+  it is intra-unit retrieval (the ensemble machinery scoped to one oversized unit's chunks). Wired into
+  `assembleFlex`: the per-unit budget `b = (f − reply reserve) ÷ (A + 1)` shrinks any RAW unit over `b`
+  in place (anchors included — never evicted, but reducible); `BudgetReport.reduced` reports which. The
+  query defaults to the last user prompt; the vector arm is optional (BM25-only in the sync assembler,
+  the same degradation `ensembleRetrieve` uses without an embedder). The query→reducer **router** that
+  would auto-pick chunk-vs-summarize is deliberately NOT built — it is untested (backlog item 4). New
+  tests: `reduce.test.ts` (13) + reduce-on-overflow cases in `flex-assemble.test.ts` (5). Full suite
+  green (32 files, 657 passed / 9 skipped); `tsc -b` clean.
+
+**The package↔spec migration is complete.** `packages/` now reflects only settled experimental results:
+retrieval (RRF ensemble), classifier (drift), eviction (D-EV), assembler (flex head + creation-order
+buffer + reduce-on-overflow), and the store-adapter that feeds them. What remains is not migration work —
+it is the experiment backlog (new hypotheses to test) and parameter sweeps, below.
 
 ## Untested-hypothesis experiment backlog
 
@@ -178,8 +187,10 @@ Re-run the permutation test with the corrected held-out condition (the pre-reg t
 the topic-shift half is deterministic and falsifiable on its own terms. (`rung-0b-topic-shift/report.md`.)
 
 ### 4. Reduce-on-overflow **router** (auto-select)
-The reducers are settled; the query→reducer heuristic that *chooses* chunk-vs-summarize is not. Test
-router pick-accuracy vs an oracle over the query set. (`coding-harness/report-buried-detail.md`.)
+The reducers are settled and built (`assemble/reduce.ts`); the query→reducer heuristic that *chooses*
+chunk-vs-summarize is not. The seam is ready: pass a `reducer` function to `assembleFlex` (or name
+`'chunk'`/`'summarize'`) — the router is exactly such a function. Test router pick-accuracy vs an oracle
+over the query set. (`coding-harness/report-buried-detail.md`.)
 
 ### 5. RRF ensemble on the **transcript** corpus (confirm-and-tune, post-promotion)
 RRF is promoted on its code-corpus win + ensemble robustness; this experiment confirms transfer and
@@ -194,6 +205,13 @@ just that the mechanism fires. (`harness-deletion-and-hypothesis-register-report
 ### 7. Soft target `f` and structural retrieval unit (HR1)
 `f` (25–50% of W) is untested on a genuinely overflowing session; HR1 (retrieval unit wrong for
 structural turns) needs the excerpt-vs-whole-structural-payload ablation. Both unrun.
+
+## Deployment task (not an experiment, but needed for the vector arm to run)
+The vector/embedding arm — of both `ensembleRetrieve` and the `chunk` reducer's optional RRF fusion —
+is embedder-agnostic and currently BM25-only in the synchronous paths. Implement the local MiniLM-class
+`SummaryEmbedder` (needs a native dep) so the vector arm is available; the remote `text-embedding-3-small`
+was NOT-CARRIED-FORWARD (early remote gate failed). Until then every retrieval path degrades to BM25,
+which is the intended, tested fallback — this unblocks the ensemble, it does not fix a regression.
 
 ## Open research questions (bigger than any single subsystem)
 
