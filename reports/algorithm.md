@@ -96,8 +96,21 @@ the head so the head caches.
   default A=4, covering the current sub-task) are kept **raw**; an older closed+latched unit defaults to
   its **summary**; reduce-on-overflow may demote further to `retrieved-span` / `ref` / `drop`.
 - **Eviction — what / when / how much.** *When:* eviction fires only when the buffer exceeds the
-  soft-target floor `f`; never below it. *What:* above the floor, evict the **lowest-scoring** units
-  first (the dormant, low-priority, old ones). *How much:* down to `f`. Score each non-pinned,
+  **hard limit** `window − replyReserve`; never below it. *What:* above the limit, evict the
+  **lowest-scoring** units first (the dormant, low-priority, old ones). *How much:* just enough to fit,
+  plus an optional `evictHeadroomTokens` (default 0) so eviction need not fire again next turn.
+  Score each non-pinned,
+  > **Resolved 2026-09-14 (was OPEN).** The trigger was a soft-target floor `f = 0.375·W`. Live evidence
+  > retired it: task success tracks **achieved peak** — the tokens actually present at call time — at
+  > **OR 42× per e-fold** across 78 capped cells (arm-adjusted), and nothing else measured moves it
+  > (selection signal p=0.70; reference-vs-positional recency p=1.000; needle position 180/180;
+  > cadence p=0.54 given peak).
+  > Evicting to a floor *below* the window discards the only quantity shown to matter, and DV2 adds that
+  > it converts 0.1× cache reads into 1.25× cache writes to do so. `f` now sizes only the per-unit
+  > reduce budget `b`. The headroom seam is deliberately 0 rather than a fitted fraction: headroom for
+  > `N` turns is `N × growth-per-turn`, which as a fraction of the window is not constant across window
+  > sizes — a fixed fraction is the wrong *shape*, the same defect `f` had. Single-problem evidence (C0).
+  > `reports/metrics/context-dedup/report-{cadence-confound,window-metric}.md`.
   non-anchor unit, **min-max normalizing each signal across the current candidate units this turn**:
   ```
   score = 2·priorityN + 1·recencyN + 0.5·refRecencyN − 1·dormancyN        (relevance weight = 0)
@@ -186,8 +199,13 @@ Derived from the host's limits, not guessed:
 
 Validated live: eviction saves tokens without losing the task; the reduce-on-overflow router
 (summarization is insufficient for a buried detail, chunk+retrieve wins); the middleware is *required*
-under a hard window; RRF ensemble retrieval and drift-based classification. **Open** (see the OPEN
-sections): the soft target `f` on a genuinely overflowing session; the retrieval trigger
+under a hard window; RRF ensemble retrieval and drift-based classification; **the eviction trigger is the
+hard limit, not a soft floor** (resolved 2026-09-14 — see the eviction rule above). Also settled as a
+*negative*: **position within the context is not a lever** on this model at these lengths (180/180 across
+depths to 155,773 real tokens — `report-position-probe.md`), so the creation-order buffer forfeits
+nothing by ignoring position. **Open** (see the OPEN
+sections): how much headroom eviction should free when it fires (the cadence/cost question); whether the
+selection *signal* matters at all, which is gated on the instrument-sensitivity control; the retrieval trigger
 (on-demand-vs-up-front); and the resource bound (cost cap + stall/progress detector for the
 agent-indecision loop the footprint middleware does not fix). Evidence and the full development record:
 `reports/algorithm-notebook.md` and `reports/metrics/`.

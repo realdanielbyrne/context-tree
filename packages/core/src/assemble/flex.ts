@@ -12,7 +12,8 @@
  *   ── cache breakpoint after head ──
  *   flex   the units in CREATION ORDER: older closed units as summaries (the
  *          "stable head"), the recency anchor + active phase raw (the "volatile
- *          tail"). Evicted to a soft-target floor by the D-EV score.
+ *          tail"). Evicted by the D-EV score, but only once the HARD limit
+ *          (`window − replyReserve`) binds — see `evictionBudget` below.
  *   ── secondary breakpoint after the stable (summary) run ──
  *   tail   retrieved results, appended after the buffer so the prefix is untouched
  *
@@ -53,12 +54,37 @@ import { resolveReducer, type Reducer, type ReducerName } from './reduce.js';
 import type { ChunkOptions } from '../retrieve/chunk.js';
 
 /**
- * Soft-target floor `f`, as a fraction of the window: the buffer is evicted down
- * to this and never below it. Spec range 25–50%; the midpoint is the default.
- * PROVISIONAL — `f` is untested on a genuinely overflowing session
- * (`reports/session-handoff.md`, backlog item 7).
+ * Soft-target floor `f`, as a fraction of the window.
+ *
+ * ⚠️ **NO LONGER THE EVICTION TRIGGER** (changed 2026-09-14). It now sizes only
+ * the reduce-on-overflow per-unit budget `b`. See `evictionBudget` below for why,
+ * and `reports/metrics/context-dedup/report-cadence-confound.md` for the evidence.
+ *
+ * Its remaining role — the basis for `b` — is still PROVISIONAL: when
+ * reduce-on-overflow should fire is an open question with no experiment yet
+ * (`reports/session-handoff.md`, item 4 / E1). It is deliberately left unchanged
+ * here so this revision moves exactly one thing.
  */
 export const DEFAULT_SOFT_TARGET_FRAC = 0.375;
+
+/**
+ * Extra tokens to free BEYOND the hard limit when eviction fires, so that it does
+ * not fire again on the very next turn.
+ *
+ * DEFAULT 0 — deliberately. Evicting every turn is the most expensive cadence
+ * (DV3: an interior optimum cadence is 25–39% cheaper than append-only, while
+ * N=1 is 183% *worse*), so a positive value here is the known cost win. But the
+ * right value is NOT a constant: headroom for `N` turns is `N × growth-per-turn`,
+ * which as a fraction of the limit depends on both the window size and the task's
+ * growth rate (~400 tok/turn on `longbuild`, so ~57% of a 7k window and ~2% of a
+ * 200k one). A fixed fraction is the wrong SHAPE, the same way the soft floor was.
+ *
+ * So this ships as a seam at 0 rather than an invented constant: the assembler
+ * keeps the maximum achievable peak, which is the one thing measured to drive
+ * task success, and the cadence/cost optimisation is the pending experiment
+ * (`reports/session-handoff.md`, item 11).
+ */
+export const DEFAULT_EVICT_HEADROOM_TOKENS = 0;
 
 /**
  * Recency anchor `A`: the last A units are kept raw and never evicted.
@@ -110,10 +136,17 @@ export interface FlexAssembleOptions {
   priorityHalfLife?: number;
   /**
    * Room reserved for the reply, in tokens — the host-declared `Model.limit.output`
-   * (spec). Subtracted from the floor to size the per-unit budget `b`. Default 0
-   * (no reserve known → `b` is the whole floor's raw share).
+   * (spec). Sets the hard eviction limit (`window − replyReserve`) and is subtracted
+   * from the floor to size the per-unit budget `b`. Default 0 (no reserve known).
    */
   replyReserve?: number;
+  /**
+   * Extra tokens to free beyond the hard limit when eviction fires, so it does not
+   * fire again next turn. Default `DEFAULT_EVICT_HEADROOM_TOKENS` (0) — the seam for
+   * the pending cadence/cost experiment; see that constant for why it is not a
+   * fraction and why it ships at zero.
+   */
+  evictHeadroomTokens?: number;
   /**
    * The reduce-on-overflow reducer for oversized raw units. `'chunk'` (default,
    * detail-preserving), `'summarize'` (gist), or a custom function. NOT a router:
@@ -239,7 +272,33 @@ export function assembleFlex(
       },
     };
   });
-  const plan = planEviction(candidates, floor, weights);
+  // EVICTION TRIGGER: the HARD limit, not the soft floor.
+  //
+  // Changed 2026-09-14 on live evidence. Task success tracks ACHIEVED PEAK — the
+  // tokens actually present when the model is called — at odds ratio 42x per
+  // e-fold over 78 capped cells (arm-adjusted), and NOTHING else measured moves it: not the
+  // selection signal (p=0.70), not reference-vs-positional recency (p=1.000), not
+  // where a fact sits in the context (180/180 across depths), and not eviction
+  // cadence once peak is controlled for (p=0.54). Evicting to a floor BELOW the
+  // window therefore throws away the only thing shown to matter, and DV2 adds
+  // that it converts 0.1x cache reads into 1.25x cache writes for that privilege.
+  // `reports/metrics/context-dedup/report-{cadence-confound,window-metric}.md`.
+  //
+  // So: keep everything while it fits; when it does not, free just enough (plus
+  // `evictHeadroomTokens`, default 0 — see above). Below the limit `planEviction`
+  // is a no-op, which also means the cached prefix is not rewritten on turns where
+  // nothing has to go.
+  //
+  // Scope: resolves the spec's OPEN soft-target question (`algorithm.md` §19,
+  // handoff item 7) toward arm (a) "no eviction until the hard limit binds".
+  // Single-problem evidence (C0) — revisit when the SWE-bench port lands.
+  const hardLimit = Math.max(0, window - replyReserve);
+  const evictableTotal = candidates.reduce((s, c) => s + c.tokens, 0);
+  const headroom = options.evictHeadroomTokens ?? DEFAULT_EVICT_HEADROOM_TOKENS;
+  const evictionBudget = evictableTotal > hardLimit
+    ? Math.max(0, hardLimit - headroom)
+    : Number.POSITIVE_INFINITY;
+  const plan = planEviction(candidates, evictionBudget, weights);
   const keptIndices = new Set(plan.keep);
 
   // ── flex blocks, CREATION ORDER, kept units only (append-only, never remixed) ─

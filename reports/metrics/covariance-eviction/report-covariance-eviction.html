@@ -1,0 +1,472 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Two covariance hypotheses for context eviction</title>
+<style>
+:root{--ink:#24242e;--mut:#5f5f70;--line:#e2e2ea;--bg:#fcfcfd;--accent:#2c6fbb}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+main{max-width:920px;margin:0 auto;padding:40px 20px 80px}
+h1{font-size:1.95rem;line-height:1.25;margin:0 0 .3em;letter-spacing:-.01em}
+h2{font-size:1.32rem;margin:2.2em 0 .6em;padding-bottom:.28em;border-bottom:1px solid var(--line)}
+h3{font-size:1.06rem;margin:1.7em 0 .5em;color:#33333f}
+p{margin:0 0 1em}
+em{color:var(--mut)}
+code{background:#f0f0f5;padding:.1em .34em;border-radius:3px;font-size:.88em;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+blockquote{margin:1.4em 0;padding:.8em 1.1em;border-left:3px solid var(--accent);background:#f2f6fb;border-radius:0 4px 4px 0}
+blockquote p{margin:0 0 .5em}blockquote p:last-child{margin:0}
+table{border-collapse:collapse;width:100%;margin:1.3em 0;font-size:.92rem;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:.44em .7em;text-align:left;vertical-align:top}
+th{background:#f3f3f8;font-weight:600}
+tbody tr:nth-child(even){background:#fafaFC}
+figure{margin:1.8em 0;padding:14px;background:#fff;border:1px solid var(--line);border-radius:6px}
+hr{border:0;border-top:1px solid var(--line);margin:2.4em 0}
+ul{margin:0 0 1em;padding-left:1.3em}li{margin:.3em 0}
+@media (prefers-color-scheme: dark){
+:root{--ink:#e6e6ee;--mut:#a0a0b2;--line:#34343f;--bg:#17171d}
+code{background:#26262f}th{background:#22222b}tbody tr:nth-child(even){background:#1c1c24}
+blockquote{background:#1e2530}figure{background:#1d1d25}
+}
+</style></head><body><main>
+<h1>Two covariance hypotheses for context eviction: one answered, one not testable</h1>
+
+<p><em>A result, a non-result, and five corrections to an earlier version of this analysis.</em></p>
+
+<blockquote>
+<p>This report supersedes the first version of <code>experiments/covariance-eviction/</code>, whose</p>
+<p>headline claims were overturned by adversarial review. The five withdrawn claims are</p>
+<p>listed in <strong>What we got wrong</strong>, not removed.</p>
+</blockquote>
+
+<hr/>
+
+<h2>Abstract</h2>
+
+<p>An AI coding agent re-sends its entire working transcript to the model on every step, so on</p>
+<p>a long task the transcript outgrows the model's input limit and material must be deleted.</p>
+<p>Which material to delete is the central design question for context-management middleware.</p>
+<p>The system under study scores each candidate for deletion on four signals, of which the</p>
+<p>heaviest is <em>priority</em> — a term combining "this unit edited a file" with "this unit's</p>
+<p>identifiers recur elsewhere in the buffer". The recurrence half won an earlier offline</p>
+<p>sweep and is the reason the term carries the largest weight.</p>
+
+<p>We asked two questions. First, whether the recurrence term that ships is the term that was</p>
+<p>tested: the shipped code forms its two halves into a sum <em>before</em> any weight is applied, so</p>
+<p>no coefficient can move one half relative to the other, and its internal 2:1 ratio is a</p>
+<p>constant no experiment had varied. Second, whether a signal that has never been computed</p>
+<p>anywhere in the system — the tendency of two units to be *referenced together across</p>
+<p>turns* — predicts which dormant material will be needed again. The second question matters</p>
+<p>because relevance-to-recent was previously measured as the <em>worst</em> available eviction</p>
+<p>signal, for the specific reason that it discards the dormant unit that later returns;</p>
+<p>temporal covariance is the signal that would keep exactly that unit.</p>
+
+<p>On the first question the answer is largely reassuring and partly surprising. Re-running</p>
+<p>the original experiment on its own corpus with its own metric, changing only the definition</p>
+<p>of a "turn" — the earlier analysis counted one turn per line of transcript file, inflating</p>
+<p>the clock 2.22× — the recurrence advantage replicates</p>
+<p>and survives, at +0.1714 → +0.1675</p>
+<p>on one session and +0.0999 → +0.0582</p>
+<p>on the other. Sweeping the ratio the shipped code cannot express, no value beats the shipped</p>
+<p>one: the hardcoded constant is vindicated as a default. But measuring what the shipped term</p>
+<p>actually ranks by, rather than the simplification an earlier version of this analysis</p>
+<p>measured, produced an unplanned finding: the shipped priority term correlates</p>
+<p>0.835 with reference-recency, above the threshold this project uses to</p>
+<p>call one signal a relabelling of another. The four-signal scorer may be counting</p>
+<p>reference-recency twice under two names.</p>
+
+<p>On the second question we could not obtain an answer, and the reason is structural rather</p>
+<p>than a shortage of data. A pairwise statistic needs two units to have been active together;</p>
+<p>in these transcripts 19.9% of turns that reference a file</p>
+<p>reference two or more, so co-activation is rare by construction. Across every corpus</p>
+<p>available — the committed transcripts and every session on the machine — and across episode</p>
+<p>windows from 1 to 20 turns, the share of candidates with</p>
+<p>any co-activation history peaks at 49.0% against a</p>
+<p>pre-registered requirement of 55.0%, and the median candidate pair has never been</p>
+<p>co-active at any setting. The hypothesis is therefore recorded as untested, not as refuted.</p>
+<p>That distinction is the point: the earlier version of this analysis reported contrasts from</p>
+<p>this corpus as though they were evidence, and one of them did not survive a correction to</p>
+<p>the resampling scheme.</p>
+
+<hr/>
+
+<h2>What you need to know to read the rest</h2>
+
+<p>Nothing beyond this table is assumed.</p>
+
+<table><thead>
+<tr><th>Term</th><th>Meaning</th></tr></thead><tbody>
+<tr><td><strong>Agent</strong></td><td>An AI model given tools (read a file, write a file, run a command) and a goal, running in a loop until it decides it is done.</td></tr>
+<tr><td><strong>Transcript / context</strong></td><td>Everything the model sees on a given step: the instructions plus the full history of what it has read, written and run. It is re-sent in full every step.</td></tr>
+<tr><td><strong>Token</strong></td><td>The unit context is measured in — roughly ¾ of a word.</td></tr>
+<tr><td><strong>Eviction</strong></td><td>Deleting older material from the transcript to get back under the input limit. The subject of this report is <em>what</em> to delete.</td></tr>
+<tr><td><strong>Unit</strong></td><td>The thing eviction deletes: one turn of the transcript, kept whole so a tool call is never separated from its result.</td></tr>
+<tr><td><strong>Decision</strong></td><td>One moment at which the policy must rank the units currently held. Each decision is scored against what the agent did next.</td></tr>
+<tr><td><strong>Fingerprint</strong></td><td>A distinctive token extracted from a unit's text — a file path, a CamelCase name, a back-quoted symbol — used as a cheap proxy for "what this unit is about".</td></tr>
+<tr><td><strong>Recurrence</strong></td><td>How many <em>other</em> units share at least one fingerprint with this one. The signal whose weight is under test.</td></tr>
+<tr><td><strong>Reference-recency ("idle")</strong></td><td>How many turns since this unit's files were last touched. Low idle = touched recently.</td></tr>
+<tr><td><strong>Temporal covariance</strong></td><td>The proposed new signal: how strongly this unit's files have <em>historically been active in the same episodes</em> as the files the agent is working on right now.</td></tr>
+<tr><td><strong>Phi coefficient</strong></td><td>The correlation between two yes/no series — here, "was file A active this turn" against "was file B active this turn". Chosen over a plain co-occurrence count because a file touched on <em>every</em> turn scores zero against everything, instead of appearing to co-occur with all of them.</td></tr>
+<tr><td><strong>Support</strong></td><td>How many turns two specific files were actually active together. Support of zero means the correlation above is computed from an empty table, i.e. it is noise.</td></tr>
+<tr><td><strong>Recall@M</strong></td><td>Of the units the agent turned out to need, the share a policy would have kept if it could keep only M of them. Higher is better.</td></tr>
+<tr><td><strong>AUC</strong></td><td>The chance that a needed unit is ranked above an unneeded one, within a single decision. 0.5 is a coin flip, 1.0 is perfect.</td></tr>
+<tr><td><strong>The non-monotonic subset</strong></td><td>The hard case: units that had gone quiet for a long time and were then needed again. The case relevance-to-recent fails, and the case temporal covariance was proposed to fix.</td></tr>
+<tr><td><strong>Micro- vs macro-averaging</strong></td><td>Two ways to average recall over decisions. <em>Micro</em> pools every needed unit, so a busy decision counts for more. <em>Macro</em> averages the per-decision rates, so every decision counts once. They disagree here — sometimes on sign — so every number states which it is.</td></tr>
+<tr><td><strong>Moving-block bootstrap</strong></td><td>A way of putting error bars on a number when consecutive measurements are related. Chunks of consecutive decisions are resampled rather than individual ones; resampling individually would make the error bars too narrow.</td></tr>
+<tr><td><strong>Holm correction</strong></td><td>An adjustment applied when several comparisons are made at once, so that testing five things does not manufacture one apparent success.</td></tr>
+</tbody></table>
+
+<hr/>
+
+<h2>Why we ran this</h2>
+
+<p>The eviction scorer weights four signals. Three are cheap positional facts; the fourth,</p>
+<p><em>priority</em>, is the one with a research result behind it, and it is weighted highest because</p>
+<p>of that result. Two things about it had never been checked.</p>
+
+<p><strong>The shipped term is not obviously the tested term.</strong> The code computes</p>
+<p><code>((wrote ? 2 : 0) + coOccurrence) * decay</code> and only then normalizes and weights the</p>
+<p>result. Because the sum is formed first, every coefficient in the system scales both halves</p>
+<p>together: the 2:1 ratio between "this unit edited something" and "this unit's identifiers</p>
+<p>recur" is unreachable, and no experiment had varied it. The project's own rule forbids</p>
+<p>undefended constants; this was one that could not even be reached.</p>
+
+<p><strong>Nothing computes whether two units go together.</strong> Every signal in the system is a</p>
+<p>per-unit scalar. None is pairwise. That gap matters because of a specific earlier finding:</p>
+<p>relevance-to-recent — keeping what resembles what the agent is doing now — was measured as</p>
+<p>the <em>worst</em> eviction signal available, and the mechanism was understood. A unit that has</p>
+<p>gone dormant does not resemble the recent window, by definition, so a relevance rule deletes</p>
+<p>exactly the unit that is about to be needed again. Temporal covariance is the principled</p>
+<p>repair: it keeps a dormant unit precisely when that unit has historically been worked on</p>
+<p><em>alongside</em> whatever is hot now. Same target case, opposite sign.</p>
+
+<hr/>
+
+<h2>The experimental setup</h2>
+
+<h3>The corpus</h3>
+
+<p>Four real Claude Code transcripts committed to the repository, from one developer working</p>
+<p>on this project. They are not synthetic and not scripted; they are a record of ordinary</p>
+<p>work.</p>
+
+<table><thead>
+<tr><th>transcript</th><th>turns</th><th>transcript lines</th><th>clock inflation</th><th>file references</th><th>of which from shell commands</th><th>decisions scored</th></tr></thead><tbody>
+<tr><td><code>session-2</code></td><td>291</td><td>651</td><td>2.24×</td><td>253</td><td>136</td><td>186</td></tr>
+<tr><td><code>session-3</code></td><td>44</td><td>98</td><td>2.23×</td><td>42</td><td>39</td><td>10</td></tr>
+<tr><td><code>session-5</code></td><td>1,046</td><td>2,402</td><td>2.30×</td><td>1,135</td><td>710</td><td>751</td></tr>
+<tr><td><code>session</code></td><td>331</td><td>645</td><td>1.95×</td><td>320</td><td>258</td><td>204</td></tr>
+</tbody></table>
+
+<p>Pooled: <strong>1,712 turns</strong>, 1,750 file references</p>
+<p>(1,143 of them named on shell command lines), <strong>1,151 decisions</strong></p>
+<p>and <strong>177,267 (decision × candidate) rows</strong>.</p>
+
+<h3>What a unit, a decision and the label are</h3>
+
+<p>A <strong>unit</strong> is one API turn. At each <strong>decision</strong> — every turn after a burn-in, where the</p>
+<p>buffer holds at least eight candidates — the policy ranks the units it is holding, capped at</p>
+<p>the most recent 200. The <strong>label</strong> is behavioural: a unit counts as <em>needed</em> if the agent</p>
+<p>issued a tool call naming one of that unit's files within the next three turns. On this</p>
+<p>corpus 5.5% of rows are needed, and</p>
+<p>2,511 rows fall in the non-monotonic subset.</p>
+
+<p>The cap has to actually bind for a "keep only M" comparison to mean anything; it does, on</p>
+<p>99.1%,</p>
+<p>94.3% and</p>
+<p>86.1% of decisions at</p>
+<p>M = 16, 32 and 64.</p>
+
+<h3>The turn clock</h3>
+
+<p>A Claude transcript file stores one line per <em>content block</em>, not one per model turn: a</p>
+<p>single turn that thinks, calls two tools and gets two results occupies five lines. The</p>
+<p>earlier analysis counted lines. Across these four transcripts that inflates the clock by</p>
+<p><strong>2.22× on average</strong> (2.24×, 2.23×, 2.30×, 1.95×</p>
+<p>per transcript), and every setting measured in turns — how far back "recent" reaches, how</p>
+<p>long "dormant" is — rides on it. This analysis advances the clock on a change of message</p>
+<p>identifier instead.</p>
+
+<h3>How the error bars are computed</h3>
+
+<p>Consecutive decisions share candidates, a working context and an overlapping label window.</p>
+<p>Measured here, the correlation between one decision's score and the next is</p>
+<p><strong>+0.42 to +0.72</strong>. Error bars are therefore a moving-block</p>
+<p>bootstrap over blocks of 10 consecutive decisions, resampled within a transcript and</p>
+<p>never across two. Resampling decisions independently — which an earlier version of this</p>
+<p>analysis did, while calling it a block bootstrap — makes every interval about a third too</p>
+<p>narrow.</p>
+
+<hr/>
+
+<h2>Results — question 1: is the shipped recurrence term the tested one?</h2>
+
+<h3>The original result replicates, and survives the clock correction</h3>
+
+<p>Re-running the published experiment on its own two transcripts, with its own signals, its</p>
+<p>own fingerprints, its own micro-averaged metric and its own budget, changing <strong>only</strong> the</p>
+<p>definition of a turn. The line-clock column reproduces the published numbers to two decimal</p>
+<p>places, which is the check that the re-implementation is faithful.</p>
+
+<table><thead>
+<tr><th>transcript</th><th>M</th><th>JSONL-line clock (as published)</th><th>API-turn clock (corrected)</th><th>verdict</th></tr></thead><tbody>
+<tr><td>1</td><td>16</td><td>+0.0363 [+0.0243, +0.0482]</td><td>+0.0405 [+0.0255, +0.0585]</td><td>never cleared +0.03</td></tr>
+<tr><td>1</td><td>32</td><td>+0.0825 [+0.0661, +0.1018]</td><td>+0.0909 [+0.0679, +0.1221]</td><td><strong>survives</strong></td></tr>
+<tr><td>1</td><td>64</td><td>+0.1714 [+0.1463, +0.2015]</td><td>+0.1675 [+0.1403, +0.1952]</td><td><strong>survives</strong></td></tr>
+<tr><td>2</td><td>16</td><td>+0.0226 [+0.0177, +0.0276]</td><td>+0.0168 [+0.0112, +0.0221]</td><td>never cleared +0.03</td></tr>
+<tr><td>2</td><td>32</td><td>+0.0493 [+0.0410, +0.0589]</td><td>+0.0342 [+0.0258, +0.0457]</td><td>lost to the fix</td></tr>
+<tr><td>2</td><td>64</td><td>+0.0999 [+0.0865, +0.1157]</td><td>+0.0582 [+0.0462, +0.0707]</td><td><strong>survives</strong></td></tr>
+</tbody></table>
+
+<figure><svg viewBox="0 0 720 320" role="img" aria-label="Recurrence advantage under both turn clocks with confidence intervals" style="max-width:100%;height:auto"><line x1="64" y1="264.0" x2="696" y2="264.0" stroke="#e3e3ea" stroke-width="1"/><text x="56" y="268.0" font-size="11" fill="#6a6a78" text-anchor="end">0.00</text><line x1="64" y1="209.9" x2="696" y2="209.9" stroke="#e3e3ea" stroke-width="1"/><text x="56" y="213.9" font-size="11" fill="#6a6a78" text-anchor="end">0.05</text><line x1="64" y1="155.8" x2="696" y2="155.8" stroke="#e3e3ea" stroke-width="1"/><text x="56" y="159.8" font-size="11" fill="#6a6a78" text-anchor="end">0.10</text><line x1="64" y1="101.7" x2="696" y2="101.7" stroke="#e3e3ea" stroke-width="1"/><text x="56" y="105.7" font-size="11" fill="#6a6a78" text-anchor="end">0.15</text><line x1="64" y1="47.6" x2="696" y2="47.6" stroke="#e3e3ea" stroke-width="1"/><text x="56" y="51.6" font-size="11" fill="#6a6a78" text-anchor="end">0.20</text><line x1="64" y1="231.5" x2="696" y2="231.5" stroke="#c0392b" stroke-width="2" stroke-dasharray="6 4"/><text x="696" y="224.5" font-size="11" fill="#c0392b" text-anchor="end">+0.03 margin the original pre-registered</text><rect x="94.7" y="224.7" width="18" height="39.3" fill="#9aa0b5"/><line x1="103.7" y1="237.7" x2="103.7" y2="211.9" stroke="#2b2b38" stroke-width="1.4"/><line x1="99.7" y1="211.9" x2="107.7" y2="211.9" stroke="#2b2b38" stroke-width="1.4"/><line x1="99.7" y1="237.7" x2="107.7" y2="237.7" stroke="#2b2b38" stroke-width="1.4"/><rect x="120.7" y="220.2" width="18" height="43.8" fill="#2c6fbb"/><line x1="129.7" y1="236.4" x2="129.7" y2="200.7" stroke="#2b2b38" stroke-width="1.4"/><line x1="125.7" y1="200.7" x2="133.7" y2="200.7" stroke="#2b2b38" stroke-width="1.4"/><line x1="125.7" y1="236.4" x2="133.7" y2="236.4" stroke="#2b2b38" stroke-width="1.4"/><text x="116.7" y="281" font-size="11" fill="#4a4a58" text-anchor="middle">s1 M=16</text><rect x="200.0" y="174.7" width="18" height="89.3" fill="#9aa0b5"/><line x1="209.0" y1="192.5" x2="209.0" y2="153.9" stroke="#2b2b38" stroke-width="1.4"/><line x1="205.0" y1="153.9" x2="213.0" y2="153.9" stroke="#2b2b38" stroke-width="1.4"/><line x1="205.0" y1="192.5" x2="213.0" y2="192.5" stroke="#2b2b38" stroke-width="1.4"/><rect x="226.0" y="165.7" width="18" height="98.3" fill="#2c6fbb"/><line x1="235.0" y1="190.5" x2="235.0" y2="131.9" stroke="#2b2b38" stroke-width="1.4"/><line x1="231.0" y1="131.9" x2="239.0" y2="131.9" stroke="#2b2b38" stroke-width="1.4"/><line x1="231.0" y1="190.5" x2="239.0" y2="190.5" stroke="#2b2b38" stroke-width="1.4"/><text x="222.0" y="281" font-size="11" fill="#4a4a58" text-anchor="middle">s1 M=32</text><rect x="305.3" y="78.6" width="18" height="185.4" fill="#9aa0b5"/><line x1="314.3" y1="105.7" x2="314.3" y2="46.0" stroke="#2b2b38" stroke-width="1.4"/><line x1="310.3" y1="46.0" x2="318.3" y2="46.0" stroke="#2b2b38" stroke-width="1.4"/><line x1="310.3" y1="105.7" x2="318.3" y2="105.7" stroke="#2b2b38" stroke-width="1.4"/><rect x="331.3" y="82.8" width="18" height="181.2" fill="#2c6fbb"/><line x1="340.3" y1="112.2" x2="340.3" y2="52.8" stroke="#2b2b38" stroke-width="1.4"/><line x1="336.3" y1="52.8" x2="344.3" y2="52.8" stroke="#2b2b38" stroke-width="1.4"/><line x1="336.3" y1="112.2" x2="344.3" y2="112.2" stroke="#2b2b38" stroke-width="1.4"/><text x="327.3" y="281" font-size="11" fill="#4a4a58" text-anchor="middle">s1 M=64</text><rect x="410.7" y="239.5" width="18" height="24.5" fill="#9aa0b5"/><line x1="419.7" y1="244.9" x2="419.7" y2="234.1" stroke="#2b2b38" stroke-width="1.4"/><line x1="415.7" y1="234.1" x2="423.7" y2="234.1" stroke="#2b2b38" stroke-width="1.4"/><line x1="415.7" y1="244.9" x2="423.7" y2="244.9" stroke="#2b2b38" stroke-width="1.4"/><rect x="436.7" y="245.8" width="18" height="18.2" fill="#2c6fbb"/><line x1="445.7" y1="251.9" x2="445.7" y2="240.1" stroke="#2b2b38" stroke-width="1.4"/><line x1="441.7" y1="240.1" x2="449.7" y2="240.1" stroke="#2b2b38" stroke-width="1.4"/><line x1="441.7" y1="251.9" x2="449.7" y2="251.9" stroke="#2b2b38" stroke-width="1.4"/><text x="432.7" y="281" font-size="11" fill="#4a4a58" text-anchor="middle">s2 M=16</text><rect x="516.0" y="210.7" width="18" height="53.3" fill="#9aa0b5"/><line x1="525.0" y1="219.6" x2="525.0" y2="200.3" stroke="#2b2b38" stroke-width="1.4"/><line x1="521.0" y1="200.3" x2="529.0" y2="200.3" stroke="#2b2b38" stroke-width="1.4"/><line x1="521.0" y1="219.6" x2="529.0" y2="219.6" stroke="#2b2b38" stroke-width="1.4"/><rect x="542.0" y="227.0" width="18" height="37.0" fill="#2c6fbb"/><line x1="551.0" y1="236.1" x2="551.0" y2="214.6" stroke="#2b2b38" stroke-width="1.4"/><line x1="547.0" y1="214.6" x2="555.0" y2="214.6" stroke="#2b2b38" stroke-width="1.4"/><line x1="547.0" y1="236.1" x2="555.0" y2="236.1" stroke="#2b2b38" stroke-width="1.4"/><text x="538.0" y="281" font-size="11" fill="#4a4a58" text-anchor="middle">s2 M=32</text><rect x="621.3" y="155.9" width="18" height="108.1" fill="#9aa0b5"/><line x1="630.3" y1="170.4" x2="630.3" y2="138.8" stroke="#2b2b38" stroke-width="1.4"/><line x1="626.3" y1="138.8" x2="634.3" y2="138.8" stroke="#2b2b38" stroke-width="1.4"/><line x1="626.3" y1="170.4" x2="634.3" y2="170.4" stroke="#2b2b38" stroke-width="1.4"/><rect x="647.3" y="201.0" width="18" height="63.0" fill="#2c6fbb"/><line x1="656.3" y1="214.0" x2="656.3" y2="187.5" stroke="#2b2b38" stroke-width="1.4"/><line x1="652.3" y1="187.5" x2="660.3" y2="187.5" stroke="#2b2b38" stroke-width="1.4"/><line x1="652.3" y1="214.0" x2="660.3" y2="214.0" stroke="#2b2b38" stroke-width="1.4"/><text x="643.3" y="281" font-size="11" fill="#4a4a58" text-anchor="middle">s2 M=64</text><line x1="64" y1="264.0" x2="696" y2="264.0" stroke="#9a9aa8" stroke-width="1"/><rect x="64" y="298" width="12" height="11" fill="#9aa0b5"/><text x="81" y="308" font-size="11" fill="#4a4a58">JSONL-line clock (as published)</text><rect x="280" y="298" width="12" height="11" fill="#2c6fbb"/><text x="297" y="308" font-size="11" fill="#4a4a58">API-turn clock (corrected)</text><text x="64" y="24" font-size="13.5" font-weight="600" fill="#2b2b38">Recurrence minus recency (micro-averaged recall), before and after the turn-clock fix</text></svg></figure>
+
+<p>The advantage is real, is concentrated at the larger budgets the original quoted, and is not</p>
+<p>an artefact of the inflated clock. It <em>shrinks</em> on the second transcript — roughly halving —</p>
+<p>which is worth carrying as a caveat rather than treating as a refutation.</p>
+
+<h3>The term is not saturated, and its real form is not what an earlier analysis measured</h3>
+
+<p>A term that takes the same value for every candidate cannot be tuned, only removed. So: how</p>
+<p>much does it vary?</p>
+
+<table><thead>
+<tr><th>term measured</th><th>decisions sampled</th><th>distinct values per decision</th><th>coefficient of variation</th><th>never varies</th><th>≤ 2 distinct values</th></tr></thead><tbody>
+<tr><td>recurrence over file paths</td><td>1,151</td><td>15.36</td><td>0.9381</td><td>0.0%</td><td>0.1% [0.0%, 0.5%]</td></tr>
+<tr><td>recurrence over the shipped fingerprints</td><td>60</td><td>8.08</td><td>0.2503</td><td>28.3%</td><td>30.0% [19.9%, 42.5%]</td></tr>
+<tr><td><strong>the shipped term, after decay and normalization</strong></td><td>1,151</td><td>54.46</td><td>2.7102</td><td>0.0%</td><td>0.0% [0.0%, 0.3%]</td></tr>
+</tbody></table>
+
+<p>The pre-registered threshold was "≤ 2 distinct values on more than 50% of</p>
+<p>decisions". The measurement is 30.0%, so **the threshold is</p>
+<p>not met** — the term is not saturated.</p>
+
+<p>The last row is the one that settles the mechanism. The shipped scorer ranks by the</p>
+<p><em>product</em> <code>(edit boost + recurrence) × decay</code>, normalized afterwards — and that quantity</p>
+<p>takes <strong>54.46 distinct values per decision</strong> and is never</p>
+<p>flat. Even on the 28.3% of decisions where recurrence itself</p>
+<p>is constant, the term does not switch off: it becomes <em>constant × decay</em>, which for units</p>
+<p>that edited nothing is a live ranking signal that would be <strong>absent</strong> if recurrence were</p>
+<p>zero.</p>
+
+<h3>No ratio beats the shipped one</h3>
+
+<p>Sweeping the edit-to-recurrence ratio the shipped code cannot express. The second column is</p>
+<p>the share of decisions on which a given ratio produces <em>literally the same ordering</em> as the</p>
+<p>shipped one — because the edit indicator is binary, any ratio above 1 is mathematically</p>
+<p>identical to the shipped setting and is not an independent arm at all.</p>
+
+<table><thead>
+<tr><th>ratio ρ</th><th>identical ordering to shipped</th><th>recall@32</th><th>paired difference vs shipped</th><th>clears +0.03?</th></tr></thead><tbody>
+<tr><td>0</td><td>1.1%</td><td>0.3035</td><td>+0.0163 [-0.0212, +0.0541]</td><td>no</td></tr>
+<tr><td>0.25</td><td>1.1%</td><td>0.296</td><td>+0.0088 [-0.0179, +0.0352]</td><td>no</td></tr>
+<tr><td>0.5</td><td>1.7%</td><td>0.2997</td><td>+0.0125 [-0.0041, +0.0298]</td><td>no</td></tr>
+<tr><td>0.75</td><td>9.2%</td><td>0.2909</td><td>+0.0037 [-0.0028, +0.0103]</td><td>no</td></tr>
+<tr><td>1</td><td>46.9%</td><td>0.2873</td><td>+0.0001 [0.0000, +0.0003]</td><td>no</td></tr>
+</tbody></table>
+
+<p>No ratio clears the margin anywhere, and under the identifier-overlap label every ratio</p>
+<p>below 1 is <em>worse</em>. <strong>The hardcoded 2:1 constant is vindicated as a default.</strong> It remains</p>
+<p>underived, but it is no longer unmeasured.</p>
+
+<hr/>
+
+<h2>Results — question 2: does temporal covariance predict dormant returns?</h2>
+
+<h3>The corpus cannot answer, and we can say exactly why</h3>
+
+<p>The statistic needs two files to have been active together. They rarely are:</p>
+
+<table><thead>
+<tr><th>files referenced in one turn</th><th>1</th><th>2</th><th>3–4</th><th>5+</th></tr></thead><tbody>
+<tr><td>turns</td><td>985</td><td>129</td><td>89</td><td>27</td></tr>
+</tbody></table>
+
+<p>Only <strong>19.9%</strong> of file-referencing turns name two or more</p>
+<p>files, so most turns cannot produce a co-activation pair at all. Widening the episode window</p>
+<p>raises the number mechanically; it never reaches the bar.</p>
+
+<table><thead>
+<tr><th>episode window L (turns)</th><th>candidates with any co-activation history</th><th>verdict</th></tr></thead><tbody>
+<tr><td>1</td><td>7.7%</td><td>below gate</td></tr>
+<tr><td>2</td><td>18.2%</td><td>below gate</td></tr>
+<tr><td>3</td><td>22.1%</td><td>below gate</td></tr>
+<tr><td>5</td><td>29.2%</td><td>below gate</td></tr>
+<tr><td>10</td><td>38.9%</td><td>below gate</td></tr>
+<tr><td>20</td><td>49.0%</td><td>below gate</td></tr>
+</tbody></table>
+
+<figure><svg viewBox="0 0 720 300" role="img" aria-label="Support share against dilation window, never reaching the gate" style="max-width:100%;height:auto"><line x1="64" y1="248.0" x2="696" y2="248.0" stroke="#e3e3ea" stroke-width="1"/><text x="56" y="252.0" font-size="11" fill="#6a6a78" text-anchor="end">0%</text><line x1="64" y1="197.0" x2="696" y2="197.0" stroke="#e3e3ea" stroke-width="1"/><text x="56" y="201.0" font-size="11" fill="#6a6a78" text-anchor="end">25%</text><line x1="64" y1="146.0" x2="696" y2="146.0" stroke="#e3e3ea" stroke-width="1"/><text x="56" y="150.0" font-size="11" fill="#6a6a78" text-anchor="end">50%</text><line x1="64" y1="95.0" x2="696" y2="95.0" stroke="#e3e3ea" stroke-width="1"/><text x="56" y="99.0" font-size="11" fill="#6a6a78" text-anchor="end">75%</text><line x1="64" y1="44.0" x2="696" y2="44.0" stroke="#e3e3ea" stroke-width="1"/><text x="56" y="48.0" font-size="11" fill="#6a6a78" text-anchor="end">100%</text><line x1="64" y1="135.8" x2="696" y2="135.8" stroke="#c0392b" stroke-width="2" stroke-dasharray="6 4"/><text x="696" y="127.8" font-size="11" fill="#c0392b" text-anchor="end">support gate 55% — never reached</text><polyline points="64.0,232.3 210.2,210.9 295.8,202.8 403.5,188.4 549.8,168.7 696.0,148.1" fill="none" stroke="#2c6fbb" stroke-width="2.5"/><circle cx="64.0" cy="232.3" r="4.5" fill="#2c6fbb"/><text x="64.0" y="221.3" font-size="10.5" fill="#2c6fbb" text-anchor="middle">7.7</text><text x="64.0" y="264" font-size="11" fill="#6a6a78" text-anchor="middle">1</text><circle cx="210.2" cy="210.9" r="4.5" fill="#2c6fbb"/><text x="210.2" y="199.9" font-size="10.5" fill="#2c6fbb" text-anchor="middle">18.2</text><text x="210.2" y="264" font-size="11" fill="#6a6a78" text-anchor="middle">2</text><circle cx="295.8" cy="202.8" r="4.5" fill="#2c6fbb"/><text x="295.8" y="191.8" font-size="10.5" fill="#2c6fbb" text-anchor="middle">22.1</text><text x="295.8" y="264" font-size="11" fill="#6a6a78" text-anchor="middle">3</text><circle cx="403.5" cy="188.4" r="4.5" fill="#2c6fbb"/><text x="403.5" y="177.4" font-size="10.5" fill="#2c6fbb" text-anchor="middle">29.2</text><text x="403.5" y="264" font-size="11" fill="#6a6a78" text-anchor="middle">5</text><circle cx="549.8" cy="168.7" r="4.5" fill="#2c6fbb"/><text x="549.8" y="157.7" font-size="10.5" fill="#2c6fbb" text-anchor="middle">38.9</text><text x="549.8" y="264" font-size="11" fill="#6a6a78" text-anchor="middle">10</text><circle cx="696.0" cy="148.1" r="4.5" fill="#2c6fbb"/><text x="696.0" y="137.1" font-size="10.5" fill="#2c6fbb" text-anchor="middle">49.0</text><text x="696.0" y="264" font-size="11" fill="#6a6a78" text-anchor="middle">20</text><text x="380" y="290" font-size="11.5" fill="#4a4a58" text-anchor="middle">episode window L (turns, log scale)</text><text x="64" y="24" font-size="13.5" font-weight="600" fill="#2b2b38">Share of candidates whose pair with a hot file has ANY co-activation history</text></svg></figure>
+
+<p>Restricting to the units for which covariance is even plausibly defined does not rescue it</p>
+<p>either — even candidates whose file has already been referenced ten or more times reach only</p>
+<p>11.8%</p>
+<p>support at L=1:</p>
+
+<table><thead>
+<tr><th>prior references to the candidate's file</th><th>rows</th><th>with co-activation history</th></tr></thead><tbody>
+<tr><td>1</td><td>19,263 (10.9%)</td><td>0.0%</td></tr>
+<tr><td>2</td><td>20,908 (11.8%)</td><td>1.4%</td></tr>
+<tr><td>3-4</td><td>23,441 (13.2%)</td><td>4.6%</td></tr>
+<tr><td>5-9</td><td>42,310 (23.9%)</td><td>9.2%</td></tr>
+<tr><td>10+</td><td>71,345 (40.3%)</td><td>11.8%</td></tr>
+</tbody></table>
+
+<p>Across every other corpus on the machine — 3 further</p>
+<p>projects' Claude Code sessions, surveyed in aggregate only — none is materially denser:</p>
+<p>references per distinct file run</p>
+<p>3.898, 2.248, 1 against</p>
+<p>3.114 for the committed transcripts. NO corpus and NO dilation setting available on this machine clears the support gate. H2 is NOT evaluable here, and the reason is structural rather than a matter of data volume: 19.9% of referencing turns name two or more files, so same-turn co-reference of two specific files is rare by construction.</p>
+
+<h3>What that means for the numbers we did compute</h3>
+
+<p>Because the gate is not met, the contrasts below are <strong>not a null result about temporal covariance</strong>. They are mostly a correlation computed from an empty table. The results file records this on the payload itself — the key is <code>h2_UNINTERPRETABLE_INSUFFICIENT_SUPPORT</code> and every row carries <code>interpretable: false</code> — so a later reader cannot quote them as a finding.</p>
+
+<p>They are reported for one reason only: to show what the corrected error bars do to the one</p>
+<p>cell an earlier version of this analysis presented as supportive. At the pre-specified</p>
+<p>primary budget the signal is behind; the favourable cell was at a different budget and no</p>
+<p>longer excludes zero.</p>
+
+<table><thead>
+<tr><th>contrast (non-monotonic recall)</th><th>difference</th><th>interval</th></tr></thead><tbody>
+<tr><td>vs reference-recency, M=16</td><td>+0.2054</td><td>[+0.1379, +0.2565]</td></tr>
+<tr><td>vs positional recency, M=16</td><td>+0.0817</td><td>[-0.0030, +0.1444]</td></tr>
+<tr><td><strong>vs positional recency, M=32 (pre-specified primary)</strong></td><td>-0.0570</td><td>[-0.1495, +0.0310]</td></tr>
+<tr><td>vs positional recency, M=64</td><td>-0.1576</td><td>[-0.2647, -0.0784]</td></tr>
+</tbody></table>
+
+<p>The decisive endpoint — whether the signal adds anything on top of the four the system</p>
+<p>already has, trained on one transcript and tested on the others — is flat:</p>
+
+<table><thead>
+<tr><th>held out</th><th>decisions tested</th><th>AUC without</th><th>AUC with</th><th>difference</th></tr></thead><tbody>
+<tr><td><code>session-2</code></td><td>186</td><td>0.8713</td><td>0.8719</td><td>+0.0005 [-0.0015, +0.0030]</td></tr>
+<tr><td><code>session-5</code></td><td>751</td><td>0.8588</td><td>0.8589</td><td>+0.0001 [-0.0004, +0.0008]</td></tr>
+<tr><td><code>session</code></td><td>204</td><td>0.7745</td><td>0.7742</td><td>-0.0004 [-0.0009, +0.0001]</td></tr>
+</tbody></table>
+
+<h3>It is, at least, a different signal</h3>
+
+<p>Whatever else is true, temporal covariance is not a rename of something already present. The</p>
+<p>correlation between the ordering it produces and the ordering positional recency produces is</p>
+<p><strong>-0.534</strong>, and against reference-recency <strong>-0.294</strong> —</p>
+<p>far from the 0.8 this project treats as a relabelling, and negative, meaning it orders the</p>
+<p>buffer close to opposite to recency.</p>
+
+<hr/>
+
+<h2>What we got wrong</h2>
+
+<p>Five claims in the first version of this analysis were false or unsupported. They are listed</p>
+<p>because the pattern in them is the useful artefact: four of the five read in the direction</p>
+<p>that made the work look more conclusive.</p>
+
+<p><strong>1. "The saturation gate fires."</strong> The pre-registered threshold was "≤ 2 distinct values on</p>
+<p>more than 50% of decisions". The measurement was</p>
+<p>30.0%. The first version nonetheless opened its results with</p>
+<p>"S1 fires", made it the headline, and escalated it into a recommendation about the shipped</p>
+<p>weight. <strong>A null was read as a win on the one finding it said was worth acting on.</strong></p>
+
+<p><strong>2. "A flat recurrence term is deleted by normalization."</strong> False. Normalization is applied</p>
+<p>to the product of the sum and the decay factor, not to the recurrence term. With recurrence</p>
+<p>constant the term does not vanish — it becomes <em>constant × decay</em>, a live ranking signal. The</p>
+<p>corrected measurement is in the results above, and a unit test now fails if the decay factor</p>
+<p>is dropped.</p>
+
+<p><strong>3. "The original result does not replicate."</strong> Withdrawn. That claim came from a</p>
+<p>re-measurement that differed from the original in six ways at once — the definition of a</p>
+<p>unit, the size of the candidate pool, the fingerprint patterns, the text fed to them, the</p>
+<p>transcripts used, and the budget quoted — and was read at the budget where the effect is</p>
+<p>smallest, on a corpus mostly composed of a transcript the original never used. Holding all</p>
+<p>six fixed and varying only the clock, <strong>it replicates and survives</strong>.</p>
+
+<p><strong>4. "The ratio dial saturates above 1."</strong> It does not saturate; it is an algebraic</p>
+<p>identity. The edit indicator is binary after normalization, so any ratio above 1 orders the</p>
+<p>buffer identically — four of the original eight sweep points were provably the same arm. The</p>
+<p>first version presented their identical scores as an empirical finding about diminishing</p>
+<p>returns.</p>
+
+<p><strong>5. "Turn-level block bootstrap."</strong> The function drew decisions independently, with no</p>
+<p>block, while three source files and both design documents named it a block bootstrap.</p>
+<p>Correcting it widened every interval by roughly a third and overturned two of the three</p>
+<p>non-monotonic cells that had excluded zero — covariance against positional recency at M=16</p>
+<p>became [-0.0030, +0.1444] and against reference-recency at M=32 became</p>
+<p>[-0.0033, +0.1650], where the uncorrected version reported both as excluding zero.</p>
+<p>Only [+0.1379, +0.2565], at M=16 against reference-recency, survived. The favourable cell</p>
+<p>the first version led with is among those that did not.</p>
+
+<p>Two further corrections carried no headline: the scorer labelled "shipped-priority" was a</p>
+<p>simplified form the shipped code cannot express and has been renamed, with the real one</p>
+<p>added alongside; and a fingerprint story was attributed to the shipped extractor, which does</p>
+<p>not in fact match the token class it was blamed for.</p>
+
+<hr/>
+
+<h2>What survives</h2>
+
+<p><strong>The recurrence result is sound and the clock fix does not break it.</strong> It replicates on its</p>
+<p>own corpus under its own estimand, survives the corrected clock, and is concentrated at the</p>
+<p>budgets the original quoted.</p>
+
+<p><strong>The hardcoded 2:1 ratio is vindicated as a default.</strong> No setting in the informative range</p>
+<p>beats it, and the range above it is mathematically identical to it. The constant is still</p>
+<p>underived, but it is no longer unmeasured, and this particular objection to it is closed.</p>
+
+<p>**A new finding that nobody was looking for: the scorer may be counting reference-recency</p>
+<p>twice.** Measuring the shipped priority term as the code actually computes it — rather than</p>
+<p>the simplification the first version of this analysis used — it is a <em>strong</em> signal, AUC</p>
+<p>0.814 [+0.7914, +0.8393], second only to reference-recency</p>
+<p>at 0.886. But its ordering correlates <strong>0.835</strong> with</p>
+<p>reference-recency, above the 0.8 this project uses to call one signal a relabelling of</p>
+<p>another. The decay factor dominates the sum it multiplies, so much of what "priority"</p>
+<p>contributes may be reference-recency arriving under a second name — in a four-signal scorer</p>
+<p>that also carries reference-recency explicitly. That is a cheap, purely offline experiment</p>
+<p>and it is the most valuable thing this work turned up.</p>
+
+<figure><svg viewBox="0 0 720 300" role="img" aria-label="AUC by eviction signal with confidence intervals" style="max-width:100%;height:auto"><line x1="224.4" y1="38" x2="224.4" y2="260" stroke="#e3e3ea" stroke-width="1"/><text x="224.4" y="275" font-size="11" fill="#6a6a78" text-anchor="middle">0.5</text><line x1="321.2" y1="38" x2="321.2" y2="260" stroke="#e3e3ea" stroke-width="1"/><text x="321.2" y="275" font-size="11" fill="#6a6a78" text-anchor="middle">0.6</text><line x1="418.0" y1="38" x2="418.0" y2="260" stroke="#e3e3ea" stroke-width="1"/><text x="418.0" y="275" font-size="11" fill="#6a6a78" text-anchor="middle">0.7</text><line x1="514.8" y1="38" x2="514.8" y2="260" stroke="#e3e3ea" stroke-width="1"/><text x="514.8" y="275" font-size="11" fill="#6a6a78" text-anchor="middle">0.8</text><line x1="611.6" y1="38" x2="611.6" y2="260" stroke="#e3e3ea" stroke-width="1"/><text x="611.6" y="275" font-size="11" fill="#6a6a78" text-anchor="middle">0.9</text><line x1="224.4" y1="38" x2="224.4" y2="260" stroke="#c0392b" stroke-width="1.5" stroke-dasharray="5 3"/><rect x="224.4" y="51.4" width="374.1" height="16" fill="#7a8196"/><line x1="580.8" y1="59.4" x2="616.0" y2="59.4" stroke="#2b2b38" stroke-width="1.4"/><text x="166" y="63.4" font-size="11.5" fill="#3a3a48" text-anchor="end">idle-only</text><text x="623.0" y="63.4" font-size="11" fill="#4a4a58">0.886</text><rect x="224.4" y="82.3" width="303.8" height="16" fill="#e08a1e"/><line x1="506.5" y1="90.3" x2="552.8" y2="90.3" stroke="#2b2b38" stroke-width="1.4"/><text x="166" y="94.3" font-size="11.5" fill="#3a3a48" text-anchor="end">shipped-priority-true</text><text x="559.8" y="94.3" font-size="11" fill="#4a4a58">0.814</text><rect x="224.4" y="113.1" width="285.9" height="16" fill="#7a8196"/><line x1="482.5" y1="121.1" x2="532.5" y2="121.1" stroke="#2b2b38" stroke-width="1.4"/><text x="166" y="125.1" font-size="11.5" fill="#3a3a48" text-anchor="end">recency-only</text><text x="539.5" y="125.1" font-size="11" fill="#4a4a58">0.795</text><rect x="224.4" y="144.0" width="62.5" height="16" fill="#2c6fbb"/><line x1="264.6" y1="152.0" x2="311.6" y2="152.0" stroke="#2b2b38" stroke-width="1.4"/><text x="166" y="156.0" font-size="11.5" fill="#3a3a48" text-anchor="end">tcov</text><text x="318.6" y="156.0" font-size="11" fill="#4a4a58">0.565</text><rect x="224.4" y="174.9" width="34.8" height="16" fill="#7a8196"/><line x1="232.6" y1="182.9" x2="283.9" y2="182.9" stroke="#2b2b38" stroke-width="1.4"/><text x="166" y="186.9" font-size="11.5" fill="#3a3a48" text-anchor="end">split-priority-rho2</text><text x="290.9" y="186.9" font-size="11" fill="#4a4a58">0.536</text><rect x="224.4" y="205.7" width="10.2" height="16" fill="#7a8196"/><line x1="195.7" y1="213.7" x2="278.0" y2="213.7" stroke="#2b2b38" stroke-width="1.4"/><text x="166" y="217.7" font-size="11.5" fill="#3a3a48" text-anchor="end">recurrence-undirected</text><text x="285.0" y="217.7" font-size="11" fill="#4a4a58">0.510</text><rect x="224.4" y="236.6" width="0.0" height="16" fill="#7a8196"/><line x1="184.4" y1="244.6" x2="250.0" y2="244.6" stroke="#2b2b38" stroke-width="1.4"/><text x="166" y="248.6" font-size="11.5" fill="#3a3a48" text-anchor="end">recurrence-directed</text><text x="257.0" y="248.6" font-size="11" fill="#4a4a58">0.490</text><text x="176" y="24" font-size="13.5" font-weight="600" fill="#2b2b38">How well each signal orders one turn's buffer (AUC; 0.5 = chance, dashed)</text></svg></figure>
+
+<p><strong>A methodological finding worth more than either hypothesis.</strong> Micro- and macro-averaging</p>
+<p>of recall disagree on the <em>sign</em> of the recurrence contrast at</p>
+<p><strong>11 of the 16 cells</strong> measured — including</p>
+<p><strong>8 of 8</strong> under the clock the published</p>
+<p>result used, i.e. every one of them. Weighting each decision equally makes recurrence lose</p>
+<p>to recency; weighting each needed unit equally makes it win, because the decisions with many</p>
+<p>needed units are exactly where recurrence does well. Neither is wrong; only one is the</p>
+<p>estimand the published result refers to. No report in this project had previously stated</p>
+<p>which it used.</p>
+
+<p><strong>And a structural one.</strong> A pairwise co-reference signal may be undeployable on agent</p>
+<p>transcripts in general, not merely on this corpus: agents name files one at a time, so two</p>
+<p>specific files are rarely active together, and no volume of additional transcripts changes</p>
+<p>that. Any future pairwise signal should be checked against this property before it is built.</p>
+
+<hr/>
+
+<h2>Caveats</h2>
+
+<ul><li><strong>One corpus, one developer, one repository.</strong> Four transcripts, and the largest of them</li></ul>
+<p>  supplies 65.2%</p>
+<p>  of all decisions — which is why every headline is also reported per transcript.</p>
+<ul><li><strong>Micro- and macro-averaging disagree on sign</strong> at 11 of</li></ul>
+<p>  16 cells, and at every cell under the published clock. Numbers in this</p>
+<p>  report state which averaging they use; numbers in other reports in this project mostly do</p>
+<p>  not.</p>
+<ul><li><strong>The turn-denominated settings are owed a rescale.</strong> They are numerically the original</li></ul>
+<p>  experiment's, but that experiment's "turn" is 2.22×</p>
+<p>  shorter, so copying the numerals across halves every window rather than preserving intent.</p>
+<p>  The contrast is known to be sensitive to this, and the sweep has not been run.</p>
+<ul><li><strong>Question 2's verdict is corpus-dependent in one direction only.</strong> A denser corpus could</li></ul>
+<p>  make temporal covariance testable; no corpus can make the present numbers into evidence.</p>
+<ul><li><strong>The label is observational.</strong> A unit can be <em>used</em> without being named again — the model</li></ul>
+<p>  reasons from what it already read. Every signal is biased the same way, which protects the</p>
+<p>  comparisons but not the absolute rates.</p>
+<ul><li><strong>Shell-command file extraction is a regex</strong> over a command string, and shell commands</li></ul>
+<p>  supply 65.3% of all references here. It is the least trustworthy</p>
+<p>  input in the pipeline, and excluding it is not neutral either.</p>
+<ul><li><strong>No live arm was run.</strong> The harness exists and is gated shut: the instrument-sensitivity</li></ul>
+<p>  check that would say whether a live comparison on this substrate can detect <em>any</em></p>
+<p>  selection effect is itself unresolved, and five previous live comparisons returned null or</p>
+<p>  void.</p>
+
+<hr/>
+<p>*Generated by <code>experiments/covariance-eviction/report-covariance-eviction.mjs</code> from</p>
+<p><code>results-offline-v1.json</code>, <code>results-replicate-assembler-weighting.json</code>, <code>results-h2-corpus-survey.json</code>. Charts are inline SVG; the HTML version is self-contained.*</p>
+
+</main></body></html>

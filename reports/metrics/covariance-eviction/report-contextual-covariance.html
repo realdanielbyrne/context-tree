@@ -1,0 +1,377 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Contextual covariance</title>
+<style>
+:root{--ink:#24242e;--mut:#5f5f70;--line:#e2e2ea;--bg:#fcfcfd;--accent:#2c6fbb}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+main{max-width:920px;margin:0 auto;padding:40px 20px 80px}
+h1{font-size:1.95rem;line-height:1.25;margin:0 0 .3em;letter-spacing:-.01em}
+h2{font-size:1.32rem;margin:2.2em 0 .6em;padding-bottom:.28em;border-bottom:1px solid var(--line)}
+h3{font-size:1.06rem;margin:1.7em 0 .5em;color:#33333f}
+p{margin:0 0 1em}
+em{color:var(--mut)}
+code{background:#f0f0f5;padding:.1em .34em;border-radius:3px;font-size:.88em;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+blockquote{margin:1.4em 0;padding:.8em 1.1em;border-left:3px solid var(--accent);background:#f2f6fb;border-radius:0 4px 4px 0}
+blockquote p{margin:0 0 .5em}blockquote p:last-child{margin:0}
+table{border-collapse:collapse;width:100%;margin:1.3em 0;font-size:.92rem;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:.44em .7em;text-align:left;vertical-align:top}
+th{background:#f3f3f8;font-weight:600}
+tbody tr:nth-child(even){background:#fafaFC}
+figure{margin:1.8em 0;padding:14px;background:#fff;border:1px solid var(--line);border-radius:6px}
+hr{border:0;border-top:1px solid var(--line);margin:2.4em 0}
+ul{margin:0 0 1em;padding-left:1.3em}li{margin:.3em 0}
+@media (prefers-color-scheme: dark){
+:root{--ink:#e6e6ee;--mut:#a0a0b2;--line:#34343f;--bg:#17171d}
+code{background:#26262f}th{background:#22222b}tbody tr:nth-child(even){background:#1c1c24}
+blockquote{background:#1e2530}figure{background:#1d1d25}
+}
+</style></head><body><main>
+<h1>Contextual covariance: a signal that holds where the incumbents collapse</h1>
+
+<p><em>A positive result, with a pre-registered primary that misses, and a correction to the previous report in this series.</em></p>
+
+<blockquote>
+<p>This report follows <code>report-covariance-eviction.md</code>, which concluded that a pairwise</p>
+<p>co-reference signal is starved on agent transcripts. <strong>That conclusion was over-general</strong></p>
+<p>and is corrected in <strong>What we got wrong</strong>. The starvation is a property of keying the</p>
+<p>signal on file paths, not of covariance.</p>
+</blockquote>
+
+<hr/>
+
+<h2>Abstract</h2>
+
+<p>An AI coding agent re-sends its whole working transcript to the model on every step, so on a</p>
+<p>long task the transcript outgrows the model's input limit and material must be deleted. The</p>
+<p>hardest case for any deletion rule is the unit that has gone quiet and is then needed again:</p>
+<p>a rule that keeps what resembles the agent's current work deletes exactly that unit, which</p>
+<p>is why relevance-to-recent was previously measured as the <em>worst</em> available eviction signal</p>
+<p>and is weighted zero in the shipped system.</p>
+
+<p>This report tests the signal that would keep that unit. For every unit still held, we ask</p>
+<p>not whether it resembles what the agent is doing now, but whether its features have</p>
+<p><em>historically been active alongside</em> the features the agent is working on now — a phi</p>
+<p>coefficient over each session's own co-activation history, with the history window and the</p>
+<p>current window kept disjoint and with any feature the unit shares with the current window</p>
+<p>removed from both sides, so that present similarity cannot contribute. A previous version of</p>
+<p>this work keyed that statistic on file paths, found that 19.9%</p>
+<p>of file-referencing turns name more than one file, and concluded the statistic was starved.</p>
+<p>Keyed on identifiers instead, the same transcripts support it on</p>
+<p>84.3% of decisions rather than 6.1%.</p>
+
+<p>The result is a clear gradient and a qualified primary. As the definition of "dormant" is</p>
+<p>made stricter — from 10 turns since a unit's files were touched, out to 50 —</p>
+<p>positional recency falls from 0.403 to 0.0138</p>
+<p>and reference-recency from 0.2764 to 0, while</p>
+<p>covariance is almost flat, 0.365 to 0.3022. It is the best of the</p>
+<p>six signals from D=20 onward, and it beats a volume-matched random control at every dormancy</p>
+<p>depth up to 35 with intervals excluding zero. That gradient is what the</p>
+<p>hypothesis predicted, and it is the mechanism the earlier finding about relevance describes,</p>
+<p>observed directly. The decisive control passes too: covariance is not relevance renamed, with</p>
+<p>a rank correlation of 0.0231 between the two orderings, and the</p>
+<p>advantage survives stripping every path-bearing token from the feature set, which rules out</p>
+<p>the signal simply exploiting the file vocabulary its label is written in.</p>
+
+<p>What does not pass is the pre-registered primary as written. It required covariance to beat</p>
+<p><em>relevance specifically</em>, at one budget and one dormancy threshold; it misses in the</p>
+<p>identifier space by a lower bound of -0.0042 and fires only in the</p>
+<p>lexical space, which is the one space where covariance does <strong>not</strong> beat the random floor.</p>
+<p>The pre-registration named the relabelling control and omitted the floor control, and on this</p>
+<p>evidence the floor contrast is the more informative of the two. The honest verdict is that</p>
+<p>contextual covariance is a real signal with a mechanism that behaves as theorised, not yet an</p>
+<p>established improvement over the specific incumbent it was pre-registered against.</p>
+
+<hr/>
+
+<h2>What you need to know to read the rest</h2>
+
+<table><thead>
+<tr><th>Term</th><th>Meaning</th></tr></thead><tbody>
+<tr><td><strong>Agent</strong></td><td>An AI model given tools (read a file, write a file, run a command) and a goal, looping until it decides it is done.</td></tr>
+<tr><td><strong>Transcript / context</strong></td><td>Everything the model sees on a step: instructions plus the full history of what it read, wrote and ran. Re-sent in full every step.</td></tr>
+<tr><td><strong>Token</strong></td><td>The unit context is measured in — roughly ¾ of a word.</td></tr>
+<tr><td><strong>Eviction</strong></td><td>Deleting older material to get back under the input limit. The subject here is <em>what</em> to delete.</td></tr>
+<tr><td><strong>Admission</strong></td><td>The opposite operation: deciding what to pull back in. The scores here could serve it; this report does not measure it.</td></tr>
+<tr><td><strong>Unit</strong></td><td>The thing eviction deletes: one API turn, kept whole so a tool call is never split from its result.</td></tr>
+<tr><td><strong>Decision</strong></td><td>One moment at which the policy ranks the units it holds. Scored against what the agent did next.</td></tr>
+<tr><td><strong>Feature</strong></td><td>Whatever the signal is keyed on. Four spaces are tested: file paths, identifiers, identifiers with paths removed, and content words.</td></tr>
+<tr><td><strong>Fingerprint</strong></td><td>A distinctive identifier — camelCase, PascalCase, UPPER_SNAKE, a back-quoted symbol, a file path. Extracted by the function the shipped system uses.</td></tr>
+<tr><td><strong>Hot window</strong></td><td>The features of the last few turns — what the agent is working on right now.</td></tr>
+<tr><td><strong>Relevance</strong></td><td>Plain overlap (Jaccard) between a unit's features and the hot window's. <strong>No history.</strong> The signal that was previously measured as worst, and the control this experiment lives or dies on.</td></tr>
+<tr><td><strong>Contextual covariance ("tcov")</strong></td><td>The candidate signal: how strongly a unit's features have <em>historically</em> been active alongside the hot window's, with shared features excluded so present overlap contributes nothing.</td></tr>
+<tr><td><strong>Phi coefficient</strong></td><td>The correlation between two yes/no series — "was feature A active this turn" against "was feature B active this turn". A feature active on <em>every</em> turn scores zero against everything, which is the guard against a promiscuous feature linking everything to everything.</td></tr>
+<tr><td><strong>Support</strong></td><td>How many turns two features were actually active together. Zero support means the correlation is computed from an empty table, i.e. noise.</td></tr>
+<tr><td><strong>Saturation</strong></td><td>The opposite failure: so many features co-occur that every unit scores alike and the signal is inert.</td></tr>
+<tr><td><strong>Recall@M</strong></td><td>Of the units the agent turned out to need, the share a policy keeps when it can keep only M.</td></tr>
+<tr><td><strong>AUC</strong></td><td>The chance a needed unit outranks an unneeded one inside one decision. 0.5 is a coin flip.</td></tr>
+<tr><td><strong>The non-monotonic subset</strong></td><td>The hard case: units needed again after going quiet for more than D turns. D is swept here rather than assumed.</td></tr>
+<tr><td><strong>Moving-block bootstrap</strong></td><td>Error bars that respect the fact that consecutive decisions are related: blocks of consecutive decisions are resampled, never single ones.</td></tr>
+<tr><td><strong>Holm correction</strong></td><td>An adjustment for making several comparisons at once, so testing many things does not manufacture one apparent success.</td></tr>
+</tbody></table>
+
+<hr/>
+
+<h2>Why we ran this</h2>
+
+<p>The shipped eviction scorer weights four signals, and it weights query-relevance at <strong>zero</strong>.</p>
+<p>That is not an oversight; it is a finding. A unit that has gone dormant does not, by</p>
+<p>definition, resemble the recent window, so a relevance rule deletes precisely the unit that is</p>
+<p>about to be needed again. The dormant-return case is the one that costs the agent work, and</p>
+<p>relevance is worst on it.</p>
+
+<p>That leaves a gap. Nothing in the system computes whether a unit <em>goes with</em> what is happening</p>
+<p>now — only whether it <em>looks like</em> it. Those are different questions, and only the second had</p>
+<p>been measured. Contextual covariance asks the first: a unit whose features have historically</p>
+<p>been active alongside the features now in play is a good bet even if it shares nothing with</p>
+<p>them today, which is exactly the unit relevance throws away.</p>
+
+<p>A previous report tried this and could not test it, because it keyed the statistic on file</p>
+<p>paths and 80.1% of file-referencing turns name only one</p>
+<p>file. That measurement was right; the conclusion drawn from it — that covariance in general is</p>
+<p>starved — was not.</p>
+
+<hr/>
+
+<h2>The experimental setup</h2>
+
+<h3>The corpus and what a decision is</h3>
+
+<p>Four real Claude Code transcripts committed to the repository, 1,712</p>
+<p>turns in total. A <strong>unit</strong> is one API turn. At each <strong>decision</strong> the policy ranks the units it</p>
+<p>holds, capped at the most recent 200. Candidates are past turns that referenced at</p>
+<p>least one file, so the label is defined for every candidate in every arm.</p>
+
+<p>The <strong>label is behavioural and file-based</strong>: a unit counts as <em>needed</em> if the agent issued a</p>
+<p>tool call naming one of that unit's files within the next 3 turns. Keeping a file-based</p>
+<p>label while sweeping the signal to content words is deliberate — in the <code>lex</code> arm the signal</p>
+<p>and the label share no vocabulary at all, which makes it the least circular of the four.</p>
+
+<h3>The signal</h3>
+
+<p>For unit features <code>F</code> and hot-window features <code>Q</code>, over history strictly older than the</p>
+<p>hot window:</p>
+
+<blockquote>
+<p>score(u) = max over f in F\Q, g in Q\F of phi(f, g), shrunk toward zero when the pair has</p>
+<p>little co-activation history</p>
+</blockquote>
+
+<p>The set subtraction is the experiment. Features the unit <strong>shares</strong> with the hot window are</p>
+<p>removed from both sides, so a unit scores only through the historical association of features</p>
+<p>it has and the window does not, with features the window has and it does not. Present overlap —</p>
+<p>which <em>is</em> relevance — cannot contribute. A sensitivity arm, <code>tcov-inclusive</code>, puts the</p>
+<p>shared features back; if only that version worked, the working part would be relevance.</p>
+
+<h3>Feature spaces, and the two gates</h3>
+
+<p>Every space must clear <strong>support</strong> (enough candidates have any co-activation history at all —</p>
+<p>the starvation guard) and <strong>flatness</strong> (the score is not near-constant across units — the</p>
+<p>saturation guard). Both are reported before any contrast.</p>
+
+<table><thead>
+<tr><th>feature space</th><th>features/turn</th><th>support (same-turn)</th><th>gate</th><th>distinct scores/turn</th><th>at ceiling</th><th>near-flat turns</th><th>gate</th><th>verdict</th></tr></thead><tbody>
+<tr><td><code>files</code></td><td>1.02</td><td>6.1%</td><td><strong>fail</strong></td><td>8.09</td><td>2.9%</td><td>24.0%</td><td>pass</td><td>not interpretable</td></tr>
+<tr><td><code>fp</code></td><td>9.07</td><td>84.3%</td><td>pass</td><td>68.05</td><td>2.0%</td><td>0.5%</td><td>pass</td><td><strong>interpretable</strong></td></tr>
+<tr><td><code>fp-nopath</code></td><td>5.76</td><td>64.0%</td><td>pass</td><td>56.29</td><td>1.7%</td><td>1.9%</td><td>pass</td><td><strong>interpretable</strong></td></tr>
+<tr><td><code>lex</code></td><td>20.15</td><td>86.1%</td><td>pass</td><td>71.23</td><td>1.7%</td><td>0.0%</td><td>pass</td><td><strong>interpretable</strong></td></tr>
+</tbody></table>
+
+<figure><svg viewBox="0 0 720 260" role="img" aria-label="Support share by feature space against the gate" style="max-width:100%;height:auto"><line x1="356.7" y1="38" x2="356.7" y2="214" stroke="#c0392b" stroke-width="2" stroke-dasharray="6 4"/><text x="356.7" y="34" font-size="11" fill="#c0392b" text-anchor="middle">support gate 55%</text><rect x="96" y="58.0" width="28.8" height="18" fill="#b9525a"/><text x="86" y="71.0" font-size="11.5" fill="#3a3a48" text-anchor="end">files</text><text x="132.8" y="71.0" font-size="11" fill="#4a4a58">6.1% · 1.02 feat/turn · FAIL</text><rect x="96" y="100.0" width="399.7" height="18" fill="#2c6fbb"/><text x="86" y="113.0" font-size="11.5" fill="#3a3a48" text-anchor="end">fp</text><text x="503.7" y="113.0" font-size="11" fill="#4a4a58">84.3% · 9.07 feat/turn · PASS</text><rect x="96" y="142.0" width="303.4" height="18" fill="#2c6fbb"/><text x="86" y="155.0" font-size="11.5" fill="#3a3a48" text-anchor="end">fp-nopath</text><text x="407.4" y="155.0" font-size="11" fill="#4a4a58">64.0% · 5.76 feat/turn · PASS</text><rect x="96" y="184.0" width="408.3" height="18" fill="#2c6fbb"/><text x="86" y="197.0" font-size="11.5" fill="#3a3a48" text-anchor="end">lex</text><text x="512.3" y="197.0" font-size="11" fill="#4a4a58">86.1% · 20.15 feat/turn · PASS</text><text x="96" y="24" font-size="13.5" font-weight="600" fill="#2b2b38">Support: share of candidates whose pairing with the current turn has co-activation history</text></svg></figure>
+
+<p><code>files</code> fails exactly as the previous report found, which is the check that this experiment</p>
+<p>has not quietly changed the thing that failed. The other three pass both gates comfortably:</p>
+<p>they are dense enough to have history and varied enough not to be inert.</p>
+
+<h3>How the error bars are computed</h3>
+
+<p>Moving-block bootstrap over blocks of 10 consecutive decisions, resampled within a</p>
+<p>transcript and never across two, because consecutive decisions share candidates and a label</p>
+<p>window. Contrast families are Holm-corrected with one pre-specified primary.</p>
+
+<hr/>
+
+<h2>Results</h2>
+
+<h3>The dormancy gradient — the main finding</h3>
+
+<p><code>D</code> is the threshold that defines "dormant": a unit counts only if its files have not been</p>
+<p>touched for more than D turns. It re-labels rows without touching any score, so the whole</p>
+<p>sweep comes from one pass. Identifier space:</p>
+
+<table><thead>
+<tr><th>D</th><th>needed rows</th><th>tcov</th><th>relevance</th><th>recency</th><th>idle</th><th>random</th><th>best signal</th><th>tcov − random</th></tr></thead><tbody>
+<tr><td>10</td><td>2,553</td><td><strong>0.365</strong></td><td>0.3134</td><td>0.403</td><td>0.2764</td><td>0.2636</td><td>recency-only</td><td>+0.1015 [+0.0595, +0.1390] ★</td></tr>
+<tr><td>15</td><td>2,155</td><td><strong>0.3394</strong></td><td>0.2826</td><td>0.3467</td><td>0.1974</td><td>0.2489</td><td>recency-only</td><td>+0.0905 [+0.0507, +0.1333] ★</td></tr>
+<tr><td>20</td><td>1,780</td><td><strong>0.3184</strong></td><td>0.2804</td><td>0.2649</td><td>0.12</td><td>0.2383</td><td>tcov</td><td>+0.0801 [+0.0364, +0.1309] ★</td></tr>
+<tr><td>25</td><td>1,534</td><td><strong>0.3128</strong></td><td>0.2655</td><td>0.2118</td><td>0.0898</td><td>0.234</td><td>tcov</td><td>+0.0788 [+0.0230, +0.1293] ★</td></tr>
+<tr><td>35</td><td>1,261</td><td><strong>0.3133</strong></td><td>0.2549</td><td>0.111</td><td>0.0094</td><td>0.2071</td><td>tcov</td><td>+0.1063 [+0.0337, +0.1656] ★</td></tr>
+<tr><td>50</td><td>871</td><td><strong>0.3022</strong></td><td>0.2264</td><td>0.0138</td><td>0</td><td>0.1858</td><td>tcov</td><td>+0.1164 [+0.0265, +0.2021] ★</td></tr>
+</tbody></table>
+
+<figure><svg viewBox="0 0 720 330" role="img" aria-label="Recall against dormancy threshold by signal" style="max-width:100%;height:auto"><line x1="62" y1="278.0" x2="602" y2="278.0" stroke="#e3e3ea" stroke-width="1"/><text x="54" y="282.0" font-size="11" fill="#6a6a78" text-anchor="end">0.0</text><line x1="62" y1="226.4" x2="602" y2="226.4" stroke="#e3e3ea" stroke-width="1"/><text x="54" y="230.4" font-size="11" fill="#6a6a78" text-anchor="end">0.1</text><line x1="62" y1="174.9" x2="602" y2="174.9" stroke="#e3e3ea" stroke-width="1"/><text x="54" y="178.9" font-size="11" fill="#6a6a78" text-anchor="end">0.2</text><line x1="62" y1="123.3" x2="602" y2="123.3" stroke="#e3e3ea" stroke-width="1"/><text x="54" y="127.3" font-size="11" fill="#6a6a78" text-anchor="end">0.3</text><line x1="62" y1="71.8" x2="602" y2="71.8" stroke="#e3e3ea" stroke-width="1"/><text x="54" y="75.8" font-size="11" fill="#6a6a78" text-anchor="end">0.4</text><polyline points="62.0,89.8 129.5,103.0 197.0,113.8 264.5,116.7 399.5,116.5 602.0,122.2" fill="none" stroke="#2c6fbb" stroke-width="3"/><circle cx="62.0" cy="89.8" r="3" fill="#2c6fbb"/><circle cx="129.5" cy="103.0" r="3" fill="#2c6fbb"/><circle cx="197.0" cy="113.8" r="3" fill="#2c6fbb"/><circle cx="264.5" cy="116.7" r="3" fill="#2c6fbb"/><circle cx="399.5" cy="116.5" r="3" fill="#2c6fbb"/><circle cx="602.0" cy="122.2" r="3" fill="#2c6fbb"/><text x="608.0" y="126.2" font-size="10.5" fill="#2c6fbb">tcov</text><polyline points="62.0,116.4 129.5,132.3 197.0,133.4 264.5,141.1 399.5,146.6 602.0,161.3" fill="none" stroke="#e08a1e" stroke-width="2"/><circle cx="62.0" cy="116.4" r="3" fill="#e08a1e"/><circle cx="129.5" cy="132.3" r="3" fill="#e08a1e"/><circle cx="197.0" cy="133.4" r="3" fill="#e08a1e"/><circle cx="264.5" cy="141.1" r="3" fill="#e08a1e"/><circle cx="399.5" cy="146.6" r="3" fill="#e08a1e"/><circle cx="602.0" cy="161.3" r="3" fill="#e08a1e"/><text x="608.0" y="165.3" font-size="10.5" fill="#e08a1e">relevance</text><polyline points="62.0,70.2 129.5,99.3 197.0,141.4 264.5,168.8 399.5,220.8 602.0,270.9" fill="none" stroke="#c0392b" stroke-width="2"/><circle cx="62.0" cy="70.2" r="3" fill="#c0392b"/><circle cx="129.5" cy="99.3" r="3" fill="#c0392b"/><circle cx="197.0" cy="141.4" r="3" fill="#c0392b"/><circle cx="264.5" cy="168.8" r="3" fill="#c0392b"/><circle cx="399.5" cy="220.8" r="3" fill="#c0392b"/><circle cx="602.0" cy="270.9" r="3" fill="#c0392b"/><text x="608.0" y="274.9" font-size="10.5" fill="#c0392b">recency-only</text><polyline points="62.0,135.5 129.5,176.2 197.0,216.1 264.5,231.7 399.5,273.2 602.0,278.0" fill="none" stroke="#8e44ad" stroke-width="2"/><circle cx="62.0" cy="135.5" r="3" fill="#8e44ad"/><circle cx="129.5" cy="176.2" r="3" fill="#8e44ad"/><circle cx="197.0" cy="216.1" r="3" fill="#8e44ad"/><circle cx="264.5" cy="231.7" r="3" fill="#8e44ad"/><circle cx="399.5" cy="273.2" r="3" fill="#8e44ad"/><circle cx="602.0" cy="278.0" r="3" fill="#8e44ad"/><text x="608.0" y="282.0" font-size="10.5" fill="#8e44ad">idle-only</text><polyline points="62.0,142.1 129.5,149.7 197.0,155.1 264.5,157.4 399.5,171.2 602.0,182.2" fill="none" stroke="#8a8a98" stroke-width="1.5" stroke-dasharray="5 3"/><circle cx="62.0" cy="142.1" r="3" fill="#8a8a98"/><circle cx="129.5" cy="149.7" r="3" fill="#8a8a98"/><circle cx="197.0" cy="155.1" r="3" fill="#8a8a98"/><circle cx="264.5" cy="157.4" r="3" fill="#8a8a98"/><circle cx="399.5" cy="171.2" r="3" fill="#8a8a98"/><circle cx="602.0" cy="182.2" r="3" fill="#8a8a98"/><text x="608.0" y="186.2" font-size="10.5" fill="#8a8a98">random</text><text x="62.0" y="294" font-size="11" fill="#6a6a78" text-anchor="middle">10</text><text x="129.5" y="294" font-size="11" fill="#6a6a78" text-anchor="middle">15</text><text x="197.0" y="294" font-size="11" fill="#6a6a78" text-anchor="middle">20</text><text x="264.5" y="294" font-size="11" fill="#6a6a78" text-anchor="middle">25</text><text x="399.5" y="294" font-size="11" fill="#6a6a78" text-anchor="middle">35</text><text x="602.0" y="294" font-size="11" fill="#6a6a78" text-anchor="middle">50</text><text x="332.0" y="318" font-size="11.5" fill="#4a4a58" text-anchor="middle">dormancy threshold D (turns since the unit's files were last touched)</text><text x="62" y="24" font-size="13.5" font-weight="600" fill="#2b2b38">Keep-needed recall on dormant units, as "dormant" is made stricter (fp, M=32)</text></svg></figure>
+
+<p>Read across the table rather than down a column. At D=10 — barely dormant — positional</p>
+<p>recency is the best keeper, at 0.403. By D=50 it has fallen to</p>
+<p>0.0138 and reference-recency to 0: the two</p>
+<p>incumbent signals are near-useless on units that have genuinely gone quiet, which is precisely</p>
+<p>what the earlier finding about relevance describes and what the shipped scorer's protective</p>
+<p>terms are supposed to cover. <strong>Covariance barely moves</strong>, 0.365 to</p>
+<p>0.3022, and takes the lead from D=20 onward.</p>
+
+<p>That the D=10 subset is <em>won by positional recency</em> is itself informative: at that</p>
+<p>threshold the subset is not isolating deep dormancy at all. D=10 was inherited from an</p>
+<p>experiment whose "turn" was a different and shorter unit, and this is the first time it has</p>
+<p>been swept.</p>
+
+<h3>Against the random floor</h3>
+
+<p>The floor control is volume-matched — same budget, same candidates, random order.</p>
+
+<table><thead>
+<tr><th>feature space</th><th>tcov − random at D=10, M=32</th><th>interval</th><th></th></tr></thead><tbody>
+<tr><td><code>fp</code></td><td>+0.1015</td><td>[+0.0568, +0.1407]</td><td><strong>excludes 0</strong></td></tr>
+<tr><td><code>fp-nopath</code></td><td>+0.0844</td><td>[+0.0474, +0.1293]</td><td><strong>excludes 0</strong></td></tr>
+<tr><td><code>lex</code></td><td>+0.0354</td><td>[-0.0163, +0.0737]</td><td>contains 0</td></tr>
+</tbody></table>
+
+<figure><svg viewBox="0 0 720 300" role="img" aria-label="Covariance advantage over random by dormancy and feature space" style="max-width:100%;height:auto"><line x1="62" y1="174.2" x2="610" y2="174.2" stroke="#2b2b38" stroke-width="1.5"/><text x="616.0" y="178.2" font-size="10.5" fill="#2b2b38">no better than random</text><line x1="55.0" y1="136.5" x2="55.0" y2="86.0" stroke="#2c6fbb" stroke-width="1.6"/><circle cx="55.0" cy="109.8" r="3.6" fill="#2c6fbb" stroke="#2c6fbb" stroke-width="1.6"/><line x1="123.5" y1="142.1" x2="123.5" y2="89.6" stroke="#2c6fbb" stroke-width="1.6"/><circle cx="123.5" cy="116.8" r="3.6" fill="#2c6fbb" stroke="#2c6fbb" stroke-width="1.6"/><line x1="192.0" y1="151.1" x2="192.0" y2="91.2" stroke="#2c6fbb" stroke-width="1.6"/><circle cx="192.0" cy="123.4" r="3.6" fill="#2c6fbb" stroke="#2c6fbb" stroke-width="1.6"/><line x1="260.5" y1="159.6" x2="260.5" y2="92.2" stroke="#2c6fbb" stroke-width="1.6"/><circle cx="260.5" cy="124.2" r="3.6" fill="#2c6fbb" stroke="#2c6fbb" stroke-width="1.6"/><line x1="397.5" y1="152.8" x2="397.5" y2="69.2" stroke="#2c6fbb" stroke-width="1.6"/><circle cx="397.5" cy="106.8" r="3.6" fill="#2c6fbb" stroke="#2c6fbb" stroke-width="1.6"/><line x1="603.0" y1="157.4" x2="603.0" y2="46.0" stroke="#2c6fbb" stroke-width="1.6"/><circle cx="603.0" cy="100.4" r="3.6" fill="#2c6fbb" stroke="#2c6fbb" stroke-width="1.6"/><text x="616.0" y="60.0" font-size="11" fill="#2c6fbb">fp</text><line x1="62.0" y1="142.8" x2="62.0" y2="91.2" stroke="#1a8f6a" stroke-width="1.6"/><circle cx="62.0" cy="120.7" r="3.6" fill="#1a8f6a" stroke="#1a8f6a" stroke-width="1.6"/><line x1="130.5" y1="149.0" x2="130.5" y2="90.0" stroke="#1a8f6a" stroke-width="1.6"/><circle cx="130.5" cy="124.1" r="3.6" fill="#1a8f6a" stroke="#1a8f6a" stroke-width="1.6"/><line x1="199.0" y1="168.8" x2="199.0" y2="98.5" stroke="#1a8f6a" stroke-width="1.6"/><circle cx="199.0" cy="138.4" r="3.6" fill="#1a8f6a" stroke="#1a8f6a" stroke-width="1.6"/><line x1="267.5" y1="167.9" x2="267.5" y2="99.0" stroke="#1a8f6a" stroke-width="1.6"/><circle cx="267.5" cy="136.2" r="3.6" fill="#1a8f6a" stroke="#1a8f6a" stroke-width="1.6"/><line x1="404.5" y1="163.7" x2="404.5" y2="85.1" stroke="#1a8f6a" stroke-width="1.6"/><circle cx="404.5" cy="126.1" r="3.6" fill="#1a8f6a" stroke="#1a8f6a" stroke-width="1.6"/><line x1="610.0" y1="211.7" x2="610.0" y2="134.3" stroke="#1a8f6a" stroke-width="1.6"/><circle cx="610.0" cy="170.9" r="3.6" fill="#fff" stroke="#1a8f6a" stroke-width="1.6"/><text x="616.0" y="75.0" font-size="11" fill="#1a8f6a">fp-nopath</text><line x1="69.0" y1="182.5" x2="69.0" y2="131.1" stroke="#e08a1e" stroke-width="1.6"/><circle cx="69.0" cy="151.8" r="3.6" fill="#fff" stroke="#e08a1e" stroke-width="1.6"/><line x1="137.5" y1="184.2" x2="137.5" y2="130.3" stroke="#e08a1e" stroke-width="1.6"/><circle cx="137.5" cy="154.7" r="3.6" fill="#fff" stroke="#e08a1e" stroke-width="1.6"/><line x1="206.0" y1="191.3" x2="206.0" y2="128.0" stroke="#e08a1e" stroke-width="1.6"/><circle cx="206.0" cy="160.3" r="3.6" fill="#fff" stroke="#e08a1e" stroke-width="1.6"/><line x1="274.5" y1="199.5" x2="274.5" y2="137.0" stroke="#e08a1e" stroke-width="1.6"/><circle cx="274.5" cy="165.4" r="3.6" fill="#fff" stroke="#e08a1e" stroke-width="1.6"/><line x1="411.5" y1="205.1" x2="411.5" y2="138.0" stroke="#e08a1e" stroke-width="1.6"/><circle cx="411.5" cy="166.7" r="3.6" fill="#fff" stroke="#e08a1e" stroke-width="1.6"/><line x1="617.0" y1="248.0" x2="617.0" y2="162.4" stroke="#e08a1e" stroke-width="1.6"/><circle cx="617.0" cy="176.1" r="3.6" fill="#fff" stroke="#e08a1e" stroke-width="1.6"/><text x="616.0" y="90.0" font-size="11" fill="#e08a1e">lex</text><text x="62.0" y="264" font-size="11" fill="#6a6a78" text-anchor="middle">10</text><text x="130.5" y="264" font-size="11" fill="#6a6a78" text-anchor="middle">15</text><text x="199.0" y="264" font-size="11" fill="#6a6a78" text-anchor="middle">20</text><text x="267.5" y="264" font-size="11" fill="#6a6a78" text-anchor="middle">25</text><text x="404.5" y="264" font-size="11" fill="#6a6a78" text-anchor="middle">35</text><text x="610.0" y="264" font-size="11" fill="#6a6a78" text-anchor="middle">50</text><text x="336.0" y="288" font-size="11.5" fill="#4a4a58" text-anchor="middle">dormancy threshold D  ·  filled = interval excludes zero</text><text x="62" y="24" font-size="13.5" font-weight="600" fill="#2b2b38">Covariance minus the random floor (recall on dormant units, M=32)</text></svg></figure>
+
+<p>In both identifier spaces covariance is clear of the floor at every dormancy depth up to</p>
+<p>35. In the lexical space it never separates from it.</p>
+
+<h3>The pre-registered primary — and why it is the weaker test</h3>
+
+<p>The primary was: covariance beats <strong>relevance</strong> on the dormant subset at M=32,</p>
+<p>D=10, interval excluding zero.</p>
+
+<table><thead>
+<tr><th>feature space</th><th>tcov − relevance</th><th>interval</th><th></th><th>Holm p</th><th>Spearman(tcov, relevance)</th></tr></thead><tbody>
+<tr><td><code>fp</code></td><td>+0.0517</td><td>[-0.0042, +0.1085]</td><td>contains 0</td><td>0.63</td><td>0.0231</td></tr>
+<tr><td><code>fp-nopath</code></td><td>+0.0357</td><td>[-0.0105, +0.0825]</td><td>contains 0</td><td>0.58</td><td>-0.001</td></tr>
+<tr><td><code>lex</code></td><td>+0.0638</td><td>[+0.0133, +0.1001]</td><td><strong>excludes 0</strong></td><td>0.05</td><td>0.1184</td></tr>
+</tbody></table>
+
+<p>It fires in <code>lex</code> and misses in <code>fp</code> by a lower bound of -0.0042.</p>
+<p>But <code>lex</code> is the space where covariance does not beat random, so its win over relevance there</p>
+<p>reflects relevance being <em>worse than random</em> on dormant units rather than covariance being</p>
+<p>good. <strong>The pre-registration named the relabelling control and omitted the floor control</strong>, and</p>
+<p>the floor contrast turns out to be the more informative of the two. That hole was written into</p>
+<p>the design document before the run and is restated here rather than discovered afterwards.</p>
+
+<h3>The relabelling control, and the path-token control</h3>
+
+<p>Two ways this result could be an illusion, both tested.</p>
+
+<p><strong>Is it relevance renamed?</strong> No. The rank correlation between the two policy orderings is</p>
+<p>0.0231 in <code>fp</code>, -0.001 in</p>
+<p><code>fp-nopath</code> and 0.1184 in <code>lex</code> — against a pre-registered</p>
+<p>relabelling threshold of 0.8. They are close to orthogonal. The sensitivity</p>
+<p>arm agrees: putting the shared features back makes the signal <strong>worse</strong>, not better.</p>
+
+<table><thead>
+<tr><th>feature space</th><th>tcov-inclusive − tcov</th><th>interval</th><th></th></tr></thead><tbody>
+<tr><td><code>fp</code></td><td>-0.0417</td><td>[-0.1041, +0.0042]</td><td>contains 0</td></tr>
+<tr><td><code>fp-nopath</code></td><td>-0.0036</td><td>[-0.0522, +0.0314]</td><td>contains 0</td></tr>
+<tr><td><code>lex</code></td><td>-0.0485</td><td>[-0.0820, -0.0063]</td><td><strong>excludes 0</strong></td></tr>
+</tbody></table>
+
+<p><strong>Is it just file paths predicting file references?</strong> The label is a file reference and the</p>
+<p><code>fp</code> feature set contains paths, so the signal could be exploiting the label's own</p>
+<p>vocabulary. Stripping every path-bearing token leaves <code>fp-nopath</code> — camelCase, PascalCase,</p>
+<p>UPPER_SNAKE and back-quoted symbols only, 5.76 features per turn —</p>
+<p>and the advantage over random survives at</p>
+<p>+0.0844 [+0.0495, +0.1309].</p>
+<p>Whatever is carrying the signal, it is not path-to-path matching.</p>
+
+<h3>Overall ranking, for context</h3>
+
+<p>Covariance is a <em>specialist</em>. On the full label it is far behind the incumbents; its value is</p>
+<p>concentrated where they fail.</p>
+
+<table><thead>
+<tr><th>signal</th><th>AUC</th><th>recall@32 (all)</th><th>recall@32 (dormant, D=10)</th></tr></thead><tbody>
+<tr><td><code>tcov</code></td><td>0.6041 [+0.5871, +0.6218]</td><td>0.3283</td><td>0.365</td></tr>
+<tr><td><code>tcov-inclusive</code></td><td>0.7479 [+0.7270, +0.7722]</td><td>0.5641</td><td>0.3234</td></tr>
+<tr><td><code>relevance</code></td><td>0.8219 [+0.7957, +0.8422]</td><td>0.722</td><td>0.3134</td></tr>
+<tr><td><code>recency-only</code></td><td>0.7942 [+0.7633, +0.8159]</td><td>0.6826</td><td>0.403</td></tr>
+<tr><td><code>idle-only</code></td><td>0.8859 [+0.8683, +0.9030]</td><td>0.8039</td><td>0.2764</td></tr>
+<tr><td><code>random</code></td><td>0.4934 [+0.4862, +0.5035]</td><td>0.2797</td><td>0.2636</td></tr>
+</tbody></table>
+
+<hr/>
+
+<h2>What we got wrong</h2>
+
+<p><strong>"A pairwise co-reference signal is starved on agent transcripts."</strong> That was the conclusion</p>
+<p>of the previous report in this series, and it was over-general. What was measured — that</p>
+<p>80.1% of file-referencing turns name exactly one file,</p>
+<p>so two specific <em>files</em> are rarely active together — is correct and retires file-keyed pairwise</p>
+<p>signals cheaply. But the inference from "files are sparse" to "covariance is starved" skipped</p>
+<p>the step where the feature space is a free choice. On the same four transcripts, keyed on</p>
+<p>identifiers, support goes from 6.1% to</p>
+<p>84.3% and both gates pass.</p>
+
+<p>The failure mode is worth naming because it is the same shape as two of the five errors the</p>
+<p>previous report already lists: a measurement was correct and the conclusion drawn from it was</p>
+<p>broader than the measurement licensed. The corrective is structural rather than a matter of</p>
+<p>care — the feature space should have been a swept variable from the start, as it is here.</p>
+
+<hr/>
+
+<h2>What survives</h2>
+
+<p><strong>Covariance holds where the incumbents collapse.</strong> Across a 5× widening of the dormancy</p>
+<p>threshold, positional recency loses</p>
+<p>97%</p>
+<p>of its recall and reference-recency essentially all of it, while covariance loses</p>
+<p>17%. The</p>
+<p>mechanism the shipped scorer's relevance weight encodes — that similarity-based rules fail on</p>
+<p>dormant units — is visible directly in this table, and covariance is the first signal tested</p>
+<p>here that does not share the failure.</p>
+
+<p><strong>It is not the signal that already lost.</strong> Rank correlation with relevance is near zero in</p>
+<p>every space; removing the shared-feature exclusion makes it worse; and it survives deleting</p>
+<p>the token class that shares vocabulary with the label.</p>
+
+<p><strong>It is a specialist, not a replacement.</strong> On the full label covariance is well behind recency</p>
+<p>and reference-recency. Any deployment would be as an additional protective term for dormant</p>
+<p>units, not as a primary ordering — which is also the only role the evidence supports.</p>
+
+<p><strong>And a methodological point.</strong> The dormancy threshold that defines the "hard case" had been</p>
+<p>inherited unexamined across three experiments. Sweeping it changed which signal wins at four</p>
+<p>of the six values tested. A parameter that reorders the conclusion is not a detail.</p>
+
+<hr/>
+
+<h2>Caveats</h2>
+
+<ul><li><strong>The pre-registered primary does not cleanly fire.</strong> It fires only in the feature space</li></ul>
+<p>  where the signal does not beat random. The result rests on the floor contrast and the</p>
+<p>  dormancy gradient, both of which were secondary as written.</p>
+<ul><li><strong>One corpus, one repository, one author</strong>, four transcripts, and the largest supplies most</li></ul>
+<p>  decisions. Nothing here is between-problem evidence.</p>
+<ul><li><strong>The label is observational.</strong> A unit can be <em>used</em> without being named again; the model</li></ul>
+<p>  reasons from what it already read. Every signal is biased the same way, which protects the</p>
+<p>  comparisons but not the absolute rates.</p>
+<ul><li><strong>Turn-denominated parameters remain unrescaled</strong> — the hot window K=5, the horizon</li></ul>
+<p>  H=3 — inherited from an experiment measured on a ~2.2× different clock. D was swept</p>
+<p>  here precisely because it was the one doing the most damage; K and H have not been.</p>
+<ul><li><strong>Feature selection is capped</strong> at 24 features per turn, rarest-first, with</li></ul>
+<p>  features on more than 50% of turns dropped. Phi already scores near-universal</p>
+<p>  features zero, so the drop is close to lossless, but the lexical arm is capped hardest — it</p>
+<p>  retains 20.15 features per turn and</p>
+<p>  1,128 of its turns hit the cap, against</p>
+<p>  76 for <code>fp</code> — and its null result should be read with</p>
+<p>  that in mind: the cap may be removing exactly the reusable tokens.</p>
+<ul><li><strong>This is an eviction endpoint.</strong> The same scores read in reverse give an admission ranking,</li></ul>
+<p>  which is where relevance was said to belong. Admission is not measured and no claim about it</p>
+<p>  follows.</p>
+<ul><li><strong>No live arm.</strong> The instrument-sensitivity gate that would say whether a live comparison on</li></ul>
+<p>  this substrate can detect any selection effect is itself unresolved.</p>
+
+<hr/>
+<p>*Generated by <code>experiments/covariance-eviction/report-contextual-covariance.mjs</code> from</p>
+<p><code>results-contextual-covariance-v1.json</code>, <code>results-contextual-covariance-nopath.json</code>, <code>results-h2-corpus-survey.json</code>. Charts are inline SVG; the HTML version is self-contained.*</p>
+
+</main></body></html>

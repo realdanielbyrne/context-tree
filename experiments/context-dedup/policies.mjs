@@ -137,6 +137,22 @@ export const rankBlend = (alpha) => (units, anchorIdx, idle) => {
     (alpha * idleRank.get(b) + (1 - alpha) * posRank.get(b)));
 };
 
+/**
+ * ORACLE (positive control only — NOT a shippable policy). Sacrifices units the
+ * label marks worthless before anything else, then falls back to positional
+ * recency. It differs from `rankRecency` in exactly one respect, so the
+ * oracle-vs-truncate-tail contrast isolates "knowing which units are junk" and
+ * nothing else.
+ *
+ * A real policy cannot compute `isJunk`. This exists to put a ceiling on what
+ * any selection signal could buy, and to prove the harness can see such a
+ * difference at all.
+ */
+export const rankOracle = (isJunk) => (units, anchorIdx) => {
+  const junk = units.map((u, i) => (isJunk(u, i, units) ? 1 : 0));
+  return nonAnchor(units, anchorIdx).sort((a, b) => (junk[a] - junk[b]) || (b - a));
+};
+
 /** PROTECTION: units fresher than `g` are never evicted, even under budget pressure. */
 export const rankProtect = (g) => (units, anchorIdx, idle) =>
   nonAnchor(units, anchorIdx).sort((a, b) => {
@@ -148,3 +164,4 @@ export const evictByBlend = (messages, W, alpha, opts) => evictToBudget(messages
 export const evictByRecency = (messages, W, opts) => evictToBudget(messages, W, rankRecency, opts);
 export const evictByRandom = (messages, W, rng, opts) => evictToBudget(messages, W, rankRandom(rng), opts);
 export const evictByIdle = (messages, W, opts) => evictToBudget(messages, W, rankIdle, opts);
+export const evictByOracle = (messages, W, isJunk, opts) => evictToBudget(messages, W, rankOracle(isJunk), opts);

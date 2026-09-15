@@ -1,0 +1,19 @@
+
+--- rep0 W=7000 uncapped-clean ---
+rrrrrrrrwrwrrreeeerrrreerrrreererrrrrrrreeerrrrreerrwr·
+    -> PASS turns=55 writes=17 evict=0 peak=18650 useful=10085 junk%=0 tok=608979
+
+--- rep1 W=7000 uncapped-clean ---
+rrrrrrrrwrrrrerrrwrerreererreererrrrrrrreererrerrewr·
+    -> PASS turns=53 writes=16 evict=0 peak=19086 useful=10369 junk%=0 tok=595154
+
+=== SENSITIVITY CONTROL [longbuild(ledger, 6 stages, stdlib unittest)] model=unsloth/Qwen3.8-27B-GGUF n=2 ===
+  cell                        n  pass   peak  useful  junk%  evict  wr  err  nowr  tokens
+  uncapped-clean@inf         2  2/2  18868   10227     0%      0  16.5    0     0  602066.5
+
+  pre-registered tests (one-sided Fisher):
+
+  validity:
+    W=7000  clean=null random=null attempted=n/a  -> NOT EVALUABLE HERE (validity arms not present in this run (ARMS=uncapped-clean); combine with the run that has them)
+  PARTIAL RUN — missing arms: oracle, truncate-tail, idle, random, clean; the pre-registration cannot be evaluated from this file alone.
+  written: /home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/results-sens-uncapped-clean.json

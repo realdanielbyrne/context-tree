@@ -1,0 +1,121 @@
+{
+  "manifest": {
+    "run_id": "sensitivity-control-longbuild-1789437273191",
+    "experiment": "context-dedup / instrument-sensitivity positive control (ballast)",
+    "model": "unsloth/Qwen3.8-27B-GGUF",
+    "task": "longbuild(ledger, 6 stages, stdlib unittest)",
+    "windows": [
+      7000
+    ],
+    "repeats": 1,
+    "arms": [
+      "oracle",
+      "random"
+    ],
+    "max_turns": 60,
+    "anchor": 4,
+    "ballast": {
+      "tokens_each": 400,
+      "every_turns": 2,
+      "burst": 2,
+      "pool": 20
+    },
+    "commit": "25e3006469682a653fbc6b7c62153028214d809e",
+    "date": "2026-09-15T01:54:33.194Z",
+    "question": "Can this harness detect selection quality at all? If an oracle that drops provably-worthless units by construction cannot beat a volume-matched random control, the harness is blind and every previous selection null is uninformative rather than negative.",
+    "falsification": "ORACLE must beat RANDOM at one-sided Fisher p < 0.05. If it does not, the instrument is blind: withdraw the arm/idle/position/cadence nulls as evidence of no effect and redesign backlog items 1, 2, 6, 7 before running them.",
+    "caveats": [
+      "The oracle is NOT a shippable policy — it reads a label no real policy can compute. It is an upper bound and a calibration device.",
+      "Ballast can hurt by DISPLACING budget or by DISTRACTING the model. The uncapped-ballast arm separates them; distractor_reads records whether the model chased the junk.",
+      "C0 still applies: one problem (longbuild), so this measures within-problem sensitivity only.",
+      "Ballast is synthetic and lexically unlike the task. Real irrelevant context is more confusable, so this is the EASY version of selection — a null here is damning, a win here is only a ceiling.",
+      "Grading is all-or-nothing; FAIL cells are not distinguished by how close they came."
+    ]
+  },
+  "summary": [
+    {
+      "cell": "oracle@7000",
+      "n": 1,
+      "passes": 0,
+      "pass_rate": 0,
+      "turns_median": 61,
+      "rereads_median": 44,
+      "evictions_median": 54,
+      "peak_median": 6208,
+      "ballast_share_mean": 0.2228,
+      "distractor_reads_median": 60,
+      "total_tokens_median": 440597,
+      "cap_violations_total": 0
+    },
+    {
+      "cell": "random@7000",
+      "n": 1,
+      "passes": 0,
+      "pass_rate": 0,
+      "turns_median": 61,
+      "rereads_median": 42,
+      "evictions_median": 54,
+      "peak_median": 6193,
+      "ballast_share_mean": 0.5381,
+      "distractor_reads_median": 60,
+      "total_tokens_median": 442889,
+      "cap_violations_total": 0
+    }
+  ],
+  "tests": [
+    {
+      "window": 7000,
+      "treatment": "oracle",
+      "control": "random",
+      "treatment_passes": "0/1",
+      "control_passes": "0/1",
+      "p_one_sided": 1
+    }
+  ],
+  "cells": [
+    {
+      "arm": "oracle",
+      "window": 7000,
+      "repeat": 0,
+      "pass": false,
+      "turns": 61,
+      "stop": "maxTurns",
+      "evictions": 54,
+      "cap_violations": 0,
+      "units_kept_last": 14,
+      "ballast_injected": 60,
+      "ballast_share_mean": 0.2228,
+      "ballast_tokens_last": 862,
+      "distractor_reads": 60,
+      "reads": 60,
+      "rereads": 44,
+      "peak_history_tokens": 6208,
+      "peak_before_evict": 7507,
+      "total_prompt_tokens": 440597,
+      "wall_seconds": 167,
+      "error": null
+    },
+    {
+      "arm": "random",
+      "window": 7000,
+      "repeat": 0,
+      "pass": false,
+      "turns": 61,
+      "stop": "maxTurns",
+      "evictions": 54,
+      "cap_violations": 0,
+      "units_kept_last": 14,
+      "ballast_injected": 60,
+      "ballast_share_mean": 0.5381,
+      "ballast_tokens_last": 3018,
+      "distractor_reads": 60,
+      "reads": 60,
+      "rereads": 42,
+      "peak_history_tokens": 6193,
+      "peak_before_evict": 7492,
+      "total_prompt_tokens": 442889,
+      "wall_seconds": 152,
+      "error": null
+    }
+  ]
+}

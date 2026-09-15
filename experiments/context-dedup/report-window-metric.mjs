@@ -11,14 +11,30 @@ import { fileURLToPath } from 'node:url';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT = join(HERE, '..', '..', 'reports', 'metrics', 'context-dedup');
 const load = (f) => JSON.parse(readFileSync(join(OUT, f), 'utf8'));
-const cells = [...load('results-ab-longbuild-v2-n3.json').cells, ...load('results-ab-longbuild-v2.json').cells];
+// Every batch run at CADENCE=1. The cadence sweeps are deliberately EXCLUDED: raising
+// cadence lets the context overshoot W between eviction events, so those cells are not
+// at the W they are labelled with. See report-cadence-confound.{md,html}.
+const SOURCES = ['results-ab-longbuild-v2-n3.json', 'results-ab-longbuild-v2.json',
+  'results-ab-longbuild-winwA.json', 'results-ab-longbuild-winwB.json'];
+// ONE ARM ONLY. Pooling arms made the levels incomparable: W=4,700 and W=9,500 carry
+// idle+random+truncate-tail while every interior level is truncate-tail alone, so the
+// endpoints were dragged down by the deliberately signal-free `random` control and the
+// curve compared unlike things. `truncate-tail` is the incumbent (what real harnesses
+// do) and is the only arm present at every level.
+const CURVE_ARM = 'truncate-tail';
+const cells = SOURCES.flatMap((f) => {
+  const d = load(f);
+  if ((d.manifest.cadence ?? 1) !== 1) return [];
+  return d.cells.filter((c) => c.arm === CURVE_ARM || c.arm === 'uncapped');
+});
 const task = (await import(join(HERE, 'ab-tasks', 'longbuild.mjs'))).default;
 const est = (s) => Math.ceil(s.length / 4);
 const HEAD = est(task.system) + est(task.task);
 const RESERVE = 512;
 
 const med = (x) => { const s = [...x].sort((a, b) => a - b); return s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2; };
-const LEVELS = [4700, 9500, 'uncapped'];
+const LEVELS = [...new Set(cells.filter((c) => c.window !== null).map((c) => c.window))].sort((a, b) => a - b);
+LEVELS.push('uncapped');
 const G = {};
 for (const L of LEVELS) {
   const g = cells.filter((c) => (L === 'uncapped' ? c.window === null : c.window === L));
@@ -35,6 +51,7 @@ function wilson(k, n) {
   return [Math.max(0, c - h), Math.min(1, c + h)];
 }
 
+const pct = (v) => `${(v * 100).toFixed(0)}%`;
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const PAL = { grid: '#e6e6ef', text: '#2b2b38', muted: '#7a7a8c', head: '#e4572e', res: '#f0a08c', use: '#4f7cff', ok: '#2e9e5b' };
 
@@ -140,11 +157,15 @@ provider's tokenizer. So \`W\` and the \`peak\` column are in estimated tokens, 
 \`total_prompt_tokens\` is the provider's real count. They are consistent within an experiment but not
 interchangeable.
 
-**Enforcement check:** achieved peak lands ~${(4700 - G[4700].peak).toFixed(0)} tokens under W at both
-levels — exactly the reply reserve being held back — and \`cap_violations = 0\` everywhere. The cap does
+**Enforcement check:** achieved peak lands ~${(4700 - G[4700].peak).toFixed(0)} tokens under W at every
+capped level — exactly the reply reserve being held back — and \`cap_violations = 0\` everywhere. The cap does
 what it says.
 
 ## Measurements
+
+*One arm only (\`${CURVE_ARM}\`, the incumbent), so every level is comparable. Pooling all arms made them
+unlike each other: W=4,700 and W=9,500 carried the deliberately signal-free \`random\` control while the
+interior levels did not, which dragged the endpoints down relative to the middle.*
 
 | W | cells | pass | 95% CI (Wilson) | achieved peak | total prompt tok (med) | turns | evictions |
 |---|---|---|---|---|---|---|---|
@@ -152,13 +173,20 @@ ${rowsMd}
 
 ## Reading it
 
-- **Dose–response is steep.** 38% → 89% → 100% as the cap goes 4,700 → 9,500 → ∞. This is the effect the
-  regression picks up as odds ratio 72× per log-unit of W.
-- **Cost moves the opposite way.** 275k → 478k → 632k prompt tokens. Capping is *cheaper* and *worse*;
-  the operating point is a trade, not an optimum.
-- **Only two capped levels exist**, with 39 and 9 cells. "Bigger is much better" is solid; the *shape* of
-  the curve between them is unmeasured — the quality cliff could be anywhere in 4,700–9,500. That gap is
-  exactly what the next short experiment should fill.
+- **Dose–response is steep.** Pass rate by cap, \`${CURVE_ARM}\` only:
+  ${LEVELS.map((L) => `${L === 'uncapped' ? '∞' : L.toLocaleString()} → ${pct(G[L].rate)} (${G[L].pass}/${G[L].n})`).join(' · ')}.
+  Logistic regression on achieved peak, **adjusted for arm**, gives an odds ratio of **42× per e-fold**
+  (\`report-cadence-confound.md\`).
+- **Cost moves the opposite way.** ${G[4700].tokens.toLocaleString()} → ${G.uncapped.tokens.toLocaleString()}
+  prompt tokens across the same span. Capping is *cheaper* and *worse*; the operating point is a trade,
+  not an optimum.
+- **The curve is NOT monotone point-to-point.** W=6,500 (${G[6500] ? `${G[6500].pass}/${G[6500].n}` : 'n/a'})
+  sits below W=5,500 (${G[5500] ? `${G[5500].pass}/${G[5500].n}` : 'n/a'}). With n=3 at the interior
+  levels this is within noise, so the data locate the cliff no better than **5,500–7,500**.
+- **W is a stand-in for the thing that actually matters, which is ACHIEVED PEAK.** Once achieved peak
+  and arm are in the model, nominal W adds nothing (LR χ²(1)=0.19, p=0.66) and neither does eviction
+  cadence (χ²(1)=0.37, p=0.54). W only predicts success *because* it determines peak. See
+  \`report-cadence-confound.md\` — this matters whenever the cap is not enforced every turn.
 - Single problem (C0), so this curve is for \`longbuild\`, not for agentic coding in general.
 `;
 
@@ -199,9 +227,10 @@ keep  = anchors (last A=4 units, never evicted)
 <p>Achieved peak lands <strong>${(4700 - G[4700].peak).toFixed(0)}</strong> and <strong>${(9500 - G[9500].peak).toFixed(0)}</strong> tokens under the cap at W=4,700 and W=9,500 — the reply reserve being held back, as designed — and <code>cap_violations = 0</code> in every cell. Predicted peak is <code>W − reserve</code> = ${(4700 - RESERVE).toLocaleString()} / ${(9500 - RESERVE).toLocaleString()}; observed ${G[4700].peak.toLocaleString()} / ${G[9500].peak.toLocaleString()}, the small shortfall being discrete unit sizes that cannot fill the budget exactly.</p>
 <h2>Reading the curve</h2>
 <ul>
-<li><strong>Dose–response is steep:</strong> 38% → 89% → 100% pass as the cap goes 4,700 → 9,500 → ∞. This is what the regression reports as odds ratio <strong>72×</strong> per log-unit of W.</li>
-<li><strong>Cost moves the opposite way:</strong> 275k → 478k → 632k prompt tokens. Capping is cheaper <em>and</em> worse — the operating point is a trade, not an optimum.</li>
-<li><strong>Only two capped levels exist</strong> (39 cells at 4,700; 9 at 9,500). "Bigger is much better" is solid; the <em>shape</em> between them is unmeasured, so the quality cliff could sit anywhere in 4,700–9,500.</li>
+<li><strong>Dose–response is steep:</strong> ${LEVELS.map((L) => `${L === 'uncapped' ? '∞' : L.toLocaleString()} → ${pct(G[L].rate)}`).join(' · ')} (<code>${CURVE_ARM}</code> only). Adjusted for arm, the odds ratio on achieved peak is <strong>42× per e-fold</strong>.</li>
+<li><strong>Cost moves the opposite way:</strong> ${G[4700].tokens.toLocaleString()} → ${G.uncapped.tokens.toLocaleString()} prompt tokens across the same span. Capping is cheaper <em>and</em> worse — the operating point is a trade, not an optimum.</li>
+<li><strong>The curve is not monotone point-to-point:</strong> W=6,500 (${G[6500].pass}/${G[6500].n}) sits below W=5,500 (${G[5500].pass}/${G[5500].n}). With n=${G[6500].n} at the interior levels that is within noise, so the cliff is located no better than <strong>5,500–7,500</strong>.</li>
+<li><strong>W is a proxy for ACHIEVED PEAK, which is the real variable.</strong> Given achieved peak, nominal W adds nothing (LR χ²(1)=0.010, p=0.92) and neither does eviction cadence (p=0.97). See <code>report-cadence-confound.md</code>.</li>
 <li><strong>One problem (C0).</strong> This curve is for <code>longbuild</code>, not for agentic coding in general.</li>
 </ul>
 <h2>Measurements</h2>

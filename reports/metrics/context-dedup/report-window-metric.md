@@ -32,27 +32,42 @@ provider's tokenizer. So `W` and the `peak` column are in estimated tokens, whil
 `total_prompt_tokens` is the provider's real count. They are consistent within an experiment but not
 interchangeable.
 
-**Enforcement check:** achieved peak lands ~518 tokens under W at both
-levels — exactly the reply reserve being held back — and `cap_violations = 0` everywhere. The cap does
+**Enforcement check:** achieved peak lands ~519 tokens under W at every
+capped level — exactly the reply reserve being held back — and `cap_violations = 0` everywhere. The cap does
 what it says.
 
 ## Measurements
 
+*One arm only (`truncate-tail`, the incumbent), so every level is comparable. Pooling all arms made them
+unlike each other: W=4,700 and W=9,500 carried the deliberately signal-free `random` control while the
+interior levels did not, which dragged the endpoints down relative to the middle.*
+
 | W | cells | pass | 95% CI (Wilson) | achieved peak | total prompt tok (med) | turns | evictions |
 |---|---|---|---|---|---|---|---|
-| 4,700 | 39 | 15/39 (38%) | 25–54% | 4,182 | 275,246 | 61 | 40 |
-| 9,500 | 9 | 8/9 (89%) | 56–98% | 8,971 | 477,501 | 58 | 25 |
+| 4,700 | 13 | 6/13 (46%) | 23–71% | 4,181 | 273,290 | 61 | 40 |
+| 5,500 | 3 | 2/3 (67%) | 21–94% | 4,983 | 308,144 | 58 | 34 |
+| 6,500 | 3 | 1/3 (33%) | 6–79% | 5,972 | 374,228 | 61 | 32 |
+| 7,500 | 3 | 3/3 (100%) | 44–100% | 6,977 | 409,065 | 58 | 32 |
+| 8,500 | 3 | 3/3 (100%) | 44–100% | 7,972 | 426,197 | 56 | 25 |
+| 9,500 | 3 | 3/3 (100%) | 44–100% | 8,971 | 499,612 | 61 | 25 |
 | ∞ (uncapped) | 3 | 3/3 (100%) | 44–100% | 20,993 | 632,225 | 53 | 0 |
 
 ## Reading it
 
-- **Dose–response is steep.** 38% → 89% → 100% as the cap goes 4,700 → 9,500 → ∞. This is the effect the
-  regression picks up as odds ratio 72× per log-unit of W.
-- **Cost moves the opposite way.** 275k → 478k → 632k prompt tokens. Capping is *cheaper* and *worse*;
-  the operating point is a trade, not an optimum.
-- **Only two capped levels exist**, with 39 and 9 cells. "Bigger is much better" is solid; the *shape* of
-  the curve between them is unmeasured — the quality cliff could be anywhere in 4,700–9,500. That gap is
-  exactly what the next short experiment should fill.
+- **Dose–response is steep.** Pass rate by cap, `truncate-tail` only:
+  4,700 → 46% (6/13) · 5,500 → 67% (2/3) · 6,500 → 33% (1/3) · 7,500 → 100% (3/3) · 8,500 → 100% (3/3) · 9,500 → 100% (3/3) · ∞ → 100% (3/3).
+  Logistic regression on achieved peak, **adjusted for arm**, gives an odds ratio of **42× per e-fold**
+  (`report-cadence-confound.md`).
+- **Cost moves the opposite way.** 273,290 → 632,225
+  prompt tokens across the same span. Capping is *cheaper* and *worse*; the operating point is a trade,
+  not an optimum.
+- **The curve is NOT monotone point-to-point.** W=6,500 (1/3)
+  sits below W=5,500 (2/3). With n=3 at the interior
+  levels this is within noise, so the data locate the cliff no better than **5,500–7,500**.
+- **W is a stand-in for the thing that actually matters, which is ACHIEVED PEAK.** Once achieved peak
+  and arm are in the model, nominal W adds nothing (LR χ²(1)=0.19, p=0.66) and neither does eviction
+  cadence (χ²(1)=0.37, p=0.54). W only predicts success *because* it determines peak. See
+  `report-cadence-confound.md` — this matters whenever the cap is not enforced every turn.
 - Single problem (C0), so this curve is for `longbuild`, not for agentic coding in general.
 
 > Charts in the HTML twin: `report-window-metric.html`.

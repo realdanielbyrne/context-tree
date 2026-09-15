@@ -1,0 +1,238 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Deleting context less often did not help</title><style>
+:root{color-scheme:light}
+body{margin:0;background:#fbfbfd;color:#1b1c1e;font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+main{max-width:880px;margin:0 auto;padding:36px 20px 80px}
+h1{font-size:29px;line-height:1.2;margin:0 0 4px}
+.sub{color:#5f6368;font-style:italic;margin:0 0 20px}
+h2{font-size:21px;margin:40px 0 12px;border-bottom:1px solid #e3e3ea;padding-bottom:7px}
+h3{font-size:16.5px;margin:26px 0 8px}
+p{margin:12px 0}
+.retract{background:#fff4ed;border-left:4px solid #e4572e;padding:14px 18px;border-radius:0 6px 6px 0;margin:18px 0}
+.exec{background:#f3f6fb;border:1px solid #d9e2f0;border-radius:10px;padding:20px 24px;margin:20px 0 28px}
+.exec h2{margin-top:0;border:0;padding:0;font-size:19px}
+.key{background:#eef7f0;border-left:4px solid #2e9e5b;padding:14px 18px;border-radius:0 6px 6px 0;margin:18px 0}
+.chart{background:#fff;border:1px solid #e3e3ea;border-radius:10px;padding:16px;margin:18px 0;overflow-x:auto}
+table{border-collapse:collapse;width:100%;margin:14px 0;font-size:14px;background:#fff;display:block;overflow-x:auto}
+th,td{border:1px solid #e3e3ea;padding:8px 11px;text-align:left;vertical-align:top}
+th{background:#f4f5fa;font-weight:600;white-space:nowrap}
+code,pre{background:#f0f0f6;border-radius:4px;font-size:13.5px}code{padding:1px 5px}pre{padding:11px 13px;overflow-x:auto}
+ul,ol{padding-left:24px}li{margin:8px 0}
+footer{color:#7a7a8c;font-size:12.5px;margin-top:44px;border-top:1px solid #e3e3ea;padding-top:14px}
+</style></head><body><main>
+
+<h1>Deleting context less often did not help — it just kept more context</h1>
+<p class="sub">A correction. A result this project reported two days ago does not survive re-analysis.</p>
+<div class="retract"><strong>This supersedes the claim recorded in commit <code>25e3006</code></strong>,
+which read: <em>"Sawtooth beats a wider flat window: W=4700/N=10 matches W=7500/N=1 at 100% pass with 15%
+fewer tokens and 6× fewer evictions."</em> The task-success half of that claim is withdrawn. The cost half
+survives, restated.</div>
+
+<div class="exec">
+<h2>Abstract</h2>
+<p>An AI coding agent re-sends its whole working transcript to the model on every step, so on a long task the
+transcript outgrows the model's input limit and material must be deleted. One tunable in such a system is
+<strong>how often</strong> the deletion routine runs: every step, or every few steps. Running it less often is
+cheaper, because each deletion invalidates the provider's cache of the prompt prefix, but it allows the
+transcript to overshoot the limit in between.</p>
+<p>We swept deletion frequency over 78 runs of a fixed programming task and reported that running
+it every 10th step raised task success from 38% to 100% at the same nominal size limit — a large, apparently
+free win. <strong>That result was confounded.</strong> The deletion routine was gated behind the frequency
+counter, so on steps where it did not run, nothing enforced the limit at all. The less frequently it ran, the
+more the transcript was allowed to grow, and the runs labelled with a 4,700-token limit were in fact sending
+<strong>7,657 tokens</strong> — more than the runs labelled with a 7,500-token limit
+(6,977).</p>
+<p>Re-analysing all 78 runs against the transcript size <strong>actually sent</strong> rather
+than the nominal limit: deletion frequency contributes nothing once actual size is known
+(p = 0.5441), the nominal limit contributes nothing either (p = 0.6596), and actual transcript
+size is decisive (p = 0.0002; odds of success multiply by <strong>41.83×</strong> for each
+e-fold increase). Deletion frequency predicted success only because it determined transcript size.</p>
+<p><strong>What survives is a cost result, not a quality one.</strong> At comparable transcript size the
+infrequent-deletion runs were materially cheaper — 349,308 tokens billed with
+5 deletions, against 409,065 and 32 for the every-step
+runs. The design implication changes accordingly: do not tune deletion frequency expecting better task
+performance. Tune the quantity that actually predicts it — how much of the transcript is present when the
+model is called — and then use deletion frequency to obtain that quantity as cheaply as possible.</p>
+</div>
+
+<h2>What you need to know to read the rest</h2>
+<table><thead><tr><th>Term</th><th>Meaning</th></tr></thead><tbody>
+<tr><td><strong>Agent</strong></td><td>An AI model given tools (read a file, write a file, run a command) and a goal, running in a loop until it decides it is done.</td></tr>
+<tr><td><strong>Transcript / context</strong></td><td>Everything the model sees on a given step: the instructions plus the full history of what it has read, written and run. Re-sent in full every step.</td></tr>
+<tr><td><strong>Token</strong></td><td>The unit context is measured in — roughly ¾ of a word. Counts are estimates (characters ÷ 4) unless stated otherwise.</td></tr>
+<tr><td><strong>Size limit (<code>W</code>)</strong></td><td>An artificial ceiling we impose on the transcript so overflow happens quickly enough to study. The model's real limit is 262,144 tokens, far more than this task needs.</td></tr>
+<tr><td><strong>Eviction</strong></td><td>Deleting older material from the transcript to get back under the limit.</td></tr>
+<tr><td><strong>Deletion frequency (<code>N</code>)</strong></td><td>How often the eviction routine runs: N=1 every step, N=10 every tenth step. The variable this experiment swept.</td></tr>
+<tr><td><strong>Achieved peak</strong></td><td>The largest transcript actually sent to the model during a run. This turns out to be the quantity that matters, and it is <strong>not</strong> the same as the size limit.</td></tr>
+<tr><td><strong>Run</strong></td><td>One complete attempt at the task under one combination of settings.</td></tr>
+<tr><td><strong>Pass</strong></td><td>The task was completed correctly, judged by a hidden test suite the agent never sees.</td></tr>
+<tr><td><strong>Odds ratio</strong></td><td>How much the odds of passing multiply when a variable increases. "41.83× per e-fold" means multiplying transcript size by 2.7 multiplies the odds of success by about 41.83.</td></tr>
+<tr><td><strong>p-value</strong></td><td>The probability of seeing an association this strong if the variable really had no effect. Small means probably real; large means indistinguishable from nothing.</td></tr>
+</tbody></table>
+
+<h2>Why we ran this</h2>
+<p>Deleting material from the transcript is not free. Providers cache the prompt so repeated prefixes are
+billed at roughly a tenth of the normal rate, but that cache is keyed on the prefix: change any earlier byte
+and everything after it must be re-cached at a premium. Deleting from the middle of the transcript therefore
+throws away the discount for the rest of the prompt.</p>
+<p>That cost is paid <strong>per deletion</strong>, while the discount accrues <strong>per step</strong>. So
+deleting less often should be cheaper, and an earlier simulation put the saving at 25–39% versus never
+deleting at all. The open question was what infrequent deletion does to <em>task success</em>, which the
+simulation could not measure. This sweep was the live arm meant to answer it.</p>
+
+<h2>The experimental setup</h2>
+<h3>The task</h3>
+<p>Every run is the same job, called <code>longbuild</code>. The agent starts in a workspace holding a README,
+13 specification documents (~20,000 characters in total) describing a small Python accounting library, five
+empty Python stubs to fill in (<code>money.py</code>, <code>parsing.py</code>, <code>rules.py</code>,
+<code>report.py</code>, <code>cli.py</code>), and a visible test suite it may run at any time. It works through
+six stages — read a stage's specification, implement it, run the tests, fix failures, move on — until it
+declares itself done or hits a 60-step ceiling. Runs take roughly 53 to 61 steps.</p>
+<p><strong>Passing</strong> is decided by a <em>held-out</em> test suite written into the workspace only after
+the agent stops, exercising the same specified behaviour on different data. The agent never sees it, so it
+cannot pass by special-casing the tests it can read.</p>
+<p>The task is this long deliberately. An agent with a shell recovers almost anything it loses — if a file
+falls out of its transcript it simply reads the file again. The one thing no tool call can recover is the
+transcript itself: its own earlier reasoning, tool calls and test output. Pressure on the transcript is
+therefore inherently long-horizon and has to be built up over many steps of real work.</p>
+<h3>What was varied</h3>
+<ul>
+<li><strong>Size limit <code>W</code></strong> — 4,700, 5,500, 6,500, 7,500, 8,500, 9,500 tokens.</li>
+<li><strong>Deletion frequency <code>N</code></strong> — 1, 2, 5, 10 (delete every N-th step).</li>
+</ul>
+<p>78 runs in total, across 7 batches.</p>
+<h3>The eviction signal, and why it is a third variable</h3>
+<p>When the limit binds, something has to choose <em>which</em> material goes. <strong>Each run used exactly
+one of three rules</strong>, and the runs in this dataset are pooled across all three — no run mixes them, but
+the dataset does.</p>
+<table><thead><tr><th>Rule</th><th>What it keeps</th><th>Role</th></tr></thead><tbody>
+<tr><td><code>truncate-tail</code></td><td>the most recent material that fits — oldest goes first</td><td>The incumbent: what ordinary agent harnesses do.</td></tr>
+<tr><td><code>idle</code></td><td>the material whose files were referenced most recently, regardless of position</td><td>The candidate: a least-recently-used rule keyed on file references rather than position.</td></tr>
+<tr><td><code>random</code></td><td>a random subset that fits</td><td>The control: no signal at all, but the same volume kept, so any difference from the other two is attributable to the <em>choice</em> rather than the amount.</td></tr>
+</tbody></table>
+<p>All three fit the same budget and protect the same most-recent items; they differ only in the order they
+sacrifice the rest. A separate experiment (13 runs per rule) found <strong>no measurable difference</strong>
+between <code>truncate-tail</code> and <code>idle</code> (p = 1.000), and a weak advantage for having
+<em>any</em> signal over <code>random</code> (p = 0.045).</p>
+<p>The rules are <strong>not evenly spread across the settings</strong> — the <code>random</code> control
+appears only at the every-step frequency — so it is entangled with the variable under test. Every statistical
+model below therefore adjusts for which rule a run used; the "Rules present" column in the results table shows
+the mix in each cell.</p>
+<h3>What was recorded</h3>
+<p>For each run: whether it passed, the <strong>achieved peak</strong> (the largest transcript actually sent),
+how many deletions occurred, and the total tokens billed across the whole run.</p>
+
+<h2>The bug</h2>
+<p>Eviction was gated behind the frequency counter:</p>
+<pre>const fire = (turnNo++ % CADENCE) === 0;   // deletion-frequency gate
+const r = fire ? evict(m) : NOOP;</pre>
+<p>On steps where the gate does not fire, <strong>nothing checks the size limit</strong>. The transcript simply
+grows. So at N &gt; 1 the nominal <code>W</code> is not a size limit at all — it is a <em>trigger
+threshold</em>: the point at which the next scheduled deletion will cut back. The transcript actually sent is
+the peak of the resulting sawtooth.</p>
+<p>The instrumentation was never wrong about this. <code>peak_history_tokens</code> was already being sampled
+<em>after</em> the (possibly skipped) deletion, so it recorded the true size all along. The error was in the
+interpretation: comparing runs by the label <code>W</code> rather than by what they actually sent.</p>
+<div class="retract">The runs labelled <code>W=4,700</code> with N=10 sent
+<strong>7,657 tokens</strong> — larger than the 6,977 sent by
+the runs labelled <code>W=7,500</code> with N=1. The infrequent-deletion configuration was never fitting into
+a smaller window. It was fitting into a slightly larger one.</div>
+<div class="chart"><svg viewBox="0 0 760 300" role="img" style="max-width:100%;height:auto"><text x="62" y="24" font-size="14" font-weight="600" fill="#2b2b38">Blue = pass rate · Orange = achieved peak (k tokens, scaled to 9k)</text><line x1="62" y1="240" x2="736" y2="240" stroke="#e6e6ef"/><text x="54" y="244" font-size="11" fill="#7a7a8c" text-anchor="end">0%</text><line x1="62" y1="191" x2="736" y2="191" stroke="#e6e6ef"/><text x="54" y="195" font-size="11" fill="#7a7a8c" text-anchor="end">25%</text><line x1="62" y1="142" x2="736" y2="142" stroke="#e6e6ef"/><text x="54" y="146" font-size="11" fill="#7a7a8c" text-anchor="end">50%</text><line x1="62" y1="93" x2="736" y2="93" stroke="#e6e6ef"/><text x="54" y="97" font-size="11" fill="#7a7a8c" text-anchor="end">75%</text><line x1="62" y1="44" x2="736" y2="44" stroke="#e6e6ef"/><text x="54" y="48" font-size="11" fill="#7a7a8c" text-anchor="end">100%</text><rect x="99.1" y="164.6" width="60.7" height="75.4" fill="#4f7cff" rx="3"/><text x="129.4" y="158.6" font-size="12" font-weight="600" fill="#2b2b38" text-anchor="middle">38%</text><rect x="163.7" y="148.9" width="60.7" height="91.1" fill="#e4572e" rx="3" fill-opacity="0.85"/><text x="194.1" y="142.9" font-size="11" fill="#2b2b38" text-anchor="middle">4.2k</text><text x="161.7" y="258.0" font-size="12" fill="#7a7a8c" text-anchor="middle">N=1</text><rect x="267.6" y="142.0" width="60.7" height="98.0" fill="#4f7cff" rx="3"/><text x="297.9" y="136.0" font-size="12" font-weight="600" fill="#2b2b38" text-anchor="middle">50%</text><rect x="332.2" y="133.1" width="60.7" height="106.9" fill="#e4572e" rx="3" fill-opacity="0.85"/><text x="362.6" y="127.1" font-size="11" fill="#2b2b38" text-anchor="middle">4.9k</text><text x="330.2" y="258.0" font-size="12" fill="#7a7a8c" text-anchor="middle">N=2</text><rect x="436.1" y="142.0" width="60.7" height="98.0" fill="#4f7cff" rx="3"/><text x="466.4" y="136.0" font-size="12" font-weight="600" fill="#2b2b38" text-anchor="middle">50%</text><rect x="500.7" y="109.2" width="60.7" height="130.8" fill="#e4572e" rx="3" fill-opacity="0.85"/><text x="531.1" y="103.2" font-size="11" fill="#2b2b38" text-anchor="middle">6.0k</text><text x="498.7" y="258.0" font-size="12" fill="#7a7a8c" text-anchor="middle">N=5</text><rect x="604.6" y="44.0" width="60.7" height="196.0" fill="#4f7cff" rx="3"/><text x="634.9" y="38.0" font-size="12" font-weight="600" fill="#2b2b38" text-anchor="middle">100%</text><rect x="669.2" y="73.2" width="60.7" height="166.8" fill="#e4572e" rx="3" fill-opacity="0.85"/><text x="699.6" y="67.2" font-size="11" fill="#2b2b38" text-anchor="middle">7.7k</text><text x="667.2" y="258.0" font-size="12" fill="#7a7a8c" text-anchor="middle">N=10</text><text x="399" y="288" font-size="12" fill="#7a7a8c" text-anchor="middle">all cells at the SAME nominal cap W=4,700 — raising cadence raises the peak actually sent</text></svg></div>
+
+<h2>How we tested it</h2>
+<p>We fit a logistic regression — a standard model for a yes/no outcome — predicting whether a run passed, and
+asked whether each variable adds anything once the others are known. The comparison is a <strong>likelihood-ratio
+test</strong>: fit the model with the variable, fit it without, and ask how much better the fit got. A large
+improvement with a small p-value means the variable carries information the others do not.</p>
+<p><strong>Every model adjusts for the deletion rule.</strong> That is not cosmetic: the signal-free random
+rule contributes 16 of the 78 runs and appears
+<strong>only</strong> at N=1, so it is entangled with deletion frequency. Leaving it out inflates the headline
+odds ratio from 41.83× to 52.24× — a
+25% overstatement. The conclusion is the same either way; the
+effect size was not.</p>
+<table><thead><tr><th>Question</th><th>Improvement in fit (χ², 1 df)</th><th>p</th><th>Answer</th></tr></thead><tbody>
+<tr><td>Does <strong>deletion frequency</strong> add anything once actual transcript size is known?</td><td>0.368</td><td><strong>0.5441</strong></td><td>No</td></tr>
+<tr><td>Does the <strong>nominal size limit</strong> add anything once actual transcript size is known?</td><td>0.194</td><td><strong>0.6596</strong></td><td>No</td></tr>
+<tr><td>Does <strong>actual transcript size</strong> add anything once deletion frequency is known?</td><td>14.15</td><td><strong>0.0002</strong></td><td><strong>Yes</strong></td></tr>
+</tbody></table>
+<p>Actual transcript size, adjusted for the deletion rule: <strong>odds ratio 41.83× per e-fold</strong>.</p>
+
+<h2>Results</h2>
+<p>Ordered by the variable that actually predicts the outcome — not by the label the runs were filed under.</p>
+<table><thead><tr><th>Deletion frequency N</th><th>Nominal limit W</th><th>Runs</th><th>Passed</th><th>Achieved peak</th><th>Deletions</th><th>Tokens billed</th><th>Rules present</th></tr></thead><tbody>
+<tr><td>1</td><td>4,700</td><td>39</td><td>15/39 (38%)</td><td><strong>4,182</strong></td><td>40</td><td>275,246</td><td>idle×13, random×13, truncate-tail×13</td></tr><tr><td>2</td><td>4,700</td><td>6</td><td>3/6 (50%)</td><td><strong>4,909</strong></td><td>24</td><td>288,660</td><td>idle×3, truncate-tail×3</td></tr><tr><td>1</td><td>5,500</td><td>3</td><td>2/3 (67%)</td><td><strong>4,983</strong></td><td>34</td><td>308,144</td><td>truncate-tail×3</td></tr><tr><td>1</td><td>6,500</td><td>3</td><td>1/3 (33%)</td><td><strong>5,972</strong></td><td>32</td><td>374,228</td><td>truncate-tail×3</td></tr><tr><td>5</td><td>4,700</td><td>6</td><td>3/6 (50%)</td><td><strong>6,005</strong></td><td>10</td><td>320,908</td><td>idle×3, truncate-tail×3</td></tr><tr><td>1</td><td>7,500</td><td>3</td><td>3/3 (100%)</td><td><strong>6,977</strong></td><td>32</td><td>409,065</td><td>truncate-tail×3</td></tr><tr><td>10</td><td>4,700</td><td>6</td><td>6/6 (100%)</td><td><strong>7,657</strong></td><td>5</td><td>349,308</td><td>idle×3, truncate-tail×3</td></tr><tr><td>1</td><td>8,500</td><td>3</td><td>3/3 (100%)</td><td><strong>7,972</strong></td><td>25</td><td>426,197</td><td>truncate-tail×3</td></tr><tr><td>1</td><td>9,500</td><td>9</td><td>8/9 (89%)</td><td><strong>8,971</strong></td><td>25</td><td>477,501</td><td>idle×3, random×3, truncate-tail×3</td></tr>
+</tbody></table>
+<div class="chart"><svg viewBox="0 0 760 340" role="img" style="max-width:100%;height:auto"><text x="62" y="24" font-size="14" font-weight="600" fill="#2b2b38">Pass rate against ACHIEVED PEAK — cadence cells land on the same curve (area ∝ n)</text><line x1="62" y1="274" x2="736" y2="274" stroke="#e6e6ef"/><text x="54" y="278" font-size="11" fill="#7a7a8c" text-anchor="end">0%</text><line x1="62" y1="216.5" x2="736" y2="216.5" stroke="#e6e6ef"/><text x="54" y="220.5" font-size="11" fill="#7a7a8c" text-anchor="end">25%</text><line x1="62" y1="159" x2="736" y2="159" stroke="#e6e6ef"/><text x="54" y="163" font-size="11" fill="#7a7a8c" text-anchor="end">50%</text><line x1="62" y1="101.5" x2="736" y2="101.5" stroke="#e6e6ef"/><text x="54" y="105.5" font-size="11" fill="#7a7a8c" text-anchor="end">75%</text><line x1="62" y1="44" x2="736" y2="44" stroke="#e6e6ef"/><text x="54" y="48" font-size="11" fill="#7a7a8c" text-anchor="end">100%</text><circle cx="111.1" cy="185.5" r="15.9" fill="#4f7cff" fill-opacity="0.82"/><text x="111.1" y="161.7" font-size="10" fill="#2b2b38" text-anchor="middle">N=1 W=4.7k</text><circle cx="196.3" cy="159.0" r="8.7" fill="#e4572e" fill-opacity="0.82"/><text x="196.3" y="142.3" font-size="10" fill="#2b2b38" text-anchor="middle">N=2 W=4.7k</text><circle cx="205.0" cy="120.7" r="7.3" fill="#4f7cff" fill-opacity="0.82"/><text x="205.0" y="105.4" font-size="10" fill="#2b2b38" text-anchor="middle">N=1 W=5.5k</text><circle cx="321.0" cy="197.3" r="7.3" fill="#4f7cff" fill-opacity="0.82"/><text x="321.0" y="182.0" font-size="10" fill="#2b2b38" text-anchor="middle">N=1 W=6.5k</text><circle cx="324.9" cy="159.0" r="8.7" fill="#e4572e" fill-opacity="0.82"/><text x="324.9" y="142.3" font-size="10" fill="#2b2b38" text-anchor="middle">N=5 W=4.7k</text><circle cx="438.9" cy="44.0" r="7.3" fill="#4f7cff" fill-opacity="0.82"/><text x="438.9" y="28.7" font-size="10" fill="#2b2b38" text-anchor="middle">N=1 W=7.5k</text><circle cx="518.7" cy="44.0" r="8.7" fill="#e4572e" fill-opacity="0.82"/><text x="518.7" y="27.3" font-size="10" fill="#2b2b38" text-anchor="middle">N=10 W=4.7k</text><circle cx="555.7" cy="44.0" r="7.3" fill="#4f7cff" fill-opacity="0.82"/><text x="555.7" y="28.7" font-size="10" fill="#2b2b38" text-anchor="middle">N=1 W=8.5k</text><circle cx="672.9" cy="69.6" r="9.7" fill="#4f7cff" fill-opacity="0.82"/><text x="672.9" y="51.9" font-size="10" fill="#2b2b38" text-anchor="middle">N=1 W=9.5k</text><text x="89.7" y="292.0" font-size="11" fill="#7a7a8c" text-anchor="middle">4k</text><text x="207.0" y="292.0" font-size="11" fill="#7a7a8c" text-anchor="middle">5k</text><text x="324.3" y="292.0" font-size="11" fill="#7a7a8c" text-anchor="middle">6k</text><text x="441.6" y="292.0" font-size="11" fill="#7a7a8c" text-anchor="middle">7k</text><text x="558.9" y="292.0" font-size="11" fill="#7a7a8c" text-anchor="middle">8k</text><text x="676.3" y="292.0" font-size="11" fill="#7a7a8c" text-anchor="middle">9k</text><text x="399" y="318" font-size="12" fill="#7a7a8c" text-anchor="middle">achieved peak context (estimated tokens actually sent)</text><circle cx="68" cy="332" r="5" fill="#4f7cff"/><text x="80" y="336" font-size="11" fill="#7a7a8c">cadence N=1</text><circle cx="194" cy="332" r="5" fill="#e4572e"/><text x="206" y="336" font-size="11" fill="#7a7a8c">cadence N&gt;1 — same curve, no offset</text></svg></div>
+<p>Reading down the achieved-peak column, the pass rate rises as transcript size rises, and the
+infrequent-deletion rows sit <strong>on the same curve</strong> as the every-step rows rather than above
+them.</p>
+
+<h2>What survives</h2>
+<div class="key"><strong>Deleting less often is a cost lever, not a quality lever.</strong></div>
+<table><thead><tr><th></th><th>Tokens billed</th><th>Deletions</th><th>Achieved peak</th><th>Passed</th></tr></thead><tbody>
+<tr><td>Delete every 10th step (N=10, W=4,700)</td><td><strong>349,308</strong></td><td><strong>5</strong></td><td>7,657</td><td>6/6</td></tr>
+<tr><td>Delete every step (N=1, W=7,500)</td><td>409,065</td><td>32</td><td>6,977</td><td>3/3</td></tr>
+</tbody></table>
+<p>Fewer tokens and a sixth of the deletions, at a <em>higher</em> peak — matching the direction the earlier
+cost simulation predicted. That is the half of the original claim worth keeping.</p>
+<p><strong>The design implication changes.</strong> Do not tune deletion frequency expecting better task
+performance. Tune the thing that predicts performance — how much of the transcript is present when the model
+is called — and use deletion frequency to buy that as cheaply as possible.</p>
+
+<h2>What this does not answer: how wide should the window be?</h2>
+<p>The results identify a threshold — success reaches 100% once about
+<strong>6,977 tokens</strong> of transcript are present — but they cannot say what
+that number <em>is</em>.</p>
+<table><thead><tr><th>Reading</th><th>The threshold would be</th><th>On this run</th></tr></thead><tbody>
+<tr><td>An absolute token count</td><td>~6,977 tokens, for this task</td><td>6,977</td></tr>
+<tr><td>A fraction of the <strong>model's</strong> context limit</td><td>a constant % of 262,144</td><td>2.7%</td></tr>
+<tr><td>A fraction of what <strong>the task itself</strong> demands</td><td>a constant % of the uncapped transcript</td><td>33% of 20,993</td></tr>
+</tbody></table>
+<div class="key"><strong>The middle reading is already implausible.</strong> The threshold sits at
+2.7% of the model's hard limit — the model's own capacity is nowhere near binding, so it
+cannot be what sets the threshold. What binds is whether the transcript still holds what the task needs.</div>
+<p><strong>The first and third readings cannot be separated here, and the reason is structural.</strong> Every
+run in this dataset is the same task, so the uncapped demand is a constant
+20,993 tokens. "6,977 tokens" and
+"33% of demand" are the same number wearing two hats. No amount of extra runs on this
+task can tell them apart.</p>
+<h3>The experiment that would</h3>
+<p>Sweep the size limit across <strong>tasks with materially different uncapped demand</strong> — one that
+needs ~8k, one ~20k (this task), one ~40k — on the same model. Then:</p>
+<ul>
+<li>if the success threshold lands at the <strong>same token count</strong> across all three, the target is
+absolute and should be configured as a token budget;</li>
+<li>if it lands at the <strong>same fraction of each task's uncapped demand</strong>, the target is relative,
+and a fixed token budget will be wrong for every task but one — the assembler would need to estimate
+demand.</li>
+</ul>
+<p>A second, cheaper arm settles the model-capacity question directly: run the same task on a model with a much
+smaller hard limit (a 131k-token model is already available) and check that the threshold does not move. The
+prediction is that it does not, so long as the limit stays well above the threshold.</p>
+<h3>The deeper question underneath it</h3>
+<p>This all assumes the only thing that matters is <em>how much</em> transcript is present. Everything measured
+so far is consistent with that — and with nothing else mattering. But a companion experiment established that
+the measurement may be <strong>unable to detect</strong> whether the <em>content</em> of the retained
+transcript matters, so "width is all that matters" is not yet a finding, only an unrefuted possibility. If
+relatedness turns out to matter, the target is not a width at all: it is whatever width happens to be needed
+to retain the related material, and the right lever is selection, not size.</p>
+
+<h2>Caveats</h2>
+<ul>
+<li><strong>Observational, not a randomised comparison.</strong> Achieved peak is a consequence of the
+settings, not something we set directly, so the regression separates cause from consequence only as well as
+the design allows. The stronger evidence is the direct one: infrequent-deletion runs land on the same curve as
+every-step runs at matched size, which agrees with the regression.</li>
+<li><strong>One task.</strong> All 78 runs are <code>longbuild</code> — variation within one
+problem, not across problems.</li>
+<li><strong>Small numbers at the interior settings</strong> — as few as three runs per cell, so individual
+percentages are noisy. The overall trend rests on all 78 runs.</li>
+<li><strong>Token counts are estimates</strong> (characters ÷ 4) for the limit and the peak; the billed-token
+column is the provider's real count, which ran about 30% higher.</li>
+<li><strong>The regression is computed inside this report</strong> by Newton–Raphson, and reproduces the
+reference <code>statsmodels</code> fit to three decimal places on the same data.</li>
+</ul>
+
+<footer>context-tree · correction report · every figure generated from
+results-ab-longbuild-cadence10.json, results-ab-longbuild-cadence2.json, results-ab-longbuild-cadence5.json, results-ab-longbuild-v2-n3.json, results-ab-longbuild-v2.json, results-ab-longbuild-winwA.json, results-ab-longbuild-winwB.json by <code>experiments/context-dedup/report-cadence-confound.mjs</code></footer>
+</main></body></html>

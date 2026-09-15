@@ -1,0 +1,331 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Is there anything to win by choosing what to evict?</title><style>
+:root{color-scheme:light}
+body{margin:0;background:#fbfbfd;color:#1b1c1e;font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+main{max-width:880px;margin:0 auto;padding:36px 20px 80px}
+h1{font-size:29px;line-height:1.2;margin:0 0 4px}
+.sub{color:#5f6368;font-style:italic;margin:0 0 20px}
+h2{font-size:21px;margin:40px 0 12px;border-bottom:1px solid #e3e3ea;padding-bottom:7px}
+h3{font-size:16.5px;margin:26px 0 8px}
+p{margin:12px 0}
+.chart{background:#fff;border:1px solid #e3e3ea;border-radius:10px;padding:16px;margin:18px 0;overflow-x:auto}
+.tw{overflow-x:auto;margin:14px 0}
+table{border-collapse:collapse;width:100%;font-size:14px;background:#fff}
+th,td{border:1px solid #e3e3ea;padding:8px 11px;text-align:left;vertical-align:top}
+th{background:#f4f5fa;font-weight:600;white-space:nowrap}
+code{background:#f0f0f6;border-radius:4px;font-size:13.5px;padding:1px 5px}
+ul{padding-left:24px}li{margin:8px 0}
+hr{border:0;border-top:1px solid #e3e3ea;margin:36px 0 18px}
+sup{font-size:.7em}
+</style></head><body><main>
+<h1>How much is there to win by choosing what to evict?</h1>
+<p class="sub">A ceiling experiment. We gave one eviction rule the answers; it avoided almost all the damage, and the rules we actually ship do not.</p>
+<h2>Abstract</h2>
+<p>An AI coding agent re-sends its entire working transcript to the model on every step, so on a long task the</p>
+<p>transcript outgrows the model's input limit and some of it must be deleted. Which parts to delete is the</p>
+<p>central design question for context-management middleware, and five successive experiments on this substrate</p>
+<p>have failed to distinguish one deletion rule from another. Those nulls are ambiguous: either the choice</p>
+<p>genuinely does not matter, or the measurement cannot detect it.</p>
+<p>We resolve the ambiguity by measuring the ceiling rather than comparing candidates. For each decision point in</p>
+<p>a real agent transcript we deleted every unit of history in turn and recorded how much harder the agent's</p>
+<p>actual next message became, giving a direct causal importance for each unit. We then built an <strong>oracle</strong> rule</p>
+<p>that evicts using those measured values — a rule no real system could implement, because it requires having</p>
+<p>already run the counterfactual it is trying to avoid. Because the oracle is forced through the same</p>
+<p>volume-matching as every other rule, dropping the same number of tokens and the same number of units, it</p>
+<p>cannot win by keeping more. Whatever margin it achieves over random deletion is therefore an upper bound on</p>
+<p>what <em>any</em> rule that scores units independently — attention, recency, co-occurrence, a learned policy — could</p>
+<p>ever achieve on this substrate.</p>
+<p><strong>The ceiling is high, and current rules reach almost none of it.</strong> Across 86</p>
+<p>volume-matched cells drawn from 60 analysable decision points in 4 distinct</p>
+<p>sessions, the oracle caused 0.081 nats/token less damage than random</p>
+<p>deletion and 0.067 less than the incumbent recency rule — respectively</p>
+<p>13× and 11×</p>
+<p>the measurement's numerical floor of</p>
+<p>6.3e-3, which was established by running the identical comparison through two numerically-equivalent</p>
+<p>code paths. All four session clusters agree in sign.</p>
+<p>Choosing well removes 96% of the damage that random deletion causes; the recency rule</p>
+<p>the system actually ships captures 18% of that available prize and an</p>
+<p>attention-based rule 25%, leaving roughly 75% unclaimed.</p>
+<p>The practical conclusion inverts the natural reading of this project's five previous null results. Those nulls</p>
+<p>were not evidence that the choice does not matter. The choice matters a great deal; the candidate rules tested</p>
+<p>so far simply do not exploit it. The bottleneck is the signal, not the opportunity.</p>
+<h2>What you need to know to read the rest</h2>
+<p>Nothing below is assumed. Every term used later is defined here.</p>
+<div class="tw"><table><thead><tr><th>Term</th><th>Meaning</th></tr></thead><tbody>
+<tr><td><strong>Agent</strong></td><td>An AI model given tools (read a file, run a command, edit code) and a goal, looping until it decides it is done.</td></tr>
+<tr><td><strong>Transcript / context</strong></td><td>Everything the model can see on a given step: the instructions plus the full history of what it has read, written and run. It is re-sent in full every step.</td></tr>
+<tr><td><strong>Token</strong></td><td>The unit text is measured in — roughly ¾ of a word.</td></tr>
+<tr><td><strong>Unit</strong></td><td>The smallest thing eviction may remove: one assistant message <strong>together with every tool result it produced</strong>. They travel together because deleting a tool call but keeping its result (or vice versa) produces a transcript that could never have occurred.</td></tr>
+<tr><td><strong>Eviction</strong></td><td>Deleting older units to stay under the input limit. The subject of this work: <em>which</em> units?</td></tr>
+<tr><td><strong>Keep-fraction</strong></td><td>How much is deleted in one go, as a share of the evictable tokens. We test 15%, 30%, 50%.</td></tr>
+<tr><td><strong>Attention mass</strong></td><td>How much of the model's attention, at the moment it is about to act, lands on a given unit. Read directly out of the model's internals.</td></tr>
+<tr><td><strong>Attention sink</strong></td><td>The first few tokens of a prompt absorb a large share of all attention regardless of content. Any "share of attention" that includes them is mostly measuring them, so they are excluded.</td></tr>
+<tr><td><strong>Leave-one-unit-out (LOUO)</strong></td><td>Delete exactly one unit, re-run the model, and measure what changed. This is a direct causal measurement of that unit's importance, not a proxy for it.</td></tr>
+<tr><td><strong>ΔNLL</strong></td><td>The endpoint. How much <em>harder the agent's real next message became</em>, in nats per token, once something was deleted. Larger means more damage. Zero means the deletion cost nothing.</td></tr>
+<tr><td><strong>The numerical floor</strong></td><td>The smallest ΔNLL that is a measurement rather than arithmetic noise. Computed by running the identical comparison two numerically-equivalent ways; they disagree by 6.3e-3, so differences smaller than that carry no information.</td></tr>
+<tr><td><strong>Volume matching</strong></td><td>Forcing every rule to delete the same amount, so they differ only in <em>which</em> units go. Without it a rule can "win" by simply keeping more context, an effect already known to be large.</td></tr>
+<tr><td><strong>Splice</strong></td><td>A cut point left in the transcript. Deleting three consecutive units leaves one splice; deleting three scattered units leaves three. Rules that fragment the transcript more may do more damage for reasons unrelated to what they deleted.</td></tr>
+<tr><td><strong>Session / cluster</strong></td><td>One complete agent transcript. Decision points within a session are highly similar to each other, so the session, not the decision point, is the independent unit for statistics.</td></tr>
+<tr><td><strong>Oracle</strong></td><td>A rule given the LOUO answers and told to delete the least-important units. Not implementable; used only to measure the ceiling.</td></tr>
+</tbody></table></div>
+<h2>Why we ran this</h2>
+<p>The project's central question is what to delete. Every previous attempt to answer it compared two candidate</p>
+<p>rules and found no difference — selection signal p = 0.70; reference-recency versus positional recency</p>
+<p>p = 1.000; needle position 180/180 at every depth; eviction cadence null once achieved size is controlled;</p>
+<p>and, in this experiment's own first stage, attention versus position.</p>
+<p>Five nulls in a row is not five pieces of evidence. It is one unanswered question: **is there anything there</p>
+<p>to find?** A between-rule comparison cannot answer that, because it can only ever say "these two are similar".</p>
+<p>A ceiling can.</p>
+<h3>Why this is not the claim already rejected</h3>
+<p>An earlier result in this project concluded that relevance belongs at <em>admission</em> rather than eviction. That</p>
+<p>conclusion was about <strong>relevance computed by embedding similarity to the recent window</strong>, and it failed for a</p>
+<p>comprehensible reason: a unit that has gone dormant but will be needed again does not resemble the recent</p>
+<p>window, so similarity-based eviction deletes precisely the unit that returns. The present work measures</p>
+<p>something different — the model's <strong>actual attention mass</strong>, and behind it the <strong>measured causal effect</strong> of</p>
+<p>deletion. A unit can be perfectly retrievable and receive almost no attention; those are different quantities</p>
+<p>and only the first had been measured.</p>
+<h3>How this reconciles with the position probe</h3>
+<p>A previous experiment found no retrieval deficit at any depth: 180 out of 180 needles found, out to 155,773</p>
+<p>tokens, with competing distractors. If depth does not hurt retrieval, what is left to predict?</p>
+<p>The two experiments condition on different things. The position probe asks *can the model find this when</p>
+<p>explicitly asked* — a ceiling on what the context could contribute given a pointed query. This experiment asks</p>
+<p><em>how much does the model's next action actually depend on this</em>, with no query pointing anywhere. A unit can be</p>
+<p>perfectly findable on request and contribute nothing spontaneously. Nothing here predicts retrieval failures,</p>
+<p>so nothing here contradicts that null.</p>
+<h2>The experimental setup</h2>
+<h3>The model, and why not the 27B</h3>
+<p>All measurements use <strong>meta-llama/Llama-3.2-1B-Instruct</strong> in bfloat16 on a single spare GPU. The project's main model is a 27B</p>
+<p>served through llama.cpp, which <strong>cannot export attention</strong> — GGUF-style serving does not expose it — and the</p>
+<p>server was in use by other work throughout. The 1B is the largest model that fits the 4.9 GiB of spare</p>
+<p>VRAM alongside a 12,000-token context without evicting that server. This is a real limitation and it is</p>
+<p>restated in the caveats: a signal measured on a 1B may not transfer to a 27B, and that transfer has not been</p>
+<p>tested.</p>
+<h3>The corpus</h3>
+<p>Five transcript fixtures are committed to this repository, but they are <strong>four distinct sessions</strong>:</p>
+<p><code>claude-code-session-4.jsonl</code> is a strict subset of <code>claude-code-session-5.jsonl</code> — same session id, 1,584 of</p>
+<p>1,584 shared event identifiers. Treating them as two clusters would let one session vote twice, which biases</p>
+<p>in exactly the direction that manufactures a positive result, so they are collapsed.</p>
+<div class="tw"><table><thead><tr><th></th><th>count</th></tr></thead><tbody>
+<tr><td>committed fixtures</td><td>5 files → <strong>4 distinct sessions</strong></td></tr>
+<tr><td>decision points measured</td><td>85</td></tr>
+<tr><td>decision points analysable (see floor)</td><td><strong>60</strong></td></tr>
+<tr><td>volume-matched cells analysed</td><td><strong>86</strong></td></tr>
+<tr><td>independent clusters</td><td><strong>4</strong></td></tr>
+</tbody></table></div>
+<h3>What a unit is, and why tool results are paired to their calls</h3>
+<p>A unit is one assistant message plus every tool result it produced. In a real transcript the results do <strong>not</strong></p>
+<p>always arrive immediately after the call — sessions interleave, and a result can land after a later assistant</p>
+<p>message — so units are assembled by matching each result to the identifier of the call it answers, not by</p>
+<p>arrival order. An automatic check refuses to proceed if any result ends up in a different unit from its call.</p>
+<p>This matters because an earlier version of this code split them, so every single-unit deletion produced a</p>
+<p>transcript containing an unanswered tool call, and part of what was being measured was the model reacting to</p>
+<p>a malformed transcript rather than to lost information.</p>
+<h3>How the arms are matched</h3>
+<p>Every rule deletes from the same pool and must hit the same token target. Matching on tokens alone is not</p>
+<p>enough: because attention mass correlates with unit length, "delete the lowest-attention units" naturally</p>
+<p>means "delete many small units" while "delete the oldest" means "delete a few large contiguous ones". Measured</p>
+<p>on the real eviction code, arms matched to 0.4% on tokens still differed up to 2× in unit count and 13× in</p>
+<p>splice count.</p>
+<p>So units are grouped into size strata, a single per-stratum quota is drawn once and applied to every arm, and</p>
+<p>a bounded within-stratum repair brings the token totals together. Every arm then deletes the same number of</p>
+<p>small units and the same number of large ones; only <em>which</em> unit inside each stratum differs. Achieved:</p>
+<div class="tw"><table><thead><tr><th>arm</th><th>mean tokens deleted</th><th>mean units deleted</th><th>mean splices</th></tr></thead><tbody>
+<tr><td>oracle (ceiling)</td><td>3,174</td><td>8.9</td><td>4.9</td></tr>
+<tr><td>low-attention</td><td>3,168</td><td>8.9</td><td>4.6</td></tr>
+<tr><td>residual-attention</td><td>3,168</td><td>8.9</td><td>4.7</td></tr>
+<tr><td>recency (incumbent)</td><td>3,169</td><td>8.9</td><td>4.3</td></tr>
+<tr><td>random (control)</td><td>3,170</td><td>8.9</td><td>5.3</td></tr>
+<tr><td>high-attention</td><td>3,179</td><td>8.9</td><td>5.1</td></tr>
+</tbody></table></div>
+<p>Within-cell ratios across arms: tokens <strong>1.036× mean, 1.071× max</strong>;</p>
+<p>units <strong>1.000× mean</strong>; splices 1.62× mean. The oracle</p>
+<p>fragments the transcript by −0.333 splices relative to random — stated because a rule that</p>
+<p>wins by cutting more tidily has not proven anything about <em>what</em> it cut.</p>
+<h3>What ΔNLL measures, and the floor</h3>
+<p>After each deletion the model is re-run and scored on the agent's <strong>real</strong> next message, teacher-forced.</p>
+<p>ΔNLL is how much harder that message became, in nats per token. It is continuous, so it does not depend on</p>
+<p>the binary pass/fail metric that has returned null four times.</p>
+<p>Its resolution was measured, not assumed. Re-running an identical computation gives bit-identical results —</p>
+<p>but that measures determinism, not accuracy. Running the <em>same</em> deletion through two numerically-equivalent</p>
+<p>code paths (different attention kernel, same device and precision) gives an RMS disagreement of</p>
+<p><strong>6.3e-3</strong>; across different device and precision, 2.5e-2. The first governs internal</p>
+<p>comparisons, which is what this report makes. A decision point is analysable only if at least</p>
+<p>50% of its units produce an effect above that floor; 60 of 85</p>
+<p>qualify. Within those, 26% of individual measurements still sit below it.</p>
+<p>For scale: the typical per-unit deletion effect is 1.2e-2 nats/token, about</p>
+<p>2.0× the floor, and the spread between units within one decision point averages</p>
+<p>5.0e-2, about 7.9× the floor. The endpoint has real dynamic range; it is</p>
+<p>not comfortable.</p>
+<h2>Results</h2>
+<h3>The ceiling</h3>
+
+<div class="chart"><svg viewBox="0 0 760 330" role="img" style="max-width:100%;height:auto"><title>Damage by eviction arm</title><text x="78" y="26" font-size="14" font-weight="600" fill="#2b2b38">Damage caused by each eviction rule, at matched volume (n=86 cells)</text><line x1="78" y1="256.0" x2="734" y2="256.0" stroke="#e6e6ef"/><text x="70" y="260.0" font-size="11" fill="#7a7a8c" text-anchor="end">0.00</text><line x1="78" y1="203.5" x2="734" y2="203.5" stroke="#e6e6ef"/><text x="70" y="207.5" font-size="11" fill="#7a7a8c" text-anchor="end">0.03</text><line x1="78" y1="151.0" x2="734" y2="151.0" stroke="#e6e6ef"/><text x="70" y="155.0" font-size="11" fill="#7a7a8c" text-anchor="end">0.07</text><line x1="78" y1="98.5" x2="734" y2="98.5" stroke="#e6e6ef"/><text x="70" y="102.5" font-size="11" fill="#7a7a8c" text-anchor="end">0.10</text><line x1="78" y1="46.0" x2="734" y2="46.0" stroke="#e6e6ef"/><text x="70" y="50.0" font-size="11" fill="#7a7a8c" text-anchor="end">0.14</text><rect x="99.9" y="250.4" width="65.6" height="5.6" fill="#2e9e5b" rx="3"/><text x="132.7" y="243.4" font-size="11.5" font-weight="600" fill="#2b2b38" text-anchor="middle">0.004</text><text x="132.7" y="273.0" font-size="11" fill="#7a7a8c" text-anchor="middle">oracle</text><text x="132.7" y="286.0" font-size="10" fill="#9aa0ac" text-anchor="middle">(ceiling)</text><rect x="209.2" y="158.9" width="65.6" height="97.1" fill="#4f7cff" rx="3"/><text x="242.0" y="151.9" font-size="11.5" font-weight="600" fill="#2b2b38" text-anchor="middle">0.064</text><text x="242.0" y="273.0" font-size="11" fill="#7a7a8c" text-anchor="middle">low-attention</text><rect x="318.5" y="161.5" width="65.6" height="94.5" fill="#7aa2ff" rx="3"/><text x="351.3" y="154.5" font-size="11.5" font-weight="600" fill="#2b2b38" text-anchor="middle">0.063</text><text x="351.3" y="273.0" font-size="11" fill="#7a7a8c" text-anchor="middle">residual-attention</text><rect x="427.9" y="149.7" width="65.6" height="106.3" fill="#8b5cf6" rx="3"/><text x="460.7" y="142.7" font-size="11.5" font-weight="600" fill="#2b2b38" text-anchor="middle">0.070</text><text x="460.7" y="273.0" font-size="11" fill="#7a7a8c" text-anchor="middle">recency</text><text x="460.7" y="286.0" font-size="10" fill="#9aa0ac" text-anchor="middle">(incumbent)</text><rect x="537.2" y="128.0" width="65.6" height="128.0" fill="#9aa0ac" rx="3"/><text x="570.0" y="121.0" font-size="11.5" font-weight="600" fill="#2b2b38" text-anchor="middle">0.085</text><text x="570.0" y="273.0" font-size="11" fill="#7a7a8c" text-anchor="middle">random</text><text x="570.0" y="286.0" font-size="10" fill="#9aa0ac" text-anchor="middle">(control)</text><rect x="646.5" y="78.0" width="65.6" height="178.0" fill="#e4572e" rx="3"/><text x="679.3" y="71.0" font-size="11.5" font-weight="600" fill="#2b2b38" text-anchor="middle">0.118</text><text x="679.3" y="273.0" font-size="11" fill="#7a7a8c" text-anchor="middle">high-attention</text><text x="406" y="316" font-size="12" fill="#7a7a8c" text-anchor="middle">mean ΔNLL (nats/token) — LOWER is better; every arm drops the same token volume</text></svg></div>
+<div class="tw"><table><thead><tr><th>keep-fraction</th><th>cells</th><th>oracle (ceiling)</th><th>low-attention</th><th>residual-attention</th><th>recency (incumbent)</th><th>random (control)</th><th>high-attention</th></tr></thead><tbody>
+<tr><td>15%</td><td>20</td><td>−0.0016</td><td>+0.0245</td><td>+0.0265</td><td>+0.0206</td><td>+0.0308</td><td>+0.0623</td></tr>
+<tr><td>30%</td><td>33</td><td>−0.0231</td><td>+0.0340</td><td>+0.0300</td><td>+0.0470</td><td>+0.0412</td><td>+0.0666</td></tr>
+<tr><td>50%</td><td>33</td><td>+0.0338</td><td>+0.1186</td><td>+0.1169</td><td>+0.1238</td><td>+0.1608</td><td>+0.2025</td></tr>
+</tbody></table></div>
+<p>Mean ΔNLL, lower is better. Every row is volume-matched.</p>
+
+<div class="chart"><svg viewBox="0 0 760 300" role="img" style="max-width:100%;height:auto"><title>Arm gaps against the numerical floor</title><text x="20" y="26" font-size="14" font-weight="600" fill="#2b2b38">Every gap against the measured floor — grey bars are indistinguishable from zero</text><rect x="420.4" y="52" width="29.3" height="190" fill="#fde9d9"/><text x="435.0" y="42.0" font-size="10.5" fill="#b4531f" text-anchor="middle">± numerical floor (6.3e-3)</text><line x1="435.0" y1="52" x2="435.0" y2="242" stroke="#b9b9c6"/><rect x="247.0" y="64.8" width="188.0" height="22" fill="#2e9e5b" rx="3"/><text x="188.0" y="79.8" font-size="12" fill="#2b2b38" text-anchor="end">oracle − random</text><text x="239.0" y="79.8" font-size="11.5" font-weight="600" fill="#2b2b38" text-anchor="end">−0.0810</text><rect x="280.3" y="112.3" width="154.7" height="22" fill="#2e9e5b" rx="3"/><text x="188.0" y="127.3" font-size="12" fill="#2b2b38" text-anchor="end">oracle − recency</text><text x="272.3" y="127.3" font-size="11.5" font-weight="600" fill="#2b2b38" text-anchor="end">−0.0666</text><rect x="401.7" y="159.8" width="33.3" height="22" fill="#2e9e5b" rx="3"/><text x="188.0" y="174.8" font-size="12" fill="#2b2b38" text-anchor="end">recency − random</text><text x="393.7" y="174.8" font-size="11.5" font-weight="600" fill="#2b2b38" text-anchor="end">−0.0144</text><rect x="387.6" y="207.3" width="47.4" height="22" fill="#2e9e5b" rx="3"/><text x="188.0" y="222.3" font-size="12" fill="#2b2b38" text-anchor="end">low-attention − random</text><text x="379.6" y="222.3" font-size="11.5" font-weight="600" fill="#2b2b38" text-anchor="end">−0.0204</text><text x="435" y="284" font-size="12" fill="#7a7a8c" text-anchor="middle">ΔNLL difference — NEGATIVE means the first arm did less damage</text></svg></div>
+<p>The headline contrasts, each against the floor:</p>
+<div class="tw"><table><thead><tr><th>contrast</th><th>mean ΔNLL difference</th><th>Cohen's d</th><th>cells favouring</th><th>vs floor</th></tr></thead><tbody>
+<tr><td><strong>oracle − random</strong></td><td><strong>−0.08096</strong></td><td>−0.627</td><td>72/86</td><td>outside</td></tr>
+<tr><td><strong>oracle − recency</strong></td><td><strong>−0.06661</strong></td><td>−0.503</td><td>70/86</td><td>outside</td></tr>
+<tr><td>recency − random</td><td>−0.01435</td><td>−0.109</td><td>45/86</td><td>outside</td></tr>
+<tr><td>low-attention − random</td><td>−0.02042</td><td>−0.134</td><td>53/86</td><td>outside</td></tr>
+<tr><td>low-attention − high-attention</td><td>−0.05351</td><td>−0.227</td><td>58/86</td><td>outside</td></tr>
+</tbody></table></div>
+<p>**The oracle's advantage over random is −0.08096 nats/token against a floor of</p>
+<p>6.3e-3 — 13× the resolution limit.** Random</p>
+<p>deletion costs +0.0847; perfect selection costs +0.0037. So</p>
+<p><strong>96% of the damage is avoidable</strong>, and the question becomes how much of that any</p>
+<p>real rule captures:</p>
+<div class="tw"><table><thead><tr><th>rule</th><th>mean ΔNLL (lower is better)</th><th>share of the available prize captured</th></tr></thead><tbody>
+<tr><td>oracle (ceiling)</td><td>+0.0037</td><td>100%</td></tr>
+<tr><td>low-attention</td><td>+0.0642</td><td>25%</td></tr>
+<tr><td>residual-attention</td><td>+0.0625</td><td>27%</td></tr>
+<tr><td>recency (incumbent)</td><td>+0.0703</td><td>18%</td></tr>
+<tr><td>high-attention</td><td>+0.1178</td><td>-41%</td></tr>
+</tbody></table></div>
+<p>A negative share means the rule did <strong>worse than deleting at random</strong> — which is what the direction check</p>
+<p>predicts for deliberately deleting the highest-attention units, and is the evidence that the attention signal</p>
+<p>carries a real, if weak, direction.</p>
+<p>At the largest keep-fraction the oracle's ΔNLL is +0.0338,</p>
+<p>and at 30% it is <strong>negative</strong> — deleting the right half of the history made the agent's next message <em>easier</em></p>
+<p>to predict than keeping all of it. Low-value history is not merely inert; carrying it costs something.</p>
+<h3>Per session, and per keep-fraction</h3>
+<p>Four clusters is four clusters. All of them:</p>
+
+<div class="chart"><svg viewBox="0 0 760 300" role="img" style="max-width:100%;height:auto"><title>Per-session oracle gaps</title><text x="20" y="26" font-size="14" font-weight="600" fill="#2b2b38">The ceiling, per session cluster — four clusters, and they disagree</text><rect x="455.7" y="52" width="18.5" height="188" fill="#fde9d9"/><line x1="465.0" y1="52" x2="465.0" y2="240" stroke="#b9b9c6"/><rect x="370.1" y="61.5" width="94.9" height="13" fill="#2e9e5b" rx="2" fill-opacity="0.92"/><rect x="360.4" y="77.5" width="104.6" height="13" fill="#8b5cf6" rx="2" fill-opacity="0.92"/><text x="198.0" y="79.5" font-size="11" fill="#2b2b38" text-anchor="end">session-2 (n=24)</text><rect x="365.7" y="108.5" width="99.3" height="13" fill="#2e9e5b" rx="2" fill-opacity="0.92"/><rect x="448.0" y="124.5" width="17.0" height="13" fill="#8b5cf6" rx="2" fill-opacity="0.92"/><text x="198.0" y="126.5" font-size="11" fill="#2b2b38" text-anchor="end">session-3 (n=5)</text><rect x="252.5" y="155.5" width="212.5" height="13" fill="#2e9e5b" rx="2" fill-opacity="0.92"/><rect x="326.6" y="171.5" width="138.4" height="13" fill="#8b5cf6" rx="2" fill-opacity="0.92"/><text x="198.0" y="173.5" font-size="11" fill="#2b2b38" text-anchor="end">session-5 (n=25)</text><rect x="397.5" y="202.5" width="67.5" height="13" fill="#2e9e5b" rx="2" fill-opacity="0.92"/><rect x="390.7" y="218.5" width="74.3" height="13" fill="#8b5cf6" rx="2" fill-opacity="0.92"/><text x="198.0" y="220.5" font-size="11" fill="#2b2b38" text-anchor="end">session (n=32)</text><rect x="210" y="274" width="11" height="11" fill="#2e9e5b"/><text x="226" y="284" font-size="11" fill="#7a7a8c">oracle − random</text><rect x="360" y="274" width="11" height="11" fill="#8b5cf6"/><text x="376" y="284" font-size="11" fill="#7a7a8c">oracle − recency</text><text x="465.0" y="42.0" font-size="10.5" fill="#b4531f" text-anchor="middle">± numerical floor</text></svg></div>
+<div class="tw"><table><thead><tr><th>session</th><th>cells</th><th>oracle − random</th><th>favouring</th><th>oracle − recency</th><th>favouring</th></tr></thead><tbody>
+<tr><td><code>claude-code-session-2.jsonl</code></td><td>24</td><td>−0.06449</td><td>20/24</td><td>−0.07108</td><td>20/24</td></tr>
+<tr><td><code>claude-code-session-3.jsonl</code></td><td>5</td><td>−0.06745</td><td>4/5</td><td>−0.01152</td><td>3/5</td></tr>
+<tr><td><code>claude-code-session-5.jsonl</code></td><td>25</td><td>−0.14436</td><td>23/25</td><td>−0.09399</td><td>23/25</td></tr>
+<tr><td><code>claude-code-session.jsonl</code></td><td>32</td><td>−0.04589</td><td>25/32</td><td>−0.05047</td><td>24/32</td></tr>
+</tbody></table></div>
+<p>4 of 4 clusters favour the oracle over random, and they agree in sign — unlike the attention result in the same data, where one cluster runs the other way. Every keep-fraction, not the</p>
+<p>most favourable one:</p>
+<div class="tw"><table><thead><tr><th>keep-fraction</th><th>cells</th><th>oracle − random</th><th>favouring</th><th>oracle − recency</th><th>favouring</th></tr></thead><tbody>
+<tr><td>15%</td><td>20</td><td>−0.03237</td><td>15/20</td><td>−0.02214</td><td>14/20</td></tr>
+<tr><td>30%</td><td>33</td><td>−0.06434</td><td>28/33</td><td>−0.07013</td><td>27/33</td></tr>
+<tr><td>50%</td><td>33</td><td>−0.12702</td><td>29/33</td><td>−0.09004</td><td>29/33</td></tr>
+</tbody></table></div>
+<h3>The attention hypothesis itself (F0–F3)</h3>
+<div class="tw"><table><thead><tr><th>test</th><th>requirement</th><th>result</th></tr></thead><tbody>
+<tr><td><strong>F0</strong> signal is not inert</td><td>varies across units</td><td><strong>passes</strong> — 60/60 decision points</td></tr>
+<tr><td><strong>F0</strong> signal is not relabelled recency</td><td>\</td><td>ρ(mass, position)\</td><td>≤ 0.5</td><td><strong>passes</strong> — 57/60</td></tr>
+<tr><td><strong>F1</strong> direction</td><td>deleting high-attention units is worse than deleting low-attention ones</td><td><strong>passes</strong> — −0.05351</td></tr>
+<tr><td><strong>F2</strong> attention beats position</td><td>margin ≥ +0.10</td><td><strong>does not pass</strong> — pooled +0.105, per-turn median +0.037, 33/60 decision points</td></tr>
+<tr><td><strong>F3</strong> policy value</td><td>low-attention ≤ random</td><td>right direction, −0.02042, outside the floor</td></tr>
+</tbody></table></div>
+<p>Pooled over 1304 (decision point × unit) measurements, attention's partial correlation with the</p>
+<p>causal effect, controlling for unit length, is +0.065 against position's −0.040.</p>
+<h2>What we got wrong</h2>
+<p>An adversarial review of the first version of this experiment found five defects. Two of them invalidated the</p>
+<p>measurement outright. They are listed because the corrected result differs from the first one by more than the</p>
+<p>effect being studied.</p>
+<ul>
+<li><strong>The attention row was read after the continuation it was supposed to predict.</strong> Attention was captured</li>
+</ul>
+<p>   during the same forward pass that scored the agent's next message, so the "current position" was the last</p>
+<p>   token of that message. The predictor was conditioned on the answer, and the signal was not computable at</p>
+<p>   eviction time at all — the live policy code could never have reproduced it. *Invalidated: every attention</p>
+<p>   number in the first version.* Fixed by capturing on a separate pass over the context alone, with an</p>
+<p>   assertion that the captured width equals the context length.</p>
+<ul>
+<li><strong>Units did not include their tool results.</strong> Assistant messages and tool results were separate units, so</li>
+</ul>
+<p>   every single-unit deletion orphaned a tool call. <em>Invalidated: the ground truth itself</em>, which was partly</p>
+<p>   measuring reactions to malformed transcripts. Fixed by pairing on the call identifier, with an automatic</p>
+<p>   well-formedness check.</p>
+<ul>
+<li><strong>"The measurement floor is exactly zero."</strong> This came from re-scoring an identical tensor, which measures</li>
+</ul>
+<p>   determinism rather than accuracy. *Invalidated: the claim that the endpoint had three orders of magnitude</p>
+<p>   of dynamic range* — the bottom decade was arithmetic noise. Fixed by measuring with a shape-changing edit.</p>
+<ul>
+<li><strong>A second endpoint, KL divergence, was below its own representable precision.</strong> Computed in float32 from a</li>
+</ul>
+<p>   bfloat16 forward, it produced values below the floating-point spacing — including a <strong>negative KL</strong>, which</p>
+<p>   is impossible by construction — and its apparent correlation with attention was explained by unit length</p>
+<p>   alone. <em>Invalidated: all KL-based claims</em>, which are withdrawn rather than re-stated.</p>
+<ul>
+<li><strong>The corpus was four sessions, not five.</strong> Two fixtures are the same session. *Invalidated: the planned</li>
+</ul>
+<p>   clustered analysis*, which would have counted one session twice.</p>
+<p>The size of the correction is the point. Before the fixes, the low-attention rule appeared to beat random with</p>
+<p>an effect size of d = −1.24; measured correctly it is −0.134.</p>
+<h2>What survives</h2>
+<ul>
+<li><strong>A cheap instrument for causal importance.</strong> Per-unit leave-one-out costs ~0.11 s per unit here, and</li>
+</ul>
+<p>  reading attention costs 19.5 MiB rather than the 204 GB a naive full-attention export would need. Any future</p>
+<p>  eviction signal can be validated offline against measured ground truth before a live token is spent.</p>
+<ul>
+<li><strong>The prize is large and mostly unclaimed.</strong> Perfect unit-independent selection avoids</li>
+</ul>
+<p>  96% of the damage random deletion causes. Recency captures 18%</p>
+<p>  of that and attention 25%, so about 75% is still on the table.</p>
+<p>  This is the number the rest of the project needs: it says keep looking for a better signal, and it says the</p>
+<p>  previous nulls were about the candidates, not about the opportunity.</p>
+<ul>
+<li><strong>Deleting the right material can be better than deleting nothing.</strong> At the 30% keep-fraction the oracle's</li>
+</ul>
+<p>  ΔNLL is negative. Low-value history actively costs the model something, which is an argument for eviction</p>
+<p>  as a quality mechanism and not only as a way to fit inside a window.</p>
+<ul>
+<li><strong>Volume matching is necessary but not sufficient.</strong> The incumbent eviction code matches kept tokens to</li>
+</ul>
+<p>  0.4% while diverging up to 2× in unit count and 13× in splice count. Any future arm comparison must</p>
+<p>  match or covary those too.</p>
+<ul>
+<li><strong>Determinism is not accuracy</strong>, and the distinction is worth 6e+9 orders of</li>
+</ul>
+<p>  magnitude here. Every offline measurement in this repository should establish its floor with a</p>
+<p>  shape-changing edit.</p>
+<h2>Caveats</h2>
+<ul>
+<li><strong>One model, and a small one.</strong> Everything is measured on a 1B. The project's own vehicle is a 27B, and</li>
+</ul>
+<p>  attention structure is known to be depth- and scale-dependent. The transfer has <strong>not</strong> been tested. The</p>
+<p>  planned test is a size ladder (0.6B / 1B / 1.7B) checking whether the per-unit ranking is stable across</p>
+<p>  scale; if it reshuffles between 0.6B and 1.7B it will not survive to 27B.</p>
+<ul>
+<li><strong>Four clusters.</strong> This is the binding limit and no number of additional decision points from the same four</li>
+</ul>
+<p>  sessions fixes it. Every figure here is descriptive; no confidence interval is quoted, because a clustered</p>
+<p>  bootstrap on four clusters covers roughly 50–60% at a nominal 95%.</p>
+<ul>
+<li><strong>The two aggregations disagree in sign</strong> depending on the inclusion floor and on whether measurements are</li>
+</ul>
+<p>  pooled or averaged per decision point. Pooled, attention's margin over position is +0.105; as a</p>
+<p>  median of per-decision-point values it is +0.037. A result that flips with the aggregation</p>
+<p>  choice is not stable at this sample size, and both are reported for that reason.</p>
+<ul>
+<li><strong>The oracle is a ceiling for unit-independent ranking only.</strong> Single-unit effects are not additive, so the</li>
+</ul>
+<p>  best <em>set</em> of units to delete need not be the units with the smallest individual effects. The oracle bounds</p>
+<p>  every signal this project has proposed, all of which score units independently; it does not bound a</p>
+<p>  set-aware policy.</p>
+<ul>
+<li><strong>Teacher-forced, not rollout.</strong> ΔNLL scores the agent's recorded next message. It cannot see a</li>
+</ul>
+<p>  counterfactual where losing a unit sends the agent down a different but equally good path.</p>
+<ul>
+<li><strong>26% of surviving measurements are below the floor</strong>, which attenuates every rank statistic</li>
+</ul>
+<p>  toward zero. A null here is partly a null about resolution.</p>
+<ul>
+<li><strong>Replayed transcripts, not live agents.</strong> The transcript is fixed; the agent never reacts to the eviction.</li>
+</ul>
+<p>  This is the immediate information cost of a deletion, not its trajectory cost.</p>
+<hr>
+<p>*Data: <code>results-primary-all-mean-20260915-111951.json</code> (+ <code>.npz</code> tensor sidecar).</p>
+<p>Code: <code>experiments/attention-over-history/{attn_signal,measure,floor,reanalyse}.py</code>,</p>
+<p><code>attn-policy.mjs</code>. Design and pre-registration: <code>experiments/attention-over-history/DESIGN.md</code>.</p>
+<p>Model <code>meta-llama/Llama-3.2-1B-Instruct</code>, bfloat16, git <code>c5b12e8d7553</code>,</p>
+<p>torch 2.11.0+cu130, transformers 5.5.0.</p>
+<p>Regenerate: <code>node experiments/attention-over-history/report-attention-over-history.mjs</code>*</p>
+
+</main></body></html>

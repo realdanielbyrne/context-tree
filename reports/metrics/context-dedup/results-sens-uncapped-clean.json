@@ -1,0 +1,131 @@
+{
+  "manifest": {
+    "run_id": "sensitivity-control-longbuild-1789449997615",
+    "experiment": "context-dedup / instrument-sensitivity positive control (duplicate ballast)",
+    "model": "unsloth/Qwen3.8-27B-GGUF",
+    "task": "longbuild(ledger, 6 stages, stdlib unittest)",
+    "windows": [
+      7000
+    ],
+    "repeats": 2,
+    "arms": [
+      "uncapped-clean"
+    ],
+    "max_turns": 60,
+    "anchor": 4,
+    "warmup_turns": 5,
+    "ballast": {
+      "kind": "duplicate re-reads of already-read task files",
+      "every_turns": 2,
+      "burst": 2
+    },
+    "commit": "220b5f9c6d9f2f33bf7b56c9a7bbed904316b645",
+    "date": "2026-09-15T05:26:37.619Z",
+    "partial_run": {
+      "missing_arms": [
+        "oracle",
+        "truncate-tail",
+        "idle",
+        "random",
+        "clean"
+      ],
+      "note": "This file CANNOT evaluate the pre-registration on its own — combine with the run(s) carrying the missing arms and recompute summary/tests/validity."
+    },
+    "known_limit": "The oracle-vs-random contrast flows entirely through USEFUL-TOKEN VOLUME (~4255 vs ~1557 tokens = 1.0 e-fold), the quantity already known to drive this task at OR 42x per e-fold. A win therefore licenses only \"the metric responds when a policy keeps a better subset\" — NOT \"the four selection nulls stand\", which were measured at matched useful volume.",
+    "question": "Can this harness detect selection quality at all? If a policy that drops provably zero-information units cannot beat a volume-matched random control, the harness is blind and every previous selection null is uninformative rather than negative.",
+    "falsification": "PRIMARY: oracle > random at one-sided Fisher p<0.05. Interpretable ONLY if clean is not at the floor AND random <= 0.4n; otherwise the run is an operating-point miss and must be re-run at a different W, not interpreted. If the primary does not fire while validity holds: withdraw the arm/idle/position/cadence nulls as evidence of no effect and redesign backlog items 1, 2, 6, 7.",
+    "caveats": [
+      "The oracle label is exact by construction (byte-identical superseded reads). It is therefore also IMPLEMENTABLE — this arm is both a sensitivity ceiling and a candidate dedup policy.",
+      "Duplicate ballast is the EASY version of selection: real irrelevance is confusable, exact duplication is not. A null here is damning; a win here is only a ceiling.",
+      "Two earlier ballast designs (foreign tool results; foreign user pastes) DERAILED the agent — it stopped writing files entirely. no_write_cells is reported so that failure mode is visible rather than scored as a task failure.",
+      "C0 still applies: one problem (longbuild), so this measures within-problem sensitivity only.",
+      "Binary grading is weak at n=10; min_detectable_treatment_passes states what the design could have found, and continuous secondaries are reported alongside.",
+      "errors_total counts cells that threw (HTTP/timeout). They are scored as failures; treat an arm with errors_total>0 with care."
+    ]
+  },
+  "summary": [
+    {
+      "cell": "uncapped-clean@inf",
+      "n": 2,
+      "passes": 2,
+      "pass_rate": 1,
+      "ci95": [
+        34,
+        100
+      ],
+      "turns_median": 54,
+      "writes_median": 16.5,
+      "rereads_median": 0,
+      "evictions_median": 0,
+      "peak_median": 18868,
+      "useful_tokens_median": 10227,
+      "junk_share_median": 0,
+      "total_tokens_median": 602066.5,
+      "cap_violations_total": 0,
+      "errors_total": 0,
+      "no_write_cells": 0
+    }
+  ],
+  "tests": [],
+  "validity": [
+    {
+      "window": 7000,
+      "clean": null,
+      "random": null,
+      "clean_not_at_floor": null,
+      "random_has_headroom": null,
+      "interpretable": null,
+      "reason": "validity arms not present in this run (ARMS=uncapped-clean); combine with the run that has them"
+    }
+  ],
+  "cells": [
+    {
+      "arm": "uncapped-clean",
+      "window": null,
+      "repeat": 0,
+      "pass": true,
+      "turns": 55,
+      "stop": "end_turn",
+      "evictions": 0,
+      "cap_violations": 0,
+      "units_kept_last": null,
+      "ballast_injected": 0,
+      "useful_tokens_mean": 10085,
+      "junk_tokens_mean": 0,
+      "useful_peak": 18172,
+      "junk_share_mean": 0,
+      "reads": 18,
+      "rereads": 0,
+      "writes": 17,
+      "peak_history_tokens": 18650,
+      "peak_before_evict": 18650,
+      "total_prompt_tokens": 608979,
+      "wall_seconds": 132,
+      "error": null
+    },
+    {
+      "arm": "uncapped-clean",
+      "window": null,
+      "repeat": 1,
+      "pass": true,
+      "turns": 53,
+      "stop": "end_turn",
+      "evictions": 0,
+      "cap_violations": 0,
+      "units_kept_last": null,
+      "ballast_injected": 0,
+      "useful_tokens_mean": 10369,
+      "junk_tokens_mean": 0,
+      "useful_peak": 18604,
+      "junk_share_mean": 0,
+      "reads": 20,
+      "rereads": 0,
+      "writes": 16,
+      "peak_history_tokens": 19086,
+      "peak_before_evict": 19086,
+      "total_prompt_tokens": 595154,
+      "wall_seconds": 131,
+      "error": null
+    }
+  ]
+}

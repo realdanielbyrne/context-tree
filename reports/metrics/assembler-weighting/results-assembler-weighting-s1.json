@@ -1,11 +1,11 @@
 {
   "manifest": {
-    "run_id": "assembler-weighting-1789484928024",
+    "run_id": "assembler-weighting-1789484929705",
     "experiment": "assembler-weighting / signal weighting sweep",
-    "corpus": "claude-code-session-2.jsonl",
-    "turns": 741,
-    "fingerprinted_units": 569,
-    "eval_turns": 550,
+    "corpus": "claude-code-session.jsonl",
+    "turns": 758,
+    "fingerprinted_units": 550,
+    "eval_turns": 523,
     "params": {
       "K_RECENT": 5,
       "H": 3,
@@ -24,7 +24,7 @@
     "ground_truth": "needed = fingerprint overlap within horizon H (observational identifier overlap, not causal)",
     "falsification": "a signal earns weight iff it lifts keep-needed recall (esp. non-monotonic) over recency-only by >=0.03 at equal M",
     "commit": "0cf826ad5f4aeb7ef9f8b251335d8d8b4714c7a2",
-    "date": "2026-09-15T15:08:48.030Z",
+    "date": "2026-09-15T15:08:49.711Z",
     "caveats": [
       "Ground truth is identifier-overlap (observational), the standing DSA proxy — not causal usefulness.",
       "Units = turns (fixed); segmentation not varied here.",
@@ -34,125 +34,125 @@
   "named_arms": {
     "recency-only": {
       "8": {
-        "recall": 0.0381,
-        "nonmono_recall": 0.0031
+        "recall": 0.0442,
+        "nonmono_recall": 0.0074
       },
       "16": {
-        "recall": 0.0706,
-        "nonmono_recall": 0.0346
+        "recall": 0.0763,
+        "nonmono_recall": 0.0323
       },
       "32": {
-        "recall": 0.1332,
-        "nonmono_recall": 0.1099
+        "recall": 0.1383,
+        "nonmono_recall": 0.0968
       },
       "64": {
-        "recall": 0.2461,
-        "nonmono_recall": 0.235
+        "recall": 0.2427,
+        "nonmono_recall": 0.206
       }
     },
     "relevance-only": {
       "8": {
-        "recall": 0.044,
-        "nonmono_recall": 0.0003
+        "recall": 0.0567,
+        "nonmono_recall": 0.0027
       },
       "16": {
-        "recall": 0.0873,
-        "nonmono_recall": 0.0037
+        "recall": 0.1129,
+        "nonmono_recall": 0.0089
       },
       "32": {
-        "recall": 0.1687,
-        "nonmono_recall": 0.0218
+        "recall": 0.2128,
+        "nonmono_recall": 0.026
       },
       "64": {
-        "recall": 0.3272,
-        "nonmono_recall": 0.0561
+        "recall": 0.3865,
+        "nonmono_recall": 0.0963
       }
     },
     "priority-only": {
       "8": {
-        "recall": 0.0474,
-        "nonmono_recall": 0.0092
+        "recall": 0.0582,
+        "nonmono_recall": 0.0365
       },
       "16": {
-        "recall": 0.0943,
-        "nonmono_recall": 0.0226
+        "recall": 0.1152,
+        "nonmono_recall": 0.0731
       },
       "32": {
-        "recall": 0.1838,
-        "nonmono_recall": 0.0515
+        "recall": 0.2236,
+        "nonmono_recall": 0.1458
       },
       "64": {
-        "recall": 0.3479,
-        "nonmono_recall": 0.14
+        "recall": 0.4167,
+        "nonmono_recall": 0.2654
       }
     },
     "rel+prio": {
       "8": {
-        "recall": 0.0484,
-        "nonmono_recall": 0.006
+        "recall": 0.0593,
+        "nonmono_recall": 0.0298
       },
       "16": {
-        "recall": 0.0954,
-        "nonmono_recall": 0.0155
+        "recall": 0.1166,
+        "nonmono_recall": 0.0638
       },
       "32": {
-        "recall": 0.1861,
-        "nonmono_recall": 0.0395
+        "recall": 0.2258,
+        "nonmono_recall": 0.1312
       },
       "64": {
-        "recall": 0.3533,
-        "nonmono_recall": 0.1108
+        "recall": 0.4219,
+        "nonmono_recall": 0.2504
       }
     },
     "rel+prio+refrec": {
       "8": {
-        "recall": 0.0487,
-        "nonmono_recall": 0.0043
+        "recall": 0.0592,
+        "nonmono_recall": 0.029
       },
       "16": {
-        "recall": 0.0959,
-        "nonmono_recall": 0.0114
+        "recall": 0.1168,
+        "nonmono_recall": 0.0628
       },
       "32": {
-        "recall": 0.1871,
-        "nonmono_recall": 0.0358
+        "recall": 0.2261,
+        "nonmono_recall": 0.1287
       },
       "64": {
-        "recall": 0.3553,
-        "nonmono_recall": 0.0987
+        "recall": 0.4228,
+        "nonmono_recall": 0.2461
       }
     },
     "rec+rel+prio+refrec": {
       "8": {
-        "recall": 0.0484,
-        "nonmono_recall": 0.0014
+        "recall": 0.0604,
+        "nonmono_recall": 0.0201
       },
       "16": {
-        "recall": 0.0954,
-        "nonmono_recall": 0.0054
+        "recall": 0.1187,
+        "nonmono_recall": 0.0524
       },
       "32": {
-        "recall": 0.1873,
-        "nonmono_recall": 0.0323
+        "recall": 0.2284,
+        "nonmono_recall": 0.1179
       },
       "64": {
-        "recall": 0.3598,
-        "nonmono_recall": 0.0962
+        "recall": 0.425,
+        "nonmono_recall": 0.2407
       }
     }
   },
   "best_grid_by_M": {
     "8": {
-      "arm": "g_0.5_0.5_1_1",
+      "arm": "g_0.5_0_0.5_1",
       "weights": [
         0.5,
+        0,
         0.5,
-        1,
         1
       ],
-      "recall": 0.0494,
-      "nonmono": 0.0023,
-      "lift_over_recency": 0.0113
+      "recall": 0.0637,
+      "nonmono": 0.0053,
+      "lift_over_recency": 0.0195
     },
     "16": {
       "arm": "g_0.5_0_0.5_1",
@@ -162,9 +162,9 @@
         0.5,
         1
       ],
-      "recall": 0.0971,
-      "nonmono": 0.0043,
-      "lift_over_recency": 0.0265
+      "recall": 0.1244,
+      "nonmono": 0.0167,
+      "lift_over_recency": 0.0481
     },
     "32": {
       "arm": "g_0.5_0_0.5_1",
@@ -174,21 +174,21 @@
         0.5,
         1
       ],
-      "recall": 0.1887,
-      "nonmono": 0.0292,
-      "lift_over_recency": 0.0555
+      "recall": 0.2337,
+      "nonmono": 0.063,
+      "lift_over_recency": 0.0954
     },
     "64": {
-      "arm": "g_1_0_1_0.5",
+      "arm": "rec+rel+prio+refrec",
       "weights": [
+        0.5,
         1,
-        0,
         1,
-        0.5
+        1
       ],
-      "recall": 0.3631,
-      "nonmono": 0.1076,
-      "lift_over_recency": 0.117
+      "recall": 0.425,
+      "nonmono": 0.2407,
+      "lift_over_recency": 0.1823
     }
   }
 }

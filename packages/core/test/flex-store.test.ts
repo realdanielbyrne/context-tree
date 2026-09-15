@@ -72,7 +72,7 @@ describe('mapFlexUnits — with an embedder', () => {
 });
 
 describe('mapFlexUnits → assembleFlex end to end', () => {
-  it('the mapped units assemble into a flex prompt (dormant unit evicted first under a tight floor)', async () => {
+  it('the mapped units assemble into a flex prompt (dormant unit evicted first at the hard limit)', async () => {
     const bulk = 'context '.repeat(60);
     const wide: FlexEntry[] = [
       entry(0, { nodeId: 'dormant', raw: `loggingModule retryBackoff ${bulk}` }),
@@ -81,8 +81,11 @@ describe('mapFlexUnits → assembleFlex end to end', () => {
       entry(3, { nodeId: 'active', raw: `widgetCatalog currentWork ${bulk}` }),
     ];
     const { units } = await mapFlexUnits(wide);
+    // The cap must BIND: eviction now fires at the hard limit (window − replyReserve),
+    // not at a fraction of the window. See report-cadence-confound.md.
     const prompt = assembleFlex({ system: 'S', userPrompts: ['do the widget task'] }, units, tok, {
       window: 400,
+      replyReserve: 200,
       softTargetFrac: 0.5,
       anchor: 1,
     });

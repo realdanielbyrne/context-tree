@@ -1,0 +1,197 @@
+{
+  "manifest": {
+    "run_id": "sensitivity-control-longbuild-1789438724460",
+    "experiment": "context-dedup / instrument-sensitivity positive control (duplicate ballast)",
+    "model": "unsloth/Qwen3.8-27B-GGUF",
+    "task": "longbuild(ledger, 6 stages, stdlib unittest)",
+    "windows": [
+      7000
+    ],
+    "repeats": 1,
+    "arms": [
+      "oracle",
+      "random",
+      "clean"
+    ],
+    "max_turns": 60,
+    "anchor": 4,
+    "warmup_turns": 5,
+    "ballast": {
+      "kind": "duplicate re-reads of already-read task files",
+      "every_turns": 2,
+      "burst": 2
+    },
+    "commit": "25e3006469682a653fbc6b7c62153028214d809e",
+    "date": "2026-09-15T02:18:44.464Z",
+    "question": "Can this harness detect selection quality at all? If a policy that drops provably zero-information units cannot beat a volume-matched random control, the harness is blind and every previous selection null is uninformative rather than negative.",
+    "falsification": "PRIMARY: oracle > random at one-sided Fisher p<0.05. Interpretable ONLY if clean is not at the floor AND random <= 0.4n; otherwise the run is an operating-point miss and must be re-run at a different W, not interpreted. If the primary does not fire while validity holds: withdraw the arm/idle/position/cadence nulls as evidence of no effect and redesign backlog items 1, 2, 6, 7.",
+    "caveats": [
+      "The oracle label is exact by construction (byte-identical superseded reads). It is therefore also IMPLEMENTABLE — this arm is both a sensitivity ceiling and a candidate dedup policy.",
+      "Duplicate ballast is the EASY version of selection: real irrelevance is confusable, exact duplication is not. A null here is damning; a win here is only a ceiling.",
+      "Two earlier ballast designs (foreign tool results; foreign user pastes) DERAILED the agent — it stopped writing files entirely. no_write_cells is reported so that failure mode is visible rather than scored as a task failure.",
+      "C0 still applies: one problem (longbuild), so this measures within-problem sensitivity only.",
+      "Binary grading is weak at n=10; min_detectable_treatment_passes states what the design could have found, and continuous secondaries are reported alongside.",
+      "errors_total counts cells that threw (HTTP/timeout). They are scored as failures; treat an arm with errors_total>0 with care."
+    ]
+  },
+  "summary": [
+    {
+      "cell": "oracle@7000",
+      "n": 1,
+      "passes": 0,
+      "pass_rate": 0,
+      "ci95": [
+        0,
+        79
+      ],
+      "turns_median": 61,
+      "writes_median": 8,
+      "rereads_median": 27,
+      "evictions_median": 49,
+      "peak_median": 6474,
+      "useful_tokens_median": 4255,
+      "junk_share_median": 0.2701,
+      "total_tokens_median": 416559,
+      "cap_violations_total": 0,
+      "errors_total": 0,
+      "no_write_cells": 0
+    },
+    {
+      "cell": "random@7000",
+      "n": 1,
+      "passes": 0,
+      "pass_rate": 0,
+      "ci95": [
+        0,
+        79
+      ],
+      "turns_median": 61,
+      "writes_median": 0,
+      "rereads_median": 52,
+      "evictions_median": 51,
+      "peak_median": 6429,
+      "useful_tokens_median": 1557,
+      "junk_share_median": 0.7306,
+      "total_tokens_median": 421700,
+      "cap_violations_total": 0,
+      "errors_total": 0,
+      "no_write_cells": 1
+    },
+    {
+      "cell": "clean@7000",
+      "n": 1,
+      "passes": 1,
+      "pass_rate": 1,
+      "ci95": [
+        21,
+        100
+      ],
+      "turns_median": 53,
+      "writes_median": 14,
+      "rereads_median": 3,
+      "evictions_median": 30,
+      "peak_median": 6474,
+      "useful_tokens_median": 5364,
+      "junk_share_median": 0,
+      "total_tokens_median": 337012,
+      "cap_violations_total": 0,
+      "errors_total": 0,
+      "no_write_cells": 0
+    }
+  ],
+  "tests": [
+    {
+      "window": 7000,
+      "treatment": "oracle",
+      "control": "random",
+      "treatment_passes": "0/1",
+      "control_passes": "0/1",
+      "p_one_sided": 1,
+      "min_detectable_treatment_passes": null
+    }
+  ],
+  "validity": [
+    {
+      "window": 7000,
+      "clean": "1/1",
+      "random": "0/1",
+      "clean_not_at_floor": true,
+      "random_has_headroom": true,
+      "interpretable": true
+    }
+  ],
+  "cells": [
+    {
+      "arm": "oracle",
+      "window": 7000,
+      "repeat": 0,
+      "pass": false,
+      "turns": 61,
+      "stop": "maxTurns",
+      "evictions": 49,
+      "cap_violations": 0,
+      "units_kept_last": 14,
+      "ballast_injected": 58,
+      "useful_tokens_mean": 4255,
+      "junk_tokens_mean": 1574,
+      "useful_peak": 5983,
+      "junk_share_mean": 0.2701,
+      "reads": 45,
+      "rereads": 27,
+      "writes": 8,
+      "peak_history_tokens": 6474,
+      "peak_before_evict": 8019,
+      "total_prompt_tokens": 416559,
+      "wall_seconds": 210,
+      "error": null
+    },
+    {
+      "arm": "random",
+      "window": 7000,
+      "repeat": 0,
+      "pass": false,
+      "turns": 61,
+      "stop": "maxTurns",
+      "evictions": 51,
+      "cap_violations": 0,
+      "units_kept_last": 11,
+      "ballast_injected": 58,
+      "useful_tokens_mean": 1557,
+      "junk_tokens_mean": 4221,
+      "useful_peak": 3088,
+      "junk_share_mean": 0.7306,
+      "reads": 60,
+      "rereads": 52,
+      "writes": 0,
+      "peak_history_tokens": 6429,
+      "peak_before_evict": 7998,
+      "total_prompt_tokens": 421700,
+      "wall_seconds": 109,
+      "error": null
+    },
+    {
+      "arm": "clean",
+      "window": 7000,
+      "repeat": 0,
+      "pass": true,
+      "turns": 53,
+      "stop": "end_turn",
+      "evictions": 30,
+      "cap_violations": 0,
+      "units_kept_last": 14,
+      "ballast_injected": 0,
+      "useful_tokens_mean": 5364,
+      "junk_tokens_mean": 0,
+      "useful_peak": 5983,
+      "junk_share_mean": 0,
+      "reads": 23,
+      "rereads": 3,
+      "writes": 14,
+      "peak_history_tokens": 6474,
+      "peak_before_evict": 7221,
+      "total_prompt_tokens": 337012,
+      "wall_seconds": 218,
+      "error": null
+    }
+  ]
+}

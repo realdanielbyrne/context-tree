@@ -1,0 +1,402 @@
+{
+  "manifest": {
+    "run_id": "covariance-corpus-survey-1789486430731",
+    "experiment": "covariance-eviction / H2 corpus survey — is a pairwise co-reference statistic testable anywhere available?",
+    "commit": "0cf826ad5f4aeb7ef9f8b251335d8d8b4714c7a2",
+    "date": "2026-09-15T15:33:50.738Z",
+    "params": {
+      "K": 5,
+      "H": 3,
+      "START": 20,
+      "MAX_CAND": 200,
+      "L_sweep": [
+        1,
+        2,
+        3,
+        5,
+        10,
+        20
+      ],
+      "gate": 0.5,
+      "gate_margin": 0.05
+    },
+    "question": "The H2 offline arm failed its support gate on the committed fixtures. Is there a corpus on this machine — or a defensible parameter setting — on which the gate is cleared?",
+    "decision_rule": "Support share must reach 0.55 (the median candidate has a non-empty contingency table, plus margin). Reported BEFORE any contrast; a corpus that fails is not run.",
+    "privacy": "Local sessions contribute AGGREGATES ONLY — turn, reference and file COUNTS. No file path, session id or project name is recorded; projects are labelled project-A, project-B, ... This session's own transcript (11bef7b8...) is excluded as circular.",
+    "caveats": [
+      "Reference extraction includes file paths named on Bash command lines via a regex; that is the least trustworthy input and it INFLATES density, so the densities here are upper estimates.",
+      "Local sessions are aggregated per project across sessions. Pooling them would give a file a longer reference history than any single session has, which is a legitimate deployment model (a persisted reference log) but is NOT what a single-session experiment measures.",
+      "The support ceiling is swept over dilation L only. Larger L raises support mechanically and stops meaning \"working episode\" somewhere below L=10; the sweep is reported so the gate is judged against the best case, not to license picking the best case."
+    ]
+  },
+  "corpus_density": {
+    "fixtures_per_session": [
+      {
+        "corpus": "session-2",
+        "turns": 291,
+        "refs": 253,
+        "distinct_files": 107,
+        "refs_per_turn": 0.869,
+        "refs_per_file": 2.364,
+        "files_with_3plus_refs": 22,
+        "referencing_turns": 206,
+        "turns_able_to_form_a_same_turn_pair": 22,
+        "share_turns_able_to_pair": 0.1068,
+        "files_per_turn_histogram": {
+          "1": 184,
+          "2": 11,
+          "3-4": 8,
+          "5+": 3
+        }
+      },
+      {
+        "corpus": "session-3",
+        "turns": 44,
+        "refs": 42,
+        "distinct_files": 22,
+        "refs_per_turn": 0.955,
+        "refs_per_file": 1.909,
+        "files_with_3plus_refs": 6,
+        "referencing_turns": 27,
+        "turns_able_to_form_a_same_turn_pair": 8,
+        "share_turns_able_to_pair": 0.2963,
+        "files_per_turn_histogram": {
+          "1": 19,
+          "2": 4,
+          "3-4": 4,
+          "5+": 0
+        }
+      },
+      {
+        "corpus": "session-5",
+        "turns": 1046,
+        "refs": 1135,
+        "distinct_files": 376,
+        "refs_per_turn": 1.085,
+        "refs_per_file": 3.019,
+        "files_with_3plus_refs": 111,
+        "referencing_turns": 775,
+        "turns_able_to_form_a_same_turn_pair": 151,
+        "share_turns_able_to_pair": 0.1948,
+        "files_per_turn_histogram": {
+          "1": 624,
+          "2": 73,
+          "3-4": 57,
+          "5+": 21
+        }
+      },
+      {
+        "corpus": "session",
+        "turns": 331,
+        "refs": 320,
+        "distinct_files": 103,
+        "refs_per_turn": 0.967,
+        "refs_per_file": 3.107,
+        "files_with_3plus_refs": 29,
+        "referencing_turns": 222,
+        "turns_able_to_form_a_same_turn_pair": 64,
+        "share_turns_able_to_pair": 0.2883,
+        "files_per_turn_histogram": {
+          "1": 158,
+          "2": 41,
+          "3-4": 20,
+          "5+": 3
+        }
+      }
+    ],
+    "fixtures_pooled": {
+      "corpus": "committed fixtures (pooled)",
+      "sessions": 4,
+      "turns": 1712,
+      "refs": 1750,
+      "distinct_files": 562,
+      "refs_per_turn": 1.022,
+      "refs_per_file": 3.114,
+      "referencing_turns": 1230,
+      "turns_able_to_form_a_same_turn_pair": 245,
+      "share_turns_able_to_pair": 0.1992,
+      "files_per_turn_histogram": {
+        "1": 985,
+        "2": 129,
+        "3-4": 89,
+        "5+": 27
+      }
+    },
+    "local_projects": [
+      {
+        "corpus": "project-A",
+        "source": "local Claude Code sessions (aggregates only; no paths or names recorded)",
+        "sessions": 1,
+        "turns": 205,
+        "refs": 230,
+        "distinct_files": 59,
+        "refs_per_turn": 1.122,
+        "refs_per_file": 3.898,
+        "share_turns_able_to_pair": 0.1457,
+        "excluded_self_transcripts": 0
+      },
+      {
+        "corpus": "project-B",
+        "source": "local Claude Code sessions (aggregates only; no paths or names recorded)",
+        "sessions": 4,
+        "turns": 243,
+        "refs": 344,
+        "distinct_files": 153,
+        "refs_per_turn": 1.416,
+        "refs_per_file": 2.248,
+        "share_turns_able_to_pair": 0.3553,
+        "excluded_self_transcripts": 1
+      },
+      {
+        "corpus": "project-C",
+        "source": "local Claude Code sessions (aggregates only; no paths or names recorded)",
+        "sessions": 1,
+        "turns": 19,
+        "refs": 1,
+        "distinct_files": 1,
+        "refs_per_turn": 0.053,
+        "refs_per_file": 1,
+        "share_turns_able_to_pair": 0,
+        "excluded_self_transcripts": 0
+      }
+    ]
+  },
+  "support_ceiling": [
+    {
+      "L": 1,
+      "rows": 177267,
+      "supported_share": 0.0772,
+      "clears_gate": false,
+      "by_candidate_recurrence": [
+        {
+          "prior_refs_of_candidate_file": "1",
+          "rows": 19263,
+          "share_of_all_rows": 0.1087,
+          "supported_share": 0
+        },
+        {
+          "prior_refs_of_candidate_file": "2",
+          "rows": 20908,
+          "share_of_all_rows": 0.1179,
+          "supported_share": 0.0143
+        },
+        {
+          "prior_refs_of_candidate_file": "3-4",
+          "rows": 23441,
+          "share_of_all_rows": 0.1322,
+          "supported_share": 0.0464
+        },
+        {
+          "prior_refs_of_candidate_file": "5-9",
+          "rows": 42310,
+          "share_of_all_rows": 0.2387,
+          "supported_share": 0.0916
+        },
+        {
+          "prior_refs_of_candidate_file": "10+",
+          "rows": 71345,
+          "share_of_all_rows": 0.4025,
+          "supported_share": 0.118
+        }
+      ]
+    },
+    {
+      "L": 2,
+      "rows": 177267,
+      "supported_share": 0.1821,
+      "clears_gate": false,
+      "by_candidate_recurrence": [
+        {
+          "prior_refs_of_candidate_file": "1",
+          "rows": 19263,
+          "share_of_all_rows": 0.1087,
+          "supported_share": 0.053
+        },
+        {
+          "prior_refs_of_candidate_file": "2",
+          "rows": 20908,
+          "share_of_all_rows": 0.1179,
+          "supported_share": 0.0918
+        },
+        {
+          "prior_refs_of_candidate_file": "3-4",
+          "rows": 23441,
+          "share_of_all_rows": 0.1322,
+          "supported_share": 0.1355
+        },
+        {
+          "prior_refs_of_candidate_file": "5-9",
+          "rows": 42310,
+          "share_of_all_rows": 0.2387,
+          "supported_share": 0.2155
+        },
+        {
+          "prior_refs_of_candidate_file": "10+",
+          "rows": 71345,
+          "share_of_all_rows": 0.4025,
+          "supported_share": 0.2389
+        }
+      ]
+    },
+    {
+      "L": 3,
+      "rows": 177267,
+      "supported_share": 0.2215,
+      "clears_gate": false,
+      "by_candidate_recurrence": [
+        {
+          "prior_refs_of_candidate_file": "1",
+          "rows": 19263,
+          "share_of_all_rows": 0.1087,
+          "supported_share": 0.0929
+        },
+        {
+          "prior_refs_of_candidate_file": "2",
+          "rows": 20908,
+          "share_of_all_rows": 0.1179,
+          "supported_share": 0.1509
+        },
+        {
+          "prior_refs_of_candidate_file": "3-4",
+          "rows": 23441,
+          "share_of_all_rows": 0.1322,
+          "supported_share": 0.1875
+        },
+        {
+          "prior_refs_of_candidate_file": "5-9",
+          "rows": 42310,
+          "share_of_all_rows": 0.2387,
+          "supported_share": 0.2654
+        },
+        {
+          "prior_refs_of_candidate_file": "10+",
+          "rows": 71345,
+          "share_of_all_rows": 0.4025,
+          "supported_share": 0.262
+        }
+      ]
+    },
+    {
+      "L": 5,
+      "rows": 177267,
+      "supported_share": 0.2922,
+      "clears_gate": false,
+      "by_candidate_recurrence": [
+        {
+          "prior_refs_of_candidate_file": "1",
+          "rows": 19263,
+          "share_of_all_rows": 0.1087,
+          "supported_share": 0.177
+        },
+        {
+          "prior_refs_of_candidate_file": "2",
+          "rows": 20908,
+          "share_of_all_rows": 0.1179,
+          "supported_share": 0.2081
+        },
+        {
+          "prior_refs_of_candidate_file": "3-4",
+          "rows": 23441,
+          "share_of_all_rows": 0.1322,
+          "supported_share": 0.2697
+        },
+        {
+          "prior_refs_of_candidate_file": "5-9",
+          "rows": 42310,
+          "share_of_all_rows": 0.2387,
+          "supported_share": 0.3344
+        },
+        {
+          "prior_refs_of_candidate_file": "10+",
+          "rows": 71345,
+          "share_of_all_rows": 0.4025,
+          "supported_share": 0.3304
+        }
+      ]
+    },
+    {
+      "L": 10,
+      "rows": 177267,
+      "supported_share": 0.3889,
+      "clears_gate": false,
+      "by_candidate_recurrence": [
+        {
+          "prior_refs_of_candidate_file": "1",
+          "rows": 19263,
+          "share_of_all_rows": 0.1087,
+          "supported_share": 0.2806
+        },
+        {
+          "prior_refs_of_candidate_file": "2",
+          "rows": 20908,
+          "share_of_all_rows": 0.1179,
+          "supported_share": 0.3226
+        },
+        {
+          "prior_refs_of_candidate_file": "3-4",
+          "rows": 23441,
+          "share_of_all_rows": 0.1322,
+          "supported_share": 0.3693
+        },
+        {
+          "prior_refs_of_candidate_file": "5-9",
+          "rows": 42310,
+          "share_of_all_rows": 0.2387,
+          "supported_share": 0.4468
+        },
+        {
+          "prior_refs_of_candidate_file": "10+",
+          "rows": 71345,
+          "share_of_all_rows": 0.4025,
+          "supported_share": 0.4097
+        }
+      ]
+    },
+    {
+      "L": 20,
+      "rows": 177267,
+      "supported_share": 0.4897,
+      "clears_gate": false,
+      "by_candidate_recurrence": [
+        {
+          "prior_refs_of_candidate_file": "1",
+          "rows": 19263,
+          "share_of_all_rows": 0.1087,
+          "supported_share": 0.422
+        },
+        {
+          "prior_refs_of_candidate_file": "2",
+          "rows": 20908,
+          "share_of_all_rows": 0.1179,
+          "supported_share": 0.4442
+        },
+        {
+          "prior_refs_of_candidate_file": "3-4",
+          "rows": 23441,
+          "share_of_all_rows": 0.1322,
+          "supported_share": 0.5034
+        },
+        {
+          "prior_refs_of_candidate_file": "5-9",
+          "rows": 42310,
+          "share_of_all_rows": 0.2387,
+          "supported_share": 0.5323
+        },
+        {
+          "prior_refs_of_candidate_file": "10+",
+          "rows": 71345,
+          "share_of_all_rows": 0.4025,
+          "supported_share": 0.4916
+        }
+      ]
+    }
+  ],
+  "verdict": {
+    "best_L": 20,
+    "best_supported_share": 0.4897,
+    "gate": 0.55,
+    "gate_cleared_anywhere": false,
+    "denser_corpus_found": false,
+    "conclusion": "NO corpus and NO dilation setting available on this machine clears the support gate. H2 is NOT evaluable here, and the reason is structural rather than a matter of data volume: 19.9% of referencing turns name two or more files, so same-turn co-reference of two specific files is rare by construction."
+  }
+}

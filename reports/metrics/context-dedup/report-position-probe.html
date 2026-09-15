@@ -1,0 +1,102 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Position probe — context-tree</title><style>
+:root{--fg:#1b1c1e;--mut:#5f6368;--line:#dadce0;--bg:#fff;--accent:#37618e}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+main{max-width:960px;margin:0 auto;padding:32px 20px 80px}
+h1{font-size:28px;line-height:1.25;margin:0 0 6px}
+h2{font-size:20px;margin:40px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+h3{font-size:16px;margin:24px 0 8px;color:var(--mut)}
+code{background:#f1f3f4;padding:1px 5px;border-radius:3px;font-size:13px}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;white-space:nowrap}
+th{background:#f8f9fa;font-weight:600}
+.lede{font-size:17px;background:#e8f0f8;border-left:4px solid var(--accent);padding:14px 18px;border-radius:0 6px 6px 0;margin:18px 0 28px}
+figure{margin:20px 0;border:1px solid var(--line);border-radius:8px;padding:12px;background:#fcfcfd}
+figcaption{font-size:13px;color:var(--mut);margin-top:8px}
+.ct{font:600 14px sans-serif;fill:#1b1c1e}
+.ax{font:12px sans-serif;fill:#5f6368}
+.val{font:600 12px sans-serif;fill:#1b1c1e}
+.cell{font:700 14px sans-serif;fill:#fff}
+.mid{text-anchor:middle}.end{text-anchor:end}
+ul{padding-left:22px}li{margin:6px 0}
+.note{font-size:14px;color:var(--mut);border-top:1px solid var(--line);margin-top:40px;padding-top:12px}
+</style></head><body><main>
+
+<h1>Position probe — does retrieval depend on <em>where</em> a fact sits?</h1>
+<p class="lede"><strong>No. 180/180 across both stages, at every depth, out to 155,773 real
+prompt tokens with 7 competing distractors.</strong> The null is clean, and it removes position-aware
+assembly from the design space for this model at these lengths.</p>
+
+<h2>Why this was run</h2>
+<p>Our eviction policies decide only <strong>presence</strong> — which units survive — never
+<strong>position</strong>. Survivors keep creation order. If retrieval quality depended on where a fact
+sat, two policies keeping the same units in the same band would look identical to the metric while
+differing in reality. The A/B window sweep showed exactly that shape (idle vs positional recency, pooled
+<code>p = 1.000</code>). Two mechanisms predict the lever should exist: RoPE long-term decay, and the
+"lost in the middle" U-shape.</p>
+
+<h2>Method</h2>
+<p>Needle-in-a-haystack, single-turn, <code>temperature = 0</code>, deterministic PRNG. Haystack lines are
+all distinct; the needle is <code>IMPORTANT RECORD: the access code for sector &lt;NAME&gt; is
+&lt;NNNN&gt;.</code>; the question is appended at the end and graded by exact match. Grid: 3 lengths × 5
+depths × 6 needles.</p>
+<p><strong>Stage 1 (easy, 0 distractors)</strong> hit 90/90, but weakly — the needle was the only 4-digit
+number near the question's wording. <strong>Stage 2 (hard, 7 distractors)</strong> is the real test: every
+distractor uses the identical framing for a different sector, so the model must discriminate on the sector
+name among 8 candidates, and the lengths rise ~6× to <strong>155,773 real prompt tokens</strong> (59% of
+the 262,144-token window).</p>
+<p>Model <code>unsloth/Qwen3.8-27B-GGUF</code>. Rerun:
+<code>CT_PROBE_LENGTHS=20000,60000,120000 CT_PROBE_DISTRACTORS=7 node experiments/context-dedup/position-probe.mjs</code></p>
+
+<h2>Results</h2>
+<figure><svg viewBox="0 0 744 358" width="100%" role="img" aria-label="retrieval accuracy by needle depth and context length"><text x="12" y="24" class="ct">Retrieval accuracy by needle depth &times; context length</text><text x="252" y="44" class="ax mid">0%</text><text x="356" y="44" class="ax mid">25%</text><text x="460" y="44" class="ax mid">50%</text><text x="564" y="44" class="ax mid">75%</text><text x="668" y="44" class="ax mid">100%</text><text x="460" y="350" class="ax mid">needle depth (0% = start of context, 100% = end)</text><text x="188" y="81" class="ax end">7k tok  ·  0 distr.</text><rect x="202" y="56" width="98" height="38" rx="4" fill="#1b7f4b"/><text x="250" y="81" class="cell mid">6/6</text><rect x="306" y="56" width="98" height="38" rx="4" fill="#1b7f4b"/><text x="354" y="81" class="cell mid">6/6</text><rect x="410" y="56" width="98" height="38" rx="4" fill="#1b7f4b"/><text x="458" y="81" class="cell mid">6/6</text><rect x="514" y="56" width="98" height="38" rx="4" fill="#1b7f4b"/><text x="562" y="81" class="cell mid">6/6</text><rect x="618" y="56" width="98" height="38" rx="4" fill="#1b7f4b"/><text x="666" y="81" class="cell mid">6/6</text><text x="188" y="125" class="ax end">13k tok  ·  0 distr.</text><rect x="202" y="100" width="98" height="38" rx="4" fill="#1b7f4b"/><text x="250" y="125" class="cell mid">6/6</text><rect x="306" y="100" width="98" height="38" rx="4" fill="#1b7f4b"/><text x="354" y="125" class="cell mid">6/6</text><rect x="410" y="100" width="98" height="38" rx="4" fill="#1b7f4b"/><text x="458" y="125" class="cell mid">6/6</text><rect x="514" y="100" width="98" height="38" rx="4" fill="#1b7f4b"/><text x="562" y="125" class="cell mid">6/6</text><rect x="618" y="100" width="98" height="38" rx="4" fill="#1b7f4b"/><text x="666" y="125" class="cell mid">6/6</text><text x="188" y="169" class="ax end">26k tok  ·  0 distr.</text><rect x="202" y="144" width="98" height="38" rx="4" fill="#1b7f4b"/><text x="250" y="169" class="cell mid">6/6</text><rect x="306" y="144" width="98" height="38" rx="4" fill="#1b7f4b"/><text x="354" y="169" class="cell mid">6/6</text><rect x="410" y="144" width="98" height="38" rx="4" fill="#1b7f4b"/><text x="458" y="169" class="cell mid">6/6</text><rect x="514" y="144" width="98" height="38" rx="4" fill="#1b7f4b"/><text x="562" y="169" class="cell mid">6/6</text><rect x="618" y="144" width="98" height="38" rx="4" fill="#1b7f4b"/><text x="666" y="169" class="cell mid">6/6</text><text x="188" y="213" class="ax end">26k tok  ·  7 distr.</text><rect x="202" y="188" width="98" height="38" rx="4" fill="#1b7f4b"/><text x="250" y="213" class="cell mid">6/6</text><rect x="306" y="188" width="98" height="38" rx="4" fill="#1b7f4b"/><text x="354" y="213" class="cell mid">6/6</text><rect x="410" y="188" width="98" height="38" rx="4" fill="#1b7f4b"/><text x="458" y="213" class="cell mid">6/6</text><rect x="514" y="188" width="98" height="38" rx="4" fill="#1b7f4b"/><text x="562" y="213" class="cell mid">6/6</text><rect x="618" y="188" width="98" height="38" rx="4" fill="#1b7f4b"/><text x="666" y="213" class="cell mid">6/6</text><text x="188" y="257" class="ax end">78k tok  ·  7 distr.</text><rect x="202" y="232" width="98" height="38" rx="4" fill="#1b7f4b"/><text x="250" y="257" class="cell mid">6/6</text><rect x="306" y="232" width="98" height="38" rx="4" fill="#1b7f4b"/><text x="354" y="257" class="cell mid">6/6</text><rect x="410" y="232" width="98" height="38" rx="4" fill="#1b7f4b"/><text x="458" y="257" class="cell mid">6/6</text><rect x="514" y="232" width="98" height="38" rx="4" fill="#1b7f4b"/><text x="562" y="257" class="cell mid">6/6</text><rect x="618" y="232" width="98" height="38" rx="4" fill="#1b7f4b"/><text x="666" y="257" class="cell mid">6/6</text><text x="188" y="301" class="ax end">156k tok  ·  7 distr.</text><rect x="202" y="276" width="98" height="38" rx="4" fill="#1b7f4b"/><text x="250" y="301" class="cell mid">6/6</text><rect x="306" y="276" width="98" height="38" rx="4" fill="#1b7f4b"/><text x="354" y="301" class="cell mid">6/6</text><rect x="410" y="276" width="98" height="38" rx="4" fill="#1b7f4b"/><text x="458" y="301" class="cell mid">6/6</text><rect x="514" y="276" width="98" height="38" rx="4" fill="#1b7f4b"/><text x="562" y="301" class="cell mid">6/6</text><rect x="618" y="276" width="98" height="38" rx="4" fill="#1b7f4b"/><text x="666" y="301" class="cell mid">6/6</text></svg><figcaption>Every cell is 6/6. Rows are ordered by real prompt tokens; the bottom three
+are the hard stage, with 7 distractors each.</figcaption></figure>
+
+<h3>Stage 2 — hard (7 distractors)</h3>
+<table><thead><tr><th>real prompt tok</th><th>depth 0%</th><th>depth 25%</th><th>depth 50%</th><th>depth 75%</th><th>depth 100%</th></tr></thead><tbody><tr><td>26,123</td><td>6/6</td><td>6/6</td><td>6/6</td><td>6/6</td><td>6/6</td></tr><tr><td>77,970</td><td>6/6</td><td>6/6</td><td>6/6</td><td>6/6</td><td>6/6</td></tr><tr><td>155,773</td><td>6/6</td><td>6/6</td><td>6/6</td><td>6/6</td><td>6/6</td></tr></tbody></table>
+<h3>Stage 1 — easy (0 distractors)</h3>
+<table><thead><tr><th>real prompt tok</th><th>depth 0%</th><th>depth 25%</th><th>depth 50%</th><th>depth 75%</th><th>depth 100%</th></tr></thead><tbody><tr><td>6,572</td><td>6/6</td><td>6/6</td><td>6/6</td><td>6/6</td><td>6/6</td></tr><tr><td>13,054</td><td>6/6</td><td>6/6</td><td>6/6</td><td>6/6</td><td>6/6</td></tr><tr><td>25,989</td><td>6/6</td><td>6/6</td><td>6/6</td><td>6/6</td><td>6/6</td></tr></tbody></table>
+
+<h2>What this null does and does not cover</h2>
+<p>A null is only as strong as its detection floor. With zero observed failures, the 95% one-sided upper
+bound on the true failure rate is:</p>
+<figure><svg viewBox="0 0 780 312" width="100%" role="img" aria-label="largest failure rate consistent with zero observed failures"><text x="12" y="24" class="ct">Largest true failure rate still consistent with 0 observed failures (95% one-sided)</text><text x="238" y="72" class="ax end">one cell (n=6)</text><rect x="250" y="52" width="460" height="30" fill="#eceff1" rx="3"/><rect x="250" y="52" width="401.7719416414624" height="30" fill="#37618e" rx="3"/><text x="659.7719416414624" y="72" class="val">39.3%</text><text x="238" y="116" class="ax end">one depth, hard stage (n=18)</text><rect x="250" y="96" width="460" height="30" fill="#eceff1" rx="3"/><rect x="250" y="96" width="156.72461071188437" height="30" fill="#37618e" rx="3"/><text x="414.72461071188434" y="116" class="val">15.3%</text><text x="238" y="160" class="ax end">one depth, both stages (n=36)</text><rect x="250" y="140" width="460" height="30" fill="#eceff1" rx="3"/><rect x="250" y="140" width="81.62087639811423" height="30" fill="#37618e" rx="3"/><text x="339.6208763981142" y="160" class="val">8.0%</text><text x="238" y="204" class="ax end">hard probe pooled (n=90)</text><rect x="250" y="184" width="460" height="30" fill="#eceff1" rx="3"/><rect x="250" y="184" width="33.46554569650201" height="30" fill="#37618e" rx="3"/><text x="291.46554569650203" y="204" class="val">3.3%</text><text x="238" y="248" class="ax end">both stages pooled (n=180)</text><rect x="250" y="228" width="460" height="30" fill="#eceff1" rx="3"/><rect x="250" y="228" width="16.872011044455192" height="30" fill="#37618e" rx="3"/><text x="274.8720110444552" y="248" class="val">1.7%</text><text x="480" y="302" class="ax mid">a smaller bar = a tighter null. Only the pooled rows exclude a small deficit.</text></svg><figcaption>The honest claim is the pooled one: no position-dependent failure rate
+above ~3% exists on this task at these lengths. A single depth could
+still hide a 15% deficit, and a single cell
+39%.</figcaption></figure>
+
+<h2>The one real dose–response</h2>
+<figure><svg viewBox="0 0 710 334" width="100%" role="img" aria-label="median latency versus real prompt tokens"><text x="12" y="24" class="ct">Median call latency vs real prompt tokens (prefill, not degradation)</text><line x1="70" y1="278" x2="670" y2="278" stroke="#9aa0a6"/><line x1="70" y1="48" x2="70" y2="278" stroke="#9aa0a6"/><polyline fill="none" stroke="#37618e" stroke-width="2" points="95.31375783993374,270.5 120.28085740147523,263 170.1033555237429,250.5 170.6194911826825,255.5 370.32162184717504,193 670,48"/><circle cx="95.31375783993374" cy="270.5" r="4.5" fill="#37618e"/><text x="95.31375783993374" y="260.5" class="val mid">3s</text><text x="95.31375783993374" y="296" class="ax mid">7k</text><circle cx="120.28085740147523" cy="263" r="4.5" fill="#37618e"/><text x="120.28085740147523" y="253" class="val mid">6s</text><text x="120.28085740147523" y="296" class="ax mid">13k</text><circle cx="170.1033555237429" cy="250.5" r="4.5" fill="#37618e"/><text x="170.1033555237429" y="240.5" class="val mid">11s</text><text x="170.1033555237429" y="296" class="ax mid">26k</text><circle cx="170.6194911826825" cy="255.5" r="4.5" fill="#37618e"/><text x="170.6194911826825" y="245.5" class="val mid">9s</text><text x="170.6194911826825" y="296" class="ax mid">26k</text><circle cx="370.32162184717504" cy="193" r="4.5" fill="#37618e"/><text x="370.32162184717504" y="183" class="val mid">34s</text><text x="370.32162184717504" y="296" class="ax mid">78k</text><circle cx="670" cy="48" r="4.5" fill="#37618e"/><text x="670" y="38" class="val mid">92s</text><text x="670" y="296" class="ax mid">156k</text><text x="370" y="322" class="ax mid">real prompt tokens</text></svg><figcaption>Accuracy is flat; latency is not. This is prefill compute, not retrieval
+degradation — the model does more work per call, not worse work. A 156k-token turn costs ~10× the
+wall-clock of a 26k-token one on this host.</figcaption></figure>
+
+<h2>Conclusions</h2>
+<ul>
+<li><strong>The RoPE-attenuation hypothesis is not supported</strong> at these lengths on this model. No
+decay with depth and no U-shape: depth 50% equals depth 0% equals depth 100%.</li>
+<li><strong>Position-aware assembly is dead as a lever here.</strong> The presence-only policy class is not
+leaving a known effect on the table — a relief for the design, not a loss.</li>
+<li><strong>It removes an alternative explanation for the window-cap results.</strong> W-sweep failures
+were not "present but buried too deep to retrieve"; presence is sufficient. Eviction removed content
+outright, which makes the cadence finding load-bearing rather than possibly confounded.</li>
+</ul>
+
+<h2>Caveats</h2>
+<ul>
+<li><strong>Single-turn retrieval of a lexically distinct sentence.</strong> A copy target, not something
+the model must reason over. A null here does not prove position is irrelevant in a multi-turn agent loop.</li>
+<li><strong>A ceiling cannot rank policies</strong> — 100% can only refute a claimed deficit.</li>
+<li><strong>One model, one host, one quantization.</strong> Positional effects are architecture- and
+length-dependent; this says nothing about 250k+ contexts or a different model.</li>
+<li>Lengths are estimated (chars/4) for construction; real <code>prompt_tokens</code> ran ~30% above the
+estimate and is what every table reports.</li>
+<li>Stage 1's 90/90 is a weak ceiling and is reported only as the stage that motivated the hard variant.</li>
+</ul>
+
+<p class="note">Data: <code>results-position-probe.json</code> (hard),
+<code>results-position-probe-easy.json</code> (easy). Markdown twin:
+<code>report-position-probe.md</code>. Generated by
+<code>experiments/context-dedup/report-position-probe.mjs</code> at commit <code>25e3006469682a653fbc6b7c62153028214d809e</code>.</p>
+</main></body></html>

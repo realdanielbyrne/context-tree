@@ -193,6 +193,18 @@ cache *even on subscription allowances* (Codex meters messages, not tokens), so 
 right metric for those plans too. **Any backlog item premised on "this saves tokens" must be re-stated as
 "this fits more of the right content in a bounded window."**
 
+**C4 — POSITION IS NOT A LEVER on this model at these lengths.** *(LIVE-MEASURED, clean null.)*
+Needle-in-a-haystack, 180/180 across both stages — every depth (0/25/50/75/100%), out to **155,773 real
+prompt tokens** (59% of the 27B's window) with 7 competing distractors sharing the needle's exact framing.
+No RoPE-style decay with depth and no lost-in-the-middle U-shape. With zero failures the 95% one-sided
+bound excludes any position-dependent failure rate above **3.3%** pooled (but only 15.3% at a single
+depth — it excludes a large effect, not a small one). Two consequences: (i) our policies' inability to
+express position costs nothing here, so the presence-only policy class is not leaving a known effect on
+the table; (ii) it removes an alternative explanation for the window-cap failures — content was not
+"present but buried too deep to retrieve", it was evicted outright. Limits: single-turn retrieval of a
+lexically distinct sentence (a copy target, not something to reason over), one model, and a ceiling can
+refute a deficit but cannot rank policies. `report-position-probe.{md,html}`.
+
 **C0 — EVERY live result so far is SINGLE-PROBLEM.** The entire A/B series (51 runs, n=3 + n=10, all
 arms) ran one task, `longbuild`. That is n repeats of one problem, **not n problems**: it measures
 within-problem nondeterminism and says nothing about between-problem variance, which is the larger term in
@@ -216,7 +228,103 @@ resident turn. ⚠️ **The live A/B (item 8) then found idle does NOT beat posi
 eviction signal** (pooled p=1.000), so treat `g*`-on-idle as an unproven policy, not a validated one. **Caution:** Tier 1 also found the transcript turn-clock counts JSONL *content-block lines*,
 not API turns (2–2.4× inflation) — check any transcript analysis for the same defect.
 
+### 0. INSTRUMENT SENSITIVITY — a gate on items 1, 2, 6 and 7 *(RUN; VOID; still open)*
+
+> **OUTCOME: the control did not control.** `oracle` 0/10 vs `random` 0/10 (p=1.000) — but **do not read
+> that as a null**: the control arm wrote **zero files in 10 of 10 runs**, i.e. it stopped attempting the
+> task rather than performing it badly. The two pre-registered validity conditions both passed on a
+> worthless run; a third (*the control must still be attempting the task*) has been added and now fires
+> automatically. Review separately established that the design could not have answered its question anyway —
+> the oracle's advantage flows purely through useful-token VOLUME (~1 e-fold), the effect already known,
+> while the four nulls it was meant to adjudicate were measured at MATCHED volume.
+> **A redesign needs arms that hold equal useful volume and differ only in composition** — see item 1's
+> attention ablation, which satisfies that by construction and uses a continuous endpoint.
+> `report-sensitivity-control.{md,html}`.
+**Why this now outranks everything below it.** Every live result that varies WHICH context is kept has
+come back null on this substrate: selection signal p=0.70; reference vs positional recency p=1.000
+(item 8); needle position 180/180 (`report-position-probe.md`); eviction cadence p=0.54 once achieved
+peak is controlled (item 11). Items 1, 2, 6 and 7 are all of the form *"does signal X beat signal Y"* —
+none is worth running until we know the harness can detect such a difference at all.
+
+- **Design:** a positive control. Ballast = a byte-identical **duplicate re-read** of a file the agent
+  already read, so it is provably zero-information. Arms: `oracle` (drops superseded duplicates),
+  `truncate-tail`, `idle`, `random`, plus `clean` (no ballast) as the validity check.
+  `experiments/context-dedup/{ballast,sensitivity-control,stats}.mjs`, 20 unit tests.
+- **Pre-registered:** oracle > random, one-sided Fisher, α=0.05 — interpretable only if `clean` is not at
+  the floor and `random` ≤ 0.4n, else it is an operating-point miss and must be re-run, not interpreted.
+- **If it fires:** the instrument is sensitive, the four nulls above stand as real findings for this task,
+  **and dedup is a live candidate policy** — the label is exact and computable, so `oracle` is shippable,
+  not just a ceiling.
+- **If it does not fire while validity holds:** state all four nulls as UNINFORMATIVE and redesign
+  items 1/2/6/7 before running them.
+- **Method finding already banked:** two earlier ballast designs — fabricated tool calls on unrelated
+  files, then the same material as user-role pastes — **derailed the agent** rather than merely taxing it
+  (60 distractor reads in 61 turns and zero writes; then 51 tool calls and zero writes, where a passing
+  trace writes by call ~9). *Injecting foreign material into an agent's context changes what the agent
+  does.* Any middleware that synthesises context — summaries written as agent actions, retrieved passages
+  spliced into history — should expect this.
+
+### 0b. WIDTH IS NOT SUFFICIENT — our own data falsifies the monotone reading *(settled, from the dedup run)*
+The window sweep's "more context is better" law (OR 42× per e-fold) was fitted entirely on runs whose context
+was the agent's **own organic content**. The sensitivity control broke that regime and the law with it:
+
+| run | context sent | outcome |
+|---|---|---|
+| `uncapped-clean` (no cap, no duplicates) | 18,650 | **PASS**, 17 files written |
+| `uncapped-ballast` (no cap, duplicates) | **51,141** — the largest context in the whole dataset | **FAIL**, 0 files written |
+
+**More context, worse outcome.** So composition matters, and the honest statement of the width law is *more
+organic context is better*, not *more context is better*. Two consequences:
+- The open question is narrower than "can selection ever matter" — it is **can our binary pass/fail endpoint
+  detect it**. Composition is now demonstrated to matter; only our ability to measure it is in doubt.
+- The dedup arm halved the damage (0 → 7 files written) without ever reaching a pass. That is a real,
+  continuous improvement the binary metric discarded. **Prefer continuous endpoints in every follow-up.**
+
+### 0c. COVARIANCE as an eviction signal — one half never ablated, the other never conceived
+Derived from the experiment record (survey, this session). Two distinct quantities, routinely conflated:
+
+- **Static co-occurrence (recurrence) — TESTED OFFLINE AND WON, but the shipped form is UNABLATED.**
+  `experiments/assembler-weighting/` swept a *pure* recurrence term (`'priority-only': [0,0,1,0]` plus a full
+  `{0,0.5,1}⁴` grid) and it was the strongest single signal: priority-only recall 0.35/0.42 vs recency-only
+  0.25/0.24, LR mixing rate 4.12 (≫ recency 2.42, ref-recency 1.04).
+  ⚠️ **What ships is not what was tested.** `flex.ts:268` computes
+  `priority: ((u.wrote ? 2 : 0) + coOccurrence(units, i)) * decay` — the sum is formed *before* any weight,
+  so **no coefficient in the codebase can move the co-occurrence half relative to the edit-boost half**. That
+  2:1 internal ratio is a hardcoded constant no experiment has varied, which violates the project's own rule
+  on undefended constants. The two functions also differ: the tested one counted *later turns that came to
+  overlap this unit* (directional); the shipped one counts *all resident units sharing a fingerprint*
+  (undirected). The offline win transfers by analogy only.
+  **Owed:** split `priority` into two weighted terms and sweep the ratio; re-check that the undirected form
+  carries the directional form's win.
+- **Temporal covariance (pairwise co-reference over turns) — NEVER TESTED, never proposed.** Nothing in the
+  repo computes whether two units tend to be *referenced together across turns*. `policies.mjs` exposes only
+  recency / random / idle / blend / protect / oracle.
+  **Why it is the principled repair of the signal that lost:** relevance-to-recent was measured *worst*
+  (D-EV4, weight 0) for exactly one reason — it drops the dormant unit that later returns. Temporal
+  covariance is the signal that **keeps** that unit: dormant now, but historically co-active with what is hot,
+  so likely needed when the hot set is next touched. Design: per unit a binary reference series over turns;
+  score = covariance with the current hot set's series; keep high-covariance units even when idle is large.
+
 ### 1. Attention over history (highest-value survivor) — `experiments/attention-over-history/`
+
+> **REFRAMED — MEASURED attention, not similarity-to-recent, and scored on a CONTINUOUS endpoint.**
+> The existing item concluded attention belongs at *admission* rather than eviction, but that conclusion was
+> about **relevance computed by embedding similarity**, not about the model's **actual attention mass**. A
+> unit can be perfectly retrievable and still be attended to hardly at all — those are different quantities
+> and only the first has been measured. The cheap proxy for "the model stopped attending to this" is
+> reference-recency (`idle`), which was tested and returned p=1.000, so the proxy is exhausted; the real
+> measurement is not.
+> **Design:** the OpenAI-compatible endpoint does not expose attention, so load the model directly with
+> `output_attentions=True` (GPUs available). Replay a real transcript; for each turn compute the attention
+> mass each unit receives from the final position; then ablate at **matched volume** — drop lowest-attention
+> units vs oldest vs random — and measure the shift in the model's own **next-token distribution** (KL).
+> **Why this design beats the ones that failed:** the endpoint is continuous, so it does not depend on the
+> binary pass/fail metric that item 0 showed may be insensitive; and the arms are volume-matched by
+> construction, which is the flaw that voided the ballast control.
+> **Caveat to carry:** the position probe found no retrieval deficit at any depth out to 155,773 tokens, so
+> attention mass is not the bottleneck for *retrieving a fact when asked*. That does not settle whether it
+> predicts what is safe to discard.
+
 The umbrella hypothesis (evict/retain context by bearing-on-the-current-turn) was **never validly
 tested** — the harness that would have measured it couldn't represent a tool call and was deleted;
 `selectAttention` has zero production callers. The record already answers the design questions:
@@ -366,7 +474,21 @@ metrics (turns, re-reads) or a stronger model.
 Split out of the old item 7. HR1 (the retrieval unit is wrong for structural turns) needs the
 excerpt-vs-whole-structural-payload ablation. Untouched by this series.
 
-### 11. Eviction CADENCE — does a small window amortise its own re-caching? *(attacks C2)* — **FIRST ANSWER: YES (simulated)**
+### 11. Eviction CADENCE — does a small window amortise its own re-caching? *(attacks C2)* — **SIMULATED YES; LIVE QUALITY CLAIM RETRACTED**
+
+> ⚠️ **CORRECTION (live arm).** A live cadence sweep appeared to show N=10 reaching 100% at W=4,700 where
+> N=1 reached 38%, and that was reported as "sawtooth beats a wider flat window". **That claim is
+> withdrawn.** `ab-window-sweep.mjs:75` fires eviction only every N turns, so at N>1 nothing enforces the
+> cap between events: the nominal `W` is an eviction *trigger*, not a window, and the N=10 cells actually
+> sent **7,657-token** prompts — larger than the flat W=7,500 arm's 6,977. Regressing 78 capped cells:
+> given achieved peak, cadence adds nothing (LR χ²(1)=0.37, **p=0.54**) and nominal W adds nothing
+> (p=0.66), while achieved peak given cadence is decisive (p=0.0002, **OR 42× per e-fold**). All models
+> adjust for `arm`: the signal-free `random` control appears only at cadence 1, and omitting it inflated
+> the odds ratio by 25% (52×) — the conclusion is unchanged, the effect size was not.
+> **What survives: cadence is a COST lever, not a quality lever** — at matched peak the sawtooth spent
+> 360k tokens with 5 evictions vs 409k with 32. Full analysis: `report-cadence-confound.{md,html}`.
+> **Design rule this establishes: the outcome variable is ACHIEVED PEAK — tokens actually present at call
+> time — not the nominal cap. Any future sweep must report and control for it.**
 **DV3 result** (`dv3-cadence-ttl.mjs`, `results-dv3-cadence-ttl.json`; CPU-only): there is an **interior
 optimum cadence**, and at it a capped window is **25–39% CHEAPER** than append-only.
 

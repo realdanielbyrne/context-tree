@@ -79,17 +79,19 @@ describe('assembleFlex — representation & order', () => {
   });
 });
 
-describe('assembleFlex — eviction to the floor', () => {
-  it('over the floor, evicts the lowest-scoring (dormant, low-priority) unit; keeps anchors & high-priority', () => {
-    const units = [
-      unit(0, { nodeId: 'dormant', dormancy: 1, wrote: false }), // lowest score → evict
-      unit(1, { nodeId: 'wrote', dormancy: 0, wrote: true }), // priority boost → keep
-      unit(2, { nodeId: 'mid', dormancy: 0, wrote: false }), // keep
-      unit(3, { nodeId: 'anchor', dormancy: 1, wrote: false }), // anchor: kept despite dormancy
-    ];
-    // window 200, floor 0.5 -> 100; each unit ~31 tokens; anchor=1.
-    const p = assembleFlex({ system: 'S', userPrompts: [] }, units, tok, {
+describe('assembleFlex — eviction at the hard limit', () => {
+  const fourUnits = () => [
+    unit(0, { nodeId: 'dormant', dormancy: 1, wrote: false }), // lowest score → evict
+    unit(1, { nodeId: 'wrote', dormancy: 0, wrote: true }), // priority boost → keep
+    unit(2, { nodeId: 'mid', dormancy: 0, wrote: false }), // keep
+    unit(3, { nodeId: 'anchor', dormancy: 1, wrote: false }), // anchor: kept despite dormancy
+  ];
+
+  it('over the HARD limit, evicts the lowest-scoring (dormant, low-priority) unit; keeps anchors & high-priority', () => {
+    // hard limit = window − replyReserve = 100; the four units are ~124 tokens.
+    const p = assembleFlex({ system: 'S', userPrompts: [] }, fourUnits(), tok, {
       window: 200,
+      replyReserve: 100,
       softTargetFrac: 0.5,
       anchor: 1,
     });
@@ -98,6 +100,35 @@ describe('assembleFlex — eviction to the floor', () => {
     expect(kept).toContain('wrote');
     expect(kept).not.toContain('dormant'); // the lowest-scoring unit is evicted
     expect(p.budgets.evicted).toContain('dormant');
+  });
+
+  it('BELOW the hard limit nothing is evicted, even above the old soft floor', () => {
+    // The behaviour change of 2026-09-14. These units (~124 tok) sit well above the
+    // old floor (0.375 × 200 = 75) but inside the hard limit (200), so the buffer is
+    // kept whole: task success tracks achieved peak (OR 42x/e-fold over 78 live
+    // cells, arm-adjusted), and mutating the prefix costs a cache write for no measured gain.
+    // report-cadence-confound.md / report-window-metric.md.
+    const p = assembleFlex({ system: 'S', userPrompts: [] }, fourUnits(), tok, {
+      window: 200,
+      softTargetFrac: 0.375,
+      anchor: 1,
+    });
+    const kept = p.blocks.filter((b) => b.zone === 'flex').map((b) => b.nodeId);
+    expect(kept).toEqual(['dormant', 'wrote', 'mid', 'anchor']); // creation order, nothing dropped
+    expect(p.budgets.evicted).toEqual([]);
+  });
+
+  it('evictHeadroomTokens frees extra space so eviction need not fire every turn', () => {
+    // Same binding cap as the first test, but asking for 40 tokens of headroom
+    // drops one more unit — the seam the cadence/cost experiment will tune.
+    const tight = assembleFlex({ system: 'S', userPrompts: [] }, fourUnits(), tok, {
+      window: 200, replyReserve: 100, softTargetFrac: 0.5, anchor: 1,
+    });
+    const roomy = assembleFlex({ system: 'S', userPrompts: [] }, fourUnits(), tok, {
+      window: 200, replyReserve: 100, softTargetFrac: 0.5, anchor: 1, evictHeadroomTokens: 40,
+    });
+    expect(roomy.budgets.evicted.length).toBeGreaterThan(tight.budgets.evicted.length);
+    expect(roomy.budgets.flex).toBeLessThan(tight.budgets.flex);
   });
 
   it('below the floor, keeps everything', () => {

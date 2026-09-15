@@ -1,0 +1,17 @@
+
+--- rep0 W=7000 oracle ---
+rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr
+    -> FAIL turns=61 evict=54 peak=6208 junkshare=22% tok=440597
+
+--- rep0 W=7000 random ---
+rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr
+    -> FAIL turns=61 evict=54 peak=6193 junkshare=54% tok=442889
+
+=== SENSITIVITY CONTROL [longbuild(ledger, 6 stages, stdlib unittest)] model=unsloth/Qwen3.8-27B-GGUF n=1 ===
+  cell                        n  pass   peak   junk%  evict  drRd  tokens
+  oracle@7000                1  0/1    6208    22%     54    60  440597
+  random@7000                1  0/1    6193    54%     54    60  442889
+
+  pre-registered tests (one-sided Fisher):
+    W=7000  oracle            0/1  vs random            0/1   p=1
+  written: /home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/results-sens-pilot.json
