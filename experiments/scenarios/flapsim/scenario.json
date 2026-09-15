@@ -1,0 +1,20 @@
+{
+  "title": "flapsim (headless deterministic side-scroller, 6 modules, mid-run feature change + docs)",
+  "description": "A multi-phase build: implement from spec, write tests, review own code and cite real file:line, emit a deterministic artifact, then receive a mid-run user request for a cross-cutting feature plus documentation that must quote real signatures. Designed to create many natural opportunities to revisit files the agent itself produced.",
+  "system": "system.md",
+  "seed": "seed",
+  "turns": [
+    { "id": "build", "file": "turns/01-build.md", "gate": null },
+    {
+      "id": "feature-and-docs",
+      "file": "turns/02-feature-and-docs.md",
+      "gate": { "allOf": [ { "fileMinBytes": ["replay.txt", 200] }, { "exists": "REVIEW.md" } ] },
+      "fallbackTurn": 70
+    }
+  ],
+  "notes": [
+    "Constants are invented (gravity 18, an LCG, a clean-glide bonus) so the model has no priors to answer from and must consult the spec and its own code.",
+    "Every seed file is under 1900 chars so a read leaves a COMPLETE resident copy; the harness clips tool output at 2000 and a clipped read makes any 'it is above in this conversation' claim false.",
+    "Verification is routed through --selfcheck rather than `unittest` because unittest prints a timing line that varies between runs, so two identical runs never compare equal."
+  ]
+}
