@@ -116,6 +116,17 @@ async function runCell(task, arm, repeat) {
     cap.finish({ pass, score, turns: r?.turns ?? null, stop: r?.stop ?? 'error', error: err,
       captured_from: r ? 'return' : 'live-ref(crash)', messages: msgs.length });
   }
+  // How the run ENDED matters as much as the score. Without context-tree machinery a
+  // long task eventually exhausts the window and fails outright, so a run that is
+  // window-limited is a different observation from one that finished or ran out of turns.
+  const WINDOW = +(process.env.CT_MODEL_WINDOW || 262144);
+  const realPeak = r ? Math.max(0, ...r.usage.map((u) => u.prompt_tokens || 0)) : 0;
+  const errStr = String(err || '');
+  const terminated_by =
+    err ? (/context|token|too long|exceed|n_ctx|KV cache/i.test(errStr) ? 'context-window' : 'error')
+    : r?.stop === 'maxTurns' ? 'turn-limit'
+    : tk && !tk.state().all_released ? 'ended-early'
+    : 'completed';
   const st = idx.stats();
   const fired = idx.events.filter((e) => e.fired);
   const reads = r ? r.toolLog.filter((t) => t.name === 'read_file') : [];
@@ -137,6 +148,9 @@ async function runCell(task, arm, repeat) {
     turn_ms_median: turnMs.length ? [...turnMs].sort((a, b) => a - b)[Math.floor(turnMs.length / 2)] : null,
     turn_ms_total: turnMs.reduce((a, b) => a + b, 0),
     tokens_per_turn: r ? Math.round(r.usage.reduce((s2, u) => s2 + (u.prompt_tokens || 0), 0) / Math.max(1, r.usage.length)) : null,
+    terminated_by,
+    peak_prompt_tokens: realPeak,
+    window_headroom_pct: realPeak ? +(100 * (1 - realPeak / WINDOW)).toFixed(1) : null,
     error: err,
   };
 }
@@ -161,6 +175,10 @@ async function main() {
       pass_rate: +(cs.filter((c) => c.pass).length / Math.max(1, cs.length)).toFixed(3),
       passes: cs.filter((c) => c.pass).length,
       score_mean: cs[0]?.score_total ? +(cs.reduce((a, c) => a + (c.score_correct ?? 0), 0) / cs.length).toFixed(2) : null,
+      phase_mean: cs[0]?.phase_index !== undefined ? +(cs.reduce((a, c) => a + (c.phase_index ?? 0), 0) / cs.length).toFixed(2) : null,
+      phase_furthest: Math.max(0, ...cs.map((c) => c.phase_index ?? 0)),
+      terminated: cs.reduce((a, c) => ((a[c.terminated_by] = (a[c.terminated_by] || 0) + 1), a), {}),
+      peak_prompt_tokens_median: med(cs.map((c) => c.peak_prompt_tokens ?? 0)),
       score_total: cs[0]?.score_total ?? null,
       turns_median: med(cs.map((c) => c.turns ?? MAX_TURNS)),
       would_fire_median: med(cs.map((c) => c.would_fire)), fires_median: med(cs.map((c) => c.fires)),
@@ -236,8 +254,10 @@ async function main() {
     });
   }
   console.error(`\n=== ANCHOR LIVE ${PASSIVE ? 'PILOT' : 'A/B'} [${task.name}] model=${MODEL} n=${REPEATS} ===`);
-  console.error('  arm           n  pass   score  turns  fires   totalTok   Δtok%   wall_s   Δwall%');
-  for (const s of summary) console.error(`  ${s.arm.padEnd(12)} ${String(s.n).padStart(2)}  ${String(s.passes + '/' + s.n).padStart(4)}  ${String(s.score_mean === null ? '-' : s.score_mean + '/' + s.score_total).padStart(6)}  ${String(s.turns_median).padStart(5)}  ${String(s.fires_median).padStart(5)}  ${String(s.tokens_median).padStart(9)}  ${String(s.tokens_delta_pct ?? '—').padStart(6)}  ${String(s.wall_seconds_median).padStart(6)}  ${String(s.wall_delta_pct ?? '—').padStart(6)}`);
+  console.error('  arm           n  pass   score  phase  turns  fires   totalTok   Δtok%   wall_s   Δwall%');
+  for (const s of summary) console.error(`  ${s.arm.padEnd(12)} ${String(s.n).padStart(2)}  ${String(s.passes + '/' + s.n).padStart(4)}  ${String(s.score_mean === null ? '-' : s.score_mean + '/' + s.score_total).padStart(6)}  ${String(s.phase_mean ?? '-').padStart(5)}  ${String(s.turns_median).padStart(5)}  ${String(s.fires_median).padStart(5)}  ${String(s.tokens_median).padStart(9)}  ${String(s.tokens_delta_pct ?? '—').padStart(6)}  ${String(s.wall_seconds_median).padStart(6)}  ${String(s.wall_delta_pct ?? '—').padStart(6)}`);
+  console.error('\n  PROGRESS AT TERMINATION:');
+  for (const s3 of summary) console.error(`    ${s3.arm.padEnd(14)} furthest=${s3.phase_furthest}/${cells[0]?.phases_total ?? '?'}  mean=${s3.phase_mean}  peakPromptTok=${s3.peak_prompt_tokens_median}  ${JSON.stringify(s3.terminated)}`);
   if (!PASSIVE && baseRow) { console.error('\n  DECISION:'); for (const row of summary) if (row.arm !== 'none') console.error(`    ${row.arm.padEnd(14)} ${row.verdict}`); }
   if (gate) { console.error('\n  PILOT GATE:'); for (const [k, v] of Object.entries(gate)) console.error(`    ${k.padEnd(30)} ${v}`); }
   console.error(`\n  written: ${path}`);

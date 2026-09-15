@@ -112,6 +112,36 @@ function score(ws) {
   return { correct, total: 40, parts };
 }
 
+/**
+ * PROGRESS LADDER. Without context-tree machinery a long task eventually exhausts the
+ * window and simply fails, so pass/fail throws away the thing we actually care about:
+ * HOW FAR it got before the wall. This is a monotone ladder over workspace artifacts,
+ * so a run that dies mid-way is still measured rather than scored 0 and discarded.
+ */
+const PHASES = [
+  ['start', () => true],
+  ['modules-started', (ws) => readdirSync(ws).some((f) => f.endsWith('.py') && f !== 'test_flapsim.py')],
+  ['modules-complete', (ws) => ['units.py', 'physics.py', 'world.py', 'collide.py', 'engine.py', 'flapsim.py'].every((m) => existsSync(join(ws, m)))],
+  ['selfcheck-runs', (ws) => !!run(ws, 'flapsim.py', ['--selfcheck'])],
+  ['selfcheck-all-ok', (ws) => { const o = run(ws, 'flapsim.py', ['--selfcheck']); return !!o && o.trim().split('\n').length >= 6 && !/FAIL/.test(o); }],
+  ['tests-written', (ws) => existsSync(join(ws, 'test_flapsim.py'))],
+  ['reviewed', (ws) => existsSync(join(ws, 'REVIEW.md'))],
+  ['artifact-produced', (ws) => { try { return readFileSync(join(ws, 'replay.txt'), 'utf8').length >= 200; } catch { return false; } }],
+  ['feature-implemented', (ws) => { const o = run(ws, 'flapsim.py', ['--seed', '7', '--ticks', '200', '--flaps', '0010', '--powerups']); return !!o && /shields=\d/.test(o); }],
+  ['docs-written', (ws) => existsSync(join(ws, 'GETTING_STARTED.md'))],
+];
+
+function phaseReached(ws) {
+  let idx = 0;
+  const done = [];
+  for (let i = 0; i < PHASES.length; i++) {
+    let ok = false;
+    try { ok = PHASES[i][1](ws); } catch { ok = false; }
+    if (ok) { idx = i; done.push(PHASES[i][0]); }
+  }
+  return { phase_index: idx, phase_name: PHASES[idx][0], phases_total: PHASES.length - 1, phases_done: done };
+}
+
 /** Validity flags — a run that violates these is not comparable, not just worse. */
 function metrics(ws) {
   let maxChars = 0, over = 0, mods = 0, floats = 0;
@@ -125,7 +155,8 @@ function metrics(ws) {
       floats += (t.match(/\b\d+\.\d+\b/g) || []).length;
     }
   } catch {}
-  return { max_py_chars: maxChars, files_over_1800: over, module_count: mods, float_literals: floats,
+  return { ...phaseReached(ws),
+    max_py_chars: maxChars, files_over_1800: over, module_count: mods, float_literals: floats,
     has_replay: existsSync(join(ws, 'replay.txt')), has_review: existsSync(join(ws, 'REVIEW.md')),
     has_docs: existsSync(join(ws, 'GETTING_STARTED.md')) };
 }
