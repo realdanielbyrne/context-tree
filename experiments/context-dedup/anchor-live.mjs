@@ -1,6 +1,24 @@
 /**
- * ANCHOR LIVE — does re-injecting part of what the model ALREADY HAS change whether
- * it completes the task?
+ * ANCHOR LIVE — does anchoring save TOTAL TOKENS and WALL-CLOCK TIME to completion?
+ *
+ * THE DECISION THIS FEEDS: if anchoring saves tokens and time at equal task success,
+ * fold it into context-tree. If it does not, leave it out. So the primary outcomes are
+ * cumulative `total_prompt_tokens` and `wall_seconds` TO COMPLETION, gated on the task
+ * actually being completed correctly — saving tokens on a task you failed is worthless.
+ *
+ * WHY THE SAVING COMPOUNDS, and why a one-shot count understates it ~370x. Prompt cost
+ * is cumulative: every turn re-sends the whole prefix. A token NOT appended at turn k is
+ * therefore never re-sent on any of the remaining turns. DV4 measured this directly on
+ * real transcripts — 11,716 bytes suppressed produced a 4,375,005-token cumulative
+ * reduction, a 373x multiplier (results-dv4-anchor-dedup.json). Any estimate that
+ * multiplies fires by bytes-saved and stops there is wrong by that factor.
+ *
+ * WHY TOKENS AND TIME ARE MEASURED SEPARATELY, not as proxies for each other. This
+ * server caches prefixes: a 30k-token prefill measured 15.2s cold and 0.6s warm. So
+ * re-sending cached tokens is nearly free in WALL TIME while still being billed. Time
+ * can therefore move independently of tokens, and in either direction — it improves if
+ * anchors remove whole turns or shrink the KV to attend over, and it WORSENS if the
+ * model re-requests after an anchor and spends an extra round trip. Both are primary.
  *
  * This replaces the replay probe, which measured "did it re-read in the next turn".
  * That had no ground truth: 7 of 11 turns scored as success never touched the file at
@@ -69,9 +87,14 @@ async function runCell(task, arm, repeat) {
   // Hold the LIVE array. runAgent throws on a server 5xx and its return value is lost,
   // so without this a crashed run captures nothing and looks identical to a null.
   let liveMessages = null;
-  const hook = (messages, turn) => { liveMessages = messages; idx.hook(messages, turn); peak = Math.max(peak, estTokens(messages)); };
+  const hook = (messages, turn) => {
+    const now = Date.now(); if (turn > 0) turnMs.push(now - lastT); lastT = now;
+    liveMessages = messages; idx.hook(messages, turn); peak = Math.max(peak, estTokens(messages));
+  };
 
   const t0 = Date.now();
+  const turnMs = [];
+  let lastT = t0;
   let r = null, err = null;
   try {
     r = await runAgent({ system: task.system, task: task.task, ws, maxTurns: MAX_TURNS,
@@ -107,7 +130,11 @@ async function runCell(task, arm, repeat) {
     reads: reads.length, rereads: Math.max(0, reads.length - distinct),
     peak_history_tokens: peak,
     total_prompt_tokens: r ? r.usage.reduce((s, u) => s + (u.prompt_tokens || 0), 0) : 0,
-    wall_seconds: Math.round((Date.now() - t0) / 1000), error: err,
+    wall_seconds: +((Date.now() - t0) / 1000).toFixed(1),
+    turn_ms_median: turnMs.length ? [...turnMs].sort((a, b) => a - b)[Math.floor(turnMs.length / 2)] : null,
+    turn_ms_total: turnMs.reduce((a, b) => a + b, 0),
+    tokens_per_turn: r ? Math.round(r.usage.reduce((s2, u) => s2 + (u.prompt_tokens || 0), 0) / Math.max(1, r.usage.length)) : null,
+    error: err,
   };
 }
 
@@ -135,9 +162,24 @@ async function main() {
       turns_median: med(cs.map((c) => c.turns ?? MAX_TURNS)),
       would_fire_median: med(cs.map((c) => c.would_fire)), fires_median: med(cs.map((c) => c.fires)),
       tokens_median: med(cs.map((c) => c.total_prompt_tokens)),
+      wall_seconds_median: med(cs.map((c) => c.wall_seconds)),
+      turn_ms_median: med(cs.map((c) => c.turn_ms_median ?? 0)),
       tokens_saved_median: med(cs.map((c) => Math.ceil((c.replaced_chars - c.substituted_chars) / 4))),
       residency_false_total: cs.reduce((s, c) => s + c.residency_false_count, 0) };
   });
+
+  // The decision table: tokens and time against the no-intervention arm.
+  const baseRow = summary.find((x) => x.arm === 'none');
+  if (baseRow) for (const row of summary) {
+    row.tokens_delta_pct = baseRow.tokens_median ? +(100 * (1 - row.tokens_median / baseRow.tokens_median)).toFixed(2) : null;
+    row.wall_delta_pct = baseRow.wall_seconds_median ? +(100 * (1 - row.wall_seconds_median / baseRow.wall_seconds_median)).toFixed(2) : null;
+    row.score_delta = (row.score_mean ?? 0) - (baseRow.score_mean ?? 0);
+    row.verdict = row.arm === 'none' ? '—'
+      : (row.tokens_delta_pct > 0 && row.wall_delta_pct > 0 && row.score_delta >= -1) ? 'FOLD IN — saves tokens and time at equal score'
+      : (row.score_delta < -1) ? 'LEAVE OUT — task score degraded'
+      : (row.tokens_delta_pct <= 0) ? 'LEAVE OUT — no token saving'
+      : 'LEAVE OUT — tokens saved but no wall-clock saving';
+  }
 
   const wf = med(cells.map((c) => c.would_fire));
   const anchorable = med(cells.map((c) => Math.ceil(c.anchorable_chars / 4)));
@@ -163,14 +205,16 @@ async function main() {
       experiment: `context-dedup / anchor live ${PASSIVE ? 'PILOT' : 'A/B'} (${TASK_NAME})`,
       model: MODEL, task: task.name, commit: gitSha(), date: nowISO(),
       params: { arms, repeats: REPEATS, max_turns: MAX_TURNS, top_k: TOPK, min_chars: MIN_CHARS, passive: PASSIVE },
-      hypothesis: 'When a tool would return content the model already has, returning a reference (anchor) — or a reference plus the most relevant chunks of that resident copy (anchor-topk) — preserves task success at a fraction of the tokens.',
-      falsification: 'If anchor or anchor-topk loses task success against the no-intervention arm beyond the run-to-run spread, re-injection is required and referencing is not enough. If the trigger fires too rarely to distinguish arms, the substrate cannot test the question.',
+      hypothesis: 'Returning an anchor (or an anchor plus the most relevant chunks of the resident copy) instead of content the model already has REDUCES cumulative prompt tokens and wall-clock time to completion, at no cost to task success. The saving compounds because a token not appended is never re-sent on any later turn (DV4 measured a 373x multiplier).',
+      falsification: 'FOLD IN only if an anchor arm cuts BOTH cumulative total_prompt_tokens AND wall_seconds against the no-intervention arm, at task score within noise. LEAVE OUT if either metric fails to improve, or if score drops. If the trigger fires too rarely to move either metric, the substrate cannot decide it and the run reports NOT RUNNABLE rather than a null.',
       caveats: [
         'NO EVICTION and NO WINDOW CAP anywhere: the context is append-only, so every anchor is truthful by construction and residency is re-verified at fire time.',
         'The retrieval query is the model\'s own request plus recent turns — never the pending question, which would be an oracle a deployed middleware could not have.',
         'Single task = single problem (caveat C0). Repeats measure within-problem nondeterminism, not between-problem variance.',
         'Grading is all-or-nothing, so FAIL cells are not distinguished by how close they came.',
-        'total_prompt_tokens is RAW; the local server does not report cache counters, so this is context volume, not cache-adjusted cost.',
+        'total_prompt_tokens is RAW and CUMULATIVE across turns — the right denominator for a cost claim, since every turn re-sends the prefix. The local server reports no cache counters, so this is billed volume, not cache-adjusted cost.',
+        'wall_seconds includes server-side prefix caching, which makes re-sent tokens nearly free in TIME though still billed. Tokens and time can therefore move in opposite directions; both are reported and neither substitutes for the other.',
+        'This host is shared with other work, so wall-clock carries ambient noise. Report the per-turn median alongside the total, and treat a time delta smaller than the between-repeat spread as no effect.',
       ],
     },
     summary, gate, retry_stats: { ...RETRY_STATS }, errored_cells: errored, cells,
@@ -189,8 +233,9 @@ async function main() {
     });
   }
   console.error(`\n=== ANCHOR LIVE ${PASSIVE ? 'PILOT' : 'A/B'} [${task.name}] model=${MODEL} n=${REPEATS} ===`);
-  console.error('  arm           n  pass   score  turns  wouldFire  fires  savedTok  totalTok');
-  for (const s of summary) console.error(`  ${s.arm.padEnd(12)} ${String(s.n).padStart(2)}  ${String(s.passes + '/' + s.n).padStart(4)}  ${String(s.score_mean === null ? '-' : s.score_mean + '/' + s.score_total).padStart(6)}  ${String(s.turns_median).padStart(5)}  ${String(s.would_fire_median).padStart(9)}  ${String(s.fires_median).padStart(5)}  ${String(s.tokens_saved_median).padStart(8)}  ${s.tokens_median}`);
+  console.error('  arm           n  pass   score  turns  fires   totalTok   Δtok%   wall_s   Δwall%');
+  for (const s of summary) console.error(`  ${s.arm.padEnd(12)} ${String(s.n).padStart(2)}  ${String(s.passes + '/' + s.n).padStart(4)}  ${String(s.score_mean === null ? '-' : s.score_mean + '/' + s.score_total).padStart(6)}  ${String(s.turns_median).padStart(5)}  ${String(s.fires_median).padStart(5)}  ${String(s.tokens_median).padStart(9)}  ${String(s.tokens_delta_pct ?? '—').padStart(6)}  ${String(s.wall_seconds_median).padStart(6)}  ${String(s.wall_delta_pct ?? '—').padStart(6)}`);
+  if (!PASSIVE && baseRow) { console.error('\n  DECISION:'); for (const row of summary) if (row.arm !== 'none') console.error(`    ${row.arm.padEnd(14)} ${row.verdict}`); }
   if (gate) { console.error('\n  PILOT GATE:'); for (const [k, v] of Object.entries(gate)) console.error(`    ${k.padEnd(30)} ${v}`); }
   console.error(`\n  written: ${path}`);
   if (capIndex) console.error(`  transcripts: ${relative(pjoin(HERE, '..', '..'), capIndex)}  (${cells.length} cells, L0 events.jsonl + L2 blobs/)`);
