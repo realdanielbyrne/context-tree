@@ -1,0 +1,851 @@
+{
+  "manifest": {
+    "run_id": "dv4-anchor-dedup-1789436909028",
+    "experiment": "context-dedup / DV4 anchor-dedup opportunity (offline, cache-priced)",
+    "model": null,
+    "commit": "25e3006469682a653fbc6b7c62153028214d809e",
+    "date": "2026-09-15T01:48:29.036Z",
+    "params": {
+      "arms": [
+        "append-all",
+        "anchor-strict",
+        "anchor-diff"
+      ],
+      "tiers": {
+        "5min": {
+          "read": 0.1,
+          "write": 1.25,
+          "fresh": 1
+        },
+        "1hour": {
+          "read": 0.1,
+          "write": 2,
+          "fresh": 1
+        }
+      },
+      "tokenizer": "chars4",
+      "profile": "anthropic",
+      "fixtures": [
+        "claude-code-session-2.jsonl",
+        "claude-code-session-3.jsonl",
+        "claude-code-session-5.jsonl",
+        "claude-code-session.jsonl"
+      ],
+      "excluded": [
+        "claude-code-session-4.jsonl"
+      ]
+    },
+    "hypothesis": "Replacing already-resident tool-result bytes with a short referential anchor is append-only, so unlike eviction it never pays a prefix rewrite; the saving therefore survives cache-adjusted pricing.",
+    "falsification": "If pooled suppressible content is < 10% of total prompt tokens under cache-adjusted accounting, the \"dramatic reduction\" claim is dead and the live instruments are not run.",
+    "caveats": [
+      "claude-code-session-4.jsonl EXCLUDED: its 307 message.ids are 307/307 contained in session-5. Four independent sessions.",
+      "Turn clock is message.id, not JSONL lines (line-counting inflates 2.0-2.4x; tier1b-idle-rescored.mjs:40-45).",
+      "Paths keyed on the tail after context-tree/ because fixtures were recorded on two machines.",
+      "chars/4 tokenizer, not a real tokenizer. Ranks large differences; do not read small marginals.",
+      "SIMULATED cache accounting via ProviderCacheSimulator, not live provider counters. Same provenance class as C2/C3.",
+      "Offline upper bound on OPPORTUNITY only. It says nothing about whether a model ACCEPTS an anchor -- that is the live instrument.",
+      "anchor-diff assumes the model can reconstruct current state from a resident read plus resident edit hunks. That assumption is UNTESTED here."
+    ]
+  },
+  "summary": [
+    {
+      "arm": "append-all",
+      "sessions": 4,
+      "total_tokens": 269611270,
+      "eff_cost_5min": 28027311,
+      "eff_cost_1hour": 28721825,
+      "fires": 0,
+      "would_fire": 56,
+      "saved_tokens": 0,
+      "residency_false_count": 0,
+      "by_kind": {
+        "duplicate-unchanged": 33,
+        "partial-overlap": 3,
+        "read-then-edited": 13,
+        "write-then-read": 7
+      },
+      "pct_tokens_vs_baseline": 0,
+      "pct_effcost_5min_vs_baseline": 0,
+      "pct_effcost_1hour_vs_baseline": 0
+    },
+    {
+      "arm": "anchor-strict",
+      "sessions": 4,
+      "total_tokens": 265236265,
+      "eff_cost_5min": 27576330,
+      "eff_cost_1hour": 28262054,
+      "fires": 43,
+      "would_fire": 56,
+      "saved_tokens": 11716,
+      "residency_false_count": 0,
+      "by_kind": {
+        "duplicate-unchanged": 33,
+        "partial-overlap": 3,
+        "read-then-edited": 13,
+        "write-then-read": 7
+      },
+      "pct_tokens_vs_baseline": 1.62,
+      "pct_effcost_5min_vs_baseline": 1.61,
+      "pct_effcost_1hour_vs_baseline": 1.6
+    },
+    {
+      "arm": "anchor-diff",
+      "sessions": 4,
+      "total_tokens": 264745742,
+      "eff_cost_5min": 27526920,
+      "eff_cost_1hour": 28212412,
+      "fires": 56,
+      "would_fire": 56,
+      "saved_tokens": 12027,
+      "residency_false_count": 0,
+      "by_kind": {
+        "duplicate-unchanged": 33,
+        "partial-overlap": 3,
+        "read-then-edited": 13,
+        "write-then-read": 7
+      },
+      "pct_tokens_vs_baseline": 1.8,
+      "pct_effcost_5min_vs_baseline": 1.79,
+      "pct_effcost_1hour_vs_baseline": 1.77
+    }
+  ],
+  "cells": [
+    {
+      "session": "claude-code-session-2.jsonl",
+      "arm": "append-all",
+      "cache_read": 20439504,
+      "cache_write": 187441,
+      "fresh": 7,
+      "total_tokens": 20626952,
+      "eff_cost_5min": 2278259,
+      "eff_cost_1hour": 2418839,
+      "fires": 0,
+      "would_fire": 20,
+      "by_kind": {
+        "duplicate-unchanged": 13,
+        "partial-overlap": 2,
+        "read-then-edited": 5
+      },
+      "residency_false_count": 0,
+      "saved_tokens": 0
+    },
+    {
+      "session": "claude-code-session-2.jsonl",
+      "arm": "anchor-strict",
+      "cache_read": 20251297,
+      "cache_write": 186168,
+      "fresh": 7,
+      "total_tokens": 20437472,
+      "eff_cost_5min": 2257847,
+      "eff_cost_1hour": 2397473,
+      "fires": 15,
+      "would_fire": 20,
+      "by_kind": {
+        "duplicate-unchanged": 13,
+        "partial-overlap": 2,
+        "read-then-edited": 5
+      },
+      "residency_false_count": 0,
+      "saved_tokens": 1266
+    },
+    {
+      "session": "claude-code-session-2.jsonl",
+      "arm": "anchor-diff",
+      "cache_read": 20199948,
+      "cache_write": 187406,
+      "fresh": 7,
+      "total_tokens": 20387361,
+      "eff_cost_5min": 2254259,
+      "eff_cost_1hour": 2394814,
+      "fires": 20,
+      "would_fire": 20,
+      "by_kind": {
+        "duplicate-unchanged": 13,
+        "partial-overlap": 2,
+        "read-then-edited": 5
+      },
+      "residency_false_count": 0,
+      "saved_tokens": 28
+    },
+    {
+      "session": "claude-code-session-3.jsonl",
+      "arm": "append-all",
+      "cache_read": 83277,
+      "cache_write": 19888,
+      "fresh": 1379,
+      "total_tokens": 104544,
+      "eff_cost_5min": 34567,
+      "eff_cost_1hour": 49483,
+      "fires": 0,
+      "would_fire": 0,
+      "by_kind": {},
+      "residency_false_count": 0,
+      "saved_tokens": 0
+    },
+    {
+      "session": "claude-code-session-3.jsonl",
+      "arm": "anchor-strict",
+      "cache_read": 83277,
+      "cache_write": 19888,
+      "fresh": 1379,
+      "total_tokens": 104544,
+      "eff_cost_5min": 34567,
+      "eff_cost_1hour": 49483,
+      "fires": 0,
+      "would_fire": 0,
+      "by_kind": {},
+      "residency_false_count": 0,
+      "saved_tokens": 0
+    },
+    {
+      "session": "claude-code-session-3.jsonl",
+      "arm": "anchor-diff",
+      "cache_read": 83277,
+      "cache_write": 19888,
+      "fresh": 1379,
+      "total_tokens": 104544,
+      "eff_cost_5min": 34567,
+      "eff_cost_1hour": 49483,
+      "fires": 0,
+      "would_fire": 0,
+      "by_kind": {},
+      "residency_false_count": 0,
+      "saved_tokens": 0
+    },
+    {
+      "session": "claude-code-session-5.jsonl",
+      "arm": "append-all",
+      "cache_read": 241544892,
+      "cache_write": 602539,
+      "fresh": 7,
+      "total_tokens": 242147438,
+      "eff_cost_5min": 24907670,
+      "eff_cost_1hour": 25359574,
+      "fires": 0,
+      "would_fire": 30,
+      "by_kind": {
+        "partial-overlap": 1,
+        "read-then-edited": 7,
+        "duplicate-unchanged": 15,
+        "write-then-read": 7
+      },
+      "residency_false_count": 0,
+      "saved_tokens": 0
+    },
+    {
+      "session": "claude-code-session-5.jsonl",
+      "arm": "anchor-strict",
+      "cache_read": 237379938,
+      "cache_write": 592557,
+      "fresh": 7,
+      "total_tokens": 237972502,
+      "eff_cost_5min": 24478697,
+      "eff_cost_1hour": 24923115,
+      "fires": 23,
+      "would_fire": 30,
+      "by_kind": {
+        "partial-overlap": 1,
+        "read-then-edited": 7,
+        "duplicate-unchanged": 15,
+        "write-then-read": 7
+      },
+      "residency_false_count": 0,
+      "saved_tokens": 9979
+    },
+    {
+      "session": "claude-code-session-5.jsonl",
+      "arm": "anchor-diff",
+      "cache_read": 236944049,
+      "cache_write": 591094,
+      "fresh": 7,
+      "total_tokens": 237535150,
+      "eff_cost_5min": 24433279,
+      "eff_cost_1hour": 24876600,
+      "fires": 30,
+      "would_fire": 30,
+      "by_kind": {
+        "partial-overlap": 1,
+        "read-then-edited": 7,
+        "duplicate-unchanged": 15,
+        "write-then-read": 7
+      },
+      "residency_false_count": 0,
+      "saved_tokens": 11443
+    },
+    {
+      "session": "claude-code-session.jsonl",
+      "arm": "append-all",
+      "cache_read": 6616177,
+      "cache_write": 116152,
+      "fresh": 7,
+      "total_tokens": 6732336,
+      "eff_cost_5min": 806815,
+      "eff_cost_1hour": 893929,
+      "fires": 0,
+      "would_fire": 6,
+      "by_kind": {
+        "duplicate-unchanged": 5,
+        "read-then-edited": 1
+      },
+      "residency_false_count": 0,
+      "saved_tokens": 0
+    },
+    {
+      "session": "claude-code-session.jsonl",
+      "arm": "anchor-strict",
+      "cache_read": 6606055,
+      "cache_write": 115685,
+      "fresh": 7,
+      "total_tokens": 6721747,
+      "eff_cost_5min": 805219,
+      "eff_cost_1hour": 891983,
+      "fires": 5,
+      "would_fire": 6,
+      "by_kind": {
+        "duplicate-unchanged": 5,
+        "read-then-edited": 1
+      },
+      "residency_false_count": 0,
+      "saved_tokens": 471
+    },
+    {
+      "session": "claude-code-session.jsonl",
+      "arm": "anchor-diff",
+      "cache_read": 6603080,
+      "cache_write": 115600,
+      "fresh": 7,
+      "total_tokens": 6718687,
+      "eff_cost_5min": 804815,
+      "eff_cost_1hour": 891515,
+      "fires": 6,
+      "would_fire": 6,
+      "by_kind": {
+        "duplicate-unchanged": 5,
+        "read-then-edited": 1
+      },
+      "residency_false_count": 0,
+      "saved_tokens": 556
+    }
+  ],
+  "dedup_ceiling": {
+    "pooled": {
+      "by_source": {
+        "assistant_text": {
+          "total_tokens": 197178,
+          "dup_tokens": 0,
+          "dup_pct": 0
+        },
+        "read_results": {
+          "total_tokens": 176703,
+          "dup_tokens": 19276,
+          "dup_pct": 10.9
+        },
+        "other_tool_results": {
+          "total_tokens": 260612,
+          "dup_tokens": 2821,
+          "dup_pct": 1.1
+        },
+        "tool_call_args": {
+          "total_tokens": 325203,
+          "dup_tokens": 27021,
+          "dup_pct": 8.3
+        }
+      },
+      "total_tokens": 959696,
+      "dup_tokens": 49118,
+      "dup_pct": 5.1
+    },
+    "per_session": [
+      {
+        "session": "claude-code-session-2.jsonl",
+        "by_source": {
+          "assistant_text": {
+            "total_tokens": 36690,
+            "dup_tokens": 0,
+            "dup_pct": 0
+          },
+          "read_results": {
+            "total_tokens": 32703,
+            "dup_tokens": 4376,
+            "dup_pct": 13.4
+          },
+          "other_tool_results": {
+            "total_tokens": 42420,
+            "dup_tokens": 665,
+            "dup_pct": 1.6
+          },
+          "tool_call_args": {
+            "total_tokens": 83582,
+            "dup_tokens": 7092,
+            "dup_pct": 8.5
+          }
+        },
+        "total_tokens": 195394,
+        "dup_tokens": 12132,
+        "dup_pct": 6.2
+      },
+      {
+        "session": "claude-code-session-3.jsonl",
+        "by_source": {
+          "assistant_text": {
+            "total_tokens": 1057,
+            "dup_tokens": 0,
+            "dup_pct": 0
+          },
+          "other_tool_results": {
+            "total_tokens": 18996,
+            "dup_tokens": 0,
+            "dup_pct": 0
+          },
+          "read_results": {
+            "total_tokens": 76,
+            "dup_tokens": 0,
+            "dup_pct": 0
+          }
+        },
+        "total_tokens": 20128,
+        "dup_tokens": 0,
+        "dup_pct": 0
+      },
+      {
+        "session": "claude-code-session-5.jsonl",
+        "by_source": {
+          "assistant_text": {
+            "total_tokens": 144026,
+            "dup_tokens": 0,
+            "dup_pct": 0
+          },
+          "read_results": {
+            "total_tokens": 121128,
+            "dup_tokens": 13633,
+            "dup_pct": 11.3
+          },
+          "other_tool_results": {
+            "total_tokens": 147358,
+            "dup_tokens": 866,
+            "dup_pct": 0.6
+          },
+          "tool_call_args": {
+            "total_tokens": 212705,
+            "dup_tokens": 18412,
+            "dup_pct": 8.7
+          }
+        },
+        "total_tokens": 625217,
+        "dup_tokens": 32910,
+        "dup_pct": 5.3
+      },
+      {
+        "session": "claude-code-session.jsonl",
+        "by_source": {
+          "assistant_text": {
+            "total_tokens": 15405,
+            "dup_tokens": 0,
+            "dup_pct": 0
+          },
+          "read_results": {
+            "total_tokens": 22796,
+            "dup_tokens": 1267,
+            "dup_pct": 5.6
+          },
+          "other_tool_results": {
+            "total_tokens": 51838,
+            "dup_tokens": 1290,
+            "dup_pct": 2.5
+          },
+          "tool_call_args": {
+            "total_tokens": 28916,
+            "dup_tokens": 1517,
+            "dup_pct": 5.2
+          }
+        },
+        "total_tokens": 118954,
+        "dup_tokens": 4074,
+        "dup_pct": 3.4
+      }
+    ]
+  },
+  "corpus_stats": {
+    "pooled": {
+      "reads": 139,
+      "first_read": 70,
+      "path_repeat": 69,
+      "repeat_ranged": 55,
+      "repeat_edited_since": 35,
+      "repeat_content_exact": 6,
+      "repeat_content_contained": 13,
+      "anchorable_strict": 8,
+      "anchorable_if_edits_included": 19,
+      "anchorable_strict_no_floor": 9
+    },
+    "per_session": [
+      {
+        "session": "claude-code-session-2.jsonl",
+        "reads": 27,
+        "first_read": 8,
+        "path_repeat": 19,
+        "repeat_ranged": 19,
+        "repeat_edited_since": 9,
+        "repeat_content_exact": 0,
+        "repeat_content_contained": 7,
+        "anchorable_strict": 2,
+        "anchorable_if_edits_included": 7,
+        "anchorable_strict_no_floor": 2
+      },
+      {
+        "session": "claude-code-session-3.jsonl",
+        "reads": 3,
+        "first_read": 1,
+        "path_repeat": 2,
+        "repeat_ranged": 0,
+        "repeat_edited_since": 0,
+        "repeat_content_exact": 1,
+        "repeat_content_contained": 0,
+        "anchorable_strict": 0,
+        "anchorable_if_edits_included": 1,
+        "anchorable_strict_no_floor": 1
+      },
+      {
+        "session": "claude-code-session-5.jsonl",
+        "reads": 87,
+        "first_read": 46,
+        "path_repeat": 41,
+        "repeat_ranged": 30,
+        "repeat_edited_since": 23,
+        "repeat_content_exact": 5,
+        "repeat_content_contained": 5,
+        "anchorable_strict": 6,
+        "anchorable_if_edits_included": 10,
+        "anchorable_strict_no_floor": 6
+      },
+      {
+        "session": "claude-code-session.jsonl",
+        "reads": 22,
+        "first_read": 15,
+        "path_repeat": 7,
+        "repeat_ranged": 6,
+        "repeat_edited_since": 3,
+        "repeat_content_exact": 0,
+        "repeat_content_contained": 1,
+        "anchorable_strict": 0,
+        "anchorable_if_edits_included": 1,
+        "anchorable_strict_no_floor": 0
+      }
+    ]
+  },
+  "ceiling_sensitivity": {
+    "pooled": {
+      "block_min200": {
+        "total_tokens": 959693,
+        "dup_tokens": 49116,
+        "dup_pct": 5.1
+      },
+      "block_min0": {
+        "total_tokens": 959693,
+        "dup_tokens": 63215,
+        "dup_pct": 6.6
+      },
+      "line_min20": {
+        "total_tokens": 946517,
+        "dup_tokens": 179572,
+        "dup_pct": 19
+      }
+    },
+    "per_session": [
+      {
+        "session": "claude-code-session-2.jsonl",
+        "block_min200": {
+          "by_source": {
+            "assistant_text": {
+              "total_tokens": 36690,
+              "dup_tokens": 0,
+              "dup_pct": 0
+            },
+            "read_results": {
+              "total_tokens": 32703,
+              "dup_tokens": 4376,
+              "dup_pct": 13.4
+            },
+            "other_tool_results": {
+              "total_tokens": 42420,
+              "dup_tokens": 665,
+              "dup_pct": 1.6
+            },
+            "tool_call_args": {
+              "total_tokens": 83582,
+              "dup_tokens": 7092,
+              "dup_pct": 8.5
+            }
+          },
+          "total_tokens": 195394,
+          "dup_tokens": 12132,
+          "dup_pct": 6.2
+        },
+        "block_min0": {
+          "by_source": {
+            "assistant_text": {
+              "total_tokens": 36690,
+              "dup_tokens": 22,
+              "dup_pct": 0.1
+            },
+            "read_results": {
+              "total_tokens": 32703,
+              "dup_tokens": 3160,
+              "dup_pct": 9.7
+            },
+            "other_tool_results": {
+              "total_tokens": 42420,
+              "dup_tokens": 2217,
+              "dup_pct": 5.2
+            },
+            "tool_call_args": {
+              "total_tokens": 83582,
+              "dup_tokens": 7941,
+              "dup_pct": 9.5
+            }
+          },
+          "total_tokens": 195394,
+          "dup_tokens": 13339,
+          "dup_pct": 6.8
+        },
+        "line_min20": {
+          "total_tokens": 192848,
+          "dup_tokens": 37319,
+          "dup_pct": 19.4
+        }
+      },
+      {
+        "session": "claude-code-session-3.jsonl",
+        "block_min200": {
+          "by_source": {
+            "assistant_text": {
+              "total_tokens": 1057,
+              "dup_tokens": 0,
+              "dup_pct": 0
+            },
+            "other_tool_results": {
+              "total_tokens": 18996,
+              "dup_tokens": 0,
+              "dup_pct": 0
+            },
+            "read_results": {
+              "total_tokens": 76,
+              "dup_tokens": 0,
+              "dup_pct": 0
+            }
+          },
+          "total_tokens": 20128,
+          "dup_tokens": 0,
+          "dup_pct": 0
+        },
+        "block_min0": {
+          "by_source": {
+            "assistant_text": {
+              "total_tokens": 1057,
+              "dup_tokens": 15,
+              "dup_pct": 1.4
+            },
+            "other_tool_results": {
+              "total_tokens": 18996,
+              "dup_tokens": 0,
+              "dup_pct": 0
+            },
+            "read_results": {
+              "total_tokens": 76,
+              "dup_tokens": 26,
+              "dup_pct": 33.3
+            }
+          },
+          "total_tokens": 20128,
+          "dup_tokens": 40,
+          "dup_pct": 0.2
+        },
+        "line_min20": {
+          "total_tokens": 19856,
+          "dup_tokens": 313,
+          "dup_pct": 1.6
+        }
+      },
+      {
+        "session": "claude-code-session-5.jsonl",
+        "block_min200": {
+          "by_source": {
+            "assistant_text": {
+              "total_tokens": 144026,
+              "dup_tokens": 0,
+              "dup_pct": 0
+            },
+            "read_results": {
+              "total_tokens": 121128,
+              "dup_tokens": 13633,
+              "dup_pct": 11.3
+            },
+            "other_tool_results": {
+              "total_tokens": 147358,
+              "dup_tokens": 866,
+              "dup_pct": 0.6
+            },
+            "tool_call_args": {
+              "total_tokens": 212705,
+              "dup_tokens": 18412,
+              "dup_pct": 8.7
+            }
+          },
+          "total_tokens": 625217,
+          "dup_tokens": 32910,
+          "dup_pct": 5.3
+        },
+        "block_min0": {
+          "by_source": {
+            "assistant_text": {
+              "total_tokens": 144026,
+              "dup_tokens": 168,
+              "dup_pct": 0.1
+            },
+            "read_results": {
+              "total_tokens": 121128,
+              "dup_tokens": 13633,
+              "dup_pct": 11.3
+            },
+            "other_tool_results": {
+              "total_tokens": 147358,
+              "dup_tokens": 8871,
+              "dup_pct": 6
+            },
+            "tool_call_args": {
+              "total_tokens": 212705,
+              "dup_tokens": 21423,
+              "dup_pct": 10.1
+            }
+          },
+          "total_tokens": 625217,
+          "dup_tokens": 44094,
+          "dup_pct": 7.1
+        },
+        "line_min20": {
+          "total_tokens": 616563,
+          "dup_tokens": 123709,
+          "dup_pct": 20.1
+        }
+      },
+      {
+        "session": "claude-code-session.jsonl",
+        "block_min200": {
+          "by_source": {
+            "assistant_text": {
+              "total_tokens": 15405,
+              "dup_tokens": 0,
+              "dup_pct": 0
+            },
+            "read_results": {
+              "total_tokens": 22796,
+              "dup_tokens": 1267,
+              "dup_pct": 5.6
+            },
+            "other_tool_results": {
+              "total_tokens": 51838,
+              "dup_tokens": 1290,
+              "dup_pct": 2.5
+            },
+            "tool_call_args": {
+              "total_tokens": 28916,
+              "dup_tokens": 1517,
+              "dup_pct": 5.2
+            }
+          },
+          "total_tokens": 118954,
+          "dup_tokens": 4074,
+          "dup_pct": 3.4
+        },
+        "block_min0": {
+          "by_source": {
+            "assistant_text": {
+              "total_tokens": 15405,
+              "dup_tokens": 0,
+              "dup_pct": 0
+            },
+            "read_results": {
+              "total_tokens": 22796,
+              "dup_tokens": 1267,
+              "dup_pct": 5.6
+            },
+            "other_tool_results": {
+              "total_tokens": 51838,
+              "dup_tokens": 2509,
+              "dup_pct": 4.8
+            },
+            "tool_call_args": {
+              "total_tokens": 28916,
+              "dup_tokens": 1966,
+              "dup_pct": 6.8
+            }
+          },
+          "total_tokens": 118954,
+          "dup_tokens": 5742,
+          "dup_pct": 4.8
+        },
+        "line_min20": {
+          "total_tokens": 117250,
+          "dup_tokens": 18231,
+          "dup_pct": 15.5
+        }
+      }
+    ]
+  },
+  "logged_usage": {
+    "pooled": {
+      "submissions": 3796,
+      "prompt_tokens": 1661376031,
+      "input_tokens": 7592,
+      "cache_creation": 34828967,
+      "cache_read": 1626539472,
+      "eff_cost_5min": 206197748
+    },
+    "per_session": [
+      {
+        "session": "claude-code-session-2.jsonl",
+        "submissions": 651,
+        "prompt_tokens": 275649974,
+        "input_tokens": 1302,
+        "cache_creation": 6719344,
+        "cache_read": 268929328,
+        "eff_cost_5min": 35293415
+      },
+      {
+        "session": "claude-code-session-3.jsonl",
+        "submissions": 98,
+        "prompt_tokens": 13787519,
+        "input_tokens": 196,
+        "cache_creation": 349056,
+        "cache_read": 13438267,
+        "eff_cost_5min": 1780343
+      },
+      {
+        "session": "claude-code-session-5.jsonl",
+        "submissions": 2402,
+        "prompt_tokens": 1259467799,
+        "input_tokens": 4804,
+        "cache_creation": 25752472,
+        "cache_read": 1233710523,
+        "eff_cost_5min": 155566446
+      },
+      {
+        "session": "claude-code-session.jsonl",
+        "submissions": 645,
+        "prompt_tokens": 112470739,
+        "input_tokens": 1290,
+        "cache_creation": 2008095,
+        "cache_read": 110461354,
+        "eff_cost_5min": 13557544
+      }
+    ]
+  },
+  "realism_check": {
+    "simulated_eff_cost_5min": 28027311,
+    "logged_eff_cost_5min": 206197748,
+    "simulated_over_logged_ratio": 0.136,
+    "saving_pct_vs_simulated": 1.61,
+    "saving_pct_vs_logged": 0.219,
+    "note": "The simulated prefix omits the system prompt, tool schemas, user turns, thinking blocks and image payloads, and submits only on assistant text blocks. saving_pct_vs_logged rescales the SAME absolute saving onto what the sessions actually sent."
+  }
+}
