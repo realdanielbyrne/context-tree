@@ -83,13 +83,15 @@ async function runCell(task, arm, repeat) {
     arm: PASSIVE ? 'none' : arm, passive: PASSIVE, topK: TOPK, minChars: MIN_CHARS,
     verify: 'identity', requireUnedited: true,
   });
+  // The scenario releases its follow-up user turns; compose its hook with the index's.
+  const tk = task.makeHook ? task.makeHook(ws) : null;
   let peak = 0;
   // Hold the LIVE array. runAgent throws on a server 5xx and its return value is lost,
   // so without this a crashed run captures nothing and looks identical to a null.
   let liveMessages = null;
   const hook = (messages, turn) => {
     const now = Date.now(); if (turn > 0) turnMs.push(now - lastT); lastT = now;
-    liveMessages = messages; idx.hook(messages, turn); peak = Math.max(peak, estTokens(messages));
+    liveMessages = messages; tk?.hook(messages, turn); idx.hook(messages, turn); peak = Math.max(peak, estTokens(messages));
   };
 
   const t0 = Date.now();
@@ -98,7 +100,8 @@ async function runCell(task, arm, repeat) {
   let r = null, err = null;
   try {
     r = await runAgent({ system: task.system, task: task.task, ws, maxTurns: MAX_TURNS,
-      think: false, hook, reducer: idx.reducer, allowedTools: task.allowedTools ?? null });
+      think: false, hook, reducer: idx.reducer, allowedTools: task.allowedTools ?? null,
+      onEnd: tk ? ((m, t) => tk.onEnd(m, t)) : null, maxTokens: +(process.env.CT_MAX_TOKENS || 2048) });
   } catch (e) { err = String(e.message || e).slice(0, 200); }
   let pass = false, score = null;
   try { pass = task.grade(ws); } catch { pass = false; }
