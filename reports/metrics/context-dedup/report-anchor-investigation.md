@@ -10,28 +10,42 @@ Companion reports: `report-dv4-anchor-dedup.md` (cost study), `report-anchor-rep
 
 ## Abstract
 
-A transformer gives less weight to tokens that are far back in its context and rarely mentioned
-since. Agent transcripts show a matching behaviour: an agent that needs a file it already read will
-often read it again rather than use the copy sitting in its own context. Every such re-read appends
-a duplicate, and the duplicate is then re-transmitted on every subsequent turn.
+**The problem.** A transformer gives less weight to tokens that sit far back in its context and have
+not been referred to since. Agent transcripts show a behaviour consistent with this: an agent that
+needs a file it has already read will frequently read it again rather than use the copy already
+present in its own context. Each such re-read appends a duplicate, and that duplicate is then
+re-transmitted on every subsequent turn for the remainder of the session. It has been proposed that
+this can be corrected cheaply — that returning a short referential reminder in place of the content
+("Remember our earlier conversation about X") will raise the salience of the earlier copy enough for
+the model to use it, because a fresh mention of an old topic is itself a recent token pointing at
+old ones.
 
-The proposed fix is a small one. When a tool is about to return content the model already has,
-return a short sentence pointing at the existing copy instead — *"Remember our earlier conversation
-about X"* — on the theory that a fresh mention of an old topic raises the weight the model places on
-those older tokens.
+**The experiment.** Three studies were run against four real Claude Code sessions, each with a
+pass/fail condition fixed in writing beforehand. The first, offline and with no model involved,
+priced the substitution through a provider-cache simulator at both cache-write tiers, to establish
+how much could be saved at most. The second and third were a single live study on 36 events, in
+which a real transcript prefix containing a genuine earlier read of file F was extended with a
+synthetic request for F; the tool result was replaced by each arm's output in turn, and the model
+was given one turn to act. Two things were measured: whether it proceeded or re-fetched F, and
+whether it could still answer a question whose answer appears exactly once in the whole conversation,
+inside the original copy of F. The design's critical element is the control arm — a placebo padded
+to exactly the anchor's length but carrying no path, no topic and no reference to anything earlier —
+which separates the hypothesis that *referring* to content helps from the rival explanation that
+merely *withholding* it would suffice. All three arms saw identical prefixes and identical
+questions, so the comparison is paired.
 
-We tested three things, in order, each with a pass/fail line drawn in advance. **Is the saving worth
-having?** No: 0.22% of real token cost, against a 10% bar. **Does the model accept the reminder
-instead of re-reading?** Not reliably: it proceeds 41.7% of the time, against a 70% bar. **Is it the
-*reminder* that works, or would any refusal to hand over the file do just as well?** Here the idea
-holds: the reminder beats a refusal of identical length by 27.8 percentage points (p=0.0063), and a
-question answerable only from the distant original copy is answered just as accurately as when the
-file is handed over in full (86.1% vs 83.3%, p=1.0) while using about a tenth of the tokens.
-
-The overall picture is a real result about attention with no deployment case attached. The model
-*can* reach back and use what it already has, and naming the topic measurably helps it do so — but
-it prefers to re-fetch anyway when nothing stops it, and the duplicated bytes in real sessions are
-too few for suppressing them to matter.
+**The conclusions.** The cost condition failed: the substitution saves 0.22% of the token spend
+those sessions actually incurred, against a 10% bar, because duplicated file content is only 5.8% of
+reads and file reads are only 18% of context. The acceptance condition also failed: given an anchor,
+the model proceeded only 41.7% of the time against a 70% bar. The mechanism condition passed, and is
+the substantive finding: the anchor outperformed the character-identical placebo by 27.8 percentage
+points (p=0.0063), so the effect is attributable to what the reminder says rather than to how much
+was withheld. Recall was unharmed — a question answerable only from the distant original was
+answered as accurately with an anchor as with the file supplied in full (86.1% against 83.3%,
+p=1.0), using about a tenth of the tokens. The failure is therefore behavioural rather than
+attentional: the model can reach back and use what it already holds, and does so accurately, but
+prefers to re-fetch when nothing prevents it. The result is a genuine and measurable effect on
+attention with no deployment case attached to it.
 
 ---
 
