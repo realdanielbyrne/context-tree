@@ -47,11 +47,11 @@ const rows = ORDER.map((arm) => {
   const [lo, hi] = wilson(passes, cs.length);
   return {
     arm, label: LABEL[arm], desc: DESC[arm], n: cs.length, passes, rate: passes / cs.length, lo, hi,
-    useful: med(cs.map((c) => c.useful_tokens_mean)),
+    useful: Math.round(med(cs.map((c) => c.useful_tokens_mean))),   // a half-token is false precision
     junk: med(cs.map((c) => c.junk_share_mean)),
     writes: med(cs.map((c) => c.writes)),
     noWrite: cs.filter((c) => c.writes === 0).length,
-    peak: med(cs.map((c) => c.peak_history_tokens)),
+    peak: Math.round(med(cs.map((c) => c.peak_history_tokens))),
   };
 }).filter(Boolean);
 
@@ -171,6 +171,11 @@ These terms are used throughout. Nothing else is assumed.
 | **Useful tokens** | Context that is *not* a duplicate — the real, non-redundant material the agent had available. |
 | **Duplicate share** | What fraction of the agent's context was duplicated material. |
 | **Files written** | How many files the agent created or edited during a run. A run with zero is a run where the agent never began the actual work — the clearest sign it has gone off the rails. |
+| **Positive control** | A condition built so that a working measurement *must* show a difference. If it shows none, the measurement is suspect; if the control itself breaks, the run tells you nothing either way. |
+| **\`oracle\` / \`random\`** | The two discard rules under test. \`oracle\` deletes duplicates first; \`random\` deletes at random. Both keep the same total amount of context. |
+| **Validity condition** | A check, written before the run, that must hold for a result to be interpretable at all. |
+| **Void** | A run whose validity conditions fail in substance: it is not evidence for or against anything, as distinct from a *null*, which is evidence of no difference. |
+| **p-value** | The probability of a difference at least this large if the rules were truly equivalent. Here a one-sided Fisher exact test on pass counts. |
 
 ## Why we ran this
 
@@ -255,7 +260,9 @@ resident reads, so redundant material is not concentrated at one end of the tran
 oldest-first rule would remove it for free; and copies are spliced **before** the newest step, so they never
 displace the agent's own latest work from the protected recent window.
 
-## The conditions compared
+## Results
+
+### The conditions compared
 
 Five conditions were run. Every one is the same task, the same model and the same settings; they differ only
 in the size limit and in which rule decides what to discard. A rule that discards duplicates first keeps more
@@ -268,7 +275,7 @@ ${tableRows}
 \`clean\` and \`uncapped-clean\` contain no duplicates at all; they show what the agent does normally, with
 and without a size limit.
 
-## Why the planned comparison is void
+### Why the planned comparison is void
 
 The intended test was \`oracle\` versus \`random\`. Both scored ${ORACLE.passes} out of ${ORACLE.n}
 (statistically: p = ${pPrimary.toFixed(3)}, meaning no detectable difference).
@@ -281,13 +288,9 @@ A comparison needs a baseline that is *doing the thing badly*, not one that has 
 the agent never starts, its failure tells you nothing about whether a better deletion rule would have
 helped.
 
-We had written two conditions in advance for deciding whether a result was trustworthy — that the
-no-duplicates arm should not be at zero, and that the random arm should have room to improve. **Both were
-satisfied.** The run was still worthless. A third condition has been added and is now checked
-automatically: *the baseline must still be attempting the task.* The measurement that catches it — files
-written — was already being recorded; we simply were not looking at it.
+Why the two validity conditions written in advance did not catch this is set out in **What we got wrong**.
 
-## The finding that replaced it
+### The finding that replaced it
 
 **Duplicated context damages the agent out of all proportion to the space it takes up.**
 
@@ -314,7 +317,7 @@ entirely, so nothing is ever deleted and space is never scarce:
 An agent with more room than it needs, which still never writes a file, has not run out of anything. The
 duplicates changed what it did.` : `*(The unlimited-room comparison has not been run, so a shortage of space is not yet ruled out as the cause.)*`}
 
-### Why this generalises beyond duplicates
+#### Why this generalises beyond duplicates
 
 This is the **third** attempt to add material to this agent's context, and the third to stop it working:
 
@@ -339,22 +342,49 @@ third possibility: if duplicates actively degrade behaviour, removing them impro
 a hypothesis this run raises; it does not prove it, because no arm here held duplicates without also being
 the arm meant to remove them.
 
-## What this experiment could never have shown
+## What we got wrong
 
-Independent review of the design, carried out while the experiment was running, identified a flaw that
-holds regardless of the outcome.
+**1. "Two pre-registered validity conditions are enough to make this run interpretable."** We wrote two
+conditions in advance: the no-duplicates arm should not be at zero (\`clean\` passed ${CLEAN.passes} of
+${CLEAN.n}), and the random arm should have room to improve (\`random\` passed ${RANDOM.passes} of ${RANDOM.n}).
+**Both were satisfied, and the run was still void**: the \`random\` agent wrote zero files in ${RANDOM.noWrite}
+of ${RANDOM.n} runs, so the baseline had stopped attempting the task. Satisfying the conditions was read as
+licence to interpret the primary contrast; it was not. A third condition has been added and is now checked
+automatically: *the baseline must still be attempting the task.* The measurement that catches it — files
+written — was already being recorded; we simply were not looking at it.
 
-The \`oracle\` arm's advantage over \`random\` comes entirely through one channel: it ends up with **more
-useful tokens** (${k(ORACLE.useful)} against ${k(RANDOM.useful)}). But "more context is better" is exactly
-the effect we already knew about and measured. So \`oracle\` beating \`random\` was guaranteed by an
+**2. "If \`oracle\` beats \`random\`, the measurement can detect discard quality."** This was the premise of
+the design, and independent review, carried out while the experiment was running, found it false regardless
+of the outcome. The \`oracle\` arm's advantage over \`random\` comes entirely through one channel: it ends up
+with **more useful tokens** (${k(ORACLE.useful)} against ${k(RANDOM.useful)}). But "more context is better" is
+exactly the effect we already knew about and had measured. So \`oracle\` beating \`random\` was guaranteed by an
 established effect, and would not have demonstrated anything new about the measurement's sensitivity.
+Meanwhile the four no-difference results we set out to check were all measured with *equal* amounts of useful
+context in every arm. A control that only changes the amount cannot speak to them. **The original question
+therefore remains open**: answering it needs a design where the arms hold the *same amount* of useful context
+but *different* content.
 
-Meanwhile the four no-difference results we set out to check were all measured with *equal* amounts of
-useful context in every arm. A control that only changes the amount cannot speak to them.
+## Conclusions
 
-**So the original question remains open.** Answering it needs a design where the arms hold the *same
-amount* of useful context but *different* content — a harder thing to build, and the reason this stays on
-the open list rather than being marked resolved.
+**Established.** On this task and model, injecting byte-identical duplicates of the agent's own file reads
+derailed it: under random discard it wrote no files in ${RANDOM.noWrite} of ${RANDOM.n} runs, and even the
+duplicate-removing \`oracle\` arm passed ${ORACLE.passes} of ${ORACLE.n} against ${CLEAN.passes} of ${CLEAN.n}
+for the same limit without duplicates.${UB && UC ? ` With no size limit at all, the duplicate run wrote ${UB.writes} files from ${k(UB.peak)} tokens while the clean run passed from ${k(UC.peak)}.` : ''}
+
+**Licensed for the design.** Every live comparison must gate on a behavioural liveness measure (here, files
+written) before its primary contrast is read. Any middleware step that *adds* material to an agent's context
+must be evaluated for its effect on behaviour, not only on token cost.
+
+**Not licensed.**
+
+| claim | status |
+|---|---|
+| the measurement can detect discard quality | **untested** — the run is void, not a null, and the design could not have shown it |
+| the four earlier no-difference results are informative | **untested** — still open |
+| duplicates harm by displacing useful context | **tested and rejected**${UB ? ` on ${UB.n} uncapped run — a single decisive observation, not a rate` : ' — not yet run'} |
+| removing duplicates improves capability | **untested** — no arm held duplicates without also removing them |
+| provenance, not content, is the common cause across the three injection designs | **untested** — an inference across three designs, not a controlled contrast |
+| the mechanism (imitation, lost instructions, other) | **untested** |
 
 ## Caveats
 
@@ -393,6 +423,7 @@ h1{font-size:30px;line-height:1.2;margin:0 0 4px}
 .sub{color:#5f6368;font-style:italic;margin:0 0 26px}
 h2{font-size:21px;margin:40px 0 12px;border-bottom:1px solid #e3e3ea;padding-bottom:7px}
 h3{font-size:16.5px;margin:26px 0 8px}
+h4{font-size:15px;margin:20px 0 6px}
 p{margin:12px 0}
 .exec{background:#f3f6fb;border:1px solid #d9e2f0;border-radius:10px;padding:20px 24px;margin:20px 0 28px}
 .exec h2{margin-top:0;border:0;padding:0;font-size:19px}
@@ -460,6 +491,12 @@ content.</p>
 <tr><td><strong>Arm</strong></td><td>One experimental condition. Arms differ only in the rule being tested.</td></tr>
 <tr><td><strong>Duplicate</strong></td><td>Material we deliberately inserted: a second, byte-identical copy of a file the agent had already read. It adds no information, so deleting it loses nothing.</td></tr>
 <tr><td><strong>Useful tokens</strong></td><td>Context that is <em>not</em> a duplicate — the real, non-redundant material the agent had available.</td></tr>
+<tr><td><strong>Duplicate share</strong></td><td>What fraction of the agent's context was duplicated material.</td></tr>
+<tr><td><strong>Positive control</strong></td><td>A condition built so that a working measurement <em>must</em> show a difference. If it shows none, the measurement is suspect; if the control itself breaks, the run tells you nothing either way.</td></tr>
+<tr><td><strong><code>oracle</code> / <code>random</code></strong></td><td>The two discard rules under test. <code>oracle</code> deletes duplicates first; <code>random</code> deletes at random. Both keep the same total amount of context.</td></tr>
+<tr><td><strong>Validity condition</strong></td><td>A check, written before the run, that must hold for a result to be interpretable at all.</td></tr>
+<tr><td><strong>Void</strong></td><td>A run whose validity conditions fail in substance: not evidence for or against anything, as distinct from a <em>null</em>, which is evidence of no difference.</td></tr>
+<tr><td><strong>p-value</strong></td><td>The probability of a difference at least this large if the rules were truly equivalent. Here a one-sided Fisher exact test on pass counts.</td></tr>
 <tr><td><strong>Files written</strong></td><td>How many files the agent created or edited. Zero means the agent never began the actual work — the clearest sign it has gone off the rails.</td></tr>
 </tbody></table>
 
@@ -537,7 +574,8 @@ random</strong> among resident reads, so redundant material is not concentrated 
 where a simple oldest-first rule would remove it for free; and copies are spliced <strong>before</strong> the
 newest step, so they never displace the agent's own latest work from the protected recent window.</p>
 
-<h2>The conditions compared</h2>
+<h2>Results</h2>
+<h3>The conditions compared</h3>
 <p>Five conditions were run. Every one is the same task, the same model and the same settings; they differ
 only in the size limit and in which rule decides what to discard. A rule that discards duplicates first keeps
 more real material inside the same limit, so it should do better — <em>if</em> the measurement can see such
@@ -547,7 +585,7 @@ ${rows.map((r) => `<tr><td><code>${esc(r.label)}</code></td><td>${esc(r.desc)}</
 </tbody></table>
 <div class="chart">${chartArms()}</div>
 
-<h2>Why the planned comparison is void</h2>
+<h3>Why the planned comparison is void</h3>
 <p>The intended test was <code>oracle</code> versus <code>random</code>. Both scored ${ORACLE.passes} out of
 ${ORACLE.n} (p = ${pPrimary.toFixed(3)}: no detectable difference).</p>
 <div class="warn">Read literally, that is the "our measurement is blind" outcome. <strong>It should not be
@@ -557,13 +595,9 @@ attempting the task at all.</div>
 <p>A comparison needs a baseline that is <em>doing the thing badly</em>, not one that has stopped doing the
 thing. If the agent never starts, its failure says nothing about whether a better deletion rule would have
 helped.</p>
-<p>We had written two conditions in advance for deciding whether a result was trustworthy — that the
-no-duplicates arm should not be at zero, and that the random arm should have room to improve.
-<strong>Both were satisfied.</strong> The run was still worthless. A third condition has been added and is
-now checked automatically: <em>the baseline must still be attempting the task.</em> The measurement that
-catches it — files written — was already being recorded; we simply were not looking at it.</p>
+<p>Why the two validity conditions written in advance did not catch this is set out in <strong>What we got wrong</strong>.</p>
 
-<h2>The finding that replaced it</h2>
+<h3>The finding that replaced it</h3>
 <div class="key"><strong>Duplicated context damages the agent out of all proportion to the space it takes
 up.</strong></div>
 <p>The clearest single comparison is <code>oracle</code> against <code>clean</code>:</p>
@@ -576,14 +610,14 @@ up.</strong></div>
 of the time. It succeeded ${pct(ORACLE.rate)} of the time. The difference is the ${pct(ORACLE.junk)} of its
 context that was duplicated material — and <code>oracle</code> was the arm actively deleting duplicates, so
 it had the <em>least</em> of it among the duplicate conditions.</p>
-${UB && UC ? `<h3>The cause is behavioural, not a shortage of room</h3>
+${UB && UC ? `<h4>The cause is behavioural, not a shortage of room</h4>
 <p>The last two conditions remove the size limit entirely, so nothing is ever deleted and space is never
 scarce.</p>
 <div class="chart">${chartUncapped()}</div>
 <p>An agent with more room than it needs, which still never writes a file, has not run out of anything. The
 duplicates changed what it did.</p>` : '<p><em>The unlimited-room comparison has not been run, so a shortage of space is not yet ruled out as the cause.</em></p>'}
 
-<h3>Why this generalises beyond duplicates</h3>
+<h4>Why this generalises beyond duplicates</h4>
 <p>This is the <strong>third</strong> attempt to add material to this agent's context, and the third to stop
 it working:</p>
 <ol>
@@ -605,19 +639,45 @@ third possibility: if duplicates actively degrade behaviour, removing them impro
 That is a hypothesis this run raises, not one it proves: no arm here held duplicates without also being the
 arm meant to remove them.</p>
 
-<h2>What this experiment could never have shown</h2>
-<p>Independent review of the design, carried out while the experiment was running, identified a flaw that
-holds regardless of the outcome.</p>
-<p>The <code>oracle</code> arm's advantage over <code>random</code> comes entirely through one channel: it
-ends up with <strong>more useful tokens</strong> (${k(ORACLE.useful)} against ${k(RANDOM.useful)}). But "more
-context is better" is exactly the effect we already knew about and had measured. So <code>oracle</code>
-beating <code>random</code> was guaranteed by an established effect, and would not have demonstrated anything
-new about the measurement's sensitivity.</p>
-<p>Meanwhile the four no-difference results we set out to check were all measured with <em>equal</em> amounts
-of useful context in every arm. A control that only changes the amount cannot speak to them.</p>
+<h2>What we got wrong</h2>
+<p><strong>1. "Two pre-registered validity conditions are enough to make this run interpretable."</strong> We
+wrote two conditions in advance: the no-duplicates arm should not be at zero (<code>clean</code> passed
+${CLEAN.passes} of ${CLEAN.n}), and the random arm should have room to improve (<code>random</code> passed
+${RANDOM.passes} of ${RANDOM.n}). <strong>Both were satisfied, and the run was still void</strong>: the
+<code>random</code> agent wrote zero files in ${RANDOM.noWrite} of ${RANDOM.n} runs, so the baseline had stopped
+attempting the task. Satisfying the conditions was read as licence to interpret the primary contrast; it was
+not. A third condition has been added and is now checked automatically: <em>the baseline must still be
+attempting the task.</em> The measurement that catches it — files written — was already being recorded; we
+simply were not looking at it.</p>
+<p><strong>2. "If <code>oracle</code> beats <code>random</code>, the measurement can detect discard
+quality."</strong> This was the premise of the design, and independent review, carried out while the experiment
+was running, found it false regardless of the outcome. The <code>oracle</code> arm's advantage over
+<code>random</code> comes entirely through one channel: it ends up with <strong>more useful tokens</strong>
+(${k(ORACLE.useful)} against ${k(RANDOM.useful)}). But "more context is better" is exactly the effect we already
+knew about and had measured. So <code>oracle</code> beating <code>random</code> was guaranteed by an established
+effect, and would not have demonstrated anything new about the measurement's sensitivity. Meanwhile the four
+no-difference results we set out to check were all measured with <em>equal</em> amounts of useful context in
+every arm. A control that only changes the amount cannot speak to them.</p>
 <div class="warn"><strong>The original question remains open.</strong> Answering it needs a design where the
-arms hold the <em>same amount</em> of useful context but <em>different</em> content — harder to build, and the
-reason this stays on the open list rather than being marked resolved.</div>
+arms hold the <em>same amount</em> of useful context but <em>different</em> content.</div>
+
+<h2>Conclusions</h2>
+<p><strong>Established.</strong> On this task and model, injecting byte-identical duplicates of the agent's own
+file reads derailed it: under random discard it wrote no files in ${RANDOM.noWrite} of ${RANDOM.n} runs, and
+even the duplicate-removing <code>oracle</code> arm passed ${ORACLE.passes} of ${ORACLE.n} against
+${CLEAN.passes} of ${CLEAN.n} for the same limit without duplicates.${UB && UC ? ` With no size limit at all, the duplicate run wrote ${UB.writes} files from ${k(UB.peak)} tokens while the clean run passed from ${k(UC.peak)}.` : ''}</p>
+<p><strong>Licensed for the design.</strong> Every live comparison must gate on a behavioural liveness measure
+(here, files written) before its primary contrast is read. Any middleware step that <em>adds</em> material to
+an agent's context must be evaluated for its effect on behaviour, not only on token cost.</p>
+<p><strong>Not licensed.</strong></p>
+<table><thead><tr><th>claim</th><th>status</th></tr></thead><tbody>
+<tr><td>the measurement can detect discard quality</td><td><strong>untested</strong> — the run is void, not a null, and the design could not have shown it</td></tr>
+<tr><td>the four earlier no-difference results are informative</td><td><strong>untested</strong> — still open</td></tr>
+<tr><td>duplicates harm by displacing useful context</td><td><strong>tested and rejected</strong>${UB ? ` on ${UB.n} uncapped run — a single decisive observation, not a rate` : ' — not yet run'}</td></tr>
+<tr><td>removing duplicates improves capability</td><td><strong>untested</strong> — no arm held duplicates without also removing them</td></tr>
+<tr><td>provenance, not content, is the common cause across the three injection designs</td><td><strong>untested</strong> — an inference across three designs, not a controlled contrast</td></tr>
+<tr><td>the mechanism (imitation, lost instructions, other)</td><td><strong>untested</strong></td></tr>
+</tbody></table>
 
 <h2>Caveats</h2>
 <ul>

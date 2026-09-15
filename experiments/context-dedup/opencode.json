@@ -14,7 +14,7 @@
           "tool_call": true,
           "limit": {
             "context": 262144,
-            "output": 16384
+            "output": 128320
           }
         }
       }
@@ -28,11 +28,22 @@
       },
       "models": {
         "qwen/qwen3.8-27b": {
-          "name": "Qwen3.8-27B (OpenRouter)",
+          "name": "Qwen3.8-27B (OpenRouter, pinned: DeepInfra bf16)",
           "tool_call": true,
           "limit": {
             "context": 262144,
-            "output": 16384
+            "output": 235929
+          },
+          "options": {
+            "provider": {
+              "order": [
+                "DeepInfra"
+              ],
+              "quantizations": [
+                "bf16"
+              ],
+              "allow_fallbacks": false
+            }
           }
         }
       }

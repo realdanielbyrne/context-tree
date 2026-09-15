@@ -19,7 +19,7 @@ Usage:
   python3 swebench_provision.py --list-light
   python3 swebench_provision.py --verify psf__requests-2931
 """
-import argparse, json, os, subprocess, sys, venv
+import argparse, json, os, re, subprocess, sys, venv
 from pathlib import Path
 
 WORK = Path(os.environ.get("CT_SWEBENCH_WORK", "/mnt/data/ctx-swebench"))
@@ -46,15 +46,36 @@ def spec_for(repo, version):
     return (SPECS.get(repo) or {}).get(str(version)) or {}
 
 
+MAMBA = WORK / "tooling" / "micromamba" / "bin" / "micromamba"
+MAMBA_PYTHONS = WORK / "pythons"
+
+
 def ensure_python(pyver):
-    """Path to a uv-managed standalone CPython `pyver` (installed on WORK, no sudo)."""
+    """Path to a CPython `pyver` installed on WORK, no sudo.
+
+    uv's standalone builds start at 3.7, so 3.5/3.6 (113 django, 25 scikit-learn and
+    4 astropy verified instances) come from conda-forge via micromamba instead. Not a
+    source build: the host's OpenSSL 3.x breaks `ssl` on 3.5/3.6, while conda-forge
+    ships them against OpenSSL 1.0.2/1.1.1 with a complete stdlib.
+    """
     env = {"UV_PYTHON_INSTALL_DIR": str(PYDIR)}
     sh([str(UVPY), "-m", "uv", "python", "install", pyver], env=env, timeout=900)
     r = sh([str(UVPY), "-m", "uv", "python", "find", pyver], env=env, timeout=300)
     path = (r.stdout or "").strip().splitlines()[0] if r.stdout.strip() else ""
-    if not path or not Path(path).exists():
-        raise RuntimeError(f"python {pyver} unavailable via uv (3.5/3.6 predate standalone builds)")
-    return path
+    if path and Path(path).exists():
+        return path
+
+    prefix = MAMBA_PYTHONS / f"py{pyver}"
+    py = prefix / "bin" / "python"
+    if not py.exists():
+        if not MAMBA.exists():
+            raise RuntimeError(f"python {pyver}: no uv build and micromamba missing at {MAMBA}")
+        menv = {"MAMBA_ROOT_PREFIX": str(WORK / "tooling" / f"mamba-root-{pyver}")}
+        sh([str(MAMBA), "create", "-y", "-p", str(prefix), "-c", "conda-forge",
+            f"python={pyver}", "pip", "setuptools", "wheel"], env=menv, timeout=1800, check=True)
+    if not py.exists():
+        raise RuntimeError(f"python {pyver} unavailable via uv or micromamba")
+    return str(py)
 
 
 def sh(cmd, cwd=None, env=None, timeout=1800, check=False):
@@ -118,11 +139,40 @@ def ensure_venv(repo, version, pyver):
 
 def install(py, d, spec):
     """Run the official install command for this repo+version, plus its test packages."""
+    # pip_packages carries the period-appropriate PINS (e.g. numpy==1.19.2 for sklearn
+    # 0.20); installing only the unpinned `packages` would pull versions that cannot
+    # build on py3.5/3.6. Pins go first so later installs resolve against them.
+    # An UNVERSIONED `cython` resolves to Cython 3.x today, which changed the default
+    # language_level and dropped implicit relative cimports — scikit-learn 0.20 fails at
+    # `from _tree cimport Node`. The official Docker images were built before Cython 3
+    # (2023) existed, so cap it to reproduce the environment the specs were written for.
+    CAPS = {"cython": "cython<3"}
+    pins = [CAPS.get(p.strip().lower(), p.strip()) for p in (spec.get("pip_packages") or []) if p.strip()]
+    # Try the pin list as one resolve first (pins that constrain each other resolve
+    # together); if pip rejects it, fall back to one pin at a time. pip is
+    # all-or-nothing, and the official specs contain pins that do not exist on PyPI
+    # (astropy 1.3 lists `exceptiongroup==0.0.0a0`) — one such pin silently dropped the
+    # WHOLE list, left MarkupSafe unpinned, and easy_install then pulled a py3.9-only
+    # release that broke the build.
+    if pins:
+        r = sh([str(py), "-m", "pip", "install", "-q", *pins], timeout=3600)
+        if r.returncode != 0:
+            skipped = []
+            for p in pins:
+                if sh([str(py), "-m", "pip", "install", "-q", p], timeout=1800).returncode != 0:
+                    skipped.append(p)
+            if skipped:
+                print(f"[pins] could not install {len(skipped)}/{len(pins)}: {', '.join(skipped)}", flush=True)
     pkgs = (spec.get("packages") or "").strip()
     if pkgs and pkgs not in ("requirements.txt", "environment.yml"):
-        sh([str(py), "-m", "pip", "install", "-q", *pkgs.split()], timeout=1800)
+        sh([str(py), "-m", "pip", "install", "-q", *pkgs.split()], timeout=3600)
     sh([str(py), "-m", "pip", "install", "-q", "pytest"], timeout=1800)
-    cmd = (spec.get("install") or "python -m pip install -e .").replace("python -m", f"{py} -m")
+    # Rewrite EVERY leading `python` to the venv interpreter, not just `python -m`:
+    # django 2.2's spec is `python setup.py install`, which would otherwise run on
+    # whatever `python` the host PATH resolves to.
+    cmd = spec.get("install") or "python -m pip install -e ."
+    cmd = " && ".join(f"{py}{part.strip()[len('python'):]}" if part.strip().startswith("python ") else part.strip()
+                      for part in cmd.split("&&"))
     r = sh(cmd, cwd=str(d), timeout=3600)
     return r.returncode == 0, (r.stdout + r.stderr)[-3000:]
 
@@ -135,15 +185,103 @@ def apply_patch(d, patch, reverse=False):
     return p.returncode == 0
 
 
-def run_tests(py, d, tests):
+def django_label(test_id):
+    """`test_x (app.tests.Case)` -> `app.tests.Case.test_x`, the form runtests.py accepts.
+
+    SWE-bench records django tests in unittest's repr form, not as a runnable label.
+    Ids already in dotted form pass through unchanged.
+    """
+    m = re.match(r"^\s*(\w+)\s+\(([\w.]+)\)\s*$", test_id)
+    return f"{m.group(2)}.{m.group(1)}" if m else test_id.strip()
+
+
+DJANGO_STATUS = re.compile(r"^(.*?) \.\.\. (ok|FAIL|ERROR|skipped.*|expected failure|unexpected success)\s*$")
+
+
+def django_statuses(output):
+    """Map each reported test id to its status, from runtests.py --verbosity 2 output.
+
+    A test with a docstring prints `method (module.Class)` on one line and then its
+    docstring on the next, followed by ` ... ok` — and SWE-bench records THAT
+    docstring line as the test id. So ids are read off the line carrying the status,
+    exactly as the official log parser does.
+    """
+    out = {}
+    for line in output.splitlines():
+        m = DJANGO_STATUS.match(line)
+        if m:
+            out[m.group(1).strip()] = m.group(2)
+    return out
+
+
+def _django_run(py, d, labels):
+    # PYTHONPATH=checkout is load-bearing. runtests.py is run as a SCRIPT, so sys.path[0]
+    # is tests/, not the repo root — and specs that use `python setup.py install`
+    # (django 2.2) leave a frozen egg copy in site-packages. Without this the tests
+    # import that egg, so neither the test patch nor the fix ever reaches the code under
+    # test: django-10097 "passed" its fail-to-pass tests before the fix was applied.
+    env = {"LANG": "C.UTF-8", "LC_ALL": "C.UTF-8", "PYTHONIOENCODING": "utf8", "PYTHONPATH": str(d)}
+    r = sh([str(py), "tests/runtests.py", "--verbosity", "2", "--settings=test_sqlite",
+            "--parallel", "1", *labels], cwd=str(d), env=env, timeout=5400)
+    return django_statuses(r.stdout + r.stderr), r.stdout + r.stderr
+
+
+def run_tests(py, d, tests, repo=None):
     if not tests:
         return True, "(no tests)"
-    r = sh([str(py), "-m", "pytest", "-rA", "--no-header", "-q", *tests], cwd=str(d), timeout=1800)
-    out = (r.stdout + r.stderr)[-4000:]
-    return r.returncode == 0, out
+    if repo == "django/django":
+        # Docstring-form ids name no module, so they cannot be passed as labels. Run the
+        # MODULES the method-form ids live in and grade every id from the status lines;
+        # if a docstring id is still unreported, widen to its app packages once.
+        want = [t.strip() for t in tests]
+        modules = sorted({django_label(t).rsplit(".", 2)[0] for t in want if django_label(t) != t})
+        statuses, log = _django_run(py, d, modules) if modules else ({}, "")
+        missing = [t for t in want if t not in statuses]
+        if missing:
+            apps = sorted({m.split(".")[0] for m in modules}) or []
+            if apps:
+                more, log2 = _django_run(py, d, apps)
+                statuses.update(more)
+                log += log2
+            missing = [t for t in want if t not in statuses]
+        # Only ok / expected failure count as passing, as in the official evaluator. A
+        # SKIPPED fail-to-pass test has not demonstrated the fix, so it is not a pass.
+        bad = [t for t in want if statuses.get(t) not in ("ok", "expected failure")]
+        summary = (f"[django] {len(want)} ids, {len(want) - len(bad)} ok, "
+                   f"{len([t for t in bad if t in statuses])} failed, {len(missing)} not reported"
+                   + (f"; unreported e.g. {missing[:3]}" if missing else ""))
+        # Truncate the LOG, never the summary: `(summary + log)[-4000:]` cut the summary
+        # off the front, so the one line saying why grading failed was never printed.
+        return not bad, summary + "\n" + log[-(4000 - len(summary) - 1):]
+    else:
+        # No `--no-header`: it only exists from pytest 6, and pytest-dev/pytest's own
+        # period checkouts (e.g. 5.2) ARE the pytest that runs, so it rejects the flag and
+        # every such instance fails verification for a reason unrelated to the instance.
+        r = sh([str(py), "-m", "pytest", "-rA", "-q", *tests], cwd=str(d), timeout=1800)
+        out = (r.stdout + r.stderr)[-4000:]
+        # pytest exit 2/3/4/5 = interrupted / internal error / usage error / nothing
+        # collected: the tests DID NOT RUN. Returning False would let verify() score a
+        # harness crash as "pre-fix FAIL (expected)" — the false positive astropy-7166
+        # produced when period pytest rejected a flag. Raise so it cannot be misread.
+        if r.returncode in (2, 3, 4, 5):
+            raise TestsDidNotRun(f"pytest exit {r.returncode}: tests did not run\n{out[-1500:]}")
+        return r.returncode == 0, out
+
+
+class TestsDidNotRun(RuntimeError):
+    """The test runner failed to execute the tests at all (as opposed to tests failing)."""
 
 
 def verify(instance_id):
+    try:
+        return _verify(instance_id)
+    except TestsDidNotRun as e:
+        print(f"[VERDICT] {instance_id} usable=False  (tests did not run: {str(e).splitlines()[0]})")
+        print(str(e)[-1200:])
+        return {"instance_id": instance_id, "usable": False, "stage": "tests_did_not_run", "detail": str(e)[:500]}
+
+
+def _verify(instance_id):
     inst = load(instance_id)
     repo, ver = inst["repo"], inst["version"]
     f2p, p2p = as_list(inst["FAIL_TO_PASS"]), as_list(inst["PASS_TO_PASS"])
@@ -174,16 +312,16 @@ def verify(instance_id):
         print("[test_patch] FAILED to apply")
         return {"instance_id": instance_id, "usable": False, "stage": "test_patch"}
 
-    pre_ok, pre_out = run_tests(py, d, f2p)
+    pre_ok, pre_out = run_tests(py, d, f2p, repo)
     print(f"[pre-fix ] FAIL_TO_PASS -> {'PASS (UNEXPECTED)' if pre_ok else 'FAIL (expected)'}")
 
     if not apply_patch(d, inst["patch"]):
         print("[gold patch] FAILED to apply")
         return {"instance_id": instance_id, "usable": False, "stage": "gold_patch"}
 
-    post_ok, post_out = run_tests(py, d, f2p)
+    post_ok, post_out = run_tests(py, d, f2p, repo)
     print(f"[post-fix] FAIL_TO_PASS -> {'PASS (expected)' if post_ok else 'FAIL (UNEXPECTED)'}")
-    p2p_ok, _ = run_tests(py, d, p2p[:40])   # cap: P2P can be thousands
+    p2p_ok, _ = run_tests(py, d, p2p[:40], repo)   # cap: P2P can be thousands
     print(f"[post-fix] PASS_TO_PASS(<=40) -> {'PASS' if p2p_ok else 'FAIL'}")
 
     usable = (not pre_ok) and post_ok and p2p_ok

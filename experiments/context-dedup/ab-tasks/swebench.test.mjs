@@ -13,6 +13,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   testFnName, testPatchTargets, assertNoTestLeak, parsePytestOutcomes, gradeOutcomes, failedIds, asList,
+  maxIdenticalStreak, djangoLabel, parseDjangoOutcomes, importName, pythonPathFor, djangoTestModules,
 } from './swebench.mjs';
 
 const F2P = ['test_requests.py::TestRequests::test_binary_put'];
@@ -86,6 +87,20 @@ test('assertNoTestLeak throws when the gold patch body is echoed', () => {
   );
 });
 
+test('assertNoTestLeak allows the verbatim issue to quote patch lines, but not the harness text', () => {
+  // xarray-4094: the reporter's reproducer is copied into the test patch. Rejecting it biases
+  // the sample toward code-free issues; the same line in HARNESS text is still a leak.
+  const testPatch = ['--- a/t.py', '+++ b/t.py', '+    data = xr.Dataset({"a": arr, "b": arr})'].join('\n');
+  const statement = 'Repro:\n    data = xr.Dataset({"a": arr, "b": arr})\n';
+  assert.equal(assertNoTestLeak({ text: 'You are a software engineer.', statement, f2p: F2P, p2p: [], testPatch }), true);
+  assert.throws(() => assertNoTestLeak({ text: 'hint: data = xr.Dataset({"a": arr, "b": arr})', statement: '', f2p: F2P, p2p: [], testPatch }), /patch line/);
+});
+
+test('assertNoTestLeak still forbids a failing-test id or name inside the verbatim issue', () => {
+  assert.throws(() => assertNoTestLeak({ text: 'harness', statement: `see ${F2P[0]}`, f2p: F2P, p2p: [] }), /test id/);
+  assert.throws(() => assertNoTestLeak({ text: 'harness', statement: 'broken since test_binary_put was added', f2p: F2P, p2p: [] }), /test name/);
+});
+
 test('assertNoTestLeak does not fire on short incidental patch lines', () => {
   const gold = ['--- a/x.py', '+++ b/x.py', '+import os', '-    pass'].join('\n');
   assert.equal(assertNoTestLeak({ text: 'import os is used everywhere', f2p: [], p2p: [], goldPatch: gold }), true);
@@ -108,6 +123,33 @@ test('parsePytestOutcomes reads per-test outcomes out of the -rA summary', () =>
   assert.equal(o.get('test_requests.py::TestRequests::test_binary_put'), 'FAILED');
   assert.equal(o.get('test_requests.py::UtilsTestCase::test_is_ipv4_address'), 'ERROR');
   assert.equal(o.size, 3);
+});
+
+test('parsePytestOutcomes handles parametrised ids containing spaces and " - "', () => {
+  // A whitespace-token parser records "tests/t.py::test_x[a" and the graded id comes back
+  // MISSING, failing a correct fix.
+  const id = 'tests/t.py::test_x[a b - c]';
+  const out = `PASSED ${id}\nFAILED tests/t.py::test_y[1 2] - AssertionError: nope\n`;
+  const o = parsePytestOutcomes(out, [id, 'tests/t.py::test_y[1 2]']);
+  assert.equal(o.get(id), 'PASSED');
+  assert.equal(o.get('tests/t.py::test_y[1 2]'), 'FAILED');
+  assert.equal(gradeOutcomes([id], o).all, true);
+});
+
+test('parsePytestOutcomes matches ids SWE-bench recorded truncated at a space (its own parser convention)', () => {
+  // requests-6028's P2P ids end at the first space inside the brackets. An exact-prefix-only
+  // matcher reports every one of them MISSING and fails the gold patch.
+  const truncated = 'tests/test_utils.py::test__parse_content_type_header[application/json;';
+  const out = 'PASSED tests/test_utils.py::test__parse_content_type_header[application/json; charset=utf-8-expected0]\n'
+    + 'FAILED tests/test_utils.py::test_other[a b] - AssertionError: x\n';
+  const o = parsePytestOutcomes(out, [truncated, 'tests/test_utils.py::test_other[a']);
+  assert.equal(o.get(truncated), 'PASSED');
+  assert.equal(o.get('tests/test_utils.py::test_other[a'), 'FAILED');
+});
+
+test('parsePytestOutcomes does not let a longer id satisfy a shorter one', () => {
+  const o = parsePytestOutcomes('PASSED t.py::test_ab\n', ['t.py::test_a']);
+  assert.equal(o.get('t.py::test_a'), undefined);
 });
 
 test('parsePytestOutcomes returns nothing for a collection error (no summary section)', () => {
@@ -145,6 +187,81 @@ test('gradeOutcomes treats SKIPPED as not-passed', () => {
 
 test('gradeOutcomes on an empty id list is not a pass', () => {
   assert.equal(gradeOutcomes([], new Map()).all, false);
+});
+
+// ------------------------------- django runner -------------------------------
+
+test('djangoLabel converts SWE-bench repr ids to runtests labels and passes dotted ids through', () => {
+  assert.equal(djangoLabel('test_foo (queries.tests.Queries1Tests)'), 'queries.tests.Queries1Tests.test_foo');
+  assert.equal(djangoLabel('queries.tests.Queries1Tests.test_foo'), 'queries.tests.Queries1Tests.test_foo');
+});
+
+test('parseDjangoOutcomes reads the pre-3.11 form, the 3.11+ form and a docstring on the next line', () => {
+  const out = [
+    'test_a (app.tests.Case) ... ok',
+    'test_b (app.tests.Case.test_b) ... FAIL',
+    'test_c (app.tests.Case)',
+    'A docstring explaining the test. ... ok',
+    'test_d (app.tests.Case) ... skipped "needs db"',
+    'test_e (app.tests.Case) ... ERROR',
+    '======================================================================',
+    'FAIL: test_b (app.tests.Case.test_b)',
+  ].join('\n');
+  const o = parseDjangoOutcomes(out);
+  assert.equal(o.get('test_a (app.tests.Case)'), 'PASSED');
+  assert.equal(o.get('test_b (app.tests.Case)'), 'FAILED', '3.11+ repeats the method name inside the parens');
+  assert.equal(o.get('test_c (app.tests.Case)'), 'PASSED', 'status on the docstring line');
+  assert.equal(o.get('test_d (app.tests.Case)'), 'SKIPPED');
+  assert.equal(o.get('test_e (app.tests.Case)'), 'ERROR');
+  assert.equal(gradeOutcomes(['test_a (app.tests.Case)', 'test_z (app.tests.Case)'], o).all, false, 'unreported test is MISSING');
+});
+
+test('parseDjangoOutcomes keys a docstring-named test by its docstring, as SWE-bench records it', () => {
+  // django-10097: 13 F2P ids are docstrings. A parser keyed only on `test_x (Case)` reports
+  // every one of them MISSING and fails a correct fix.
+  const out = [
+    'test_username (auth_tests.test_management.CreatesuperuserManagementCommandTestCase)',
+    "The system username is used if --username isn't provided. ... ok",
+  ].join('\n');
+  const o = parseDjangoOutcomes(out);
+  assert.equal(o.get("The system username is used if --username isn't provided."), 'PASSED');
+  assert.equal(o.get('test_username (auth_tests.test_management.CreatesuperuserManagementCommandTestCase)'), 'PASSED');
+});
+
+test('djangoTestModules derives runnable modules from the test patch paths', () => {
+  const patch = ['+++ b/tests/auth_tests/test_management.py', '+++ b/tests/queries/tests.py', '+++ b/django/db/models/query.py', '+++ b/tests/queries/__init__.py'].join('\n');
+  assert.deepEqual(djangoTestModules(patch), ['auth_tests.test_management', 'queries.tests']);
+});
+
+test('testFnName extracts the method from a django repr id', () => {
+  assert.equal(testFnName('test_foo (queries.tests.Queries1Tests)'), 'test_foo');
+});
+
+test('importName maps distribution names that differ from the import name', () => {
+  assert.equal(importName('scikit-learn/scikit-learn'), 'sklearn');
+  assert.equal(importName('django/django'), 'django');
+});
+
+test('pythonPathFor adds src/ and lib/ only when they exist, workspace first', () => {
+  assert.equal(pythonPathFor('/w', (p) => p === '/w/src'), '/w:/w/src');
+  assert.equal(pythonPathFor('/w', (p) => p === '/w/lib'), '/w:/w/lib');
+  assert.equal(pythonPathFor('/w', () => false), '/w');
+});
+
+// ------------------------------- liveness metric -------------------------------
+
+test('maxIdenticalStreak finds the longest consecutive run, not the total count', () => {
+  const c = (arg, name = 'run_bash') => ({ name, arg });
+  // total repeats of "a" = 5, but the longest CONSECUTIVE run is 3
+  assert.equal(maxIdenticalStreak([c('a'), c('a'), c('b'), c('a'), c('a'), c('a')]), 3);
+});
+
+test('maxIdenticalStreak distinguishes tool name as well as argument', () => {
+  assert.equal(maxIdenticalStreak([{ name: 'read_file', arg: 'x' }, { name: 'run_bash', arg: 'x' }]), 1);
+});
+
+test('maxIdenticalStreak of an empty trace is 0', () => {
+  assert.equal(maxIdenticalStreak([]), 0);
 });
 
 // ------------------------- the real instance, end to end -------------------------

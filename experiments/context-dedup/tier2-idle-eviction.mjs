@@ -100,7 +100,7 @@ async function runArm(arm) {
   const evict = evictorFor(arm);
   const hook = async (m) => { track.peak = Math.max(track.peak, estTokens(m)); if (await evict(m)) track.evictions++; };
   let err = null, r = null;
-  try { r = await runAgent({ system: SYSTEM, task: TASK, ws, maxTurns: MAX_TURNS, think: false, hook }); }
+  try { r = await runAgent({ system: SYSTEM, task: TASK, ws, maxTurns: MAX_TURNS, hook }); }
   catch (e) { err = String(e.message || e).slice(0, 200); }
   let answer = ''; try { answer = execSync('cat answer.txt', { cwd: ws, timeout: 5000 }).toString().trim(); } catch { answer = '(none)'; }
   const reads = r ? r.toolLog.filter((t) => t.name === 'read_file').length : 0;

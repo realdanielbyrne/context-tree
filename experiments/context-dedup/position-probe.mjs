@@ -75,7 +75,7 @@ async function probe(len, depth, n) {
   const user = `${lines.join('\n')}\n\nQuestion: what is the access code for sector ${sector}? Answer with the 4-digit number only.`;
   const t0 = Date.now();
   let content = '', usage = null, err = null;
-  try { const r = await generate({ system: SYSTEM, user, maxTokens: 32, temperature: 0, think: false }); content = r.content || ''; usage = r.usage || null; }
+  try { const r = await generate({ system: SYSTEM, user, temperature: 0 }); content = r.content || ''; usage = r.usage || null; }
   catch (e) { err = String(e.message || e).slice(0, 120); }
   const hit = new RegExp(`(^|[^0-9])${code}([^0-9]|$)`).test(content);
   return { len, depth, needle_idx: n, sector, code, hit, answer: content.trim().slice(0, 40),

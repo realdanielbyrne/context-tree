@@ -7,36 +7,19 @@
  *
  * Rerun: node experiments/context-dedup/report-cadence-confound.mjs
  */
-import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { CADENCE_FILES, loadCappedCells, peakRegression } from './peak-regression.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT = join(HERE, '..', '..', 'reports', 'metrics', 'context-dedup');
 const load = (f) => JSON.parse(readFileSync(join(OUT, f), 'utf8'));
 
-// PINNED, not globbed. A directory glob would silently fold a new batch into every
-// regression and table while the hand-written prose below kept quoting old cells.
-const FILES = ['results-ab-longbuild-cadence10.json', 'results-ab-longbuild-cadence2.json',
-  'results-ab-longbuild-cadence5.json', 'results-ab-longbuild-v2-n3.json',
-  'results-ab-longbuild-v2.json', 'results-ab-longbuild-winwA.json',
-  'results-ab-longbuild-winwB.json'];
-{
-  const present = new Set(readdirSync(OUT));
-  const missing = FILES.filter((f) => !present.has(f));
-  if (missing.length) throw new Error(`missing result files: ${missing.join(', ')}`);
-}
-
-const cells = [];
-for (const f of FILES) {
-  const d = load(f);
-  const cadence = d.manifest.cadence ?? 1;
-  for (const c of d.cells) {
-    if (c.window === null) continue;                    // uncapped has no cadence meaning
-    cells.push({ file: f, cadence, W: c.window, arm: c.arm, pass: !!c.pass,
-      peak: c.peak_history_tokens, evictions: c.evictions, tokens: c.total_prompt_tokens });
-  }
-}
+// PINNED, not globbed (see peak-regression.mjs). A directory glob would silently fold a
+// new batch into every regression and table while the prose kept quoting old cells.
+const FILES = CADENCE_FILES;
+const cells = loadCappedCells(OUT, FILES);
 
 const med = (x) => { const s = [...x].sort((a, b) => a - b); return s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2; };
 const groups = new Map();
@@ -56,78 +39,8 @@ const rows = [...groups.entries()].map(([k, cs]) => {
     tokens: Math.round(med(cs.map((c) => c.tokens))) };
 }).sort((a, b) => a.peak - b.peak);
 
-// ---- the test: logistic regression, fitted here so the report owns its numbers
-/** Newton-Raphson logistic fit. X columns include an intercept. */
-function logit(X, y, iters = 60) {
-  const n = X.length, p = X[0].length;
-  let b = new Array(p).fill(0);
-  for (let it = 0; it < iters; it++) {
-    const g = new Array(p).fill(0);
-    const H = Array.from({ length: p }, () => new Array(p).fill(0));
-    for (let i = 0; i < n; i++) {
-      let z = 0; for (let j = 0; j < p; j++) z += X[i][j] * b[j];
-      const mu = 1 / (1 + Math.exp(-z)), w = Math.max(mu * (1 - mu), 1e-9);
-      for (let j = 0; j < p; j++) {
-        g[j] += X[i][j] * (y[i] - mu);
-        for (let k = 0; k < p; k++) H[j][k] += X[i][j] * X[i][k] * w;
-      }
-    }
-    // solve H d = g by Gauss-Jordan
-    const A = H.map((r, i) => [...r, g[i]]);
-    for (let c = 0; c < p; c++) {
-      let piv = c; for (let r = c + 1; r < p; r++) if (Math.abs(A[r][c]) > Math.abs(A[piv][c])) piv = r;
-      [A[c], A[piv]] = [A[piv], A[c]];
-      if (Math.abs(A[c][c]) < 1e-12) return { b, llf: -Infinity };
-      for (let r = 0; r < p; r++) {
-        if (r === c) continue;
-        const f = A[r][c] / A[c][c];
-        for (let k = c; k <= p; k++) A[r][k] -= f * A[c][k];
-      }
-    }
-    let maxStep = 0;
-    for (let j = 0; j < p; j++) { const d = A[j][p] / A[j][j]; b[j] += d; maxStep = Math.max(maxStep, Math.abs(d)); }
-    if (maxStep < 1e-10) break;
-  }
-  let llf = 0;
-  for (let i = 0; i < X.length; i++) {
-    let z = 0; for (let j = 0; j < X[0].length; j++) z += X[i][j] * b[j];
-    const mu = Math.min(Math.max(1 / (1 + Math.exp(-z)), 1e-12), 1 - 1e-12);
-    llf += y[i] ? Math.log(mu) : Math.log(1 - mu);
-  }
-  return { b, llf };
-}
-/** Upper tail of chi-square with 1 df via erfc. */
-function chi2sf1(x) {
-  const z = Math.sqrt(Math.max(x, 0));
-  // erfc(z/sqrt2) using Abramowitz-Stegun 7.1.26
-  const t = 1 / (1 + 0.3275911 * (z / Math.SQRT2));
-  const u = z / Math.SQRT2;
-  const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-(u * u));
-  return Math.min(1, Math.max(0, 1 - y));
-}
-const y = cells.map((c) => (c.pass ? 1 : 0));
-const lpeak = cells.map((c) => Math.log(c.peak));
-const lcad = cells.map((c) => Math.log(c.cadence));
-const lW = cells.map((c) => Math.log(c.W));
-// ARM DUMMIES ARE MANDATORY, not optional. The signal-free `random` arm contributes
-// 16 of the cells and appears ONLY at cadence 1, so arm is confounded with the
-// cadence stratum. Omitting it inflates the peak odds ratio by ~25% (52.2 -> 41.8).
-const ARMS = [...new Set(cells.map((c) => c.arm))].sort();
-const armDummies = ARMS.slice(1).map((a) => cells.map((c) => (c.arm === a ? 1 : 0)));
-const fit = (cols) => logit(cells.map((_, i) => [1, ...cols.map((f) => f[i])]), y);
-const mPeak = fit([lpeak, ...armDummies]);
-const mPeakCad = fit([lpeak, ...armDummies, lcad]);
-const mPeakW = fit([lpeak, ...armDummies, lW]);
-const mCad = fit([lcad, ...armDummies]);
-const mCadPeak = fit([lcad, ...armDummies, lpeak]);
-const mPeakNoArm = fit([lpeak]);
-const lr = (a, b) => { const s = 2 * (b.llf - a.llf); return { stat: s, p: chi2sf1(s) }; };
-const tCad = lr(mPeak, mPeakCad), tW = lr(mPeak, mPeakW), tPeak = lr(mCad, mCadPeak);
-/** Guard against quasi-complete separation rendering as a confident number. */
-const separated = (m) => !Number.isFinite(m.llf) || Math.max(...m.b.map(Math.abs)) > 50 || m.llf > -1e-6;
-if (separated(mPeak)) throw new Error('logistic fit hit quasi-complete separation — odds ratio not estimable; refusing to render a number');
-const orPeak = Math.exp(mPeak.b[1]);
-const orPeakUnadj = Math.exp(mPeakNoArm.b[1]);
+// Logistic regression fitted in peak-regression.mjs so the report owns its numbers.
+const { tCad, tW, tPeak, orPeak, orPeakUnadj } = peakRegression(cells);
 
 const f2 = (v) => v.toFixed(2), f3 = (v) => v.toFixed(3), f4 = (v) => v.toFixed(4);
 const pct = (v) => `${(v * 100).toFixed(0)}%`;
@@ -337,7 +250,7 @@ for which rule a run used; the "Rules present" column in the results table shows
 For each run: whether it passed, the **achieved peak** (the largest transcript actually sent), how many
 deletions occurred, and the total tokens billed across the whole run.
 
-## The bug
+### The bug: the limit was not enforced between deletions
 
 Eviction was gated behind the frequency counter:
 
@@ -358,7 +271,7 @@ Concretely, the runs labelled \`W=4,700\` with N=10 sent **${SAW.peak.toLocaleSt
 the ${FLAT.peak.toLocaleString()} sent by the runs labelled \`W=7,500\` with N=1. The infrequent-deletion
 configuration was never fitting into a smaller window. It was fitting into a slightly larger one.
 
-## How we tested it
+### How we tested it
 
 We fit a logistic regression — a standard model for a yes/no outcome — predicting whether a run passed, and
 asked whether each variable adds anything once the others are known. The comparison is a **likelihood-ratio
@@ -396,7 +309,27 @@ ${rows.filter((r) => r.cadence > 1).map((r) => {
   return `- **N=${r.cadence}, peak ${r.peak.toLocaleString()} → ${pct(r.rate)}** (${r.n} runs) versus the nearest every-step configuration, **N=1, peak ${near.peak.toLocaleString()} → ${pct(near.rate)}** (${near.n} runs).`;
 }).join('\n')}
 
-## What survives
+## What we got wrong
+
+**1. "Deleting less often raises task success at the same size limit."** Commit \`25e3006\` recorded:
+*"Sawtooth beats a wider flat window: W=4700/N=10 matches W=7500/N=1 at 100% pass with 15% fewer tokens and
+6× fewer evictions."* The task-success half of that is **withdrawn**. The N=10 runs labelled W=4,700 were not
+held to 4,700 tokens; they sent ${SAW.peak.toLocaleString()}, more than the ${FLAT.peak.toLocaleString()} sent
+by the W=7,500 every-step runs they were compared against. Once achieved peak is in the model, deletion
+frequency adds nothing (p = ${f4(tCad.p)}) and neither does the nominal limit (p = ${f4(tW.p)}). The corrected
+reading: the infrequent-deletion runs passed because they kept more transcript, not because they deleted less
+often. The cost half of the claim survives and is restated in Conclusions.
+
+**2. The effect size of transcript size was overstated by leaving the deletion rule out of the model.** An
+earlier fit of pass against achieved peak did not adjust for which rule each run used. Because the signal-free
+\`random\` rule contributes ${cells.filter((c) => c.arm === 'random').length} runs, all at N=1, that omission
+confounds rule with deletion frequency and gave an odds ratio of **${f2(orPeakUnadj)}× per e-fold**. Adjusted
+for rule it is **${f2(orPeak)}×**, a ${((orPeakUnadj / orPeak - 1) * 100).toFixed(0)}% overstatement. The
+direction and the significance were unaffected; the magnitude was not.
+
+## Conclusions
+
+### What survives
 
 **Deleting less often is a cost lever, not a quality lever.** At comparable transcript size the
 infrequent-deletion configuration was materially cheaper:
@@ -413,7 +346,28 @@ simulation predicted. That is the half of the original claim worth keeping.
 the thing that predicts performance — how much of the transcript is present when the model is called — and
 use deletion frequency to buy that as cheaply as possible.
 
-## What this does not answer: how wide should the window be?
+### What this licenses, and what it does not
+
+**Established, on this one task.** Task success tracks the transcript size actually sent to the model
+(odds ratio ${f2(orPeak)}× per e-fold, p = ${f4(tPeak.p)}, adjusted for deletion rule). Given that size,
+deletion frequency and the nominal limit carry no further information.
+
+**Licensed for the design.** Configure and enforce eviction against the transcript actually sent, not against a
+threshold that may be overshot between deletions. Treat deletion frequency purely as a cost setting, chosen
+after the target size is fixed.
+
+**Not licensed.**
+
+| claim | status |
+|---|---|
+| deleting less often improves task success | **tested and rejected** — no effect once achieved peak is known (p = ${f4(tCad.p)}) |
+| the nominal size limit matters beyond the size actually sent | **tested and rejected** (p = ${f4(tW.p)}) |
+| deleting less often is cheaper at matched transcript size | **observed**, in one comparison of ${SAW.n} against ${FLAT.n} runs, with no interval |
+| the success threshold is an absolute token count rather than a share of task demand | **untested** — indistinguishable on a single task |
+| the *content* of the retained transcript matters, not only its size | **untested** — see the deeper question below |
+| any of this holds beyond \`longbuild\` or this model | **untested** |
+
+### What this does not answer: how wide should the window be?
 
 The results identify a threshold — success reaches 100% once about **${FLAT.peak.toLocaleString()} tokens**
 of transcript are present — but they cannot say what that number *is*.
@@ -435,7 +389,7 @@ dataset is the same task, so the uncapped demand is a constant ${UNCAPPED ? UNCA
 tokens. "${FLAT.peak.toLocaleString()} tokens" and "${fracOfTask(FLAT.peak)} of demand" are the same number
 wearing two hats. No amount of extra runs on this task can tell them apart.
 
-### The experiment that would
+#### The experiment that would
 
 Sweep the size limit across **tasks with materially different uncapped demand** — one that needs ~8k, one
 ~20k (this task), one ~40k — on the same model. Then:
@@ -449,7 +403,7 @@ A second, cheaper arm settles the model-capacity question directly: run the same
 smaller hard limit (a 131k-token model is already available) and check that the threshold does not move. The
 prediction is that it does not, so long as the limit stays well above the threshold.
 
-### The deeper question underneath it
+#### The deeper question underneath it
 
 This all assumes the only thing that matters is *how much* transcript is present. Everything measured so far
 is consistent with that — and with nothing else mattering. But a companion experiment established that the
@@ -491,6 +445,7 @@ h1{font-size:29px;line-height:1.2;margin:0 0 4px}
 .sub{color:#5f6368;font-style:italic;margin:0 0 20px}
 h2{font-size:21px;margin:40px 0 12px;border-bottom:1px solid #e3e3ea;padding-bottom:7px}
 h3{font-size:16.5px;margin:26px 0 8px}
+h4{font-size:15px;margin:20px 0 6px}
 p{margin:12px 0}
 .retract{background:#fff4ed;border-left:4px solid #e4572e;padding:14px 18px;border-radius:0 6px 6px 0;margin:18px 0}
 .exec{background:#f3f6fb;border:1px solid #d9e2f0;border-radius:10px;padding:20px 24px;margin:20px 0 28px}
@@ -606,7 +561,7 @@ the mix in each cell.</p>
 <p>For each run: whether it passed, the <strong>achieved peak</strong> (the largest transcript actually sent),
 how many deletions occurred, and the total tokens billed across the whole run.</p>
 
-<h2>The bug</h2>
+<h3>The bug: the limit was not enforced between deletions</h3>
 <p>Eviction was gated behind the frequency counter:</p>
 <pre>const fire = (turnNo++ % CADENCE) === 0;   // deletion-frequency gate
 const r = fire ? evict(m) : NOOP;</pre>
@@ -623,7 +578,7 @@ the runs labelled <code>W=7,500</code> with N=1. The infrequent-deletion configu
 a smaller window. It was fitting into a slightly larger one.</div>
 <div class="chart">${chartNominal()}</div>
 
-<h2>How we tested it</h2>
+<h3>How we tested it</h3>
 <p>We fit a logistic regression — a standard model for a yes/no outcome — predicting whether a run passed, and
 asked whether each variable adds anything once the others are known. The comparison is a <strong>likelihood-ratio
 test</strong>: fit the model with the variable, fit it without, and ask how much better the fit got. A large
@@ -651,7 +606,26 @@ ${rows.map((r) => `<tr><td>${r.cadence}</td><td>${r.W.toLocaleString()}</td><td>
 infrequent-deletion rows sit <strong>on the same curve</strong> as the every-step rows rather than above
 them.</p>
 
-<h2>What survives</h2>
+<h2>What we got wrong</h2>
+<p><strong>1. "Deleting less often raises task success at the same size limit."</strong> Commit
+<code>25e3006</code> recorded: <em>"Sawtooth beats a wider flat window: W=4700/N=10 matches W=7500/N=1 at 100%
+pass with 15% fewer tokens and 6× fewer evictions."</em> The task-success half of that is
+<strong>withdrawn</strong>. The N=10 runs labelled W=4,700 were not held to 4,700 tokens; they sent
+${SAW.peak.toLocaleString()}, more than the ${FLAT.peak.toLocaleString()} sent by the W=7,500 every-step runs
+they were compared against. Once achieved peak is in the model, deletion frequency adds nothing
+(p = ${f4(tCad.p)}) and neither does the nominal limit (p = ${f4(tW.p)}). The corrected reading: the
+infrequent-deletion runs passed because they kept more transcript, not because they deleted less often. The
+cost half of the claim survives and is restated in Conclusions.</p>
+<p><strong>2. The effect size of transcript size was overstated by leaving the deletion rule out of the
+model.</strong> An earlier fit of pass against achieved peak did not adjust for which rule each run used.
+Because the signal-free <code>random</code> rule contributes ${cells.filter((c) => c.arm === 'random').length}
+runs, all at N=1, that omission confounds rule with deletion frequency and gave an odds ratio of
+<strong>${f2(orPeakUnadj)}× per e-fold</strong>. Adjusted for rule it is <strong>${f2(orPeak)}×</strong>, a
+${((orPeakUnadj / orPeak - 1) * 100).toFixed(0)}% overstatement. The direction and the significance were
+unaffected; the magnitude was not.</p>
+
+<h2>Conclusions</h2>
+<h3>What survives</h3>
 <div class="key"><strong>Deleting less often is a cost lever, not a quality lever.</strong></div>
 <table><thead><tr><th></th><th>Tokens billed</th><th>Deletions</th><th>Achieved peak</th><th>Passed</th></tr></thead><tbody>
 <tr><td>Delete every 10th step (N=10, W=4,700)</td><td><strong>${SAW.tokens.toLocaleString()}</strong></td><td><strong>${SAW.evictions}</strong></td><td>${SAW.peak.toLocaleString()}</td><td>${SAW.passes}/${SAW.n}</td></tr>
@@ -663,7 +637,24 @@ cost simulation predicted. That is the half of the original claim worth keeping.
 performance. Tune the thing that predicts performance — how much of the transcript is present when the model
 is called — and use deletion frequency to buy that as cheaply as possible.</p>
 
-<h2>What this does not answer: how wide should the window be?</h2>
+<h3>What this licenses, and what it does not</h3>
+<p><strong>Established, on this one task.</strong> Task success tracks the transcript size actually sent to
+the model (odds ratio ${f2(orPeak)}× per e-fold, p = ${f4(tPeak.p)}, adjusted for deletion rule). Given that
+size, deletion frequency and the nominal limit carry no further information.</p>
+<p><strong>Licensed for the design.</strong> Configure and enforce eviction against the transcript actually
+sent, not against a threshold that may be overshot between deletions. Treat deletion frequency purely as a cost
+setting, chosen after the target size is fixed.</p>
+<p><strong>Not licensed.</strong></p>
+<table><thead><tr><th>claim</th><th>status</th></tr></thead><tbody>
+<tr><td>deleting less often improves task success</td><td><strong>tested and rejected</strong> — no effect once achieved peak is known (p = ${f4(tCad.p)})</td></tr>
+<tr><td>the nominal size limit matters beyond the size actually sent</td><td><strong>tested and rejected</strong> (p = ${f4(tW.p)})</td></tr>
+<tr><td>deleting less often is cheaper at matched transcript size</td><td><strong>observed</strong>, in one comparison of ${SAW.n} against ${FLAT.n} runs, with no interval</td></tr>
+<tr><td>the success threshold is an absolute token count rather than a share of task demand</td><td><strong>untested</strong> — indistinguishable on a single task</td></tr>
+<tr><td>the <em>content</em> of the retained transcript matters, not only its size</td><td><strong>untested</strong> — see the deeper question below</td></tr>
+<tr><td>any of this holds beyond <code>longbuild</code> or this model</td><td><strong>untested</strong></td></tr>
+</tbody></table>
+
+<h3>What this does not answer: how wide should the window be?</h3>
 <p>The results identify a threshold — success reaches 100% once about
 <strong>${FLAT.peak.toLocaleString()} tokens</strong> of transcript are present — but they cannot say what
 that number <em>is</em>.</p>
@@ -680,7 +671,7 @@ run in this dataset is the same task, so the uncapped demand is a constant
 ${UNCAPPED ? UNCAPPED.toLocaleString() : '—'} tokens. "${FLAT.peak.toLocaleString()} tokens" and
 "${fracOfTask(FLAT.peak)} of demand" are the same number wearing two hats. No amount of extra runs on this
 task can tell them apart.</p>
-<h3>The experiment that would</h3>
+<h4>The experiment that would</h4>
 <p>Sweep the size limit across <strong>tasks with materially different uncapped demand</strong> — one that
 needs ~8k, one ~20k (this task), one ~40k — on the same model. Then:</p>
 <ul>
@@ -693,7 +684,7 @@ demand.</li>
 <p>A second, cheaper arm settles the model-capacity question directly: run the same task on a model with a much
 smaller hard limit (a 131k-token model is already available) and check that the threshold does not move. The
 prediction is that it does not, so long as the limit stays well above the threshold.</p>
-<h3>The deeper question underneath it</h3>
+<h4>The deeper question underneath it</h4>
 <p>This all assumes the only thing that matters is <em>how much</em> transcript is present. Everything measured
 so far is consistent with that — and with nothing else mattering. But a companion experiment established that
 the measurement may be <strong>unable to detect</strong> whether the <em>content</em> of the retained

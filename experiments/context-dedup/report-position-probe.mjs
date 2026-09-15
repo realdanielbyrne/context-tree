@@ -69,7 +69,7 @@ function svgGrid() {
   const cw = 104, ch = 44, x0 = 200, y0 = 54;
   const w = x0 + depths.length * cw + 24, h = y0 + all.length * ch + 40;
   let s = `<svg viewBox="0 0 ${w} ${h}" width="100%" role="img" aria-label="retrieval accuracy by needle depth and context length">`;
-  s += `<text x="12" y="24" class="ct">Retrieval accuracy by needle depth &times; context length</text>`;
+  s += `<text x="12" y="24" class="ct">Retrieval accuracy by needle depth × context length</text>`;
   depths.forEach((d, i) => {
     s += `<text x="${x0 + i * cw + cw / 2}" y="${y0 - 10}" class="ax mid">${(d * 100).toFixed(0)}%</text>`;
   });
@@ -128,6 +128,41 @@ function svgLatency() {
   return s + '</svg>';
 }
 
+// Derived headline figures. Nothing below restates a number the data can supply.
+const MODEL_WINDOW = 262144;
+const maxOf = (rows) => rows[rows.length - 1];
+const MAX_TOK = maxOf(rowsH).realTok;
+const hitsOf = (rows) => rows.reduce((a, r) => a + r.hits, 0);
+const nOf = (rows) => rows.reduce((a, r) => a + r.n, 0);
+const GRID = `${hard.lengths.length} context lengths × ${hard.depths.length} depths × ${hard.needles_per_cell} distinct needles per cell`;
+const CANDIDATES = hard.distractors + 1;
+const LEN_GROWTH = MAX_TOK / maxOf(rowsE).realTok;
+const LATENCY_RATIO = maxOf(rowsH).medSec / rowsH[0].medSec;
+const medOf = (x) => { const t = [...x].sort((a, b) => a - b); return t.length % 2 ? t[(t.length - 1) / 2] : (t[t.length / 2 - 1] + t[t.length / 2]) / 2; };
+const TOK_OVER_EST = medOf([...hard.rows, ...easy.rows].filter((r) => r.prompt_tokens).map((r) => r.prompt_tokens / r.len)) - 1;
+// The slice error withdrawn below: an earlier revision hardcoded this slice's n.
+const SLICE_ERR_N = 30;
+const SLICE_OK = SLICES.find((x) => x.label === 'one depth, both stages');
+if (!SLICE_OK) throw new Error('slice "one depth, both stages" missing');
+const RULEOUT_HARD = ruleOut(hard.rows.length);
+
+const GLOSS = [
+  ['Token', 'The unit text is measured in — roughly ¾ of a word. Counts in the tables are the provider\'s real prompt-token counts.'],
+  ['Context window', `The most tokens a model accepts in one request. For the model here, ${MODEL_WINDOW.toLocaleString()}.`],
+  ['Needle-in-a-haystack', 'A retrieval test: hide one specific fact (the needle) in a long body of filler text (the haystack), then ask for it.'],
+  ['Depth', 'Where in the context the needle sits, as a fraction of its length: 0% is the very start, 100% the very end, just before the question.'],
+  ['Distractor', 'A decoy sentence with the same wording as the needle but about a different subject, so the model must pick the right one rather than the only one.'],
+  ['Hit', 'The model\'s answer exactly matches the needle\'s 4-digit code.'],
+  ['Unit / eviction', 'A unit is one piece of an agent\'s transcript; eviction deletes units to fit a size limit. This project\'s eviction rules decide which units stay, never where they sit.'],
+  ['RoPE', 'Rotary position embedding, how this model family encodes token position. It is known to weaken attention between distant tokens.'],
+  ['Lost in the middle', 'A reported pattern in long-context models: facts at the start or end are found more reliably than facts in the middle.'],
+  ['One-sided 95% upper bound', 'With zero failures in n trials, the largest true failure rate still consistent with the data at 95% confidence: 1 − 0.05^(1/n). It is what a clean null can rule out.'],
+  ['Ceiling', 'Every condition scoring 100%. A ceiling can refute a claimed deficit but cannot rank conditions against each other.'],
+  ['Prefill', 'The model\'s pass over the whole prompt before it writes anything; its cost grows with prompt length.'],
+];
+const glossMd = GLOSS.map(([t, m]) => `| **${t}** | ${m} |`).join('\n');
+const glossHtml = GLOSS.map(([t, m]) => `<tr><td><strong>${esc(t)}</strong></td><td>${esc(m)}</td></tr>`).join('');
+
 // ------------------------------------------------------------- markdown ----
 const gridTable = (rows, d) => {
   const head = `| real prompt tok | ${d.depths.map((x) => `depth ${(x * 100).toFixed(0)}%`).join(' | ')} |`;
@@ -138,11 +173,34 @@ const gridTable = (rows, d) => {
 
 const MD = `# Position probe — does retrieval depend on WHERE a fact sits?
 
-**Finding: no. ${totalHits}/${totalN} across both stages, at every depth, out to 155,773 real prompt
-tokens with 7 competing distractors. The null is clean, and it kills position-aware assembly as a lever
-for this model at these lengths.**
+## Abstract
 
-## Why this was run
+This project's eviction rules for an AI coding agent decide which parts of a long transcript to keep, but never
+where the kept parts sit: survivors stay in their original order. If a model's ability to use a fact depended on
+its position in the context, that would be a design lever the rules cannot express, and it would also offer an
+alternative explanation for failures seen when the transcript is capped. Two known mechanisms predict such an
+effect: RoPE's attenuation with distance and the "lost in the middle" pattern.
+
+We tested for it directly with a needle-in-a-haystack probe on \`${hard.model}\`: ${GRID}, graded by exact
+match, run in two stages. The first stage had no distractors and was too easy to be informative. The second
+placed ${hard.distractors} identically-worded distractors in the context and raised its length to
+${MAX_TOK.toLocaleString()} real prompt tokens, ${pct(MAX_TOK / MODEL_WINDOW, 0)} of the model's window.
+
+**The result is a clean null: ${totalHits} of ${totalN} retrievals succeeded, at every depth and every length.**
+There is no decay with depth and no U-shape. Zero failures in the ${hard.rows.length} hard-stage trials rule out a
+position-dependent failure rate above ${pct(RULEOUT_HARD)} on this task (one-sided 95%), which removes
+position-aware assembly as a lever for this model at these lengths. The limit is the strength of the claim
+at finer grain, and the task itself: a single depth could still hide a ${pct(ruleOut(perDepth(hard)), 0)} deficit,
+and single-turn retrieval of a lexically distinct sentence is far easier than an agent using its own history.
+The one dose-response present is latency, which grows with prompt length.
+
+## What you need to know to read the rest
+
+| Term | Meaning |
+|---|---|
+${glossMd}
+
+## Why we ran this
 
 Our eviction policies decide only **presence** — which units survive — never **position**. Survivors keep
 creation order. If retrieval quality depended on where a fact sat, two policies that keep the same units
@@ -154,7 +212,20 @@ So the question is prior to any policy: **does the lever exist at all on this mo
 predict it should — RoPE's long-term decay (attenuation with relative distance) and the "lost in the
 middle" U-shape reported for long-context LLMs.
 
-## Method
+## The experimental setup
+
+### The agent task these results are read against
+
+The probe itself is synthetic, but the question comes from live runs of a fixed programming job called
+\`longbuild\`. There the agent starts in a workspace holding a README, 13 specification documents (~20,000
+characters in total) describing a small Python accounting library, five empty Python stubs to fill in
+(\`money.py\`, \`parsing.py\`, \`rules.py\`, \`report.py\`, \`cli.py\`), and a visible test suite it may run at
+any time. It works through six stages — read a stage's specification, implement it, run the tests, fix
+failures, move on — and runs take roughly 53 to 61 steps. It is graded by a *held-out* test suite written
+into the workspace only after it stops, which it never sees. When its transcript is capped (the "W-sweep"),
+success falls; this probe asks whether part of that could be facts that are present but positioned badly.
+
+### The probe
 
 Classic needle-in-a-haystack, single-turn, \`temperature = 0\`, deterministic PRNG, so the whole probe
 reruns identically.
@@ -162,30 +233,37 @@ reruns identically.
 - **Haystack** — non-repetitive synthetic records (each line distinct, so no pattern-match escape).
 - **Needle** — \`IMPORTANT RECORD: the access code for sector <NAME> is <NNNN>.\` inserted at depth *d*.
 - **Question** — appended at the very end; graded by exact match on the 4-digit code.
-- **Grid** — 3 context lengths × 5 depths × 6 distinct needles per cell.
+- **Grid** — ${GRID}.
 
-**Stage 1 (easy)** ran with **0 distractors**. It hit 90/90 — but that result is weak by construction: the
-needle was the only 4-digit number near the question's wording, so the model could pattern-match rather
-than discriminate. A ceiling reached that way proves little.
+### What was varied
 
-**Stage 2 (hard)** is the one that counts. It adds **7 distractors** — competing \`IMPORTANT RECORD: the
+**Stage 1 (easy)** ran with **${easy.distractors ?? 0} distractors**. It hit ${hitsOf(rowsE)}/${nOf(rowsE)} — but that result is
+weak by construction: the needle was the only 4-digit number near the question's wording, so the model could
+pattern-match rather than discriminate. A ceiling reached that way proves little.
+
+**Stage 2 (hard)** is the one that counts. It adds **${hard.distractors} distractors** — competing \`IMPORTANT RECORD: the
 access code for sector X is NNNN\` lines for *other* sectors, scattered at deterministic positions through
 the haystack. Every distractor carries the identical framing, so neither the marker phrase nor "the only
-4-digit number here" is a usable shortcut: the model must discriminate on the sector name among 8
-candidates. Stage 2 also pushes the lengths up ~6×, to **155,773 real prompt tokens** — 59% of the 27B's
-262,144-token window.
+4-digit number here" is a usable shortcut: the model must discriminate on the sector name among ${CANDIDATES}
+candidates. Stage 2 also pushes the lengths up ~${LEN_GROWTH.toFixed(0)}×, to **${MAX_TOK.toLocaleString()} real prompt tokens** —
+${pct(MAX_TOK / MODEL_WINDOW, 0)} of the model's ${MODEL_WINDOW.toLocaleString()}-token window.
+
+### What was recorded, and how to rerun
+
+Per trial: the answer, whether it was a hit, the real prompt-token count from the provider, and wall-clock
+seconds.
 
 - Model: \`${hard.model}\`, local, \`temp 0\`, \`max_tokens 32\`.
-- Rerun: \`CT_PROBE_LENGTHS=20000,60000,120000 CT_PROBE_DISTRACTORS=7 node experiments/context-dedup/position-probe.mjs\`
+- Rerun: \`CT_PROBE_LENGTHS=${hard.lengths.join(',')} CT_PROBE_DISTRACTORS=${hard.distractors} node experiments/context-dedup/position-probe.mjs\`
 - Commit: \`${hard.commit}\`, ${hard.date.slice(0, 10)}.
 
 ## Results
 
-### Stage 2 — hard (7 distractors)
+### Stage 2 — hard (${hard.distractors} distractors)
 
 ${gridTable(rowsH, hard)}
 
-### Stage 1 — easy (0 distractors)
+### Stage 1 — easy (${easy.distractors ?? 0} distractors)
 
 ${gridTable(rowsE, easy)}
 
@@ -193,40 +271,49 @@ ${gridTable(rowsE, easy)}
 
 | stage | distractors | max real tok | trials | hits | accuracy |
 |---|---|---|---|---|---|
-| easy | 0 | ${rowsE[rowsE.length - 1].realTok.toLocaleString()} | ${rowsE.reduce((a, r) => a + r.n, 0)} | ${rowsE.reduce((a, r) => a + r.hits, 0)} | 100% |
-| hard | 7 | ${rowsH[rowsH.length - 1].realTok.toLocaleString()} | ${rowsH.reduce((a, r) => a + r.n, 0)} | ${rowsH.reduce((a, r) => a + r.hits, 0)} | 100% |
-| **both** | | | **${totalN}** | **${totalHits}** | **100%** |
+| easy | ${easy.distractors ?? 0} | ${maxOf(rowsE).realTok.toLocaleString()} | ${nOf(rowsE)} | ${hitsOf(rowsE)} | ${pct(hitsOf(rowsE) / nOf(rowsE), 0)} |
+| hard | ${hard.distractors} | ${MAX_TOK.toLocaleString()} | ${nOf(rowsH)} | ${hitsOf(rowsH)} | ${pct(hitsOf(rowsH) / nOf(rowsH), 0)} |
+| **both** | | | **${totalN}** | **${totalHits}** | **${pct(totalHits / totalN, 0)}** |
 
 Zero errors, zero refusals, zero off-format answers across all ${totalN} calls.
 
-## What this null does and does not cover
+### What this null does and does not cover
 
 A null is only as strong as its detection floor. With zero observed failures, the 95% one-sided upper
 bound on the true failure rate is:
 
 | slice | n | largest deficit still consistent with the data |
 |---|---|---|
-${SLICES.map((s) => `| ${s.label} | ${s.n} | ${pct(ruleOut(s.n))} |`).join('\n')}
+${SLICES.map((x) => `| ${x.label} | ${x.n} | ${pct(ruleOut(x.n))} |`).join('\n')}
 
-So the honest claim is: **no position-dependent failure rate above ~${pct(ruleOut(hard.rows.length), 0)}
+So the honest claim is: **no position-dependent failure rate above ~${pct(RULEOUT_HARD, 0)}
 exists on this task at these lengths.** A claim about one *depth* is much weaker — a single depth could
 carry a ${pct(ruleOut(perDepth(hard)), 0)} deficit and this design would likely miss it, and a single
 *cell* weaker still (${pct(ruleOut(hard.needles_per_cell), 0)}). What is ruled out is a *large* effect,
 which is what the design space cared about.
 
-## The one real dose-response
+### The one real dose-response
 
 Accuracy is flat; **latency is not**. Median call time scales ~linearly with prompt length
 (${rowsH.map((r) => `${r.medSec}s @ ${(r.realTok / 1000).toFixed(0)}k`).join(', ')}). That is prefill
 compute, not retrieval degradation — the model is doing more work per call, not doing it worse. Worth
 noting because it means "just use a bigger window" is not free even when quality says it is: on this host
-a 156k-token turn costs ~10× the wall-clock of a 26k-token turn.
+a ${(MAX_TOK / 1000).toFixed(0)}k-token turn costs ~${LATENCY_RATIO.toFixed(0)}× the wall-clock of a ${(rowsH[0].realTok / 1000).toFixed(0)}k-token turn.
+
+## What we got wrong
+
+**The detection floor for a single depth was overstated.** An earlier revision of this report hardcoded the
+number of trials in the "one depth, both stages" slice as ${SLICE_ERR_N}. It is ${SLICE_OK.n}
+(${perDepth(hard)} per depth in the hard stage plus ${perDepth(easy)} in the easy stage), so the largest
+failure rate that slice can hide was quoted as ${pct(ruleOut(SLICE_ERR_N))} when it is ${pct(ruleOut(SLICE_OK.n))}
+— ${((ruleOut(SLICE_ERR_N) - ruleOut(SLICE_OK.n)) * 100).toFixed(1)} percentage points too weak. The error ran against the null rather than for it and
+changed no conclusion; every slice size is now derived from the data. Nothing else was withdrawn.
 
 ## Conclusions
 
 1. **The RoPE-attenuation hypothesis is not supported at these lengths on this model.** No decay with
    depth, and no U-shape: depth 50% is identical to depth 0% and depth 100%. Whatever MRoPE's long-term
-   decay does to attention weights, it does not produce measurable retrieval loss out to 59% of the window.
+   decay does to attention weights, it does not produce measurable retrieval loss out to ${pct(MAX_TOK / MODEL_WINDOW, 0)} of the window.
 2. **Position-aware assembly is dead as a lever here.** Our policies' inability to express position costs
    us nothing on this model at these sizes. That is a *relief* for the design, not a loss — it means the
    presence-only policy class is not leaving a known effect on the table.
@@ -234,6 +321,13 @@ a 156k-token turn costs ~10× the wall-clock of a 26k-token turn.
    not "the fact was present but buried too deep to retrieve." Presence is sufficient. The failures were
    eviction removing content outright, which makes the eviction-cadence finding load-bearing rather than
    possibly-confounded by a positional artifact.
+
+**What this does not license.** A large positional deficit in explicit, single-turn retrieval has been
+**tested and rejected** for this model up to ${MAX_TOK.toLocaleString()} tokens. Three things remain
+**untested**: whether position affects how much an agent *spontaneously* uses its own history in a multi-turn
+loop; whether a smaller effect (below ~${pct(RULEOUT_HARD, 0)} pooled, or ~${pct(ruleOut(perDepth(hard)), 0)} at one depth) exists; and whether any
+of this holds for another model or beyond ${pct(MAX_TOK / MODEL_WINDOW, 0)} of the window. Because every cell is at ceiling, the
+probe also cannot say which ordering is better, only that none is detectably worse.
 
 ## Caveats
 
@@ -243,10 +337,12 @@ a 156k-token turn costs ~10× the wall-clock of a 26k-token turn.
 - **A ceiling cannot rank policies.** 100% can only refute a claimed deficit. It cannot tell us which
   ordering is better, because every ordering is perfect.
 - **One model** (\`${hard.model}\`), one host, one quantization. Positional effects are known to be
-  architecture- and length-dependent; this says nothing about a different model or about 250k+ contexts.
-- **Lengths are estimated (chars/4) for construction**; real \`prompt_tokens\` from the provider ran ~30%
+  architecture- and length-dependent; this says nothing about a different model or about longer contexts.
+- **One synthetic problem.** Every trial is the same haystack design with different needles; the ${totalN}
+  trials are repeats of one retrieval problem, not ${totalN} problems.
+- **Lengths are estimated (chars/4) for construction**; real \`prompt_tokens\` from the provider ran ~${pct(TOK_OVER_EST, 0)}
   above the estimate and is what is reported in every table here.
-- Stage 1's 90/90 is a weak ceiling (no distractors) and is reported only as the pre-registered stage that
+- Stage 1's ${hitsOf(rowsE)}/${nOf(rowsE)} is a weak ceiling (no distractors) and is reported only as the pre-registered stage that
   motivated the hard variant.
 
 ---
@@ -294,63 +390,120 @@ ul{padding-left:22px}li{margin:6px 0}
 </style></head><body><main>
 
 <h1>Position probe — does retrieval depend on <em>where</em> a fact sits?</h1>
-<p class="lede"><strong>No. ${totalHits}/${totalN} across both stages, at every depth, out to 155,773 real
-prompt tokens with 7 competing distractors.</strong> The null is clean, and it removes position-aware
-assembly from the design space for this model at these lengths.</p>
 
-<h2>Why this was run</h2>
+<h2>Abstract</h2>
+<p>This project's eviction rules for an AI coding agent decide which parts of a long transcript to keep, but
+never where the kept parts sit: survivors stay in their original order. If a model's ability to use a fact
+depended on its position in the context, that would be a design lever the rules cannot express, and it would
+also offer an alternative explanation for failures seen when the transcript is capped. Two known mechanisms
+predict such an effect: RoPE's attenuation with distance and the "lost in the middle" pattern.</p>
+<p>We tested for it directly with a needle-in-a-haystack probe on <code>${esc(hard.model)}</code>: ${GRID},
+graded by exact match, run in two stages. The first stage had no distractors and was too easy to be
+informative. The second placed ${hard.distractors} identically-worded distractors in the context and raised its
+length to ${MAX_TOK.toLocaleString()} real prompt tokens, ${pct(MAX_TOK / MODEL_WINDOW, 0)} of the model's window.</p>
+<p class="lede"><strong>The result is a clean null: ${totalHits} of ${totalN} retrievals succeeded, at every
+depth and every length.</strong> There is no decay with depth and no U-shape. Zero failures in the
+${hard.rows.length} hard-stage trials rule out a position-dependent failure rate above ${pct(RULEOUT_HARD)} on this
+task (one-sided 95%), which removes position-aware assembly as a lever for this model at these lengths. The
+limit is the strength of the claim at finer grain, and the task itself: a single depth could still hide a
+${pct(ruleOut(perDepth(hard)), 0)} deficit, and single-turn retrieval of a lexically distinct sentence is far easier
+than an agent using its own history. The one dose-response present is latency, which grows with prompt
+length.</p>
+
+<h2>What you need to know to read the rest</h2>
+<table><thead><tr><th>Term</th><th>Meaning</th></tr></thead><tbody>${glossHtml}</tbody></table>
+
+<h2>Why we ran this</h2>
 <p>Our eviction policies decide only <strong>presence</strong> — which units survive — never
 <strong>position</strong>. Survivors keep creation order. If retrieval quality depended on where a fact
 sat, two policies keeping the same units in the same band would look identical to the metric while
 differing in reality. The A/B window sweep showed exactly that shape (idle vs positional recency, pooled
-<code>p = 1.000</code>). Two mechanisms predict the lever should exist: RoPE long-term decay, and the
-"lost in the middle" U-shape.</p>
+<code>p = 1.000</code>, backlog item 8). So the question is prior to any policy: <strong>does the lever exist
+at all on this model?</strong> Two mechanisms predict it should: RoPE long-term decay, and the "lost in the
+middle" U-shape.</p>
 
-<h2>Method</h2>
+<h2>The experimental setup</h2>
+<h3>The agent task these results are read against</h3>
+<p>The probe itself is synthetic, but the question comes from live runs of a fixed programming job called
+<code>longbuild</code>. There the agent starts in a workspace holding a README, 13 specification documents
+(~20,000 characters in total) describing a small Python accounting library, five empty Python stubs to fill in
+(<code>money.py</code>, <code>parsing.py</code>, <code>rules.py</code>, <code>report.py</code>,
+<code>cli.py</code>), and a visible test suite it may run at any time. It works through six stages — read a
+stage's specification, implement it, run the tests, fix failures, move on — and runs take roughly 53 to 61
+steps. It is graded by a <em>held-out</em> test suite written into the workspace only after it stops, which it
+never sees. When its transcript is capped (the "W-sweep"), success falls; this probe asks whether part of that
+could be facts that are present but positioned badly.</p>
+<h3>The probe</h3>
 <p>Needle-in-a-haystack, single-turn, <code>temperature = 0</code>, deterministic PRNG. Haystack lines are
 all distinct; the needle is <code>IMPORTANT RECORD: the access code for sector &lt;NAME&gt; is
-&lt;NNNN&gt;.</code>; the question is appended at the end and graded by exact match. Grid: 3 lengths × 5
-depths × 6 needles.</p>
-<p><strong>Stage 1 (easy, 0 distractors)</strong> hit 90/90, but weakly — the needle was the only 4-digit
-number near the question's wording. <strong>Stage 2 (hard, 7 distractors)</strong> is the real test: every
-distractor uses the identical framing for a different sector, so the model must discriminate on the sector
-name among 8 candidates, and the lengths rise ~6× to <strong>155,773 real prompt tokens</strong> (59% of
-the 262,144-token window).</p>
-<p>Model <code>${esc(hard.model)}</code>. Rerun:
-<code>CT_PROBE_LENGTHS=20000,60000,120000 CT_PROBE_DISTRACTORS=7 node experiments/context-dedup/position-probe.mjs</code></p>
+&lt;NNNN&gt;.</code>; the question is appended at the end and graded by exact match. Grid: ${GRID}.</p>
+<h3>What was varied</h3>
+<p><strong>Stage 1 (easy, ${easy.distractors ?? 0} distractors)</strong> hit ${hitsOf(rowsE)}/${nOf(rowsE)}, but weakly — the
+needle was the only 4-digit number near the question's wording. <strong>Stage 2 (hard, ${hard.distractors}
+distractors)</strong> is the real test: every distractor uses the identical framing for a different sector, so
+the model must discriminate on the sector name among ${CANDIDATES} candidates, and the lengths rise
+~${LEN_GROWTH.toFixed(0)}× to <strong>${MAX_TOK.toLocaleString()} real prompt tokens</strong>
+(${pct(MAX_TOK / MODEL_WINDOW, 0)} of the ${MODEL_WINDOW.toLocaleString()}-token window).</p>
+<h3>What was recorded, and how to rerun</h3>
+<p>Per trial: the answer, whether it was a hit, the real prompt-token count from the provider, and wall-clock
+seconds. Model <code>${esc(hard.model)}</code>, local, <code>temp 0</code>, <code>max_tokens 32</code>. Rerun:
+<code>CT_PROBE_LENGTHS=${hard.lengths.join(',')} CT_PROBE_DISTRACTORS=${hard.distractors} node experiments/context-dedup/position-probe.mjs</code>.
+Commit <code>${esc(hard.commit)}</code>, ${hard.date.slice(0, 10)}.</p>
 
 <h2>Results</h2>
-<figure>${svgGrid()}<figcaption>Every cell is 6/6. Rows are ordered by real prompt tokens; the bottom three
-are the hard stage, with 7 distractors each.</figcaption></figure>
+<figure>${svgGrid()}<figcaption>Every cell is ${hard.needles_per_cell}/${hard.needles_per_cell}. Rows are ordered by real prompt tokens; the bottom
+three are the hard stage, with ${hard.distractors} distractors each.</figcaption></figure>
 
-<h3>Stage 2 — hard (7 distractors)</h3>
+<h3>Stage 2 — hard (${hard.distractors} distractors)</h3>
 ${mdTableToHtml(gridTable(rowsH, hard))}
-<h3>Stage 1 — easy (0 distractors)</h3>
+<h3>Stage 1 — easy (${easy.distractors ?? 0} distractors)</h3>
 ${mdTableToHtml(gridTable(rowsE, easy))}
+<h3>Pooled</h3>
+<table><thead><tr><th>stage</th><th>distractors</th><th>max real tok</th><th>trials</th><th>hits</th><th>accuracy</th></tr></thead><tbody>
+<tr><td>easy</td><td>${easy.distractors ?? 0}</td><td>${maxOf(rowsE).realTok.toLocaleString()}</td><td>${nOf(rowsE)}</td><td>${hitsOf(rowsE)}</td><td>${pct(hitsOf(rowsE) / nOf(rowsE), 0)}</td></tr>
+<tr><td>hard</td><td>${hard.distractors}</td><td>${MAX_TOK.toLocaleString()}</td><td>${nOf(rowsH)}</td><td>${hitsOf(rowsH)}</td><td>${pct(hitsOf(rowsH) / nOf(rowsH), 0)}</td></tr>
+<tr><td><strong>both</strong></td><td></td><td></td><td><strong>${totalN}</strong></td><td><strong>${totalHits}</strong></td><td><strong>${pct(totalHits / totalN, 0)}</strong></td></tr>
+</tbody></table>
+<p>Zero errors, zero refusals, zero off-format answers across all ${totalN} calls.</p>
 
-<h2>What this null does and does not cover</h2>
+<h3>What this null does and does not cover</h3>
 <p>A null is only as strong as its detection floor. With zero observed failures, the 95% one-sided upper
 bound on the true failure rate is:</p>
 <figure>${svgPower()}<figcaption>The honest claim is the pooled one: no position-dependent failure rate
-above ~${pct(ruleOut(hard.rows.length), 0)} exists on this task at these lengths. A single depth could
+above ~${pct(RULEOUT_HARD, 0)} exists on this task at these lengths. A single depth could
 still hide a ${pct(ruleOut(perDepth(hard)), 0)} deficit, and a single cell
 ${pct(ruleOut(hard.needles_per_cell), 0)}.</figcaption></figure>
 
-<h2>The one real dose–response</h2>
+<h3>The one real dose–response</h3>
 <figure>${svgLatency()}<figcaption>Accuracy is flat; latency is not. This is prefill compute, not retrieval
-degradation — the model does more work per call, not worse work. A 156k-token turn costs ~10× the
-wall-clock of a 26k-token one on this host.</figcaption></figure>
+degradation — the model does more work per call, not worse work. A ${(MAX_TOK / 1000).toFixed(0)}k-token turn costs
+~${LATENCY_RATIO.toFixed(0)}× the wall-clock of a ${(rowsH[0].realTok / 1000).toFixed(0)}k-token one on this host.</figcaption></figure>
+
+<h2>What we got wrong</h2>
+<p><strong>The detection floor for a single depth was overstated.</strong> An earlier revision of this report
+hardcoded the number of trials in the "one depth, both stages" slice as ${SLICE_ERR_N}. It is ${SLICE_OK.n}
+(${perDepth(hard)} per depth in the hard stage plus ${perDepth(easy)} in the easy stage), so the largest failure
+rate that slice can hide was quoted as ${pct(ruleOut(SLICE_ERR_N))} when it is ${pct(ruleOut(SLICE_OK.n))} —
+${((ruleOut(SLICE_ERR_N) - ruleOut(SLICE_OK.n)) * 100).toFixed(1)} percentage points too weak. The error ran against the null rather than for it and changed
+no conclusion; every slice size is now derived from the data. Nothing else was withdrawn.</p>
 
 <h2>Conclusions</h2>
 <ul>
 <li><strong>The RoPE-attenuation hypothesis is not supported</strong> at these lengths on this model. No
-decay with depth and no U-shape: depth 50% equals depth 0% equals depth 100%.</li>
+decay with depth and no U-shape: depth 50% equals depth 0% equals depth 100%, out to ${pct(MAX_TOK / MODEL_WINDOW, 0)} of the window.</li>
 <li><strong>Position-aware assembly is dead as a lever here.</strong> The presence-only policy class is not
 leaving a known effect on the table — a relief for the design, not a loss.</li>
 <li><strong>It removes an alternative explanation for the window-cap results.</strong> W-sweep failures
 were not "present but buried too deep to retrieve"; presence is sufficient. Eviction removed content
 outright, which makes the cadence finding load-bearing rather than possibly confounded.</li>
 </ul>
+<p><strong>What this does not license.</strong> A large positional deficit in explicit, single-turn retrieval
+has been <strong>tested and rejected</strong> for this model up to ${MAX_TOK.toLocaleString()} tokens. Three
+things remain <strong>untested</strong>: whether position affects how much an agent <em>spontaneously</em> uses
+its own history in a multi-turn loop; whether a smaller effect (below ~${pct(RULEOUT_HARD, 0)} pooled, or
+~${pct(ruleOut(perDepth(hard)), 0)} at one depth) exists; and whether any of this holds for another model or beyond
+${pct(MAX_TOK / MODEL_WINDOW, 0)} of the window. Because every cell is at ceiling, the probe also cannot say which
+ordering is better, only that none is detectably worse.</p>
 
 <h2>Caveats</h2>
 <ul>
@@ -358,10 +511,12 @@ outright, which makes the cadence finding load-bearing rather than possibly conf
 the model must reason over. A null here does not prove position is irrelevant in a multi-turn agent loop.</li>
 <li><strong>A ceiling cannot rank policies</strong> — 100% can only refute a claimed deficit.</li>
 <li><strong>One model, one host, one quantization.</strong> Positional effects are architecture- and
-length-dependent; this says nothing about 250k+ contexts or a different model.</li>
-<li>Lengths are estimated (chars/4) for construction; real <code>prompt_tokens</code> ran ~30% above the
+length-dependent; this says nothing about longer contexts or a different model.</li>
+<li><strong>One synthetic problem.</strong> The ${totalN} trials are repeats of one retrieval problem, not ${totalN}
+problems.</li>
+<li>Lengths are estimated (chars/4) for construction; real <code>prompt_tokens</code> ran ~${pct(TOK_OVER_EST, 0)} above the
 estimate and is what every table reports.</li>
-<li>Stage 1's 90/90 is a weak ceiling and is reported only as the stage that motivated the hard variant.</li>
+<li>Stage 1's ${hitsOf(rowsE)}/${nOf(rowsE)} is a weak ceiling and is reported only as the stage that motivated the hard variant.</li>
 </ul>
 
 <p class="note">Data: <code>results-position-probe.json</code> (hard),
