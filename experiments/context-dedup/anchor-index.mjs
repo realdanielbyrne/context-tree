@@ -29,6 +29,8 @@
  * both so the reducer can see live context. lib.mjs needs no change.
  */
 import { createHash } from 'node:crypto';
+import { splitText } from '../../packages/core/dist/retrieve/chunk.js';
+import { BM25 } from '../../packages/core/dist/retrieve/bm25.js';
 
 export const DEFAULTS = {
   arm: 'baseline',
@@ -37,6 +39,8 @@ export const DEFAULTS = {
   nearDupThreshold: 0,
   requireUnedited: true,
   verify: 'identity',
+  topK: 3,
+  recentTurns: 3,
 };
 
 /** Strip the Claude Read line-number gutter so `1\tfoo` and `foo` hash alike. */
@@ -108,6 +112,36 @@ export function placeboText(target) {
 export function anchorDiffText(rec, edits) {
   const hunks = edits.map((e, i) => `  (${i + 1}) turn ${e.turn}: replaced ${JSON.stringify(String(e.old).slice(0, 120))} with ${JSON.stringify(String(e.new).slice(0, 120))}`).join('\n');
   return `[Remember our earlier conversation about ${summarize(rec, 'read-then-edited')}. You have since edited it ${edits.length} time(s); those edits are above in this conversation:\n${hunks}\nReconstruct the current contents from that read plus those edits rather than re-reading.]`;
+}
+
+/**
+ * TARGETED DUPLICATION. Instead of merely pointing at the resident copy, pull the
+ * most relevant chunks of it back to the tail. This sits between "return the whole
+ * file again" and "return a bare pointer", and it is the arm that answers the real
+ * question: how much of what the model already has do you have to re-inject for it
+ * to stay correct?
+ *
+ * Ranked with the repo's own promoted retriever (BM25 over 800/100 chunks). The
+ * query is what a deployed middleware would actually have at fire time -- the tool
+ * call plus the recent turns -- NEVER the pending question, which would be an oracle.
+ */
+export function retrieveTopK(captureText, query, k = 3) {
+  const chunks = splitText(String(captureText), { chunkSize: 800, chunkOverlap: 100 });
+  if (chunks.length <= k) return chunks.map((text, i) => ({ i, text }));
+  const corpus = chunks.map((text, i) => ({ id: String(i), text }));
+  const ranked = new BM25(corpus).search(String(query || ''));
+  const pick = ranked.slice(0, k).map((r) => +r.id);
+  while (pick.length < k && pick.length < chunks.length) {           // BM25 can return < k
+    for (let i = 0; i < chunks.length && pick.length < k; i++) if (!pick.includes(i)) pick.push(i);
+  }
+  return pick.sort((a, b) => a - b).map((i) => ({ i, text: chunks[i] }));  // creation order
+}
+
+export function anchorTopKText(rec, kind, query, k) {
+  const picked = retrieveTopK(rec.captureText, query, k);
+  const total = splitText(String(rec.captureText), { chunkSize: 800, chunkOverlap: 100 }).length;
+  const body = picked.map((c) => `--- ${rec.path} [chunk ${c.i + 1}/${total}] ---\n${c.text}`).join('\n');
+  return `[You already read ${rec.path} at turn ${rec.firstTurn}; the full text is above in this conversation, unchanged. The ${picked.length} most relevant section(s) are repeated here so you do not have to scroll back:]\n${body}`;
 }
 
 export function makeAnchorIndex(opts = {}) {
@@ -216,13 +250,18 @@ export function makeAnchorIndex(opts = {}) {
     if (o.passive) { ev.suppressed = 'passive'; return serve(); }
     if (!residency.resident) { ev.suppressed = 'not-resident'; return serve(); }
     if (mutatedSince.length && o.requireUnedited && o.arm !== 'anchor-diff') { ev.suppressed = 'stale'; return serve(); }
-    if (o.arm === 'baseline') { ev.suppressed = 'baseline-arm'; return serve(); }
+    if (o.arm === 'baseline' || o.arm === 'none') { ev.suppressed = 'no-intervention'; return serve(); }
 
     let text;
     if (o.arm === 'anchor') text = anchorText(hit.prior, kind);
     else if (o.arm === 'anchor-diff') text = mutatedSince.length ? anchorDiffText(hit.prior, mutatedSince) : anchorText(hit.prior, kind);
     else if (o.arm === 'placebo') text = placeboText(anchorText(hit.prior, kind).length);
-    else throw new Error(`unknown arm ${o.arm}`);
+    else if (o.arm === 'anchor-topk') {
+      // Query = what a real middleware sees at fire time: the request plus recent turns.
+      const recent = (messagesRef || []).slice(-2 * o.recentTurns)
+        .map((m) => String(m.content || '') + JSON.stringify(m.tool_calls || '')).join('\n');
+      text = anchorTopKText(hit.prior, kind, `${JSON.stringify(args)}\n${recent}`.slice(0, 4000), o.topK);
+    } else throw new Error(`unknown arm ${o.arm}`);
 
     ev.fired = true;
     ev.substituted_chars = text.length;

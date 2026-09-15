@@ -47,13 +47,43 @@ export function execTool(ws, name, args) {
   } catch (e) { return `error executing ${name}: ${e.message}`; }
 }
 
-async function callModel(messages, { think = false, maxTokens = 1024, tools = TOOL_SCHEMAS }) {
+async function callModel(messages, { think = false, maxTokens = 1024, tools = TOOL_SCHEMAS, temperature = 0 }) {
   const res = await fetch(`${BASE_URL}/chat/completions`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${API_KEY}` },
-    body: JSON.stringify({ model: MODEL, messages, tools, tool_choice: 'auto', parallel_tool_calls: false, max_tokens: maxTokens, temperature: 0, chat_template_kwargs: { enable_thinking: think } }),
+    body: JSON.stringify({ model: MODEL, messages, tools, tool_choice: 'auto', parallel_tool_calls: false, max_tokens: maxTokens, temperature, chat_template_kwargs: { enable_thinking: think } }),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0, 300)}`);
   return res.json();
+}
+
+/**
+ * This model sporadically emits tool-call arguments that are not valid JSON and the
+ * server answers 500 (the fault is visible in results-ab-longbuild.json). Without a
+ * retry a single transient fault destroys a whole multi-turn run, which silently
+ * turns a crash into an apparent zero. Retry at temperature 0 first — the fault is
+ * sporadic, not deterministic — then give up rather than perturb the sampler.
+ */
+export const RETRY_STATS = { retries: 0, jittered: 0, fatal: 0 };
+async function callModelRetrying(messages, opts, retries = 3) {
+  let last = null;
+  for (let i = 0; i <= retries; i++) {
+    try {
+      // At temperature 0 a retry reproduces the SAME malformed output, so plain
+      // retrying cannot clear a deterministic parse failure. Jitter the sampler on
+      // the last attempts instead. Recorded, because it breaks bit-reproducibility.
+      const jitter = i >= 2;
+      if (jitter) RETRY_STATS.jittered += 1;
+      return await callModel(messages, { ...opts, temperature: jitter ? 0.3 : 0 });
+    } catch (e) {
+      last = e;
+      if (!/HTTP 5\d\d/.test(String(e.message || e))) throw e;
+      RETRY_STATS.retries += 1;
+      process.stderr.write('!');
+      await new Promise((r) => setTimeout(r, 400 * (i + 1)));
+    }
+  }
+  RETRY_STATS.fatal += 1;
+  throw last;
 }
 
 // ===================== eviction (the assembler under test) =====================
@@ -149,7 +179,7 @@ export async function runAgent({ system, task, ws, maxTurns = 40, think = false,
   const tools = allowedTools ? TOOL_SCHEMAS.filter((t) => allowedTools.includes(t.function.name)) : TOOL_SCHEMAS;
   for (turns = 0; turns < maxTurns; turns++) {
     if (hook) await hook(messages, turns); // may be async (ensemble classifier needs embeddings)
-    const j = await callModel(messages, { think, tools });
+    const j = await callModelRetrying(messages, { think, tools });
     const choice = j.choices?.[0]; const msg = choice?.message || {};
     usage.push({ turn: turns, prompt_tokens: j.usage?.prompt_tokens ?? null, completion_tokens: j.usage?.completion_tokens ?? null });
     // append the assistant message VERBATIM (with tool_calls if present)
