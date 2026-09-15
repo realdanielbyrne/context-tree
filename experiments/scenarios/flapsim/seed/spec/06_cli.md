@@ -6,20 +6,27 @@
 `--flaps` is a bit string; the bird flaps on tick `t` iff `BITS[t % len(BITS)] == '1'`.
 It defaults to `"0"`. Parse `sys.argv` by hand — do not use argparse.
 
-## Normal output
+## WHICH ticks print a TRACE line
 
-One TRACE line every `max(1, N // 20)` ticks, then exactly one DIGEST line. Widths are
-literal: `t` and `y` are 4 digits zero-padded, `vy` is signed with 4 digits after the
-sign, `score` is 2 digits.
+Let `EVERY = max(1, N // 20)`. Print a TRACE line on every tick `t` where
 
-```
-TRACE t=0000 y=0533 vy=-0027 score=00 alive=1
-TRACE t=0010 y=0578 vy=-0009 score=00 alive=1
-DIGEST seed=7 ticks=200 score=8 alive=1 y=0578 vy=-0009 ticks_run=200
-```
+    t % EVERY == 0
 
-A TRACE line is printed after step 6 of the tick, so it reflects the post-cull state.
-If the bird dies, the run stops and DIGEST still prints.
+evaluated at the END of the tick, after step 6 (cull). For `--ticks 200`, `EVERY` is
+10, so lines appear at t = 0, 10, 20, ... — the FIRST tick of each group, never the
+last. DIGEST always prints, even when the bird dies.
+
+## Exact field formats — these are literal
+
+    TRACE t={t:04d} y={y:04d} vy={vy:+05d} score={score:02d} alive={alive:d}
+    DIGEST seed={seed:d} ticks={ticks:d} score={score:d} alive={alive:d} y={y:04d} vy={vy:+05d} ticks_run={n:d}
+
+`score` IS zero-padded to 2 digits in TRACE and is NOT padded in DIGEST.
+`vy` is a sign then 4 digits: `+0018`, `-0027`. `alive` is 1 or 0.
+With `--powerups`, DIGEST gains ` shields={s:d}` at the very end; TRACE is unchanged.
+
+spec/09_expected_output.md holds the complete expected stdout for the demo command —
+diff against it.
 
 ## Self check
 

@@ -1,0 +1,41 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "local": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Local OpenAI-compatible server (127.0.0.1:8888)",
+      "options": {
+        "baseURL": "http://127.0.0.1:8888/v1",
+        "apiKey": "{env:UNSLOTH_API_KEY}"
+      },
+      "models": {
+        "unsloth/Qwen3.8-27B-GGUF": {
+          "name": "Qwen3.8-27B (local GGUF)",
+          "tool_call": true,
+          "limit": {
+            "context": 262144,
+            "output": 16384
+          }
+        }
+      }
+    },
+    "openrouter": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "OpenRouter (hosted; same model family as the local GGUF)",
+      "options": {
+        "baseURL": "https://openrouter.ai/api/v1",
+        "apiKey": "{env:OPENROUTER_API_KEY}"
+      },
+      "models": {
+        "qwen/qwen3.8-27b": {
+          "name": "Qwen3.8-27B (OpenRouter)",
+          "tool_call": true,
+          "limit": {
+            "context": 262144,
+            "output": 16384
+          }
+        }
+      }
+    }
+  }
+}

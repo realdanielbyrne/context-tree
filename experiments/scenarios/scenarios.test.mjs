@@ -108,3 +108,26 @@ test('scenarioTask adapts to the coding-harness task-module shape', () => {
   for (const k of ['name', 'system', 'task', 'seed', 'grade', 'makeHook']) assert.ok(t[k], `missing ${k}`);
   assert.match(t.task, /PHASE 1/);
 });
+
+test('the spec UNIQUELY determines the reference output — no format ambiguity', () => {
+  // The first flapsim run failed because the spec said "one TRACE line every N//20
+  // ticks" without saying WHICH ticks, and said score is "2 digits" while the
+  // reference pads it only in TRACE. The agent thrashed trying to satisfy a
+  // contradiction it could not see. Verifying the oracle reproduces its own examples
+  // was NOT enough — the spec TEXT must pin the output too.
+  const ref = join(HERE, 'flapsim', 'grader', 'ref.py');
+  const demo = execFileSync('python3', [ref, '--seed', '7', '--ticks', '200', '--flaps', '0010'], { encoding: 'utf8' }).trimEnd();
+  const expected = readFileSync(join(HERE, 'flapsim', 'seed', 'spec', '09_expected_output.md'), 'utf8');
+  assert.ok(expected.includes(demo), 'spec/09 must contain the reference output verbatim, or the agent has nothing to diff against');
+
+  const cli = readFileSync(join(HERE, 'flapsim', 'seed', 'spec', '06_cli.md'), 'utf8');
+  assert.match(cli, /t % EVERY == 0/, 'the spec must say WHICH ticks emit a TRACE line');
+  assert.match(cli, /FIRST tick of each group/, 'and disambiguate first-vs-last');
+  assert.match(cli, /NOT padded in DIGEST/, 'and resolve the score-padding contradiction');
+
+  const first = demo.split('\n')[0];
+  const digest = demo.split('\n').at(-1);
+  assert.match(first, /^TRACE t=\d{4} y=\d{4} vy=[+-]\d{4} score=\d{2} alive=[01]$/);
+  assert.match(digest, /^DIGEST seed=\d+ ticks=\d+ score=\d+ alive=[01] y=\d{4} vy=[+-]\d{4} ticks_run=\d+$/);
+  assert.doesNotMatch(digest, /score=0\d /, 'DIGEST score must not be zero-padded');
+});

@@ -1,6 +1,6 @@
 Build `flapsim`, a headless deterministic side-scroller engine, from the specs in spec/.
 
-PHASE 1 — read README.md, then every file in spec/ (00 through 08).
+PHASE 1 — read README.md, then every file in spec/ (00 through 09).
   spec/07_powerups.md is future work: read it for context but DO NOT implement it yet.
 
 PHASE 2 — implement the six modules named in spec/00_overview.md, one at a time.

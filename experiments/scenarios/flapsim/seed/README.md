@@ -16,6 +16,7 @@ Python 3 standard library only. No pip, no network, no pygame, no display.
     spec/06_cli.md        the command line and the exact output format
     spec/07_powerups.md   FUTURE WORK — read for context, do not implement yet
     spec/08_examples.md   six worked examples; these are the --selfcheck set
+    spec/09_expected_output.md  the exact stdout the demo command must print
 
 ## Checking your work
 
