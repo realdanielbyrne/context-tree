@@ -18,6 +18,12 @@
  *   - a lingering opencode server causes intermittent hangs, so every cell gets fresh
  *     XDG_* directories.
  *   - `--pure` disables external plugins, i.e. the arms. Never pass it when an arm is active.
+ *   - NEVER kill opencode host-wide. A parallel session shares this machine; a
+ *     `pkill opencode` takes out its runs too. Clean up only PIDs this runner launched.
+ *   - the local host serves 4 concurrent connections and opencode makes a model call
+ *     during init (`small=true agent=title`) BEFORE session creation. With every slot
+ *     busy that call blocks and the run "hangs at init" with no session, no error and no
+ *     log line — silent, and easily misread as a stale-server bug. Take a lease.
  *   - a plugin registering only `chat.params` HUNG opencode at init (never reached session
  *     creation). Sampling is therefore left at opencode's default, which is identical for
  *     every arm, so the arms still differ solely in tool-result substitution.
@@ -36,6 +42,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { writeResults, gitSha, nowISO } from '../rung-1-live-probe/lib.mjs';
+import { acquireSlots } from './swebench-endpoint.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = join(HERE, '..', '..');
@@ -108,7 +115,7 @@ async function runCell(task, arm, repeat, outDir) {
   }
 
   // transcript straight from the host
-  let messages = 0, usage = { input: 0, output: 0, cost: 0 };
+  let messages = 0, usage = { input: 0, output: 0, cost: 0, reasoningParts: 0, reasoningChars: 0 };
   if (sid) {
     const ex = sh('opencode', ['export', sid], { cwd: ws, env, timeoutSec: 180 });
     if (ex.stdout) {
@@ -121,6 +128,12 @@ async function runCell(task, arm, repeat, outDir) {
           usage.input += (u.input || 0) + (u.cache?.read || 0) + (u.cache?.write || 0);
           usage.output += u.output || 0;
           usage.cost += (m.info || m).cost || 0;
+          // The local host THINKS but reports reasoning_tokens: 0, so reasoning must be
+          // measured from the export's reasoning PARTS or local and OpenRouter numbers
+          // are not comparable. Chars, not tokens — the only honest unit available here.
+          for (const part of m.parts || []) {
+            if (part.type === 'reasoning') { usage.reasoningParts += 1; usage.reasoningChars += String(part.text || '').length; }
+          }
         }
       } catch {}
     }
@@ -140,6 +153,7 @@ async function runCell(task, arm, repeat, outDir) {
     turns_released: log.length, turn_log: log,
     wall_seconds: +totalSeconds.toFixed(1), timed_out: timedOut,
     messages, prompt_tokens: usage.input, output_tokens: usage.output, cost_usd: +usage.cost.toFixed(6),
+    reasoning_parts: usage.reasoningParts, reasoning_chars: usage.reasoningChars,
     would_fire: events.length, fires: fired.length,
     by_kind: events.reduce((a, e) => ((a[e.kind] = (a[e.kind] || 0) + 1), a), {}),
     anchor_untruthful: events.filter((e) => e.fired && !e.anchor_truthful).length,
@@ -167,7 +181,11 @@ async function main() {
   const cells = [];
   for (let rep = 0; rep < REPEATS; rep++) for (const arm of ARMS) {
     process.stderr.write(`\n--- rep${rep} ${arm} ---\n`);
-    const c = await runCell(task, arm, rep, outDir);
+    // One non-exclusive slot, so the parallel session's scan counts us exactly rather
+    // than by process inspection, and so we never oversubscribe the 4-connection host.
+    const lease = acquireSlots({ exclusive: false });
+    if (!lease.slots?.length) process.stderr.write('    (no local slot free — proceeding; init may block)\n');
+    let c; try { c = await runCell(task, arm, rep, outDir); } finally { lease.release?.(); }
     cells.push(c);
     process.stderr.write(`    ${c.pass ? 'PASS' : 'FAIL'} score=${c.score_correct}/${c.score_total} milestones=${(c.phases_done || []).length}/${(c.phases_total ?? 9) + 1} fires=${c.fires}/${c.would_fire} tok=${c.prompt_tokens} wall=${c.wall_seconds}s cost=$${c.cost_usd}\n`);
   }
@@ -178,6 +196,7 @@ async function main() {
       score_mean: +(cs.reduce((a, c) => a + (c.score_correct || 0), 0) / Math.max(1, cs.length)).toFixed(2),
       milestones_mean: +(cs.reduce((a, c) => a + ((c.phases_done || []).length), 0) / Math.max(1, cs.length)).toFixed(2),
       prompt_tokens_median: med(cs.map((c) => c.prompt_tokens)),
+      reasoning_chars_median: med(cs.map((c) => c.reasoning_chars || 0)),
       wall_seconds_median: med(cs.map((c) => c.wall_seconds)),
       cost_usd_total: +cs.reduce((a, c) => a + c.cost_usd, 0).toFixed(4),
       fires_median: med(cs.map((c) => c.fires)), would_fire_median: med(cs.map((c) => c.would_fire)),
@@ -211,6 +230,8 @@ async function main() {
         'The mid-run user turn is a real second user message via `run --session`, released on a WORKSPACE predicate so every arm gets it at the same logical stage; `via` is recorded and a between-arm difference in it is a confound, not a result.',
         'Wall-clock is measured on a shared host and includes provider prefix caching, so tokens and time can move independently; treat a delta inside the between-repeat spread as no effect.',
         'Single scenario = single problem (caveat C0): repeats measure within-problem nondeterminism, not between-problem variance.',
+        'The model REASONS and that is left alone — it is how the model really behaves, and with reasoning on a smaller context may also mean less to re-reason over per turn. Reasoning is measured from the export reasoning PARTS (chars), because the local host reports reasoning_tokens: 0 while genuinely reasoning; token counts alone would undercount it and would not be comparable with OpenRouter.',
+        'The local host serves 4 concurrent connections and this runner takes one non-exclusive lease per cell. With all slots busy, opencode blocks during its init title call and the run hangs with no error — so a hang is a scheduling symptom, not necessarily a task failure.',
       ] }, summary, cells };
 
   const p = writeResults('context-dedup', `results-oc-${SCENARIO}-${TAG}.json`, out);

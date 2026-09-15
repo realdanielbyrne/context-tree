@@ -28,7 +28,8 @@ const FILES = {
   probeKilled: 'results-swebench-opencode-probe-2931.json',
   probe: 'results-swebench-opencode-probe-2931-b.json',
   tranche: 'results-swebench-opencode-tranche.json',
-  rerun: 'results-swebench-opencode-rerun-11138-local.json',
+  rerunKilled: 'results-swebench-opencode-rerun-11138-local.json',
+  rerun: 'results-swebench-opencode-rerun-11138-local-b.json',
 };
 const load = (k) => {
   const p = join(OUT, FILES[k]);
@@ -160,8 +161,19 @@ const rrLimit = need(rr, 'model_config', 'rerun.');
 if (rrLimit.configured !== true) throw new Error('rerun manifest has no configured model entry');
 const rrThinkingOpt = rrLimit.options?.chat_template_kwargs?.enable_thinking;
 const rrThinkingOff = rrThinkingOpt === false;
-const rrThinkingText = rrThinkingOff ? 'off (configured `enable_thinking: false`)' : 'on (no thinking option configured; host default)';
-const rrDiffCount = rrThinkingOff ? 3 : 2;
+// Thinking is measured from the transcript's reasoning parts, NEVER from reasoning-token counts:
+// the local host returns reasoning text while reporting reasoning_tokens as 0.
+const rrReasoningParts = need(rr, 'reasoning_parts', 'rerun.');
+const rrReasoningChars = need(rr, 'reasoning_chars', 'rerun.');
+const rrThinkingText = rrThinkingOff
+  ? 'off (configured `enable_thinking: false`)'
+  : `on: no thinking option was set, and the transcript contains ${k(rrReasoningParts)} reasoning parts (${k(rrReasoningChars)} characters of reasoning text)`;
+const rrThinkingDiffers = rrThinkingOff;
+const rrDiffCount = rrThinkingDiffers ? 3 : 2;
+const rk = need(D.rerunKilled, 'cells');
+if (rk.length !== 1) throw new Error('killed rerun: expected one run');
+const rrKilled = rk[0];
+if (rrKilled.scored !== false) throw new Error('first rerun attempt was expected to be an unscored (killed) run');
 // Current config (for the forward-looking caveat only).
 const orLimit = cfgLimit('openrouter', 'qwen/qwen3.8-27b');
 const orRouting = need(need(OPENCODE_CONFIG.provider.openrouter.models['qwen/qwen3.8-27b'], 'options', 'openrouter model.'), 'provider', 'openrouter model options.');
@@ -235,7 +247,7 @@ const sections = [
     blocks: [
       P(`Every live context-management experiment in this project has run on one synthetic task, so its repeats measure one problem's noise and not the variation between problems. SWE-bench Verified would fix that, but only if the model can solve real instances when given unlimited context, and only if solving them fills enough of the context window for a window policy to matter. This pilot tests both conditions with the Qwen3.8-27B model.`),
       P(`A first attempt, one instance run three times in an in-repo agent loop, failed with no file ever edited. That was a harness defect, not a verdict. The loop cut every tool result at 2,000 characters. Across two model endpoints, runs at that limit edited nothing (${edited2000}/6); runs at 30,000 characters edited in ${edited30k}/6. Following the project's own rule that evaluation runs in an external agent host (decision D20), the agent was moved to opencode ${version}. The problems were then drawn by a seeded, difficulty-stratified rule recorded before any agent ran, verified three ways, and screened against their gold fixes; ${sel.accepted.length} were accepted from ${new Set(sel.accepted.map((c) => c.repo)).size} repositories.`),
-      P(`With opencode, uncapped, the model solved ${ci(solved.length, nProb)} of the validly run problems. ${capInvalid.length} further run (${capInvalid.map((c) => c.instance).join(', ')}) is invalid: a per-response output cap of ${k(capValue)} tokens, set as a placeholder in the pilot's own configuration, cut it off mid-reasoning before it could act. Re-run once on the local model with that cap raised (thinking ${rrThinkingOff ? 'off' : 'on'}), it ${rrOutcome}; that run differs in ${rrDiffCount} ways from the others and is reported separately. Among solved problems, ${solvedOverPrimary.length} of ${solved.length} sent a prompt larger than ${k(PRESS.primary)} tokens; opencode alone adds about ${k(overhead)} tokens to every call. Verdict: ${verdictSentence}, so SWE-bench Verified with this model and host is ${usable ? '' : '**not** '}a usable substrate for the window and eviction experiments as run. Main limits: ${nProb} valid problems, one run each, several post-hoc (but pre-agent) amendments to the selection rule, unpinned OpenRouter routing whose serving backend (and so precision) is unknown for every run, and hosted weights that differ from the project's earlier local runs.`),
+      P(`With opencode, uncapped, the model solved ${ci(solved.length, nProb)} of the validly run problems. ${capInvalid.length} further run (${capInvalid.map((c) => c.instance).join(', ')}) is invalid: a per-response output cap of ${k(capValue)} tokens, set as a placeholder in the pilot's own configuration, cut it off mid-reasoning before it could act. Re-run on the local model with that cap raised, it ${rrOutcome}; that run differs in ${rrDiffCount} ways from the others and is reported separately. Among solved problems, ${solvedOverPrimary.length} of ${solved.length} sent a prompt larger than ${k(PRESS.primary)} tokens; opencode alone adds about ${k(overhead)} tokens to every call. Verdict: ${verdictSentence}, so SWE-bench Verified with this model and host is ${usable ? '' : '**not** '}a usable substrate for the window and eviction experiments as run. Main limits: ${nProb} valid problems, one run each, several post-hoc (but pre-agent) amendments to the selection rule, unpinned OpenRouter routing whose serving backend (and so precision) is unknown for every run, and hosted weights that differ from the project's earlier local runs.`),
     ],
   },
   {
@@ -322,9 +334,11 @@ const sections = [
         : P('No run errored and no grade was void.'),
       notRun.length ? P(`Accepted but not run: ${notRun.join(', ')}.`) : P('Every accepted problem was run.'),
       P('**5. Re-run of the invalidated problem (separate; not pooled).**'),
-      P(`${rr.instance} was run once more with the cap out of the way. It is **not comparable** to the other runs and is not included in any rate above, because it differs on ${rrDiffCount} variables at once: (1) endpoint and weights — the local quantized GGUF (\`${rr.model}\`) instead of the hosted OpenRouter model; (2) per-response limit — ${k(need(rrLimit, 'limit_output'))} tokens instead of ${k(capValue)}${rrThinkingOff ? '; (3) thinking — off instead of on' : ''}. Thinking in the re-run was ${rrThinkingText}, as recorded in its manifest. It answers only whether this problem is solvable once the cap is not in the way.`),
+      P(`${rr.instance} was run once more with the cap out of the way. It is **not comparable** to the other runs and is not included in any rate above, because it differs on ${rrDiffCount} variables at once: (1) endpoint and weights — the local quantized GGUF (\`${rr.model}\`) instead of the hosted OpenRouter model; (2) per-response limit — ${k(need(rrLimit, 'limit_output'))} tokens instead of ${k(capValue)}${rrThinkingDiffers ? '; (3) thinking — off instead of on' : ''}. Thinking in the re-run was ${rrThinkingText}, as in the scored runs. It answers only whether this problem is solvable once the cap is not in the way.`),
+      P(`A first re-run attempt was ended by an external \`${need(rrKilled, 'signal')}\` after ${k(rrKilled.wall_seconds)} seconds (${k(rrKilled.steps)} steps, ${k(rrKilled.tool_calls)} tool calls, no edit). It was not this runner's timeout, which uses SIGKILL; the system log shows no out-of-memory kill; ${k(need(rrKilled, 'other_opencode_runs_peak'))} other opencode run(s) were live on the host during it. The sender of the signal could not be identified. That attempt is void and was repeated; the table below is the repeat.`),
       TABLE(['Quantity', 'Value'], [
         ['Valid run', yn(rr.scored)],
+        ['Other opencode runs live at start / peak', `${k(need(rr, 'other_opencode_runs_at_start', 'rerun.'))} / ${k(need(rr, 'other_opencode_runs_peak', 'rerun.'))}`],
         ['Pass', yn(rr.pass)],
         ['F2P fixed', yn(rr.f2p_pass)],
         ['P2P kept', yn(rr.p2p_pass)],
@@ -333,7 +347,8 @@ const sections = [
         ['Peak prompt', k(rr.peak_prompt_tokens)],
         ['Largest single response', k(need(rr, 'max_step_response_tokens', 'rerun.'))],
         ['Steps ending on `length`', k(need(rr, 'length_stops', 'rerun.'))],
-        ['Reasoning tokens', k(rr.tokens.reasoning)],
+        ['Reasoning parts / characters (from the transcript)', `${k(rrReasoningParts)} / ${k(rrReasoningChars)}`],
+        ['Reasoning tokens as reported by the local host', `${k(rr.tokens.reasoning)} (not comparable; see caveats)`],
         ['Wall seconds', k(rr.wall_seconds)],
         ['Last step ended', need(rr, 'final_step_reason', 'rerun.')],
       ]),
@@ -385,7 +400,10 @@ const sections = [
       `**Serving backend unknown.** All ${tCells.length} tranche runs used unpinned OpenRouter routing and their exports do not record the backend, so each run (possibly each step) may have been served at a different precision (${OR_ENDPOINTS.precisions}) with a different backend response cap; the data cannot tell which, and no per-run backend is estimated here.`,
       `The OpenRouter entry in experiments/context-dedup/opencode.json has since been pinned (\`provider.order: ${JSON.stringify(orRouting.order)}\`, \`quantizations: ${JSON.stringify(orRouting.quantizations)}\`, \`allow_fallbacks: ${orRouting.allow_fallbacks}\`) with \`limit.output: ${k(orLimit.output)}\` taken from that backend's published maximum. Every future OpenRouter run must use the pinned entry and record \`provider.order\`, \`quantizations\` and \`limit.output\` in its manifest; none of the scored runs here did.`,
       `The re-run of ${rr.instance} used a per-response limit of ${k(need(rrLimit, 'limit_output'))}. When the local host's limit was raised, it also accepted a request one token above the configured maximum, so it likely clamps silently rather than rejecting; the effective limit there is the host's, not the configuration's.`,
-      `The re-run of ${rr.instance} changed ${rrThinkingOff ? 'endpoint and weights, per-response limit, and thinking' : 'endpoint and weights, and per-response limit'} at once; its outcome cannot be attributed to any one of them and is not pooled with the other runs.`,
+      'The local host does not report reasoning tokens: its usage shows `reasoning_tokens: 0` while its responses carry reasoning text, which it counts as output. Reasoning-token totals are therefore not comparable between the local endpoint and OpenRouter (which reports them separately). Whether a run reasoned is measured from its transcript\'s reasoning parts.',
+      `The re-run of ${rr.instance} changed ${rrThinkingDiffers ? 'endpoint and weights, per-response limit, and thinking' : 'endpoint and weights, and per-response limit'} at once; its outcome cannot be attributed to any one of them and is not pooled with the other runs. It shared the local host with other sessions (up to 4 concurrent connections are served).`,
+      `Process note: the finalize step (re-export, event check, context-tree import) was executed once more by accident at 15:54 when another session imported the script to inspect it. It is idempotent: it rebuilds from the untouched worker result files and run directories and clears each context-tree store before importing, so only timestamps changed; the tranche file was re-checked afterwards (${tCells.length} cells, ${tCells.filter((c) => c.events_complete === true).length} complete event streams, ${tCells.filter((c) => c.context_tree_import?.ok === true).length} clean imports). The script now has a main guard.`,
+      'Two opencode runs in this pilot (the first development-instance check and the first re-run attempt) were killed by an external SIGTERM while another session\'s opencode run was live; the sender was not identified. Both were voided and repeated, never scored.',
       'opencode also calls a separate small model (`openrouter/google/gemini-3.8-flash`) to title each session; it does not act in the workspace, but it is an extra model call in every run.',
       `The vehicle is opencode ${version}, which is a deployment host, but with isolated state, \`--auto\` permissions, and a scratch copy of the repository with the project interpreter placed first on PATH.`,
       'Grading uses calibrated P2P: tests that do not pass with the gold patch in this non-Docker environment are dropped, so a regression in one of them would go undetected.',

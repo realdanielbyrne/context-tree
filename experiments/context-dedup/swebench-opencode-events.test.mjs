@@ -97,6 +97,21 @@ test('summarizeExport counts steps, completed tool calls and part types', () => 
   assert.equal(s.steps, 2);
   assert.equal(s.tool_calls, 2, 'running parts are not finished calls');
   assert.deepEqual(s.part_types, { 'step-start': 1, tool: 3, 'step-finish': 2, text: 1 });
+  assert.equal(s.reasoning_parts, 0);
+});
+
+test('summarizeExport measures reasoning from reasoning parts, not token counts', () => {
+  // The local host returns reasoning text but reports reasoning_tokens 0; inferring "no
+  // thinking" from the token count was a wrong conclusion this pilot nearly published.
+  const doc = { messages: [{ parts: [
+    { type: 'reasoning', text: 'abcd' },
+    { type: 'step-finish', tokens: { input: 5, output: 3, reasoning: 0 } },
+    { type: 'reasoning', text: 'xy' },
+    { type: 'reasoning' },
+  ] }] };
+  const s = summarizeExport(doc);
+  assert.equal(s.reasoning_parts, 3);
+  assert.equal(s.reasoning_chars, 6);
 });
 
 test('eventsCompleteAgainstExport flags a stream that lost trailing steps (pipe truncation)', () => {

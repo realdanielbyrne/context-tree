@@ -106,7 +106,11 @@ export function summarizeExport(doc) {
   const parts = (doc?.messages || []).flatMap((m) => m.parts || []);
   const types = parts.reduce((a, p) => ({ ...a, [p.type]: (a[p.type] || 0) + 1 }), {});
   const tools = parts.filter((p) => p.type === 'tool' && ['completed', 'error'].includes(p.state?.status)).length;
-  return { messages: (doc?.messages || []).length, part_types: types, steps: types['step-finish'] || 0, tool_calls: tools };
+  // Reasoning measured from the transcript itself. Token counts cannot be used: the local host
+  // reports reasoning_tokens as 0 even while it returns reasoning text.
+  const reasoning = parts.filter((p) => p.type === 'reasoning');
+  const reasoningChars = reasoning.reduce((s, p) => s + (typeof p.text === 'string' ? p.text.length : 0), 0);
+  return { messages: (doc?.messages || []).length, part_types: types, steps: types['step-finish'] || 0, tool_calls: tools, reasoning_parts: reasoning.length, reasoning_chars: reasoningChars };
 }
 
 /**

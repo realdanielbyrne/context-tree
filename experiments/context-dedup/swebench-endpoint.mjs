@@ -26,6 +26,20 @@
  * The choice is made ONCE per run and recorded with its evidence. Endpoint is then a
  * covariate: local (quantized GGUF) and OpenRouter (pinned DeepInfra bf16) are not the same
  * weights, so comparisons between arms must be paired within an endpoint.
+ *
+ * WHY OVER-SUBSCRIBING IS DANGEROUS, NOT JUST SLOW. opencode makes a model call during init
+ * (title generation) before any session exists. When every local slot is busy that call
+ * blocks, and the run hangs at init with no error, no log line and no session — found by
+ * another session on this host, whose runs stalled while ours held the slots. Slot
+ * exhaustion is therefore INVISIBLE through opencode. Not yet measured: whether the title
+ * call overlaps the first prompt stream, i.e. whether one run can briefly need 2 connections.
+ *
+ * TWO MORE THINGS THAT LOOK LIKE SOMETHING ELSE:
+ *  - The local host thinks by default but reports reasoning_tokens: 0 (measured: an export with
+ *    8 reasoning parts / 1,959 chars of reasoning text reported 0 reasoning tokens). Measure
+ *    reasoning from the export's reasoning parts, never from token counts, on this endpoint.
+ *  - Never clean up with a host-wide `kill` of opencode processes. That is how three runs here
+ *    were lost to SIGTERM from another session; kill only PIDs you launched.
  */
 import { readFileSync, readdirSync, openSync, closeSync, writeFileSync, unlinkSync, mkdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
