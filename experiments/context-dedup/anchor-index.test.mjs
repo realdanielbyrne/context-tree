@@ -172,3 +172,57 @@ test('residency_false_count stays 0 under append-only — nonzero is a harness b
   step('read_file', { path: 'spec/01.md' }, body);
   assert.equal(idx.stats().residency_false_count, 0);
 });
+
+// ── regressions found by adversarial design review ──────────────────────────
+
+test('anchor-topk REFUSES to substitute when the result would be larger than the content', () => {
+  // A 2185-char module splits into 3 chunks at 800/100. At the old DEFAULT k=3 every
+  // chunk came back and, with the overlap, the "reduction" was 2601 chars — 19% BIGGER
+  // than the content. Arm C silently became "arm none plus a preamble".
+  const mod = '# module\n' + Array.from({ length: 40 }, (_, i) => `def fn${i}(a, b):\n    return a*${i} + b  # step ${i}`).join('\n');
+  const { idx, step } = driver({ arm: 'anchor-topk', topK: 3 });
+  step('read_file', { path: 'physics.py' }, mod);
+  const out = step('read_file', { path: 'physics.py' }, mod);
+  assert.equal(out, mod, 'must serve the content rather than substitute something bigger');
+  const ev = idx.events.at(-1);
+  assert.equal(ev.degenerate_topk, true);
+  assert.equal(ev.fired, false);
+  assert.equal(ev.suppressed, 'topk-degenerate');
+});
+
+test('anchor-topk substitutes a genuine reduction at a non-degenerate k', () => {
+  const mod = '# module\n' + Array.from({ length: 40 }, (_, i) => `def fn${i}(a, b):\n    return a*${i} + b  # step ${i}`).join('\n');
+  const { idx, step } = driver({ arm: 'anchor-topk', topK: 1 });
+  step('read_file', { path: 'physics.py' }, mod);
+  const out = step('read_file', { path: 'physics.py' }, mod);
+  assert.notEqual(out, mod);
+  assert.ok(out.length < mod.length, `substitution ${out.length} must be smaller than ${mod.length}`);
+  const ev = idx.events.at(-1);
+  assert.equal(ev.fired, true);
+  assert.equal(ev.degenerate_topk, false);
+  assert.ok(ev.topk_coverage > 0 && ev.topk_coverage < 1, `coverage ${ev.topk_coverage} must be a real fraction`);
+});
+
+test('a CLIPPED resident copy is never anchored — the anchor would assert a falsehood', () => {
+  // coding-harness/lib.mjs:30 appends this sentinel when a result exceeds 2000 chars.
+  // Only the prefix is resident, so "the full text is above" is a lie.
+  const clipped = 'x'.repeat(2000) + '\n…[5231 chars truncated]';
+  const { idx, step } = driver({ arm: 'anchor' });
+  step('read_file', { path: 'big.md' }, clipped);
+  const out = step('read_file', { path: 'big.md' }, clipped);
+  assert.equal(out, clipped, 'a clipped fragment must be served, never anchored');
+  const ev = idx.events.at(-1);
+  assert.equal(ev.partial_residency, true);
+  assert.equal(ev.fired, false);
+  assert.equal(ev.suppressed, 'clipped-residency');
+});
+
+test('a bash `cat FILE` sets path, so containment applies to bash reads too', () => {
+  const body = BIG('spec');
+  const { idx, step } = driver({ arm: 'anchor' });
+  step('read_file', { path: 'spec/01.md' }, body);
+  const slice = body.split('\n').slice(3, 20).join('\n');
+  const out = step('run_bash', { command: 'sed -n 3,20p spec/01.md' }, slice);
+  assert.match(out, /Remember our earlier conversation/, 'a sub-range via bash must fire as partial-overlap');
+  assert.equal(idx.events.at(-1).kind, 'partial-overlap');
+});

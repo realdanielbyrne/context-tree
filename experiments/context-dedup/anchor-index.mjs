@@ -52,6 +52,11 @@ export const normalizeContent = (s) =>
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 
+/** Mirrors the harness clip at coding-harness/lib.mjs:30. A clipped result is a
+ *  FRAGMENT, so any anchor over it asserting "the full text is above" is false —
+ *  the defect that invalidated the replay probe. Detected, recorded, suppressed. */
+export const CLIP_RE = /\n…\[\d+ chars truncated\]$/;
+
 export const contentHash = (s) => createHash('sha256').update(normalizeContent(s)).digest('hex').slice(0, 16);
 
 export const estTok = (s) => Math.ceil(String(s ?? '').length / 4);
@@ -127,19 +132,30 @@ export function anchorDiffText(rec, edits) {
  */
 export function retrieveTopK(captureText, query, k = 3) {
   const chunks = splitText(String(captureText), { chunkSize: 800, chunkOverlap: 100 });
-  if (chunks.length <= k) return chunks.map((text, i) => ({ i, text }));
+  // DEGENERACY: when k >= chunk count every chunk is returned, and because chunks
+  // carry a 100-char overlap the "reduction" is LARGER than the content it replaces.
+  // Measured: a 2185-char module at k=3 yields a 2601-char substitution. Left
+  // unguarded, arm anchor-topk silently becomes "arm none plus a preamble" while
+  // reporting as a working arm. Callers must check `degenerate`.
+  if (chunks.length <= k) {
+    const all = chunks.map((text, i) => ({ i, text }));
+    all.degenerate = true; all.total = chunks.length;
+    return all;
+  }
   const corpus = chunks.map((text, i) => ({ id: String(i), text }));
   const ranked = new BM25(corpus).search(String(query || ''));
   const pick = ranked.slice(0, k).map((r) => +r.id);
   while (pick.length < k && pick.length < chunks.length) {           // BM25 can return < k
     for (let i = 0; i < chunks.length && pick.length < k; i++) if (!pick.includes(i)) pick.push(i);
   }
-  return pick.sort((a, b) => a - b).map((i) => ({ i, text: chunks[i] }));  // creation order
+  const out = pick.sort((a, b) => a - b).map((i) => ({ i, text: chunks[i] }));  // creation order
+  out.degenerate = out.length >= chunks.length; out.total = chunks.length;
+  return out;
 }
 
 export function anchorTopKText(rec, kind, query, k) {
   const picked = retrieveTopK(rec.captureText, query, k);
-  const total = splitText(String(rec.captureText), { chunkSize: 800, chunkOverlap: 100 }).length;
+  const total = picked.total;
   const body = picked.map((c) => `--- ${rec.path} [chunk ${c.i + 1}/${total}] ---\n${c.text}`).join('\n');
   return `[You already read ${rec.path} at turn ${rec.firstTurn}; the full text is above in this conversation, unchanged. The ${picked.length} most relevant section(s) are repeated here so you do not have to scroll back:]\n${body}`;
 }
@@ -216,7 +232,7 @@ export function makeAnchorIndex(opts = {}) {
   const hook = (messages, t) => { messagesRef = messages; turn = t ?? turn; };
 
   function reducer({ name, args = {}, out }) {
-    const path = normPath(args.path || args.file_path);
+    let path = normPath(args.path || args.file_path);
     let candidateText = out;
     let tool = name;
 
@@ -226,7 +242,9 @@ export function makeAnchorIndex(opts = {}) {
       capture({ tool: 'edit_file', path, text: args.new_str });
       return out;
     }
-    if (name === 'run_bash') { const tgt = bashReadTargets(args.command); if (tgt.length === 1) { tool = 'read_file'; } }
+    // A single-target `cat FILE` is a read: set BOTH tool and path, or the
+    // containment branch (which is gated on `path`) can never apply to a bash read.
+    if (name === 'run_bash') { const tgt = bashReadTargets(args.command); if (tgt.length === 1) { tool = 'read_file'; path = path || tgt[0]; } }
 
     const hit = classify({ tool, path, text: candidateText });
     if (!hit) { capture({ tool, path, text: candidateText, argsKey: JSON.stringify(args) }); return out; }
@@ -243,12 +261,15 @@ export function makeAnchorIndex(opts = {}) {
       residency_via: residency.via, resident: residency.resident,
       real_chars: normalizeContent(candidateText).length, arm: o.arm, fired: false,
       substituted_chars: null, suppressed: null,
+      partial_residency: CLIP_RE.test(hit.prior.captureText) || CLIP_RE.test(normalizeContent(candidateText)),
+      topk_coverage: null, degenerate_topk: false,
     };
 
     const serve = () => { events.push(ev); capture({ tool, path, text: candidateText, argsKey: JSON.stringify(args) }); return out; };
 
     if (o.passive) { ev.suppressed = 'passive'; return serve(); }
     if (!residency.resident) { ev.suppressed = 'not-resident'; return serve(); }
+    if (ev.partial_residency) { ev.suppressed = 'clipped-residency'; return serve(); }
     if (mutatedSince.length && o.requireUnedited && o.arm !== 'anchor-diff') { ev.suppressed = 'stale'; return serve(); }
     if (o.arm === 'baseline' || o.arm === 'none') { ev.suppressed = 'no-intervention'; return serve(); }
 
@@ -260,7 +281,14 @@ export function makeAnchorIndex(opts = {}) {
       // Query = what a real middleware sees at fire time: the request plus recent turns.
       const recent = (messagesRef || []).slice(-2 * o.recentTurns)
         .map((m) => String(m.content || '') + JSON.stringify(m.tool_calls || '')).join('\n');
-      text = anchorTopKText(hit.prior, kind, `${JSON.stringify(args)}\n${recent}`.slice(0, 4000), o.topK);
+      const q = `${JSON.stringify(args)}\n${recent}`.slice(0, 4000);
+      const picked = retrieveTopK(hit.prior.captureText, q, o.topK);
+      text = anchorTopKText(hit.prior, kind, q, o.topK);
+      ev.topk_coverage = +(text.length / Math.max(1, ev.real_chars)).toFixed(3);
+      ev.degenerate_topk = !!picked.degenerate || text.length >= ev.real_chars;
+      // Substituting something LARGER than the content is strictly worse than not
+      // intervening. Record it and serve, rather than corrupting the arm silently.
+      if (ev.degenerate_topk) { ev.suppressed = 'topk-degenerate'; return serve(); }
     } else throw new Error(`unknown arm ${o.arm}`);
 
     ev.fired = true;
@@ -276,6 +304,8 @@ export function makeAnchorIndex(opts = {}) {
       would_fire: events.length,
       by_kind: events.reduce((a, e) => ((a[e.kind] = (a[e.kind] || 0) + 1), a), {}),
       residency_false_count: events.filter((e) => !e.resident).length,
+      partial_residency_count: events.filter((e) => e.partial_residency).length,
+      degenerate_topk_count: events.filter((e) => e.degenerate_topk).length,
       tokens_saved: events.filter((e) => e.fired).reduce((s, e) => s + estTok(' '.repeat(e.real_chars)) - estTok(' '.repeat(e.substituted_chars)), 0),
       anchorable_chars: events.reduce((s, e) => s + e.real_chars, 0),
     }),

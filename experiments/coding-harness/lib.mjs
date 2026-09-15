@@ -172,14 +172,14 @@ function summarizePy(content) {
  *   reducer({ name, args, out, task }) -> reducedOut
  * It never touches the agent loop; it only shrinks the footprint of what returns.
  */
-export async function runAgent({ system, task, ws, maxTurns = 40, think = false, hook = null, dethrash = false, summarizeReads = false, reducer = null, allowedTools = null }) {
+export async function runAgent({ system, task, ws, maxTurns = 40, think = false, hook = null, dethrash = false, summarizeReads = false, reducer = null, allowedTools = null, onEnd = null, maxTokens = 1024 }) {
   const messages = [{ role: 'system', content: system }, { role: 'user', content: task }];
   const usage = []; const toolLog = []; let turns = 0, stop = 'maxTurns';
   const readSeen = new Set(); let breakouts = 0;
   const tools = allowedTools ? TOOL_SCHEMAS.filter((t) => allowedTools.includes(t.function.name)) : TOOL_SCHEMAS;
   for (turns = 0; turns < maxTurns; turns++) {
     if (hook) await hook(messages, turns); // may be async (ensemble classifier needs embeddings)
-    const j = await callModelRetrying(messages, { think, tools });
+    const j = await callModelRetrying(messages, { think, tools, maxTokens });
     const choice = j.choices?.[0]; const msg = choice?.message || {};
     usage.push({ turn: turns, prompt_tokens: j.usage?.prompt_tokens ?? null, completion_tokens: j.usage?.completion_tokens ?? null });
     // append the assistant message VERBATIM (with tool_calls if present)
@@ -200,6 +200,11 @@ export async function runAgent({ system, task, ws, maxTurns = 40, think = false,
         messages.push({ role: 'tool', tool_call_id: tc.id, content: String(out) });
       }
       process.stderr.write(msg.tool_calls.map((t) => t.function.name[0]).join(''));
+    } else if (onEnd && await onEnd(messages, turns)) {
+      // A follow-up user turn was pushed (e.g. a mid-run feature request). Without
+      // this the loop exits the moment the agent says DONE and later phases can
+      // never happen — `hook` only runs at the TOP of the loop.
+      process.stderr.write('+');
     } else { stop = 'end_turn'; process.stderr.write('·'); break; }
   }
   process.stderr.write('\n');
