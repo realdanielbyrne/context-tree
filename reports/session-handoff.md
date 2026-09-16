@@ -307,6 +307,7 @@ in §B is written to satisfy them.
 | T12 | Replacing resident tool-result bytes with a referential anchor is a deployable cost lever | **rejected** (0.22% of real spend vs a 10% bar) | `context-dedup/report-{dv4-anchor-dedup,anchor-investigation}.md` |
 | T12b | The *reference*, not the withholding, is what changes behaviour | **supported** (+27.8pp over a character-identical placebo, p=0.0063) | `context-dedup/report-anchor-replay.md` |
 | T13 | SWE-bench Verified through opencode is a usable substrate — solvable, and it reaches window pressure | **supported** — 7/9, 5/7 above 32,768 tokens | `swebench-pilot/report-swebench-pilot.{md,html}` |
+| T14 | The baseline configuration is stable and repeatable across identical repeats | **outcomes yes, trajectories NO** — 8/10 problems unanimous over 3 repeats, but achieved peak varies 1.16–2.90× *within* a problem | `swebench-pilot/report-baseline.{md,html}` |
 
 **T1 — pressure is long-horizon.** Measured three independent times: with `run_bash` available the
 model `cat`/`grep`s exactly what it needs, peak context stays ~830–1,035 tokens, `evict=0`, and every
@@ -450,6 +451,24 @@ capture stdout/exports to files, never pipes; grading uses calibrated P2P (≥90
 passing on gold here). **Still open:** n=1 per problem, 10 problems, and hosted weights ≠ the local
 GGUF every earlier live result used, so nothing here is comparable to them.
 
+**T14 — the baseline is stable in OUTCOME and unstable in TRAJECTORY.** 10 problems × 3 repeats under
+one frozen configuration (pinned DeepInfra bf16, `limit.output` 235,929, uncapped, no middleware):
+33 runs launched, 28 valid, 26 passed. **8 of 10 problems solved on every valid repeat**, 1 mixed
+(xarray-6992, 1/3), 1 **INSUFFICIENT** (django-11138, 1 valid run — the others lost to this harness's
+own 3,600 s ceiling *after* the run had already solved the problem, and to the provider account running
+out of funds; untested, not failed). The instrument was clean: 0 output-limit stops, 0 truncated event
+streams, 0 external kills, 33/33 exports re-imported, and **no pass unbacked by a real code diff**.
+The finding is the variance: with *nothing* varied between repeats, achieved peak moved
+**1.16×–2.90× within a problem** (median 1.87×) and step counts by up to 57. Two consequences —
+pressure is a **per-run draw**, so a cap inside a problem's range binds on some repeats and not others
+(rule 3); and with 8/10 already passing uncapped there are at most **2** problems available to win
+against a paired test needing **5**, so *no uncapped middleware comparison on this pool can reach
+significance*. Also: two of T13's single-run verdicts did not survive repetition (django-14034
+fail→3/3, xarray-6992 fail→1/3) — confounded with the routing and output-limit changes, so it does not
+show repeats alone flipped them, but single-run verdicts on this substrate are provisional in **both**
+directions. Two instrument defects found and recorded: `files_edited` counts edit-tool calls only, so
+a shell-based edit reads as zero (use the diff for liveness), and diff records truncate at 6,000 chars.
+
 ---
 
 ## §B. Untested hypotheses
@@ -528,6 +547,13 @@ peak, effective cost, and MCP tool-call counts (`context_fetch`/`context_search`
 subset, the middleware's value claim is unsupported on this substrate and the paper says so.
 **Note.** This should probably run before any further signal work: it is the only entry whose outcome
 changes what the other entries are for.
+⚠️ **It cannot be run uncapped — T14 settles that.** The baseline solves 8 of 10 problems on every
+repeat with no middleware at all, leaving at most **2** problems where an arm could show a gain, while
+a paired McNemar test needs **5** discordant problems for p = 0.031. An uncapped MCP-on/MCP-off
+comparison on this pool therefore cannot reach significance however good the middleware is. The arm
+must run under a cap that binds — and because achieved peak is a per-run draw (1.16–2.90× within a
+problem), the cap must be chosen against the *distribution* of peaks rather than a problem's median,
+with repeats sized to cover that spread. Budget for it: the baseline alone cost $13.20 for 33 runs.
 
 ### U6 — Is there value above the unit-independent ceiling?
 **Hypothesis.** A set-aware eviction policy (scoring *combinations*, not units) achieves lower damage
