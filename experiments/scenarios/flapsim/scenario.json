@@ -4,17 +4,86 @@
   "system": "system.md",
   "seed": "seed",
   "turns": [
-    { "id": "build", "file": "turns/01-build.md", "gate": null },
+    {
+      "id": "core",
+      "file": "turns/01-core.md",
+      "gate": null
+    },
+    {
+      "id": "engine",
+      "file": "turns/02-engine.md",
+      "gate": {
+        "allOf": [
+          {
+            "exists": "units.py"
+          },
+          {
+            "exists": "physics.py"
+          },
+          {
+            "exists": "world.py"
+          },
+          {
+            "exists": "collide.py"
+          }
+        ]
+      },
+      "fallbackTurn": 1
+    },
+    {
+      "id": "tests",
+      "file": "turns/03-tests.md",
+      "gate": {
+        "allOf": [
+          {
+            "exists": "engine.py"
+          },
+          {
+            "exists": "flapsim.py"
+          }
+        ]
+      },
+      "fallbackTurn": 1
+    },
+    {
+      "id": "review",
+      "file": "turns/04-review.md",
+      "gate": {
+        "exists": "test_flapsim.py"
+      },
+      "fallbackTurn": 1
+    },
+    {
+      "id": "artifact",
+      "file": "turns/05-artifact.md",
+      "gate": {
+        "exists": "REVIEW.md"
+      },
+      "fallbackTurn": 1
+    },
     {
       "id": "feature-and-docs",
       "file": "turns/02-feature-and-docs.md",
-      "gate": { "allOf": [ { "fileMinBytes": ["replay.txt", 200] }, { "exists": "REVIEW.md" } ] },
-      "fallbackTurn": 70
+      "gate": {
+        "allOf": [
+          {
+            "fileMinBytes": [
+              "replay.txt",
+              200
+            ]
+          },
+          {
+            "exists": "REVIEW.md"
+          }
+        ]
+      },
+      "fallbackTurn": 1
     }
   ],
   "notes": [
     "Constants are invented (gravity 18, an LCG, a clean-glide bonus) so the model has no priors to answer from and must consult the spec and its own code.",
     "Every seed file is under 1900 chars so a read leaves a COMPLETE resident copy; the harness clips tool output at 2000 and a clipped read makes any 'it is above in this conversation' claim false.",
-    "Verification is routed through --selfcheck rather than `unittest` because unittest prints a timing line that varies between runs, so two identical runs never compare equal."
+    "Verification is routed through --selfcheck rather than `unittest` because unittest prints a timing line that varies between runs, so two identical runs never compare equal.",
+    "Phases are SEPARATE USER TURNS, not one message. A single message asking for all five phases made the model produce 141,497 chars of reasoning and never call a write tool \u2014 26 minutes to write nothing. The SWE-bench pilot reaches a 121k-token peak on this same model and harness and completes, so the limit was the over-stuffed prompt, not the model. Splitting also matches how work really arrives from a user."
   ]
 }

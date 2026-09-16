@@ -117,9 +117,13 @@ async function runCell(task, arm, repeat, outDir) {
   // transcript straight from the host
   let messages = 0, usage = { input: 0, output: 0, cost: 0, reasoningParts: 0, reasoningChars: 0 };
   if (sid) {
-    const ex = sh('opencode', ['export', sid], { cwd: ws, env, timeoutSec: 180 });
+    // Redirect to a file: spawnSync's captured buffer silently TRUNCATED a 222,750-byte
+    // transcript to 146,176 bytes mid-string, so the JSON failed to parse and every token
+    // count came out 0 — which reads as "the run used no tokens", not "capture broke".
+    const trPath = join(cellDir, 'transcript.json');
+    spawnSync('sh', ['-c', `opencode export ${sid} > ${JSON.stringify(trPath)}`], { cwd: ws, env, timeout: 180000 });
+    const ex = { stdout: existsSync(trPath) ? readFileSync(trPath, 'utf8') : '' };
     if (ex.stdout) {
-      writeFileSync(join(cellDir, 'transcript.json'), ex.stdout);
       try {
         const t = JSON.parse(ex.stdout);
         messages = (t.messages || []).length;

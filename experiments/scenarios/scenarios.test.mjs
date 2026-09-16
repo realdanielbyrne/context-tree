@@ -20,11 +20,13 @@ const CLIP = 2000;   // coding-harness/lib.mjs clips tool output here
 test('flapsim scenario loads and exposes an ordered turn sequence', () => {
   const sc = loadScenario('flapsim');
   assert.ok(sc.system.length > 100);
-  assert.equal(sc.turns.length, 2);
-  assert.equal(sc.turns[0].id, 'build');
-  assert.equal(sc.turns[1].id, 'feature-and-docs');
+  // Phases are SEPARATE user turns. One message asking for all of them made the model
+  // emit 141,497 chars of reasoning and never call a write tool.
+  assert.equal(sc.turns.length, 6);
+  assert.deepEqual(sc.turns.map((t) => t.id),
+    ['core', 'engine', 'tests', 'review', 'artifact', 'feature-and-docs']);
   assert.ok(!sc.turns[0].gate, 'the opening turn is unconditional');
-  assert.ok(sc.turns[1].gate, 'the follow-up must be gated on workspace state');
+  for (const t of sc.turns.slice(1)) assert.ok(t.gate, `${t.id} must be gated on workspace state`);
 });
 
 test('every seed file stays under the 2000-char tool clip', () => {
@@ -42,14 +44,21 @@ test('the follow-up turn is released only once the workspace milestone is met', 
   const sc = loadScenario('flapsim');
   const ws = mkdtempSync(join(tmpdir(), 'sc-'));
   sc.seed(ws);
-  const gate = sc.turns[1].gate;
-  assert.equal(evalGate(ws, gate), false, 'must not fire before the artifact exists');
-
   const { writeFileSync } = await import('node:fs');
+  const gateOf = (id) => sc.turns.find((t) => t.id === id).gate;
+
+  assert.equal(evalGate(ws, gateOf('engine')), false, 'core modules do not exist yet');
+  for (const f of ['units.py', 'physics.py', 'world.py']) writeFileSync(join(ws, f), 'x');
+  assert.equal(evalGate(ws, gateOf('engine')), false, 'three of four is not the milestone');
+  writeFileSync(join(ws, 'collide.py'), 'x');
+  assert.equal(evalGate(ws, gateOf('engine')), true, 'all four core modules present');
+
+  const last = gateOf('feature-and-docs');
+  assert.equal(evalGate(ws, last), false);
   writeFileSync(join(ws, 'replay.txt'), 'x'.repeat(300));
-  assert.equal(evalGate(ws, gate), false, 'replay.txt alone is not the milestone');
+  assert.equal(evalGate(ws, last), false, 'replay.txt alone is not the milestone');
   writeFileSync(join(ws, 'REVIEW.md'), '- a.py:1 wrong -> fix');
-  assert.equal(evalGate(ws, gate), true, 'both conditions met');
+  assert.equal(evalGate(ws, last), true, 'both conditions met');
 });
 
 test('makeHook releases each turn exactly once, and onEnd is the safety net', () => {
@@ -60,12 +69,15 @@ test('makeHook releases each turn exactly once, and onEnd is the safety net', ()
   const messages = [];
   h.hook(messages, 0);
   assert.equal(messages.length, 0, 'gate unmet, nothing released');
-  assert.equal(h.onEnd(messages, 5), true, 'an early DONE must still release the follow-up');
-  assert.equal(messages.length, 1);
-  assert.equal(messages[0].role, 'user');
-  assert.equal(h.onEnd(messages, 6), false, 'no turns left');
+  // onEnd is the safety net: an agent that says DONE early must still get the next turn,
+  // because runAgent-style loops exit the moment the model stops calling tools.
+  for (let i = 1; i < sc.turns.length; i++) {
+    assert.equal(h.onEnd(messages, i), true, `turn ${i} should be released on-end`);
+  }
+  assert.equal(messages.length, sc.turns.length - 1);
+  assert.ok(messages.every((m) => m.role === 'user'));
+  assert.equal(h.onEnd(messages, 99), false, 'no turns left');
   assert.equal(h.state().all_released, true);
-  assert.equal(h.state().releases[0].via, 'on-end');
 });
 
 test('the ORACLE reproduces every worked example the spec publishes', () => {
@@ -106,7 +118,7 @@ test('--powerups changes the digest, and its absence does not', () => {
 test('scenarioTask adapts to the coding-harness task-module shape', () => {
   const t = scenarioTask('flapsim', { grade: () => false });
   for (const k of ['name', 'system', 'task', 'seed', 'grade', 'makeHook']) assert.ok(t[k], `missing ${k}`);
-  assert.match(t.task, /PHASE 1/);
+  assert.match(t.task, /Build `flapsim`/);
 });
 
 test('the spec UNIQUELY determines the reference output — no format ambiguity', () => {
