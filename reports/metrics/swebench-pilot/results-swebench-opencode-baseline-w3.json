@@ -1,0 +1,1361 @@
+{
+  "manifest": {
+    "run_id": "swebench-opencode-baseline-w3",
+    "date": "2026-09-16T22:28:57.519Z",
+    "commit": "cfa657c186cbaf37a27fcf1c1cf8ac24b46331f0",
+    "vehicle": "opencode",
+    "opencode_version": "1.18.31",
+    "model": "openrouter/qwen/qwen3.8-27b",
+    "models_used": [
+      "openrouter/qwen/qwen3.8-27b"
+    ],
+    "endpoint_policy": "pinned: openrouter/qwen/qwen3.8-27b",
+    "endpoints_used": {
+      "local": 0,
+      "openrouter": 12
+    },
+    "invocation": "opencode run --pure -m <model> --format json --dir <ws> --auto <prompt> < /dev/null; per-run XDG dirs; export with same XDG env",
+    "config": "experiments/context-dedup/opencode.json (no credential in file)",
+    "model_configs": {
+      "openrouter/qwen/qwen3.8-27b": {
+        "configured": true,
+        "limit_output": 235929,
+        "limit_context": 262144,
+        "options": {
+          "provider": {
+            "order": [
+              "DeepInfra"
+            ],
+            "quantizations": [
+              "bf16"
+            ],
+            "allow_fallbacks": false
+          }
+        }
+      }
+    },
+    "host_defaults": "thinking ON on every endpoint (host default), no tool-output clip, no cap, no eviction, no middleware",
+    "run_timeout_s": 3600,
+    "instances": [
+      "pydata__xarray-6721",
+      "pydata__xarray-6992",
+      "django__django-14034",
+      "django__django-11138"
+    ],
+    "selection_file": "selection-v2.json",
+    "grading": "ab-tasks/swebench.mjs gradeDetail after opencode exits: restore test-patch files, apply test patch, run the instance runner over F2P + calibrated P2P; void grades and errored runs excluded from rates",
+    "prices_per_million_usd": {
+      "openrouter/qwen/qwen3.8-27b": {
+        "input": 0.214,
+        "output": 2.55
+      }
+    }
+  },
+  "cells": [
+    {
+      "instance": "pydata__xarray-6721",
+      "repeat": 0,
+      "repo": "pydata/xarray",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M",
+      "vehicle": "opencode",
+      "opencode_version": "1.18.31",
+      "model": "openrouter/qwen/qwen3.8-27b",
+      "model_config": {
+        "configured": true,
+        "limit_output": 235929,
+        "limit_context": 262144,
+        "options": {
+          "provider": {
+            "order": [
+              "DeepInfra"
+            ],
+            "quantizations": [
+              "bf16"
+            ],
+            "allow_fallbacks": false
+          }
+        }
+      },
+      "endpoint": "openrouter",
+      "endpoint_selection": {
+        "request": "openrouter/qwen/qwen3.8-27b",
+        "exclusive": false,
+        "reason": "pinned by CT_OPENCODE_MODEL (remote: no local slot needed)",
+        "signals": null,
+        "decided_at": "2026-09-16T18:48:11.205Z"
+      },
+      "pass": true,
+      "f2p_pass": true,
+      "p2p_pass": true,
+      "grade_stage": "ok",
+      "grade_valid": true,
+      "f2p_failures": [],
+      "p2p_failures": [],
+      "p2p_graded_n": 1304,
+      "p2p_dataset_n": 1405,
+      "run_valid": true,
+      "scored": true,
+      "exit_code": 0,
+      "signal": null,
+      "timed_out": false,
+      "wall_seconds": 414,
+      "exit_outcome": "ok",
+      "killed_externally": false,
+      "other_opencode_runs_at_start": 6,
+      "other_opencode_runs_peak": 6,
+      "ended_at": "2026-09-16T18:55:05.102Z",
+      "last_event_type": "step_finish",
+      "error": null,
+      "steps": 39,
+      "tool_calls": 47,
+      "tools_by_name": {
+        "bash": 23,
+        "glob": 1,
+        "grep": 6,
+        "read": 8,
+        "edit": 8,
+        "write": 1
+      },
+      "tool_errors": 0,
+      "files_edited": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6721__r0/workspace/xarray/core/common.py",
+        "/tmp/opencode/repro_chunks.py"
+      ],
+      "files_read": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6721__r0/workspace/xarray/core/common.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6721__r0/workspace/xarray/core/variable.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6721__r0/workspace/xarray/core/dataset.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6721__r0/workspace/xarray/core/dataarray.py"
+      ],
+      "reads": 8,
+      "diff_empty": false,
+      "agent_diff": "diff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/pydata__xarray-6721/xarray/core/common.py /mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6721__r0/workspace/xarray/core/common.py\n--- /mnt/data/ctx-swebench/wscache/pydata__xarray-6721/xarray/core/common.py\t2022-06-25 06:00:50.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6721__r0/workspace/xarray/core/common.py\t2026-09-16 13:50:59.386762740 -0500\n@@ -2023,7 +2023,7 @@\n \n     chunks: dict[Any, tuple[int, ...]] = {}\n     for v in variables:\n-        if hasattr(v.data, \"chunks\"):\n+        if v.chunks is not None:\n             for dim, c in v.chunksizes.items():\n                 if dim in chunks and c != chunks[dim]:\n                     raise ValueError(\n",
+      "tokens": {
+        "input": 142776,
+        "output": 5416,
+        "reasoning": 7404,
+        "cache_read": 1100736,
+        "cache_write": 0
+      },
+      "peak_prompt_tokens": 43207,
+      "first_step_prompt_tokens": 12453,
+      "cost_reported": 0.228355,
+      "cost_list_price": 0.298803,
+      "events": 133,
+      "events_unparseable": 0,
+      "session_id": "ses_f5473b96effe3qQuWbunNqOO6d",
+      "export_ok": true,
+      "export_part_types": {
+        "text": 9,
+        "step-start": 39,
+        "reasoning": 39,
+        "tool": 47,
+        "step-finish": 39
+      },
+      "export_bytes": 291782,
+      "events_complete": true,
+      "events_missing_steps": 0,
+      "events_missing_tool_calls": 0,
+      "run_dir": "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6721__r0"
+    },
+    {
+      "instance": "pydata__xarray-6721",
+      "repeat": 1,
+      "repo": "pydata/xarray",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M",
+      "vehicle": "opencode",
+      "opencode_version": "1.18.31",
+      "model": "openrouter/qwen/qwen3.8-27b",
+      "model_config": {
+        "configured": true,
+        "limit_output": 235929,
+        "limit_context": 262144,
+        "options": {
+          "provider": {
+            "order": [
+              "DeepInfra"
+            ],
+            "quantizations": [
+              "bf16"
+            ],
+            "allow_fallbacks": false
+          }
+        }
+      },
+      "endpoint": "openrouter",
+      "endpoint_selection": {
+        "request": "openrouter/qwen/qwen3.8-27b",
+        "exclusive": false,
+        "reason": "pinned by CT_OPENCODE_MODEL (remote: no local slot needed)",
+        "signals": null,
+        "decided_at": "2026-09-16T18:55:30.637Z"
+      },
+      "pass": true,
+      "f2p_pass": true,
+      "p2p_pass": true,
+      "grade_stage": "ok",
+      "grade_valid": true,
+      "f2p_failures": [],
+      "p2p_failures": [],
+      "p2p_graded_n": 1304,
+      "p2p_dataset_n": 1405,
+      "run_valid": true,
+      "scored": true,
+      "exit_code": 0,
+      "signal": null,
+      "timed_out": false,
+      "wall_seconds": 442,
+      "exit_outcome": "ok",
+      "killed_externally": false,
+      "other_opencode_runs_at_start": 6,
+      "other_opencode_runs_peak": 6,
+      "ended_at": "2026-09-16T19:02:52.181Z",
+      "last_event_type": "step_finish",
+      "error": null,
+      "steps": 33,
+      "tool_calls": 37,
+      "tools_by_name": {
+        "bash": 13,
+        "grep": 9,
+        "read": 12,
+        "write": 1,
+        "edit": 2
+      },
+      "tool_errors": 0,
+      "files_edited": [
+        "/tmp/opencode/repro.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6721__r1/workspace/xarray/core/common.py"
+      ],
+      "files_read": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6721__r1/workspace/xarray/core/common.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6721__r1/workspace/xarray/core/variable.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6721__r1/workspace/xarray/core/utils.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6721__r1/workspace/xarray/core/pycompat.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6721__r1/workspace/xarray/core/indexing.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6721__r1/workspace/xarray/core/dataset.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6721__r1/workspace/xarray/tests/test_backends.py"
+      ],
+      "reads": 12,
+      "diff_empty": false,
+      "agent_diff": "diff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/pydata__xarray-6721/xarray/core/common.py /mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6721__r1/workspace/xarray/core/common.py\n--- /mnt/data/ctx-swebench/wscache/pydata__xarray-6721/xarray/core/common.py\t2022-06-25 06:00:50.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6721__r1/workspace/xarray/core/common.py\t2026-09-16 14:00:14.985308026 -0500\n@@ -2023,7 +2023,7 @@\n \n     chunks: dict[Any, tuple[int, ...]] = {}\n     for v in variables:\n-        if hasattr(v.data, \"chunks\"):\n+        if hasattr(v._data, \"chunks\"):\n             for dim, c in v.chunksizes.items():\n                 if dim in chunks and c != chunks[dim]:\n                     raise ValueError(\n",
+      "tokens": {
+        "input": 199161,
+        "output": 4993,
+        "reasoning": 8959,
+        "cache_read": 1249696,
+        "cache_write": 0
+      },
+      "peak_prompt_tokens": 59386,
+      "first_step_prompt_tokens": 12453,
+      "cost_reported": 0.265652,
+      "cost_list_price": 0.345633,
+      "events": 112,
+      "events_unparseable": 0,
+      "session_id": "ses_f546d0542ffeHnOk8dYCSL7HnN",
+      "export_ok": true,
+      "export_part_types": {
+        "text": 10,
+        "step-start": 33,
+        "reasoning": 33,
+        "tool": 37,
+        "step-finish": 33
+      },
+      "export_bytes": 352916,
+      "events_complete": true,
+      "events_missing_steps": 0,
+      "events_missing_tool_calls": 0,
+      "run_dir": "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6721__r1"
+    },
+    {
+      "instance": "pydata__xarray-6721",
+      "repeat": 2,
+      "repo": "pydata/xarray",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M",
+      "vehicle": "opencode",
+      "opencode_version": "1.18.31",
+      "model": "openrouter/qwen/qwen3.8-27b",
+      "model_config": {
+        "configured": true,
+        "limit_output": 235929,
+        "limit_context": 262144,
+        "options": {
+          "provider": {
+            "order": [
+              "DeepInfra"
+            ],
+            "quantizations": [
+              "bf16"
+            ],
+            "allow_fallbacks": false
+          }
+        }
+      },
+      "endpoint": "openrouter",
+      "endpoint_selection": {
+        "request": "openrouter/qwen/qwen3.8-27b",
+        "exclusive": false,
+        "reason": "pinned by CT_OPENCODE_MODEL (remote: no local slot needed)",
+        "signals": null,
+        "decided_at": "2026-09-16T19:03:17.805Z"
+      },
+      "pass": true,
+      "f2p_pass": true,
+      "p2p_pass": true,
+      "grade_stage": "ok",
+      "grade_valid": true,
+      "f2p_failures": [],
+      "p2p_failures": [],
+      "p2p_graded_n": 1304,
+      "p2p_dataset_n": 1405,
+      "run_valid": true,
+      "scored": true,
+      "exit_code": 0,
+      "signal": null,
+      "timed_out": false,
+      "wall_seconds": 530,
+      "exit_outcome": "ok",
+      "killed_externally": false,
+      "other_opencode_runs_at_start": 6,
+      "other_opencode_runs_peak": 6,
+      "ended_at": "2026-09-16T19:12:07.444Z",
+      "last_event_type": "step_finish",
+      "error": null,
+      "steps": 24,
+      "tool_calls": 33,
+      "tools_by_name": {
+        "grep": 8,
+        "bash": 12,
+        "read": 12,
+        "edit": 1
+      },
+      "tool_errors": 0,
+      "files_edited": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6721__r2/workspace/xarray/core/common.py"
+      ],
+      "files_read": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6721__r2/workspace/xarray/core/common.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6721__r2/workspace/xarray/core/variable.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6721__r2/workspace/xarray/core/dataset.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6721__r2/workspace/xarray/core/dataarray.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6721__r2/workspace/xarray/core/pycompat.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6721__r2/workspace/xarray/core/utils.py"
+      ],
+      "reads": 12,
+      "diff_empty": false,
+      "agent_diff": "diff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/pydata__xarray-6721/xarray/core/common.py /mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6721__r2/workspace/xarray/core/common.py\n--- /mnt/data/ctx-swebench/wscache/pydata__xarray-6721/xarray/core/common.py\t2022-06-25 06:00:50.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6721__r2/workspace/xarray/core/common.py\t2026-09-16 14:08:36.639410793 -0500\n@@ -2023,7 +2023,7 @@\n \n     chunks: dict[Any, tuple[int, ...]] = {}\n     for v in variables:\n-        if hasattr(v.data, \"chunks\"):\n+        if is_duck_dask_array(v._data):\n             for dim, c in v.chunksizes.items():\n                 if dim in chunks and c != chunks[dim]:\n                     raise ValueError(\n",
+      "tokens": {
+        "input": 84527,
+        "output": 7129,
+        "reasoning": 14222,
+        "cache_read": 756560,
+        "cache_write": 0
+      },
+      "peak_prompt_tokens": 49302,
+      "first_step_prompt_tokens": 12455,
+      "cost_reported": 0.186018,
+      "cost_list_price": 0.234438,
+      "events": 89,
+      "events_unparseable": 0,
+      "session_id": "ses_f5465e449ffemr1giFG6ioHM4C",
+      "export_ok": true,
+      "export_part_types": {
+        "text": 9,
+        "step-start": 24,
+        "reasoning": 24,
+        "tool": 33,
+        "step-finish": 24
+      },
+      "export_bytes": 250628,
+      "events_complete": true,
+      "events_missing_steps": 0,
+      "events_missing_tool_calls": 0,
+      "run_dir": "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6721__r2"
+    },
+    {
+      "instance": "pydata__xarray-6992",
+      "repeat": 0,
+      "repo": "pydata/xarray",
+      "difficulty": ">4 hours",
+      "stratum": "H",
+      "vehicle": "opencode",
+      "opencode_version": "1.18.31",
+      "model": "openrouter/qwen/qwen3.8-27b",
+      "model_config": {
+        "configured": true,
+        "limit_output": 235929,
+        "limit_context": 262144,
+        "options": {
+          "provider": {
+            "order": [
+              "DeepInfra"
+            ],
+            "quantizations": [
+              "bf16"
+            ],
+            "allow_fallbacks": false
+          }
+        }
+      },
+      "endpoint": "openrouter",
+      "endpoint_selection": {
+        "request": "openrouter/qwen/qwen3.8-27b",
+        "exclusive": false,
+        "reason": "pinned by CT_OPENCODE_MODEL (remote: no local slot needed)",
+        "signals": null,
+        "decided_at": "2026-09-16T19:12:33.526Z"
+      },
+      "pass": false,
+      "f2p_pass": false,
+      "p2p_pass": true,
+      "grade_stage": "ok",
+      "grade_valid": true,
+      "f2p_failures": [
+        "xarray/tests/test_dataarray.py::TestDataArray::test_reset_index [FAILED]",
+        "xarray/tests/test_dataset.py::TestDataset::test_reset_index [FAILED]",
+        "xarray/tests/test_dataset.py::TestDataset::test_reset_index_drop_dims [FAILED]",
+        "xarray/tests/test_dataset.py::TestDataset::test_reset_index_drop_convert[foo-False-dropped0-converted0-renamed0] [FAILED]",
+        "xarray/tests/test_dataset.py::TestDataset::test_reset_index_drop_convert[foo-True-dropped1-converted1-renamed1] [FAILED]",
+        "xarray/tests/test_dataset.py::TestDataset::test_reset_index_drop_convert[x-False-dropped2-converted2-renamed2] [FAILED]",
+        "xarray/tests/test_dataset.py::TestDataset::test_reset_index_drop_convert[x-True-dropped3-converted3-renamed3] [FAILED]",
+        "xarray/tests/test_dataset.py::TestDataset::test_reset_index_drop_convert[arg4-False-dropped4-converted4-renamed4] [FAILED]",
+        "xarray/tests/test_dataset.py::TestDataset::test_reset_index_drop_convert[arg5-True-dropped5-converted5-renamed5] [FAILED]",
+        "xarray/tests/test_dataset.py::TestDataset::test_reset_index_drop_convert[arg6-False-dropped6-converted6-renamed6] [FAILED]",
+        "xarray/tests/test_dataset.py::TestDataset::test_reset_index_drop_convert[arg7-True-dropped7-converted7-renamed7] [FAILED]",
+        "xarray/tests/test_groupby.py::test_groupby_drops_nans [FAILED]"
+      ],
+      "p2p_failures": [],
+      "p2p_graded_n": 902,
+      "p2p_dataset_n": 945,
+      "run_valid": true,
+      "scored": true,
+      "exit_code": 0,
+      "signal": null,
+      "timed_out": false,
+      "wall_seconds": 730,
+      "exit_outcome": "ok",
+      "killed_externally": false,
+      "other_opencode_runs_at_start": 6,
+      "other_opencode_runs_peak": 6,
+      "ended_at": "2026-09-16T19:24:43.219Z",
+      "last_event_type": "step_finish",
+      "error": null,
+      "steps": 37,
+      "tool_calls": 37,
+      "tools_by_name": {
+        "bash": 23,
+        "grep": 1,
+        "read": 10,
+        "edit": 3
+      },
+      "tool_errors": 0,
+      "files_edited": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6992__r0/workspace/xarray/core/dataset.py"
+      ],
+      "files_read": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6992__r0/workspace/xarray/core/dataset.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6992__r0/workspace/xarray/tests/test_dataset.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6992__r0/workspace/xarray/tests/test_dataarray.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6992__r0/workspace/xarray/core/dataarray.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6992__r0/workspace/xarray/core/coordinates.py"
+      ],
+      "reads": 10,
+      "diff_empty": false,
+      "agent_diff": "diff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/pydata__xarray-6992/xarray/core/dataset.py /mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6992__r0/workspace/xarray/core/dataset.py\n--- /mnt/data/ctx-swebench/wscache/pydata__xarray-6992/xarray/core/dataset.py\t2022-09-27 04:33:40.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6992__r0/workspace/xarray/core/dataset.py\t2026-09-16 14:21:23.782683154 -0500\n@@ -365,7 +365,9 @@\n         )\n \n     def __len__(self) -> int:\n-        return len(self._dataset._variables) - len(self._dataset._coord_names)\n+        return len(self._dataset._variables) - len(\n+            self._dataset._coord_names & self._dataset._variables.keys()\n+        )\n \n     def __contains__(self, key: Hashable) -> bool:\n         return key in self._dataset._variables and key not in self._dataset._coord_names\n@@ -4177,7 +4179,7 @@\n         }\n         variables.update(new_variables)\n \n-        coord_names = set(new_variables) | self._coord_names\n+        coord_names = set(new_variables) | (self._coord_names - set(drop_variables))\n \n         return self._replace(variables, coord_names=coord_names, indexes=indexes)\n \n",
+      "tokens": {
+        "input": 167880,
+        "output": 5629,
+        "reasoning": 21839,
+        "cache_read": 1201872,
+        "cache_write": 0
+      },
+      "peak_prompt_tokens": 55167,
+      "first_step_prompt_tokens": 9864,
+      "cost_reported": 0.286251,
+      "cost_list_price": 0.36317,
+      "events": 117,
+      "events_unparseable": 0,
+      "session_id": "ses_f545d6979ffe1H7572c3FxbxUW",
+      "export_ok": true,
+      "export_part_types": {
+        "text": 7,
+        "step-start": 37,
+        "reasoning": 37,
+        "tool": 37,
+        "step-finish": 37
+      },
+      "export_bytes": 327338,
+      "events_complete": true,
+      "events_missing_steps": 0,
+      "events_missing_tool_calls": 0,
+      "run_dir": "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6992__r0"
+    },
+    {
+      "instance": "pydata__xarray-6992",
+      "repeat": 1,
+      "repo": "pydata/xarray",
+      "difficulty": ">4 hours",
+      "stratum": "H",
+      "vehicle": "opencode",
+      "opencode_version": "1.18.31",
+      "model": "openrouter/qwen/qwen3.8-27b",
+      "model_config": {
+        "configured": true,
+        "limit_output": 235929,
+        "limit_context": 262144,
+        "options": {
+          "provider": {
+            "order": [
+              "DeepInfra"
+            ],
+            "quantizations": [
+              "bf16"
+            ],
+            "allow_fallbacks": false
+          }
+        }
+      },
+      "endpoint": "openrouter",
+      "endpoint_selection": {
+        "request": "openrouter/qwen/qwen3.8-27b",
+        "exclusive": false,
+        "reason": "pinned by CT_OPENCODE_MODEL (remote: no local slot needed)",
+        "signals": null,
+        "decided_at": "2026-09-16T19:24:53.596Z"
+      },
+      "pass": true,
+      "f2p_pass": true,
+      "p2p_pass": true,
+      "grade_stage": "ok",
+      "grade_valid": true,
+      "f2p_failures": [],
+      "p2p_failures": [],
+      "p2p_graded_n": 902,
+      "p2p_dataset_n": 945,
+      "run_valid": true,
+      "scored": true,
+      "exit_code": 0,
+      "signal": null,
+      "timed_out": false,
+      "wall_seconds": 875,
+      "exit_outcome": "ok",
+      "killed_externally": false,
+      "other_opencode_runs_at_start": 6,
+      "other_opencode_runs_peak": 6,
+      "ended_at": "2026-09-16T19:39:28.856Z",
+      "last_event_type": "step_finish",
+      "error": null,
+      "steps": 47,
+      "tool_calls": 51,
+      "tools_by_name": {
+        "read": 11,
+        "bash": 37,
+        "grep": 3
+      },
+      "tool_errors": 0,
+      "files_edited": [],
+      "files_read": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6992__r1/workspace/xarray/core/dataset.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6992__r1/workspace/xarray/core/indexes.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6992__r1/workspace/xarray/tests/test_dataset.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6992__r1/workspace/doc/whats-new.rst",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6992__r1/workspace/xarray/core/dataarray.py"
+      ],
+      "reads": 11,
+      "diff_empty": false,
+      "agent_diff": "diff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/pydata__xarray-6992/xarray/core/dataset.py /mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6992__r1/workspace/xarray/core/dataset.py\n--- /mnt/data/ctx-swebench/wscache/pydata__xarray-6992/xarray/core/dataset.py\t2022-09-27 04:33:40.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6992__r1/workspace/xarray/core/dataset.py\t2026-09-16 14:37:54.029775565 -0500\n@@ -4026,10 +4026,11 @@\n         dim_coords = either_dict_or_kwargs(indexes, indexes_kwargs, \"set_index\")\n \n         new_indexes: dict[Hashable, Index] = {}\n-        new_variables: dict[Hashable, IndexVariable] = {}\n-        maybe_drop_indexes: list[Hashable] = []\n-        drop_variables: list[Hashable] = []\n+        new_variables: dict[Hashable, Variable] = {}\n+        drop_indexes: set[Hashable] = set()\n+        drop_variables: set[Hashable] = set()\n         replace_dims: dict[Hashable, Hashable] = {}\n+        all_var_names: set[Hashable] = set()\n \n         for dim, _var_names in dim_coords.items():\n             if isinstance(_var_names, str) or not isinstance(_var_names, Sequence):\n@@ -4044,16 +4045,19 @@\n                     + \" variable(s) do not exist\"\n                 )\n \n-            current_coord_names = self.xindexes.get_all_coords(dim, errors=\"ignore\")\n+            all_var_names.update(var_names)\n+            drop_variables.update(var_names)\n \n-            # drop any pre-existing index involved\n-            maybe_drop_indexes += list(current_coord_names) + var_names\n+            # drop any pre-existing index involved and its corresponding coordinates\n+            index_coord_names = self.xindexes.get_all_coords(dim, errors=\"ignore\")\n+            all_index_coord_names = set(index_coord_names)\n             for k in var_names:\n-                maybe_drop_indexes += list(\n+                all_index_coord_names.update(\n                     self.xindexes.get_all_coords(k, errors=\"ignore\")\n                 )\n \n-            drop_variables += var_names\n+            drop_indexes.update(all_index_coord_names)\n+            drop_variables.update(all_index_coord_names)\n \n             if len(var_names) == 1 and (not append or dim not in self._indexes):\n                 var_name = var_names[0]\n@@ -4065,10 +4069,14 @@\n                     )\n                 idx = PandasIndex.from_variables({dim: var})\n                 idx_vars = idx.create_variables({var_name: var})\n+\n+                # trick to preserve coordinate order in this case\n+                if dim in self._coord_names:\n+                    drop_variables.remove(dim)\n             else:\n                 if append:\n                     current_variables = {\n-                        k: self._variables[k] for k in current_coord_names\n+                        k: self._variables[k] for k in index_coord_names\n                     }\n                 else:\n                     current_variables = {}\n@@ -4083,8 +4091,17 @@\n             new_indexes.update({k: idx for k in idx_vars})\n             new_variables.update(idx_vars)\n \n+        # re-add deindexed coordinates (convert to base variables)\n+        for k in drop_variables:\n+            if (\n+                k not in new_variables\n+                and k not in all_var_names\n+                and k in self._coord_names\n+            ):\n+                new_variables[k] = self._variables[k].to_base_variable()\n+\n         indexes_: dict[Any, Index] = {\n-            k: v for k, v in self._indexes.items() if k not in maybe_drop_indexes\n+            k: v for k, v in self._indexes.items() if k not in drop_indexes\n         }\n         indexes_.update(new_indexes)\n \n@@ -4099,7 +4116,7 @@\n                 new_dims = [replace_dims.get(d, d) for d in v.dims]\n                 variables[k] = v._replace(dims=new_dims)\n \n-        coord_names = self._coord_names - set(drop_variables) | set(new_variables)\n+        coord_names = self._coord_names - drop_variables | set(new_variables)\n \n         return self._replace_with_new_dims(\n             variables, coord_names=coord_names, indexes=indexes_\n@@ -4139,35 +4156,60 @@\n                 f\"{tuple(invalid_coords)} are not coordinates with an index\"\n             )\n \n-        drop_indexes: list[Hashable] = []\n-        drop_variables: list[Hashable] = []\n-        replaced_indexes: list[PandasMultiIndex] = []\n+        drop_indexes: set[Hashable] = set()\n+        drop_variables: set[Hashable] = set()\n+        seen: set[Index] = set()\n         new_indexes: dict[Hashable, Index] = {}\n-        new_variables: dict[Hashable, IndexVariable] = {}\n+        new_variables: dict[Hashable, Variable] = {}\n+\n+        def drop_or_convert(var_names):\n+            if drop:\n+                drop_variables.update(var_names)\n+            else:\n+                base_vars = {\n+                    k: self._variables[k].to_base_variable() for k in var_names\n+                }\n+                new_variables.update(base_vars)\n \n         for name in dims_or_levels:\n             index = self._indexes[name]\n-            drop_indexes += list(self.xindexes.get_all_coords(name))\n-\n-            if isinstance(index, PandasMultiIndex) and name not in self.dims:\n-                # special case for pd.MultiIndex (name is an index level):\n-                # replace by a new index with dropped level(s) instead of just drop the index\n-                if index not in replaced_indexes:\n-                    level_names = index.index.names\n-                    level_vars = {\n-                        k: self._variables[k]\n-                        for k in level_names\n-                        if k not in dims_or_levels\n-                    }\n-                    if level_vars:\n-                        idx = index.keep_levels(level_vars)\n-                        idx_vars = idx.create_variables(level_vars)\n-                        new_indexes.update({k: idx for k in idx_vars})\n-                        new_variables.update",
+      "tokens": {
+        "input": 242547,
+        "output": 7459,
+        "reasoning": 22526,
+        "cache_read": 1844752,
+        "cache_write": 0
+      },
+      "peak_prompt_tokens": 66401,
+      "first_step_prompt_tokens": 9862,
+      "cost_reported": 0.40508,
+      "cost_list_price": 0.523144,
+      "events": 165,
+      "events_unparseable": 0,
+      "session_id": "ses_f54521e92ffefJ7ETKtpuXEG3v",
+      "export_ok": true,
+      "export_part_types": {
+        "text": 21,
+        "step-start": 47,
+        "reasoning": 47,
+        "tool": 51,
+        "step-finish": 47
+      },
+      "export_bytes": 431601,
+      "events_complete": true,
+      "events_missing_steps": 0,
+      "events_missing_tool_calls": 0,
+      "run_dir": "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6992__r1"
+    },
+    {
+      "instance": "pydata__xarray-6992",
+      "repeat": 2,
+      "repo": "pydata/xarray",
+      "difficulty": ">4 hours",
+      "stratum": "H",
+      "vehicle": "opencode",
+      "opencode_version": "1.18.31",
+      "model": "openrouter/qwen/qwen3.8-27b",
+      "model_config": {
+        "configured": true,
+        "limit_output": 235929,
+        "limit_context": 262144,
+        "options": {
+          "provider": {
+            "order": [
+              "DeepInfra"
+            ],
+            "quantizations": [
+              "bf16"
+            ],
+            "allow_fallbacks": false
+          }
+        }
+      },
+      "endpoint": "openrouter",
+      "endpoint_selection": {
+        "request": "openrouter/qwen/qwen3.8-27b",
+        "exclusive": false,
+        "reason": "pinned by CT_OPENCODE_MODEL (remote: no local slot needed)",
+        "signals": null,
+        "decided_at": "2026-09-16T19:39:38.456Z"
+      },
+      "pass": false,
+      "f2p_pass": false,
+      "p2p_pass": true,
+      "grade_stage": "ok",
+      "grade_valid": true,
+      "f2p_failures": [
+        "xarray/tests/test_dataarray.py::TestDataArray::test_reset_index [FAILED]",
+        "xarray/tests/test_dataset.py::TestDataset::test_reset_index [FAILED]",
+        "xarray/tests/test_dataset.py::TestDataset::test_reset_index_drop_dims [FAILED]",
+        "xarray/tests/test_dataset.py::TestDataset::test_reset_index_drop_convert[foo-False-dropped0-converted0-renamed0] [FAILED]",
+        "xarray/tests/test_dataset.py::TestDataset::test_reset_index_drop_convert[foo-True-dropped1-converted1-renamed1] [FAILED]",
+        "xarray/tests/test_dataset.py::TestDataset::test_reset_index_drop_convert[x-False-dropped2-converted2-renamed2] [FAILED]",
+        "xarray/tests/test_dataset.py::TestDataset::test_reset_index_drop_convert[x-True-dropped3-converted3-renamed3] [FAILED]",
+        "xarray/tests/test_dataset.py::TestDataset::test_reset_index_drop_convert[arg4-False-dropped4-converted4-renamed4] [FAILED]",
+        "xarray/tests/test_dataset.py::TestDataset::test_reset_index_drop_convert[arg5-True-dropped5-converted5-renamed5] [FAILED]",
+        "xarray/tests/test_dataset.py::TestDataset::test_reset_index_drop_convert[arg6-False-dropped6-converted6-renamed6] [FAILED]",
+        "xarray/tests/test_dataset.py::TestDataset::test_reset_index_drop_convert[arg7-True-dropped7-converted7-renamed7] [FAILED]",
+        "xarray/tests/test_groupby.py::test_groupby_drops_nans [FAILED]"
+      ],
+      "p2p_failures": [],
+      "p2p_graded_n": 902,
+      "p2p_dataset_n": 945,
+      "run_valid": true,
+      "scored": true,
+      "exit_code": 0,
+      "signal": null,
+      "timed_out": false,
+      "wall_seconds": 225,
+      "exit_outcome": "ok",
+      "killed_externally": false,
+      "other_opencode_runs_at_start": 6,
+      "other_opencode_runs_peak": 6,
+      "ended_at": "2026-09-16T19:43:23.727Z",
+      "last_event_type": "step_finish",
+      "error": null,
+      "steps": 17,
+      "tool_calls": 22,
+      "tools_by_name": {
+        "bash": 9,
+        "grep": 7,
+        "read": 4,
+        "edit": 2
+      },
+      "tool_errors": 0,
+      "files_edited": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6992__r2/workspace/xarray/core/dataset.py"
+      ],
+      "files_read": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6992__r2/workspace/xarray/core/dataset.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6992__r2/workspace/xarray/core/dataarray.py"
+      ],
+      "reads": 4,
+      "diff_empty": false,
+      "agent_diff": "diff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/pydata__xarray-6992/xarray/core/dataset.py /mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6992__r2/workspace/xarray/core/dataset.py\n--- /mnt/data/ctx-swebench/wscache/pydata__xarray-6992/xarray/core/dataset.py\t2022-09-27 04:33:40.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6992__r2/workspace/xarray/core/dataset.py\t2026-09-16 14:42:21.083918016 -0500\n@@ -365,7 +365,7 @@\n         )\n \n     def __len__(self) -> int:\n-        return len(self._dataset._variables) - len(self._dataset._coord_names)\n+        return len(list(iter(self)))\n \n     def __contains__(self, key: Hashable) -> bool:\n         return key in self._dataset._variables and key not in self._dataset._coord_names\n@@ -4177,7 +4177,7 @@\n         }\n         variables.update(new_variables)\n \n-        coord_names = set(new_variables) | self._coord_names\n+        coord_names = set(new_variables) | (self._coord_names - set(drop_variables))\n \n         return self._replace(variables, coord_names=coord_names, indexes=indexes)\n \n",
+      "tokens": {
+        "input": 28124,
+        "output": 3372,
+        "reasoning": 8075,
+        "cache_read": 366128,
+        "cache_write": 0
+      },
+      "peak_prompt_tokens": 31677,
+      "first_step_prompt_tokens": 9862,
+      "cost_reported": 0.090128,
+      "cost_list_price": 0.11356,
+      "events": 64,
+      "events_unparseable": 0,
+      "session_id": "ses_f54449dfbffe2aERW9TnAQI37n",
+      "export_ok": true,
+      "export_part_types": {
+        "text": 9,
+        "step-start": 17,
+        "reasoning": 17,
+        "tool": 22,
+        "step-finish": 17
+      },
+      "export_bytes": 162187,
+      "events_complete": true,
+      "events_missing_steps": 0,
+      "events_missing_tool_calls": 0,
+      "run_dir": "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/pydata__xarray-6992__r2"
+    },
+    {
+      "instance": "django__django-14034",
+      "repeat": 0,
+      "repo": "django/django",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M",
+      "vehicle": "opencode",
+      "opencode_version": "1.18.31",
+      "model": "openrouter/qwen/qwen3.8-27b",
+      "model_config": {
+        "configured": true,
+        "limit_output": 235929,
+        "limit_context": 262144,
+        "options": {
+          "provider": {
+            "order": [
+              "DeepInfra"
+            ],
+            "quantizations": [
+              "bf16"
+            ],
+            "allow_fallbacks": false
+          }
+        }
+      },
+      "endpoint": "openrouter",
+      "endpoint_selection": {
+        "request": "openrouter/qwen/qwen3.8-27b",
+        "exclusive": false,
+        "reason": "pinned by CT_OPENCODE_MODEL (remote: no local slot needed)",
+        "signals": null,
+        "decided_at": "2026-09-16T19:43:34.829Z"
+      },
+      "pass": true,
+      "f2p_pass": true,
+      "p2p_pass": true,
+      "grade_stage": "ok",
+      "grade_valid": true,
+      "f2p_failures": [],
+      "p2p_failures": [],
+      "p2p_graded_n": 12,
+      "p2p_dataset_n": 12,
+      "run_valid": true,
+      "scored": true,
+      "exit_code": 0,
+      "signal": null,
+      "timed_out": false,
+      "wall_seconds": 3287,
+      "exit_outcome": "ok",
+      "killed_externally": false,
+      "other_opencode_runs_at_start": 6,
+      "other_opencode_runs_peak": 6,
+      "ended_at": "2026-09-16T20:38:21.589Z",
+      "last_event_type": "step_finish",
+      "error": null,
+      "steps": 90,
+      "tool_calls": 89,
+      "tools_by_name": {
+        "bash": 69,
+        "grep": 2,
+        "read": 15,
+        "edit": 3
+      },
+      "tool_errors": 1,
+      "files_edited": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r0/workspace/django/forms/fields.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r0/workspace/django/forms/widgets.py"
+      ],
+      "files_read": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r0/workspace/django/forms/fields.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r0/workspace/tests/forms_tests/field_tests/test_multivaluefield.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r0/workspace/tests/forms_tests/tests/test_forms.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r0/workspace/django/contrib/postgres/forms/ranges.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r0/workspace/tests/postgres_tests/test_ranges.py",
+        "/mnt/data/ctx-swebench/runs/verify-logs/verify-django__django-14034.log",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r0/workspace/django/forms/widgets.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r0/workspace/django/forms/boundfield.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r0/workspace/tests/forms_tests/widget_tests/test_multiwidget.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r0/workspace/django/contrib/admin/widgets.py"
+      ],
+      "reads": 15,
+      "diff_empty": false,
+      "agent_diff": "diff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/django__django-14034/django/forms/fields.py /mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r0/workspace/django/forms/fields.py\n--- /mnt/data/ctx-swebench/wscache/django__django-14034/django/forms/fields.py\t2021-08-04 08:18:00.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r0/workspace/django/forms/fields.py\t2026-09-16 15:25:37.134627627 -0500\n@@ -21,7 +21,7 @@\n from django.forms.widgets import (\n     FILE_INPUT_CONTRADICTION, CheckboxInput, ClearableFileInput, DateInput,\n     DateTimeInput, EmailInput, FileInput, HiddenInput, MultipleHiddenInput,\n-    NullBooleanSelect, NumberInput, Select, SelectMultiple,\n+    MultiWidget, NullBooleanSelect, NumberInput, Select, SelectMultiple,\n     SplitDateTimeWidget, SplitHiddenDateTimeWidget, Textarea, TextInput,\n     TimeInput, URLInput,\n )\n@@ -999,6 +999,12 @@\n                 # by those individual fields.\n                 f.required = False\n         self.fields = fields\n+        if not self.require_all_fields and isinstance(self.widget, MultiWidget):\n+            # Let the subwidgets of a MultiWidget know whether they should\n+            # render the 'required' attribute, according to the required\n+            # status of the corresponding subfields.\n+            for field, widget in zip(fields, self.widget.widgets):\n+                widget.attrs['required'] = field.required\n \n     def __deepcopy__(self, memo):\n         result = super().__deepcopy__(memo)\ndiff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/django__django-14034/django/forms/widgets.py /mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r0/workspace/django/forms/widgets.py\n--- /mnt/data/ctx-swebench/wscache/django__django-14034/django/forms/widgets.py\t2021-08-04 08:18:00.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r0/workspace/django/forms/widgets.py\t2026-09-16 15:26:07.940875510 -0500\n@@ -844,6 +844,11 @@\n                 widget_attrs['id'] = '%s_%s' % (id_, i)\n             else:\n                 widget_attrs = final_attrs\n+            if 'required' in final_attrs and 'required' in widget.attrs:\n+                # A subwidget may override the 'required' attribute inherited\n+                # from the MultiWidget (e.g. when a MultiValueField with\n+                # require_all_fields=False has optional subfields).\n+                widget_attrs['required'] = widget.attrs['required']\n             subwidgets.append(widget.get_context(widget_name, widget_value, widget_attrs)['widget'])\n         context['widget']['subwidgets'] = subwidgets\n         return context\n",
+      "tokens": {
+        "input": 1575187,
+        "output": 9515,
+        "reasoning": 92883,
+        "cache_read": 7301392,
+        "cache_write": 0
+      },
+      "peak_prompt_tokens": 165084,
+      "first_step_prompt_tokens": 9769,
+      "cost_reported": 1.693414,
+      "cost_list_price": 2.160703,
+      "events": 304,
+      "events_unparseable": 0,
+      "session_id": "ses_f544102e1ffez19kByBecjS57g",
+      "export_ok": true,
+      "export_part_types": {
+        "text": 36,
+        "step-start": 90,
+        "reasoning": 90,
+        "tool": 89,
+        "step-finish": 90
+      },
+      "export_bytes": 1061549,
+      "events_complete": true,
+      "events_missing_steps": 0,
+      "events_missing_tool_calls": 0,
+      "run_dir": "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r0"
+    },
+    {
+      "instance": "django__django-14034",
+      "repeat": 1,
+      "repo": "django/django",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M",
+      "vehicle": "opencode",
+      "opencode_version": "1.18.31",
+      "model": "openrouter/qwen/qwen3.8-27b",
+      "model_config": {
+        "configured": true,
+        "limit_output": 235929,
+        "limit_context": 262144,
+        "options": {
+          "provider": {
+            "order": [
+              "DeepInfra"
+            ],
+            "quantizations": [
+              "bf16"
+            ],
+            "allow_fallbacks": false
+          }
+        }
+      },
+      "endpoint": "openrouter",
+      "endpoint_selection": {
+        "request": "openrouter/qwen/qwen3.8-27b",
+        "exclusive": false,
+        "reason": "pinned by CT_OPENCODE_MODEL (remote: no local slot needed)",
+        "signals": null,
+        "decided_at": "2026-09-16T20:38:23.604Z"
+      },
+      "pass": true,
+      "f2p_pass": true,
+      "p2p_pass": true,
+      "grade_stage": "ok",
+      "grade_valid": true,
+      "f2p_failures": [],
+      "p2p_failures": [],
+      "p2p_graded_n": 12,
+      "p2p_dataset_n": 12,
+      "run_valid": true,
+      "scored": true,
+      "exit_code": 0,
+      "signal": null,
+      "timed_out": false,
+      "wall_seconds": 1423,
+      "exit_outcome": "ok",
+      "killed_externally": false,
+      "other_opencode_runs_at_start": 6,
+      "other_opencode_runs_peak": 6,
+      "ended_at": "2026-09-16T21:02:06.790Z",
+      "last_event_type": "step_finish",
+      "error": null,
+      "steps": 54,
+      "tool_calls": 53,
+      "tools_by_name": {
+        "bash": 23,
+        "grep": 11,
+        "read": 17,
+        "edit": 2
+      },
+      "tool_errors": 0,
+      "files_edited": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r1/workspace/django/forms/boundfield.py"
+      ],
+      "files_read": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r1/workspace/django/forms/fields.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r1/workspace/tests/forms_tests/field_tests/test_multivaluefield.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r1/workspace/tests/forms_tests/tests/test_forms.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r1/workspace/django/forms/widgets.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r1/workspace/docs/ref/forms/fields.txt",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r1/workspace/django/forms/boundfield.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r1/workspace/django/test/testcases.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r1/workspace/django/test/html.py"
+      ],
+      "reads": 17,
+      "diff_empty": false,
+      "agent_diff": "diff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/django__django-14034/django/forms/boundfield.py /mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r1/workspace/django/forms/boundfield.py\n--- /mnt/data/ctx-swebench/wscache/django__django-14034/django/forms/boundfield.py\t2021-08-04 08:18:00.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r1/workspace/django/forms/boundfield.py\t2026-09-16 15:57:41.216211054 -0500\n@@ -2,7 +2,7 @@\n \n from django.core.exceptions import ValidationError\n from django.forms.utils import flatatt, pretty_name\n-from django.forms.widgets import Textarea, TextInput\n+from django.forms.widgets import MultiWidget, Textarea, TextInput\n from django.utils.functional import cached_property\n from django.utils.html import conditional_escape, format_html, html_safe\n from django.utils.safestring import mark_safe\n@@ -233,7 +233,17 @@\n         widget = widget or self.field.widget\n         attrs = dict(attrs)  # Copy attrs to avoid modifying the argument.\n         if widget.use_required_attribute(self.initial) and self.field.required and self.form.use_required_attribute:\n-            attrs['required'] = True\n+            # MultiValueField has require_all_fields: if False, fall back\n+            # on subfields.\n+            if (\n+                hasattr(self.field, 'require_all_fields') and\n+                not self.field.require_all_fields and\n+                isinstance(self.field.widget, MultiWidget)\n+            ):\n+                for subfield, subwidget in zip(self.field.fields, widget.widgets):\n+                    subwidget.attrs['required'] = subwidget.use_required_attribute(self.initial) and subfield.required\n+            else:\n+                attrs['required'] = True\n         if self.field.disabled:\n             attrs['disabled'] = True\n         return attrs\n",
+      "tokens": {
+        "input": 360861,
+        "output": 5178,
+        "reasoning": 58726,
+        "cache_read": 2779280,
+        "cache_write": 0
+      },
+      "peak_prompt_tokens": 99018,
+      "first_step_prompt_tokens": 9767,
+      "cost_reported": 0.657071,
+      "cost_list_price": 0.834945,
+      "events": 181,
+      "events_unparseable": 0,
+      "session_id": "ses_f540ed3a7ffeIr256IU3sKR9xm",
+      "export_ok": true,
+      "export_part_types": {
+        "text": 21,
+        "step-start": 54,
+        "reasoning": 54,
+        "tool": 53,
+        "step-finish": 54
+      },
+      "export_bytes": 602341,
+      "events_complete": true,
+      "events_missing_steps": 0,
+      "events_missing_tool_calls": 0,
+      "run_dir": "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r1"
+    },
+    {
+      "instance": "django__django-14034",
+      "repeat": 2,
+      "repo": "django/django",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M",
+      "vehicle": "opencode",
+      "opencode_version": "1.18.31",
+      "model": "openrouter/qwen/qwen3.8-27b",
+      "model_config": {
+        "configured": true,
+        "limit_output": 235929,
+        "limit_context": 262144,
+        "options": {
+          "provider": {
+            "order": [
+              "DeepInfra"
+            ],
+            "quantizations": [
+              "bf16"
+            ],
+            "allow_fallbacks": false
+          }
+        }
+      },
+      "endpoint": "openrouter",
+      "endpoint_selection": {
+        "request": "openrouter/qwen/qwen3.8-27b",
+        "exclusive": false,
+        "reason": "pinned by CT_OPENCODE_MODEL (remote: no local slot needed)",
+        "signals": null,
+        "decided_at": "2026-09-16T21:02:08.796Z"
+      },
+      "pass": true,
+      "f2p_pass": true,
+      "p2p_pass": true,
+      "grade_stage": "ok",
+      "grade_valid": true,
+      "f2p_failures": [],
+      "p2p_failures": [],
+      "p2p_graded_n": 12,
+      "p2p_dataset_n": 12,
+      "run_valid": true,
+      "scored": true,
+      "exit_code": 0,
+      "signal": null,
+      "timed_out": false,
+      "wall_seconds": 724,
+      "exit_outcome": "ok",
+      "killed_externally": false,
+      "other_opencode_runs_at_start": 4,
+      "other_opencode_runs_peak": 4,
+      "ended_at": "2026-09-16T21:14:13.211Z",
+      "last_event_type": "step_finish",
+      "error": null,
+      "steps": 33,
+      "tool_calls": 37,
+      "tools_by_name": {
+        "bash": 22,
+        "glob": 2,
+        "grep": 4,
+        "read": 7,
+        "edit": 2
+      },
+      "tool_errors": 0,
+      "files_edited": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r2/workspace/django/forms/boundfield.py"
+      ],
+      "files_read": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r2/workspace/django/forms/fields.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r2/workspace/tests/forms_tests/tests/test_forms.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r2/workspace/tests/forms_tests/field_tests/test_multivaluefield.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r2/workspace/django/forms/boundfield.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r2/workspace/django/forms/widgets.py"
+      ],
+      "reads": 7,
+      "diff_empty": false,
+      "agent_diff": "diff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/django__django-14034/django/forms/boundfield.py /mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r2/workspace/django/forms/boundfield.py\n--- /mnt/data/ctx-swebench/wscache/django__django-14034/django/forms/boundfield.py\t2021-08-04 08:18:00.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r2/workspace/django/forms/boundfield.py\t2026-09-16 16:12:13.986292810 -0500\n@@ -2,7 +2,7 @@\n \n from django.core.exceptions import ValidationError\n from django.forms.utils import flatatt, pretty_name\n-from django.forms.widgets import Textarea, TextInput\n+from django.forms.widgets import MultiWidget, Textarea, TextInput\n from django.utils.functional import cached_property\n from django.utils.html import conditional_escape, format_html, html_safe\n from django.utils.safestring import mark_safe\n@@ -233,7 +233,17 @@\n         widget = widget or self.field.widget\n         attrs = dict(attrs)  # Copy attrs to avoid modifying the argument.\n         if widget.use_required_attribute(self.initial) and self.field.required and self.form.use_required_attribute:\n-            attrs['required'] = True\n+            # MultiValueField has require_all_fields: if False, fall back\n+            # on subfields.\n+            if (\n+                hasattr(self.field, 'require_all_fields') and\n+                not self.field.require_all_fields and\n+                isinstance(self.field.widget, MultiWidget)\n+            ):\n+                for subfield, subwidget in zip(self.field.fields, widget.widgets):\n+                    subwidget.attrs['required'] = subwidget.use_required_attribute(self.initial) and subfield.required\n+            else:\n+                attrs['required'] = True\n         if self.field.disabled:\n             attrs['disabled'] = True\n         return attrs\n",
+      "tokens": {
+        "input": 102782,
+        "output": 4183,
+        "reasoning": 23847,
+        "cache_read": 1186976,
+        "cache_write": 0
+      },
+      "peak_prompt_tokens": 56874,
+      "first_step_prompt_tokens": 9767,
+      "cost_reported": 0.271518,
+      "cost_list_price": 0.347485,
+      "events": 111,
+      "events_unparseable": 0,
+      "session_id": "ses_f53f91476ffexzO6OpAbE60oKr",
+      "export_ok": true,
+      "export_part_types": {
+        "text": 9,
+        "step-start": 33,
+        "reasoning": 33,
+        "tool": 37,
+        "step-finish": 33
+      },
+      "export_bytes": 355690,
+      "events_complete": true,
+      "events_missing_steps": 0,
+      "events_missing_tool_calls": 0,
+      "run_dir": "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-14034__r2"
+    },
+    {
+      "instance": "django__django-11138",
+      "repeat": 0,
+      "repo": "django/django",
+      "difficulty": "1-4 hours",
+      "stratum": "H",
+      "vehicle": "opencode",
+      "opencode_version": "1.18.31",
+      "model": "openrouter/qwen/qwen3.8-27b",
+      "model_config": {
+        "configured": true,
+        "limit_output": 235929,
+        "limit_context": 262144,
+        "options": {
+          "provider": {
+            "order": [
+              "DeepInfra"
+            ],
+            "quantizations": [
+              "bf16"
+            ],
+            "allow_fallbacks": false
+          }
+        }
+      },
+      "endpoint": "openrouter",
+      "endpoint_selection": {
+        "request": "openrouter/qwen/qwen3.8-27b",
+        "exclusive": false,
+        "reason": "pinned by CT_OPENCODE_MODEL (remote: no local slot needed)",
+        "signals": null,
+        "decided_at": "2026-09-16T21:14:15.332Z"
+      },
+      "pass": true,
+      "f2p_pass": true,
+      "p2p_pass": true,
+      "grade_stage": "ok",
+      "grade_valid": true,
+      "f2p_failures": [],
+      "p2p_failures": [],
+      "p2p_graded_n": 73,
+      "p2p_dataset_n": 73,
+      "run_valid": false,
+      "scored": false,
+      "exit_code": null,
+      "signal": "SIGKILL",
+      "timed_out": true,
+      "wall_seconds": 3600,
+      "exit_outcome": "timeout",
+      "killed_externally": false,
+      "other_opencode_runs_at_start": 4,
+      "other_opencode_runs_peak": 4,
+      "ended_at": "2026-09-16T22:14:15.453Z",
+      "last_event_type": "step_start",
+      "error": "timeout after 3600s",
+      "steps": 77,
+      "tool_calls": 93,
+      "tools_by_name": {
+        "bash": 37,
+        "glob": 2,
+        "read": 22,
+        "grep": 14,
+        "write": 5,
+        "edit": 13
+      },
+      "tool_errors": 1,
+      "files_edited": [
+        "/tmp/opencode/repro.py",
+        "/tmp/opencode/repro_models/models.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r0/workspace/django/db/backends/mysql/operations.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r0/workspace/django/db/backends/oracle/operations.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r0/workspace/django/db/backends/sqlite3/operations.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r0/workspace/django/db/backends/sqlite3/base.py",
+        "/tmp/opencode/verify.py"
+      ],
+      "files_read": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r0/workspace/django/db/backends/mysql/operations.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r0/workspace/django/db/backends/sqlite3/operations.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r0/workspace/django/db/backends/oracle/operations.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r0/workspace/django/db/models/functions/datetime.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r0/workspace/django/db/backends/base/base.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r0/workspace/django/db/backends/sqlite3/base.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r0/workspace/django/utils/timezone.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r0/workspace/django/db/backends/sqlite3/utils.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r0/workspace/django/db/backends/utils.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r0/workspace/tests/model_fields/test_datetimefield.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r0/workspace/tests/timezones/tests.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r0/workspace/tests/db_functions/datetime/test_extract_trunc.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r0/workspace/django/db/models/fields/__init__.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r0/workspace/tests/timezones/models.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r0/workspace/django/db/backends/postgresql/operations.py"
+      ],
+      "reads": 22,
+      "diff_empty": false,
+      "agent_diff": "diff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/django__django-11138/django/db/backends/mysql/operations.py /mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r0/workspace/django/db/backends/mysql/operations.py\n--- /mnt/data/ctx-swebench/wscache/django__django-11138/django/db/backends/mysql/operations.py\t2019-04-07 19:02:20.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r0/workspace/django/db/backends/mysql/operations.py\t2026-09-16 16:50:37.026996460 -0500\n@@ -70,7 +70,11 @@\n \n     def _convert_field_to_tz(self, field_name, tzname):\n         if settings.USE_TZ:\n-            field_name = \"CONVERT_TZ(%s, 'UTC', '%s')\" % (field_name, tzname)\n+            field_name = \"CONVERT_TZ(%s, '%s', '%s')\" % (\n+                field_name,\n+                self.connection.timezone_name,\n+                tzname,\n+            )\n         return field_name\n \n     def datetime_cast_date_sql(self, field_name, tzname):\ndiff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/django__django-11138/django/db/backends/oracle/operations.py /mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r0/workspace/django/db/backends/oracle/operations.py\n--- /mnt/data/ctx-swebench/wscache/django__django-11138/django/db/backends/oracle/operations.py\t2019-04-07 19:02:20.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r0/workspace/django/db/backends/oracle/operations.py\t2026-09-16 16:51:20.804351467 -0500\n@@ -99,9 +99,17 @@\n             return field_name\n         if not self._tzname_re.match(tzname):\n             raise ValueError(\"Invalid time zone name: %s\" % tzname)\n-        # Convert from UTC to local time, returning TIMESTAMP WITH TIME ZONE\n-        # and cast it back to TIMESTAMP to strip the TIME ZONE details.\n-        return \"CAST((FROM_TZ(%s, '0:00') AT TIME ZONE '%s') AS TIMESTAMP)\" % (field_name, tzname)\n+        connection_tzname = self.connection.timezone_name\n+        if not self._tzname_re.match(connection_tzname):\n+            raise ValueError(\"Invalid time zone name: %s\" % connection_tzname)\n+        # Convert from the connection's timezone to local time, returning\n+        # TIMESTAMP WITH TIME ZONE and cast it back to TIMESTAMP to strip\n+        # the TIME ZONE details.\n+        return \"CAST((FROM_TZ(%s, '%s') AT TIME ZONE '%s') AS TIMESTAMP)\" % (\n+            field_name,\n+            connection_tzname,\n+            tzname,\n+        )\n \n     def datetime_cast_date_sql(self, field_name, tzname):\n         field_name = self._convert_field_to_tz(field_name, tzname)\ndiff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/django__django-11138/django/db/backends/sqlite3/base.py /mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r0/workspace/django/db/backends/sqlite3/base.py\n--- /mnt/data/ctx-swebench/wscache/django__django-11138/django/db/backends/sqlite3/base.py\t2019-04-07 19:02:20.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r0/workspace/django/db/backends/sqlite3/base.py\t2026-09-16 17:02:53.289961279 -0500\n@@ -195,10 +195,10 @@\n         conn = Database.connect(**conn_params)\n         conn.create_function(\"django_date_extract\", 2, _sqlite_datetime_extract)\n         conn.create_function(\"django_date_trunc\", 2, _sqlite_date_trunc)\n-        conn.create_function(\"django_datetime_cast_date\", 2, _sqlite_datetime_cast_date)\n-        conn.create_function(\"django_datetime_cast_time\", 2, _sqlite_datetime_cast_time)\n-        conn.create_function(\"django_datetime_extract\", 3, _sqlite_datetime_extract)\n-        conn.create_function(\"django_datetime_trunc\", 3, _sqlite_datetime_trunc)\n+        conn.create_function(\"django_datetime_cast_date\", 3, _sqlite_datetime_cast_date)\n+        conn.create_function(\"django_datetime_cast_time\", 3, _sqlite_datetime_cast_time)\n+        conn.create_function(\"django_datetime_extract\", 4, _sqlite_datetime_extract)\n+        conn.create_function(\"django_datetime_trunc\", 4, _sqlite_datetime_trunc)\n         conn.create_function(\"django_time_extract\", 2, _sqlite_time_extract)\n         conn.create_function(\"django_time_trunc\", 2, _sqlite_time_trunc)\n         conn.create_function(\"django_time_diff\", 2, _sqlite_time_diff)\n@@ -405,8 +405,10 @@\n         dt = backend_utils.typecast_timestamp(dt)\n     except (TypeError, ValueError):\n         return None\n-    if tzname is not None:\n-        dt = timezone.localtime(dt, pytz.timezone(tzname))\n+    if tzname is not None and isinstance(dt, datetime.datetime):\n+        # The value is stored as a naive datetime in the given (source)\n+        # timezone.\n+        dt = timezone.make_aware(dt.replace(tzinfo=None), pytz.timezone(tzname))\n     return dt\n \n \n@@ -443,24 +445,32 @@\n         return \"%02i:%02i:%02i\" % (dt.hour, dt.minute, dt.second)\n \n \n-def _sqlite_datetime_cast_date(dt, tzname):\n-    dt = _sqlite_datetime_parse(dt, tzname)\n+def _sqlite_datetime_cast_date(dt, source_tzname, tzname):\n+    dt = _sqlite_datetime_parse(dt, source_tzname)\n     if dt is None:\n         return None\n-    return dt.date().isoformat()\n+    if tzname is not None and isinstance(dt, datetime.datetime):\n+        dt = timezone.localtime(dt, pytz.timezone(tzname))\n+    if isinstance(dt, datetime.datetime):\n+        dt = dt.date()\n+    return dt.isoformat()\n \n \n-def _sqlite_datetime_cast_time(dt, tzname):\n-    dt = _sqlite_datetime_parse(dt, tzname)\n+def _sqlite_datetime_cast_time(dt, source_tzname, tzname):\n+    dt = _sqlite_datetime_parse(dt, source_tzname)\n     if dt is None:\n         return None\n+    if tzname is not None and isinstance(dt, datetime.datetime):\n+        dt = timezone.localtime(dt, pytz.timezone(tzname))\n     return dt.time().isoformat()\n \n \n-def _sqlite_datetime_extract(lookup_type, dt, tzname=None):\n-    dt = _sqlite_datetime_parse(dt, tzname)\n+def _s",
+      "tokens": {
+        "input": 2448065,
+        "output": 21119,
+        "reasoning": 79240,
+        "cache_read": 6510336,
+        "cache_write": 0
+      },
+      "peak_prompt_tokens": 174460,
+      "first_step_prompt_tokens": 10399,
+      "cost_reported": 1.756352,
+      "cost_list_price": 2.173013,
+      "events": 276,
+      "events_unparseable": 0,
+      "session_id": "ses_f53edfed5ffep6K5JW2oauhK6g",
+      "export_ok": true,
+      "export_part_types": {
+        "text": 29,
+        "step-start": 78,
+        "reasoning": 78,
+        "tool": 93,
+        "step-finish": 77
+      },
+      "export_bytes": 1052875,
+      "events_complete": true,
+      "events_missing_steps": 0,
+      "events_missing_tool_calls": 0,
+      "run_dir": "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r0"
+    },
+    {
+      "instance": "django__django-11138",
+      "repeat": 1,
+      "repo": "django/django",
+      "difficulty": "1-4 hours",
+      "stratum": "H",
+      "vehicle": "opencode",
+      "opencode_version": "1.18.31",
+      "model": "openrouter/qwen/qwen3.8-27b",
+      "model_config": {
+        "configured": true,
+        "limit_output": 235929,
+        "limit_context": 262144,
+        "options": {
+          "provider": {
+            "order": [
+              "DeepInfra"
+            ],
+            "quantizations": [
+              "bf16"
+            ],
+            "allow_fallbacks": false
+          }
+        }
+      },
+      "endpoint": "openrouter",
+      "endpoint_selection": {
+        "request": "openrouter/qwen/qwen3.8-27b",
+        "exclusive": false,
+        "reason": "pinned by CT_OPENCODE_MODEL (remote: no local slot needed)",
+        "signals": null,
+        "decided_at": "2026-09-16T22:14:17.286Z"
+      },
+      "pass": false,
+      "f2p_pass": false,
+      "p2p_pass": true,
+      "grade_stage": "ok",
+      "grade_valid": true,
+      "f2p_failures": [
+        "test_query_convert_timezones (timezones.tests.NewDatabaseTests) [FAILED]"
+      ],
+      "p2p_failures": [],
+      "p2p_graded_n": 73,
+      "p2p_dataset_n": 73,
+      "run_valid": false,
+      "scored": false,
+      "exit_code": 1,
+      "signal": null,
+      "timed_out": false,
+      "wall_seconds": 874,
+      "exit_outcome": "nonzero_exit",
+      "killed_externally": false,
+      "other_opencode_runs_at_start": 4,
+      "other_opencode_runs_peak": 4,
+      "ended_at": "2026-09-16T22:28:51.493Z",
+      "last_event_type": "error",
+      "error": "This request would exceed your available credits given your current in-flight requests. Retry after in-flight requests settle, or add credits.",
+      "steps": 21,
+      "tool_calls": 32,
+      "tools_by_name": {
+        "bash": 16,
+        "read": 11,
+        "grep": 5
+      },
+      "tool_errors": 0,
+      "files_edited": [],
+      "files_read": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r1/workspace/django/db/backends/mysql/operations.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r1/workspace/django/db/backends/base/base.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r1/workspace/django/db/backends/mysql/base.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r1/workspace/django/db/backends/sqlite3/operations.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r1/workspace/django/db/backends/sqlite3/base.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r1/workspace/django/db/backends/oracle/operations.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r1/workspace/tests/backends/base/test_operations.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r1/workspace/tests/timezones/tests.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r1/workspace/tests/timezones/models.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r1/workspace/django/db/backends/oracle/base.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r1/workspace/django/db/backends/base/operations.py"
+      ],
+      "reads": 11,
+      "diff_empty": true,
+      "agent_diff": "",
+      "tokens": {
+        "input": 178511,
+        "output": 4504,
+        "reasoning": 33083,
+        "cache_read": 913360,
+        "cache_write": 0
+      },
+      "peak_prompt_tokens": 103218,
+      "first_step_prompt_tokens": 10399,
+      "cost_reported": 0.271052,
+      "cost_list_price": 0.329507,
+      "events": 75,
+      "events_unparseable": 0,
+      "session_id": "ses_f53b708a8ffeUnhYpefojGFzUa",
+      "export_ok": true,
+      "export_part_types": {
+        "text": 1,
+        "step-start": 21,
+        "reasoning": 21,
+        "tool": 32,
+        "step-finish": 21
+      },
+      "export_bytes": 598177,
+      "events_complete": true,
+      "events_missing_steps": 0,
+      "events_missing_tool_calls": 0,
+      "run_dir": "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r1"
+    },
+    {
+      "instance": "django__django-11138",
+      "repeat": 2,
+      "repo": "django/django",
+      "difficulty": "1-4 hours",
+      "stratum": "H",
+      "vehicle": "opencode",
+      "opencode_version": "1.18.31",
+      "model": "openrouter/qwen/qwen3.8-27b",
+      "model_config": {
+        "configured": true,
+        "limit_output": 235929,
+        "limit_context": 262144,
+        "options": {
+          "provider": {
+            "order": [
+              "DeepInfra"
+            ],
+            "quantizations": [
+              "bf16"
+            ],
+            "allow_fallbacks": false
+          }
+        }
+      },
+      "endpoint": "openrouter",
+      "endpoint_selection": {
+        "request": "openrouter/qwen/qwen3.8-27b",
+        "exclusive": false,
+        "reason": "pinned by CT_OPENCODE_MODEL (remote: no local slot needed)",
+        "signals": null,
+        "decided_at": "2026-09-16T22:28:53.475Z"
+      },
+      "pass": false,
+      "f2p_pass": false,
+      "p2p_pass": true,
+      "grade_stage": "ok",
+      "grade_valid": true,
+      "f2p_failures": [
+        "test_query_convert_timezones (timezones.tests.NewDatabaseTests) [FAILED]"
+      ],
+      "p2p_failures": [],
+      "p2p_graded_n": 73,
+      "p2p_dataset_n": 73,
+      "run_valid": false,
+      "scored": false,
+      "exit_code": 1,
+      "signal": null,
+      "timed_out": false,
+      "wall_seconds": 2,
+      "exit_outcome": "nonzero_exit",
+      "killed_externally": false,
+      "other_opencode_runs_at_start": 4,
+      "other_opencode_runs_peak": 4,
+      "ended_at": "2026-09-16T22:28:55.480Z",
+      "last_event_type": "error",
+      "error": "This request would exceed your available credits given your current in-flight requests. Retry after in-flight requests settle, or add credits.",
+      "steps": 0,
+      "tool_calls": 0,
+      "tools_by_name": {},
+      "tool_errors": 0,
+      "files_edited": [],
+      "files_read": [],
+      "reads": 0,
+      "diff_empty": true,
+      "agent_diff": "",
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "reasoning": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      },
+      "peak_prompt_tokens": 0,
+      "first_step_prompt_tokens": 0,
+      "cost_reported": 0,
+      "cost_list_price": 0,
+      "events": 1,
+      "events_unparseable": 0,
+      "session_id": "ses_f53a9a9d1ffekRnlRik8JHrWgH",
+      "export_ok": true,
+      "export_part_types": {
+        "text": 1
+      },
+      "export_bytes": 8993,
+      "events_complete": true,
+      "events_missing_steps": 0,
+      "events_missing_tool_calls": 0,
+      "run_dir": "/mnt/data/ctx-swebench/opencode-runs/baseline-w3/django__django-11138__r2"
+    }
+  ]
+}

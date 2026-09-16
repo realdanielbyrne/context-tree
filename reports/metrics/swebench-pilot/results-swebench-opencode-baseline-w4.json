@@ -1,0 +1,377 @@
+{
+  "manifest": {
+    "run_id": "swebench-opencode-baseline-w4",
+    "date": "2026-09-16T23:12:34.796Z",
+    "commit": "cfa657c186cbaf37a27fcf1c1cf8ac24b46331f0",
+    "vehicle": "opencode",
+    "opencode_version": "1.18.31",
+    "model": "openrouter/qwen/qwen3.8-27b",
+    "models_used": [
+      "openrouter/qwen/qwen3.8-27b"
+    ],
+    "endpoint_policy": "pinned: openrouter/qwen/qwen3.8-27b",
+    "endpoints_used": {
+      "local": 0,
+      "openrouter": 3
+    },
+    "invocation": "opencode run --pure -m <model> --format json --dir <ws> --auto <prompt> < /dev/null; per-run XDG dirs; export with same XDG env",
+    "config": "experiments/context-dedup/opencode.json (no credential in file)",
+    "model_configs": {
+      "openrouter/qwen/qwen3.8-27b": {
+        "configured": true,
+        "limit_output": 235929,
+        "limit_context": 262144,
+        "options": {
+          "provider": {
+            "order": [
+              "DeepInfra"
+            ],
+            "quantizations": [
+              "bf16"
+            ],
+            "allow_fallbacks": false
+          }
+        }
+      }
+    },
+    "host_defaults": "thinking ON on every endpoint (host default), no tool-output clip, no cap, no eviction, no middleware",
+    "run_timeout_s": 7200,
+    "instances": [
+      "django__django-11138"
+    ],
+    "selection_file": "selection-v2.json",
+    "grading": "ab-tasks/swebench.mjs gradeDetail after opencode exits: restore test-patch files, apply test patch, run the instance runner over F2P + calibrated P2P; void grades and errored runs excluded from rates",
+    "prices_per_million_usd": {
+      "openrouter/qwen/qwen3.8-27b": {
+        "input": 0.214,
+        "output": 2.55
+      }
+    }
+  },
+  "cells": [
+    {
+      "instance": "django__django-11138",
+      "repeat": 0,
+      "repo": "django/django",
+      "difficulty": "1-4 hours",
+      "stratum": "H",
+      "vehicle": "opencode",
+      "opencode_version": "1.18.31",
+      "model": "openrouter/qwen/qwen3.8-27b",
+      "model_config": {
+        "configured": true,
+        "limit_output": 235929,
+        "limit_context": 262144,
+        "options": {
+          "provider": {
+            "order": [
+              "DeepInfra"
+            ],
+            "quantizations": [
+              "bf16"
+            ],
+            "allow_fallbacks": false
+          }
+        }
+      },
+      "endpoint": "openrouter",
+      "endpoint_selection": {
+        "request": "openrouter/qwen/qwen3.8-27b",
+        "exclusive": false,
+        "reason": "pinned by CT_OPENCODE_MODEL (remote: no local slot needed)",
+        "signals": null,
+        "decided_at": "2026-09-16T22:31:08.102Z"
+      },
+      "pass": true,
+      "f2p_pass": true,
+      "p2p_pass": true,
+      "grade_stage": "ok",
+      "grade_valid": true,
+      "f2p_failures": [],
+      "p2p_failures": [],
+      "p2p_graded_n": 73,
+      "p2p_dataset_n": 73,
+      "run_valid": true,
+      "scored": true,
+      "exit_code": 0,
+      "signal": null,
+      "timed_out": false,
+      "wall_seconds": 970,
+      "exit_outcome": "ok",
+      "killed_externally": false,
+      "other_opencode_runs_at_start": 4,
+      "other_opencode_runs_peak": 4,
+      "ended_at": "2026-09-16T22:47:18.440Z",
+      "last_event_type": "step_finish",
+      "error": null,
+      "steps": 39,
+      "tool_calls": 45,
+      "tools_by_name": {
+        "bash": 28,
+        "glob": 1,
+        "grep": 5,
+        "read": 9,
+        "edit": 2
+      },
+      "tool_errors": 0,
+      "files_edited": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r0/workspace/django/db/backends/mysql/operations.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r0/workspace/django/db/backends/oracle/operations.py"
+      ],
+      "files_read": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r0/workspace/django/db/backends/base/base.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r0/workspace/django/db/backends/mysql/operations.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r0/workspace/django/db/backends/sqlite3/operations.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r0/workspace/django/db/models/functions/datetime.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r0/workspace/django/db/backends/oracle/operations.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r0/workspace/django/db/backends/sqlite3/base.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r0/workspace/django/db/backends/postgresql/operations.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r0/workspace/tests/timezones/tests.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r0/workspace/tests/model_fields/test_datetimefield.py"
+      ],
+      "reads": 9,
+      "diff_empty": false,
+      "agent_diff": "diff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/django__django-11138/django/db/backends/mysql/operations.py /mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r0/workspace/django/db/backends/mysql/operations.py\n--- /mnt/data/ctx-swebench/wscache/django__django-11138/django/db/backends/mysql/operations.py\t2019-04-07 19:02:20.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r0/workspace/django/db/backends/mysql/operations.py\t2026-09-16 17:45:01.704135921 -0500\n@@ -69,8 +69,8 @@\n             return \"DATE(%s)\" % (field_name)\n \n     def _convert_field_to_tz(self, field_name, tzname):\n-        if settings.USE_TZ:\n-            field_name = \"CONVERT_TZ(%s, 'UTC', '%s')\" % (field_name, tzname)\n+        if settings.USE_TZ and self.connection.timezone_name != tzname:\n+            field_name = \"CONVERT_TZ(%s, '%s', '%s')\" % (field_name, self.connection.timezone_name, tzname)\n         return field_name\n \n     def datetime_cast_date_sql(self, field_name, tzname):\ndiff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/django__django-11138/django/db/backends/oracle/operations.py /mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r0/workspace/django/db/backends/oracle/operations.py\n--- /mnt/data/ctx-swebench/wscache/django__django-11138/django/db/backends/oracle/operations.py\t2019-04-07 19:02:20.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r0/workspace/django/db/backends/oracle/operations.py\t2026-09-16 17:45:01.706135936 -0500\n@@ -99,9 +99,16 @@\n             return field_name\n         if not self._tzname_re.match(tzname):\n             raise ValueError(\"Invalid time zone name: %s\" % tzname)\n-        # Convert from UTC to local time, returning TIMESTAMP WITH TIME ZONE\n-        # and cast it back to TIMESTAMP to strip the TIME ZONE details.\n-        return \"CAST((FROM_TZ(%s, '0:00') AT TIME ZONE '%s') AS TIMESTAMP)\" % (field_name, tzname)\n+        # Convert from connection timezone to the local time, returning\n+        # TIMESTAMP WITH TIME ZONE and cast it back to TIMESTAMP to strip the\n+        # TIME ZONE details.\n+        if self.connection.timezone_name != tzname:\n+            return \"CAST((FROM_TZ(%s, '%s') AT TIME ZONE '%s') AS TIMESTAMP)\" % (\n+                field_name,\n+                self.connection.timezone_name,\n+                tzname,\n+            )\n+        return field_name\n \n     def datetime_cast_date_sql(self, field_name, tzname):\n         field_name = self._convert_field_to_tz(field_name, tzname)\ndiff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/django__django-11138/django/db/backends/sqlite3/base.py /mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r0/workspace/django/db/backends/sqlite3/base.py\n--- /mnt/data/ctx-swebench/wscache/django__django-11138/django/db/backends/sqlite3/base.py\t2019-04-07 19:02:20.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r0/workspace/django/db/backends/sqlite3/base.py\t2026-09-16 17:45:01.700135889 -0500\n@@ -195,10 +195,10 @@\n         conn = Database.connect(**conn_params)\n         conn.create_function(\"django_date_extract\", 2, _sqlite_datetime_extract)\n         conn.create_function(\"django_date_trunc\", 2, _sqlite_date_trunc)\n-        conn.create_function(\"django_datetime_cast_date\", 2, _sqlite_datetime_cast_date)\n-        conn.create_function(\"django_datetime_cast_time\", 2, _sqlite_datetime_cast_time)\n-        conn.create_function(\"django_datetime_extract\", 3, _sqlite_datetime_extract)\n-        conn.create_function(\"django_datetime_trunc\", 3, _sqlite_datetime_trunc)\n+        conn.create_function('django_datetime_cast_date', 3, _sqlite_datetime_cast_date)\n+        conn.create_function('django_datetime_cast_time', 3, _sqlite_datetime_cast_time)\n+        conn.create_function('django_datetime_extract', 4, _sqlite_datetime_extract)\n+        conn.create_function('django_datetime_trunc', 4, _sqlite_datetime_trunc)\n         conn.create_function(\"django_time_extract\", 2, _sqlite_time_extract)\n         conn.create_function(\"django_time_trunc\", 2, _sqlite_time_trunc)\n         conn.create_function(\"django_time_diff\", 2, _sqlite_time_diff)\n@@ -398,14 +398,16 @@\n         return FORMAT_QMARK_REGEX.sub('?', query).replace('%%', '%')\n \n \n-def _sqlite_datetime_parse(dt, tzname=None):\n+def _sqlite_datetime_parse(dt, tzname=None, conn_tzname=None):\n     if dt is None:\n         return None\n     try:\n         dt = backend_utils.typecast_timestamp(dt)\n     except (TypeError, ValueError):\n         return None\n-    if tzname is not None:\n+    if conn_tzname:\n+        dt = dt.replace(tzinfo=pytz.timezone(conn_tzname))\n+    if tzname is not None and tzname != conn_tzname:\n         dt = timezone.localtime(dt, pytz.timezone(tzname))\n     return dt\n \n@@ -443,22 +445,22 @@\n         return \"%02i:%02i:%02i\" % (dt.hour, dt.minute, dt.second)\n \n \n-def _sqlite_datetime_cast_date(dt, tzname):\n-    dt = _sqlite_datetime_parse(dt, tzname)\n+def _sqlite_datetime_cast_date(dt, tzname, conn_tzname):\n+    dt = _sqlite_datetime_parse(dt, tzname, conn_tzname)\n     if dt is None:\n         return None\n     return dt.date().isoformat()\n \n \n-def _sqlite_datetime_cast_time(dt, tzname):\n-    dt = _sqlite_datetime_parse(dt, tzname)\n+def _sqlite_datetime_cast_time(dt, tzname, conn_tzname):\n+    dt = _sqlite_datetime_parse(dt, tzname, conn_tzname)\n     if dt is None:\n         return None\n     return dt.time().isoformat()\n \n \n-def _sqlite_datetime_extract(lookup_type, dt, tzname=None):\n-    dt = _sqlite_datetime_parse(dt, tzname)\n+def _sqlite_datetime_extract(lookup_type, dt, tzname=None, conn_tzname=None):\n+    dt = _sqlite_datetime_parse(dt, tzname, conn_tzname)\n     if dt is None:\n         return None\n     if lookup_type == 'week_day':\n@@ -473,8 +475,8 @@\n         return getat",
+      "tokens": {
+        "input": 350075,
+        "output": 6090,
+        "reasoning": 19329,
+        "cache_read": 2108176,
+        "cache_write": 0
+      },
+      "peak_prompt_tokens": 84181,
+      "first_step_prompt_tokens": 10399,
+      "cost_reported": 0.455961,
+      "cost_list_price": 0.590884,
+      "events": 134,
+      "events_unparseable": 0,
+      "session_id": "ses_f53a79bdcffeX3NL4M1aocL7Bb",
+      "export_ok": true,
+      "export_part_types": {
+        "text": 12,
+        "step-start": 39,
+        "reasoning": 39,
+        "tool": 45,
+        "step-finish": 39
+      },
+      "export_bytes": 530080,
+      "events_complete": true,
+      "events_missing_steps": 0,
+      "events_missing_tool_calls": 0,
+      "run_dir": "/mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r0"
+    },
+    {
+      "instance": "django__django-11138",
+      "repeat": 1,
+      "repo": "django/django",
+      "difficulty": "1-4 hours",
+      "stratum": "H",
+      "vehicle": "opencode",
+      "opencode_version": "1.18.31",
+      "model": "openrouter/qwen/qwen3.8-27b",
+      "model_config": {
+        "configured": true,
+        "limit_output": 235929,
+        "limit_context": 262144,
+        "options": {
+          "provider": {
+            "order": [
+              "DeepInfra"
+            ],
+            "quantizations": [
+              "bf16"
+            ],
+            "allow_fallbacks": false
+          }
+        }
+      },
+      "endpoint": "openrouter",
+      "endpoint_selection": {
+        "request": "openrouter/qwen/qwen3.8-27b",
+        "exclusive": false,
+        "reason": "pinned by CT_OPENCODE_MODEL (remote: no local slot needed)",
+        "signals": null,
+        "decided_at": "2026-09-16T22:47:20.263Z"
+      },
+      "pass": true,
+      "f2p_pass": true,
+      "p2p_pass": true,
+      "grade_stage": "ok",
+      "grade_valid": true,
+      "f2p_failures": [],
+      "p2p_failures": [],
+      "p2p_graded_n": 73,
+      "p2p_dataset_n": 73,
+      "run_valid": false,
+      "scored": false,
+      "exit_code": 1,
+      "signal": null,
+      "timed_out": false,
+      "wall_seconds": 1501,
+      "exit_outcome": "nonzero_exit",
+      "killed_externally": false,
+      "other_opencode_runs_at_start": 4,
+      "other_opencode_runs_peak": 4,
+      "ended_at": "2026-09-16T23:12:21.615Z",
+      "last_event_type": "error",
+      "error": "This request would exceed your available credits given your current in-flight requests. Retry after in-flight requests settle, or add credits.",
+      "steps": 57,
+      "tool_calls": 57,
+      "tools_by_name": {
+        "bash": 31,
+        "read": 20,
+        "edit": 6
+      },
+      "tool_errors": 1,
+      "files_edited": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r1/workspace/django/db/backends/sqlite3/operations.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r1/workspace/django/db/backends/sqlite3/base.py"
+      ],
+      "files_read": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r1/workspace/django/db/backends/mysql/operations.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r1/workspace/django/db/backends/base/operations.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r1/workspace/django/db/backends/base/base.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r1/workspace/django/db/backends/sqlite3/operations.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r1/workspace/django/db/backends/sqlite3/base.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r1/workspace/django/utils/timezone.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r1/workspace/django/db/backends/oracle/operations.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r1/workspace/django/db/backends/oracle/base.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r1/workspace/tests/model_fields/test_datetimefield.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r1/workspace/tests/db_typecasts/tests.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r1/workspace/tests/timezones/tests.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r1/workspace/django/db/models/functions/datetime.py"
+      ],
+      "reads": 20,
+      "diff_empty": false,
+      "agent_diff": "diff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/django__django-11138/django/db/backends/sqlite3/base.py /mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r1/workspace/django/db/backends/sqlite3/base.py\n--- /mnt/data/ctx-swebench/wscache/django__django-11138/django/db/backends/sqlite3/base.py\t2019-04-07 19:02:20.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r1/workspace/django/db/backends/sqlite3/base.py\t2026-09-16 18:12:03.328830979 -0500\n@@ -195,10 +195,10 @@\n         conn = Database.connect(**conn_params)\n         conn.create_function(\"django_date_extract\", 2, _sqlite_datetime_extract)\n         conn.create_function(\"django_date_trunc\", 2, _sqlite_date_trunc)\n-        conn.create_function(\"django_datetime_cast_date\", 2, _sqlite_datetime_cast_date)\n-        conn.create_function(\"django_datetime_cast_time\", 2, _sqlite_datetime_cast_time)\n-        conn.create_function(\"django_datetime_extract\", 3, _sqlite_datetime_extract)\n-        conn.create_function(\"django_datetime_trunc\", 3, _sqlite_datetime_trunc)\n+        conn.create_function(\"django_datetime_cast_date\", 3, _sqlite_datetime_cast_date)\n+        conn.create_function(\"django_datetime_cast_time\", 3, _sqlite_datetime_cast_time)\n+        conn.create_function(\"django_datetime_extract\", 4, _sqlite_datetime_extract)\n+        conn.create_function(\"django_datetime_trunc\", 4, _sqlite_datetime_trunc)\n         conn.create_function(\"django_time_extract\", 2, _sqlite_time_extract)\n         conn.create_function(\"django_time_trunc\", 2, _sqlite_time_trunc)\n         conn.create_function(\"django_time_diff\", 2, _sqlite_time_diff)\n@@ -398,13 +398,16 @@\n         return FORMAT_QMARK_REGEX.sub('?', query).replace('%%', '%')\n \n \n-def _sqlite_datetime_parse(dt, tzname=None):\n+def _sqlite_datetime_parse(dt, source_tzname=None, tzname=None):\n     if dt is None:\n         return None\n     try:\n         dt = backend_utils.typecast_timestamp(dt)\n     except (TypeError, ValueError):\n         return None\n+    if source_tzname is not None:\n+        # The value is stored in the database's time zone, not UTC.\n+        dt = timezone.make_aware(dt.replace(tzinfo=None), pytz.timezone(source_tzname))\n     if tzname is not None:\n         dt = timezone.localtime(dt, pytz.timezone(tzname))\n     return dt\n@@ -443,22 +446,22 @@\n         return \"%02i:%02i:%02i\" % (dt.hour, dt.minute, dt.second)\n \n \n-def _sqlite_datetime_cast_date(dt, tzname):\n-    dt = _sqlite_datetime_parse(dt, tzname)\n+def _sqlite_datetime_cast_date(dt, source_tzname, tzname):\n+    dt = _sqlite_datetime_parse(dt, source_tzname, tzname)\n     if dt is None:\n         return None\n     return dt.date().isoformat()\n \n \n-def _sqlite_datetime_cast_time(dt, tzname):\n-    dt = _sqlite_datetime_parse(dt, tzname)\n+def _sqlite_datetime_cast_time(dt, source_tzname, tzname):\n+    dt = _sqlite_datetime_parse(dt, source_tzname, tzname)\n     if dt is None:\n         return None\n     return dt.time().isoformat()\n \n \n-def _sqlite_datetime_extract(lookup_type, dt, tzname=None):\n-    dt = _sqlite_datetime_parse(dt, tzname)\n+def _sqlite_datetime_extract(lookup_type, dt, source_tzname=None, tzname=None):\n+    dt = _sqlite_datetime_parse(dt, source_tzname, tzname)\n     if dt is None:\n         return None\n     if lookup_type == 'week_day':\n@@ -473,8 +476,8 @@\n         return getattr(dt, lookup_type)\n \n \n-def _sqlite_datetime_trunc(lookup_type, dt, tzname):\n-    dt = _sqlite_datetime_parse(dt, tzname)\n+def _sqlite_datetime_trunc(lookup_type, dt, source_tzname, tzname):\n+    dt = _sqlite_datetime_parse(dt, source_tzname, tzname)\n     if dt is None:\n         return None\n     if lookup_type == 'year':\ndiff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/django__django-11138/django/db/backends/sqlite3/operations.py /mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r1/workspace/django/db/backends/sqlite3/operations.py\n--- /mnt/data/ctx-swebench/wscache/django__django-11138/django/db/backends/sqlite3/operations.py\t2019-04-07 19:02:20.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r1/workspace/django/db/backends/sqlite3/operations.py\t2026-09-16 18:10:41.147182687 -0500\n@@ -88,23 +88,33 @@\n         return \"'%s'\" % tzname if settings.USE_TZ else 'NULL'\n \n     def datetime_cast_date_sql(self, field_name, tzname):\n-        return \"django_datetime_cast_date(%s, %s)\" % (\n-            field_name, self._convert_tzname_to_sql(tzname),\n+        return \"django_datetime_cast_date(%s, %s, %s)\" % (\n+            field_name,\n+            self._convert_tzname_to_sql(self.connection.timezone_name),\n+            self._convert_tzname_to_sql(tzname),\n         )\n \n     def datetime_cast_time_sql(self, field_name, tzname):\n-        return \"django_datetime_cast_time(%s, %s)\" % (\n-            field_name, self._convert_tzname_to_sql(tzname),\n+        return \"django_datetime_cast_time(%s, %s, %s)\" % (\n+            field_name,\n+            self._convert_tzname_to_sql(self.connection.timezone_name),\n+            self._convert_tzname_to_sql(tzname),\n         )\n \n     def datetime_extract_sql(self, lookup_type, field_name, tzname):\n-        return \"django_datetime_extract('%s', %s, %s)\" % (\n-            lookup_type.lower(), field_name, self._convert_tzname_to_sql(tzname),\n+        return \"django_datetime_extract('%s', %s, %s, %s)\" % (\n+            lookup_type.lower(),\n+            field_name,\n+            self._convert_tzname_to_sql(self.connection.timezone_name),\n+            self._convert_tzname_to_sql(tzname),\n         )\n \n     def datetime_trunc_sql(self, lookup_type, field_name, tzname):\n-        return \"django_datetime_trunc('%s', %s, %s)\" % (\n-            lookup_type.lower(), field_name, self._convert_tzname_to_sql(tzname),\n+        return \"django_datetime_trunc('%s', %s, %s, %s)\" % (\n+            lookup_type.lower(),\n+            field_name,\n+   ",
+      "tokens": {
+        "input": 173235,
+        "output": 10948,
+        "reasoning": 51653,
+        "cache_read": 2911776,
+        "cache_write": 0
+      },
+      "peak_prompt_tokens": 107747,
+      "first_step_prompt_tokens": 10399,
+      "cost_reported": 0.633471,
+      "cost_list_price": 0.819825,
+      "events": 188,
+      "events_unparseable": 0,
+      "session_id": "ses_f5398c6acffehQOmNJXYqaWv5A",
+      "export_ok": true,
+      "export_part_types": {
+        "text": 17,
+        "step-start": 57,
+        "reasoning": 57,
+        "tool": 57,
+        "step-finish": 57
+      },
+      "export_bytes": 665264,
+      "events_complete": true,
+      "events_missing_steps": 0,
+      "events_missing_tool_calls": 0,
+      "run_dir": "/mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r1"
+    },
+    {
+      "instance": "django__django-11138",
+      "repeat": 2,
+      "repo": "django/django",
+      "difficulty": "1-4 hours",
+      "stratum": "H",
+      "vehicle": "opencode",
+      "opencode_version": "1.18.31",
+      "model": "openrouter/qwen/qwen3.8-27b",
+      "model_config": {
+        "configured": true,
+        "limit_output": 235929,
+        "limit_context": 262144,
+        "options": {
+          "provider": {
+            "order": [
+              "DeepInfra"
+            ],
+            "quantizations": [
+              "bf16"
+            ],
+            "allow_fallbacks": false
+          }
+        }
+      },
+      "endpoint": "openrouter",
+      "endpoint_selection": {
+        "request": "openrouter/qwen/qwen3.8-27b",
+        "exclusive": false,
+        "reason": "pinned by CT_OPENCODE_MODEL (remote: no local slot needed)",
+        "signals": null,
+        "decided_at": "2026-09-16T23:12:23.449Z"
+      },
+      "pass": false,
+      "f2p_pass": false,
+      "p2p_pass": true,
+      "grade_stage": "ok",
+      "grade_valid": true,
+      "f2p_failures": [
+        "test_query_convert_timezones (timezones.tests.NewDatabaseTests) [FAILED]"
+      ],
+      "p2p_failures": [],
+      "p2p_graded_n": 73,
+      "p2p_dataset_n": 73,
+      "run_valid": false,
+      "scored": false,
+      "exit_code": 1,
+      "signal": null,
+      "timed_out": false,
+      "wall_seconds": 9,
+      "exit_outcome": "nonzero_exit",
+      "killed_externally": false,
+      "other_opencode_runs_at_start": 4,
+      "other_opencode_runs_peak": 4,
+      "ended_at": "2026-09-16T23:12:32.832Z",
+      "last_event_type": "error",
+      "error": "This request would exceed your available credits given your current in-flight requests. Retry after in-flight requests settle, or add credits.",
+      "steps": 2,
+      "tool_calls": 4,
+      "tools_by_name": {
+        "bash": 1,
+        "read": 3
+      },
+      "tool_errors": 0,
+      "files_edited": [],
+      "files_read": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r2/workspace/django/db/backends/mysql/operations.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r2/workspace/django/db/backends/sqlite3/operations.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r2/workspace/django/db/backends/oracle/operations.py"
+      ],
+      "reads": 3,
+      "diff_empty": true,
+      "agent_diff": "",
+      "tokens": {
+        "input": 10789,
+        "output": 236,
+        "reasoning": 150,
+        "cache_read": 10192,
+        "cache_write": 0
+      },
+      "peak_prompt_tokens": 10582,
+      "first_step_prompt_tokens": 10399,
+      "cost_reported": 0.004822,
+      "cost_list_price": 0.005474,
+      "events": 9,
+      "events_unparseable": 0,
+      "session_id": "ses_f5381d6ecffeHqoZj9M2vauJ0j",
+      "export_ok": true,
+      "export_part_types": {
+        "text": 1,
+        "step-start": 2,
+        "reasoning": 2,
+        "tool": 4,
+        "step-finish": 2
+      },
+      "export_bytes": 135115,
+      "events_complete": true,
+      "events_missing_steps": 0,
+      "events_missing_tool_calls": 0,
+      "run_dir": "/mnt/data/ctx-swebench/opencode-runs/baseline-w4/django__django-11138__r2"
+    }
+  ]
+}

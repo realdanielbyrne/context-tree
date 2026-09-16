@@ -200,9 +200,17 @@ in §B is written to satisfy them.
    throughput, *and* manufactures a rule-9 failure mode: a turn that times out truncates the cell
    mid-experiment and presents as a weak arm rather than an instrument failure. Take one slot and
    leave the rest free. Parallel sharding belongs on OpenRouter, whose backends are not shared.
-3. **The outcome variable is ACHIEVED PEAK, not the nominal cap.** Tokens actually present at call
-   time decide outcomes (OR 41.83× per e-fold, arm-adjusted); the nominal cap and the eviction
-   cadence add nothing once it is controlled (T5). Report and control for it in every sweep.
+3. **The outcome variable is ACHIEVED PEAK, not the nominal cap — and peak is a PER-RUN DRAW, not a
+   property of the problem.** Tokens actually present at call time decide outcomes (OR 41.83× per
+   e-fold, arm-adjusted); the nominal cap and the eviction cadence add nothing once it is
+   controlled (T5). Measured on the 2026-09-16 baseline — 10 SWE-bench problems, 3 repeats each,
+   nothing varied between repeats — achieved peak spread **1.16×–2.90× within a problem**
+   (median 1.87×): pylint-4970 solved the same issue in 29 steps at 37,496 tokens and in 53 steps
+   at 82,230; django-14034 ranged 56,874–165,084 over 33–90 steps. **Outcomes were stable while
+   trajectories were not**, so "does a cap bind on this problem?" has no single answer — a cap in
+   that band binds on some repeats and not others, and an arm that draws a long trajectory is
+   capped harder for reasons unrelated to the arm. Consequences: pair within problem, size repeats
+   to cover the spread, and never treat pressure as a per-problem constant.
 4. **Match volume, unit count and splice count.** Volume matching alone is not enough: the incumbent
    evictor matches kept tokens to 0.4% while diverging up to 2× in unit count and 13× in splice
    count (T8). An arm can win by fragmenting the transcript less.
@@ -235,7 +243,15 @@ in §B is written to satisfy them.
    piped `opencode export` truncates mid-string (222KB → 146KB) so every token count reads 0; a
    missing API key yields a 3-second, 0-token cell indistinguishable from task failure; and the
    in-repo harness clipped tool output at 2,000 chars, producing a 0/6 edit rate that was 5/6 at
-   30,000. **Therefore:** every runner records per-step finish reason, largest response, export bytes
+   30,000; a **wall-clock timeout killed a run that had already solved its problem** (django-11138,
+   77 steps, F2P and P2P both passing, 7 files edited, cut at the harness's own 3,600 s ceiling —
+   the same class of defect as the 16,384-token output cap that invalidated that same problem in
+   the pilot, and django-14034 reached 91% of the ceiling); and a provider error reading
+   **"would exceed your available credits"** arrived while `/api/v1/key` reported $135.50
+   remaining — that endpoint reports the KEY's spending cap, not the account balance, which was
+   **$0.15** (`/api/v1/credits`: 100 purchased, 99.85 used). Read `/api/v1/credits`, never
+   `/api/v1/key`, before concluding funds are available. **Therefore:** every runner records
+   per-step finish reason, largest response, export bytes
    checked against the event stream, and wall-clock; and **any cell whose outcome is "the agent did
    nothing" is an instrument failure until proven otherwise.** T7 is the canonical case of getting
    this backwards — two validity conditions passed on a run where the control never attempted the task.

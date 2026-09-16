@@ -1,0 +1,1237 @@
+{
+  "manifest": {
+    "run_id": "swebench-opencode-baseline-w2",
+    "date": "2026-09-16T20:44:37.510Z",
+    "commit": "cfa657c186cbaf37a27fcf1c1cf8ac24b46331f0",
+    "vehicle": "opencode",
+    "opencode_version": "1.18.31",
+    "model": "openrouter/qwen/qwen3.8-27b",
+    "models_used": [
+      "openrouter/qwen/qwen3.8-27b"
+    ],
+    "endpoint_policy": "pinned: openrouter/qwen/qwen3.8-27b",
+    "endpoints_used": {
+      "local": 0,
+      "openrouter": 9
+    },
+    "invocation": "opencode run --pure -m <model> --format json --dir <ws> --auto <prompt> < /dev/null; per-run XDG dirs; export with same XDG env",
+    "config": "experiments/context-dedup/opencode.json (no credential in file)",
+    "model_configs": {
+      "openrouter/qwen/qwen3.8-27b": {
+        "configured": true,
+        "limit_output": 235929,
+        "limit_context": 262144,
+        "options": {
+          "provider": {
+            "order": [
+              "DeepInfra"
+            ],
+            "quantizations": [
+              "bf16"
+            ],
+            "allow_fallbacks": false
+          }
+        }
+      }
+    },
+    "host_defaults": "thinking ON on every endpoint (host default), no tool-output clip, no cap, no eviction, no middleware",
+    "run_timeout_s": 3600,
+    "instances": [
+      "pytest-dev__pytest-7205",
+      "pytest-dev__pytest-8399",
+      "pylint-dev__pylint-4970"
+    ],
+    "selection_file": "selection-v2.json",
+    "grading": "ab-tasks/swebench.mjs gradeDetail after opencode exits: restore test-patch files, apply test patch, run the instance runner over F2P + calibrated P2P; void grades and errored runs excluded from rates",
+    "prices_per_million_usd": {
+      "openrouter/qwen/qwen3.8-27b": {
+        "input": 0.214,
+        "output": 2.55
+      }
+    },
+    "merged_from": [
+      "results-swebench-opencode-baseline-w2.json"
+    ],
+    "finalized_at": "2026-09-16T20:44:56.682Z",
+    "finalize_note": "exports regenerated to file from each run's XDG session store; event streams checked against exports; exports imported into context-tree"
+  },
+  "cells": [
+    {
+      "instance": "pytest-dev__pytest-7205",
+      "repeat": 0,
+      "repo": "pytest-dev/pytest",
+      "difficulty": "<15 min fix",
+      "stratum": "E",
+      "vehicle": "opencode",
+      "opencode_version": "1.18.31",
+      "model": "openrouter/qwen/qwen3.8-27b",
+      "model_config": {
+        "configured": true,
+        "limit_output": 235929,
+        "limit_context": 262144,
+        "options": {
+          "provider": {
+            "order": [
+              "DeepInfra"
+            ],
+            "quantizations": [
+              "bf16"
+            ],
+            "allow_fallbacks": false
+          }
+        }
+      },
+      "endpoint": "openrouter",
+      "endpoint_selection": {
+        "request": "openrouter/qwen/qwen3.8-27b",
+        "exclusive": false,
+        "reason": "pinned by CT_OPENCODE_MODEL (remote: no local slot needed)",
+        "signals": null,
+        "decided_at": "2026-09-16T18:48:09.067Z"
+      },
+      "pass": true,
+      "f2p_pass": true,
+      "p2p_pass": true,
+      "grade_stage": "ok",
+      "grade_valid": true,
+      "f2p_failures": [],
+      "p2p_failures": [],
+      "p2p_graded_n": 16,
+      "p2p_dataset_n": 16,
+      "run_valid": true,
+      "scored": true,
+      "exit_code": 0,
+      "signal": null,
+      "timed_out": false,
+      "wall_seconds": 735,
+      "exit_outcome": "ok",
+      "killed_externally": false,
+      "other_opencode_runs_at_start": 5,
+      "other_opencode_runs_peak": 6,
+      "ended_at": "2026-09-16T19:00:24.298Z",
+      "last_event_type": "step_finish",
+      "error": null,
+      "steps": 34,
+      "tool_calls": 42,
+      "tools_by_name": {
+        "read": 13,
+        "bash": 20,
+        "grep": 6,
+        "glob": 1,
+        "edit": 2
+      },
+      "tool_errors": 0,
+      "files_edited": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-7205__r0/workspace/src/_pytest/setuponly.py"
+      ],
+      "files_read": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-7205__r0/workspace/src/_pytest/setuponly.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-7205__r0/workspace/src/_pytest/_io/saferepr.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-7205__r0/workspace/testing/test_setuponly.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-7205__r0/workspace/src/_pytest/fixtures.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-7205__r0/workspace/src/_pytest/python.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-7205__r0/workspace/src/_pytest/compat.py",
+        "/mnt/data/ctx-swebench/wscache/pytest-dev__pytest-7205/src/_pytest/setuponly.py",
+        "/tmp/ct-code-BKRXIr/src/_pytest/setuponly.py",
+        "/tmp/ct-code-BKRXIr/testing/test_setuponly.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-7205__r0/workspace/testing/test_setupplan.py"
+      ],
+      "reads": 13,
+      "diff_empty": false,
+      "agent_diff": "diff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/pytest-dev__pytest-7205/src/_pytest/setuponly.py /mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-7205__r0/workspace/src/_pytest/setuponly.py\n--- /mnt/data/ctx-swebench/wscache/pytest-dev__pytest-7205/src/_pytest/setuponly.py\t2020-05-08 11:28:14.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-7205__r0/workspace/src/_pytest/setuponly.py\t2026-09-16 14:00:04.799000198 -0500\n@@ -1,4 +1,5 @@\n import pytest\n+from _pytest._io.saferepr import saferepr\n \n \n def pytest_addoption(parser):\n@@ -66,7 +67,7 @@\n             tw.write(\" (fixtures used: {})\".format(\", \".join(deps)))\n \n     if hasattr(fixturedef, \"cached_param\"):\n-        tw.write(\"[{}]\".format(fixturedef.cached_param))\n+        tw.write(\"[{}]\".format(saferepr(fixturedef.cached_param, maxsize=42)))\n \n     tw.flush()\n \n",
+      "tokens": {
+        "input": 116741,
+        "output": 6457,
+        "reasoning": 20692,
+        "cache_read": 1428448,
+        "cache_write": 0
+      },
+      "peak_prompt_tokens": 64961,
+      "first_step_prompt_tokens": 10661,
+      "cost_reported": 0.30848,
+      "cost_list_price": 0.3999,
+      "events": 122,
+      "events_unparseable": 0,
+      "session_id": "ses_f5473c21cffe3CB0PCrvWASgvE",
+      "export_ok": true,
+      "export_part_types": {
+        "text": 13,
+        "step-start": 34,
+        "reasoning": 34,
+        "tool": 42,
+        "step-finish": 34
+      },
+      "export_bytes": 378649,
+      "events_complete": true,
+      "events_missing_steps": 0,
+      "events_missing_tool_calls": 0,
+      "run_dir": "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-7205__r0",
+      "final_step_reason": "stop",
+      "length_stops": 0,
+      "ended_on_output_limit": false,
+      "max_step_response_tokens": 5183,
+      "reasoning_parts": 34,
+      "reasoning_chars": 80641,
+      "text_parts": 12,
+      "text_chars": 2500,
+      "export_tokens": {
+        "output": 6457,
+        "reasoning": 20692
+      },
+      "length_stop_response": null,
+      "context_tree_import": {
+        "ok": true,
+        "events": 97,
+        "skipped": 102,
+        "failures": 0,
+        "nodes": 5,
+        "phases": 3,
+        "file_nodes": 1,
+        "unmapped_tools": []
+      },
+      "finalized_from": "results-swebench-opencode-baseline-w2.json"
+    },
+    {
+      "instance": "pytest-dev__pytest-7205",
+      "repeat": 1,
+      "repo": "pytest-dev/pytest",
+      "difficulty": "<15 min fix",
+      "stratum": "E",
+      "vehicle": "opencode",
+      "opencode_version": "1.18.31",
+      "model": "openrouter/qwen/qwen3.8-27b",
+      "model_config": {
+        "configured": true,
+        "limit_output": 235929,
+        "limit_context": 262144,
+        "options": {
+          "provider": {
+            "order": [
+              "DeepInfra"
+            ],
+            "quantizations": [
+              "bf16"
+            ],
+            "allow_fallbacks": false
+          }
+        }
+      },
+      "endpoint": "openrouter",
+      "endpoint_selection": {
+        "request": "openrouter/qwen/qwen3.8-27b",
+        "exclusive": false,
+        "reason": "pinned by CT_OPENCODE_MODEL (remote: no local slot needed)",
+        "signals": null,
+        "decided_at": "2026-09-16T19:00:26.180Z"
+      },
+      "pass": true,
+      "f2p_pass": true,
+      "p2p_pass": true,
+      "grade_stage": "ok",
+      "grade_valid": true,
+      "f2p_failures": [],
+      "p2p_failures": [],
+      "p2p_graded_n": 16,
+      "p2p_dataset_n": 16,
+      "run_valid": true,
+      "scored": true,
+      "exit_code": 0,
+      "signal": null,
+      "timed_out": false,
+      "wall_seconds": 490,
+      "exit_outcome": "ok",
+      "killed_externally": false,
+      "other_opencode_runs_at_start": 6,
+      "other_opencode_runs_peak": 6,
+      "ended_at": "2026-09-16T19:08:35.950Z",
+      "last_event_type": "step_finish",
+      "error": null,
+      "steps": 21,
+      "tool_calls": 25,
+      "tools_by_name": {
+        "read": 4,
+        "grep": 4,
+        "edit": 2,
+        "bash": 15
+      },
+      "tool_errors": 0,
+      "files_edited": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-7205__r1/workspace/src/_pytest/setuponly.py"
+      ],
+      "files_read": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-7205__r1/workspace/src/_pytest/setuponly.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-7205__r1/workspace/src/_pytest/_io/saferepr.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-7205__r1/workspace/testing/test_setuponly.py"
+      ],
+      "reads": 4,
+      "diff_empty": false,
+      "agent_diff": "diff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/pytest-dev__pytest-7205/src/_pytest/setuponly.py /mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-7205__r1/workspace/src/_pytest/setuponly.py\n--- /mnt/data/ctx-swebench/wscache/pytest-dev__pytest-7205/src/_pytest/setuponly.py\t2020-05-08 11:28:14.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-7205__r1/workspace/src/_pytest/setuponly.py\t2026-09-16 14:07:31.516868193 -0500\n@@ -1,4 +1,5 @@\n import pytest\n+from _pytest._io.saferepr import saferepr\n \n \n def pytest_addoption(parser):\n@@ -66,7 +67,7 @@\n             tw.write(\" (fixtures used: {})\".format(\", \".join(deps)))\n \n     if hasattr(fixturedef, \"cached_param\"):\n-        tw.write(\"[{}]\".format(fixturedef.cached_param))\n+        tw.write(\"[{}]\".format(saferepr(fixturedef.cached_param)))\n \n     tw.flush()\n \n",
+      "tokens": {
+        "input": 92135,
+        "output": 3173,
+        "reasoning": 14764,
+        "cache_read": 534688,
+        "cache_write": 0
+      },
+      "peak_prompt_tokens": 44624,
+      "first_step_prompt_tokens": 10661,
+      "cost_reported": 0.145659,
+      "cost_list_price": 0.179879,
+      "events": 78,
+      "events_unparseable": 0,
+      "session_id": "ses_f546882d3ffeb3NivrXQGaMFd2",
+      "export_ok": true,
+      "export_part_types": {
+        "text": 12,
+        "step-start": 21,
+        "reasoning": 21,
+        "tool": 25,
+        "step-finish": 21
+      },
+      "export_bytes": 255804,
+      "events_complete": true,
+      "events_missing_steps": 0,
+      "events_missing_tool_calls": 0,
+      "run_dir": "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-7205__r1",
+      "final_step_reason": "stop",
+      "length_stops": 0,
+      "ended_on_output_limit": false,
+      "max_step_response_tokens": 4961,
+      "reasoning_parts": 21,
+      "reasoning_chars": 57543,
+      "text_parts": 11,
+      "text_chars": 2712,
+      "export_tokens": {
+        "output": 3173,
+        "reasoning": 14764
+      },
+      "length_stop_response": null,
+      "context_tree_import": {
+        "ok": true,
+        "events": 62,
+        "skipped": 63,
+        "failures": 0,
+        "nodes": 5,
+        "phases": 3,
+        "file_nodes": 1,
+        "unmapped_tools": []
+      },
+      "finalized_from": "results-swebench-opencode-baseline-w2.json"
+    },
+    {
+      "instance": "pytest-dev__pytest-7205",
+      "repeat": 2,
+      "repo": "pytest-dev/pytest",
+      "difficulty": "<15 min fix",
+      "stratum": "E",
+      "vehicle": "opencode",
+      "opencode_version": "1.18.31",
+      "model": "openrouter/qwen/qwen3.8-27b",
+      "model_config": {
+        "configured": true,
+        "limit_output": 235929,
+        "limit_context": 262144,
+        "options": {
+          "provider": {
+            "order": [
+              "DeepInfra"
+            ],
+            "quantizations": [
+              "bf16"
+            ],
+            "allow_fallbacks": false
+          }
+        }
+      },
+      "endpoint": "openrouter",
+      "endpoint_selection": {
+        "request": "openrouter/qwen/qwen3.8-27b",
+        "exclusive": false,
+        "reason": "pinned by CT_OPENCODE_MODEL (remote: no local slot needed)",
+        "signals": null,
+        "decided_at": "2026-09-16T19:08:37.904Z"
+      },
+      "pass": true,
+      "f2p_pass": true,
+      "p2p_pass": true,
+      "grade_stage": "ok",
+      "grade_valid": true,
+      "f2p_failures": [],
+      "p2p_failures": [],
+      "p2p_graded_n": 16,
+      "p2p_dataset_n": 16,
+      "run_valid": true,
+      "scored": true,
+      "exit_code": 0,
+      "signal": null,
+      "timed_out": false,
+      "wall_seconds": 907,
+      "exit_outcome": "ok",
+      "killed_externally": false,
+      "other_opencode_runs_at_start": 6,
+      "other_opencode_runs_peak": 6,
+      "ended_at": "2026-09-16T19:23:44.785Z",
+      "last_event_type": "step_finish",
+      "error": null,
+      "steps": 32,
+      "tool_calls": 40,
+      "tools_by_name": {
+        "read": 8,
+        "bash": 19,
+        "grep": 6,
+        "edit": 7
+      },
+      "tool_errors": 0,
+      "files_edited": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-7205__r2/workspace/src/_pytest/setuponly.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-7205__r2/workspace/testing/test_setuponly.py"
+      ],
+      "files_read": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-7205__r2/workspace/src/_pytest/setuponly.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-7205__r2/workspace/testing/test_setuponly.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-7205__r2/workspace/src/_pytest/_io/saferepr.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-7205__r2/workspace/src/_pytest/pytester.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-7205__r2/workspace/src/_pytest/fixtures.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-7205__r2/workspace/src/_pytest/python.py"
+      ],
+      "reads": 8,
+      "diff_empty": false,
+      "agent_diff": "diff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/pytest-dev__pytest-7205/src/_pytest/setuponly.py /mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-7205__r2/workspace/src/_pytest/setuponly.py\n--- /mnt/data/ctx-swebench/wscache/pytest-dev__pytest-7205/src/_pytest/setuponly.py\t2020-05-08 11:28:14.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-7205__r2/workspace/src/_pytest/setuponly.py\t2026-09-16 14:23:29.914039623 -0500\n@@ -1,4 +1,5 @@\n import pytest\n+from _pytest._io.saferepr import saferepr\n \n \n def pytest_addoption(parser):\n@@ -66,7 +67,7 @@\n             tw.write(\" (fixtures used: {})\".format(\", \".join(deps)))\n \n     if hasattr(fixturedef, \"cached_param\"):\n-        tw.write(\"[{}]\".format(fixturedef.cached_param))\n+        tw.write(\"[{}]\".format(saferepr(fixturedef.cached_param, maxsize=42)))\n \n     tw.flush()\n \n",
+      "tokens": {
+        "input": 346829,
+        "output": 10972,
+        "reasoning": 28462,
+        "cache_read": 1368080,
+        "cache_write": 0
+      },
+      "peak_prompt_tokens": 66933,
+      "first_step_prompt_tokens": 10659,
+      "cost_reported": 0.37999,
+      "cost_list_price": 0.467547,
+      "events": 114,
+      "events_unparseable": 0,
+      "session_id": "ses_f546101f6ffe6zRWDwJiCeZCCT",
+      "export_ok": true,
+      "export_part_types": {
+        "text": 11,
+        "step-start": 32,
+        "reasoning": 32,
+        "tool": 40,
+        "step-finish": 32
+      },
+      "export_bytes": 355915,
+      "events_complete": true,
+      "events_missing_steps": 0,
+      "events_missing_tool_calls": 0,
+      "run_dir": "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-7205__r2",
+      "final_step_reason": "stop",
+      "length_stops": 0,
+      "ended_on_output_limit": false,
+      "max_step_response_tokens": 17423,
+      "reasoning_parts": 32,
+      "reasoning_chars": 111803,
+      "text_parts": 10,
+      "text_chars": 1947,
+      "export_tokens": {
+        "output": 10972,
+        "reasoning": 28462
+      },
+      "length_stop_response": null,
+      "context_tree_import": {
+        "ok": true,
+        "events": 91,
+        "skipped": 96,
+        "failures": 0,
+        "nodes": 6,
+        "phases": 3,
+        "file_nodes": 2,
+        "unmapped_tools": []
+      },
+      "finalized_from": "results-swebench-opencode-baseline-w2.json"
+    },
+    {
+      "instance": "pytest-dev__pytest-8399",
+      "repeat": 0,
+      "repo": "pytest-dev/pytest",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M",
+      "vehicle": "opencode",
+      "opencode_version": "1.18.31",
+      "model": "openrouter/qwen/qwen3.8-27b",
+      "model_config": {
+        "configured": true,
+        "limit_output": 235929,
+        "limit_context": 262144,
+        "options": {
+          "provider": {
+            "order": [
+              "DeepInfra"
+            ],
+            "quantizations": [
+              "bf16"
+            ],
+            "allow_fallbacks": false
+          }
+        }
+      },
+      "endpoint": "openrouter",
+      "endpoint_selection": {
+        "request": "openrouter/qwen/qwen3.8-27b",
+        "exclusive": false,
+        "reason": "pinned by CT_OPENCODE_MODEL (remote: no local slot needed)",
+        "signals": null,
+        "decided_at": "2026-09-16T19:23:47.215Z"
+      },
+      "pass": true,
+      "f2p_pass": true,
+      "p2p_pass": true,
+      "grade_stage": "ok",
+      "grade_valid": true,
+      "f2p_failures": [],
+      "p2p_failures": [],
+      "p2p_graded_n": 59,
+      "p2p_dataset_n": 59,
+      "run_valid": true,
+      "scored": true,
+      "exit_code": 0,
+      "signal": null,
+      "timed_out": false,
+      "wall_seconds": 787,
+      "exit_outcome": "ok",
+      "killed_externally": false,
+      "other_opencode_runs_at_start": 6,
+      "other_opencode_runs_peak": 6,
+      "ended_at": "2026-09-16T19:36:53.768Z",
+      "last_event_type": "step_finish",
+      "error": null,
+      "steps": 41,
+      "tool_calls": 53,
+      "tools_by_name": {
+        "bash": 31,
+        "glob": 1,
+        "read": 8,
+        "grep": 7,
+        "edit": 5,
+        "write": 1
+      },
+      "tool_errors": 0,
+      "files_edited": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r0/workspace/src/_pytest/python.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r0/workspace/src/_pytest/unittest.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r0/workspace/changelog/8394.bugfix.rst"
+      ],
+      "files_read": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r0/workspace/src/_pytest/unittest.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r0/workspace/src/_pytest/python.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r0/workspace/testing/python/fixtures.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r0/workspace/src/_pytest/fixtures.py"
+      ],
+      "reads": 8,
+      "diff_empty": false,
+      "agent_diff": "Only in /mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r0/workspace/changelog: 8394.bugfix.rst\ndiff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/pytest-dev__pytest-8399/src/_pytest/python.py /mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r0/workspace/src/_pytest/python.py\n--- /mnt/data/ctx-swebench/wscache/pytest-dev__pytest-8399/src/_pytest/python.py\t2021-03-04 10:34:19.000000000 -0600\n+++ /mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r0/workspace/src/_pytest/python.py\t2026-09-16 14:36:09.772848902 -0500\n@@ -528,7 +528,7 @@\n             autouse=True,\n             scope=\"module\",\n             # Use a unique name to speed up lookup.\n-            name=f\"xunit_setup_module_fixture_{self.obj.__name__}\",\n+            name=f\"_xunit_setup_module_fixture_{self.obj.__name__}\",\n         )\n         def xunit_setup_module_fixture(request) -> Generator[None, None, None]:\n             if setup_module is not None:\n@@ -557,7 +557,7 @@\n             autouse=True,\n             scope=\"function\",\n             # Use a unique name to speed up lookup.\n-            name=f\"xunit_setup_function_fixture_{self.obj.__name__}\",\n+            name=f\"_xunit_setup_function_fixture_{self.obj.__name__}\",\n         )\n         def xunit_setup_function_fixture(request) -> Generator[None, None, None]:\n             if request.instance is not None:\n@@ -809,7 +809,7 @@\n             autouse=True,\n             scope=\"class\",\n             # Use a unique name to speed up lookup.\n-            name=f\"xunit_setup_class_fixture_{self.obj.__qualname__}\",\n+            name=f\"_xunit_setup_class_fixture_{self.obj.__qualname__}\",\n         )\n         def xunit_setup_class_fixture(cls) -> Generator[None, None, None]:\n             if setup_class is not None:\n@@ -838,7 +838,7 @@\n             autouse=True,\n             scope=\"function\",\n             # Use a unique name to speed up lookup.\n-            name=f\"xunit_setup_method_fixture_{self.obj.__qualname__}\",\n+            name=f\"_xunit_setup_method_fixture_{self.obj.__qualname__}\",\n         )\n         def xunit_setup_method_fixture(self, request) -> Generator[None, None, None]:\n             method = request.function\ndiff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/pytest-dev__pytest-8399/src/_pytest/unittest.py /mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r0/workspace/src/_pytest/unittest.py\n--- /mnt/data/ctx-swebench/wscache/pytest-dev__pytest-8399/src/_pytest/unittest.py\t2021-03-04 10:34:19.000000000 -0600\n+++ /mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r0/workspace/src/_pytest/unittest.py\t2026-09-16 14:36:09.774098396 -0500\n@@ -144,7 +144,7 @@\n         scope=scope,\n         autouse=True,\n         # Use a unique name to speed up lookup.\n-        name=f\"unittest_{setup_name}_fixture_{obj.__qualname__}\",\n+        name=f\"_unittest_{setup_name}_fixture_{obj.__qualname__}\",\n     )\n     def fixture(self, request: FixtureRequest) -> Generator[None, None, None]:\n         if _is_skipped(self):\n",
+      "tokens": {
+        "input": 244964,
+        "output": 9023,
+        "reasoning": 22522,
+        "cache_read": 1640128,
+        "cache_write": 0
+      },
+      "peak_prompt_tokens": 66611,
+      "first_step_prompt_tokens": 9679,
+      "cost_reported": 0.378881,
+      "cost_list_price": 0.483849,
+      "events": 146,
+      "events_unparseable": 0,
+      "session_id": "ses_f545321ccffeWl4cAImtlGc84x",
+      "export_ok": true,
+      "export_part_types": {
+        "text": 12,
+        "step-start": 41,
+        "reasoning": 41,
+        "tool": 53,
+        "step-finish": 41
+      },
+      "export_bytes": 418358,
+      "events_complete": true,
+      "events_missing_steps": 0,
+      "events_missing_tool_calls": 0,
+      "run_dir": "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r0",
+      "final_step_reason": "stop",
+      "length_stops": 0,
+      "ended_on_output_limit": false,
+      "max_step_response_tokens": 5917,
+      "reasoning_parts": 41,
+      "reasoning_chars": 87820,
+      "text_parts": 11,
+      "text_chars": 2173,
+      "export_tokens": {
+        "output": 9023,
+        "reasoning": 22522
+      },
+      "length_stop_response": null,
+      "context_tree_import": {
+        "ok": true,
+        "events": 118,
+        "skipped": 123,
+        "failures": 0,
+        "nodes": 7,
+        "phases": 3,
+        "file_nodes": 3,
+        "unmapped_tools": []
+      },
+      "finalized_from": "results-swebench-opencode-baseline-w2.json"
+    },
+    {
+      "instance": "pytest-dev__pytest-8399",
+      "repeat": 1,
+      "repo": "pytest-dev/pytest",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M",
+      "vehicle": "opencode",
+      "opencode_version": "1.18.31",
+      "model": "openrouter/qwen/qwen3.8-27b",
+      "model_config": {
+        "configured": true,
+        "limit_output": 235929,
+        "limit_context": 262144,
+        "options": {
+          "provider": {
+            "order": [
+              "DeepInfra"
+            ],
+            "quantizations": [
+              "bf16"
+            ],
+            "allow_fallbacks": false
+          }
+        }
+      },
+      "endpoint": "openrouter",
+      "endpoint_selection": {
+        "request": "openrouter/qwen/qwen3.8-27b",
+        "exclusive": false,
+        "reason": "pinned by CT_OPENCODE_MODEL (remote: no local slot needed)",
+        "signals": null,
+        "decided_at": "2026-09-16T19:36:56.641Z"
+      },
+      "pass": true,
+      "f2p_pass": true,
+      "p2p_pass": true,
+      "grade_stage": "ok",
+      "grade_valid": true,
+      "f2p_failures": [],
+      "p2p_failures": [],
+      "p2p_graded_n": 59,
+      "p2p_dataset_n": 59,
+      "run_valid": true,
+      "scored": true,
+      "exit_code": 0,
+      "signal": null,
+      "timed_out": false,
+      "wall_seconds": 941,
+      "exit_outcome": "ok",
+      "killed_externally": false,
+      "other_opencode_runs_at_start": 6,
+      "other_opencode_runs_peak": 6,
+      "ended_at": "2026-09-16T19:52:37.861Z",
+      "last_event_type": "step_finish",
+      "error": null,
+      "steps": 81,
+      "tool_calls": 84,
+      "tools_by_name": {
+        "bash": 61,
+        "read": 12,
+        "grep": 5,
+        "edit": 5,
+        "write": 1
+      },
+      "tool_errors": 1,
+      "files_edited": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r1/workspace/src/_pytest/unittest.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r1/workspace/src/_pytest/python.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r1/workspace/changelog/8399.bugfix.rst"
+      ],
+      "files_read": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r1/workspace/src/_pytest/unittest.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r1/workspace/src/_pytest/python.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r1/workspace/testing/python/fixtures.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r1/workspace/testing/test_unittest.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r1/workspace/src/_pytest/setuponly.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r1/workspace/src/_pytest/fixtures.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r1/workspace/testing/test_setuponly.py"
+      ],
+      "reads": 12,
+      "diff_empty": false,
+      "agent_diff": "Only in /mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r1/workspace/changelog: 8399.bugfix.rst\ndiff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/pytest-dev__pytest-8399/src/_pytest/python.py /mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r1/workspace/src/_pytest/python.py\n--- /mnt/data/ctx-swebench/wscache/pytest-dev__pytest-8399/src/_pytest/python.py\t2021-03-04 10:34:19.000000000 -0600\n+++ /mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r1/workspace/src/_pytest/python.py\t2026-09-16 14:50:55.820739110 -0500\n@@ -528,7 +528,7 @@\n             autouse=True,\n             scope=\"module\",\n             # Use a unique name to speed up lookup.\n-            name=f\"xunit_setup_module_fixture_{self.obj.__name__}\",\n+            name=f\"_xunit_setup_module_fixture_{self.obj.__name__}\",\n         )\n         def xunit_setup_module_fixture(request) -> Generator[None, None, None]:\n             if setup_module is not None:\n@@ -557,7 +557,7 @@\n             autouse=True,\n             scope=\"function\",\n             # Use a unique name to speed up lookup.\n-            name=f\"xunit_setup_function_fixture_{self.obj.__name__}\",\n+            name=f\"_xunit_setup_function_fixture_{self.obj.__name__}\",\n         )\n         def xunit_setup_function_fixture(request) -> Generator[None, None, None]:\n             if request.instance is not None:\n@@ -809,7 +809,7 @@\n             autouse=True,\n             scope=\"class\",\n             # Use a unique name to speed up lookup.\n-            name=f\"xunit_setup_class_fixture_{self.obj.__qualname__}\",\n+            name=f\"_xunit_setup_class_fixture_{self.obj.__qualname__}\",\n         )\n         def xunit_setup_class_fixture(cls) -> Generator[None, None, None]:\n             if setup_class is not None:\n@@ -838,7 +838,7 @@\n             autouse=True,\n             scope=\"function\",\n             # Use a unique name to speed up lookup.\n-            name=f\"xunit_setup_method_fixture_{self.obj.__qualname__}\",\n+            name=f\"_xunit_setup_method_fixture_{self.obj.__qualname__}\",\n         )\n         def xunit_setup_method_fixture(self, request) -> Generator[None, None, None]:\n             method = request.function\ndiff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/pytest-dev__pytest-8399/src/_pytest/unittest.py /mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r1/workspace/src/_pytest/unittest.py\n--- /mnt/data/ctx-swebench/wscache/pytest-dev__pytest-8399/src/_pytest/unittest.py\t2021-03-04 10:34:19.000000000 -0600\n+++ /mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r1/workspace/src/_pytest/unittest.py\t2026-09-16 14:50:55.821259805 -0500\n@@ -144,7 +144,7 @@\n         scope=scope,\n         autouse=True,\n         # Use a unique name to speed up lookup.\n-        name=f\"unittest_{setup_name}_fixture_{obj.__qualname__}\",\n+        name=f\"_unittest_{setup_name}_fixture_{obj.__qualname__}\",\n     )\n     def fixture(self, request: FixtureRequest) -> Generator[None, None, None]:\n         if _is_skipped(self):\n",
+      "tokens": {
+        "input": 133580,
+        "output": 9750,
+        "reasoning": 28749,
+        "cache_read": 4635792,
+        "cache_write": 0
+      },
+      "peak_prompt_tokens": 86932,
+      "first_step_prompt_tokens": 9679,
+      "cost_reported": 0.822127,
+      "cost_list_price": 1.118818,
+      "events": 255,
+      "events_unparseable": 0,
+      "session_id": "ses_f54471644ffexvkksK43nY8rVU",
+      "export_ok": true,
+      "export_part_types": {
+        "text": 10,
+        "step-start": 81,
+        "reasoning": 81,
+        "tool": 84,
+        "step-finish": 81
+      },
+      "export_bytes": 629807,
+      "events_complete": true,
+      "events_missing_steps": 0,
+      "events_missing_tool_calls": 0,
+      "run_dir": "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r1",
+      "final_step_reason": "stop",
+      "length_stops": 0,
+      "ended_on_output_limit": false,
+      "max_step_response_tokens": 3790,
+      "reasoning_parts": 81,
+      "reasoning_chars": 112271,
+      "text_parts": 9,
+      "text_chars": 2918,
+      "export_tokens": {
+        "output": 9750,
+        "reasoning": 28749
+      },
+      "length_stop_response": null,
+      "context_tree_import": {
+        "ok": true,
+        "events": 178,
+        "skipped": 243,
+        "failures": 0,
+        "nodes": 7,
+        "phases": 3,
+        "file_nodes": 3,
+        "unmapped_tools": []
+      },
+      "finalized_from": "results-swebench-opencode-baseline-w2.json"
+    },
+    {
+      "instance": "pytest-dev__pytest-8399",
+      "repeat": 2,
+      "repo": "pytest-dev/pytest",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M",
+      "vehicle": "opencode",
+      "opencode_version": "1.18.31",
+      "model": "openrouter/qwen/qwen3.8-27b",
+      "model_config": {
+        "configured": true,
+        "limit_output": 235929,
+        "limit_context": 262144,
+        "options": {
+          "provider": {
+            "order": [
+              "DeepInfra"
+            ],
+            "quantizations": [
+              "bf16"
+            ],
+            "allow_fallbacks": false
+          }
+        }
+      },
+      "endpoint": "openrouter",
+      "endpoint_selection": {
+        "request": "openrouter/qwen/qwen3.8-27b",
+        "exclusive": false,
+        "reason": "pinned by CT_OPENCODE_MODEL (remote: no local slot needed)",
+        "signals": null,
+        "decided_at": "2026-09-16T19:52:40.872Z"
+      },
+      "pass": true,
+      "f2p_pass": true,
+      "p2p_pass": true,
+      "grade_stage": "ok",
+      "grade_valid": true,
+      "f2p_failures": [],
+      "p2p_failures": [],
+      "p2p_graded_n": 59,
+      "p2p_dataset_n": 59,
+      "run_valid": true,
+      "scored": true,
+      "exit_code": 0,
+      "signal": null,
+      "timed_out": false,
+      "wall_seconds": 1144,
+      "exit_outcome": "ok",
+      "killed_externally": false,
+      "other_opencode_runs_at_start": 6,
+      "other_opencode_runs_peak": 6,
+      "ended_at": "2026-09-16T20:11:44.648Z",
+      "last_event_type": "step_finish",
+      "error": null,
+      "steps": 63,
+      "tool_calls": 69,
+      "tools_by_name": {
+        "read": 7,
+        "grep": 12,
+        "bash": 44,
+        "edit": 5,
+        "write": 1
+      },
+      "tool_errors": 0,
+      "files_edited": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r2/workspace/src/_pytest/unittest.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r2/workspace/src/_pytest/python.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r2/workspace/changelog/8399.bugfix.rst"
+      ],
+      "files_read": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r2/workspace/src/_pytest/unittest.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r2/workspace/src/_pytest/python.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r2/workspace/src/_pytest/fixtures.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r2/workspace/testing/test_setupplan.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r2/workspace/testing/python/show_fixtures_per_test.py"
+      ],
+      "reads": 7,
+      "diff_empty": false,
+      "agent_diff": "Only in /mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r2/workspace/changelog: 8399.bugfix.rst\ndiff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/pytest-dev__pytest-8399/src/_pytest/python.py /mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r2/workspace/src/_pytest/python.py\n--- /mnt/data/ctx-swebench/wscache/pytest-dev__pytest-8399/src/_pytest/python.py\t2021-03-04 10:34:19.000000000 -0600\n+++ /mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r2/workspace/src/_pytest/python.py\t2026-09-16 15:09:55.575230472 -0500\n@@ -528,7 +528,7 @@\n             autouse=True,\n             scope=\"module\",\n             # Use a unique name to speed up lookup.\n-            name=f\"xunit_setup_module_fixture_{self.obj.__name__}\",\n+            name=f\"_xunit_setup_module_fixture_{self.obj.__name__}\",\n         )\n         def xunit_setup_module_fixture(request) -> Generator[None, None, None]:\n             if setup_module is not None:\n@@ -557,7 +557,7 @@\n             autouse=True,\n             scope=\"function\",\n             # Use a unique name to speed up lookup.\n-            name=f\"xunit_setup_function_fixture_{self.obj.__name__}\",\n+            name=f\"_xunit_setup_function_fixture_{self.obj.__name__}\",\n         )\n         def xunit_setup_function_fixture(request) -> Generator[None, None, None]:\n             if request.instance is not None:\n@@ -809,7 +809,7 @@\n             autouse=True,\n             scope=\"class\",\n             # Use a unique name to speed up lookup.\n-            name=f\"xunit_setup_class_fixture_{self.obj.__qualname__}\",\n+            name=f\"_xunit_setup_class_fixture_{self.obj.__qualname__}\",\n         )\n         def xunit_setup_class_fixture(cls) -> Generator[None, None, None]:\n             if setup_class is not None:\n@@ -838,7 +838,7 @@\n             autouse=True,\n             scope=\"function\",\n             # Use a unique name to speed up lookup.\n-            name=f\"xunit_setup_method_fixture_{self.obj.__qualname__}\",\n+            name=f\"_xunit_setup_method_fixture_{self.obj.__qualname__}\",\n         )\n         def xunit_setup_method_fixture(self, request) -> Generator[None, None, None]:\n             method = request.function\ndiff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/pytest-dev__pytest-8399/src/_pytest/unittest.py /mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r2/workspace/src/_pytest/unittest.py\n--- /mnt/data/ctx-swebench/wscache/pytest-dev__pytest-8399/src/_pytest/unittest.py\t2021-03-04 10:34:19.000000000 -0600\n+++ /mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r2/workspace/src/_pytest/unittest.py\t2026-09-16 15:09:55.573857682 -0500\n@@ -144,7 +144,7 @@\n         scope=scope,\n         autouse=True,\n         # Use a unique name to speed up lookup.\n-        name=f\"unittest_{setup_name}_fixture_{obj.__qualname__}\",\n+        name=f\"_unittest_{setup_name}_fixture_{obj.__qualname__}\",\n     )\n     def fixture(self, request: FixtureRequest) -> Generator[None, None, None]:\n         if _is_skipped(self):\n",
+      "tokens": {
+        "input": 482491,
+        "output": 10833,
+        "reasoning": 21893,
+        "cache_read": 2746352,
+        "cache_write": 0
+      },
+      "peak_prompt_tokens": 76318,
+      "first_step_prompt_tokens": 9679,
+      "cost_reported": 0.598657,
+      "cost_list_price": 0.774424,
+      "events": 219,
+      "events_unparseable": 0,
+      "session_id": "ses_f5438adbdffe7Mvok5qKlb8sCc",
+      "export_ok": true,
+      "export_part_types": {
+        "text": 25,
+        "step-start": 63,
+        "reasoning": 63,
+        "tool": 69,
+        "step-finish": 63
+      },
+      "export_bytes": 514592,
+      "events_complete": true,
+      "events_missing_steps": 0,
+      "events_missing_tool_calls": 0,
+      "run_dir": "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pytest-dev__pytest-8399__r2",
+      "final_step_reason": "stop",
+      "length_stops": 0,
+      "ended_on_output_limit": false,
+      "max_step_response_tokens": 4699,
+      "reasoning_parts": 63,
+      "reasoning_chars": 85568,
+      "text_parts": 24,
+      "text_chars": 4493,
+      "export_tokens": {
+        "output": 10833,
+        "reasoning": 21893
+      },
+      "length_stop_response": null,
+      "context_tree_import": {
+        "ok": true,
+        "events": 163,
+        "skipped": 189,
+        "failures": 0,
+        "nodes": 13,
+        "phases": 8,
+        "file_nodes": 4,
+        "unmapped_tools": []
+      },
+      "finalized_from": "results-swebench-opencode-baseline-w2.json"
+    },
+    {
+      "instance": "pylint-dev__pylint-4970",
+      "repeat": 0,
+      "repo": "pylint-dev/pylint",
+      "difficulty": "<15 min fix",
+      "stratum": "E",
+      "vehicle": "opencode",
+      "opencode_version": "1.18.31",
+      "model": "openrouter/qwen/qwen3.8-27b",
+      "model_config": {
+        "configured": true,
+        "limit_output": 235929,
+        "limit_context": 262144,
+        "options": {
+          "provider": {
+            "order": [
+              "DeepInfra"
+            ],
+            "quantizations": [
+              "bf16"
+            ],
+            "allow_fallbacks": false
+          }
+        }
+      },
+      "endpoint": "openrouter",
+      "endpoint_selection": {
+        "request": "openrouter/qwen/qwen3.8-27b",
+        "exclusive": false,
+        "reason": "pinned by CT_OPENCODE_MODEL (remote: no local slot needed)",
+        "signals": null,
+        "decided_at": "2026-09-16T20:11:47.940Z"
+      },
+      "pass": true,
+      "f2p_pass": true,
+      "p2p_pass": true,
+      "grade_stage": "ok",
+      "grade_valid": true,
+      "f2p_failures": [],
+      "p2p_failures": [],
+      "p2p_graded_n": 17,
+      "p2p_dataset_n": 17,
+      "run_valid": true,
+      "scored": true,
+      "exit_code": 0,
+      "signal": null,
+      "timed_out": false,
+      "wall_seconds": 520,
+      "exit_outcome": "ok",
+      "killed_externally": false,
+      "other_opencode_runs_at_start": 6,
+      "other_opencode_runs_peak": 6,
+      "ended_at": "2026-09-16T20:20:27.714Z",
+      "last_event_type": "step_finish",
+      "error": null,
+      "steps": 32,
+      "tool_calls": 40,
+      "tools_by_name": {
+        "bash": 32,
+        "grep": 1,
+        "read": 4,
+        "edit": 3
+      },
+      "tool_errors": 0,
+      "files_edited": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pylint-dev__pylint-4970__r0/workspace/pylint/checkers/similar.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pylint-dev__pylint-4970__r0/workspace/ChangeLog",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pylint-dev__pylint-4970__r0/workspace/doc/whatsnew/2.11.rst"
+      ],
+      "files_read": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pylint-dev__pylint-4970__r0/workspace/pylint/checkers/similar.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pylint-dev__pylint-4970__r0/workspace/tests/checkers/unittest_similar.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pylint-dev__pylint-4970__r0/workspace/ChangeLog",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pylint-dev__pylint-4970__r0/workspace/doc/whatsnew/2.11.rst"
+      ],
+      "reads": 4,
+      "diff_empty": false,
+      "agent_diff": "diff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/pylint-dev__pylint-4970/ChangeLog /mnt/data/ctx-swebench/opencode-runs/baseline-w2/pylint-dev__pylint-4970__r0/workspace/ChangeLog\n--- /mnt/data/ctx-swebench/wscache/pylint-dev__pylint-4970/ChangeLog\t2021-09-05 23:23:21.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/baseline-w2/pylint-dev__pylint-4970__r0/workspace/ChangeLog\t2026-09-16 15:19:08.752502508 -0500\n@@ -65,6 +65,10 @@\n \n * Extended ``consider-using-in`` check to work for attribute access.\n \n+* Setting ``min-similarity-lines`` to 0 now makes the similarty checker stop checking for duplicate code\n+\n+  Closes #4901\n+\n \n What's New in Pylint 2.10.3?\n ============================\ndiff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/pylint-dev__pylint-4970/doc/whatsnew/2.11.rst /mnt/data/ctx-swebench/opencode-runs/baseline-w2/pylint-dev__pylint-4970__r0/workspace/doc/whatsnew/2.11.rst\n--- /mnt/data/ctx-swebench/wscache/pylint-dev__pylint-4970/doc/whatsnew/2.11.rst\t2021-09-05 23:23:21.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/baseline-w2/pylint-dev__pylint-4970__r0/workspace/doc/whatsnew/2.11.rst\t2026-09-16 15:19:18.385580020 -0500\n@@ -71,3 +71,7 @@\n   Closes #4907\n \n * Extended ``consider-using-in`` check to work for attribute access.\n+\n+* Setting ``min-similarity-lines`` to 0 now makes the similarty checker stop checking for duplicate code\n+\n+  Closes #4901\ndiff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/pylint-dev__pylint-4970/pylint/checkers/similar.py /mnt/data/ctx-swebench/opencode-runs/baseline-w2/pylint-dev__pylint-4970__r0/workspace/pylint/checkers/similar.py\n--- /mnt/data/ctx-swebench/wscache/pylint-dev__pylint-4970/pylint/checkers/similar.py\t2021-09-05 23:23:21.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/baseline-w2/pylint-dev__pylint-4970__r0/workspace/pylint/checkers/similar.py\t2026-09-16 15:20:08.014419216 -0500\n@@ -390,6 +390,8 @@\n \n     def run(self) -> None:\n         \"\"\"start looking for similarities and display results on stdout\"\"\"\n+        if self.min_lines == 0:\n+            return\n         self._display_sims(self._compute_sims())\n \n     def _compute_sims(self) -> List[Tuple[int, Set[LinesChunkLimits_T]]]:\n",
+      "tokens": {
+        "input": 292567,
+        "output": 5173,
+        "reasoning": 13463,
+        "cache_read": 916496,
+        "cache_write": 0
+      },
+      "peak_prompt_tokens": 52670,
+      "first_step_prompt_tokens": 9578,
+      "cost_reported": 0.247606,
+      "cost_list_price": 0.306261,
+      "events": 120,
+      "events_unparseable": 0,
+      "session_id": "ses_f54272d3dffeV4mWoqEkcsgRZc",
+      "export_ok": true,
+      "export_part_types": {
+        "text": 17,
+        "step-start": 32,
+        "reasoning": 32,
+        "tool": 40,
+        "step-finish": 32
+      },
+      "export_bytes": 325952,
+      "events_complete": true,
+      "events_missing_steps": 0,
+      "events_missing_tool_calls": 0,
+      "run_dir": "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pylint-dev__pylint-4970__r0",
+      "final_step_reason": "stop",
+      "length_stops": 0,
+      "ended_on_output_limit": false,
+      "max_step_response_tokens": 2948,
+      "reasoning_parts": 32,
+      "reasoning_chars": 52612,
+      "text_parts": 16,
+      "text_chars": 2410,
+      "export_tokens": {
+        "output": 5173,
+        "reasoning": 13463
+      },
+      "length_stop_response": null,
+      "context_tree_import": {
+        "ok": true,
+        "events": 97,
+        "skipped": 96,
+        "failures": 0,
+        "nodes": 11,
+        "phases": 7,
+        "file_nodes": 3,
+        "unmapped_tools": []
+      },
+      "finalized_from": "results-swebench-opencode-baseline-w2.json"
+    },
+    {
+      "instance": "pylint-dev__pylint-4970",
+      "repeat": 1,
+      "repo": "pylint-dev/pylint",
+      "difficulty": "<15 min fix",
+      "stratum": "E",
+      "vehicle": "opencode",
+      "opencode_version": "1.18.31",
+      "model": "openrouter/qwen/qwen3.8-27b",
+      "model_config": {
+        "configured": true,
+        "limit_output": 235929,
+        "limit_context": 262144,
+        "options": {
+          "provider": {
+            "order": [
+              "DeepInfra"
+            ],
+            "quantizations": [
+              "bf16"
+            ],
+            "allow_fallbacks": false
+          }
+        }
+      },
+      "endpoint": "openrouter",
+      "endpoint_selection": {
+        "request": "openrouter/qwen/qwen3.8-27b",
+        "exclusive": false,
+        "reason": "pinned by CT_OPENCODE_MODEL (remote: no local slot needed)",
+        "signals": null,
+        "decided_at": "2026-09-16T20:20:29.271Z"
+      },
+      "pass": true,
+      "f2p_pass": true,
+      "p2p_pass": true,
+      "grade_stage": "ok",
+      "grade_valid": true,
+      "f2p_failures": [],
+      "p2p_failures": [],
+      "p2p_graded_n": 17,
+      "p2p_dataset_n": 17,
+      "run_valid": true,
+      "scored": true,
+      "exit_code": 0,
+      "signal": null,
+      "timed_out": false,
+      "wall_seconds": 267,
+      "exit_outcome": "ok",
+      "killed_externally": false,
+      "other_opencode_runs_at_start": 6,
+      "other_opencode_runs_peak": 6,
+      "ended_at": "2026-09-16T20:24:56.690Z",
+      "last_event_type": "step_finish",
+      "error": null,
+      "steps": 29,
+      "tool_calls": 30,
+      "tools_by_name": {
+        "bash": 19,
+        "grep": 4,
+        "read": 6,
+        "edit": 1
+      },
+      "tool_errors": 0,
+      "files_edited": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pylint-dev__pylint-4970__r1/workspace/pylint/checkers/similar.py"
+      ],
+      "files_read": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pylint-dev__pylint-4970__r1/workspace/pylint/checkers/similar.py"
+      ],
+      "reads": 6,
+      "diff_empty": false,
+      "agent_diff": "diff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/pylint-dev__pylint-4970/pylint/checkers/similar.py /mnt/data/ctx-swebench/opencode-runs/baseline-w2/pylint-dev__pylint-4970__r1/workspace/pylint/checkers/similar.py\n--- /mnt/data/ctx-swebench/wscache/pylint-dev__pylint-4970/pylint/checkers/similar.py\t2021-09-05 23:23:21.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/baseline-w2/pylint-dev__pylint-4970__r1/workspace/pylint/checkers/similar.py\t2026-09-16 15:24:20.972014784 -0500\n@@ -390,6 +390,8 @@\n \n     def run(self) -> None:\n         \"\"\"start looking for similarities and display results on stdout\"\"\"\n+        if self.min_lines == 0:\n+            return\n         self._display_sims(self._compute_sims())\n \n     def _compute_sims(self) -> List[Tuple[int, Set[LinesChunkLimits_T]]]:\n",
+      "tokens": {
+        "input": 29431,
+        "output": 3181,
+        "reasoning": 8894,
+        "cache_read": 751856,
+        "cache_write": 0
+      },
+      "peak_prompt_tokens": 37496,
+      "first_step_prompt_tokens": 9578,
+      "cost_reported": 0.149868,
+      "cost_list_price": 0.197987,
+      "events": 93,
+      "events_unparseable": 0,
+      "session_id": "ses_f541f38b6ffe4mZjZOa4zHBwUI",
+      "export_ok": true,
+      "export_part_types": {
+        "text": 6,
+        "step-start": 29,
+        "reasoning": 29,
+        "tool": 30,
+        "step-finish": 29
+      },
+      "export_bytes": 232599,
+      "events_complete": true,
+      "events_missing_steps": 0,
+      "events_missing_tool_calls": 0,
+      "run_dir": "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pylint-dev__pylint-4970__r1",
+      "final_step_reason": "stop",
+      "length_stops": 0,
+      "ended_on_output_limit": false,
+      "max_step_response_tokens": 2643,
+      "reasoning_parts": 29,
+      "reasoning_chars": 34787,
+      "text_parts": 5,
+      "text_chars": 981,
+      "export_tokens": {
+        "output": 3181,
+        "reasoning": 8894
+      },
+      "length_stop_response": null,
+      "context_tree_import": {
+        "ok": true,
+        "events": 66,
+        "skipped": 87,
+        "failures": 0,
+        "nodes": 5,
+        "phases": 3,
+        "file_nodes": 1,
+        "unmapped_tools": []
+      },
+      "finalized_from": "results-swebench-opencode-baseline-w2.json"
+    },
+    {
+      "instance": "pylint-dev__pylint-4970",
+      "repeat": 2,
+      "repo": "pylint-dev/pylint",
+      "difficulty": "<15 min fix",
+      "stratum": "E",
+      "vehicle": "opencode",
+      "opencode_version": "1.18.31",
+      "model": "openrouter/qwen/qwen3.8-27b",
+      "model_config": {
+        "configured": true,
+        "limit_output": 235929,
+        "limit_context": 262144,
+        "options": {
+          "provider": {
+            "order": [
+              "DeepInfra"
+            ],
+            "quantizations": [
+              "bf16"
+            ],
+            "allow_fallbacks": false
+          }
+        }
+      },
+      "endpoint": "openrouter",
+      "endpoint_selection": {
+        "request": "openrouter/qwen/qwen3.8-27b",
+        "exclusive": false,
+        "reason": "pinned by CT_OPENCODE_MODEL (remote: no local slot needed)",
+        "signals": null,
+        "decided_at": "2026-09-16T20:24:58.309Z"
+      },
+      "pass": true,
+      "f2p_pass": true,
+      "p2p_pass": true,
+      "grade_stage": "ok",
+      "grade_valid": true,
+      "f2p_failures": [],
+      "p2p_failures": [],
+      "p2p_graded_n": 17,
+      "p2p_dataset_n": 17,
+      "run_valid": true,
+      "scored": true,
+      "exit_code": 0,
+      "signal": null,
+      "timed_out": false,
+      "wall_seconds": 1177,
+      "exit_outcome": "ok",
+      "killed_externally": false,
+      "other_opencode_runs_at_start": 6,
+      "other_opencode_runs_peak": 6,
+      "ended_at": "2026-09-16T20:44:35.453Z",
+      "last_event_type": "step_finish",
+      "error": null,
+      "steps": 53,
+      "tool_calls": 59,
+      "tools_by_name": {
+        "bash": 39,
+        "grep": 5,
+        "read": 14,
+        "edit": 1
+      },
+      "tool_errors": 1,
+      "files_edited": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pylint-dev__pylint-4970__r2/workspace/pylint/checkers/similar.py"
+      ],
+      "files_read": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pylint-dev__pylint-4970__r2/workspace/pylint/checkers/similar.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pylint-dev__pylint-4970__r2/workspace/tests/checkers/unittest_similar.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pylint-dev__pylint-4970__r2/workspace/tests/lint/unittest_lint.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pylint-dev__pylint-4970__r2/workspace/pylint/config/option_manager_mixin.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pylint-dev__pylint-4970__r2/workspace/pylint/config/options_provider_mixin.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pylint-dev__pylint-4970__r2/workspace/pylint/config/option.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pylint-dev__pylint-4970__r2/workspace/pylint/lint/pylinter.py"
+      ],
+      "reads": 14,
+      "diff_empty": false,
+      "agent_diff": "diff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/pylint-dev__pylint-4970/pylint/checkers/similar.py /mnt/data/ctx-swebench/opencode-runs/baseline-w2/pylint-dev__pylint-4970__r2/workspace/pylint/checkers/similar.py\n--- /mnt/data/ctx-swebench/wscache/pylint-dev__pylint-4970/pylint/checkers/similar.py\t2021-09-05 23:23:21.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/baseline-w2/pylint-dev__pylint-4970__r2/workspace/pylint/checkers/similar.py\t2026-09-16 15:43:22.022244851 -0500\n@@ -390,6 +390,8 @@\n \n     def run(self) -> None:\n         \"\"\"start looking for similarities and display results on stdout\"\"\"\n+        if self.min_lines == 0:\n+            return\n         self._display_sims(self._compute_sims())\n \n     def _compute_sims(self) -> List[Tuple[int, Set[LinesChunkLimits_T]]]:\n",
+      "tokens": {
+        "input": 146522,
+        "output": 8674,
+        "reasoning": 27038,
+        "cache_read": 2664816,
+        "cache_write": 0
+      },
+      "peak_prompt_tokens": 82230,
+      "first_step_prompt_tokens": 9578,
+      "cost_reported": 0.522144,
+      "cost_list_price": 0.692692,
+      "events": 172,
+      "events_unparseable": 0,
+      "session_id": "ses_f541b1dcafferKISD0qzFfg2Xg",
+      "export_ok": true,
+      "export_part_types": {
+        "text": 8,
+        "step-start": 53,
+        "reasoning": 53,
+        "tool": 59,
+        "step-finish": 53
+      },
+      "export_bytes": 531989,
+      "events_complete": true,
+      "events_missing_steps": 0,
+      "events_missing_tool_calls": 0,
+      "run_dir": "/mnt/data/ctx-swebench/opencode-runs/baseline-w2/pylint-dev__pylint-4970__r2",
+      "final_step_reason": "stop",
+      "length_stops": 0,
+      "ended_on_output_limit": false,
+      "max_step_response_tokens": 3146,
+      "reasoning_parts": 53,
+      "reasoning_chars": 105616,
+      "text_parts": 7,
+      "text_chars": 1742,
+      "export_tokens": {
+        "output": 8674,
+        "reasoning": 27038
+      },
+      "length_stop_response": null,
+      "context_tree_import": {
+        "ok": true,
+        "events": 126,
+        "skipped": 159,
+        "failures": 0,
+        "nodes": 5,
+        "phases": 3,
+        "file_nodes": 1,
+        "unmapped_tools": []
+      },
+      "finalized_from": "results-swebench-opencode-baseline-w2.json"
+    }
+  ]
+}

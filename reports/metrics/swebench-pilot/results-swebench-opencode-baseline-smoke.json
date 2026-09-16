@@ -1,0 +1,185 @@
+{
+  "manifest": {
+    "run_id": "swebench-opencode-baseline-smoke",
+    "date": "2026-09-16T16:50:42.306Z",
+    "commit": "4c5a1985d9340319e1a955c90cc12bb3c6360fc5",
+    "vehicle": "opencode",
+    "opencode_version": "1.18.31",
+    "model": "openrouter/qwen/qwen3.8-27b",
+    "models_used": [
+      "openrouter/qwen/qwen3.8-27b"
+    ],
+    "endpoint_policy": "pinned: openrouter/qwen/qwen3.8-27b",
+    "endpoints_used": {
+      "local": 0,
+      "openrouter": 1
+    },
+    "invocation": "opencode run --pure -m <model> --format json --dir <ws> --auto <prompt> < /dev/null; per-run XDG dirs; export with same XDG env",
+    "config": "experiments/context-dedup/opencode.json (no credential in file)",
+    "model_configs": {
+      "openrouter/qwen/qwen3.8-27b": {
+        "configured": true,
+        "limit_output": 235929,
+        "limit_context": 262144,
+        "options": {
+          "provider": {
+            "order": [
+              "DeepInfra"
+            ],
+            "quantizations": [
+              "bf16"
+            ],
+            "allow_fallbacks": false
+          }
+        }
+      }
+    },
+    "host_defaults": "thinking ON on every endpoint (host default), no tool-output clip, no cap, no eviction, no middleware",
+    "run_timeout_s": 3600,
+    "instances": [
+      "scikit-learn__scikit-learn-14894"
+    ],
+    "selection_file": "selection-v2.json",
+    "grading": "ab-tasks/swebench.mjs gradeDetail after opencode exits: restore test-patch files, apply test patch, run the instance runner over F2P + calibrated P2P; void grades and errored runs excluded from rates",
+    "prices_per_million_usd": {
+      "openrouter/qwen/qwen3.8-27b": {
+        "input": 0.214,
+        "output": 2.55
+      }
+    },
+    "merged_from": [
+      "results-swebench-opencode-baseline-smoke.json"
+    ],
+    "finalized_at": "2026-09-16T16:51:20.993Z",
+    "finalize_note": "exports regenerated to file from each run's XDG session store; event streams checked against exports; exports imported into context-tree"
+  },
+  "cells": [
+    {
+      "instance": "scikit-learn__scikit-learn-14894",
+      "repeat": 0,
+      "repo": "scikit-learn/scikit-learn",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M",
+      "vehicle": "opencode",
+      "opencode_version": "1.18.31",
+      "model": "openrouter/qwen/qwen3.8-27b",
+      "model_config": {
+        "configured": true,
+        "limit_output": 235929,
+        "limit_context": 262144,
+        "options": {
+          "provider": {
+            "order": [
+              "DeepInfra"
+            ],
+            "quantizations": [
+              "bf16"
+            ],
+            "allow_fallbacks": false
+          }
+        }
+      },
+      "endpoint": "openrouter",
+      "endpoint_selection": {
+        "request": "openrouter/qwen/qwen3.8-27b",
+        "exclusive": false,
+        "reason": "pinned by CT_OPENCODE_MODEL",
+        "signals": null,
+        "decided_at": "2026-09-16T16:39:49.596Z"
+      },
+      "pass": true,
+      "f2p_pass": true,
+      "p2p_pass": true,
+      "grade_stage": "ok",
+      "grade_valid": true,
+      "f2p_failures": [],
+      "p2p_failures": [],
+      "p2p_graded_n": 85,
+      "p2p_dataset_n": 85,
+      "run_valid": true,
+      "scored": true,
+      "exit_code": 0,
+      "signal": null,
+      "timed_out": false,
+      "wall_seconds": 649,
+      "exit_outcome": "ok",
+      "killed_externally": false,
+      "other_opencode_runs_at_start": 4,
+      "other_opencode_runs_peak": 4,
+      "ended_at": "2026-09-16T16:50:38.646Z",
+      "last_event_type": "step_finish",
+      "error": null,
+      "steps": 17,
+      "tool_calls": 19,
+      "tools_by_name": {
+        "read": 2,
+        "glob": 2,
+        "grep": 4,
+        "bash": 10,
+        "edit": 1
+      },
+      "tool_errors": 0,
+      "files_edited": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-smoke/scikit-learn__scikit-learn-14894__r0/workspace/sklearn/svm/base.py"
+      ],
+      "files_read": [
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-smoke/scikit-learn__scikit-learn-14894__r0/workspace/sklearn/svm/base.py",
+        "/mnt/data/ctx-swebench/opencode-runs/baseline-smoke/scikit-learn__scikit-learn-14894__r0/workspace/sklearn/svm/libsvm_sparse.pyx"
+      ],
+      "reads": 2,
+      "diff_empty": false,
+      "agent_diff": "diff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/scikit-learn__scikit-learn-14894/sklearn/svm/base.py /mnt/data/ctx-swebench/opencode-runs/baseline-smoke/scikit-learn__scikit-learn-14894__r0/workspace/sklearn/svm/base.py\n--- /mnt/data/ctx-swebench/wscache/scikit-learn__scikit-learn-14894/sklearn/svm/base.py\t2019-10-07 10:35:01.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/baseline-smoke/scikit-learn__scikit-learn-14894__r0/workspace/sklearn/svm/base.py\t2026-09-16 11:48:53.670431462 -0500\n@@ -288,7 +288,8 @@\n \n         dual_coef_indices = np.tile(np.arange(n_SV), n_class)\n         dual_coef_indptr = np.arange(0, dual_coef_indices.size + 1,\n-                                     dual_coef_indices.size / n_class)\n+                                     dual_coef_indices.size / n_class) \\\n+            if n_SV else np.zeros(n_class + 1, dtype=np.intp)\n         self.dual_coef_ = sp.csr_matrix(\n             (dual_coef_data, dual_coef_indices, dual_coef_indptr),\n             (n_class, n_SV))\n",
+      "tokens": {
+        "input": 197294,
+        "output": 5231,
+        "reasoning": 17783,
+        "cache_read": 513520,
+        "cache_write": 0
+      },
+      "peak_prompt_tokens": 55140,
+      "first_step_prompt_tokens": 10065,
+      "cost_reported": 0.177935,
+      "cost_list_price": 0.2108,
+      "events": 63,
+      "events_unparseable": 0,
+      "session_id": "ses_f54e93e02ffeWyKtsPhNchMI25",
+      "export_ok": true,
+      "export_part_types": {
+        "text": 11,
+        "step-start": 17,
+        "reasoning": 17,
+        "tool": 19,
+        "step-finish": 17
+      },
+      "export_bytes": 278468,
+      "events_complete": true,
+      "events_missing_steps": 0,
+      "events_missing_tool_calls": 0,
+      "run_dir": "/mnt/data/ctx-swebench/opencode-runs/baseline-smoke/scikit-learn__scikit-learn-14894__r0",
+      "final_step_reason": "stop",
+      "length_stops": 0,
+      "ended_on_output_limit": false,
+      "max_step_response_tokens": 5028,
+      "reasoning_parts": 17,
+      "reasoning_chars": 69564,
+      "text_parts": 10,
+      "text_chars": 2199,
+      "export_tokens": {
+        "output": 5231,
+        "reasoning": 17783
+      },
+      "length_stop_response": null,
+      "context_tree_import": {
+        "ok": true,
+        "events": 49,
+        "skipped": 51,
+        "failures": 0,
+        "nodes": 4,
+        "phases": 2,
+        "file_nodes": 1,
+        "unmapped_tools": []
+      },
+      "finalized_from": "results-swebench-opencode-baseline-smoke.json"
+    }
+  ]
+}
