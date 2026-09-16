@@ -39,6 +39,10 @@ const ARMS = (process.env.CT_ARMS || 'none,anchor,anchor-topk,placebo').split(',
 
 const med = (xs) => { const s = [...xs].sort((a, b) => a - b); return s.length ? (s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2) : 0; };
 const mean = (xs) => xs.length ? +(xs.reduce((a, b) => a + b, 0) / xs.length).toFixed(2) : 0;
+/** Spread as a % of the median — the within-arm noise floor. With n=3 and identical
+ *  configurations, whatever the `none` arm disagrees with ITSELF by is the magnitude any
+ *  between-arm difference must clear before it means anything. */
+const spreadPct = (xs) => { const m = med(xs); if (!m || xs.length < 2) return null; return +(100 * (Math.max(...xs) - Math.min(...xs)) / m).toFixed(1); };
 
 /** Read per-message finish from the cell's own export — the only retrospective way to
  *  catch a silent output-cap stop. The REQUESTED limit is unrecoverable; the ceiling
@@ -111,7 +115,10 @@ const summary = ARMS.map((arm) => {
     would_fire_median: med(cs.map((c) => c.would_fire || 0)),
     anchor_untruthful: cs.reduce((a, c) => a + (c.anchor_untruthful || 0), 0),
     degenerate_topk: cs.reduce((a, c) => a + (c.degenerate_topk || 0), 0),
-    files_over_1800_median: med(cs.map((c) => c.files_over_1800 || 0)) };
+    files_over_1800_median: med(cs.map((c) => c.files_over_1800 || 0)),
+    prompt_tokens_spread_pct: spreadPct(cs.map((c) => c.prompt_tokens || 0)),
+    wall_seconds_spread_pct: spreadPct(cs.map((c) => c.wall_seconds || 0)),
+    score_spread: cs.length > 1 ? Math.max(...cs.map((c) => c.score_correct || 0)) - Math.min(...cs.map((c) => c.score_correct || 0)) : null };
 });
 
 // ---- pre-registered gates, evaluated before any delta is looked at ----
@@ -135,6 +142,10 @@ for (const s of summary) {
   s.wall_delta_pct = base.wall_seconds_median ? +(100 * (1 - s.wall_seconds_median / base.wall_seconds_median)).toFixed(2) : null;
   s.score_delta = +(s.score_mean - base.score_mean).toFixed(2);
   if (s.arm === 'none') { s.verdict = '—'; continue; }
+  // A delta smaller than what the no-intervention arm disagrees with ITSELF by is
+  // indistinguishable from nondeterminism, whatever its sign.
+  s.tokens_within_noise = base.prompt_tokens_spread_pct != null && Math.abs(s.tokens_delta_pct) <= base.prompt_tokens_spread_pct;
+  s.wall_within_noise = base.wall_seconds_spread_pct != null && Math.abs(s.wall_delta_pct ?? 0) <= base.wall_seconds_spread_pct;
   s.verdict =
     runInvalid ? 'INVALID — a fired anchor was not truthful'
     : gates.T2_breached ? `DESCRIPTIVE ONLY — ${excludedCount}/${cells.length} cells excluded (>${T2_MAX_EXCLUDED_FRACTION * 100}%)`
@@ -142,6 +153,7 @@ for (const s of summary) {
     : s.n_usable < 2 ? `INSUFFICIENT — only ${s.n_usable} usable cell(s)`
     : s.arm === 'anchor-topk' && s.degenerate_topk > 0 ? 'INVALID — degenerate top-k substitution'
     : s.score_delta < -2 ? 'LEAVE OUT — task score degraded'
+    : (s.tokens_within_noise && s.wall_within_noise) ? `LEAVE OUT — both deltas inside the baseline's own spread (${base.prompt_tokens_spread_pct}% tok, ${base.wall_seconds_spread_pct}% wall)`
     : (s.tokens_delta_pct > 0 && s.wall_delta_pct > 0) ? 'FOLD IN — saves tokens and time at equal score'
     : s.tokens_delta_pct <= 0 ? 'LEAVE OUT — no token saving'
     : 'LEAVE OUT — tokens saved but no wall-clock saving';
@@ -157,6 +169,7 @@ const out = { manifest: {
     falsification: 'FOLD IN only if an arm cuts BOTH tokens and wall-clock against no-intervention at score within noise. Any fired anchor that was not truthful invalidates the run.',
     caveats: [
       'SINGLE-PROBLEM (caveat C0), and this is the headline limitation, not a footnote. All 12 cells run ONE problem — the flapsim scenario — with seed files copied verbatim, so every repeat starts from an identical workspace and the only thing varying between repeats is model nondeterminism. n=3 measures WITHIN-problem variance. The repo design rule is "sample PROBLEMS, not just seeds" and this run does not. Any result here means "on flapsim, arm X did or did not cut tokens and wall-clock" — it is NOT a general claim about anchoring, and more repeats could not make it one.',
+      'NOISE FLOOR: with n=3 the no-intervention arm disagrees with ITSELF by prompt_tokens_spread_pct / wall_seconds_spread_pct across identical configurations. Any between-arm delta inside that band is indistinguishable from model nondeterminism and is reported as LEAVE OUT regardless of sign. Report the spread beside every delta, never a delta alone.',
       'Arms were run as SEPARATE processes to parallelise, then merged here. All cells share one scenario, one model and one endpoint; nothing crosses a provider or routing change.',
       'prompt_tokens is the primary. On the local endpoint tokens.output BUNDLES reasoning while tokens.reasoning reads 0, so output tokens are mostly thinking and must not be read as content.',
       'Reasoning is reported in CHARS from export parts. Converting to tokens is not defensible here: the ratio for reasoning-dense text is ~2.3 chars/token, and a derived figure saturates the reported output.',
@@ -170,6 +183,7 @@ console.error('  arm           n   score   miles   fires  promptTok    Δtok%   
 for (const s of summary) console.error(`  ${s.arm.padEnd(12)} ${String(s.n_usable + '/' + s.n_run).padStart(3)}  ${String(s.score_mean).padStart(5)}  ${String(s.milestones_mean).padStart(5)}  ${String(s.fires_median).padStart(6)}  ${String(s.prompt_tokens_median).padStart(9)}  ${String(s.tokens_delta_pct ?? '—').padStart(7)}  ${String(s.wall_seconds_median).padStart(7)}  ${String(s.wall_delta_pct ?? '—').padStart(7)}  ${s.reasoning_chars_median}`);
 const exc = cells.filter((c) => c.excluded);
 if (exc.length) { console.error('\n  EXCLUDED CELLS:'); for (const c of exc) console.error(`    ${c.arm} rep${c.repeat}: ${c.excluded}`); }
+if (base) console.error(`\n  NOISE FLOOR (baseline disagrees with itself): tokens ±${base.prompt_tokens_spread_pct}%  wall ±${base.wall_seconds_spread_pct}%  score ±${base.score_spread}`);
 console.error('\n  PRE-REGISTERED GATES:');
 console.error(`    excluded ${excludedCount}/${cells.length} (${(100 * gates.T2_excluded_fraction).toFixed(0)}%, limit ${T2_MAX_EXCLUDED_FRACTION * 100}%) -> ${gates.T2_breached ? 'BREACHED' : 'ok'}`);
 console.error(`    per-arm exclusions ${JSON.stringify(gates.per_arm_excluded)} imbalance=${imbalance} (limit ${T3_MAX_ARM_IMBALANCE}) -> ${gates.T3_breached ? 'BREACHED' : 'ok'}`);
