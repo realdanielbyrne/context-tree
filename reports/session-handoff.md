@@ -192,6 +192,13 @@ in §B is written to satisfy them.
    ⚠️ `--pure` disables plugins, so any arm-bearing run must not pass it; and opencode adds
    ~9,898 tokens of fixed overhead per call, so a window cap must sit well above that (the old
    `W=4,700` design is not reproducible on this host).
+   ⚠️ **opencode titles every session with a small model taken from the SESSION's provider.**
+   Verified 2026-09-16: runs pinned to `openrouter/...` logged `google/gemini-3.8-flash` titling
+   calls although the config lists `local` first, while another session's `local/...` runs titled
+   locally. Provider ORDER in the config does not decide it — the session's own model does. So a
+   run is not free because a local provider is configured, every remote run carries one extra
+   billed call that belongs in its cost attribution, and a local run cannot be starved by a remote
+   provider's balance.
    ⚠️ **The local host does not parallelise — run local cells SEQUENTIALLY.** Measured 2026-09-16
    under four concurrent arms on the one GPU, solo → 4-way per turn: 89 → 252–419 s,
    315 → 720–2,392 s, 762 → 2,133–4,531 s, >1,200 → 7,034 s — the last at 98% of its 7,200 s
