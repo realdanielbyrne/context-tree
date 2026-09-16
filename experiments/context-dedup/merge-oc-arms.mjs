@@ -56,6 +56,22 @@ function lengthStops(cellDir) {
   return { checked: true, stops, max_output: maxOut };
 }
 
+/**
+ * PRE-REGISTERED EXCLUSION POLICY — fixed BEFORE any cell completed, because deciding
+ * it after seeing which arm the truncated cells fell in is the post-hoc call this
+ * project has already been burned by.
+ *
+ * T1 An arm with fewer than 2 usable cells gets no verdict (INSUFFICIENT).
+ * T2 If more than 25% of all cells are excluded (>3 of 12), the run is DESCRIPTIVE
+ *    ONLY — report the numbers, emit no fold-in/leave-out decision.
+ * T3 If exclusions are UNEVEN across arms (max-per-arm minus min-per-arm >= 2), do not
+ *    pool. Truncation is not random: an arm whose turns run longer truncates more, so
+ *    dropping its cells biases the survivors in that arm's favour. Uneven exclusion is
+ *    a signal about the arm, not noise to be discarded.
+ */
+const T2_MAX_EXCLUDED_FRACTION = 0.25;
+const T3_MAX_ARM_IMBALANCE = 2;
+
 const files = readdirSync(METRICS).filter((f) => f.startsWith(PREFIX) && f.endsWith('.json'));
 if (!files.length) { console.error(`no result files matching ${PREFIX}* in ${METRICS}`); process.exit(1); }
 
@@ -98,6 +114,20 @@ const summary = ARMS.map((arm) => {
     files_over_1800_median: med(cs.map((c) => c.files_over_1800 || 0)) };
 });
 
+// ---- pre-registered gates, evaluated before any delta is looked at ----
+const excludedCount = cells.filter((c) => c.excluded).length;
+const perArmExcluded = ARMS.map((a) => cells.filter((c) => c.arm === a && c.excluded).length);
+const imbalance = Math.max(...perArmExcluded) - Math.min(...perArmExcluded);
+const gates = {
+  T2_excluded_fraction: +(excludedCount / Math.max(1, cells.length)).toFixed(3),
+  T2_threshold: T2_MAX_EXCLUDED_FRACTION,
+  T2_breached: excludedCount / Math.max(1, cells.length) > T2_MAX_EXCLUDED_FRACTION,
+  T3_arm_imbalance: imbalance, T3_threshold: T3_MAX_ARM_IMBALANCE,
+  T3_breached: imbalance >= T3_MAX_ARM_IMBALANCE,
+  per_arm_excluded: Object.fromEntries(ARMS.map((a, i) => [a, perArmExcluded[i]])),
+};
+gates.reportable = !gates.T2_breached && !gates.T3_breached && !runInvalid;
+
 const base = summary.find((s) => s.arm === 'none');
 for (const s of summary) {
   if (!base || !base.prompt_tokens_median) { s.verdict = 'no baseline'; continue; }
@@ -107,6 +137,8 @@ for (const s of summary) {
   if (s.arm === 'none') { s.verdict = '—'; continue; }
   s.verdict =
     runInvalid ? 'INVALID — a fired anchor was not truthful'
+    : gates.T2_breached ? `DESCRIPTIVE ONLY — ${excludedCount}/${cells.length} cells excluded (>${T2_MAX_EXCLUDED_FRACTION * 100}%)`
+    : gates.T3_breached ? `DESCRIPTIVE ONLY — exclusions uneven across arms (imbalance ${imbalance}); truncation correlates with arm behaviour`
     : s.n_usable < 2 ? `INSUFFICIENT — only ${s.n_usable} usable cell(s)`
     : s.arm === 'anchor-topk' && s.degenerate_topk > 0 ? 'INVALID — degenerate top-k substitution'
     : s.score_delta < -2 ? 'LEAVE OUT — task score degraded'
@@ -138,6 +170,10 @@ console.error('  arm           n   score   miles   fires  promptTok    Δtok%   
 for (const s of summary) console.error(`  ${s.arm.padEnd(12)} ${String(s.n_usable + '/' + s.n_run).padStart(3)}  ${String(s.score_mean).padStart(5)}  ${String(s.milestones_mean).padStart(5)}  ${String(s.fires_median).padStart(6)}  ${String(s.prompt_tokens_median).padStart(9)}  ${String(s.tokens_delta_pct ?? '—').padStart(7)}  ${String(s.wall_seconds_median).padStart(7)}  ${String(s.wall_delta_pct ?? '—').padStart(7)}  ${s.reasoning_chars_median}`);
 const exc = cells.filter((c) => c.excluded);
 if (exc.length) { console.error('\n  EXCLUDED CELLS:'); for (const c of exc) console.error(`    ${c.arm} rep${c.repeat}: ${c.excluded}`); }
+console.error('\n  PRE-REGISTERED GATES:');
+console.error(`    excluded ${excludedCount}/${cells.length} (${(100 * gates.T2_excluded_fraction).toFixed(0)}%, limit ${T2_MAX_EXCLUDED_FRACTION * 100}%) -> ${gates.T2_breached ? 'BREACHED' : 'ok'}`);
+console.error(`    per-arm exclusions ${JSON.stringify(gates.per_arm_excluded)} imbalance=${imbalance} (limit ${T3_MAX_ARM_IMBALANCE}) -> ${gates.T3_breached ? 'BREACHED' : 'ok'}`);
+console.error(`    reportable as a decision: ${gates.reportable}`);
 console.error('\n  SCOPE: single problem (flapsim), n=3 repeats per arm. Repeats vary only by model');
 console.error('         nondeterminism, so any verdict below is "on this problem", not general.');
 console.error('\n  DECISION:');
