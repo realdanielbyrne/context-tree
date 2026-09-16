@@ -14,6 +14,11 @@
  *
  *   node experiments/context-dedup/swebench-opencode-finalize.mjs
  *     CT_FINALIZE_INPUTS=results-swebench-opencode-probe-2931-b.json  (single file, rewritten in place)
+ *     CT_FINALIZE_REEXPORT=0   re-derive summaries from the export.json ALREADY on disk instead of
+ *                              re-running `opencode export`. Use this to backfill new fields into
+ *                              finished results: opencode makes a model call at start-up, so a
+ *                              re-export can hang, or take a connection slot from a live run in
+ *                              another session, on a busy local host.
  *     default: merges tranche-w1..w3 into results-swebench-opencode-tranche.json
  */
 import { readFileSync, writeFileSync, existsSync, mkdirSync, rmSync } from 'node:fs';
@@ -21,7 +26,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { exportSession } from './swebench-opencode.mjs';
-import { parseJsonLines, summarizeEvents, summarizeExport } from './swebench-opencode-events.mjs';
+import { parseJsonLines, summarizeEvents } from './swebench-opencode-events.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = join(HERE, '..', '..');
@@ -30,7 +35,8 @@ const CLI = join(REPO, 'packages', 'cli', 'dist', 'bin.js');
 const OPENCODE_CONFIG = join(HERE, 'opencode.json');
 
 function main() {
-  const inputs = (process.env.CT_FINALIZE_INPUTS || 'results-swebench-opencode-tranche-w1.json,results-swebench-opencode-tranche-w2.json,results-swebench-opencode-tranche-w3.json').split(',');
+  const REEXPORT = process.env.CT_FINALIZE_REEXPORT !== '0';
+  const inputs = (process.env.CT_FINALIZE_INPUTS ||'results-swebench-opencode-tranche-w1.json,results-swebench-opencode-tranche-w2.json,results-swebench-opencode-tranche-w3.json').split(',');
   const output = process.env.CT_FINALIZE_OUTPUT || (inputs.length === 1 ? inputs[0] : 'results-swebench-opencode-tranche.json');
 
   const docs = inputs.map((f) => {
@@ -48,7 +54,7 @@ function main() {
         XDG_CONFIG_HOME: join(c.run_dir, 'xdg', 'config'), XDG_DATA_HOME: join(c.run_dir, 'xdg', 'data'),
         XDG_STATE_HOME: join(c.run_dir, 'xdg', 'state'), XDG_CACHE_HOME: join(c.run_dir, 'xdg', 'cache'),
       };
-      const ex = exportSession({ runDir: c.run_dir, ws, env, sessionID: c.session_id, eventSummary: { steps: c.steps, tool_calls: c.tool_calls } });
+      const ex = exportSession({ runDir: c.run_dir, ws, env, sessionID: c.session_id, eventSummary: { steps: c.steps, tool_calls: c.tool_calls }, reexport: REEXPORT });
 
       let imp = { ok: false };
       if (ex.export_ok) {
@@ -62,10 +68,7 @@ function main() {
         } catch { imp = { ok: false, error: (r.stdout || r.stderr || '').slice(0, 300) }; }
       }
 
-      let exportSummary = null;
-      if (ex.export_ok) {
-        try { const t = readFileSync(join(c.run_dir, 'export.json'), 'utf8'); exportSummary = summarizeExport(JSON.parse(t.slice(t.indexOf('{')))); } catch {}
-      }
+      const exportSummary = ex.summary ?? null;
       const evFile = join(c.run_dir, 'events.jsonl');
       const evSummary = existsSync(evFile) ? summarizeEvents(parseJsonLines(readFileSync(evFile, 'utf8')).events) : null;
       const merged = {
@@ -77,6 +80,13 @@ function main() {
         // Reasoning measured from the transcript (the local host reports reasoning_tokens 0).
         reasoning_parts: exportSummary?.reasoning_parts ?? null,
         reasoning_chars: exportSummary?.reasoning_chars ?? null,
+        // VISIBLE output, measured the same way. On the local endpoint `tokens.output` bundles
+        // reasoning, so content length is the only way to show how little of it is content.
+        text_parts: exportSummary?.text_parts ?? null,
+        text_chars: exportSummary?.text_chars ?? null,
+        export_tokens: exportSummary?.export_tokens ?? null,
+        // output/reasoning split of the capped step, not just its size.
+        length_stop_response: evSummary?.length_stop_response ?? null,
         export_ok: ex.export_ok, export_part_types: ex.export_part_types, export_bytes: ex.export_bytes,
         events_complete: ex.events_complete, events_missing_steps: ex.missing_steps, events_missing_tool_calls: ex.missing_tool_calls,
         context_tree_import: imp, finalized_from: file,

@@ -25,12 +25,12 @@ from the experiment record (see the disposition table). See memory `untested-not
   (relevance-eviction is *worst* on the dormant-return case, 0.06/0.10). Offline-won across budgets +
   one live causal confirmation (−26% vs none / −14% vs recency at equal PASS).
   `assembler-weighting/report-assembler-weighting.md`, `coding-harness/report-eviction.md`.
-  > ⚠️ **Now partially contested — see backlog item 2.** The live A/B window sweep found that selection
+  > ⚠️ **Now partially contested — see §B U2/U16.** The live A/B window sweep found that selection
   > on **reference recency alone** beat positional recency and a volume-matched random control at a tight
   > cap, and the original offline sweep optimum already ranked ref-recency *highest* (1.0) while D-EV
   > ships it *lowest* among the positive terms (0.5). The *relevance≈0* finding is untouched; what is in
   > question is whether the other three terms earn their place over pure LRU-at-`g*`. Do not treat the
-  > 4-term score as canon until item 2 resolves. `report-ab-longbuild.md`.
+  > 4-term score as canon until U2 resolves. `report-ab-longbuild.md`.
 - **Flex-buffer assembler** (frozen head + creation-order buffer, second breakpoint): ~14% cheaper than
   the shipped Zone A/B/C on cache economics; free re-mixing is cache-death. `assembler-flex-buffer/report.md`.
   *Evidence is offline cache-economics only — task-quality parity vs zones is an owed live check (weaker
@@ -75,7 +75,7 @@ flag to carry, not a reason to withhold promotion over a tested-loser incumbent.
 | — sufficiency half | NOT-CARRIED-FORWARD (dissolved by on-demand design) | Don't build |
 | — regex `detectAttentionSignals` | ARTIFACT (0.245%/turn, void) | **Delete** |
 | Reduce-on-overflow reducers | SETTLED-WIN | **Build**; the auto-select **router** stays a flagged heuristic |
-| Soft floor `f`, recency anchor `A=4` | **`f` now contested** (DV2: evicting to a soft floor below the window converts 0.1× reads into 1.25× writes; measured hot set swings 0.4–35k, so a fixed fraction is the wrong shape) / `A` untested | Keep as parameters, marked untested; **`f` pending backlog item 7** |
+| Soft floor `f`, recency anchor `A=4` | **`f` now contested** (DV2: evicting to a soft floor below the window converts 0.1× reads into 1.25× writes; measured hot set swings 0.4–35k, so a fixed fraction is the wrong shape) / `A` untested | Keep as parameters, marked untested; **`f` pending §B U8** |
 | `attention/` `selectAttention`, `signals.ts`, `topic-index.ts`, `rederive.ts`/`evictRederivable` (priority channel) | **UNTESTED-HYPOTHESIS** (zero prod callers; priority params proven *inert* without query fingerprints) | **Move → `experiments/attention-over-history/`** with a test design (below) |
 | `retrieve/retriever.ts` summary-ranking (`searchSummaries`, `beamSearch`, `mergeWithGrep`), `retrieve/lexical.ts` IDF | **TESTED-AND-LOST** — and this is the code the package *ships* as live `context_search` | **Retire** the rank path; keep `fetchBranch`/`peek`/L0-replay + `extractFingerprints` scaffolding |
 | `providers/` fixed-order stack (structural→fuzzy→grep) | **NEVER-COMPARED** (design decision, never A/B'd) | Not settled → out of the canonical path; preserve as the structural-retrieval hypothesis |
@@ -147,464 +147,499 @@ runtime they segfault/`ERR_IPC_CHANNEL_CLOSED`. Run the suite single-fork in a s
   in place (anchors included — never evicted, but reducible); `BudgetReport.reduced` reports which. The
   query defaults to the last user prompt; the vector arm is optional (BM25-only in the sync assembler,
   the same degradation `ensembleRetrieve` uses without an embedder). The query→reducer **router** that
-  would auto-pick chunk-vs-summarize is deliberately NOT built — it is untested (backlog item 4). New
+  would auto-pick chunk-vs-summarize is deliberately NOT built — it is untested (§B U11). New
   tests: `reduce.test.ts` (13) + reduce-on-overflow cases in `flex-assemble.test.ts` (5). Full suite
   green (32 files, 657 passed / 9 skipped); `tsc -b` clean.
 
 **The package↔spec migration is complete.** `packages/` now reflects only settled experimental results:
 retrieval (RRF ensemble), classifier (drift), eviction (D-EV), assembler (flex head + creation-order
 buffer + reduce-on-overflow), and the store-adapter that feeds them. What remains is not migration work —
-it is the experiment backlog (new hypotheses to test) and parameter sweeps, below.
+it is the hypothesis register (§A tested, §B untested) and parameter sweeps, below.
 
-## Untested-hypothesis experiment backlog
+## Hypothesis register
 
-Each survivor needs its own `experiments/<name>/` folder + report before any package promotion.
+Every cross-cutting claim this project has made lives in one of the two sections below.
 
-> **REFRESHED after the context-dedup series (DV1/DV2, Tier 1, the A/B window-cap sweep).** Three
-> cross-cutting items below. **They are NOT equally established — read the provenance tag on each.**
-> C1 is live-measured; **C2 and C3 are DERIVED/SIMULATED and have never been validated live.** Do not
-> cite C2/C3 as settled facts; they are the current best model, and two open questions (items 11–12)
-> attack them directly.
+- **Tested** (§A) — a hypothesis that has been run. It carries a verdict and a report. Do not re-run
+  it, and do not re-state it as an open question; if you think a verdict is wrong, attack it with a
+  new hypothesis in §B that names the report it contradicts.
+- **Untested** (§B) — a hypothesis nobody has run. Every entry states **the hypothesis as a
+  falsifiable sentence** and **the experiment that would test it**. An entry that cannot be written
+  that way is not a backlog item; it is a note, and it belongs in the standing rules or in a report.
 
-**C1 — Full-tool agents self-heal, so window pressure is intrinsically LONG-HORIZON.** *(LIVE-MEASURED;
-local models only.)* Measured three
-independent times: with `run_bash` available the model `cat`/`grep`s exactly what it needs and never
-loads whole files (peak context stayed ~830–1,035 tokens; `evict=0`; every arm collapsed to an identical
-trace). Anything persisted to disk is re-fetchable; the ONLY context a tool call cannot recover is the
-**conversation history itself**, which grows past a window only over many turns. Consequence: **no short
-synthetic task can test a window policy with full tools**, and removing tools to force the issue is not
-ecological. A substrate that *does* work now exists — `experiments/context-dedup/ab-tasks/longbuild.mjs`
-(6-stage stdlib build, held-out `unittest` grader, 45–61 turns, peak ~19–21k, 18–40 evictions/cell).
-Reuse it rather than inventing another short task. (`report-ab-rule-chain.md`, `report-tier2-selfheal.md`.)
+Package-level settled results (eviction shape, flex buffer, drift signal, RRF, reducers) are listed
+separately under *Settled results* above; this register covers the research hypotheses behind them.
 
-**C2 — Mutating the prefix costs ~12.5× a read, so per-turn mutation loses to append-only.**
-*(SIMULATED + DERIVED — never live-validated. Scope is narrower than the earlier wording claimed.)*
-⚠️ **Correction:** an earlier version of this line said "append-only is cache-optimal BELOW the window",
-full stop. That overreaches. DV2's single-version arm mutated the prefix on **every** version swap, i.e.
-cadence `N=1` — the worst case. Mutation cost is **per-mutation** while read savings are **per-turn**, so
-evicting every `N` turns wins whenever `N·r·(C_large − C_small) > w·S`. A **small window with infrequent
-eviction** may therefore beat a large fully-cached one; DV2 does not test that and cannot answer it
-(item 11). ⚠️ DV2 also **models no cache TTL** (review finding M7) — the single mechanism most likely to
-invert its headline (item 12). Simulation details: `report-dv2-cache-cost.md` via `ProviderCacheSimulator`:
-append-only runs at a ~100% cache-read ratio (0.1×) and writes only the per-turn delta; any policy that
-rewrites the prefix pays 1.25×. Single-version/dedup is therefore **not a cost optimization — it is a
-window-fitter**. Verified against official docs that GitHub Copilot, Claude Code and Augment all discount
-cache *even on subscription allowances* (Codex meters messages, not tokens), so cache-adjusted cost is the
-right metric for those plans too. **Any backlog item premised on "this saves tokens" must be re-stated as
-"this fits more of the right content in a bounded window."**
+### Standing rules that govern every entry below
 
-**C4 — POSITION IS NOT A LEVER on this model at these lengths.** *(LIVE-MEASURED, clean null.)*
-Needle-in-a-haystack, 180/180 across both stages — every depth (0/25/50/75/100%), out to **155,773 real
-prompt tokens** (59% of the 27B's window) with 7 competing distractors sharing the needle's exact framing.
-No RoPE-style decay with depth and no lost-in-the-middle U-shape. With zero failures the 95% one-sided
-bound excludes any position-dependent failure rate above **3.3%** pooled (but only 15.3% at a single
-depth — it excludes a large effect, not a small one). Two consequences: (i) our policies' inability to
-express position costs nothing here, so the presence-only policy class is not leaving a known effect on
-the table; (ii) it removes an alternative explanation for the window-cap failures — content was not
-"present but buried too deep to retrieve", it was evicted outright. Limits: single-turn retrieval of a
-lexically distinct sentence (a copy target, not something to reason over), one model, and a ceiling can
-refute a deficit but cannot rank policies. `report-position-probe.{md,html}`.
+These are not hypotheses. They are constraints derived from results already in §A, and every design
+in §B is written to satisfy them.
 
-**C0 — EVERY live result so far is SINGLE-PROBLEM.** The entire A/B series (51 runs, n=3 + n=10, all
-arms) ran one task, `longbuild`. That is n repeats of one problem, **not n problems**: it measures
-within-problem nondeterminism and says nothing about between-problem variance, which is the larger term in
-agentic coding. Item 8's `p=1.000` means "indistinguishable **on this problem**", not "never different" —
-and more repeats cannot fix it. **Design rule for every live item below: sample PROBLEMS, not just seeds.**
-Item 9's SWE-bench substrate is the instrument for that. **Update (item 9 pilot):** its solvability gate
-PASSED on distinct problems from 6 repos (7 of 9 validly run problems solved uncapped through opencode, 5 of
-them above 32,768 prompt tokens; a 10th run was invalidated by our own output-cap placeholder), so a
-between-problem sweep is now possible — see item 9. No window/eviction result has been
-re-measured on it yet; every existing A/B finding is still single-problem.
+1. **Sample PROBLEMS, not seeds (C0).** The entire early A/B series (51 runs) ran one synthetic task,
+   `longbuild`. That is n repeats of one problem: it measures within-problem nondeterminism and says
+   nothing about between-problem variance, which is the larger term in agentic coding. A `p=1.000`
+   from that series means "indistinguishable **on this problem**", and more repeats cannot fix it.
+2. **The substrate is SWE-bench Verified through opencode — not `longbuild`.** Per D20 evaluation runs
+   in an external host. The solvability gate has passed (§A, T13), so between-problem live work now
+   runs through `experiments/context-dedup/swebench-opencode.mjs` (per-run isolated XDG, `--auto`,
+   `< /dev/null`, export to a file) against the pre-registered pool in
+   `reports/metrics/swebench-pilot/selection-v2.json`, graded by `ab-tasks/swebench.mjs gradeDetail`.
+   For hypotheses that need **multi-turn conversation pressure** rather than one task statement, use
+   `experiments/scenarios/` driven by `oc-runner.mjs`, which delivers real mid-run user turns
+   (`opencode run --session <id>`) and attaches arms as an opencode plugin at `tool.execute.after`.
+   `longbuild` is retired as a default substrate: it was built to work around the deleted in-repo
+   harness, and it is one problem. Cite it only when reproducing an old result.
+   ⚠️ `--pure` disables plugins, so any arm-bearing run must not pass it; and opencode adds
+   ~9,898 tokens of fixed overhead per call, so a window cap must sit well above that (the old
+   `W=4,700` design is not reproducible on this host).
+3. **The outcome variable is ACHIEVED PEAK, not the nominal cap.** Tokens actually present at call
+   time decide outcomes (OR 41.83× per e-fold, arm-adjusted); the nominal cap and the eviction
+   cadence add nothing once it is controlled (T5). Report and control for it in every sweep.
+4. **Match volume, unit count and splice count.** Volume matching alone is not enough: the incumbent
+   evictor matches kept tokens to 0.4% while diverging up to 2× in unit count and 13× in splice
+   count (T8). An arm can win by fragmenting the transcript less.
+5. **Prefer continuous endpoints.** Binary pass/fail discarded a real, continuous improvement in the
+   ballast run (0 → 7 files written, still no pass) (T6/T7). Offline, screen candidates against
+   leave-one-unit-out ΔNLL (`experiments/attention-over-history/measure.py`) before spending a live
+   token; the instrument costs ~0.11 s per unit.
+6. **State micro- vs macro-averaging.** The two disagree on the *sign* of the recurrence contrast at
+   11 of 16 cells, and at every cell under the clock the published result used (T9).
+7. **Audit the turn clock.** The transcript clock counted JSONL content-block lines, not API turns
+   (2.2× inflation). Any turn-denominated parameter (`K=5`, `H=3`, `A=4`, `D`, `g*`) inherited from an
+   earlier experiment is measured on the wrong clock until re-checked.
+8. **Compare within an endpoint.** The local quantized GGUF and OpenRouter bf16 are different weights.
+   Record `provider.order`, `quantizations` and `limit.output` per run; the local host reports
+   `reasoning_tokens: 0` while reasoning, so measure reasoning from transcript reasoning parts.
+   **And on the local endpoint `tokens.output` BUNDLES reasoning** — the tokens are not missing, they
+   are reattributed, which is harder to catch than a zero because nothing looks wrong. Measured on the
+   django-11138 local rerun: `tokens.output` sums to **53,059** across 86 assistant messages while all
+   non-reasoning text in the export is **6,442 chars** (~1.6–2.8k tokens) and `tokens.reasoning` is 0
+   on every message; only the 114,067 chars of reasoning can account for the rest. The same problem run
+   through OpenRouter reports reasoning **separately** (16,705) and excludes it from `output` (274).
+   So never read local `output_tokens` as content — a token-savings claim resting on it overstates
+   content by about an order of magnitude — and do not estimate reasoning tokens as chars÷4: the
+   implied ratio on this corpus is ~2.3 chars/token, so chars÷4 *understates* the reasoning share.
+9. **Assume failures present as CLEAN RESULTS.** The expensive defects on this project do not raise
+   errors — they return a plausible-looking run, and every one of them cost real runs before it was
+   found. Measured instances: a step spends its entire output budget on reasoning, emits no tool call,
+   and **opencode exits 0** (django-11138, scored as a model failure until the cap was found); local
+   slot exhaustion presents as a silent hang at init with no session, no error and no log line; a
+   piped `opencode export` truncates mid-string (222KB → 146KB) so every token count reads 0; a
+   missing API key yields a 3-second, 0-token cell indistinguishable from task failure; and the
+   in-repo harness clipped tool output at 2,000 chars, producing a 0/6 edit rate that was 5/6 at
+   30,000. **Therefore:** every runner records per-step finish reason, largest response, export bytes
+   checked against the event stream, and wall-clock; and **any cell whose outcome is "the agent did
+   nothing" is an instrument failure until proven otherwise.** T7 is the canonical case of getting
+   this backwards — two validity conditions passed on a run where the control never attempted the task.
+   **Retrospective check, and it costs nothing:** an opencode export carries a per-message `finish`
+   alongside `tokens.{input,output,reasoning,cache}`, so any past run can be audited for a ceiling it
+   actually hit without extra instrumentation. Audited across all 16 pilot exports, the event-stream
+   counts and the export agree everywhere, and the one invalid cell reads
+   `finish: "length"`, `output: 0`, `reasoning: 16,384` — the entire budget went to reasoning and **not
+   one output token was emitted**. Note also that the local endpoint reports `reasoning: 0` in the
+   export too, not merely in `usage`, so on that endpoint reasoning must be measured from the
+   reasoning parts' text. The *requested* limit is recorded nowhere; only the ceiling that was hit is
+   recoverable.
 
-**C3 — The eviction threshold is DERIVED, not guessed: `g* = w/r` turns.** *(ANALYTIC — pure algebra on
-published price multipliers; the 12.5 operating point has NEVER been validated in a live run, and no
-experiment has shown it is the right place to stand.)* **It is also not one number:** the multiplier
-depends on the cache tier — Anthropic prices the 1-hour cache-write tier above the 5-minute tier, so
-`g*` moves with the TTL you are on (and Claude Code subscriptions use the 1-hour lifetime, dropping to
-5 minutes once on usage credits). Re-derive `g*` from current published multipliers per tier rather than
-hardcoding 12.5.
-Keeping a unit costs `r·B` per turn; re-fetching one costs `w·B` once. Break-even: keep iff the next use
-is within `w/r` turns (size-independent). Backward **idle** (turns since a unit's file was last touched)
-is the trivially-countable proxy — Tier 1 puts per-decision precision ≈ **85%**, only **+1–2pp over a
-no-skill constant predictor** (MCC 0.235); the earlier "98% precision" was an artifact of scoring every
-resident turn. ⚠️ **The live A/B (item 8) then found idle does NOT beat positional recency as an
-eviction signal** (pooled p=1.000), so treat `g*`-on-idle as an unproven policy, not a validated one. **Caution:** Tier 1 also found the transcript turn-clock counts JSONL *content-block lines*,
-not API turns (2–2.4× inflation) — check any transcript analysis for the same defect.
+---
 
-### 0. INSTRUMENT SENSITIVITY — a gate on items 1, 2, 6 and 7 *(RUN; VOID; still open)*
+## §A. Tested hypotheses
 
-> **OUTCOME: the control did not control.** `oracle` 0/10 vs `random` 0/10 (p=1.000) — but **do not read
-> that as a null**: the control arm wrote **zero files in 10 of 10 runs**, i.e. it stopped attempting the
-> task rather than performing it badly. The two pre-registered validity conditions both passed on a
-> worthless run; a third (*the control must still be attempting the task*) has been added and now fires
-> automatically. Review separately established that the design could not have answered its question anyway —
-> the oracle's advantage flows purely through useful-token VOLUME (~1 e-fold), the effect already known,
-> while the four nulls it was meant to adjudicate were measured at MATCHED volume.
-> **A redesign needs arms that hold equal useful volume and differ only in composition** — see item 1's
-> attention ablation, which satisfies that by construction and uses a continuous endpoint.
-> `report-sensitivity-control.{md,html}`.
-**Why this now outranks everything below it.** Every live result that varies WHICH context is kept has
-come back null on this substrate: selection signal p=0.70; reference vs positional recency p=1.000
-(item 8); needle position 180/180 (`report-position-probe.md`); eviction cadence p=0.54 once achieved
-peak is controlled (item 11). Items 1, 2, 6 and 7 are all of the form *"does signal X beat signal Y"* —
-none is worth running until we know the harness can detect such a difference at all.
+| # | Hypothesis (as tested) | Verdict | Evidence |
+|---|---|---|---|
+| T1 | With a full tool set an agent re-fetches rather than retains, so window pressure is long-horizon and comes from conversation history, not from file content | **supported** (live, 3×) | `context-dedup/report-{ab-rule-chain,tier2-selfheal}.md` |
+| T2 | Position in the window degrades retrieval (lost-in-the-middle / RoPE decay) | **rejected** on this model to 155,773 tokens | `context-dedup/report-position-probe.{md,html}` |
+| T3 | Prefix mutation costs ~12.5× a read, so append-only is cost-optimal below the hard window | **rejected in its strong form** — true only at cadence N=1 | `context-dedup/report-{dv2-cache-cost,dv3-cadence-ttl}.md` |
+| T4 | Reference recency (idle) beats positional recency as an eviction signal | **rejected** (pooled p=1.000) | `context-dedup/report-ab-combined.{md,html}` |
+| T5 | A small window with infrequent eviction beats a wider flat window on task success | **retracted → null** once achieved peak is controlled (p=0.54) | `context-dedup/report-{cadence-confound,window-metric}.{md,html}` |
+| T6 | More context is monotonically better | **rejected as stated**; more *organic* context is better | `context-dedup/report-{sensitivity-control,window-metric}.{md,html}` |
+| T7 | A ballast positive control can show whether the pass/fail harness detects composition | **void** (the control stopped attempting the task); superseded by T8 | `context-dedup/report-sensitivity-control.{md,html}` |
+| T8 | Choosing *which* units to evict has a large ceiling under volume matching | **supported** — 96% of random's damage is avoidable; incumbents claim ~18–25% | `attention-over-history/report-attention-over-history.{md,html}` |
+| T8b | Measured attention beats position as the selection signal by ≥0.10 | **not met** (pooled +0.105, per-decision median +0.037) | same |
+| T9 | The shipped priority term's hardcoded 2:1 edit:recurrence ratio is wrong and unablatable | **rejected** — no ratio in the informative range beats 2:1 | `covariance-eviction/report-covariance-eviction.{md,html}` |
+| T10 | File-keyed temporal covariance predicts dormant returns | **not testable** on agent transcripts (support 49.0% vs a 55% gate) — recorded untested, not refuted | same |
+| T11 | Identifier-keyed contextual covariance keeps dormant units better than the incumbents | **mixed** — beats the volume-matched random floor and holds across the dormancy gradient; pre-registered primary vs relevance not met | `covariance-eviction/report-contextual-covariance.{md,html}` |
+| T12 | Replacing resident tool-result bytes with a referential anchor is a deployable cost lever | **rejected** (0.22% of real spend vs a 10% bar) | `context-dedup/report-{dv4-anchor-dedup,anchor-investigation}.md` |
+| T12b | The *reference*, not the withholding, is what changes behaviour | **supported** (+27.8pp over a character-identical placebo, p=0.0063) | `context-dedup/report-anchor-replay.md` |
+| T13 | SWE-bench Verified through opencode is a usable substrate — solvable, and it reaches window pressure | **supported** — 7/9, 5/7 above 32,768 tokens | `swebench-pilot/report-swebench-pilot.{md,html}` |
 
-- **Design:** a positive control. Ballast = a byte-identical **duplicate re-read** of a file the agent
-  already read, so it is provably zero-information. Arms: `oracle` (drops superseded duplicates),
-  `truncate-tail`, `idle`, `random`, plus `clean` (no ballast) as the validity check.
-  `experiments/context-dedup/{ballast,sensitivity-control,stats}.mjs`, 20 unit tests.
-- **Pre-registered:** oracle > random, one-sided Fisher, α=0.05 — interpretable only if `clean` is not at
-  the floor and `random` ≤ 0.4n, else it is an operating-point miss and must be re-run, not interpreted.
-- **If it fires:** the instrument is sensitive, the four nulls above stand as real findings for this task,
-  **and dedup is a live candidate policy** — the label is exact and computable, so `oracle` is shippable,
-  not just a ceiling.
-- **If it does not fire while validity holds:** state all four nulls as UNINFORMATIVE and redesign
-  items 1/2/6/7 before running them.
-- **Method finding already banked:** two earlier ballast designs — fabricated tool calls on unrelated
-  files, then the same material as user-role pastes — **derailed the agent** rather than merely taxing it
-  (60 distractor reads in 61 turns and zero writes; then 51 tool calls and zero writes, where a passing
-  trace writes by call ~9). *Injecting foreign material into an agent's context changes what the agent
-  does.* Any middleware that synthesises context — summaries written as agent actions, retrieved passages
-  spliced into history — should expect this.
+**T1 — pressure is long-horizon.** Measured three independent times: with `run_bash` available the
+model `cat`/`grep`s exactly what it needs, peak context stays ~830–1,035 tokens, `evict=0`, and every
+arm collapses to an identical trace. Anything on disk is re-fetchable; the only context a tool call
+cannot recover is the conversation history itself. **Consequence:** no short synthetic task can test a
+window policy with full tools, and removing tools to force the issue is not ecological. This is why
+rule 2 exists — the fix is a long-horizon *real* substrate, not a longer synthetic one.
 
-### 0b. WIDTH IS NOT SUFFICIENT — our own data falsifies the monotone reading *(settled, from the dedup run)*
-The window sweep's "more context is better" law (OR 42× per e-fold) was fitted entirely on runs whose context
-was the agent's **own organic content**. The sensitivity control broke that regime and the law with it:
+**T2 — position is not a lever.** Needle-in-a-haystack, 180/180 across both stages, every depth
+(0/25/50/75/100%), out to 155,773 real prompt tokens with 7 competing distractors sharing the needle's
+framing. With zero failures the 95% one-sided bound excludes a position-dependent failure rate above
+3.3% pooled (15.3% at a single depth — it excludes a large effect, not a small one). Two consequences:
+the policies' inability to express position costs nothing here, and "present but buried too deep"
+is eliminated as an alternative explanation for window-cap failures — that content was evicted.
+*Limits:* single-turn retrieval of a lexically distinct sentence, one model.
+
+**T3 — append-only is not cost-optimal; cadence is the free variable.** DV2 mutated the prefix on
+every version swap, i.e. cadence N=1, the worst case. Mutation is charged per-mutation while read
+savings accrue per-turn, so evicting every N turns wins when `N·r·(C_large − C_small) > w·S`. DV3
+finds an interior optimum: N=25 is 33.5% cheaper than append-only (N=1 is 183% worse). Resumption
+amplifies it — with 3 TTL cold starts append-only's cost rises 0.46M→0.57M while capped arms are
+unchanged, improving the best capped arm from +26.3% to +39.4%. The multiplier is tier-dependent: at
+the 1-hour write tier cadence-5 flips from +5.2% cheaper to 23.5% more expensive. **Still simulated**
+on a synthetic uniform session, with eviction dropping the oldest (most cache-destructive) units, and
+cost says nothing about task success — the live arm is U1.
+
+**T4 — which ordering signal you use matters less than having one.** At n=3 reference recency looked
+like a 3/3-vs-1/3 win with a coherent mechanism (halved re-reads); at n=10 the effect vanished and the
+mechanism inverted (pooled re-reads 7 vs 4). Pooled: idle 7/13, truncate-tail 6/13, **p=1.000**. What
+survives is weaker and different: both signal arms vs random, 13/26 vs 2/13, **p=0.045**; individually
+neither clears 0.05. **Methodological note worth keeping:** the cheap version of this experiment would
+have shipped a false finding; the pre-registered falsification and paying for n=10 is what caught it.
+
+**T5 — the sawtooth win was a measurement artifact.** `ab-window-sweep.mjs:75` fires eviction only
+every N turns, so at N>1 nothing enforces the cap between events: the nominal W is an eviction
+*trigger*, not a window, and the N=10 cells actually sent 7,657-token prompts — larger than the flat
+W=7,500 arm's 6,977. Regressing 78 capped cells: given achieved peak, cadence adds nothing (p=0.54)
+and nominal W adds nothing (p=0.66), while achieved peak given cadence is decisive (p=0.0002, OR
+41.83× per e-fold, arm-adjusted). What survives is that **cadence is a cost lever, not a quality
+lever**: at matched peak the sawtooth spent 360k tokens with 5 evictions vs 409k with 32.
+
+**T6 — width is not sufficient.** The window sweep's "more context is better" law was fitted entirely
+on runs whose context was the agent's *own organic content*. Breaking that regime broke the law:
 
 | run | context sent | outcome |
 |---|---|---|
 | `uncapped-clean` (no cap, no duplicates) | 18,650 | **PASS**, 17 files written |
-| `uncapped-ballast` (no cap, duplicates) | **51,141** — the largest context in the whole dataset | **FAIL**, 0 files written |
+| `uncapped-ballast` (no cap, duplicates) | **51,141** — the largest context in the dataset | **FAIL**, 0 files written |
 
-**More context, worse outcome.** So composition matters, and the honest statement of the width law is *more
-organic context is better*, not *more context is better*. Two consequences:
-- The open question is narrower than "can selection ever matter" — it is **can our binary pass/fail endpoint
-  detect it**. Composition is now demonstrated to matter; only our ability to measure it is in doubt.
-- The dedup arm halved the damage (0 → 7 files written) without ever reaching a pass. That is a real,
-  continuous improvement the binary metric discarded. **Prefer continuous endpoints in every follow-up.**
+Composition matters; the honest statement of the width law is *more organic context is better*.
 
-### 0c. COVARIANCE as an eviction signal — one half never ablated, the other never conceived
-Derived from the experiment record (survey, this session). Two distinct quantities, routinely conflated:
+**T7 — the sensitivity gate is closed, but not the way it was designed to be.** The ballast control
+was void: `oracle` 0/10 vs `random` 0/10 is not a null, because the control wrote zero files in 10 of
+10 runs — it stopped attempting the task rather than performing it badly. Two pre-registered validity
+conditions passed on a worthless run; a third (*the control must still be attempting the task*) has
+been added and now fires automatically. Review separately established the design could not have
+answered its question anyway: the oracle's advantage flowed through useful-token *volume*, the effect
+already known, while the nulls it was meant to adjudicate were measured at matched volume. **The
+question it was gating — can selection matter at all — was then answered by T8, which is
+volume-matched by construction and continuous.** Do not redesign the ballast control; cite T8.
+*Method finding banked:* two earlier ballast designs (fabricated tool calls, then user-role pastes)
+**derailed** the agent rather than taxing it. Injecting foreign material into an agent's context
+changes what the agent does — a warning for any middleware that synthesises context.
 
-- **Static co-occurrence (recurrence) — TESTED OFFLINE AND WON, but the shipped form is UNABLATED.**
-  `experiments/assembler-weighting/` swept a *pure* recurrence term (`'priority-only': [0,0,1,0]` plus a full
-  `{0,0.5,1}⁴` grid) and it was the strongest single signal: priority-only recall 0.35/0.42 vs recency-only
-  0.25/0.24, LR mixing rate 4.12 (≫ recency 2.42, ref-recency 1.04).
-  ⚠️ **What ships is not what was tested.** `flex.ts:268` computes
-  `priority: ((u.wrote ? 2 : 0) + coOccurrence(units, i)) * decay` — the sum is formed *before* any weight,
-  so **no coefficient in the codebase can move the co-occurrence half relative to the edit-boost half**. That
-  2:1 internal ratio is a hardcoded constant no experiment has varied, which violates the project's own rule
-  on undefended constants. The two functions also differ: the tested one counted *later turns that came to
-  overlap this unit* (directional); the shipped one counts *all resident units sharing a fingerprint*
-  (undirected). The offline win transfers by analogy only.
-  **Owed:** split `priority` into two weighted terms and sweep the ratio; re-check that the undirected form
-  carries the directional form's win.
-- **Temporal covariance (pairwise co-reference over turns) — NEVER TESTED, never proposed.** Nothing in the
-  repo computes whether two units tend to be *referenced together across turns*. `policies.mjs` exposes only
-  recency / random / idle / blend / protect / oracle.
-  **Why it is the principled repair of the signal that lost:** relevance-to-recent was measured *worst*
-  (D-EV4, weight 0) for exactly one reason — it drops the dormant unit that later returns. Temporal
-  covariance is the signal that **keeps** that unit: dormant now, but historically co-active with what is hot,
-  so likely needed when the hot set is next touched. Design: per unit a binary reference series over turns;
-  score = covariance with the current hot set's series; keep high-covariance units even when idle is large.
+**T8 — the prize is large and mostly unclaimed.** Rather than compare two candidate rules again, this
+measured the ceiling: for each decision point, delete every unit in turn and record how much harder
+the agent's actual next message became (leave-one-unit-out ΔNLL), then build an oracle that evicts on
+those measured values. Because the oracle is volume-matched, its margin is an upper bound on what
+*any* rule scoring units independently could achieve. Across 86 volume-matched cells from 60 decision
+points in 4 sessions, the oracle caused 0.081 nats/token less damage than random and 0.067 less than
+recency — 13× and 11× the numerical floor of 6.3e-3 — with all 4 session clusters agreeing in sign.
+Choosing well removes **96%** of random deletion's damage; the shipped recency rule captures **18%**
+of that and attention **25%**, leaving ~75% unclaimed. At the 30% keep-fraction the oracle's ΔNLL is
+*negative*: deleting low-value history is better than deleting nothing, making eviction a quality
+mechanism and not only a way to fit a window. **This inverts the reading of the five prior nulls: the
+bottleneck is the signal, not the opportunity.** The attention hypothesis itself: F0 passes (signal
+not inert, not relabelled recency), F1 passes (deleting high-attention units is worse), **F2 does not
+pass** (margin ≥+0.10 required; pooled +0.105 but per-decision median +0.037, 33/60 points), F3 right
+direction. *Limits:* one 1B model, 4 clusters, teacher-forced replay; the transfer to the 27B is
+untested (U7), and the oracle bounds unit-independent ranking only (U6).
 
-### 1. Attention over history (highest-value survivor) — `experiments/attention-over-history/`
+**T9 — the 2:1 priority constant is vindicated, and a redundancy appeared.** The recurrence advantage
+replicates on its own corpus under the corrected clock (the earlier analysis counted one turn per
+transcript line, 2.22× inflation): +0.1714→+0.1675 and +0.0999→+0.0582 at M=64. Sweeping the ratio the
+shipped code cannot express, **no value beats the shipped one**, so the hardcoded constant is a
+defensible default and this objection to it is closed. The unplanned finding: measuring what the
+shipped term actually ranks by, the priority term is strong (AUC 0.814, second only to
+reference-recency's 0.886) but its ordering correlates **0.835** with reference-recency — above the
+0.8 this project uses to call one signal a relabelling of another. The four-signal scorer may be
+counting reference-recency twice (→ U2).
 
-> **REFRAMED — MEASURED attention, not similarity-to-recent, and scored on a CONTINUOUS endpoint.**
-> The existing item concluded attention belongs at *admission* rather than eviction, but that conclusion was
-> about **relevance computed by embedding similarity**, not about the model's **actual attention mass**. A
-> unit can be perfectly retrievable and still be attended to hardly at all — those are different quantities
-> and only the first has been measured. The cheap proxy for "the model stopped attending to this" is
-> reference-recency (`idle`), which was tested and returned p=1.000, so the proxy is exhausted; the real
-> measurement is not.
-> **Design:** the OpenAI-compatible endpoint does not expose attention, so load the model directly with
-> `output_attentions=True` (GPUs available). Replay a real transcript; for each turn compute the attention
-> mass each unit receives from the final position; then ablate at **matched volume** — drop lowest-attention
-> units vs oldest vs random — and measure the shift in the model's own **next-token distribution** (KL).
-> **Why this design beats the ones that failed:** the endpoint is continuous, so it does not depend on the
-> binary pass/fail metric that item 0 showed may be insensitive; and the arms are volume-matched by
-> construction, which is the flaw that voided the ballast control.
-> **Caveat to carry:** the position probe found no retrieval deficit at any depth out to 155,773 tokens, so
-> attention mass is not the bottleneck for *retrieving a fact when asked*. That does not settle whether it
-> predicts what is safe to discard.
+**T10 — file-keyed temporal covariance is not testable here, and probably not anywhere.** A pairwise
+statistic needs two units active together, but agents name files one at a time: 19.9% of
+file-referencing turns name two or more. Across every corpus available and episode windows from 1 to
+20 turns, support peaks at **49.0%** against a pre-registered 55.0% gate, and the median candidate
+pair has never been co-active at any setting. Recorded **untested, not refuted** — and the structural
+reading is that *any* pairwise co-reference signal should be checked against this property before it
+is built. (Superseded in practice by T11, which re-keys the statistic.)
 
-The umbrella hypothesis (evict/retain context by bearing-on-the-current-turn) was **never validly
-tested** — the harness that would have measured it couldn't represent a tool call and was deleted;
-`selectAttention` has zero production callers. The record already answers the design questions:
+**T11 — contextual covariance holds where the incumbents collapse.** Re-keyed from file paths onto
+identifiers, support rises from 6.1% to **84.3%**. As "dormant" is made stricter (10 → 50 turns since
+a unit's files were touched) positional recency falls 0.403→0.0138 and reference-recency 0.2764→0,
+while covariance is nearly flat, 0.365→0.3022 — it is the best of six signals from D=20 onward and
+beats a volume-matched random control at every depth to D=35. The decisive controls pass: it is not
+relevance renamed (rank correlation 0.0231), and the advantage survives stripping every path-bearing
+token. **What does not pass is the pre-registered primary as written** — beat *relevance specifically*
+at M=32, D=10: it misses in the identifier space (+0.0517, [−0.0042, +0.1085]) and fires only in the
+lexical space, which is the one space where covariance does not beat the random floor. Verdict: a real
+signal with a mechanism that behaves as theorised, not an established improvement over the incumbent
+it was pre-registered against. It is a **specialist** — well behind recency on the full label — so any
+deployment is as an added protective term for dormant units (→ U3), never as a primary ordering.
+*Also established:* the dormancy threshold D had been inherited unexamined across three experiments,
+and sweeping it changed which signal wins at four of six values. D must be swept, never inherited.
 
-- **Where does it belong? → Admission, not eviction.** D-EV4 measured relevance-to-recent as the
-  *worst* eviction signal (drops the dormant unit that later returns). So attention/relevance keys the
-  **retriever / assembler-*in*** (what to pull back), while **eviction** stays on
-  priority + recency + drift-dormancy. Encode it as the admission channel, not a new eviction term.
-  (`assembler-weighting/report-assembler-weighting.md` conclusion 4 / D-EV4–5.)
-- **Does it work? → Test in the overflow regime, on retention-required tasks.** It can only help where
-  the buffer actually overflows; the corpus that reaches that regime exists (109 sessions ≥100 tool
-  calls, 55 > 131K tokens). Arm: relevance-admission (push query-relevant dormant units back up-front)
-  vs the on-demand baseline. This *is* the spec's OPEN "retrieval trigger" A/B. Falsification: the
-  admission arm must beat on-demand on task-success in the overflow regime by a pre-set margin, else
-  attention-as-admission is retired. Use a task with **no re-read escape** (ties to item 4 below).
-- **Does it destroy the cache, and can that be avoided? → Yes if done per-turn; avoidable.**
-  Per-turn re-mixing is measured cache-death (`flex-remix` 433k vs 341k effCost); Anthropic break-even
-  is ~12.5 turns at keep=0.5 (`cacheWrite 1.25×`/`cacheRead 0.1×`). **Avoidance:** admitted units must
-  **append after the buffer** (never reorder the cached prefix — same discipline the spec already uses
-  for retrieval results) and admission must fire at a **multi-turn cadence**, not every turn. The
-  experiment must record `cacheWrite`/`cacheRead` and report effective cost, not just token volume.
+**T12 — the anchor idea: no cost case, but the mechanism is real.** F1 (cost) is rejected: block-level
+referential substitution saves **0.22%** of real token spend against a 10% bar, because duplicated file
+*content* is only 5.8% of reads and read results are only 18.4% of context. The motivating "59.2% of
+reads are re-reads" statistic is **path** repetition; the content equivalent is 5.8%, and any future
+proposal resting on re-read frequency must say which it means. F2 (acceptance ≥70%) is rejected at
+41.7% — but that threshold was unreachable: serving the full content achieves only 58.3%, and the
+informative paired contrast is not significant (−16.7pp, p=0.109). **F3 is the substantive result:** the
+referential anchor beats a character-identical non-referential placebo by +27.8pp on acceptance
+(p=0.0063), so *what the anchor says* does the work, not the fact that content was withheld. Recall is
+unharmed (86.1% vs 83.3%, p=1.0) at 10.9× fewer tokens: the resident copy is reachable and used
+correctly; the model simply prefers to re-fetch when free to. What is rejected is block-level
+substitution — a line-level matcher reaches 19.0% on the same corpus and is untested (→ U12).
+*Threshold lesson:* both bars were set before computing what was achievable, twice. Measure the
+ceiling before drawing the line.
 
-- **STATUS after this series → now RUNNABLE; design constraints tightened.** Per C1 the "no re-read
-  escape" framing was the wrong lever: you do not need to remove the escape, you need a **long-horizon**
-  task so non-recoverable conversation history accumulates. Use `longbuild` (C1) rather than building a
-  new task. Per C3 the admission decision now has a derived cost model: re-admitting a dropped unit costs
-  one cache write (`w·B`), so admission pays only when the unit's expected next use is within `w/r` turns
-  — the same threshold eviction uses, applied in the opposite direction. **Corpus caveat:** the "109
-  sessions ≥100 tool calls" overflow corpus is NOT in this checkout (it was the author's other machine);
-  either regenerate it from `~/.claude/projects` or use `longbuild` under a forced cap.
+**T13 — the substrate gate.** Uncapped, opencode 1.18.31, `openrouter/qwen/qwen3.8-27b`, thinking on,
+n=1 per problem: **7 of 9** validly run distinct problems from 6 repos solved, drawn by a seeded,
+difficulty-stratified rule written before any agent ran; **5 of 7** solved problems exceeded 32,768
+prompt tokens (95% CI 45–94%; ~151 usable instances projected against the 13 a sweep needs). A 10th,
+django-11138, was **invalid, not a failure** — our own `limit.output: 16384` placeholder cut its
+reasoning off; re-run with the limit raised it solved (reported separately, not pooled). Spend ≈ $2.
+**Uncontrolled variable:** the tranche used unpinned OpenRouter routing (16 backends, fp4–bf16) and
+exports do not record the backend, so it is unknown per run; the entry is now pinned (DeepInfra bf16,
+no fallback). **Carry forward:** do not reuse `coding-harness/lib.mjs` for SWE-bench (its 2,000-char
+tool-output clip caused the v1 zero-edit result: 0/6 edits vs 5/6 at 30,000, on two endpoints);
+capture stdout/exports to files, never pipes; grading uses calibrated P2P (≥90% of dataset P2P ids
+passing on gold here). **Still open:** n=1 per problem, 10 problems, and hosted weights ≠ the local
+GGUF every earlier live result used, so nothing here is comparable to them.
 
-### 2. Coefficient tuning for the eviction score — **REFRAMED: first ask whether the score is needed at all**
-The `2/1/0.5/−1` weights are hand-rounded; the offline sweep optimum was `[rec .5, rel 0, prio .5,
-**refrec 1**]`. **Note what that optimum already said: reference-recency was the highest-weighted term,
-while D-EV ships it at the *lowest* positive weight (0.5).** The A/B window sweep now corroborates that
-from the live side: a policy selecting on **reference recency alone** (keep the units whose files were
-touched most recently — LRU on `idleOf`) beat positional recency and a volume-matched random control at a
-tight cap (n=3: 3/3 vs 1/3 vs 1/3, ~half the re-reads at matched eviction volume; n=10 confirmation in
-flight). `report-ab-longbuild.md`.
+---
 
-⚠️ **Updated by item 8's n=10 outcome.** Pure reference-recency did **NOT** beat positional recency
-live (pooled 7/13 vs 6/13, **p=1.000**), so **the case for retiring the other terms in favour of idle is
-NOT made** — an earlier version of this item leaned that way on n=3 evidence that turned out to be noise.
-The sharpened question stands, but with **no presumed winner**: does the 4-term D-EV score beat *either*
-single-signal baseline (idle, or plain positional recency)? Run both single-signal policies as baselines
-and make each extra term earn its place. The live evidence so far says the two single signals are
-**indistinguishable from each other**, and both beat no-signal — consistent with "some ordering matters,
-which one matters less". Only if the multi-term score wins does a coefficient re-fit
-matter — and then it must be cross-session-validated before any value is canon. (`assembler-weighting/`,
-`experiments/context-dedup/policies.mjs` for the tested LRU implementation.)
+## §B. Untested hypotheses
 
-### 3. Drift classifier — corrected validation
-Re-run the permutation test with the corrected held-out condition (the pre-reg tail was reversed);
-the topic-shift half is deterministic and falsifiable on its own terms. (`rung-0b-topic-shift/report.md`.)
+Each entry is a hypothesis and the experiment that would test it. Ordered by value, not by number.
 
-**Prerequisite added by C3:** Tier 1 found the transcript turn-clock counted JSONL assistant
-*content-block lines* rather than API turns (645 lines → 331 real turns; 2–2.4× inflation). The drift
-classifier's `K=5` recent-window and its causal z-scoring are both measured in "units/turns", so **audit
-its clock for the same defect before re-running the permutation test** — otherwise the corrected test
-inherits an uncorrected window.
+### U1 — Is `g* = w/r` the right place to evict, live?
+**Hypothesis.** Keeping a unit costs `r·B` per turn and re-fetching it costs `w·B` once, so a policy
+that evicts a unit exactly when its expected next use is beyond `w/r` turns achieves lower
+cache-adjusted cost than append-only, at equal task success — and the optimum cadence is interior, as
+DV3 found in simulation (T3).
+**Why it is untested.** `g*` is pure algebra on published price multipliers. The 12.5 operating point
+has never been validated in a live run, and it is not one number: it moves with the cache tier
+(Anthropic prices the 1-hour write tier above the 5-minute one). Re-derive per tier, never hardcode.
+**Experiment.** SWE-bench problems through `swebench-opencode.mjs`, paired within problem. Arms:
+(a) append-only, (b) fixed cadence N ∈ {5, 25}, (c) evict-at-`g*` on measured idle. Providers return
+`cache_creation_input_tokens` / `cache_read_input_tokens` per response, so cache accounting is real,
+not simulated. Report achieved peak (rule 3) and solve rate alongside effective cost.
+**Falsification.** If no cadence beats append-only on effective cost at equal solve rate, T3's
+simulated optimum does not transfer and small windows are a capability lever only, not a cost one.
 
-### 4. Reduce-on-overflow **router** (auto-select)
-The reducers are settled and built (`assemble/reduce.ts`); the query→reducer heuristic that *chooses*
-chunk-vs-summarize is not. The seam is ready: pass a `reducer` function to `assembleFlex` (or name
-`'chunk'`/`'summarize'`) — the router is exactly such a function. Test router pick-accuracy vs an oracle
-over the query set. (`coding-harness/report-buried-detail.md`.)
+### U2 — Is `priority` just reference-recency under a second name?
+**Hypothesis.** Removing the priority term from the four-signal eviction score, holding
+reference-recency, does not degrade selection quality — i.e. priority contributes nothing independent.
+**Why it is untested.** T9 measured a 0.835 rank correlation between the two orderings, above this
+project's 0.8 relabelling bar, but no ablation has been run. The decay factor dominates the sum it
+multiplies, which is the suspected mechanism.
+**Experiment.** Purely offline and cheap. Score each decision's buffer with the full scorer and with
+priority ablated, and rank both against leave-one-unit-out ΔNLL ground truth (rule 5). Report ΔAUC on
+the transcript corpus and Δ(damage avoided) on the LOUO instrument, micro- and macro-averaged (rule 6).
+**Falsification.** If ablating priority costs less than the numerical floor, drop the term — a
+four-signal scorer that is really three signals is a liability, not a tuning opportunity.
+**Blocks:** any coefficient re-fit. Do not tune weights in a scorer whose terms may be collinear.
 
-**Reframed by C1/C2.** (i) Reduction *rewrites a unit in place*, which invalidates the cached suffix — so
-the router's choice carries a cache cost (1.25× on everything after it), not just a quality effect; score
-arms on cache-adjusted cost, and prefer reducing units that sit late in the prefix. (ii) Full-tool agents
-already shrink their own tool output (measured: piping test runs through `tail -20`, so 11 `run_bash`
-calls contributed 1,983 of 10,120 peak tokens), so reduce-on-overflow may rarely fire in realistic
-settings — establish how often it triggers at all before tuning which reducer it picks.
+### U3 — Does contextual covariance earn a place as a protective term?
+**Hypothesis.** Adding identifier-keyed contextual covariance to the scorer as a *protective term for
+dormant units* reduces ΔNLL damage at matched volume relative to the scorer alone, with the margin
+growing as the dormancy threshold D widens.
+**Why it is untested.** T11 established the signal is computable, is not relevance renamed, and holds
+where the incumbents collapse — but only as a standalone ranker on a replayed corpus. Its value *as an
+added term* is unmeasured, and its pre-registered contrast against relevance was not met.
+**Experiment.** Offline first, against the LOUO instrument: scorer vs scorer+covariance, volume-,
+unit- and splice-matched (rule 4), sweeping D ∈ {10, 20, 35, 50} (never inherited — T11). If it clears
+the floor, a live paired arm on SWE-bench problems under a cap that actually binds.
+**Falsification.** If the added term does not reduce damage beyond the floor at any D, covariance is
+retired as an eviction signal and survives only as an admission candidate (U4).
 
-### 5. RRF ensemble on the **transcript** corpus (confirm-and-tune, post-promotion)
-RRF is promoted on its code-corpus win + ensemble robustness; this experiment confirms transfer and
-tunes the provisional params. Re-run the rung-0e/rung-2 methodology on chat-history / L0-unit chunks;
-sweep `RRF_K` and chunk size; check which component leads on prose. Not a gate on promotion.
-(`rung-0e-retrievers/`, `rung-2-retriever-live/`.)
+### U4 — Does admission beat on-demand re-fetching?
+**Hypothesis.** Pulling dormant-but-high-covariance units back into context at a multi-turn cadence
+beats letting the agent re-fetch on demand, on task success at equal achieved peak.
+**Why it is untested.** The record says relevance belongs at *admission*, not eviction (it was measured
+the worst eviction signal precisely because it drops the dormant unit that later returns), but no
+admission arm has ever been run. T1 says the escape to re-fetch is always available, so the arm is
+only meaningful where re-fetching is expensive in turns, not impossible.
+**Experiment.** `experiments/scenarios/` through `oc-runner.mjs` (real mid-run user turns), plus a
+SWE-bench arm. Admitted units must **append after the buffer** — never reorder the cached prefix — and
+admission must fire at a multi-turn cadence, since per-turn re-mixing is measured cache-death
+(`flex-remix` 433k vs 341k effective cost). Record `cacheWrite`/`cacheRead` and report effective cost.
+**Falsification.** If admission does not beat on-demand by a pre-set margin in the regime where the
+buffer actually overflows, attention-as-admission is retired.
 
-### 6. Priority channel / `evictRederivable`
-Re-gate with query fingerprints first (params proven inert without them), then measure *effect*, not
-just that the mechanism fires. (`harness-deletion-and-hypothesis-register-report.md` §6.)
+### U5 — Does the context-tree MCP server actually help? *(the project's headline claim, never run)*
+**Hypothesis.** An agent in opencode with the context-tree MCP server attached solves more SWE-bench
+problems, or solves them at lower achieved peak, than the same agent with the host's native context
+handling — and the margin grows with context pressure.
+**Why it is untested.** This is the D20 comparison the whole project is built to make, and **nothing
+in `experiments/` wires the MCP server into opencode today**: there is no `mcp` block in
+`experiments/context-dedup/opencode.json` and no MCP arm in the runner. Every result in §A is about a
+*signal* or a *substrate*; none of them is about the deliverable.
+**Experiment.** Wire `@context-tree/mcp` (`context-tree-mcp` → `packages/mcp/dist/bin.js`) into the
+experiment-local `opencode.json` as an MCP server, add an `mcp: on|off` arm to `swebench-opencode.mjs`
+(note `--pure` disables plugins, so the arm-bearing configuration must not pass it), and run the pool
+paired within problem, n≥2 per cell. Primary: solve rate at matched problem set. Secondary: achieved
+peak, effective cost, and MCP tool-call counts (`context_fetch`/`context_search`/`context_peek`).
+**Falsification.** If MCP-on does not beat MCP-off on solve rate or achieved peak in the pressured
+subset, the middleware's value claim is unsupported on this substrate and the paper says so.
+**Note.** This should probably run before any further signal work: it is the only entry whose outcome
+changes what the other entries are for.
 
-**Add the item-2 baseline:** measure any priority-channel effect *against pure LRU-at-`g*`*, not against
-no-eviction. If reference-recency alone already captures the benefit, a separate priority channel is
-redundant.
+### U6 — Is there value above the unit-independent ceiling?
+**Hypothesis.** A set-aware eviction policy (scoring *combinations*, not units) achieves lower damage
+than the oracle's unit-independent ceiling, because single-unit effects are not additive.
+**Why it is untested.** T8's oracle bounds every signal this project has proposed, all of which score
+units independently — but it does not bound a set-aware policy, and nothing has measured whether the
+gap is real.
+**Experiment.** Extend the LOUO instrument to leave-k-out on the same 60 decision points: measure
+whether the damage of deleting a set differs from the sum of its members' individual damages, and by
+how much. Purely offline, same cost profile as T8.
+**Falsification.** If leave-k-out damage is additive within the floor, the unit-independent ceiling is
+the real ceiling and set-aware policies are not worth building.
 
-### 7. Soft target `f` — **LARGELY OBSOLETED AS FRAMED; replace the question**
-The original item ("sweep `f` as a fraction of W, 25–50%") rests on an assumption C2 contradicts.
-**Under caching, evicting down to a soft floor while the context still fits the window makes things
-worse, not better** — it converts cheap cache reads (0.1×) into cache writes (1.25×) for no benefit.
-Below the hard window, append-only is cost-optimal; eviction earns its keep only when the content
-genuinely will not fit.
+### U7 — Does any of the eviction evidence transfer to the deployment model?
+**Hypothesis.** The per-unit importance ranking measured on a 1B is stable across model scale, and
+therefore transfers to the 27B the project actually deploys.
+**Why it is untested.** T8's entire ceiling is measured on a 1B; attention structure is known to be
+depth- and scale-dependent. Everything §A licenses about *which* units matter rests on this transfer.
+**Experiment.** A size ladder — 0.6B / 1B / 1.7B — computing the per-unit LOUO ranking on the same
+decision points and reporting rank correlation between scales.
+**Falsification.** If the ranking reshuffles between 0.6B and 1.7B it will not survive to 27B, and T8's
+ceiling becomes a claim about small models only.
 
-`f` is also the wrong *shape*. Deriving the target from C3 (`f* =` the content reused within `w/r`
-turns) and measuring that hot set on the real transcripts gives **peak 16–35k tokens but an average of
-only 0.4–2.4k** — a ~32× swing. A fixed fraction of W cannot track that; the target is inherently
-**dynamic**.
+### U8 — Should eviction fire below the hard window at all?
+**Hypothesis.** Evicting to a soft floor `f` while the context still fits the window makes things
+worse, not better: it converts cheap cache reads (0.1×) into cache writes (1.25×) for no benefit. The
+replacement is a *floating* target derived from the hot set, not a fixed fraction of W.
+**Why it is untested, and why the old framing is dead.** The original item swept `f` as 25–50% of W.
+T3 contradicts its premise, and measuring the hot set on real transcripts gives peak 16–35k tokens but
+an average of 0.4–2.4k — a ~32× swing a fixed fraction cannot track. The package currently ships the
+seam for this decision, not an answer: `DEFAULT_EVICT_HEADROOM_TOKENS = 0` in `assemble/flex.ts`, i.e.
+evict only when the hard limit binds, with headroom left as a parameter rather than an invented
+fraction (headroom for N turns is `N ×` growth-per-turn, ~57% of a 7k window but ~2% of 200k — a fixed
+fraction is the wrong *shape*).
+**Experiment.** Arms: (a) no eviction until `window − replyReserve` binds (today's default),
+(b) fixed `f = 0.375·W`, (c) floating hot-set target from `g*`. Substrate: SWE-bench through opencode,
+with the cap set well above the ~9,898-token host overhead. Metric: solve rate + cache-adjusted cost.
+**Falsification.** Retire the 25–50% sweep permanently unless (b) wins.
 
-Replacement question: **should eviction fire below the hard window at all, and if so against a floating
-hot-set target rather than a fixed fraction?** Arms: (a) no eviction until `window − replyReserve` binds
-(the C2-implied default), (b) fixed `f = 0.375·W` (today's canon), (c) floating hot-set target from
-`g* = w/r`. Metric: task success + cache-adjusted cost, on the `longbuild` substrate (C1). Retire the
-`25–50%` sweep unless (b) wins.
+### U9 — Is prefix-preservation conditional on cache state?
+**Hypothesis.** The assembler should preserve the cached prefix only while the cache is *warm*: when a
+session resumes after the TTL has expired the whole prompt re-caches at write rate anyway, so at that
+instant re-organisation is free, and a cache-state-gated policy beats unconditional append-only across
+a resume boundary.
+**Why it is untested.** The spec states "nothing reorders the cached prefix" unconditionally, but its
+cost is conditional, and the assembler obeys it blindly. Resumption-after-a-gap is the normal way long
+sessions are used — the regime this project is ultimately about — and T3 shows resumption *amplifies*
+the advantage of capped arms (best arm +26.3% → +39.4% with 3 cold starts).
+**Experiment.** Feed the assembler a cache-state signal (warm/cold, TTL remaining, observed hit ratio
+from the previous response's `cache_read_input_tokens` vs `cache_creation_input_tokens`). Arms:
+(a) always append-only, (b) always re-optimise, (c) cache-state-gated. Metric: effective cost across a
+session containing at least one resumption gap, plus task success after the gap.
+**Falsification.** If (c) does not beat (a) across a resume boundary, the signal is not worth the
+plumbing. **Note:** this subsumes U4's cadence requirement — cadence and cache state are the same lever.
 
-*(HR1 — structural retrieval unit, excerpt-vs-whole-payload ablation — is untouched by these results and
-still unrun; it is now tracked on its own as item 10.)*
+### U10 — Must the frozen head keep every user prompt, and is `A=4` right?
+**Hypothesis (three, testable separately).** (Q1) Folding or summarising the oldest user prompts once
+`head > f` does not cost task success — so the head need not grow forever. (Q2) The recency anchor `A`
+has an interior optimum and `A=4` is not it. (Q3) CLAUDE.md-class steering is needed only at phase
+boundaries, not every turn.
+**Why it is untested.** The assembler already encodes an "always keep" set — the frozen head (system +
+steering + *every* user prompt) plus the last `A` units — and neither half has ever been tested. `A=4`
+was introduced as a read-loop guard and never swept. The head *is* the cached prefix, so holding it
+costs `r` per turn while changing it invalidates everything after it; the pressure appears only once
+the head alone approaches the budget, which a long session guarantees.
+**Experiment.** Cheap: arms differ only in head construction, no new task needed. Q1 arms: keep-all /
+fold-oldest / summarise-oldest / drop-oldest. Q2: A ∈ {1, 2, 4, 8} — and note A interacts with U2/U3,
+since the most recent units also have the lowest idle. Substrate: scenarios through `oc-runner.mjs`
+(multi-turn, so user prompts actually accumulate) plus a SWE-bench arm. Metric: task success +
+cache-adjusted cost. Re-check `A` against the corrected turn clock (rule 7) before sweeping.
+**Falsification.** If folding old user prompts costs task success, the unbounded head is justified and
+the guarantee must instead be bounded (`head < f`) by construction.
 
-### 8. A/B window-cap sweep — **RESOLVED: the LRU effect did NOT replicate at n=10**
-**OUTCOME: the pre-registered falsification is MET.** Reference recency adds nothing over positional
-recency on this task.
+### U11 — How often does reduce-on-overflow even fire, and does a router beat a fixed reducer?
+**Hypothesis.** A query→reducer router that auto-selects chunk-vs-summarize beats always-chunk on
+task success at equal cache-adjusted cost.
+**Why it is untested.** The reducers are settled and built (`assemble/reduce.ts`); the heuristic that
+*chooses* between them is not, and the seam is ready (`assembleFlex` takes a `reducer` function or a
+name). But two prior findings change the question: reduction rewrites a unit **in place**, invalidating
+the cached suffix (1.25× on everything after it), so the router's choice carries a cache cost and not
+just a quality effect; and full-tool agents already shrink their own tool output (measured: piping test
+runs through `tail -20`, so 11 `run_bash` calls contributed 1,983 of 10,120 peak tokens).
+**Experiment.** **Establish the trigger rate first** — instrument how often reduce-on-overflow fires at
+all across the SWE-bench pool. Only if it fires materially, test router pick-accuracy against an oracle
+over the query set, scoring arms on cache-adjusted cost and preferring to reduce units late in the
+prefix.
+**Falsification.** If reduction almost never fires on a realistic host, the router is not worth
+building and the item closes as answered.
 
-| arm | n=3 | n=10 | pooled n=13 | pooled re-reads (med) |
-|---|---|---|---|---|
-| idle (reference recency) | 3/3 | **4/10** | 7/13 (54%) | 7 |
-| truncate-tail (positional) | 1/3 | **5/10** | 6/13 (46%) | 4 |
-| random (control) | 1/3 | 1/10 | 2/13 (15%) | 9 |
+### U12 — Is line-level deduplication large enough to matter?
+**Hypothesis.** Line-level duplicate elimination — not block-level referential substitution — removes
+enough real token spend to be worth shipping.
+**Why it is untested.** T12 rejected the block-level form at 0.22%, but noted a line-level matcher
+reaches **19.0%** on the same corpus. What was rejected is narrower than "deduplication".
+**Experiment.** Offline first, on the same four sessions, cache-priced: measure real spend removed by
+line-level elimination, and separately whether the resulting transcript is still well-formed (a clipped
+or spliced read makes any "it is above in this conversation" claim false — the failure mode T12 hit).
+Then, if the saving holds, a live arm through `oc-runner.mjs` with the substitution at
+`tool.execute.after`.
+**Falsification.** If the real saving is under 10% of spend after cache pricing, close the dedup line
+of work entirely; T12 already closed the block-level half.
 
-- **idle vs truncate-tail, pooled: Fisher p = 1.000.** No evidence of any difference — at n=10
-  truncate-tail was in fact slightly *ahead*. The n=3 split was noise, **and so was the mechanism**: the
-  "halved re-reads" that made the n=3 story look coherent **inverted** (pooled idle 7 vs truncate-tail 4).
-- **What survives, and it is weaker and different:** a selection signal beats no signal —
-  **both signal arms vs random, 13/26 vs 2/13, p = 0.045**. Individually neither clears 0.05
-  (idle vs random p=0.097; truncate-tail vs random p=0.202). So *some* ordering matters; *which* one
-  matters less than expected.
-- **Consequence:** do **not** drive the assembler/evictor from the idle signal on the strength of this.
-  Authoritative writeup: `report-ab-combined.{md,html}`; the n=3-only report is bannered as superseded.
-- **Methodological note worth keeping:** n=3 produced a clean 3/3-vs-1/3 story *with* a coherent
-  mechanism and it was entirely noise. Pre-registering the falsification and paying for n=10 is what
-  caught it — the cheap version of this experiment would have shipped a false finding.
+### U13 — Does the drift classifier survive a corrected test on a corrected clock?
+**Hypothesis.** The topic-shift signal (`z(lexJaccard) + z(semCos)`, K=5) beats its permutation null
+under the *corrected* held-out condition.
+**Why it is untested.** The pre-registered test was mis-specified — the tail was reversed — so the
+existing ~9.5σ result is not a valid held-out test. And the classifier's `K=5` window and causal
+z-scoring are both measured in "turns", so they inherit the 2.2× clock defect (rule 7).
+**Experiment.** Audit the clock first, then re-run the permutation test with the corrected tail on
+held-out sessions. Deterministic and falsifiable on its own terms.
+**Falsification.** If the corrected test does not clear its null, the drift-dormancy term loses its
+evidential basis and `classify/drift.ts` reverts to an untested hypothesis.
 
-### 9. Port the window experiments onto SWE-bench Verified — **SOLVABILITY GATE PASSED (pilot)**
-Substrate: `experiments/context-dedup/swebench_provision.py` (non-Docker provisioning + three-way
-`--verify`; now also py3.5/3.6 via micromamba and a django runner). Agent host: **opencode** (D20), driven by
-`experiments/context-dedup/swebench-opencode.mjs`; grading by `ab-tasks/swebench.mjs` `gradeDetail`.
-Report: `reports/metrics/swebench-pilot/report-swebench-pilot.{md,html}` (generator
-`experiments/context-dedup/report-swebench-pilot.mjs`).
+### U14 — Does RRF transfer from code to transcripts?
+**Hypothesis.** The RRF ensemble's win transfers to a chat-history / L0-transcript corpus, and its
+borrowed parameters (`RRF_K=60`, chunk ~800/100) are not the right ones there.
+**Why it is untested.** Every RRF result was measured on a **code** corpus (`packages/**/src`), never
+on transcript chunks. This does not block promotion — an ensemble tracks its best component by
+construction, and it replaced a design that was *measured to lose* — but the tuning is provisional.
+**Experiment.** Re-run the rung-0e/rung-2 methodology on L0-unit chunks; sweep `RRF_K` and chunk size;
+report which component leads on prose.
+**Falsification.** If a single component beats the ensemble on transcripts, the corpus-robustness
+argument fails there and the retriever needs a corpus-aware configuration.
 
-**Result (uncapped, opencode 1.18.31, `openrouter/qwen/qwen3.8-27b`, thinking on by default, n=1 per problem):**
-solved **7 of 9 validly run distinct problems** from 6 repos, drawn by a seeded, difficulty-stratified rule
-written before any agent ran; **5/7 solved problems exceeded 32,768 prompt tokens** → **usable substrate**
-(exact interval and projection in the report, computed over valid runs). The 10th, django-11138, is
-**INVALID**, not a failure: our `opencode.json` `limit.output: 16384` placeholder (copied local → OpenRouter)
-cut its reasoning off at exactly 16,384 tokens before it acted. Re-run on the local model with the limit
-raised, it was **solved** (F2P and P2P) — reported separately, NOT pooled (differs in endpoint/weights and
-output limit; thinking is on in both). Four earlier opencode attempts (one probe, three re-run attempts) were
-killed by another session's host-wide opencode cleanup (confirmed) and voided. Measure local-host reasoning from transcript reasoning parts: the host reports reasoning_tokens 0. Spend ≈ $2 for the tranche.
+### U15 — Is the retrieval unit wrong for structural turns? *(HR1)*
+**Hypothesis.** For structural turns, returning a whole structural payload beats returning the few
+best-matching events — the retrieval *unit*, not the ranking, is what fails.
+**Why it is untested.** Named in the hypothesis register, never run; untouched by everything in §A.
+**Experiment.** The excerpt-vs-whole-structural-payload ablation on the retrieval corpus, scored on
+answer presence and on tokens delivered.
+**Falsification.** If whole payloads do not improve answer presence per token, the unit is not the
+problem and ranking work resumes.
 
-**Uncontrolled variable:** the tranche used UNPINNED OpenRouter routing (16 backends, fp4–bf16, 32,768–235,929
-max response); exports do not record the backend, so it is UNKNOWN per run. The OpenRouter entry is now
-pinned (DeepInfra bf16, no fallback); future manifests must record `provider.order`, `quantizations`,
-`limit.output`.
+### U16 — Does the priority channel (`evictRederivable`) do anything once gated?
+**Hypothesis.** Re-deriving evictable units from a priority channel improves outcomes over pure
+reference-recency selection, once the channel is gated on query fingerprints.
+**Why it is untested.** The parameters were proven **inert** without query fingerprints, so the
+mechanism has never had a fair test; and the baseline matters — measure against LRU-at-`g*`, not
+against no-eviction, because if reference-recency alone captures the benefit the channel is redundant.
+This entry is partly conditional on U2: if priority is reference-recency renamed, the channel has
+nothing independent to contribute.
+**Experiment.** Gate on query fingerprints, then measure *effect* (not merely that the mechanism
+fires) against a pure LRU-at-`g*` baseline on the LOUO instrument, then live.
+**Falsification.** If the gated channel does not beat LRU-at-`g*`, retire
+`experiments/attention-over-history/snapshot/rederive.ts` rather than promoting it.
 
-**Carry forward (each is in the report's What we got wrong):**
-- The first 0/3 "unsolvable" result was a HOMEGROWN-LOOP defect (2,000-char tool-output clip: 0/6 edits
-  vs 5/6 at 30,000, two endpoints). Do not reuse `coding-harness/lib.mjs` for SWE-bench.
-- **opencode adds ~9.9k tokens per call** (system prompt + tool schemas). Any window cap must sit well above
-  it; the longbuild W=4,700 design is not reproducible on this host.
-- Grading uses **calibrated P2P** (dataset P2P ids that pass on gold here, ≥90% required — a post-hoc,
-  pre-agent amendment that admitted xarray-6721, xarray-6992, scikit-learn-14983).
-- With thinking on, a step can burn the whole 16,384-token output budget and opencode exits 0
-  (django-11138): scored as a fail, flagged, sensitivity reported.
-- Capture opencode stdout/export to FILES, never pipes (a piped export truncated at 146k of 430k bytes).
-- Resume state / selection: `reports/metrics/swebench-pilot/{selection-v2,preregistration-multi-v2}.json`.
+### Two open research questions, larger than any single entry
 
-**Still open:** n=1 per problem (no within-problem noise estimate on this substrate); 10 problems; hosted
-weights ≠ the local GGUF used by every earlier live result, so nothing here is comparable to them. The
-window/eviction sweep itself has not been run.
-
-### 10. Structural retrieval unit (HR1) — *unchanged, still unrun*
-Split out of the old item 7. HR1 (the retrieval unit is wrong for structural turns) needs the
-excerpt-vs-whole-structural-payload ablation. Untouched by this series.
-
-### 11. Eviction CADENCE — does a small window amortise its own re-caching? *(attacks C2)* — **SIMULATED YES; LIVE QUALITY CLAIM RETRACTED**
-
-> ⚠️ **CORRECTION (live arm).** A live cadence sweep appeared to show N=10 reaching 100% at W=4,700 where
-> N=1 reached 38%, and that was reported as "sawtooth beats a wider flat window". **That claim is
-> withdrawn.** `ab-window-sweep.mjs:75` fires eviction only every N turns, so at N>1 nothing enforces the
-> cap between events: the nominal `W` is an eviction *trigger*, not a window, and the N=10 cells actually
-> sent **7,657-token** prompts — larger than the flat W=7,500 arm's 6,977. Regressing 78 capped cells:
-> given achieved peak, cadence adds nothing (LR χ²(1)=0.37, **p=0.54**) and nominal W adds nothing
-> (p=0.66), while achieved peak given cadence is decisive (p=0.0002, **OR 42× per e-fold**). All models
-> adjust for `arm`: the signal-free `random` control appears only at cadence 1, and omitting it inflated
-> the odds ratio by 25% (52×) — the conclusion is unchanged, the effect size was not.
-> **What survives: cadence is a COST lever, not a quality lever** — at matched peak the sawtooth spent
-> 360k tokens with 5 evictions vs 409k with 32. Full analysis: `report-cadence-confound.{md,html}`.
-> **Design rule this establishes: the outcome variable is ACHIEVED PEAK — tokens actually present at call
-> time — not the nominal cap. Any future sweep must report and control for it.**
-**DV3 result** (`dv3-cadence-ttl.mjs`, `results-dv3-cadence-ttl.json`; CPU-only): there is an **interior
-optimum cadence**, and at it a capped window is **25–39% CHEAPER** than append-only.
-
-| cadence (evict every N turns) | eff cost | vs append-only |
-|---|---|---|
-| append-only (uncapped) | 0.46M | — |
-| N=1 (**the only cadence DV2 tested**) | 1.30M | **−183%** |
-| N=5 | 0.43M | +5.2% |
-| N=10 | 0.34M | +26.3% |
-| **N=25** | **0.30M** | **+33.5%** |
-| N=50 | 0.32M | +29.8% |
-
-So **C2's strong form is falsified in simulation**: "append-only is cache-optimal" held only because DV2
-mutated on every turn, the worst case. Three further findings:
-- **Resumption amplifies the advantage.** With 3 TTL cold starts, append-only's cost rises 0.46M→0.57M
-  (its cache-write nearly triples, 0.06M→0.16M, because it has the largest prefix to re-cache) while
-  capped arms are unchanged — best capped arm improves from **+26.3% to +39.4%**. The regime long sessions
-  actually live in favours the small window *more*, not less.
-- **`g*` is tier-dependent, not 12.5.** At the 1-hour write tier (2.0×) cadence-5 flips from +5.2% cheaper
-  to **−23.5% more expensive**; the optimum stays ~25. Re-derive per tier.
-- **Cadence is a new tunable the assembler should expose** (it is not in the spec today).
-
-**Still owed:** this is SIMULATED on a synthetic uniform session, eviction drops the OLDEST units (the
-maximally cache-destructive choice — dropping late-position units is cheaper but they are the most
-relevant), and **cost says nothing about task success** — a cadence that is cheapest may evict content the
-task needs. Pair with the live arm before promoting; the live run also gives the first empirical check of
-`g*`, which remains pure algebra.
-
-*(original framing follows)*
-**Hypothesis:** a deliberately small window with **infrequent** eviction beats a large fully-cached one,
-because mutation is charged **per-mutation** while the read discount accrues **per-turn**. Evicting every
-`N` turns wins when `N·r·(C_large − C_small) > w·S` (S = invalidated suffix). DV2 only ever tested `N=1`,
-the worst possible cadence, so its "append-only wins" headline does **not** generalise.
-
-- **One variable: eviction cadence `N`** ∈ {1, 5, 10, 25, never}, at a fixed small window, against an
-  uncapped fully-cached baseline. Also vary *where* the cut lands, since `S` (the invalidated suffix) is
-  what you actually pay for — cutting late is cheap, cutting early is not.
-- **Metric: cache-adjusted effective cost** (cacheWrite·w + cacheRead·r + fresh) **plus task success** —
-  both, because C2 established they can point in opposite directions.
-- **Falsification:** if no cadence beats append-only on effective cost at equal task success, C2's
-  strong form stands and small windows are purely a capability lever, not a cost one.
-- **Do it with real cache accounting, not only the simulator** — providers return
-  `cache_creation_input_tokens` / `cache_read_input_tokens` per response, so a live arm is cheap and would
-  give the first empirical check of `g*` (C3), which is currently pure algebra.
-
-### 12. Cache-state-aware assembly — a RE-CACHE PENALTY signal for the assembler *(attacks C2/D5)*
-**Observation that motivates it:** the spec's rule "nothing reorders the cached prefix" is stated
-unconditionally, but its *cost* is conditional. When a session resumes after the cache TTL has expired
-(1 hour on subscription, 5 minutes on usage credits) **the entire prompt re-caches at write rate anyway**
-— so at that instant prefix-preservation buys nothing, and the assembler is free to reorganise at zero
-incremental cache cost. Today it obeys the constraint blindly and forfeits that opportunity.
-
-- **Mechanism:** feed the assembler a cache-state signal — warm/cold, TTL remaining, and the observed
-  hit ratio from the previous response's `cache_read_input_tokens` vs `cache_creation_input_tokens`
-  (Claude Code already surfaces exactly this: "*N requests · X% of input tokens from cache · M misses*").
-- **Policy under test:** *warm* → strict append-only, preserve the prefix religiously (C2's regime).
-  *Cold / miss detected / TTL about to expire* → do a **full re-optimisation**: re-rank by reference
-  recency, drop everything past `g*`, compact, re-order, re-emit breakpoints. One write is paid either
-  way, so take the best possible layout for it.
-- **Arms:** (a) always append-only (today), (b) always re-optimise, (c) **cache-state-gated** (the
-  proposal). **Metric:** effective cost across a session that includes at least one resumption gap, plus
-  task success after the gap.
-- **Falsification:** if (c) does not beat (a) on effective cost across a resume boundary, the signal is
-  not worth the plumbing.
-- **Why this is likely the highest-value item here:** it converts a hard architectural constraint into a
-  conditional one, and resumption-after-a-gap is the *normal* way long sessions are used — the regime the
-  project is ultimately about. It also subsumes the "admission must fire at a multi-turn cadence" note in
-  item 1: cadence and cache state are the same lever.
-
-### 13. Which units are ALWAYS worth keeping? — head composition and the anchor *(cheap, high-leverage)*
-The assembler already encodes an "always keep" set: the **frozen head** (system + steering/CLAUDE.md +
-**every** user prompt, append-only, never evicted) plus the **recency anchor** `A` (last A units). Neither
-half has been tested.
-
-- **Economics first:** the head *is* the cached prefix, so holding it costs `r` per turn while changing it
-  invalidates everything after it. Keeping it is cheap; the pressure only appears once the head alone
-  approaches the budget — which a long session guarantees, since user prompts accumulate forever.
-- **Q1 (head overflow):** must the head keep *all* user prompts verbatim, or can older ones be folded /
-  summarised once `head > f` without losing task success? This is the spec's open "head-overflow fallback"
-  gap. Arms: keep-all (today) / fold-oldest / summarise-oldest / drop-oldest.
-- **Q2 (anchor size):** `A=4` was introduced as a read-loop guard and **never swept**. Arms: A ∈ {1,2,4,8}.
-  Interacts with item 2 — a larger anchor is partly redundant with reference-recency selection, since the
-  most-recent units also have the lowest idle.
-- **Q3 (steering):** is CLAUDE.md-class steering needed every turn, or only at phase boundaries?
-- **Metric:** task success + cache-adjusted cost on the `longbuild` substrate (C1). Cheap because arms
-  differ only in head construction; no new task needed.
-- **Falsification:** if folding old user prompts costs task success, the unbounded head is justified and
-  the guarantee must instead be bounded (`head < f`) by construction.
+1. **Read-loop B — the resource bound.** Two read-loops were found: A (working-set thrashing) is fixed
+   by the footprint reducer; **B (behavioral indecision under a restricted toolset) reproduced on both
+   the 8.2K and 27B models and is NOT fixed by the middleware.** This is the honest limitation, and the
+   paper needs a progress mechanism (a completed-steps ledger, or a "stop reading and act" signal) for
+   the spec's `resource bound (OPEN)` section. First probe: inject a completed-steps ledger and re-run
+   on both models. *(Substrate: per rule 2, do this on opencode, not on the in-repo integration loop.)*
+2. **A clean end-to-end number.** The old integration loop is confounded in both directions —
+   restricted tools produce loop B, realistic tools produce grep self-heal (T1). U5 is the replacement:
+   a real host, real problems, and the middleware as the only variable.
 
 ## Deployment task (not an experiment, but needed for the vector arm to run)
 The vector/embedding arm — of both `ensembleRetrieve` and the `chunk` reducer's optional RRF fusion —
@@ -612,18 +647,6 @@ is embedder-agnostic and currently BM25-only in the synchronous paths. Implement
 `SummaryEmbedder` (needs a native dep) so the vector arm is available; the remote `text-embedding-3-small`
 was NOT-CARRIED-FORWARD (early remote gate failed). Until then every retrieval path degrades to BM25,
 which is the intended, tested fallback — this unblocks the ensemble, it does not fix a regression.
-
-## Open research questions (bigger than any single subsystem)
-
-1. **Read-loop B / the resource bound (biggest unsolved thing).** `report-integration.md` found two
-   read-loops: A (working-set thrashing) is fixed by the footprint reducer; **B (behavioral indecision
-   under a restricted toolset) reproduced on both the 8.2K and 27B models and is NOT fixed by the
-   middleware.** The honest limitation. The paper needs a progress mechanism (completed-steps ledger /
-   a "stop reading and act" signal) — the `resource bound (OPEN)` section. First probe: inject a
-   completed-steps ledger into `experiments/coding-harness/integration-full.mjs` and re-run on both models.
-2. **A clean `integration-full` number.** The loop is confounded (restricted tools → loop B; realistic
-   tools → grep self-heal). Design a loop task where cross-turn retention is genuinely required with no
-   re-read escape — this doubles as the substrate for attention-over-history (item 1 above).
 
 ## Remaining spec-doc gaps (cheap doc edits, not research)
 
@@ -645,7 +668,7 @@ root-node role at assembly (emitted band vs bookkeeping); pinning mechanism (hea
 | `experiments/coding-harness/middleware.mjs` | best-of-breed middleware (RRF reducer + drift classifier + D-EV assembler) |
 | `experiments/coding-harness/integration-full.mjs` | end-to-end loop harness |
 | `experiments/{assembler-weighting,online-segmentation,rung-0-assembler,rung-0e-retrievers}/` | the settled-result experiment code to port |
-| `packages/core/src/attention/` | untested attention-over-history code to MOVE to experiments |
+| `experiments/attention-over-history/` | the LOUO ceiling instrument (`measure.py`) + the moved `attention/` snapshot |
 | `packages/cli/test/fixtures/claude-code-session-4.jsonl` | saved session transcript (test corpus) |
 
 **Local models** (`http://127.0.0.1:8888/v1`, "switch model by request" on): Qwen3.8-27B (thinking via

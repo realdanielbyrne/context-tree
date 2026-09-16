@@ -137,21 +137,28 @@ function runOpencode({ ws, runDir, prompt, env, model }) {
  * `opencode export` to a FILE (never a pipe), with the run's own XDG env, then check the
  * captured event stream against it. Exported for swebench-opencode-finalize.mjs.
  */
-export function exportSession({ runDir, ws, env, sessionID, eventSummary }) {
-  const res = { export_ok: false, export_part_types: null, export_bytes: 0, events_complete: null, missing_steps: null, missing_tool_calls: null };
+export function exportSession({ runDir, ws, env, sessionID, eventSummary, reexport = true }) {
+  const res = { export_ok: false, export_part_types: null, export_bytes: 0, events_complete: null, missing_steps: null, missing_tool_calls: null, summary: null };
   if (!sessionID) return res;
   const file = join(runDir, 'export.json');
-  const fd = openSync(file, 'w');
-  const errFd = openSync(join(runDir, 'export.stderr.log'), 'w');
-  const r = spawnSync('opencode', ['export', sessionID], { cwd: ws, env, stdio: ['ignore', fd, errFd], timeout: 600_000 });
-  closeSync(fd); closeSync(errFd);
-  if (r.status !== 0) return res;
+  // `reexport: false` re-derives the summary from an export ALREADY on disk. Used to backfill new
+  // fields into old results without starting opencode: it makes a model call at init (session
+  // titling), so on a busy local host a re-export can hang and, worse, take a connection slot
+  // from a live run in another session.
+  if (!(reexport === false && existsSync(file))) {
+    const fd = openSync(file, 'w');
+    const errFd = openSync(join(runDir, 'export.stderr.log'), 'w');
+    const r = spawnSync('opencode', ['export', sessionID], { cwd: ws, env, stdio: ['ignore', fd, errFd], timeout: 600_000 });
+    closeSync(fd); closeSync(errFd);
+    if (r.status !== 0) return res;
+  }
   const text = readFileSync(file, 'utf8');
   res.export_bytes = Buffer.byteLength(text);
   try {
     const summary = summarizeExport(JSON.parse(text.slice(text.indexOf('{'))));
     res.export_ok = true;
     res.export_part_types = summary.part_types;
+    res.summary = summary;
     const c = eventsCompleteAgainstExport(eventSummary, summary);
     Object.assign(res, { events_complete: c.complete, missing_steps: c.missing_steps, missing_tool_calls: c.missing_tool_calls });
   } catch {}

@@ -44,6 +44,18 @@ test('summarizeEvents exposes an output-length stop on the final step', () => {
   assert.equal(summarizeEvents([]).final_step_reason, null);
 });
 
+test('summarizeEvents records the SPLIT of a length stop, not just its size', () => {
+  // django-11138's capped step was output 0 / reasoning 16,384: the whole budget went to
+  // thinking and not one visible token was emitted. The sum alone (16,384) cannot say that,
+  // and the sum alone is what made the run read as an ordinary failure.
+  const s = summarizeEvents([
+    { type: 'step_finish', part: { id: 'a', type: 'step-finish', reason: 'tool-calls', tokens: { input: 10, output: 5, reasoning: 5 } } },
+    { type: 'step_finish', part: { id: 'b', type: 'step-finish', reason: 'length', tokens: { input: 10, output: 0, reasoning: 16384 } } },
+  ]);
+  assert.deepEqual(s.length_stop_response, { output: 0, reasoning: 16384 });
+  assert.equal(summarizeEvents([step('s1', 10, 1, 0)]).length_stop_response, null, 'no length stop, no split');
+});
+
 test('summarizeEvents counts a step once even if its event is repeated', () => {
   assert.equal(summarizeEvents([step('s1', 10, 1, 0), step('s1', 10, 1, 0)]).steps, 1);
 });
@@ -103,7 +115,7 @@ test('summarizeExport counts steps, completed tool calls and part types', () => 
 test('summarizeExport measures reasoning from reasoning parts, not token counts', () => {
   // The local host returns reasoning text but reports reasoning_tokens 0; inferring "no
   // thinking" from the token count was a wrong conclusion this pilot nearly published.
-  const doc = { messages: [{ parts: [
+  const doc = { messages: [{ info: { role: 'assistant' }, parts: [
     { type: 'reasoning', text: 'abcd' },
     { type: 'step-finish', tokens: { input: 5, output: 3, reasoning: 0 } },
     { type: 'reasoning', text: 'xy' },
@@ -112,6 +124,35 @@ test('summarizeExport measures reasoning from reasoning parts, not token counts'
   const s = summarizeExport(doc);
   assert.equal(s.reasoning_parts, 3);
   assert.equal(s.reasoning_chars, 6);
+});
+
+test('summarizeExport falls back to every message when the export declares no roles', () => {
+  // Scoping to assistant messages is right for the real schema, but on an UNEXPECTED one it would
+  // report zero reasoning for a run that reasoned — the same silent zero as the host's
+  // `reasoning_tokens: 0`. The fallback counts everything and says which path it took.
+  const doc = { messages: [{ parts: [{ type: 'reasoning', text: 'abcd' }, { type: 'text', text: 'hi' }] }] };
+  const s = summarizeExport(doc);
+  assert.equal(s.roles_present, false);
+  assert.equal(s.reasoning_chars, 4, 'a role-less schema must not silently zero the reasoning measure');
+  assert.equal(s.text_chars, 2);
+  assert.equal(summarizeExport({ messages: [{ info: { role: 'user' }, parts: [] }] }).roles_present, true);
+});
+
+test('summarizeExport separates VISIBLE text from reasoning, and reads the export\'s own token counts', () => {
+  // The local endpoint bundles reasoning into `tokens.output` while reporting `reasoning: 0`.
+  // Showing that requires measuring visible content separately: here 4 chars of text against
+  // 120 of reasoning, with 900 output tokens claimed — content cannot account for the output.
+  const doc = { messages: [
+    { info: { role: 'assistant', tokens: { output: 900, reasoning: 0 } },
+      parts: [{ type: 'text', text: 'done' }, { type: 'reasoning', text: 'x'.repeat(120) }, { type: 'step-finish' }] },
+    { info: { role: 'user' }, parts: [{ type: 'text', text: 'the task statement, which the model did not write' }] },
+  ] };
+  const s = summarizeExport(doc);
+  // The USER's text part is the prompt, not output. Counting it made a silent run look talkative:
+  // the capped run's 3,835 "visible" chars were the prompt, with ~5 chars from the model.
+  assert.equal(s.text_chars, 4, 'only the assistant\'s own text counts as visible output');
+  assert.equal(s.reasoning_chars, 120);
+  assert.deepEqual(s.export_tokens, { output: 900, reasoning: 0 }, 'only assistant messages carry token counts');
 });
 
 test('eventsCompleteAgainstExport flags a stream that lost trailing steps (pipe truncation)', () => {

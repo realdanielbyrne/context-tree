@@ -74,6 +74,8 @@ export function summarizeEvents(events) {
     tools.push({ tool: p.tool ?? p.name ?? null, status: status ?? null, input: get(p, ['state', 'input']) ?? null });
   }
   const sum = (k) => steps.reduce((s, x) => s + x[k], 0);
+  const lengthStops = steps.filter((x) => x.reason === 'length');
+  const lastLengthStop = lengthStops.length ? lengthStops[lengthStops.length - 1] : null;
   const promptOf = (x) => x.input + x.cache_read + x.cache_write;
   const errors = events.filter((e) => e.type === 'error' || e.error).map((e) => String(get(e, ['error', 'data', 'message']) ?? get(e, ['error', 'message']) ?? e.error ?? 'error').slice(0, 300));
   return {
@@ -81,7 +83,12 @@ export function summarizeEvents(events) {
     // `length` = a step ended because the output budget ran out (here: reasoning consumed it
     // all). If the FINAL step is a length stop, the session ended without the agent deciding to.
     final_step_reason: steps.length ? steps[steps.length - 1].reason : null,
-    length_stops: steps.filter((x) => x.reason === 'length').length,
+    length_stops: lengthStops.length,
+    // The SPLIT of the last length-stopped step, not just its size. A budget exhausted by
+    // thinking reads `output: 0` with the whole cap in `reasoning`: the step produced no visible
+    // output at all, which is why the run reads as an ordinary short failure rather than a
+    // truncation. Reporting only the sum loses exactly the fact that makes it diagnosable.
+    length_stop_response: lastLengthStop ? { output: lastLengthStop.output, reasoning: lastLengthStop.reasoning } : null,
     // Largest single response (output + reasoning in one step): what a per-response cap binds on.
     max_step_response_tokens: steps.length ? Math.max(...steps.map((x) => x.output + x.reasoning)) : 0,
     tokens: {
@@ -108,9 +115,35 @@ export function summarizeExport(doc) {
   const tools = parts.filter((p) => p.type === 'tool' && ['completed', 'error'].includes(p.state?.status)).length;
   // Reasoning measured from the transcript itself. Token counts cannot be used: the local host
   // reports reasoning_tokens as 0 even while it returns reasoning text.
-  const reasoning = parts.filter((p) => p.type === 'reasoning');
-  const reasoningChars = reasoning.reduce((s, p) => s + (typeof p.text === 'string' ? p.text.length : 0), 0);
-  return { messages: (doc?.messages || []).length, part_types: types, steps: types['step-finish'] || 0, tool_calls: tools, reasoning_parts: reasoning.length, reasoning_chars: reasoningChars };
+  // Everything below is scoped to ASSISTANT messages: these measure what the MODEL produced.
+  // A user message also carries a `text` part — the task statement — and counting it made short
+  // runs look talkative when they were silent (the capped run's "visible text" was 3,835 chars,
+  // of which ~5 came from the model and the rest was the prompt being read back).
+  // FALLBACK: if NO message declares a role, the schema is not the one this was written against —
+  // count every message rather than silently reporting zero reasoning for a run that reasoned.
+  // A silent zero here would be the same failure as the host's own `reasoning_tokens: 0`, so the
+  // summary also reports which path it took.
+  const msgs = doc?.messages || [];
+  const roleOf = (m) => (m?.info ?? m)?.role;
+  const rolesPresent = msgs.some((m) => roleOf(m) !== undefined);
+  const asstMsgs = rolesPresent ? msgs.filter((m) => roleOf(m) === 'assistant') : msgs;
+  const asstParts = asstMsgs.flatMap((m) => m.parts || []);
+  const chars = (ps) => ps.reduce((s, p) => s + (typeof p.text === 'string' ? p.text.length : 0), 0);
+  const reasoning = asstParts.filter((p) => p.type === 'reasoning');
+  // VISIBLE output, measured the same way and kept separate. On the local endpoint `tokens.output`
+  // BUNDLES reasoning (it reports `reasoning: 0` while returning reasoning text), so the only way
+  // to show how little of "output" is content is to measure the content itself.
+  const text = asstParts.filter((p) => p.type === 'text');
+  // Token counts as the EXPORT reports them — independent of the event stream, and the reference
+  // for whether an endpoint separates reasoning from output or folds one into the other.
+  const tok = (k) => asstMsgs.reduce((s, m) => { const v = (m?.info ?? m)?.tokens?.[k]; return s + (Number.isFinite(+v) ? +v : 0); }, 0);
+  return {
+    messages: msgs.length, assistant_messages: asstMsgs.length, roles_present: rolesPresent,
+    part_types: types, steps: types['step-finish'] || 0, tool_calls: tools,
+    reasoning_parts: reasoning.length, reasoning_chars: chars(reasoning),
+    text_parts: text.length, text_chars: chars(text),
+    export_tokens: { output: tok('output'), reasoning: tok('reasoning') },
+  };
 }
 
 /**
