@@ -591,7 +591,9 @@ effect being studied.
 The size of the correction is the point. Before the fixes, the low-attention rule appeared to beat random with
 an effect size of d = \u22121.24; measured correctly it is ${f3(LOW_VS_RANDOM.d)}.
 
-## What survives
+## Conclusions
+
+### What survives
 
 - **A cheap instrument for causal importance.** Per-unit leave-one-out costs ~0.11 s per unit here, and
   reading attention costs 19.5 MiB rather than the 204 GB a naive full-attention export would need. Any future
@@ -607,9 +609,34 @@ an effect size of d = \u22121.24; measured correctly it is ${f3(LOW_VS_RANDOM.d)
 - **Volume matching is necessary but not sufficient.** The incumbent eviction code matches kept tokens to
   0.4% while diverging up to 2\u00d7 in unit count and 13\u00d7 in splice count. Any future arm comparison must
   match or covary those too.
-- **Determinism is not accuracy**, and the distinction is worth ${(FLOOR / 1e-12).toExponential(0)} orders of
+- **Determinism is not accuracy**, and the distinction is worth ${Math.log10(FLOOR / 1e-12).toFixed(1)} orders of
   magnitude here. Every offline measurement in this repository should establish its floor with a
   shape-changing edit.
+
+### What this licenses, and what it does not
+
+**Established, on this model and these ${SESSIONS.length} sessions.** Which units are deleted matters:
+under volume matching, measured-best selection causes ${Math.abs(ORACLE_VS_RANDOM.mean).toFixed(3)}
+nats/token less damage than random deletion, ${(Math.abs(ORACLE_VS_RANDOM.mean) / FLOOR).toFixed(0)}\u00d7 the
+numerical floor, with ${nFavourable} of ${SESSIONS.length} sessions agreeing in sign. The shipped recency rule
+captures ${CAP.oldest.toFixed(0)}% of that margin.
+
+**Licensed for the design.** The earlier between-rule nulls may no longer be cited as evidence that eviction
+choice is unimportant. The search for a better eviction signal is justified, and leave-one-unit-out ΔNLL is a
+usable offline yardstick for screening candidates before any live run. Any future arm comparison must match
+unit and splice counts as well as tokens.
+
+**Not licensed.** None of this licenses shipping an attention-based eviction rule, and none of it says what
+the better signal is. The claims have different standing:
+
+| claim | status |
+|---|---|
+| selection has a large ceiling under volume matching | **tested, supported** (offline, teacher-forced, one 1B model) |
+| deleting high-attention units is worse than deleting low-attention ones (F1) | **tested, supported** |
+| attention beats position by the pre-registered margin (F2) | **tested, not met** (pooled ${f3(POOL_F2)}, per-decision median ${f3(med(f2PerTurn))}) |
+| the ceiling or the attention ranking transfers to the 27B deployment model | **untested** |
+| a set-aware policy could exceed this ceiling | **untested** — the oracle bounds unit-independent ranking only |
+| a better-chosen deletion changes task success for a live agent | **untested** — replayed transcripts only |
 
 ## Caveats
 

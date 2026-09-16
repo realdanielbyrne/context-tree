@@ -1,0 +1,165 @@
+{
+  "written_at": "2026-09-15T16:45:36.797Z",
+  "written_before_any_agent_run": true,
+  "seed": 20260915,
+  "eligible_repos": [
+    "psf/requests",
+    "pallets/flask",
+    "pytest-dev/pytest",
+    "pylint-dev/pylint",
+    "pydata/xarray",
+    "mwaskom/seaborn"
+  ],
+  "held_out": [
+    "psf__requests-2931"
+  ],
+  "candidates_per_stratum": {
+    "E": 6,
+    "M": 6,
+    "H": 4
+  },
+  "quota": {
+    "E": 4,
+    "M": 4,
+    "H": 2
+  },
+  "per_repo_cap": 3,
+  "exclusions": {
+    "django/django": "./tests/runtests.py runner, not pytest node ids",
+    "sympy/sympy": "bin/test runner, not pytest node ids",
+    "sphinx-doc/sphinx": "tox runner",
+    "astropy/astropy, matplotlib/matplotlib, scikit-learn/scikit-learn": "per-version C-extension build from source on a non-Docker host",
+    "python 3.5/3.6 specs": "no standalone CPython build",
+    "psf__requests-2931": "held out: development instance the harness was diagnosed on"
+  },
+  "eligible_pool_size": 61,
+  "eligible_pool_by_repo_stratum": {
+    "mwaskom/seaborn M": 2,
+    "pallets/flask E": 1,
+    "psf/requests E": 6,
+    "psf/requests M": 1,
+    "pydata/xarray M": 15,
+    "pydata/xarray H": 2,
+    "pydata/xarray E": 5,
+    "pylint-dev/pylint H": 2,
+    "pylint-dev/pylint M": 5,
+    "pylint-dev/pylint E": 3,
+    "pytest-dev/pytest M": 8,
+    "pytest-dev/pytest E": 8,
+    "pytest-dev/pytest H": 3
+  },
+  "candidates": [
+    {
+      "instance_id": "pylint-dev__pylint-6903",
+      "repo": "pylint-dev/pylint",
+      "version": "2.15",
+      "difficulty": "<15 min fix",
+      "stratum": "E"
+    },
+    {
+      "instance_id": "pydata__xarray-6461",
+      "repo": "pydata/xarray",
+      "version": "2022.03",
+      "difficulty": "<15 min fix",
+      "stratum": "E"
+    },
+    {
+      "instance_id": "pallets__flask-5014",
+      "repo": "pallets/flask",
+      "version": "2.3",
+      "difficulty": "<15 min fix",
+      "stratum": "E"
+    },
+    {
+      "instance_id": "pytest-dev__pytest-6202",
+      "repo": "pytest-dev/pytest",
+      "version": "5.2",
+      "difficulty": "<15 min fix",
+      "stratum": "E"
+    },
+    {
+      "instance_id": "psf__requests-5414",
+      "repo": "psf/requests",
+      "version": "2.26",
+      "difficulty": "<15 min fix",
+      "stratum": "E"
+    },
+    {
+      "instance_id": "pylint-dev__pylint-7277",
+      "repo": "pylint-dev/pylint",
+      "version": "2.15",
+      "difficulty": "<15 min fix",
+      "stratum": "E"
+    },
+    {
+      "instance_id": "pylint-dev__pylint-7080",
+      "repo": "pylint-dev/pylint",
+      "version": "2.15",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M"
+    },
+    {
+      "instance_id": "pytest-dev__pytest-5631",
+      "repo": "pytest-dev/pytest",
+      "version": "5.0",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M"
+    },
+    {
+      "instance_id": "pydata__xarray-3151",
+      "repo": "pydata/xarray",
+      "version": "0.12",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M"
+    },
+    {
+      "instance_id": "mwaskom__seaborn-3187",
+      "repo": "mwaskom/seaborn",
+      "version": "0.12",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M"
+    },
+    {
+      "instance_id": "psf__requests-6028",
+      "repo": "psf/requests",
+      "version": "2.27",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M"
+    },
+    {
+      "instance_id": "pylint-dev__pylint-4604",
+      "repo": "pylint-dev/pylint",
+      "version": "2.9",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M"
+    },
+    {
+      "instance_id": "pylint-dev__pylint-8898",
+      "repo": "pylint-dev/pylint",
+      "version": "3.0",
+      "difficulty": "1-4 hours",
+      "stratum": "H"
+    },
+    {
+      "instance_id": "pytest-dev__pytest-10356",
+      "repo": "pytest-dev/pytest",
+      "version": "7.2",
+      "difficulty": "1-4 hours",
+      "stratum": "H"
+    },
+    {
+      "instance_id": "pydata__xarray-6992",
+      "repo": "pydata/xarray",
+      "version": "2022.06",
+      "difficulty": ">4 hours",
+      "stratum": "H"
+    },
+    {
+      "instance_id": "pylint-dev__pylint-4551",
+      "repo": "pylint-dev/pylint",
+      "version": "2.9",
+      "difficulty": "1-4 hours",
+      "stratum": "H"
+    }
+  ]
+}

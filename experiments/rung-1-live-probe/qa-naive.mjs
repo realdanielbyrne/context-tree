@@ -47,7 +47,7 @@ async function main() {
     for (const arm of arms) {
       const user = buildUser(q, arm);
       const t0 = Date.now();
-      const r = await generate({ system: SYSTEM, user, maxTokens: 64, temperature: 0 });
+      const r = await generate({ system: SYSTEM, user, temperature: 0 });
       const g = grade(r.content, q);
       cells.push({
         uid: q.uid, id: q.id, set: q.set, stratum: q.stratum, kind: q.kind, arm,

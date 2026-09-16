@@ -256,7 +256,8 @@ sup{font-size:.7em}
 <p>   clustered analysis*, which would have counted one session twice.</p>
 <p>The size of the correction is the point. Before the fixes, the low-attention rule appeared to beat random with</p>
 <p>an effect size of d = −1.24; measured correctly it is −0.134.</p>
-<h2>What survives</h2>
+<h2>Conclusions</h2>
+<h3>What survives</h3>
 <ul>
 <li><strong>A cheap instrument for causal importance.</strong> Per-unit leave-one-out costs ~0.11 s per unit here, and</li>
 </ul>
@@ -280,10 +281,30 @@ sup{font-size:.7em}
 <p>  0.4% while diverging up to 2× in unit count and 13× in splice count. Any future arm comparison must</p>
 <p>  match or covary those too.</p>
 <ul>
-<li><strong>Determinism is not accuracy</strong>, and the distinction is worth 6e+9 orders of</li>
+<li><strong>Determinism is not accuracy</strong>, and the distinction is worth 9.8 orders of</li>
 </ul>
 <p>  magnitude here. Every offline measurement in this repository should establish its floor with a</p>
 <p>  shape-changing edit.</p>
+<h3>What this licenses, and what it does not</h3>
+<p><strong>Established, on this model and these 4 sessions.</strong> Which units are deleted matters:</p>
+<p>under volume matching, measured-best selection causes 0.081</p>
+<p>nats/token less damage than random deletion, 13× the</p>
+<p>numerical floor, with 4 of 4 sessions agreeing in sign. The shipped recency rule</p>
+<p>captures 18% of that margin.</p>
+<p><strong>Licensed for the design.</strong> The earlier between-rule nulls may no longer be cited as evidence that eviction</p>
+<p>choice is unimportant. The search for a better eviction signal is justified, and leave-one-unit-out ΔNLL is a</p>
+<p>usable offline yardstick for screening candidates before any live run. Any future arm comparison must match</p>
+<p>unit and splice counts as well as tokens.</p>
+<p><strong>Not licensed.</strong> None of this licenses shipping an attention-based eviction rule, and none of it says what</p>
+<p>the better signal is. The claims have different standing:</p>
+<div class="tw"><table><thead><tr><th>claim</th><th>status</th></tr></thead><tbody>
+<tr><td>selection has a large ceiling under volume matching</td><td><strong>tested, supported</strong> (offline, teacher-forced, one 1B model)</td></tr>
+<tr><td>deleting high-attention units is worse than deleting low-attention ones (F1)</td><td><strong>tested, supported</strong></td></tr>
+<tr><td>attention beats position by the pre-registered margin (F2)</td><td><strong>tested, not met</strong> (pooled +0.105, per-decision median +0.037)</td></tr>
+<tr><td>the ceiling or the attention ranking transfers to the 27B deployment model</td><td><strong>untested</strong></td></tr>
+<tr><td>a set-aware policy could exceed this ceiling</td><td><strong>untested</strong> — the oracle bounds unit-independent ranking only</td></tr>
+<tr><td>a better-chosen deletion changes task success for a live agent</td><td><strong>untested</strong> — replayed transcripts only</td></tr>
+</tbody></table></div>
 <h2>Caveats</h2>
 <ul>
 <li><strong>One model, and a small one.</strong> Everything is measured on a 1B. The project's own vehicle is a 27B, and</li>

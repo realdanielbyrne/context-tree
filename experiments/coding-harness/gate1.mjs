@@ -13,7 +13,7 @@ const TASK = 'Create a file `add.py` containing a function `add(a, b)` that retu
 async function main() {
   const ws = makeWorkspace();
   console.error(`workspace: ${ws}`);
-  const r = await runAgent({ system: SYSTEM, task: TASK, ws, maxTurns: 12, think: false });
+  const r = await runAgent({ system: SYSTEM, task: TASK, ws, maxTurns: 12 });
 
   // fidelity assertions
   const asstWithCalls = r.messages.filter((m) => m.role === 'assistant' && m.tool_calls?.length);

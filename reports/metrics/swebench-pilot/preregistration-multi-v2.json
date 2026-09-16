@@ -1,0 +1,272 @@
+{
+  "written_at": "2026-09-15T16:57:21.791Z",
+  "written_before_any_agent_run": true,
+  "supersedes": "preregistration-multi.json (v1)",
+  "seed": 20260915,
+  "eligible_repos": [
+    "psf/requests",
+    "pallets/flask",
+    "pytest-dev/pytest",
+    "pylint-dev/pylint",
+    "pydata/xarray",
+    "mwaskom/seaborn",
+    "django/django",
+    "scikit-learn/scikit-learn",
+    "astropy/astropy",
+    "matplotlib/matplotlib"
+  ],
+  "held_out": [
+    "psf__requests-2931"
+  ],
+  "candidates_per_stratum": {
+    "E": 10,
+    "M": 10,
+    "H": 8
+  },
+  "quota": {
+    "E": 4,
+    "M": 4,
+    "H": 4
+  },
+  "per_repo_cap": 2,
+  "gate": {
+    "solvability": "fraction of distinct accepted problems with pass=true (F2P and P2P), Wilson 95% interval, pooled and per repo; void grades excluded from the denominator",
+    "pressure_thresholds_prompt_tokens": {
+      "primary": 32768,
+      "secondary": 9500
+    },
+    "pressure": "among SOLVED problems, fraction whose max_prompt_tokens exceeds PRESSURE.primary (and .secondary)",
+    "verdict": "usable for the window/eviction sweeps only if the projected number of problems that are BOTH solved AND above PRESSURE.primary reaches 13; projected = joint rate x eligible verified pool",
+    "config": "uncapped, no eviction, no middleware, temperature 0, thinking disabled, tool-output clip 30,000 chars (swebench-agent.mjs), max 50 turns, n=1 per problem"
+  },
+  "exclusions": {
+    "sympy/sympy": "bin/test runner, not pytest node ids",
+    "sphinx-doc/sphinx": "tox runner",
+    "psf__requests-2931": "held out: development instance the harness was diagnosed on"
+  },
+  "eligible_pool_size": 380,
+  "eligible_pool_by_repo_stratum": {
+    "astropy/astropy M": 15,
+    "astropy/astropy H": 3,
+    "astropy/astropy E": 4,
+    "django/django E": 92,
+    "django/django H": 22,
+    "django/django M": 117,
+    "matplotlib/matplotlib E": 15,
+    "matplotlib/matplotlib M": 19,
+    "mwaskom/seaborn M": 2,
+    "pallets/flask E": 1,
+    "psf/requests E": 6,
+    "psf/requests M": 1,
+    "pydata/xarray M": 15,
+    "pydata/xarray H": 2,
+    "pydata/xarray E": 5,
+    "pylint-dev/pylint H": 2,
+    "pylint-dev/pylint M": 5,
+    "pylint-dev/pylint E": 3,
+    "pytest-dev/pytest M": 8,
+    "pytest-dev/pytest E": 8,
+    "pytest-dev/pytest H": 3,
+    "scikit-learn/scikit-learn M": 18,
+    "scikit-learn/scikit-learn E": 13,
+    "scikit-learn/scikit-learn H": 1
+  },
+  "candidates": [
+    {
+      "instance_id": "scikit-learn__scikit-learn-14983",
+      "repo": "scikit-learn/scikit-learn",
+      "version": "0.22",
+      "difficulty": "<15 min fix",
+      "stratum": "E"
+    },
+    {
+      "instance_id": "pytest-dev__pytest-7205",
+      "repo": "pytest-dev/pytest",
+      "version": "5.4",
+      "difficulty": "<15 min fix",
+      "stratum": "E"
+    },
+    {
+      "instance_id": "psf__requests-1142",
+      "repo": "psf/requests",
+      "version": "1.1",
+      "difficulty": "<15 min fix",
+      "stratum": "E"
+    },
+    {
+      "instance_id": "pylint-dev__pylint-4970",
+      "repo": "pylint-dev/pylint",
+      "version": "2.10",
+      "difficulty": "<15 min fix",
+      "stratum": "E"
+    },
+    {
+      "instance_id": "pydata__xarray-4094",
+      "repo": "pydata/xarray",
+      "version": "0.12",
+      "difficulty": "<15 min fix",
+      "stratum": "E"
+    },
+    {
+      "instance_id": "django__django-11820",
+      "repo": "django/django",
+      "version": "3.1",
+      "difficulty": "<15 min fix",
+      "stratum": "E"
+    },
+    {
+      "instance_id": "astropy__astropy-14309",
+      "repo": "astropy/astropy",
+      "version": "5.1",
+      "difficulty": "<15 min fix",
+      "stratum": "E"
+    },
+    {
+      "instance_id": "pallets__flask-5014",
+      "repo": "pallets/flask",
+      "version": "2.3",
+      "difficulty": "<15 min fix",
+      "stratum": "E"
+    },
+    {
+      "instance_id": "matplotlib__matplotlib-25122",
+      "repo": "matplotlib/matplotlib",
+      "version": "3.6",
+      "difficulty": "<15 min fix",
+      "stratum": "E"
+    },
+    {
+      "instance_id": "scikit-learn__scikit-learn-12585",
+      "repo": "scikit-learn/scikit-learn",
+      "version": "0.21",
+      "difficulty": "<15 min fix",
+      "stratum": "E"
+    },
+    {
+      "instance_id": "pydata__xarray-6721",
+      "repo": "pydata/xarray",
+      "version": "2022.06",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M"
+    },
+    {
+      "instance_id": "django__django-14034",
+      "repo": "django/django",
+      "version": "4.0",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M"
+    },
+    {
+      "instance_id": "matplotlib__matplotlib-21568",
+      "repo": "matplotlib/matplotlib",
+      "version": "3.4",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M"
+    },
+    {
+      "instance_id": "astropy__astropy-8872",
+      "repo": "astropy/astropy",
+      "version": "3.1",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M"
+    },
+    {
+      "instance_id": "scikit-learn__scikit-learn-14894",
+      "repo": "scikit-learn/scikit-learn",
+      "version": "0.22",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M"
+    },
+    {
+      "instance_id": "pytest-dev__pytest-8399",
+      "repo": "pytest-dev/pytest",
+      "version": "6.3",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M"
+    },
+    {
+      "instance_id": "psf__requests-6028",
+      "repo": "psf/requests",
+      "version": "2.27",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M"
+    },
+    {
+      "instance_id": "pylint-dev__pylint-7080",
+      "repo": "pylint-dev/pylint",
+      "version": "2.15",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M"
+    },
+    {
+      "instance_id": "mwaskom__seaborn-3187",
+      "repo": "mwaskom/seaborn",
+      "version": "0.12",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M"
+    },
+    {
+      "instance_id": "pydata__xarray-7393",
+      "repo": "pydata/xarray",
+      "version": "2022.09",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M"
+    },
+    {
+      "instance_id": "scikit-learn__scikit-learn-25102",
+      "repo": "scikit-learn/scikit-learn",
+      "version": "1.3",
+      "difficulty": "1-4 hours",
+      "stratum": "H"
+    },
+    {
+      "instance_id": "pydata__xarray-6992",
+      "repo": "pydata/xarray",
+      "version": "2022.06",
+      "difficulty": ">4 hours",
+      "stratum": "H"
+    },
+    {
+      "instance_id": "django__django-11138",
+      "repo": "django/django",
+      "version": "3.0",
+      "difficulty": "1-4 hours",
+      "stratum": "H"
+    },
+    {
+      "instance_id": "astropy__astropy-14369",
+      "repo": "astropy/astropy",
+      "version": "5.1",
+      "difficulty": "1-4 hours",
+      "stratum": "H"
+    },
+    {
+      "instance_id": "pytest-dev__pytest-6197",
+      "repo": "pytest-dev/pytest",
+      "version": "5.2",
+      "difficulty": "1-4 hours",
+      "stratum": "H"
+    },
+    {
+      "instance_id": "pylint-dev__pylint-8898",
+      "repo": "pylint-dev/pylint",
+      "version": "3.0",
+      "difficulty": "1-4 hours",
+      "stratum": "H"
+    },
+    {
+      "instance_id": "pydata__xarray-3993",
+      "repo": "pydata/xarray",
+      "version": "0.12",
+      "difficulty": "1-4 hours",
+      "stratum": "H"
+    },
+    {
+      "instance_id": "django__django-11885",
+      "repo": "django/django",
+      "version": "3.1",
+      "difficulty": "1-4 hours",
+      "stratum": "H"
+    }
+  ]
+}

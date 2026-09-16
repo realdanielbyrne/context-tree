@@ -131,7 +131,7 @@ async function main() {
       const present = gradeLive(context, qd.answer);
       const files = ps.map((p) => p.file);
       const gt_in_topk = files.includes(qd.file);
-      const r = await generate({ system: SYSTEM, user: `Retrieved code excerpts:\n\n${context}\n\n---\nQuestion: ${qd.q}`, maxTokens: 512, temperature: 0, think: true });
+      const r = await generate({ system: SYSTEM, user: `Retrieved code excerpts:\n\n${context}\n\n---\nQuestion: ${qd.q}`, temperature: 0, think: true });
       const correct = gradeLive(r.grade_text, qd.answer);
       cells.push({
         arm, id: qd.id, stratum: qd.stratum, correct, answer_present: present, gt_file_in_topk: gt_in_topk,

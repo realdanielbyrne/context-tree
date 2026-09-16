@@ -29,10 +29,19 @@ export function gitSha() {
 }
 
 /**
- * One chat call to the local host. Thinking disabled. Returns content + real usage.
+ * THINKING IS ON by default, and the response cap defaults to the HOST's maximum. The two are
+ * coupled: reasoning tokens count against max_tokens, so a small cap (this function used to
+ * default to 256, and call sites passed 24–64) ends the response mid-reasoning with no answer.
+ * CT_THINK=0 / CT_MAX_TOKENS override for a deliberately different condition.
+ */
+export const THINK_DEFAULT = process.env.CT_THINK !== '0';
+export const MAX_OUTPUT_TOKENS = +(process.env.CT_MAX_TOKENS || 128320);
+
+/**
+ * One chat call to the local host. Returns content + real usage.
  * Retries transient failures; throws after `retries` exhausted so a run fails loud.
  */
-export async function generate({ system, user, maxTokens = 256, temperature = 0, think = false, retries = 2 }) {
+export async function generate({ system, user, maxTokens = MAX_OUTPUT_TOKENS, temperature = 0, think = THINK_DEFAULT, retries = 2 }) {
   const messages = [];
   if (system) messages.push({ role: 'system', content: system });
   messages.push({ role: 'user', content: user });

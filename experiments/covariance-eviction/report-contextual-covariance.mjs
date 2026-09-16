@@ -433,7 +433,9 @@ care — the feature space should have been a swept variable from the start, as 
 
 ---
 
-## What survives
+## Conclusions
+
+### What survives
 
 **Covariance holds where the incumbents collapse.** Across a 5× widening of the dormancy
 threshold, positional recency loses
@@ -455,6 +457,34 @@ units, not as a primary ordering — which is also the only role the evidence su
 **And a methodological point.** The dormancy threshold that defines the "hard case" had been
 inherited unexamined across three experiments. Sweeping it changed which signal wins at four
 of the six values tested. A parameter that reorders the conclusion is not a detail.
+
+### What this licenses, and what it does not
+
+**Established.** Keyed on identifiers rather than file paths, a history-based co-activation
+signal is computable on these transcripts (support ${pct(V(FP).support_share_same_turn)} against a
+${pct(GATES.support, 0)} gate), is not relevance under another name (rank correlation
+${V(FP).spearman_tcov_vs_relevance} against a ${GATES.relabelling} bar), and keeps dormant units
+better than a volume-matched random ordering in both identifier spaces — at D=${dFirst}
+${sgn(dormAt(FP, dFirst).tcov_vs_random.delta)} in \`fp\` and survives the removal of every
+path-bearing token.
+
+**Licensed for the design.** Contextual covariance is worth carrying forward as a candidate
+*protective term for dormant units*, alongside the existing four signals, and worth a direct
+offline test in that role. The dormancy threshold D must be treated as a swept parameter in
+every future eviction analysis rather than inherited at ${dFirst}.
+
+**Not licensed.** This does not license shipping covariance, re-weighting relevance, or
+replacing any incumbent signal. The claims have different standing:
+
+| claim | status |
+|---|---|
+| file-keyed covariance is computable on these transcripts | **tested and rejected** (support ${pct(V('files').support_share_same_turn)}, gate failed) |
+| identifier-keyed covariance beats the random floor on dormant units | **tested, supported** in \`fp\` and \`fp-nopath\`; not in \`lex\` |
+| covariance beats relevance at M=${PRIMARY_M}, D=${dFirst} (pre-registered primary) | **tested, not met** in \`fp\` (${sgn(primary(FP).delta)} ${ci(primary(FP).ci95)}); met only in \`lex\`, where the floor contrast fails |
+| covariance is a better keeper than recency on deep dormancy | **observed post hoc** from the D sweep, not pre-registered |
+| covariance improves the four-signal scorer as an added term | **untested** |
+| covariance helps admission (pulling material back in) | **untested** |
+| any of this changes task success for a live agent | **untested** — no live arm was run |
 
 ---
 

@@ -1,0 +1,87 @@
+{
+  "manifest": {
+    "run_id": "swebench-pilot-envcheck-1789489807594",
+    "experiment": "context-dedup / SWE-bench Verified SOLVABILITY PILOT (gate on backlog item 9)",
+    "model": "unsloth/Qwen3.8-27B-GGUF",
+    "instances": [
+      "psf__requests-2931"
+    ],
+    "repeats": 0,
+    "max_turns": 40,
+    "max_completion_tokens": 2048,
+    "temperature": 0,
+    "capped": false,
+    "eviction": "none",
+    "middleware": "none",
+    "dispatcher": "relaxed",
+    "commit": "9cf8a9f439ecaffca63d5d4b90993123caf52aab",
+    "date": "2026-09-15T16:30:07.598Z",
+    "question": "Can the local 27B solve a three-way-verified SWE-bench instance with UNLIMITED context?",
+    "why": "If it cannot, a context-policy sweep on SWE-bench measures task difficulty, not context policy. NEGATIVE CONTROL on the substrate, not a capability demo.",
+    "falsification": "A 0/n pass rate at temperature 0 with unlimited context means the substrate is unusable for the window/eviction experiments as-is.",
+    "second_question": "Does an uncapped SWE-bench run generate enough context pressure for a window policy to bind? If peak_history_tokens stays far below a deployment window, the substrate fails for a second, independent reason (constraint C1: with a shell, agents shrink their own context).",
+    "caveats": [
+      "ONE instance family (psf/requests) unless CT_SWEBENCH_INSTANCES says otherwise — this is a gate, not a benchmark score.",
+      "The prompt was NOT tuned against the outcome; the first honest configuration is the reported one.",
+      "The agent never sees the gold patch, the test patch, or any F2P/P2P test id (asserted at construction by assertNoTestLeak).",
+      "run_bash has a 30 s timeout and tool output is clipped at ~2000 chars (experiments/coding-harness/lib.mjs) — an agent that wants to run a whole suite will be cut off.",
+      "The model server is shared and GPU-contended; wall_seconds is not a clean latency measure.",
+      "temperature 0, but this host is not bit-reproducible across runs (lib.mjs jitters the sampler after repeated 5xx; see RETRY_STATS)."
+    ],
+    "retry_stats": {
+      "retries": 0,
+      "jittered": 0,
+      "fatal": 0
+    },
+    "verifications": [],
+    "envchecks": [
+      {
+        "instance": "psf__requests-2931",
+        "interpreter": "/mnt/data/ctx-swebench/venvs/psf__requests__2.9__py3.9/bin/python3",
+        "package_file": "/tmp/ct-code-EnpQNU/requests/__init__.py",
+        "pytest": "pytest 8.4.2",
+        "interpreter_is_instance_venv": true,
+        "package_resolves_to_workspace": true,
+        "pytest_available": true,
+        "env_ok": true
+      }
+    ],
+    "selftests": [
+      {
+        "instance": "psf__requests-2931",
+        "pre_fix_f2p_fails": true,
+        "gold_f2p_passes": true,
+        "gold_p2p_passes": true,
+        "grader_ok": true,
+        "pre": {
+          "f2p_pass": false,
+          "p2p_pass": true,
+          "pass": false,
+          "stage": "ok",
+          "f2p_failures": [
+            "test_requests.py::TestRequests::test_binary_put [FAILED]"
+          ],
+          "p2p_failures": [],
+          "f2p_n": 1,
+          "p2p_n": 84,
+          "f2p_tail": "  self.prepare_body(data, files, json)\nrequests/models.py:447: in prepare_body\n    body = self._encode_params(data)\nrequests/models.py:84: in _encode_params\n    return to_native_string(data)\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nstring = b'\\xc3\\xb6\\xc3\\xb6\\xc3\\xb6', encoding = 'ascii'\n\n    def to_native_string(string, encoding='ascii'):\n        \"\"\"\n        Given a string object, regardless of type, returns a representation of that\n        string in the native string type, encoding and decoding where necessary.\n        This assumes ASCII unless told otherwise.\n        \"\"\"\n        out = None\n    \n        if isinstance(string, builtin_str):\n            out = string\n        else:\n            if is_py2:\n                out = string.encode(encoding)\n            else:\n>               out = string.decode(encoding)\nE               UnicodeDecodeError: 'ascii' codec can't decode byte 0xc3 in position 0: ordinal not in range(128)\n\nrequests/utils.py:700: UnicodeDecodeError\n=========================== short test summary info ============================\nFAILED test_requests.py::TestRequests::test_binary_put - UnicodeDecodeError: ...\n1 failed in 0.14s\n\n",
+          "p2p_tail": "MorselToCookieMaxAge::test_max_age_invalid_str\nPASSED test_requests.py::TestMorselToCookieMaxAge::test_max_age_valid_int\nPASSED test_requests.py::TestTimeout::test_connect_timeout\nPASSED test_requests.py::TestTimeout::test_total_timeout_connect\nPASSED test_requests.py::test_data_argument_accepts_tuples\nPASSED test_requests.py::test_prepared_request_empty_copy\nPASSED test_requests.py::test_prepared_request_no_cookies_copy\nPASSED test_requests.py::test_prepared_request_complete_copy\nPASSED test_requests.py::test_prepare_unicode_url\nPASSED test_requests.py::test_vendor_aliases\n84 passed in 0.36s\n"
+        },
+        "post": {
+          "f2p_pass": true,
+          "p2p_pass": true,
+          "pass": true,
+          "stage": "ok",
+          "f2p_failures": [],
+          "p2p_failures": [],
+          "f2p_n": 1,
+          "p2p_n": 84,
+          "f2p_tail": ".                                                                        [100%]\n==================================== PASSES ====================================\n=========================== short test summary info ============================\nPASSED test_requests.py::TestRequests::test_binary_put\n1 passed in 0.11s\n",
+          "p2p_tail": "MorselToCookieMaxAge::test_max_age_invalid_str\nPASSED test_requests.py::TestMorselToCookieMaxAge::test_max_age_valid_int\nPASSED test_requests.py::TestTimeout::test_connect_timeout\nPASSED test_requests.py::TestTimeout::test_total_timeout_connect\nPASSED test_requests.py::test_data_argument_accepts_tuples\nPASSED test_requests.py::test_prepared_request_empty_copy\nPASSED test_requests.py::test_prepared_request_no_cookies_copy\nPASSED test_requests.py::test_prepared_request_complete_copy\nPASSED test_requests.py::test_prepare_unicode_url\nPASSED test_requests.py::test_vendor_aliases\n84 passed in 0.36s\n"
+        }
+      }
+    ]
+  },
+  "summary": [],
+  "cells": []
+}

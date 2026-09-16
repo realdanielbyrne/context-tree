@@ -1,0 +1,116 @@
+{
+  "manifest": {
+    "run_id": "swebench-opencode-probe-2931",
+    "date": "2026-09-15T17:42:35.847Z",
+    "commit": "458e33ef489b55e1e2fd943dc83727b77605f645",
+    "vehicle": "opencode",
+    "opencode_version": "1.18.31",
+    "model": "openrouter/qwen/qwen3.8-27b",
+    "invocation": "opencode run --pure -m <model> --format json --dir <ws> --auto <prompt> < /dev/null; per-run XDG dirs; export with same XDG env",
+    "config": "experiments/context-dedup/opencode.json (no credential in file)",
+    "host_defaults": "thinking ON (host default), no tool-output clip, no cap, no eviction, no middleware",
+    "run_timeout_s": 3600,
+    "instances": [
+      "psf__requests-2931"
+    ],
+    "selection_file": "selection-v2.json",
+    "grading": "ab-tasks/swebench.mjs gradeDetail after opencode exits: restore test-patch files, apply test patch, run the instance runner over F2P + calibrated P2P; void grades and errored runs excluded from rates",
+    "prices_per_million_usd": {
+      "input": 0.214,
+      "output": 2.55
+    },
+    "merged_from": [
+      "results-swebench-opencode-probe-2931.json"
+    ],
+    "finalized_at": "2026-09-15T18:32:50.200Z",
+    "finalize_note": "exports regenerated to file from each run's XDG session store; event streams checked against exports; exports imported into context-tree"
+  },
+  "cells": [
+    {
+      "instance": "psf__requests-2931",
+      "repeat": 0,
+      "repo": "psf/requests",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M",
+      "vehicle": "opencode",
+      "opencode_version": "1.18.31",
+      "model": "openrouter/qwen/qwen3.8-27b",
+      "pass": false,
+      "f2p_pass": false,
+      "p2p_pass": true,
+      "grade_stage": "ok",
+      "grade_valid": true,
+      "f2p_failures": [
+        "test_requests.py::TestRequests::test_binary_put [FAILED]"
+      ],
+      "p2p_failures": [],
+      "p2p_graded_n": 84,
+      "p2p_dataset_n": 84,
+      "run_valid": false,
+      "scored": false,
+      "exit_code": null,
+      "signal": "SIGTERM",
+      "timed_out": false,
+      "wall_seconds": 229,
+      "error": "exit null",
+      "steps": 8,
+      "tool_calls": 14,
+      "tools_by_name": {
+        "bash": 3,
+        "grep": 3,
+        "read": 8
+      },
+      "tool_errors": 0,
+      "files_edited": [],
+      "files_read": [
+        "/mnt/data/ctx-swebench/opencode-runs/probe-2931/psf__requests-2931__r0/workspace/requests/utils.py",
+        "/mnt/data/ctx-swebench/opencode-runs/probe-2931/psf__requests-2931__r0/workspace/requests/models.py",
+        "/mnt/data/ctx-swebench/opencode-runs/probe-2931/psf__requests-2931__r0/workspace/requests/compat.py"
+      ],
+      "reads": 8,
+      "diff_empty": true,
+      "agent_diff": "",
+      "tokens": {
+        "input": 27243,
+        "output": 1169,
+        "reasoning": 10652,
+        "cache_read": 100352,
+        "cache_write": 0
+      },
+      "peak_prompt_tokens": 27481,
+      "first_step_prompt_tokens": 9508,
+      "cost_reported": 0.051026,
+      "cost_list_price": 0.057449,
+      "events": 33,
+      "events_unparseable": 0,
+      "session_id": "ses_f59d9a9e8ffeAY0F503T0PURb9",
+      "export_ok": true,
+      "export_part_types": {
+        "text": 3,
+        "step-start": 9,
+        "reasoning": 9,
+        "tool": 14,
+        "step-finish": 8
+      },
+      "run_dir": "/mnt/data/ctx-swebench/opencode-runs/probe-2931/psf__requests-2931__r0",
+      "export_bytes": 124668,
+      "events_complete": true,
+      "events_missing_steps": 0,
+      "events_missing_tool_calls": 0,
+      "context_tree_import": {
+        "ok": true,
+        "events": 31,
+        "skipped": 26,
+        "failures": 0,
+        "nodes": 3,
+        "phases": 2,
+        "file_nodes": 0,
+        "unmapped_tools": []
+      },
+      "finalized_from": "results-swebench-opencode-probe-2931.json",
+      "final_step_reason": "tool-calls",
+      "length_stops": 0,
+      "ended_on_output_limit": false
+    }
+  ]
+}

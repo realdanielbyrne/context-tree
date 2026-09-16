@@ -1,0 +1,462 @@
+{
+  "written_at": "2026-09-15T17:27:53.338Z",
+  "status": "PAUSED before any scored agent run: agent vehicle changing from the homegrown loop to opencode (D20)",
+  "vehicle_history": [
+    {
+      "vehicle": "experiments/coding-harness/lib.mjs runAgent (homegrown)",
+      "used_for": "dev-instance diagnosis, local GGUF",
+      "status": "retired"
+    },
+    {
+      "vehicle": "experiments/context-dedup/swebench-agent.mjs runAgentClip (homegrown)",
+      "used_for": "dev-instance clip diagnosis, local + OpenRouter",
+      "status": "retired"
+    },
+    {
+      "vehicle": "opencode",
+      "used_for": "scored tranche",
+      "status": "pending integration"
+    }
+  ],
+  "finding_about_homegrown_harness": {
+    "claim": "The v1 zero-edit 0/3 on psf__requests-2931 was caused by the homegrown loop clipping tool output at 2,000 chars, not by the model or SWE-bench.",
+    "clip_2000": {
+      "runs": 6,
+      "edited": 0,
+      "endpoints": [
+        "local GGUF, clip 2000",
+        "OpenRouter qwen/qwen3.8-27b, clip 2000"
+      ]
+    },
+    "clip_30000": {
+      "runs": 6,
+      "edited": 5,
+      "f2p_fixed": 4,
+      "passed": 0
+    },
+    "replay_of_local_clip_2000": [
+      {
+        "repeat": 0,
+        "clipped_outputs": 4,
+        "longest_identical_visible_result_streak": 26
+      },
+      {
+        "repeat": 1,
+        "clipped_outputs": 26,
+        "longest_identical_visible_result_streak": 22
+      },
+      {
+        "repeat": 2,
+        "clipped_outputs": 26,
+        "longest_identical_visible_result_streak": 22
+      }
+    ],
+    "implication": "A homegrown loop is the wrong measurement vehicle; its tool-output policy alone flipped editing from 0/6 to 5/6."
+  },
+  "diagnosis_arms": [
+    {
+      "arm": "local GGUF, clip 2000",
+      "file": "results-swebench-pilot-v1.json",
+      "runs": 3,
+      "edited": 0,
+      "f2p_fixed": 0,
+      "p2p_kept": 3,
+      "passed": 0,
+      "max_prompt_tokens": [
+        10011,
+        28283,
+        28292
+      ]
+    },
+    {
+      "arm": "local GGUF, clip 30000",
+      "file": "results-swebench-pilot-v2-clip30k.json",
+      "runs": 3,
+      "edited": 3,
+      "f2p_fixed": 2,
+      "p2p_kept": 1,
+      "passed": 0,
+      "max_prompt_tokens": [
+        29094,
+        26146,
+        20669
+      ]
+    },
+    {
+      "arm": "OpenRouter qwen/qwen3.8-27b, clip 2000",
+      "file": "results-swebench-pilot-or-clip2000.json",
+      "runs": 3,
+      "edited": 0,
+      "f2p_fixed": 0,
+      "p2p_kept": 3,
+      "passed": 0,
+      "max_prompt_tokens": [
+        28176,
+        22826,
+        17020
+      ]
+    },
+    {
+      "arm": "OpenRouter qwen/qwen3.8-27b, clip 30000",
+      "file": "results-swebench-pilot-or-clip30k.json",
+      "runs": 3,
+      "edited": 2,
+      "f2p_fixed": 2,
+      "p2p_kept": 1,
+      "passed": 0,
+      "max_prompt_tokens": [
+        21859,
+        23303,
+        27275
+      ]
+    }
+  ],
+  "scored_agent_runs": 0,
+  "tranche_attempt_aborted": {
+    "log_note": "first tranche launch was stopped during admission; it started no agent run",
+    "harness_defects_found_during_admission": [
+      "django results are written to STDERR; a stdout-only capture of a passing run saw none",
+      "pytest aborts (exit 4) when any passed id is not collectable; grading now runs test FILES",
+      "SWE-bench records some pytest ids truncated at a space (its own parse_log_pytest); matching now uses that key too",
+      "period pytest prints --version to STDERR (envcheck only)",
+      "compiled-extension detection read the shared clone state instead of the commit; scikit-learn was never built"
+    ]
+  },
+  "draw": {
+    "prereg_file": "preregistration-multi-v2.json",
+    "seed": 20260915,
+    "quota": {
+      "E": 4,
+      "M": 4,
+      "H": 4
+    },
+    "per_repo_cap": 2,
+    "candidates": 28,
+    "eligible_pool": 380,
+    "amendments": [
+      {
+        "when": "2026-09-15, after v2 verification began, before any tranche agent run",
+        "rule": "exclude a candidate whose FAIL_TO_PASS test files are disjoint from every file the test patch or gold patch touches (f2pOverlapsPatch)",
+        "why": "django__django-10097 verified-looking but its 438 F2P ids live in modules the fix never reaches: they pass with or without the gold patch, so they cannot detect a fix"
+      },
+      {
+        "when": "2026-09-15, after the first selection-only admission, before any scored agent run",
+        "rule": "the patch-line leak check applies only to harness-authored text (system prompt + framing); test ids and failing-test names remain forbidden in the verbatim issue too",
+        "why": "6 of 28 candidates were rejected because their issue quotes the buggy line or a reproducer that the test patch copies; that is benchmark content, and rejecting it biases the sample toward code-free issues"
+      },
+      {
+        "when": "2026-09-15, after the first selection-only admission, before any scored agent run",
+        "rule": "P2P is calibrated to this environment: grade on the dataset P2P ids that PASS on the gold patch here; admit only if every F2P passes on gold and at least 0.9 of dataset P2P is kept; every dropped id is recorded",
+        "why": "official ids were produced in Docker images; here some P2P tests are skipped for missing optional packages (xarray sparse/bottleneck/cftime) or carry absolute-path parameter ids (requests-6028). A test that does not pass on gold in this environment cannot grade an agent. The 0.90 floor was set after seeing one instance's ratio (requests-6028, 175/185) but before any agent result existed"
+      }
+    ]
+  },
+  "verification": {
+    "file": "results-swebench-verify-pool-v2.json",
+    "usable": 19,
+    "total": 28,
+    "rejections": [
+      {
+        "instance_id": "astropy__astropy-14309",
+        "repo": "astropy/astropy",
+        "stage": "install"
+      },
+      {
+        "instance_id": "pallets__flask-5014",
+        "repo": "pallets/flask",
+        "stage": "gold_fails_f2p"
+      },
+      {
+        "instance_id": "matplotlib__matplotlib-25122",
+        "repo": "matplotlib/matplotlib",
+        "stage": "tests_did_not_run"
+      },
+      {
+        "instance_id": "matplotlib__matplotlib-21568",
+        "repo": "matplotlib/matplotlib",
+        "stage": "gold_fails_p2p"
+      },
+      {
+        "instance_id": "astropy__astropy-8872",
+        "repo": "astropy/astropy",
+        "stage": "install"
+      },
+      {
+        "instance_id": "pylint-dev__pylint-7080",
+        "repo": "pylint-dev/pylint",
+        "stage": "tests_did_not_run"
+      },
+      {
+        "instance_id": "scikit-learn__scikit-learn-25102",
+        "repo": "scikit-learn/scikit-learn",
+        "stage": "install"
+      },
+      {
+        "instance_id": "astropy__astropy-14369",
+        "repo": "astropy/astropy",
+        "stage": "install"
+      },
+      {
+        "instance_id": "pylint-dev__pylint-8898",
+        "repo": "pylint-dev/pylint",
+        "stage": "tests_did_not_run"
+      }
+    ]
+  },
+  "selection": {
+    "file": "selection-v2.json",
+    "checks": [
+      "f2pOverlapsPatch (amendment 1)",
+      "leak check on harness text + test ids in the verbatim issue (amendment 2)",
+      "three-way verification (swebench_provision.py --verify)",
+      "gold-patch grader selftest: pre-fix F2P fails, gold F2P passes, >= 0.9 of dataset P2P passes on gold; the passing subset becomes the graded P2P (amendment 3)"
+    ],
+    "not_applied": "envcheck — specific to the homegrown loop's run_bash whitelist",
+    "accepted_in_drawn_order": [
+      {
+        "instance_id": "scikit-learn__scikit-learn-14983",
+        "repo": "scikit-learn/scikit-learn",
+        "version": "0.22",
+        "difficulty": "<15 min fix",
+        "stratum": "E"
+      },
+      {
+        "instance_id": "pytest-dev__pytest-7205",
+        "repo": "pytest-dev/pytest",
+        "version": "5.4",
+        "difficulty": "<15 min fix",
+        "stratum": "E"
+      },
+      {
+        "instance_id": "psf__requests-1142",
+        "repo": "psf/requests",
+        "version": "1.1",
+        "difficulty": "<15 min fix",
+        "stratum": "E"
+      },
+      {
+        "instance_id": "pylint-dev__pylint-4970",
+        "repo": "pylint-dev/pylint",
+        "version": "2.10",
+        "difficulty": "<15 min fix",
+        "stratum": "E"
+      },
+      {
+        "instance_id": "pydata__xarray-6721",
+        "repo": "pydata/xarray",
+        "version": "2022.06",
+        "difficulty": "15 min - 1 hour",
+        "stratum": "M"
+      },
+      {
+        "instance_id": "django__django-14034",
+        "repo": "django/django",
+        "version": "4.0",
+        "difficulty": "15 min - 1 hour",
+        "stratum": "M"
+      },
+      {
+        "instance_id": "scikit-learn__scikit-learn-14894",
+        "repo": "scikit-learn/scikit-learn",
+        "version": "0.22",
+        "difficulty": "15 min - 1 hour",
+        "stratum": "M"
+      },
+      {
+        "instance_id": "pytest-dev__pytest-8399",
+        "repo": "pytest-dev/pytest",
+        "version": "6.3",
+        "difficulty": "15 min - 1 hour",
+        "stratum": "M"
+      },
+      {
+        "instance_id": "pydata__xarray-6992",
+        "repo": "pydata/xarray",
+        "version": "2022.06",
+        "difficulty": ">4 hours",
+        "stratum": "H"
+      },
+      {
+        "instance_id": "django__django-11138",
+        "repo": "django/django",
+        "version": "3.0",
+        "difficulty": "1-4 hours",
+        "stratum": "H"
+      }
+    ],
+    "rejected": [
+      {
+        "instance_id": "matplotlib__matplotlib-21568",
+        "repo": "matplotlib/matplotlib",
+        "version": "3.4",
+        "difficulty": "15 min - 1 hour",
+        "stratum": "M",
+        "reason": "verify: gold_fails_p2p"
+      },
+      {
+        "instance_id": "astropy__astropy-8872",
+        "repo": "astropy/astropy",
+        "version": "3.1",
+        "difficulty": "15 min - 1 hour",
+        "stratum": "M",
+        "reason": "verify: install"
+      },
+      {
+        "instance_id": "astropy__astropy-14369",
+        "repo": "astropy/astropy",
+        "version": "5.1",
+        "difficulty": "1-4 hours",
+        "stratum": "H",
+        "reason": "verify: install"
+      },
+      {
+        "instance_id": "pylint-dev__pylint-8898",
+        "repo": "pylint-dev/pylint",
+        "version": "3.0",
+        "difficulty": "1-4 hours",
+        "stratum": "H",
+        "reason": "verify: tests_did_not_run"
+      }
+    ],
+    "skipped": [
+      {
+        "instance_id": "pydata__xarray-4094",
+        "repo": "pydata/xarray",
+        "version": "0.12",
+        "difficulty": "<15 min fix",
+        "stratum": "E",
+        "reason": "stratum quota full"
+      },
+      {
+        "instance_id": "django__django-11820",
+        "repo": "django/django",
+        "version": "3.1",
+        "difficulty": "<15 min fix",
+        "stratum": "E",
+        "reason": "stratum quota full"
+      },
+      {
+        "instance_id": "astropy__astropy-14309",
+        "repo": "astropy/astropy",
+        "version": "5.1",
+        "difficulty": "<15 min fix",
+        "stratum": "E",
+        "reason": "stratum quota full"
+      },
+      {
+        "instance_id": "pallets__flask-5014",
+        "repo": "pallets/flask",
+        "version": "2.3",
+        "difficulty": "<15 min fix",
+        "stratum": "E",
+        "reason": "stratum quota full"
+      },
+      {
+        "instance_id": "matplotlib__matplotlib-25122",
+        "repo": "matplotlib/matplotlib",
+        "version": "3.6",
+        "difficulty": "<15 min fix",
+        "stratum": "E",
+        "reason": "stratum quota full"
+      },
+      {
+        "instance_id": "scikit-learn__scikit-learn-12585",
+        "repo": "scikit-learn/scikit-learn",
+        "version": "0.21",
+        "difficulty": "<15 min fix",
+        "stratum": "E",
+        "reason": "stratum quota full"
+      },
+      {
+        "instance_id": "psf__requests-6028",
+        "repo": "psf/requests",
+        "version": "2.27",
+        "difficulty": "15 min - 1 hour",
+        "stratum": "M",
+        "reason": "stratum quota full"
+      },
+      {
+        "instance_id": "pylint-dev__pylint-7080",
+        "repo": "pylint-dev/pylint",
+        "version": "2.15",
+        "difficulty": "15 min - 1 hour",
+        "stratum": "M",
+        "reason": "stratum quota full"
+      },
+      {
+        "instance_id": "mwaskom__seaborn-3187",
+        "repo": "mwaskom/seaborn",
+        "version": "0.12",
+        "difficulty": "15 min - 1 hour",
+        "stratum": "M",
+        "reason": "stratum quota full"
+      },
+      {
+        "instance_id": "pydata__xarray-7393",
+        "repo": "pydata/xarray",
+        "version": "2022.09",
+        "difficulty": "15 min - 1 hour",
+        "stratum": "M",
+        "reason": "stratum quota full"
+      },
+      {
+        "instance_id": "scikit-learn__scikit-learn-25102",
+        "repo": "scikit-learn/scikit-learn",
+        "version": "1.3",
+        "difficulty": "1-4 hours",
+        "stratum": "H",
+        "reason": "repo cap reached"
+      },
+      {
+        "instance_id": "pytest-dev__pytest-6197",
+        "repo": "pytest-dev/pytest",
+        "version": "5.2",
+        "difficulty": "1-4 hours",
+        "stratum": "H",
+        "reason": "repo cap reached"
+      },
+      {
+        "instance_id": "pydata__xarray-3993",
+        "repo": "pydata/xarray",
+        "version": "0.12",
+        "difficulty": "1-4 hours",
+        "stratum": "H",
+        "reason": "repo cap reached"
+      },
+      {
+        "instance_id": "django__django-11885",
+        "repo": "django/django",
+        "version": "3.1",
+        "difficulty": "1-4 hours",
+        "stratum": "H",
+        "reason": "repo cap reached"
+      }
+    ]
+  },
+  "dev_instance_grader_recheck": {
+    "file": "selection-dev-2931.json",
+    "admitted": [
+      "psf__requests-2931"
+    ],
+    "selftests": [
+      {
+        "instance": "psf__requests-2931",
+        "grader_ok": true
+      }
+    ]
+  },
+  "resume": {
+    "run": "selection.accepted_in_drawn_order, one opencode run per problem, uncapped, no eviction, no middleware",
+    "grade": "ab-tasks/swebench.mjs gradeDetail on the workspace opencode edited (restores test files, applies test patch, F2P and P2P separately; void grades excluded)",
+    "gate": {
+      "solvability": "fraction of distinct accepted problems with pass=true (F2P and P2P), Wilson 95% interval, pooled and per repo; void grades excluded from the denominator",
+      "pressure_thresholds_prompt_tokens": {
+        "primary": 32768,
+        "secondary": 9500
+      },
+      "pressure": "among SOLVED problems, fraction whose max_prompt_tokens exceeds PRESSURE.primary (and .secondary)",
+      "verdict": "usable for the window/eviction sweeps only if the projected number of problems that are BOTH solved AND above PRESSURE.primary reaches 13; projected = joint rate x eligible verified pool",
+      "config": "uncapped, no eviction, no middleware, temperature 0, thinking disabled, tool-output clip 30,000 chars (swebench-agent.mjs), max 50 turns, n=1 per problem"
+    }
+  }
+}

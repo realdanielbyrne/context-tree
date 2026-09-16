@@ -47,7 +47,17 @@ export function execTool(ws, name, args) {
   } catch (e) { return `error executing ${name}: ${e.message}`; }
 }
 
-async function callModel(messages, { think = false, maxTokens = 1024, tools = TOOL_SCHEMAS, temperature = 0 }) {
+/**
+ * THINKING IS ON, and the response cap is the HOST's maximum, never a small literal. The two
+ * are coupled: with thinking on, reasoning tokens count against max_tokens, so a small cap
+ * silently ends a response before any answer or tool call — exactly how a SWE-bench run
+ * (django-11138) was lost to a 16,384 placeholder. CT_MAX_TOKENS overrides; the default is
+ * the unsloth studio host's configured maximum response length.
+ */
+export const THINK_DEFAULT = process.env.CT_THINK !== '0';
+export const MAX_OUTPUT_TOKENS = +(process.env.CT_MAX_TOKENS || 128320);
+
+async function callModel(messages, { think = THINK_DEFAULT, maxTokens = MAX_OUTPUT_TOKENS, tools = TOOL_SCHEMAS, temperature = 0 }) {
   const res = await fetch(`${BASE_URL}/chat/completions`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${API_KEY}` },
     body: JSON.stringify({ model: MODEL, messages, tools, tool_choice: 'auto', parallel_tool_calls: false, max_tokens: maxTokens, temperature, chat_template_kwargs: { enable_thinking: think } }),
@@ -172,7 +182,7 @@ function summarizePy(content) {
  *   reducer({ name, args, out, task }) -> reducedOut
  * It never touches the agent loop; it only shrinks the footprint of what returns.
  */
-export async function runAgent({ system, task, ws, maxTurns = 40, think = false, hook = null, dethrash = false, summarizeReads = false, reducer = null, allowedTools = null, onEnd = null, maxTokens = 1024 }) {
+export async function runAgent({ system, task, ws, maxTurns = 40, think = THINK_DEFAULT, hook = null, dethrash = false, summarizeReads = false, reducer = null, allowedTools = null, onEnd = null, maxTokens = MAX_OUTPUT_TOKENS }) {
   const messages = [{ role: 'system', content: system }, { role: 'user', content: task }];
   const usage = []; const toolLog = []; let turns = 0, stop = 'maxTurns';
   const readSeen = new Set(); let breakouts = 0;

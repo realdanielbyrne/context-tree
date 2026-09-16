@@ -1,0 +1,365 @@
+{
+  "manifest": {
+    "prereg": "preregistration-multi-v2.json",
+    "timeout_s": 2700,
+    "date": "2026-09-15T17:05:00.906Z",
+    "runs": [
+      {
+        "skip": [
+          "django/django"
+        ],
+        "only": [],
+        "n": 24,
+        "wall_seconds": 434
+      },
+      {
+        "skip": [],
+        "only": [
+          "django/django"
+        ],
+        "n": 4,
+        "wall_seconds": 20
+      }
+    ],
+    "candidates_total": 28,
+    "candidates_verified_so_far": 28
+  },
+  "results": [
+    {
+      "instance_id": "scikit-learn__scikit-learn-14983",
+      "repo": "scikit-learn/scikit-learn",
+      "version": "0.22",
+      "difficulty": "<15 min fix",
+      "stratum": "E",
+      "usable": true,
+      "stage": "ok",
+      "seconds": 160,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-scikit-learn__scikit-learn-14983.log",
+      "tail": "=== scikit-learn__scikit-learn-14983  repo=scikit-learn/scikit-learn v0.22 difficulty=<15 min fix F2P=2 P2P=105 ===\n[spec] python=3.6 install='python -m pip install -v --no-use-pep517 --no-build-isolation -e .' test='pytest -rA'\n[venv] scikit-learn__scikit-learn__0.22__py3.6  (base /mnt/data/ctx-swebench/pythons/py3.6/bin/python)\n[install] OK\n[pre-fix ] FAIL_TO_PASS -> FAIL (expected)\n[post-fix] FAIL_TO_PASS -> PASS (expected)\n[post-fix] PASS_TO_PASS(<=40) -> PASS\n[VERDICT] scikit-learn__scikit-learn-14983 usable=True\n"
+    },
+    {
+      "instance_id": "pytest-dev__pytest-7205",
+      "repo": "pytest-dev/pytest",
+      "version": "5.4",
+      "difficulty": "<15 min fix",
+      "stratum": "E",
+      "usable": true,
+      "stage": "ok",
+      "seconds": 9,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-pytest-dev__pytest-7205.log",
+      "tail": "=== pytest-dev__pytest-7205  repo=pytest-dev/pytest v5.4 difficulty=<15 min fix F2P=10 P2P=16 ===\n[spec] python=3.9 install='python -m pip install -e .' test='pytest -rA'\n[venv] pytest-dev__pytest__5.4__py3.9  (base /mnt/data/ctx-swebench/tooling/pythons/cpython-3.9-linux-x86_64-gnu/bin/python3.9)\n[install] OK\n[pre-fix ] FAIL_TO_PASS -> FAIL (expected)\n[post-fix] FAIL_TO_PASS -> PASS (expected)\n[post-fix] PASS_TO_PASS(<=40) -> PASS\n[VERDICT] pytest-dev__pytest-7205 usable=True\n"
+    },
+    {
+      "instance_id": "psf__requests-1142",
+      "repo": "psf/requests",
+      "version": "1.1",
+      "difficulty": "<15 min fix",
+      "stratum": "E",
+      "usable": true,
+      "stage": "ok",
+      "seconds": 2,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-psf__requests-1142.log",
+      "tail": "=== psf__requests-1142  repo=psf/requests v1.1 difficulty=<15 min fix F2P=1 P2P=5 ===\n[spec] python=3.9 install='python -m pip install .' test='pytest -rA'\n[install] OK\n[pre-fix ] FAIL_TO_PASS -> FAIL (expected)\n[post-fix] FAIL_TO_PASS -> PASS (expected)\n[post-fix] PASS_TO_PASS(<=40) -> PASS\n[VERDICT] psf__requests-1142 usable=True\n"
+    },
+    {
+      "instance_id": "pylint-dev__pylint-4970",
+      "repo": "pylint-dev/pylint",
+      "version": "2.10",
+      "difficulty": "<15 min fix",
+      "stratum": "E",
+      "usable": true,
+      "stage": "ok",
+      "seconds": 9,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-pylint-dev__pylint-4970.log",
+      "tail": "=== pylint-dev__pylint-4970  repo=pylint-dev/pylint v2.10 difficulty=<15 min fix F2P=1 P2P=17 ===\n[spec] python=3.9 install='python -m pip install -e .' test='pytest -rA'\n[venv] pylint-dev__pylint__2.10__py3.9  (base /mnt/data/ctx-swebench/tooling/pythons/cpython-3.9-linux-x86_64-gnu/bin/python3.9)\n[install] OK\n[pre-fix ] FAIL_TO_PASS -> FAIL (expected)\n[post-fix] FAIL_TO_PASS -> PASS (expected)\n[post-fix] PASS_TO_PASS(<=40) -> PASS\n[VERDICT] pylint-dev__pylint-4970 usable=True\n"
+    },
+    {
+      "instance_id": "pydata__xarray-4094",
+      "repo": "pydata/xarray",
+      "version": "0.12",
+      "difficulty": "<15 min fix",
+      "stratum": "E",
+      "usable": true,
+      "stage": "ok",
+      "seconds": 5,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-pydata__xarray-4094.log",
+      "tail": "=== pydata__xarray-4094  repo=pydata/xarray v0.12 difficulty=<15 min fix F2P=1 P2P=862 ===\n[spec] python=3.10 install='python -m pip install -e .' test='pytest -rA'\n[install] OK\n[pre-fix ] FAIL_TO_PASS -> FAIL (expected)\n[post-fix] FAIL_TO_PASS -> PASS (expected)\n[post-fix] PASS_TO_PASS(<=40) -> PASS\n[VERDICT] pydata__xarray-4094 usable=True\n"
+    },
+    {
+      "instance_id": "django__django-11820",
+      "repo": "django/django",
+      "version": "3.1",
+      "difficulty": "<15 min fix",
+      "stratum": "E",
+      "usable": true,
+      "stage": "ok",
+      "seconds": 6,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-django__django-11820.log",
+      "tail": "=== django__django-11820  repo=django/django v3.1 difficulty=<15 min fix F2P=2 P2P=61 ===\n[spec] python=3.6 install='python -m pip install -e .' test='./tests/runtests.py --verbosity 2 --settings=test_sqlite --parallel 1'\n[venv] django__django__3.1__py3.6  (base /mnt/data/ctx-swebench/pythons/py3.6/bin/python)\n[install] OK\n[pre-fix ] FAIL_TO_PASS -> FAIL (expected)\n[post-fix] FAIL_TO_PASS -> PASS (expected)\n[post-fix] PASS_TO_PASS(<=40) -> PASS\n[VERDICT] django__django-11820 usable=True\n"
+    },
+    {
+      "instance_id": "astropy__astropy-14309",
+      "repo": "astropy/astropy",
+      "version": "5.1",
+      "difficulty": "<15 min fix",
+      "stratum": "E",
+      "usable": false,
+      "stage": "install",
+      "seconds": 14,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-astropy__astropy-14309.log",
+      "tail": " successfully.\n  │ exit code: 1\n  ╰─> No available output.\n  \n  note: This error originates from a subprocess, and is likely not a problem with pip.\n  full command: /mnt/data/ctx-swebench/venvs/astropy__astropy__5.1__py3.9/bin/python /mnt/data/ctx-swebench/venvs/astropy__astropy__5.1__py3.9/lib/python3.9/site-packages/pip/_vendor/pyproject_hooks/_in_process/_in_process.py get_requires_for_build_editable /tmp/tmpoklu5i2n\n  cwd: /mnt/data/ctx-swebench/repos/astropy__astropy\nERROR: Failed to build 'file:///mnt/data/ctx-swebench/repos/astropy__astropy' when getting requirements to build editable\n\n"
+    },
+    {
+      "instance_id": "pallets__flask-5014",
+      "repo": "pallets/flask",
+      "version": "2.3",
+      "difficulty": "<15 min fix",
+      "stratum": "E",
+      "usable": false,
+      "stage": "gold_fails_f2p",
+      "seconds": 4,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-pallets__flask-5014.log",
+      "tail": "                   ^^^^^^^^^^^^^^^^^^\n            (os.environ, \"FLASK_APP\", monkeypatch.notset),\n            (os.environ, \"FLASK_DEBUG\", monkeypatch.notset),\n            (os.environ, \"FLASK_RUN_FROM_CLI\", monkeypatch.notset),\n            (os.environ, \"WERKZEUG_RUN_MAIN\", monkeypatch.notset),\n        )\nE       AttributeError: module '_pytest.monkeypatch' has no attribute 'notset'\n\ntests/conftest.py:21: AttributeError\n=========================== short test summary info ============================\nERROR tests/test_blueprints.py::test_empty_name_not_allowed - AttributeError:...\n1 error in 0.02s\n\n"
+    },
+    {
+      "instance_id": "matplotlib__matplotlib-25122",
+      "repo": "matplotlib/matplotlib",
+      "version": "3.6",
+      "difficulty": "<15 min fix",
+      "stratum": "E",
+      "usable": false,
+      "stage": "tests_did_not_run",
+      "seconds": 152,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-matplotlib__matplotlib-25122.log",
+      "tail": "\n[post-fix] FAIL_TO_PASS -> FAIL (UNEXPECTED)\n[VERDICT] matplotlib__matplotlib-25122 usable=False  (tests did not run: pytest exit 4: tests did not run)\npytest exit 4: tests did not run\n\nno tests ran in 0.07s\nERROR: not found: /mnt/data/ctx-swebench/repos/matplotlib__matplotlib/lib/matplotlib/tests/test_mlab.py::TestStride::test_stride_windows_invalid_params\n(no match in any of [<Class TestStride>])\n\nERROR: not found: /mnt/data/ctx-swebench/repos/matplotlib__matplotlib/lib/matplotlib/tests/test_mlab.py::TestStride::test_stride_windows_invalid_params\n(no match in any of [<Class TestStride>])\n\n\n"
+    },
+    {
+      "instance_id": "scikit-learn__scikit-learn-12585",
+      "repo": "scikit-learn/scikit-learn",
+      "version": "0.21",
+      "difficulty": "<15 min fix",
+      "stratum": "E",
+      "usable": true,
+      "stage": "ok",
+      "seconds": 122,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-scikit-learn__scikit-learn-12585.log",
+      "tail": "=== scikit-learn__scikit-learn-12585  repo=scikit-learn/scikit-learn v0.21 difficulty=<15 min fix F2P=1 P2P=22 ===\n[spec] python=3.6 install='python -m pip install -v --no-use-pep517 --no-build-isolation -e .' test='pytest -rA'\n[venv] scikit-learn__scikit-learn__0.21__py3.6  (base /mnt/data/ctx-swebench/pythons/py3.6/bin/python)\n[install] OK\n[pre-fix ] FAIL_TO_PASS -> FAIL (expected)\n[post-fix] FAIL_TO_PASS -> PASS (expected)\n[post-fix] PASS_TO_PASS(<=40) -> PASS\n[VERDICT] scikit-learn__scikit-learn-12585 usable=True\n"
+    },
+    {
+      "instance_id": "pydata__xarray-6721",
+      "repo": "pydata/xarray",
+      "version": "2022.06",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M",
+      "usable": true,
+      "stage": "ok",
+      "seconds": 5,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-pydata__xarray-6721.log",
+      "tail": "=== pydata__xarray-6721  repo=pydata/xarray v2022.06 difficulty=15 min - 1 hour F2P=1 P2P=1405 ===\n[spec] python=3.10 install='python -m pip install -e .' test='pytest -rA'\n[install] OK\n[pre-fix ] FAIL_TO_PASS -> FAIL (expected)\n[post-fix] FAIL_TO_PASS -> PASS (expected)\n[post-fix] PASS_TO_PASS(<=40) -> PASS\n[VERDICT] pydata__xarray-6721 usable=True\n"
+    },
+    {
+      "instance_id": "django__django-14034",
+      "repo": "django/django",
+      "version": "4.0",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M",
+      "usable": true,
+      "stage": "ok",
+      "seconds": 8,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-django__django-14034.log",
+      "tail": "=== django__django-14034  repo=django/django v4.0 difficulty=15 min - 1 hour F2P=1 P2P=12 ===\n[spec] python=3.8 install='python -m pip install -e .' test='./tests/runtests.py --verbosity 2 --settings=test_sqlite --parallel 1'\n[venv] django__django__4.0__py3.8  (base /mnt/data/ctx-swebench/tooling/pythons/cpython-3.8-linux-x86_64-gnu/bin/python3.8)\n[install] OK\n[pre-fix ] FAIL_TO_PASS -> FAIL (expected)\n[post-fix] FAIL_TO_PASS -> PASS (expected)\n[post-fix] PASS_TO_PASS(<=40) -> PASS\n[VERDICT] django__django-14034 usable=True\n"
+    },
+    {
+      "instance_id": "matplotlib__matplotlib-21568",
+      "repo": "matplotlib/matplotlib",
+      "version": "3.4",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M",
+      "usable": false,
+      "stage": "gold_fails_p2p",
+      "seconds": 62,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-matplotlib__matplotlib-21568.log",
+      "tail": "                                                  [100%]\n==================================== PASSES ====================================\n=========================== short test summary info ============================\nPASSED lib/matplotlib/tests/test_dates.py::test_date_formatter_usetex[delta2-expected2]\nPASSED lib/matplotlib/tests/test_dates.py::test_date_formatter_usetex[delta3-expected3]\nPASSED lib/matplotlib/tests/test_dates.py::test_concise_formatter_usetex[t_delta2-expected2]\nPASSED lib/matplotlib/tests/test_dates.py::test_concise_formatter_usetex[t_delta3-expected3]\n4 passed in 0.27s\n\n"
+    },
+    {
+      "instance_id": "astropy__astropy-8872",
+      "repo": "astropy/astropy",
+      "version": "3.1",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M",
+      "usable": false,
+      "stage": "install",
+      "seconds": 10,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-astropy__astropy-8872.log",
+      "tail": " successfully.\n  │ exit code: 1\n  ╰─> No available output.\n  \n  note: This error originates from a subprocess, and is likely not a problem with pip.\n  full command: /mnt/data/ctx-swebench/venvs/astropy__astropy__3.1__py3.9/bin/python /mnt/data/ctx-swebench/venvs/astropy__astropy__3.1__py3.9/lib/python3.9/site-packages/pip/_vendor/pyproject_hooks/_in_process/_in_process.py get_requires_for_build_editable /tmp/tmp8ux2i_jv\n  cwd: /mnt/data/ctx-swebench/repos/astropy__astropy\nERROR: Failed to build 'file:///mnt/data/ctx-swebench/repos/astropy__astropy' when getting requirements to build editable\n\n"
+    },
+    {
+      "instance_id": "scikit-learn__scikit-learn-14894",
+      "repo": "scikit-learn/scikit-learn",
+      "version": "0.22",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M",
+      "usable": true,
+      "stage": "ok",
+      "seconds": 143,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-scikit-learn__scikit-learn-14894.log",
+      "tail": "=== scikit-learn__scikit-learn-14894  repo=scikit-learn/scikit-learn v0.22 difficulty=15 min - 1 hour F2P=1 P2P=85 ===\n[spec] python=3.6 install='python -m pip install -v --no-use-pep517 --no-build-isolation -e .' test='pytest -rA'\n[install] OK\n[pre-fix ] FAIL_TO_PASS -> FAIL (expected)\n[post-fix] FAIL_TO_PASS -> PASS (expected)\n[post-fix] PASS_TO_PASS(<=40) -> PASS\n[VERDICT] scikit-learn__scikit-learn-14894 usable=True\n"
+    },
+    {
+      "instance_id": "pytest-dev__pytest-8399",
+      "repo": "pytest-dev/pytest",
+      "version": "6.3",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M",
+      "usable": true,
+      "stage": "ok",
+      "seconds": 10,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-pytest-dev__pytest-8399.log",
+      "tail": "=== pytest-dev__pytest-8399  repo=pytest-dev/pytest v6.3 difficulty=15 min - 1 hour F2P=1 P2P=59 ===\n[spec] python=3.9 install='python -m pip install -e .' test='pytest -rA'\n[venv] pytest-dev__pytest__6.3__py3.9  (base /mnt/data/ctx-swebench/tooling/pythons/cpython-3.9-linux-x86_64-gnu/bin/python3.9)\n[install] OK\n[pre-fix ] FAIL_TO_PASS -> FAIL (expected)\n[post-fix] FAIL_TO_PASS -> PASS (expected)\n[post-fix] PASS_TO_PASS(<=40) -> PASS\n[VERDICT] pytest-dev__pytest-8399 usable=True\n"
+    },
+    {
+      "instance_id": "psf__requests-6028",
+      "repo": "psf/requests",
+      "version": "2.27",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M",
+      "usable": true,
+      "stage": "ok",
+      "seconds": 2,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-psf__requests-6028.log",
+      "tail": "=== psf__requests-6028  repo=psf/requests v2.27 difficulty=15 min - 1 hour F2P=2 P2P=185 ===\n[spec] python=3.9 install='python -m pip install .' test='pytest -rA'\n[install] OK\n[pre-fix ] FAIL_TO_PASS -> FAIL (expected)\n[post-fix] FAIL_TO_PASS -> PASS (expected)\n[post-fix] PASS_TO_PASS(<=40) -> PASS\n[VERDICT] psf__requests-6028 usable=True\n"
+    },
+    {
+      "instance_id": "pylint-dev__pylint-7080",
+      "repo": "pylint-dev/pylint",
+      "version": "2.15",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M",
+      "usable": false,
+      "stage": "tests_did_not_run",
+      "seconds": 3,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-pylint-dev__pylint-7080.log",
+      "tail": "cpython-3.9-linux-x86_64-gnu/lib/python3.9/importlib/__init__.py:127: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\ntests/test_self.py:30: in <module>\n    from py._path.local import LocalPath  # type: ignore[import]\nE   ModuleNotFoundError: No module named 'py._path'; 'py' is not a package\n=========================== short test summary info ============================\nERROR tests/test_self.py\n1 error in 0.07s\nERROR: found no collectors for /mnt/data/ctx-swebench/repos/pylint-dev__pylint/tests/test_self.py::TestRunTC::test_ignore_path_recursive_current_dir\n\n\n"
+    },
+    {
+      "instance_id": "mwaskom__seaborn-3187",
+      "repo": "mwaskom/seaborn",
+      "version": "0.12",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M",
+      "usable": true,
+      "stage": "ok",
+      "seconds": 20,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-mwaskom__seaborn-3187.log",
+      "tail": "=== mwaskom__seaborn-3187  repo=mwaskom/seaborn v0.12 difficulty=15 min - 1 hour F2P=2 P2P=248 ===\n[spec] python=3.9 install='python -m pip install -e .[dev]' test='pytest --no-header -rA'\n[install] OK\n[pre-fix ] FAIL_TO_PASS -> FAIL (expected)\n[post-fix] FAIL_TO_PASS -> PASS (expected)\n[post-fix] PASS_TO_PASS(<=40) -> PASS\n[VERDICT] mwaskom__seaborn-3187 usable=True\n"
+    },
+    {
+      "instance_id": "pydata__xarray-7393",
+      "repo": "pydata/xarray",
+      "version": "2022.09",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M",
+      "usable": true,
+      "stage": "ok",
+      "seconds": 15,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-pydata__xarray-7393.log",
+      "tail": "=== pydata__xarray-7393  repo=pydata/xarray v2022.09 difficulty=15 min - 1 hour F2P=2 P2P=71 ===\n[spec] python=3.10 install='python -m pip install -e .' test='pytest -rA'\n[venv] pydata__xarray__2022.09__py3.10  (base /mnt/data/ctx-swebench/tooling/pythons/cpython-3.10-linux-x86_64-gnu/bin/python3.10)\n[install] OK\n[pre-fix ] FAIL_TO_PASS -> FAIL (expected)\n[post-fix] FAIL_TO_PASS -> PASS (expected)\n[post-fix] PASS_TO_PASS(<=40) -> PASS\n[VERDICT] pydata__xarray-7393 usable=True\n"
+    },
+    {
+      "instance_id": "scikit-learn__scikit-learn-25102",
+      "repo": "scikit-learn/scikit-learn",
+      "version": "1.3",
+      "difficulty": "1-4 hours",
+      "stratum": "H",
+      "usable": false,
+      "stage": "install",
+      "seconds": 9,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-scikit-learn__scikit-learn-25102.log",
+      "tail": "] ...\n  /mnt/data/ctx-swebench/venvs/scikit-learn__scikit-learn__1.3__py3.9/bin/python -m pip install \\[options] -r <requirements file> \\[package-index-options] ...\n  /mnt/data/ctx-swebench/venvs/scikit-learn__scikit-learn__1.3__py3.9/bin/python -m pip install \\[options] [-e] <vcs project url> ...\n  /mnt/data/ctx-swebench/venvs/scikit-learn__scikit-learn__1.3__py3.9/bin/python -m pip install \\[options] [-e] <local project path> ...\n  /mnt/data/ctx-swebench/venvs/scikit-learn__scikit-learn__1.3__py3.9/bin/python -m pip install \\[options] <archive url/path> ...\n\nno such option: --no-use-pep517\n\n"
+    },
+    {
+      "instance_id": "pydata__xarray-6992",
+      "repo": "pydata/xarray",
+      "version": "2022.06",
+      "difficulty": ">4 hours",
+      "stratum": "H",
+      "usable": true,
+      "stage": "ok",
+      "seconds": 6,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-pydata__xarray-6992.log",
+      "tail": "=== pydata__xarray-6992  repo=pydata/xarray v2022.06 difficulty=>4 hours F2P=12 P2P=945 ===\n[spec] python=3.10 install='python -m pip install -e .' test='pytest -rA'\n[install] OK\n[pre-fix ] FAIL_TO_PASS -> FAIL (expected)\n[post-fix] FAIL_TO_PASS -> PASS (expected)\n[post-fix] PASS_TO_PASS(<=40) -> PASS\n[VERDICT] pydata__xarray-6992 usable=True\n"
+    },
+    {
+      "instance_id": "django__django-11138",
+      "repo": "django/django",
+      "version": "3.0",
+      "difficulty": "1-4 hours",
+      "stratum": "H",
+      "usable": true,
+      "stage": "ok",
+      "seconds": 3,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-django__django-11138.log",
+      "tail": "=== django__django-11138  repo=django/django v3.0 difficulty=1-4 hours F2P=1 P2P=73 ===\n[spec] python=3.6 install='python -m pip install -e .' test='./tests/runtests.py --verbosity 2 --settings=test_sqlite --parallel 1'\n[install] OK\n[pre-fix ] FAIL_TO_PASS -> FAIL (expected)\n[post-fix] FAIL_TO_PASS -> PASS (expected)\n[post-fix] PASS_TO_PASS(<=40) -> PASS\n[VERDICT] django__django-11138 usable=True\n"
+    },
+    {
+      "instance_id": "astropy__astropy-14369",
+      "repo": "astropy/astropy",
+      "version": "5.1",
+      "difficulty": "1-4 hours",
+      "stratum": "H",
+      "usable": false,
+      "stage": "install",
+      "seconds": 3,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-astropy__astropy-14369.log",
+      "tail": " successfully.\n  │ exit code: 1\n  ╰─> No available output.\n  \n  note: This error originates from a subprocess, and is likely not a problem with pip.\n  full command: /mnt/data/ctx-swebench/venvs/astropy__astropy__5.1__py3.9/bin/python /mnt/data/ctx-swebench/venvs/astropy__astropy__5.1__py3.9/lib/python3.9/site-packages/pip/_vendor/pyproject_hooks/_in_process/_in_process.py get_requires_for_build_editable /tmp/tmp7cq2aiis\n  cwd: /mnt/data/ctx-swebench/repos/astropy__astropy\nERROR: Failed to build 'file:///mnt/data/ctx-swebench/repos/astropy__astropy' when getting requirements to build editable\n\n"
+    },
+    {
+      "instance_id": "pytest-dev__pytest-6197",
+      "repo": "pytest-dev/pytest",
+      "version": "5.2",
+      "difficulty": "1-4 hours",
+      "stratum": "H",
+      "usable": true,
+      "stage": "ok",
+      "seconds": 4,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-pytest-dev__pytest-6197.log",
+      "tail": "=== pytest-dev__pytest-6197  repo=pytest-dev/pytest v5.2 difficulty=1-4 hours F2P=2 P2P=145 ===\n[spec] python=3.9 install='python -m pip install -e .' test='pytest -rA'\n[install] OK\n[pre-fix ] FAIL_TO_PASS -> FAIL (expected)\n[post-fix] FAIL_TO_PASS -> PASS (expected)\n[post-fix] PASS_TO_PASS(<=40) -> PASS\n[VERDICT] pytest-dev__pytest-6197 usable=True\n"
+    },
+    {
+      "instance_id": "pylint-dev__pylint-8898",
+      "repo": "pylint-dev/pylint",
+      "version": "3.0",
+      "difficulty": "1-4 hours",
+      "stratum": "H",
+      "usable": false,
+      "stage": "tests_did_not_run",
+      "seconds": 4,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-pylint-dev__pylint-8898.log",
+      "tail": "t-dev__pylint-8898  repo=pylint-dev/pylint v3.0 difficulty=1-4 hours F2P=1 P2P=18 ===\n[spec] python=3.9 install='python -m pip install -e .' test='pytest -rA'\n[install] OK\n[pre-fix ] FAIL_TO_PASS -> FAIL (expected)\n[post-fix] FAIL_TO_PASS -> PASS (expected)\n[VERDICT] pylint-dev__pylint-8898 usable=False  (tests did not run: pytest exit 4: tests did not run)\npytest exit 4: tests did not run\n\nno tests ran in 0.02s\nERROR: not found: /mnt/data/ctx-swebench/repos/pylint-dev__pylint/tests/config/test_config.py::test_csv_regex_comma_in_quantifier[foo,\n(no match in any of [<Module test_config.py>])\n\n\n"
+    },
+    {
+      "instance_id": "pydata__xarray-3993",
+      "repo": "pydata/xarray",
+      "version": "0.12",
+      "difficulty": "1-4 hours",
+      "stratum": "H",
+      "usable": true,
+      "stage": "ok",
+      "seconds": 5,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-pydata__xarray-3993.log",
+      "tail": "=== pydata__xarray-3993  repo=pydata/xarray v0.12 difficulty=1-4 hours F2P=2 P2P=2398 ===\n[spec] python=3.10 install='python -m pip install -e .' test='pytest -rA'\n[install] OK\n[pre-fix ] FAIL_TO_PASS -> FAIL (expected)\n[post-fix] FAIL_TO_PASS -> PASS (expected)\n[post-fix] PASS_TO_PASS(<=40) -> PASS\n[VERDICT] pydata__xarray-3993 usable=True\n"
+    },
+    {
+      "instance_id": "django__django-11885",
+      "repo": "django/django",
+      "version": "3.1",
+      "difficulty": "1-4 hours",
+      "stratum": "H",
+      "usable": true,
+      "stage": "ok",
+      "seconds": 3,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-django__django-11885.log",
+      "tail": "=== django__django-11885  repo=django/django v3.1 difficulty=1-4 hours F2P=1 P2P=43 ===\n[spec] python=3.6 install='python -m pip install -e .' test='./tests/runtests.py --verbosity 2 --settings=test_sqlite --parallel 1'\n[install] OK\n[pre-fix ] FAIL_TO_PASS -> FAIL (expected)\n[post-fix] FAIL_TO_PASS -> PASS (expected)\n[post-fix] PASS_TO_PASS(<=40) -> PASS\n[VERDICT] django__django-11885 usable=True\n"
+    }
+  ]
+}

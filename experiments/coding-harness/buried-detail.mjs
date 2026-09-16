@@ -53,7 +53,7 @@ async function main() {
   for (const name of ['none', 'summarize', 'chunk_retrieve']) {
     const ctx = REDUCERS[name]({ out: spec, task: QUESTION });
     const present = /\b137\b/.test(ctx); // does the reduced content still contain the answer? (retrieval ceiling)
-    const r = await generate({ system: SYSTEM, user: `Document:\n"""\n${ctx}\n"""\n\n${QUESTION}`, maxTokens: 24, temperature: 0, think: false });
+    const r = await generate({ system: SYSTEM, user: `Document:\n"""\n${ctx}\n"""\n\n${QUESTION}`, temperature: 0 });
     const success = /\b137\b/.test(r.grade_text);
     arms.push({ reducer: name, answer_present_in_reduced: present, model_success: success, answer: (r.grade_text || '').slice(0, 30), ctx_tokens: estTok(ctx), prompt_tokens: r.usage.prompt_tokens ?? null });
     process.stderr.write(`${name}: present=${present} model=${success ? 'PASS' : 'FAIL'} ans=${JSON.stringify((r.grade_text || '').slice(0, 20))}\n`);

@@ -7,6 +7,7 @@ h1{font-size:29px;line-height:1.2;margin:0 0 4px}
 .sub{color:#5f6368;font-style:italic;margin:0 0 20px}
 h2{font-size:21px;margin:40px 0 12px;border-bottom:1px solid #e3e3ea;padding-bottom:7px}
 h3{font-size:16.5px;margin:26px 0 8px}
+h4{font-size:15px;margin:20px 0 6px}
 p{margin:12px 0}
 .retract{background:#fff4ed;border-left:4px solid #e4572e;padding:14px 18px;border-radius:0 6px 6px 0;margin:18px 0}
 .exec{background:#f3f6fb;border:1px solid #d9e2f0;border-radius:10px;padding:20px 24px;margin:20px 0 28px}
@@ -122,7 +123,7 @@ the mix in each cell.</p>
 <p>For each run: whether it passed, the <strong>achieved peak</strong> (the largest transcript actually sent),
 how many deletions occurred, and the total tokens billed across the whole run.</p>
 
-<h2>The bug</h2>
+<h3>The bug: the limit was not enforced between deletions</h3>
 <p>Eviction was gated behind the frequency counter:</p>
 <pre>const fire = (turnNo++ % CADENCE) === 0;   // deletion-frequency gate
 const r = fire ? evict(m) : NOOP;</pre>
@@ -139,7 +140,7 @@ the runs labelled <code>W=7,500</code> with N=1. The infrequent-deletion configu
 a smaller window. It was fitting into a slightly larger one.</div>
 <div class="chart"><svg viewBox="0 0 760 300" role="img" style="max-width:100%;height:auto"><text x="62" y="24" font-size="14" font-weight="600" fill="#2b2b38">Blue = pass rate · Orange = achieved peak (k tokens, scaled to 9k)</text><line x1="62" y1="240" x2="736" y2="240" stroke="#e6e6ef"/><text x="54" y="244" font-size="11" fill="#7a7a8c" text-anchor="end">0%</text><line x1="62" y1="191" x2="736" y2="191" stroke="#e6e6ef"/><text x="54" y="195" font-size="11" fill="#7a7a8c" text-anchor="end">25%</text><line x1="62" y1="142" x2="736" y2="142" stroke="#e6e6ef"/><text x="54" y="146" font-size="11" fill="#7a7a8c" text-anchor="end">50%</text><line x1="62" y1="93" x2="736" y2="93" stroke="#e6e6ef"/><text x="54" y="97" font-size="11" fill="#7a7a8c" text-anchor="end">75%</text><line x1="62" y1="44" x2="736" y2="44" stroke="#e6e6ef"/><text x="54" y="48" font-size="11" fill="#7a7a8c" text-anchor="end">100%</text><rect x="99.1" y="164.6" width="60.7" height="75.4" fill="#4f7cff" rx="3"/><text x="129.4" y="158.6" font-size="12" font-weight="600" fill="#2b2b38" text-anchor="middle">38%</text><rect x="163.7" y="148.9" width="60.7" height="91.1" fill="#e4572e" rx="3" fill-opacity="0.85"/><text x="194.1" y="142.9" font-size="11" fill="#2b2b38" text-anchor="middle">4.2k</text><text x="161.7" y="258.0" font-size="12" fill="#7a7a8c" text-anchor="middle">N=1</text><rect x="267.6" y="142.0" width="60.7" height="98.0" fill="#4f7cff" rx="3"/><text x="297.9" y="136.0" font-size="12" font-weight="600" fill="#2b2b38" text-anchor="middle">50%</text><rect x="332.2" y="133.1" width="60.7" height="106.9" fill="#e4572e" rx="3" fill-opacity="0.85"/><text x="362.6" y="127.1" font-size="11" fill="#2b2b38" text-anchor="middle">4.9k</text><text x="330.2" y="258.0" font-size="12" fill="#7a7a8c" text-anchor="middle">N=2</text><rect x="436.1" y="142.0" width="60.7" height="98.0" fill="#4f7cff" rx="3"/><text x="466.4" y="136.0" font-size="12" font-weight="600" fill="#2b2b38" text-anchor="middle">50%</text><rect x="500.7" y="109.2" width="60.7" height="130.8" fill="#e4572e" rx="3" fill-opacity="0.85"/><text x="531.1" y="103.2" font-size="11" fill="#2b2b38" text-anchor="middle">6.0k</text><text x="498.7" y="258.0" font-size="12" fill="#7a7a8c" text-anchor="middle">N=5</text><rect x="604.6" y="44.0" width="60.7" height="196.0" fill="#4f7cff" rx="3"/><text x="634.9" y="38.0" font-size="12" font-weight="600" fill="#2b2b38" text-anchor="middle">100%</text><rect x="669.2" y="73.2" width="60.7" height="166.8" fill="#e4572e" rx="3" fill-opacity="0.85"/><text x="699.6" y="67.2" font-size="11" fill="#2b2b38" text-anchor="middle">7.7k</text><text x="667.2" y="258.0" font-size="12" fill="#7a7a8c" text-anchor="middle">N=10</text><text x="399" y="288" font-size="12" fill="#7a7a8c" text-anchor="middle">all cells at the SAME nominal cap W=4,700 — raising cadence raises the peak actually sent</text></svg></div>
 
-<h2>How we tested it</h2>
+<h3>How we tested it</h3>
 <p>We fit a logistic regression — a standard model for a yes/no outcome — predicting whether a run passed, and
 asked whether each variable adds anything once the others are known. The comparison is a <strong>likelihood-ratio
 test</strong>: fit the model with the variable, fit it without, and ask how much better the fit got. A large
@@ -167,7 +168,26 @@ effect size was not.</p>
 infrequent-deletion rows sit <strong>on the same curve</strong> as the every-step rows rather than above
 them.</p>
 
-<h2>What survives</h2>
+<h2>What we got wrong</h2>
+<p><strong>1. "Deleting less often raises task success at the same size limit."</strong> Commit
+<code>25e3006</code> recorded: <em>"Sawtooth beats a wider flat window: W=4700/N=10 matches W=7500/N=1 at 100%
+pass with 15% fewer tokens and 6× fewer evictions."</em> The task-success half of that is
+<strong>withdrawn</strong>. The N=10 runs labelled W=4,700 were not held to 4,700 tokens; they sent
+7,657, more than the 6,977 sent by the W=7,500 every-step runs
+they were compared against. Once achieved peak is in the model, deletion frequency adds nothing
+(p = 0.5441) and neither does the nominal limit (p = 0.6596). The corrected reading: the
+infrequent-deletion runs passed because they kept more transcript, not because they deleted less often. The
+cost half of the claim survives and is restated in Conclusions.</p>
+<p><strong>2. The effect size of transcript size was overstated by leaving the deletion rule out of the
+model.</strong> An earlier fit of pass against achieved peak did not adjust for which rule each run used.
+Because the signal-free <code>random</code> rule contributes 16
+runs, all at N=1, that omission confounds rule with deletion frequency and gave an odds ratio of
+<strong>52.24× per e-fold</strong>. Adjusted for rule it is <strong>41.83×</strong>, a
+25% overstatement. The direction and the significance were
+unaffected; the magnitude was not.</p>
+
+<h2>Conclusions</h2>
+<h3>What survives</h3>
 <div class="key"><strong>Deleting less often is a cost lever, not a quality lever.</strong></div>
 <table><thead><tr><th></th><th>Tokens billed</th><th>Deletions</th><th>Achieved peak</th><th>Passed</th></tr></thead><tbody>
 <tr><td>Delete every 10th step (N=10, W=4,700)</td><td><strong>349,308</strong></td><td><strong>5</strong></td><td>7,657</td><td>6/6</td></tr>
@@ -179,7 +199,24 @@ cost simulation predicted. That is the half of the original claim worth keeping.
 performance. Tune the thing that predicts performance — how much of the transcript is present when the model
 is called — and use deletion frequency to buy that as cheaply as possible.</p>
 
-<h2>What this does not answer: how wide should the window be?</h2>
+<h3>What this licenses, and what it does not</h3>
+<p><strong>Established, on this one task.</strong> Task success tracks the transcript size actually sent to
+the model (odds ratio 41.83× per e-fold, p = 0.0002, adjusted for deletion rule). Given that
+size, deletion frequency and the nominal limit carry no further information.</p>
+<p><strong>Licensed for the design.</strong> Configure and enforce eviction against the transcript actually
+sent, not against a threshold that may be overshot between deletions. Treat deletion frequency purely as a cost
+setting, chosen after the target size is fixed.</p>
+<p><strong>Not licensed.</strong></p>
+<table><thead><tr><th>claim</th><th>status</th></tr></thead><tbody>
+<tr><td>deleting less often improves task success</td><td><strong>tested and rejected</strong> — no effect once achieved peak is known (p = 0.5441)</td></tr>
+<tr><td>the nominal size limit matters beyond the size actually sent</td><td><strong>tested and rejected</strong> (p = 0.6596)</td></tr>
+<tr><td>deleting less often is cheaper at matched transcript size</td><td><strong>observed</strong>, in one comparison of 6 against 3 runs, with no interval</td></tr>
+<tr><td>the success threshold is an absolute token count rather than a share of task demand</td><td><strong>untested</strong> — indistinguishable on a single task</td></tr>
+<tr><td>the <em>content</em> of the retained transcript matters, not only its size</td><td><strong>untested</strong> — see the deeper question below</td></tr>
+<tr><td>any of this holds beyond <code>longbuild</code> or this model</td><td><strong>untested</strong></td></tr>
+</tbody></table>
+
+<h3>What this does not answer: how wide should the window be?</h3>
 <p>The results identify a threshold — success reaches 100% once about
 <strong>6,977 tokens</strong> of transcript are present — but they cannot say what
 that number <em>is</em>.</p>
@@ -196,7 +233,7 @@ run in this dataset is the same task, so the uncapped demand is a constant
 20,993 tokens. "6,977 tokens" and
 "33% of demand" are the same number wearing two hats. No amount of extra runs on this
 task can tell them apart.</p>
-<h3>The experiment that would</h3>
+<h4>The experiment that would</h4>
 <p>Sweep the size limit across <strong>tasks with materially different uncapped demand</strong> — one that
 needs ~8k, one ~20k (this task), one ~40k — on the same model. Then:</p>
 <ul>
@@ -209,7 +246,7 @@ demand.</li>
 <p>A second, cheaper arm settles the model-capacity question directly: run the same task on a model with a much
 smaller hard limit (a 131k-token model is already available) and check that the threshold does not move. The
 prediction is that it does not, so long as the limit stays well above the threshold.</p>
-<h3>The deeper question underneath it</h3>
+<h4>The deeper question underneath it</h4>
 <p>This all assumes the only thing that matters is <em>how much</em> transcript is present. Everything measured
 so far is consistent with that — and with nothing else mattering. But a companion experiment established that
 the measurement may be <strong>unable to detect</strong> whether the <em>content</em> of the retained

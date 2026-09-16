@@ -210,8 +210,11 @@ arms) ran one task, `longbuild`. That is n repeats of one problem, **not n probl
 within-problem nondeterminism and says nothing about between-problem variance, which is the larger term in
 agentic coding. Item 8's `p=1.000` means "indistinguishable **on this problem**", not "never different" —
 and more repeats cannot fix it. **Design rule for every live item below: sample PROBLEMS, not just seeds.**
-Item 9's SWE-bench substrate (500 instances / 12 repos, 156 runnable here) is the instrument for that, and
-this is now the strongest argument for prioritising it.
+Item 9's SWE-bench substrate is the instrument for that. **Update (item 9 pilot):** its solvability gate
+PASSED on distinct problems from 6 repos (7 of 9 validly run problems solved uncapped through opencode, 5 of
+them above 32,768 prompt tokens; a 10th run was invalidated by our own output-cap placeholder), so a
+between-problem sweep is now possible — see item 9. No window/eviction result has been
+re-measured on it yet; every existing A/B finding is still single-problem.
 
 **C3 — The eviction threshold is DERIVED, not guessed: `g* = w/r` turns.** *(ANALYTIC — pure algebra on
 published price multipliers; the 12.5 operating point has NEVER been validated in a live run, and no
@@ -457,18 +460,43 @@ recency on this task.
   mechanism and it was entirely noise. Pre-registering the falsification and paying for n=10 is what
   caught it — the cheap version of this experiment would have shipped a false finding.
 
-### 9. Port the window experiments onto SWE-bench Verified *(substrate now available)*
-`experiments/context-dedup/swebench_provision.py` is a validated **non-Docker** SWE-bench harness
-(Docker is unusable on this host): per-instance clone at `base_commit`, a venv on the
-period-appropriate interpreter via `uv` standalone CPythons, install from the official spec map
-(recovered from the v2.1.0 tag — `swebench` 5.x dropped it), then grade on the instance's own
-FAIL_TO_PASS/PASS_TO_PASS. `--verify` proves each instance three ways before use (pre-fix FAIL, gold-patch
-PASS, no regressions); validated on `psf__requests-2931`. **156 of 500 instances are runnable** (269 are
-in light-dependency repos; 3.5/3.6 predate standalone builds, excluding 113 django). Everything lives on
-`/mnt/data/ctx-swebench` (symlinked, gitignored). **Open gate before spending real compute:** a
-solvability pilot — one *uncapped* attempt on a verified instance. If a local 27B cannot solve it with
-unlimited context, a sweep there measures task difficulty, not context policy; fall back to relative
-metrics (turns, re-reads) or a stronger model.
+### 9. Port the window experiments onto SWE-bench Verified — **SOLVABILITY GATE PASSED (pilot)**
+Substrate: `experiments/context-dedup/swebench_provision.py` (non-Docker provisioning + three-way
+`--verify`; now also py3.5/3.6 via micromamba and a django runner). Agent host: **opencode** (D20), driven by
+`experiments/context-dedup/swebench-opencode.mjs`; grading by `ab-tasks/swebench.mjs` `gradeDetail`.
+Report: `reports/metrics/swebench-pilot/report-swebench-pilot.{md,html}` (generator
+`experiments/context-dedup/report-swebench-pilot.mjs`).
+
+**Result (uncapped, opencode 1.18.31, `openrouter/qwen/qwen3.8-27b`, thinking on by default, n=1 per problem):**
+solved **7 of 9 validly run distinct problems** from 6 repos, drawn by a seeded, difficulty-stratified rule
+written before any agent ran; **5/7 solved problems exceeded 32,768 prompt tokens** → **usable substrate**
+(exact interval and projection in the report, computed over valid runs). The 10th, django-11138, is
+**INVALID**, not a failure: our `opencode.json` `limit.output: 16384` placeholder (copied local → OpenRouter)
+cut its reasoning off at exactly 16,384 tokens before it acted. Re-run on the local model with the limit
+raised, it was **solved** (F2P and P2P) — reported separately, NOT pooled (differs in endpoint/weights and
+output limit; thinking is on in both). Four earlier opencode attempts (one probe, three re-run attempts) were
+killed by another session's host-wide opencode cleanup (confirmed) and voided. Measure local-host reasoning from transcript reasoning parts: the host reports reasoning_tokens 0. Spend ≈ $2 for the tranche.
+
+**Uncontrolled variable:** the tranche used UNPINNED OpenRouter routing (16 backends, fp4–bf16, 32,768–235,929
+max response); exports do not record the backend, so it is UNKNOWN per run. The OpenRouter entry is now
+pinned (DeepInfra bf16, no fallback); future manifests must record `provider.order`, `quantizations`,
+`limit.output`.
+
+**Carry forward (each is in the report's What we got wrong):**
+- The first 0/3 "unsolvable" result was a HOMEGROWN-LOOP defect (2,000-char tool-output clip: 0/6 edits
+  vs 5/6 at 30,000, two endpoints). Do not reuse `coding-harness/lib.mjs` for SWE-bench.
+- **opencode adds ~9.9k tokens per call** (system prompt + tool schemas). Any window cap must sit well above
+  it; the longbuild W=4,700 design is not reproducible on this host.
+- Grading uses **calibrated P2P** (dataset P2P ids that pass on gold here, ≥90% required — a post-hoc,
+  pre-agent amendment that admitted xarray-6721, xarray-6992, scikit-learn-14983).
+- With thinking on, a step can burn the whole 16,384-token output budget and opencode exits 0
+  (django-11138): scored as a fail, flagged, sensitivity reported.
+- Capture opencode stdout/export to FILES, never pipes (a piped export truncated at 146k of 430k bytes).
+- Resume state / selection: `reports/metrics/swebench-pilot/{selection-v2,preregistration-multi-v2}.json`.
+
+**Still open:** n=1 per problem (no within-problem noise estimate on this substrate); 10 problems; hosted
+weights ≠ the local GGUF used by every earlier live result, so nothing here is comparable to them. The
+window/eviction sweep itself has not been run.
 
 ### 10. Structural retrieval unit (HR1) — *unchanged, still unrun*
 Split out of the old item 7. HR1 (the retrieval unit is wrong for structural turns) needs the

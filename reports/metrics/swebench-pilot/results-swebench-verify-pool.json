@@ -1,0 +1,202 @@
+{
+  "manifest": {
+    "prereg": "preregistration-multi.json",
+    "timeout_s": 2700,
+    "wall_seconds": 57,
+    "date": "2026-09-15T16:46:34.856Z"
+  },
+  "results": [
+    {
+      "instance_id": "pylint-dev__pylint-6903",
+      "repo": "pylint-dev/pylint",
+      "version": "2.15",
+      "difficulty": "<15 min fix",
+      "stratum": "E",
+      "usable": false,
+      "stage": "gold_fails_f2p",
+      "seconds": 13,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-pylint-dev__pylint-6903.log",
+      "tail": "9/importlib/__init__.py:127: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\ntests/test_pylint_runners.py:15: in <module>\n    from py._path.local import LocalPath  # type: ignore[import]\nE   ModuleNotFoundError: No module named 'py._path'; 'py' is not a package\n=========================== short test summary info ============================\nERROR tests/test_pylint_runners.py\n1 error in 0.04s\nERROR: found no collectors for /mnt/data/ctx-swebench/repos/pylint-dev__pylint/tests/test_pylint_runners.py::test_pylint_run_jobs_equal_zero_dont_crash_with_cpu_fraction\n\n\n"
+    },
+    {
+      "instance_id": "pydata__xarray-6461",
+      "repo": "pydata/xarray",
+      "version": "2022.03",
+      "difficulty": "<15 min fix",
+      "stratum": "E",
+      "usable": false,
+      "stage": "gold_fails_f2p",
+      "seconds": 25,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-pydata__xarray-6461.log",
+      "tail": "le>\n    from xarray.core import duck_array_ops, formatting, utils\nxarray/core/duck_array_ops.py:24: in <module>\n    from . import dask_array_compat, dask_array_ops, dtypes, npcompat, nputils\nxarray/core/dask_array_ops.py:1: in <module>\n    from . import dtypes, nputils\nxarray/core/dtypes.py:41: in <module>\n    {np.bytes_, np.unicode_},  # numpy promotes to unicode\n../../venvs/pydata__xarray__2022.03__py3.10/lib/python3.10/site-packages/numpy/__init__.py:400: in __getattr__\n    raise AttributeError(\nE   AttributeError: `np.unicode_` was removed in the NumPy 2.0 release. Use `np.str_` instead.\n\n"
+    },
+    {
+      "instance_id": "pallets__flask-5014",
+      "repo": "pallets/flask",
+      "version": "2.3",
+      "difficulty": "<15 min fix",
+      "stratum": "E",
+      "usable": false,
+      "stage": "gold_fails_f2p",
+      "seconds": 9,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-pallets__flask-5014.log",
+      "tail": "                   ^^^^^^^^^^^^^^^^^^\n            (os.environ, \"FLASK_APP\", monkeypatch.notset),\n            (os.environ, \"FLASK_DEBUG\", monkeypatch.notset),\n            (os.environ, \"FLASK_RUN_FROM_CLI\", monkeypatch.notset),\n            (os.environ, \"WERKZEUG_RUN_MAIN\", monkeypatch.notset),\n        )\nE       AttributeError: module '_pytest.monkeypatch' has no attribute 'notset'\n\ntests/conftest.py:21: AttributeError\n=========================== short test summary info ============================\nERROR tests/test_blueprints.py::test_empty_name_not_allowed - AttributeError:...\n1 error in 0.03s\n\n"
+    },
+    {
+      "instance_id": "pytest-dev__pytest-6202",
+      "repo": "pytest-dev/pytest",
+      "version": "5.2",
+      "difficulty": "<15 min fix",
+      "stratum": "E",
+      "usable": false,
+      "stage": "gold_fails_f2p",
+      "seconds": 17,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-pytest-dev__pytest-6202.log",
+      "tail": "> FAIL\n[VERDICT] pytest-dev__pytest-6202 usable=False\n--- pre_out tail ---\n ERROR: usage: pytest.py [options] [file_or_dir] [file_or_dir] [...]\npytest.py: error: unrecognized arguments: --no-header\n  inifile: /mnt/data/ctx-swebench/repos/pytest-dev__pytest/tox.ini\n  rootdir: /mnt/data/ctx-swebench/repos/pytest-dev__pytest\n\n \n--- post_out tail ---\n ERROR: usage: pytest.py [options] [file_or_dir] [file_or_dir] [...]\npytest.py: error: unrecognized arguments: --no-header\n  inifile: /mnt/data/ctx-swebench/repos/pytest-dev__pytest/tox.ini\n  rootdir: /mnt/data/ctx-swebench/repos/pytest-dev__pytest\n\n\n"
+    },
+    {
+      "instance_id": "psf__requests-5414",
+      "repo": "psf/requests",
+      "version": "2.26",
+      "difficulty": "<15 min fix",
+      "stratum": "E",
+      "usable": true,
+      "stage": "ok",
+      "seconds": 8,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-psf__requests-5414.log",
+      "tail": "=== psf__requests-5414  repo=psf/requests v2.26 difficulty=<15 min fix F2P=1 P2P=130 ===\n[spec] python=3.9 install='python -m pip install .' test='pytest -rA'\n[venv] psf__requests__2.26__py3.9  (base /mnt/data/ctx-swebench/tooling/pythons/cpython-3.9-linux-x86_64-gnu/bin/python3.9)\n[install] OK\n[pre-fix ] FAIL_TO_PASS -> FAIL (expected)\n[post-fix] FAIL_TO_PASS -> PASS (expected)\n[post-fix] PASS_TO_PASS(<=40) -> PASS\n[VERDICT] psf__requests-5414 usable=True\n"
+    },
+    {
+      "instance_id": "pylint-dev__pylint-7277",
+      "repo": "pylint-dev/pylint",
+      "version": "2.15",
+      "difficulty": "<15 min fix",
+      "stratum": "E",
+      "usable": false,
+      "stage": "install",
+      "seconds": 1,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-pylint-dev__pylint-7277.log",
+      "tail": "n -m pip install -e .' test='pytest -rA'\n[install] FAILED\nObtaining file:///mnt/data/ctx-swebench/repos/pylint-dev__pylint\n  Installing build dependencies: started\n  Installing build dependencies: finished with status 'done'\n  Checking if build backend supports build_editable: started\n  Checking if build backend supports build_editable: finished with status 'done'\nERROR: Project file:///mnt/data/ctx-swebench/repos/pylint-dev__pylint uses a build backend that is missing the 'build_editable' hook, so it cannot be installed in editable mode. Consider using a build backend that supports PEP 660.\n\n"
+    },
+    {
+      "instance_id": "pylint-dev__pylint-7080",
+      "repo": "pylint-dev/pylint",
+      "version": "2.15",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M",
+      "usable": false,
+      "stage": "gold_fails_f2p",
+      "seconds": 4,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-pylint-dev__pylint-7080.log",
+      "tail": "cpython-3.9-linux-x86_64-gnu/lib/python3.9/importlib/__init__.py:127: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\ntests/test_self.py:30: in <module>\n    from py._path.local import LocalPath  # type: ignore[import]\nE   ModuleNotFoundError: No module named 'py._path'; 'py' is not a package\n=========================== short test summary info ============================\nERROR tests/test_self.py\n1 error in 0.05s\nERROR: found no collectors for /mnt/data/ctx-swebench/repos/pylint-dev__pylint/tests/test_self.py::TestRunTC::test_ignore_path_recursive_current_dir\n\n\n"
+    },
+    {
+      "instance_id": "pytest-dev__pytest-5631",
+      "repo": "pytest-dev/pytest",
+      "version": "5.0",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M",
+      "usable": false,
+      "stage": "gold_fails_f2p",
+      "seconds": 8,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-pytest-dev__pytest-5631.log",
+      "tail": "> FAIL\n[VERDICT] pytest-dev__pytest-5631 usable=False\n--- pre_out tail ---\n ERROR: usage: pytest.py [options] [file_or_dir] [file_or_dir] [...]\npytest.py: error: unrecognized arguments: --no-header\n  inifile: /mnt/data/ctx-swebench/repos/pytest-dev__pytest/tox.ini\n  rootdir: /mnt/data/ctx-swebench/repos/pytest-dev__pytest\n\n \n--- post_out tail ---\n ERROR: usage: pytest.py [options] [file_or_dir] [file_or_dir] [...]\npytest.py: error: unrecognized arguments: --no-header\n  inifile: /mnt/data/ctx-swebench/repos/pytest-dev__pytest/tox.ini\n  rootdir: /mnt/data/ctx-swebench/repos/pytest-dev__pytest\n\n\n"
+    },
+    {
+      "instance_id": "pydata__xarray-3151",
+      "repo": "pydata/xarray",
+      "version": "0.12",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M",
+      "usable": true,
+      "stage": "ok",
+      "seconds": 16,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-pydata__xarray-3151.log",
+      "tail": "=== pydata__xarray-3151  repo=pydata/xarray v0.12 difficulty=15 min - 1 hour F2P=1 P2P=66 ===\n[spec] python=3.10 install='python -m pip install -e .' test='pytest -rA'\n[venv] pydata__xarray__0.12__py3.10  (base /mnt/data/ctx-swebench/tooling/pythons/cpython-3.10-linux-x86_64-gnu/bin/python3.10)\n[install] OK\n[pre-fix ] FAIL_TO_PASS -> FAIL (expected)\n[post-fix] FAIL_TO_PASS -> PASS (expected)\n[post-fix] PASS_TO_PASS(<=40) -> PASS\n[VERDICT] pydata__xarray-3151 usable=True\n"
+    },
+    {
+      "instance_id": "mwaskom__seaborn-3187",
+      "repo": "mwaskom/seaborn",
+      "version": "0.12",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M",
+      "usable": true,
+      "stage": "ok",
+      "seconds": 25,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-mwaskom__seaborn-3187.log",
+      "tail": "=== mwaskom__seaborn-3187  repo=mwaskom/seaborn v0.12 difficulty=15 min - 1 hour F2P=2 P2P=248 ===\n[spec] python=3.9 install='python -m pip install -e .[dev]' test='pytest --no-header -rA'\n[clone] mwaskom/seaborn -> /mnt/data/ctx-swebench/repos/mwaskom__seaborn\n[venv] mwaskom__seaborn__0.12__py3.9  (base /mnt/data/ctx-swebench/tooling/pythons/cpython-3.9-linux-x86_64-gnu/bin/python3.9)\n[install] OK\n[pre-fix ] FAIL_TO_PASS -> FAIL (expected)\n[post-fix] FAIL_TO_PASS -> PASS (expected)\n[post-fix] PASS_TO_PASS(<=40) -> PASS\n[VERDICT] mwaskom__seaborn-3187 usable=True\n"
+    },
+    {
+      "instance_id": "psf__requests-6028",
+      "repo": "psf/requests",
+      "version": "2.27",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M",
+      "usable": true,
+      "stage": "ok",
+      "seconds": 2,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-psf__requests-6028.log",
+      "tail": "=== psf__requests-6028  repo=psf/requests v2.27 difficulty=15 min - 1 hour F2P=2 P2P=185 ===\n[spec] python=3.9 install='python -m pip install .' test='pytest -rA'\n[install] OK\n[pre-fix ] FAIL_TO_PASS -> FAIL (expected)\n[post-fix] FAIL_TO_PASS -> PASS (expected)\n[post-fix] PASS_TO_PASS(<=40) -> PASS\n[VERDICT] psf__requests-6028 usable=True\n"
+    },
+    {
+      "instance_id": "pylint-dev__pylint-4604",
+      "repo": "pylint-dev/pylint",
+      "version": "2.9",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M",
+      "usable": true,
+      "stage": "ok",
+      "seconds": 9,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-pylint-dev__pylint-4604.log",
+      "tail": "=== pylint-dev__pylint-4604  repo=pylint-dev/pylint v2.9 difficulty=15 min - 1 hour F2P=21 P2P=0 ===\n[spec] python=3.9 install='python -m pip install -e .' test='pytest -rA'\n[venv] pylint-dev__pylint__2.9__py3.9  (base /mnt/data/ctx-swebench/tooling/pythons/cpython-3.9-linux-x86_64-gnu/bin/python3.9)\n[install] OK\n[pre-fix ] FAIL_TO_PASS -> FAIL (expected)\n[post-fix] FAIL_TO_PASS -> PASS (expected)\n[post-fix] PASS_TO_PASS(<=40) -> PASS\n[VERDICT] pylint-dev__pylint-4604 usable=True\n"
+    },
+    {
+      "instance_id": "pylint-dev__pylint-8898",
+      "repo": "pylint-dev/pylint",
+      "version": "3.0",
+      "difficulty": "1-4 hours",
+      "stratum": "H",
+      "usable": false,
+      "stage": "gold_fails_p2p",
+      "seconds": 9,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-pylint-dev__pylint-8898.log",
+      "tail": "rminated subpattern\\n').err\n\ntests/config/test_config.py:171: AssertionError\n=========================== short test summary info ============================\nFAILED tests/config/test_config.py::test_csv_regex_error - AssertionError: as...\n1 failed in 0.06s\n \n--- post_out tail ---\n .                                                                        [100%]\n==================================== PASSES ====================================\n=========================== short test summary info ============================\nPASSED tests/config/test_config.py::test_csv_regex_error\n1 passed in 0.03s\n\n"
+    },
+    {
+      "instance_id": "pytest-dev__pytest-10356",
+      "repo": "pytest-dev/pytest",
+      "version": "7.2",
+      "difficulty": "1-4 hours",
+      "stratum": "H",
+      "usable": false,
+      "stage": "gold_fails_p2p",
+      "seconds": 8,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-pytest-dev__pytest-10356.log",
+      "tail": ", kwargs={})]\nE         Use -v to get more diff\n\ntesting/test_mark.py:1133: AssertionError\n=========================== short test summary info ============================\nFAILED testing/test_mark.py::test_mark_mro - AssertionError: assert <generato...\n1 failed in 0.06s\n \n--- post_out tail ---\n .                                                                        [100%]\n==================================== PASSES ====================================\n=========================== short test summary info ============================\nPASSED testing/test_mark.py::test_mark_mro\n1 passed in 0.02s\n\n"
+    },
+    {
+      "instance_id": "pydata__xarray-6992",
+      "repo": "pydata/xarray",
+      "version": "2022.06",
+      "difficulty": ">4 hours",
+      "stratum": "H",
+      "usable": true,
+      "stage": "ok",
+      "seconds": 15,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-pydata__xarray-6992.log",
+      "tail": "=== pydata__xarray-6992  repo=pydata/xarray v2022.06 difficulty=>4 hours F2P=12 P2P=945 ===\n[spec] python=3.10 install='python -m pip install -e .' test='pytest -rA'\n[venv] pydata__xarray__2022.06__py3.10  (base /mnt/data/ctx-swebench/tooling/pythons/cpython-3.10-linux-x86_64-gnu/bin/python3.10)\n[install] OK\n[pre-fix ] FAIL_TO_PASS -> FAIL (expected)\n[post-fix] FAIL_TO_PASS -> PASS (expected)\n[post-fix] PASS_TO_PASS(<=40) -> PASS\n[VERDICT] pydata__xarray-6992 usable=True\n"
+    },
+    {
+      "instance_id": "pylint-dev__pylint-4551",
+      "repo": "pylint-dev/pylint",
+      "version": "2.9",
+      "difficulty": "1-4 hours",
+      "stratum": "H",
+      "usable": false,
+      "stage": "gold_fails_f2p",
+      "seconds": 3,
+      "log": "/mnt/data/ctx-swebench/runs/verify-logs/verify-pylint-dev__pylint-4551.log",
+      "tail": "::test_infer_node_1\n\nERROR: found no collectors for /mnt/data/ctx-swebench/repos/pylint-dev__pylint/tests/unittest_pyreverse_writer.py::test_infer_node_2\n\n \n--- post_out tail ---\n \nno tests ran in 0.02s\nERROR: not found: /mnt/data/ctx-swebench/repos/pylint-dev__pylint/tests/unittest_pyreverse_writer.py::test_get_annotation_annassign[a:\n(no match in any of [<Module unittest_pyreverse_writer.py>])\n\nERROR: not found: /mnt/data/ctx-swebench/repos/pylint-dev__pylint/tests/unittest_pyreverse_writer.py::test_get_annotation_assignattr[def\n(no match in any of [<Module unittest_pyreverse_writer.py>])\n\n\n"
+    }
+  ]
+}

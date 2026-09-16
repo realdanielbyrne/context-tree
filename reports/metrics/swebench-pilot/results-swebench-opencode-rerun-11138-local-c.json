@@ -1,0 +1,137 @@
+{
+  "manifest": {
+    "run_id": "swebench-opencode-rerun-11138-local-c",
+    "date": "2026-09-15T21:04:31.490Z",
+    "commit": "ab501c2829a7059898d21ad614f86d8f4c32bc8f",
+    "vehicle": "opencode",
+    "opencode_version": "1.18.31",
+    "model": "local/unsloth/Qwen3.8-27B-GGUF",
+    "models_used": [
+      "local/unsloth/Qwen3.8-27B-GGUF"
+    ],
+    "endpoint_policy": "pinned: local/unsloth/Qwen3.8-27B-GGUF",
+    "endpoints_used": {
+      "local": 1,
+      "openrouter": 0
+    },
+    "invocation": "opencode run --pure -m <model> --format json --dir <ws> --auto <prompt> < /dev/null; per-run XDG dirs; export with same XDG env",
+    "config": "experiments/context-dedup/opencode.json (no credential in file)",
+    "model_configs": {
+      "local/unsloth/Qwen3.8-27B-GGUF": {
+        "configured": true,
+        "limit_output": 128320,
+        "limit_context": 262144,
+        "options": null
+      }
+    },
+    "host_defaults": "thinking ON on every endpoint (host default), no tool-output clip, no cap, no eviction, no middleware",
+    "run_timeout_s": 7200,
+    "instances": [
+      "django__django-11138"
+    ],
+    "selection_file": "selection-v2.json",
+    "grading": "ab-tasks/swebench.mjs gradeDetail after opencode exits: restore test-patch files, apply test patch, run the instance runner over F2P + calibrated P2P; void grades and errored runs excluded from rates",
+    "prices_per_million_usd": {
+      "local/unsloth/Qwen3.8-27B-GGUF": null
+    }
+  },
+  "cells": [
+    {
+      "instance": "django__django-11138",
+      "repeat": 0,
+      "repo": "django/django",
+      "difficulty": "1-4 hours",
+      "stratum": "H",
+      "vehicle": "opencode",
+      "opencode_version": "1.18.31",
+      "model": "local/unsloth/Qwen3.8-27B-GGUF",
+      "model_config": {
+        "configured": true,
+        "limit_output": 128320,
+        "limit_context": 262144,
+        "options": null
+      },
+      "endpoint": "local",
+      "endpoint_selection": {
+        "request": "local/unsloth/Qwen3.8-27B-GGUF",
+        "exclusive": false,
+        "reason": "pinned by CT_OPENCODE_MODEL",
+        "signals": null,
+        "decided_at": "2026-09-15T21:02:32.266Z"
+      },
+      "pass": false,
+      "f2p_pass": false,
+      "p2p_pass": true,
+      "grade_stage": "ok",
+      "grade_valid": true,
+      "f2p_failures": [
+        "test_query_convert_timezones (timezones.tests.NewDatabaseTests) [FAILED]"
+      ],
+      "p2p_failures": [],
+      "p2p_graded_n": 73,
+      "p2p_dataset_n": 73,
+      "run_valid": false,
+      "scored": false,
+      "exit_code": null,
+      "signal": "SIGTERM",
+      "timed_out": false,
+      "wall_seconds": 117,
+      "exit_outcome": "killed_externally",
+      "killed_externally": true,
+      "other_opencode_runs_at_start": 1,
+      "other_opencode_runs_peak": 2,
+      "ended_at": "2026-09-15T21:04:29.475Z",
+      "last_event_type": "step_start",
+      "error": "killed externally by SIGTERM (not this runner; mid-step: last event step_start)",
+      "steps": 10,
+      "tool_calls": 12,
+      "tools_by_name": {
+        "bash": 2,
+        "glob": 1,
+        "read": 7,
+        "grep": 2
+      },
+      "tool_errors": 0,
+      "files_edited": [],
+      "files_read": [
+        "/mnt/data/ctx-swebench/opencode-runs/rerun-11138-local-c/django__django-11138__r0/workspace/django/db/backends/mysql/operations.py",
+        "/mnt/data/ctx-swebench/opencode-runs/rerun-11138-local-c/django__django-11138__r0/workspace/django/db/backends/oracle/operations.py",
+        "/mnt/data/ctx-swebench/opencode-runs/rerun-11138-local-c/django__django-11138__r0/workspace/django/db/backends/sqlite3/operations.py",
+        "/mnt/data/ctx-swebench/opencode-runs/rerun-11138-local-c/django__django-11138__r0/workspace/django/db/backends/base/operations.py",
+        "/mnt/data/ctx-swebench/opencode-runs/rerun-11138-local-c/django__django-11138__r0/workspace/django/db/models/functions/datetime.py",
+        "/mnt/data/ctx-swebench/opencode-runs/rerun-11138-local-c/django__django-11138__r0/workspace/django/db/backends/base/base.py",
+        "/mnt/data/ctx-swebench/opencode-runs/rerun-11138-local-c/django__django-11138__r0/workspace/django/db/backends/sqlite3/base.py"
+      ],
+      "reads": 7,
+      "diff_empty": true,
+      "agent_diff": "",
+      "tokens": {
+        "input": 35725,
+        "output": 3605,
+        "reasoning": 0,
+        "cache_read": 240238,
+        "cache_write": 0
+      },
+      "peak_prompt_tokens": 38342,
+      "first_step_prompt_tokens": 10414,
+      "cost_reported": 0,
+      "cost_list_price": null,
+      "events": 34,
+      "events_unparseable": 0,
+      "session_id": "ses_f591f1503ffeyJFzEucrPTcgYk",
+      "export_ok": true,
+      "export_part_types": {
+        "text": 2,
+        "step-start": 11,
+        "reasoning": 11,
+        "tool": 12,
+        "step-finish": 10
+      },
+      "export_bytes": 267268,
+      "events_complete": true,
+      "events_missing_steps": 0,
+      "events_missing_tool_calls": 0,
+      "run_dir": "/mnt/data/ctx-swebench/opencode-runs/rerun-11138-local-c/django__django-11138__r0"
+    }
+  ]
+}

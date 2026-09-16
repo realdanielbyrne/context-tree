@@ -60,7 +60,7 @@ async function runArm(config) {
     if (fired) track.evictions++;
   };
   let err = null, r = null;
-  try { r = await runAgent({ system: SYSTEM, task: TASK, ws, maxTurns: 40, think: false, reducer, hook, allowedTools: ['read_file', 'write_file'] }); }
+  try { r = await runAgent({ system: SYSTEM, task: TASK, ws, maxTurns: 40, reducer, hook, allowedTools: ['read_file', 'write_file'] }); }
   catch (e) { err = String(e.message || e).slice(0, 160); }
   let answer = ''; try { answer = execSync('cat answer.txt', { cwd: ws, timeout: 5000 }).toString().trim(); } catch { answer = '(none)'; }
   const success = /\b139\b/.test(answer);

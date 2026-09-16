@@ -29,7 +29,9 @@ const FILES = {
   probe: 'results-swebench-opencode-probe-2931-b.json',
   tranche: 'results-swebench-opencode-tranche.json',
   rerunKilled: 'results-swebench-opencode-rerun-11138-local.json',
-  rerun: 'results-swebench-opencode-rerun-11138-local-b.json',
+  rerunKilledB: 'results-swebench-opencode-rerun-11138-local-b.json',
+  rerunKilledC: 'results-swebench-opencode-rerun-11138-local-c.json',
+  rerun: 'results-swebench-opencode-rerun-11138-local-d.json',
 };
 const load = (k) => {
   const p = join(OUT, FILES[k]);
@@ -170,10 +172,21 @@ const rrThinkingText = rrThinkingOff
   : `on: no thinking option was set, and the transcript contains ${k(rrReasoningParts)} reasoning parts (${k(rrReasoningChars)} characters of reasoning text)`;
 const rrThinkingDiffers = rrThinkingOff;
 const rrDiffCount = rrThinkingDiffers ? 3 : 2;
-const rk = need(D.rerunKilled, 'cells');
-if (rk.length !== 1) throw new Error('killed rerun: expected one run');
-const rrKilled = rk[0];
-if (rrKilled.scored !== false) throw new Error('first rerun attempt was expected to be an unscored (killed) run');
+// Killed attempts: cause CONFIRMED by the other session (a host-wide SIGTERM to every process
+// named opencode between its own test runs). Invalid, not failures.
+const KILL_CAUSE = 'another session on the host ran a cleanup that sent SIGTERM to every process named `opencode` between its own test runs (confirmed by that session)';
+const killedAttempts = [
+  ['probe', D.probeKilled, 'confirmed'],
+  ['rerun a', D.rerunKilled, 'confirmed'],
+  ['rerun b', D.rerunKilledB, 'confirmed'],
+  ['rerun c', D.rerunKilledC, 'confirmed'],
+].map(([label, doc, cause]) => {
+  const cs = need(doc, 'cells', `${label}.`);
+  if (cs.length !== 1) throw new Error(`${label}: expected one run`);
+  if (cs[0].scored !== false || cs[0].signal !== 'SIGTERM') throw new Error(`${label}: expected an unscored SIGTERM-killed run`);
+  return { label, c: cs[0], cause };
+});
+const rrKilledAttempts = killedAttempts.filter((a) => a.label.startsWith('rerun'));
 // Current config (for the forward-looking caveat only).
 const orLimit = cfgLimit('openrouter', 'qwen/qwen3.8-27b');
 const orRouting = need(need(OPENCODE_CONFIG.provider.openrouter.models['qwen/qwen3.8-27b'], 'options', 'openrouter model.'), 'provider', 'openrouter model options.');
@@ -310,7 +323,7 @@ const sections = [
       TABLE(['Arm (3 runs each)', 'Edited', 'Ran tests', 'Stopped on its own', 'F2P fixed', 'P2P kept', 'Passed', 'Median steps', 'Median peak prompt'],
         ARMS.map((a) => [a.label, `${a.edited}/3`, `${a.ranTests}/3`, `${a.ownStop}/3`, `${a.f2p}/3`, `${a.p2p}/3`, `${a.pass}/3`, k(a.turns), k(a.peak)])),
       P(`Replaying the local 2,000-character runs against a fresh copy of the repository reproduces what the agent was shown: ${replayClipped.join(', ')} of 50 tool results clipped, and runs of ${replayStreaks.join(', ')} consecutive identical visible results. The agent kept widening \`grep -A N\` on one function; past the clip every answer was the same. The same limit produced no edits on OpenRouter, so the contended local server and the quantized local weights do not explain it. This is a finding about the homegrown loop, not about SWE-bench or the model.`),
-      P(`**2. opencode integration check (development instance).** A first check run was ended by \`${need(killed, 'signal')}\` after ${k(killed.wall_seconds)} seconds, mid-step (${k(killed.steps)} steps, ${k(killed.tool_calls)} tool calls, no edit). It was not this runner's timeout, which uses SIGKILL after ${k(tm.run_timeout_s)} seconds; the host log shows no out-of-memory kill; another opencode session was running on the host at the time. The harness marked the run invalid and did not score it. Its export still imported into context-tree with no failures, mapping every tool part. The check was repeated.`),
+      P(`**2. opencode integration check (development instance).** A first check run was ended by \`${need(killed, 'signal')}\` after ${k(killed.wall_seconds)} seconds, mid-step (${k(killed.steps)} steps, ${k(killed.tool_calls)} tool calls, no edit). Cause: ${KILL_CAUSE}. The harness marked the run invalid and did not score it. Its export still imported into context-tree with no failures, mapping every tool part. The check was repeated.`),
       P(`Export and import on the repeat: the session export is ${k(need(probe, 'export_bytes'))} bytes; imported into context-tree it produced ${k(need(need(probe, 'context_tree_import'), 'events'))} trace events and ${k(probe.context_tree_import.file_nodes)} file nodes with ${k(probe.context_tree_import.failures)} failures and ${probe.context_tree_import.unmapped_tools.length} unmapped tools, so tool calls and results are mapped. Event stream complete against the export: ${yn(need(probe, 'events_complete'))}.`),
       P(`The repeat run made ${k(probe.tool_calls)} tool calls (${Object.entries(probe.tools_by_name).map(([t, n]) => `${t} ${n}`).join(', ') || 'none'}), edited ${probe.files_edited.length} file(s), and graded ${probe.grade_valid ? 'validly' : 'VOID'}: F2P ${yn(probe.f2p_pass)}, P2P ${yn(probe.p2p_pass)}. Peak prompt ${k(probe.peak_prompt_tokens)} tokens; first-step prompt ${k(probe.first_step_prompt_tokens)}.`),
       P('**3. Verification and selection are properties of the substrate.**'),
@@ -335,7 +348,10 @@ const sections = [
       notRun.length ? P(`Accepted but not run: ${notRun.join(', ')}.`) : P('Every accepted problem was run.'),
       P('**5. Re-run of the invalidated problem (separate; not pooled).**'),
       P(`${rr.instance} was run once more with the cap out of the way. It is **not comparable** to the other runs and is not included in any rate above, because it differs on ${rrDiffCount} variables at once: (1) endpoint and weights — the local quantized GGUF (\`${rr.model}\`) instead of the hosted OpenRouter model; (2) per-response limit — ${k(need(rrLimit, 'limit_output'))} tokens instead of ${k(capValue)}${rrThinkingDiffers ? '; (3) thinking — off instead of on' : ''}. Thinking in the re-run was ${rrThinkingText}, as in the scored runs. It answers only whether this problem is solvable once the cap is not in the way.`),
-      P(`A first re-run attempt was ended by an external \`${need(rrKilled, 'signal')}\` after ${k(rrKilled.wall_seconds)} seconds (${k(rrKilled.steps)} steps, ${k(rrKilled.tool_calls)} tool calls, no edit). It was not this runner's timeout, which uses SIGKILL; the system log shows no out-of-memory kill; ${k(need(rrKilled, 'other_opencode_runs_peak'))} other opencode run(s) were live on the host during it. The sender of the signal could not be identified. That attempt is void and was repeated; the table below is the repeat.`),
+      P(`${rrKilledAttempts.length} earlier re-run attempts were killed before finishing, and are invalid, not failures: ${rrKilledAttempts.map(({ label, c }) => `${label} after ${k(c.wall_seconds)} s (${k(c.steps)} steps, ${k(c.tool_calls)} tool calls, no edit)`).join('; ')}. Cause: ${KILL_CAUSE}. The table below is attempt ${String.fromCharCode(97 + rrKilledAttempts.length)}.`),
+      TABLE(['Killed run', 'Signal', 'Ended (UTC)', 'Wall s', 'Steps', 'Other opencode runs live at start / peak', 'Cause'],
+        killedAttempts.map(({ label, c, cause }) => [label, c.signal, c.ended_at ?? 'not recorded (runner predates this field)', k(c.wall_seconds), k(c.steps), c.other_opencode_runs_at_start == null ? 'not recorded' : `${k(c.other_opencode_runs_at_start)} / ${k(c.other_opencode_runs_peak)}`, cause])),
+      P('Each kill came within seconds of that session launching its next opencode step, which is what identified the cause before it was confirmed. From the final attempt on, the "other opencode runs" counts include a decoy process placed on the host to identify the sender of any further kill; it is not a model client.'),
       TABLE(['Quantity', 'Value'], [
         ['Valid run', yn(rr.scored)],
         ['Other opencode runs live at start / peak', `${k(need(rr, 'other_opencode_runs_at_start', 'rerun.'))} / ${k(need(rr, 'other_opencode_runs_peak', 'rerun.'))}`],
@@ -403,7 +419,8 @@ const sections = [
       'The local host does not report reasoning tokens: its usage shows `reasoning_tokens: 0` while its responses carry reasoning text, which it counts as output. Reasoning-token totals are therefore not comparable between the local endpoint and OpenRouter (which reports them separately). Whether a run reasoned is measured from its transcript\'s reasoning parts.',
       `The re-run of ${rr.instance} changed ${rrThinkingDiffers ? 'endpoint and weights, per-response limit, and thinking' : 'endpoint and weights, and per-response limit'} at once; its outcome cannot be attributed to any one of them and is not pooled with the other runs. It shared the local host with other sessions (up to 4 concurrent connections are served).`,
       `Process note: the finalize step (re-export, event check, context-tree import) was executed once more by accident at 15:54 when another session imported the script to inspect it. It is idempotent: it rebuilds from the untouched worker result files and run directories and clears each context-tree store before importing, so only timestamps changed; the tranche file was re-checked afterwards (${tCells.length} cells, ${tCells.filter((c) => c.events_complete === true).length} complete event streams, ${tCells.filter((c) => c.context_tree_import?.ok === true).length} clean imports). The script now has a main guard.`,
-      'Two opencode runs in this pilot (the first development-instance check and the first re-run attempt) were killed by an external SIGTERM while another session\'s opencode run was live; the sender was not identified. Both were voided and repeated, never scored.',
+      `${killedAttempts.length} opencode runs in this pilot (the first development-instance check and ${rrKilledAttempts.length} re-run attempts) were killed by an external SIGTERM; for all ${killedAttempts.filter((a) => a.cause === 'confirmed').length} the cause is confirmed: ${KILL_CAUSE}. The last of these came after that session believed it had stopped: a background batch it thought was gone was still running and executed its kill loops. All were voided and repeated, never scored.`,
+      'opencode makes a model call during start-up (session titling) before a session exists. If all 4 connection slots on the local host are in use, a run hangs silently at start-up with no error; local-slot exhaustion is invisible through opencode.',
       'opencode also calls a separate small model (`openrouter/google/gemini-3.8-flash`) to title each session; it does not act in the workspace, but it is an extra model call in every run.',
       `The vehicle is opencode ${version}, which is a deployment host, but with isolated state, \`--auto\` permissions, and a scratch copy of the repository with the project interpreter placed first on PATH.`,
       'Grading uses calibrated P2P: tests that do not pass with the gold patch in this non-Docker environment are dropped, so a regression in one of them would go undetected.',

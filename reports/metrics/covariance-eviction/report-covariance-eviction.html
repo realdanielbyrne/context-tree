@@ -197,9 +197,11 @@ blockquote{background:#1e2530}figure{background:#1d1d25}
 
 <hr/>
 
-<h2>Results — question 1: is the shipped recurrence term the tested one?</h2>
+<h2>Results</h2>
 
-<h3>The original result replicates, and survives the clock correction</h3>
+<h3>Question 1: is the shipped recurrence term the tested one?</h3>
+
+<h4>The original result replicates, and survives the clock correction</h4>
 
 <p>Re-running the published experiment on its own two transcripts, with its own signals, its</p>
 <p>own fingerprints, its own micro-averaged metric and its own budget, changing <strong>only</strong> the</p>
@@ -222,7 +224,7 @@ blockquote{background:#1e2530}figure{background:#1d1d25}
 <p>an artefact of the inflated clock. It <em>shrinks</em> on the second transcript — roughly halving —</p>
 <p>which is worth carrying as a caveat rather than treating as a refutation.</p>
 
-<h3>The term is not saturated, and its real form is not what an earlier analysis measured</h3>
+<h4>The term is not saturated, and its real form is not what an earlier analysis measured</h4>
 
 <p>A term that takes the same value for every candidate cannot be tuned, only removed. So: how</p>
 <p>much does it vary?</p>
@@ -246,7 +248,7 @@ blockquote{background:#1e2530}figure{background:#1d1d25}
 <p>that edited nothing is a live ranking signal that would be <strong>absent</strong> if recurrence were</p>
 <p>zero.</p>
 
-<h3>No ratio beats the shipped one</h3>
+<h4>No ratio beats the shipped one</h4>
 
 <p>Sweeping the edit-to-recurrence ratio the shipped code cannot express. The second column is</p>
 <p>the share of decisions on which a given ratio produces <em>literally the same ordering</em> as the</p>
@@ -266,11 +268,9 @@ blockquote{background:#1e2530}figure{background:#1d1d25}
 <p>below 1 is <em>worse</em>. <strong>The hardcoded 2:1 constant is vindicated as a default.</strong> It remains</p>
 <p>underived, but it is no longer unmeasured.</p>
 
-<hr/>
+<h3>Question 2: does temporal covariance predict dormant returns?</h3>
 
-<h2>Results — question 2: does temporal covariance predict dormant returns?</h2>
-
-<h3>The corpus cannot answer, and we can say exactly why</h3>
+<h4>The corpus cannot answer, and we can say exactly why</h4>
 
 <p>The statistic needs two files to have been active together. They rarely are:</p>
 
@@ -315,7 +315,7 @@ blockquote{background:#1e2530}figure{background:#1d1d25}
 <p>3.898, 2.248, 1 against</p>
 <p>3.114 for the committed transcripts. NO corpus and NO dilation setting available on this machine clears the support gate. H2 is NOT evaluable here, and the reason is structural rather than a matter of data volume: 19.9% of referencing turns name two or more files, so same-turn co-reference of two specific files is rare by construction.</p>
 
-<h3>What that means for the numbers we did compute</h3>
+<h4>What that means for the numbers we did compute</h4>
 
 <p>Because the gate is not met, the contrasts below are <strong>not a null result about temporal covariance</strong>. They are mostly a correlation computed from an empty table. The results file records this on the payload itself — the key is <code>h2_UNINTERPRETABLE_INSUFFICIENT_SUPPORT</code> and every row carries <code>interpretable: false</code> — so a later reader cannot quote them as a finding.</p>
 
@@ -342,7 +342,7 @@ blockquote{background:#1e2530}figure{background:#1d1d25}
 <tr><td><code>session</code></td><td>204</td><td>0.7745</td><td>0.7742</td><td>-0.0004 [-0.0009, +0.0001]</td></tr>
 </tbody></table>
 
-<h3>It is, at least, a different signal</h3>
+<h4>It is, at least, a different signal</h4>
 
 <p>Whatever else is true, temporal covariance is not a rename of something already present. The</p>
 <p>correlation between the ordering it produces and the ordering positional recency produces is</p>
@@ -399,7 +399,9 @@ blockquote{background:#1e2530}figure{background:#1d1d25}
 
 <hr/>
 
-<h2>What survives</h2>
+<h2>Conclusions</h2>
+
+<h3>What survives</h3>
 
 <p><strong>The recurrence result is sound and the clock fix does not break it.</strong> It replicates on its</p>
 <p>own corpus under its own estimand, survives the corrected clock, and is concentrated at the</p>
@@ -436,6 +438,37 @@ blockquote{background:#1e2530}figure{background:#1d1d25}
 <p>transcripts in general, not merely on this corpus: agents name files one at a time, so two</p>
 <p>specific files are rarely active together, and no volume of additional transcripts changes</p>
 <p>that. Any future pairwise signal should be checked against this property before it is built.</p>
+
+<h3>What this licenses, and what it does not</h3>
+
+<p><strong>Established.</strong> The recurrence advantage replicates on its original two transcripts under</p>
+<p>their original estimand and survives the corrected turn clock at M=64</p>
+<p>(+0.1675 and +0.0582). No</p>
+<p>edit-to-recurrence ratio in the informative range beats the shipped 2:1. The shipped</p>
+<p>priority term is not saturated (30.0% of decisions near-flat</p>
+<p>against a 50% gate).</p>
+
+<p><strong>Licensed for the design.</strong> Keep the shipped priority term and its 2:1 constant as they are;</p>
+<p>this work gives no reason to re-weight or re-split them. Treat the</p>
+<p>0.835 rank correlation between priority and reference-recency as an open</p>
+<p>redundancy question to be settled offline before any weight in the four-signal scorer is</p>
+<p>tuned. Require every future recall figure to state whether it is micro- or macro-averaged.</p>
+
+<p><strong>Not licensed.</strong> Nothing here licenses adding temporal covariance to the scorer, and nothing</p>
+<p>here licenses removing it from consideration. The two must be kept apart:</p>
+
+<table><thead>
+<tr><th>claim</th><th>status</th></tr></thead><tbody>
+<tr><td>the shipped recurrence term helps, at the budgets the original quoted</td><td><strong>tested, supported</strong></td></tr>
+<tr><td>some other edit-to-recurrence ratio is better than 2:1</td><td><strong>tested and rejected</strong> (no ratio clears +0.03)</td></tr>
+<tr><td>the shipped priority term is saturated</td><td><strong>tested and rejected</strong> (gate not met)</td></tr>
+<tr><td>priority is reference-recency counted twice</td><td><strong>untested</strong> — a rank correlation raises it; no ablation has been run</td></tr>
+<tr><td>file-keyed temporal covariance predicts dormant returns</td><td><strong>untested</strong> — support peaks at 49.0% against a 55.0% gate, so the contrasts are uninterpretable, not null</td></tr>
+<tr><td>covariance keyed on anything other than file paths</td><td><strong>not measured in this report</strong></td></tr>
+</tbody></table>
+
+<p>The recurrence result is also offline and single-corpus: it licenses a default, not a claim</p>
+<p>that the term improves task success for a live agent.</p>
 
 <hr/>
 

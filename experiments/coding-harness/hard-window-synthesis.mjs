@@ -65,7 +65,7 @@ async function main() {
     if (!fitsWindow) { err = `context ${ctxTok} tok exceeds window ${WINDOW} — cannot send`; }
     else {
       try {
-        const r = await generate({ system: SYSTEM, user: `Documents:\n"""\n${ctx}\n"""\n\n${QUESTION}`, maxTokens: 24, temperature: 0, think: false });
+        const r = await generate({ system: SYSTEM, user: `Documents:\n"""\n${ctx}\n"""\n\n${QUESTION}`, temperature: 0 });
         answer = (r.grade_text || '').slice(0, 40); correct = new RegExp(`\\b${TOTAL}\\b`).test(r.grade_text || '');
       } catch (e) { err = String(e.message || e).slice(0, 140); }
     }

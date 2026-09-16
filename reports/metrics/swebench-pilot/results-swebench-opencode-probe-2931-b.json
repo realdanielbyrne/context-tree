@@ -1,0 +1,126 @@
+{
+  "manifest": {
+    "run_id": "swebench-opencode-probe-2931-b",
+    "date": "2026-09-15T18:02:37.969Z",
+    "commit": "7410791ef014fa39928486789ea9d9100c1e697e",
+    "vehicle": "opencode",
+    "opencode_version": "1.18.31",
+    "model": "openrouter/qwen/qwen3.8-27b",
+    "invocation": "opencode run --pure -m <model> --format json --dir <ws> --auto <prompt> < /dev/null; per-run XDG dirs; export with same XDG env",
+    "config": "experiments/context-dedup/opencode.json (no credential in file)",
+    "host_defaults": "thinking ON (host default), no tool-output clip, no cap, no eviction, no middleware",
+    "run_timeout_s": 3600,
+    "instances": [
+      "psf__requests-2931"
+    ],
+    "selection_file": "selection-v2.json",
+    "grading": "ab-tasks/swebench.mjs gradeDetail after opencode exits: restore test-patch files, apply test patch, run the instance runner over F2P + calibrated P2P; void grades and errored runs excluded from rates",
+    "prices_per_million_usd": {
+      "input": 0.214,
+      "output": 2.55
+    },
+    "merged_from": [
+      "results-swebench-opencode-probe-2931-b.json"
+    ],
+    "finalized_at": "2026-09-15T18:32:49.399Z",
+    "finalize_note": "exports regenerated to file from each run's XDG session store; event streams checked against exports; exports imported into context-tree"
+  },
+  "cells": [
+    {
+      "instance": "psf__requests-2931",
+      "repeat": 0,
+      "repo": "psf/requests",
+      "difficulty": "15 min - 1 hour",
+      "stratum": "M",
+      "vehicle": "opencode",
+      "opencode_version": "1.18.31",
+      "model": "openrouter/qwen/qwen3.8-27b",
+      "pass": true,
+      "f2p_pass": true,
+      "p2p_pass": true,
+      "grade_stage": "ok",
+      "grade_valid": true,
+      "f2p_failures": [],
+      "p2p_failures": [],
+      "p2p_graded_n": 84,
+      "p2p_dataset_n": 84,
+      "run_valid": true,
+      "scored": true,
+      "exit_code": 0,
+      "signal": null,
+      "timed_out": false,
+      "wall_seconds": 1112,
+      "killed_externally": false,
+      "other_opencode_runs_at_start": 0,
+      "other_opencode_runs_peak": 1,
+      "ended_at": "2026-09-15T18:02:36.030Z",
+      "last_event_type": "step_finish",
+      "error": null,
+      "steps": 43,
+      "tool_calls": 50,
+      "tools_by_name": {
+        "bash": 19,
+        "grep": 6,
+        "read": 20,
+        "edit": 5
+      },
+      "tool_errors": 0,
+      "files_edited": [
+        "/mnt/data/ctx-swebench/opencode-runs/probe-2931-b/psf__requests-2931__r0/workspace/requests/models.py"
+      ],
+      "files_read": [
+        "/mnt/data/ctx-swebench/opencode-runs/probe-2931-b/psf__requests-2931__r0/workspace/requests/models.py",
+        "/mnt/data/ctx-swebench/opencode-runs/probe-2931-b/psf__requests-2931__r0/workspace/requests/utils.py",
+        "/mnt/data/ctx-swebench/opencode-runs/probe-2931-b/psf__requests-2931__r0/workspace/HISTORY.rst",
+        "/mnt/data/ctx-swebench/opencode-runs/probe-2931-b/psf__requests-2931__r0/workspace/test_requests.py",
+        "/mnt/data/ctx-swebench/opencode-runs/probe-2931-b/psf__requests-2931__r0/workspace/Makefile",
+        "/mnt/data/ctx-swebench/opencode-runs/probe-2931-b/psf__requests-2931__r0/workspace/requirements.txt",
+        "/mnt/data/ctx-swebench/opencode-runs/probe-2931-b/psf__requests-2931__r0/workspace/requests/auth.py"
+      ],
+      "reads": 20,
+      "diff_empty": false,
+      "agent_diff": "diff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/psf__requests-2931/requests/models.py /mnt/data/ctx-swebench/opencode-runs/probe-2931-b/psf__requests-2931__r0/workspace/requests/models.py\n--- /mnt/data/ctx-swebench/wscache/psf__requests-2931/requests/models.py\t2015-12-15 09:29:27.000000000 -0600\n+++ /mnt/data/ctx-swebench/opencode-runs/probe-2931-b/psf__requests-2931__r0/workspace/requests/models.py\t2026-09-15 12:59:38.408047215 -0500\n@@ -81,6 +81,8 @@\n         \"\"\"\n \n         if isinstance(data, (str, bytes)):\n+            if isinstance(data, bytes) and not is_py2:\n+                return data\n             return to_native_string(data)\n         elif hasattr(data, 'read'):\n             return data\n@@ -385,6 +387,9 @@\n             if isinstance(fragment, str):\n                 fragment = fragment.encode('utf-8')\n \n+        if isinstance(params, bytes) and not is_py2:\n+            params = params.decode('utf8')\n+\n         enc_params = self._encode_params(params)\n         if enc_params:\n             if query:\n",
+      "tokens": {
+        "input": 171910,
+        "output": 7893,
+        "reasoning": 38066,
+        "cache_read": 1501792,
+        "cache_write": 0
+      },
+      "peak_prompt_tokens": 72384,
+      "first_step_prompt_tokens": 9619,
+      "cost_reported": 0.379253,
+      "cost_list_price": 0.475368,
+      "events": 163,
+      "events_unparseable": 0,
+      "session_id": "ses_f59d4c96dffetkp1CqacfORJnJ",
+      "export_ok": true,
+      "export_part_types": {
+        "text": 28,
+        "step-start": 43,
+        "reasoning": 43,
+        "tool": 50,
+        "step-finish": 43
+      },
+      "run_dir": "/mnt/data/ctx-swebench/opencode-runs/probe-2931-b/psf__requests-2931__r0",
+      "export_bytes": 430431,
+      "events_complete": true,
+      "events_missing_steps": 0,
+      "events_missing_tool_calls": 0,
+      "context_tree_import": {
+        "ok": true,
+        "events": 128,
+        "skipped": 129,
+        "failures": 0,
+        "nodes": 15,
+        "phases": 10,
+        "file_nodes": 4,
+        "unmapped_tools": []
+      },
+      "finalized_from": "results-swebench-opencode-probe-2931-b.json",
+      "final_step_reason": "stop",
+      "length_stops": 0,
+      "ended_on_output_limit": false
+    }
+  ]
+}

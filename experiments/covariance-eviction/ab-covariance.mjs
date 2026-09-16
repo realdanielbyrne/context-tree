@@ -193,7 +193,7 @@ async function runCell(task, arm, W, repeat) {
   let err = null, r = null;
   const t0 = Date.now();
   try {
-    r = await runAgent({ system: task.system, task: task.task, ws, maxTurns: MAX_TURNS, think: false, hook, allowedTools: task.allowedTools ?? null });
+    r = await runAgent({ system: task.system, task: task.task, ws, maxTurns: MAX_TURNS, hook, allowedTools: task.allowedTools ?? null });
   } catch (e) { err = String(e.message || e).slice(0, 200); }
 
   const grade = gradeContinuous(task, ws);

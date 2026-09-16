@@ -125,8 +125,8 @@ export function windowText(turns, p) {
   const later = turns.slice(p, Math.min(turns.length, p + 2)).map((t) => clip(t.text, 220)).join('\n');
   return `EARLIER:\n${earlier}\n\nLATER:\n${later}`;
 }
-export async function oracleLabel(turns, p, think = false) {
-  const r = await generate({ system: ORACLE_SYS, user: windowText(turns, p), maxTokens: think ? 300 : 8, temperature: 0, think });
+export async function oracleLabel(turns, p, think = true) {
+  const r = await generate({ system: ORACLE_SYS, user: windowText(turns, p), temperature: 0, think });
   const t = (r.grade_text || '').toUpperCase();
   // take the LAST occurrence so a thinking trace that mentions both resolves to the verdict
   const iD = t.lastIndexOf('DIFFERENT'), iS = t.lastIndexOf('SAME');

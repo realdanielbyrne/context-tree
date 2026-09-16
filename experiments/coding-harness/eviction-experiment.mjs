@@ -65,7 +65,7 @@ async function runArm(policy) {
   seedRefs(ws);
   const track = { peak: 0, evictions: 0, tsutilPresentLast: true };
   const hook = policy === 'none' ? (m) => { track.peak = Math.max(track.peak, estTokens(m)); } : makeHook(policy, track);
-  const r = await runAgent({ system: SYSTEM, task: TASK, ws, maxTurns: MAXTURNS, think: false, hook });
+  const r = await runAgent({ system: SYSTEM, task: TASK, ws, maxTurns: MAXTURNS, hook });
   // ground-truth success
   let printed = '';
   try { printed = execSync('python3 report.py', { cwd: ws, timeout: 10000 }).toString().trim(); } catch (e) { printed = 'ERR:' + (e.stderr?.toString() || e.message).slice(0, 100); }
@@ -85,7 +85,7 @@ async function main() {
   const out = {
     manifest: {
       run_id: `eviction-${Date.now()}`, experiment: 'coding-harness / eviction (non-monotonic causal test)',
-      model: MODEL, budget: BUDGET, maxTurns: MAXTURNS, task: 'non-monotonic tsutil→filler→report', thinking: false, n_per_arm: 1,
+      model: MODEL, budget: BUDGET, maxTurns: MAXTURNS, task: 'non-monotonic tsutil→filler→report', thinking: true, n_per_arm: 1,
       eviction_defaults: 'priority = 2·prio + 1·recency + 0.5·refrec, relevance 0 (D-EV2..4)',
       commit: gitSha(), date: nowISO(),
       caveats: ['n=1 per arm, temp 0 — directional; agent path can vary run to run.', 'Budget 5000 (policy test), not the 262K ceiling.', 'Re-reading a dropped file is CORRECT recovery — cost shows as tokens/turns, not always failure.'],

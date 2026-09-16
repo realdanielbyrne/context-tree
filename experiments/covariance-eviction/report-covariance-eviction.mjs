@@ -385,9 +385,11 @@ narrow.
 
 ---
 
-## Results — question 1: is the shipped recurrence term the tested one?
+## Results
 
-### The original result replicates, and survives the clock correction
+### Question 1: is the shipped recurrence term the tested one?
+
+#### The original result replicates, and survives the clock correction
 
 Re-running the published experiment on its own two transcripts, with its own signals, its
 own fingerprints, its own micro-averaged metric and its own budget, changing **only** the
@@ -404,7 +406,7 @@ The advantage is real, is concentrated at the larger budgets the original quoted
 an artefact of the inflated clock. It *shrinks* on the second transcript — roughly halving —
 which is worth carrying as a caveat rather than treating as a refutation.
 
-### The term is not saturated, and its real form is not what an earlier analysis measured
+#### The term is not saturated, and its real form is not what an earlier analysis measured
 
 A term that takes the same value for every candidate cannot be tuned, only removed. So: how
 much does it vary?
@@ -425,7 +427,7 @@ is constant, the term does not switch off: it becomes *constant × decay*, which
 that edited nothing is a live ranking signal that would be **absent** if recurrence were
 zero.
 
-### No ratio beats the shipped one
+#### No ratio beats the shipped one
 
 Sweeping the edit-to-recurrence ratio the shipped code cannot express. The second column is
 the share of decisions on which a given ratio produces *literally the same ordering* as the
@@ -440,11 +442,9 @@ No ratio clears the margin anywhere, and under the identifier-overlap label ever
 below 1 is *worse*. **The hardcoded 2:1 constant is vindicated as a default.** It remains
 underived, but it is no longer unmeasured.
 
----
+### Question 2: does temporal covariance predict dormant returns?
 
-## Results — question 2: does temporal covariance predict dormant returns?
-
-### The corpus cannot answer, and we can say exactly why
+#### The corpus cannot answer, and we can say exactly why
 
 The statistic needs two files to have been active together. They rarely are:
 
@@ -477,7 +477,7 @@ references per distinct file run
 ${survey.corpus_density.local_projects.map((p) => p.refs_per_file).join(', ')} against
 ${FIXPOOL.refs_per_file} for the committed transcripts. ${must(survey.verdict.conclusion, 'verdict')}
 
-### What that means for the numbers we did compute
+#### What that means for the numbers we did compute
 
 ${H2_INTERPRETABLE ? 'The gate is cleared and the contrasts below stand.' : `Because the gate is not met, the contrasts below are **not a null result about temporal covariance**. They are mostly a correlation computed from an empty table. The results file records this on the payload itself — the key is \`${H2KEY}\` and every row carries \`interpretable: false\` — so a later reader cannot quote them as a finding.`}
 
@@ -500,7 +500,7 @@ already has, trained on one transcript and tested on the others — is flat:
 |---|---|---|---|---|
 ${incrRows}
 
-### It is, at least, a different signal
+#### It is, at least, a different signal
 
 Whatever else is true, temporal covariance is not a rename of something already present. The
 correlation between the ordering it produces and the ordering positional recency produces is
@@ -557,7 +557,9 @@ not in fact match the token class it was blamed for.
 
 ---
 
-## What survives
+## Conclusions
+
+### What survives
 
 **The recurrence result is sound and the clock fix does not break it.** It replicates on its
 own corpus under its own estimand, survives the corrected clock, and is concentrated at the
@@ -594,6 +596,36 @@ which it used.
 transcripts in general, not merely on this corpus: agents name files one at a time, so two
 specific files are rarely active together, and no volume of additional transcripts changes
 that. Any future pairwise signal should be checked against this property before it is built.
+
+### What this licenses, and what it does not
+
+**Established.** The recurrence advantage replicates on its original two transcripts under
+their original estimand and survives the corrected turn clock at M=64
+(${sgn(clockRow('1', 64).api_micro)} and ${sgn(clockRow('2', 64).api_micro)}). No
+edit-to-recurrence ratio in the informative range beats the shipped 2:1. The shipped
+priority term is not saturated (${pct(SAT_FP.share_turns_near_flat)} of decisions near-flat
+against a ${pct(S1_GATE, 0)} gate).
+
+**Licensed for the design.** Keep the shipped priority term and its 2:1 constant as they are;
+this work gives no reason to re-weight or re-split them. Treat the
+${SHIP_IDLE_R.toFixed(3)} rank correlation between priority and reference-recency as an open
+redundancy question to be settled offline before any weight in the four-signal scorer is
+tuned. Require every future recall figure to state whether it is micro- or macro-averaged.
+
+**Not licensed.** Nothing here licenses adding temporal covariance to the scorer, and nothing
+here licenses removing it from consideration. The two must be kept apart:
+
+| claim | status |
+|---|---|
+| the shipped recurrence term helps, at the budgets the original quoted | **tested, supported** |
+| some other edit-to-recurrence ratio is better than 2:1 | **tested and rejected** (no ratio clears +0.03) |
+| the shipped priority term is saturated | **tested and rejected** (gate not met) |
+| priority is reference-recency counted twice | **untested** — a rank correlation raises it; no ablation has been run |
+| file-keyed temporal covariance predicts dormant returns | **untested** — support peaks at ${pct(CEIL_BEST.supported_share)} against a ${pct(GATE)} gate, so the contrasts are uninterpretable, not null |
+| covariance keyed on anything other than file paths | **not measured in this report** |
+
+The recurrence result is also offline and single-corpus: it licenses a default, not a claim
+that the term improves task success for a live agent.
 
 ---
 
@@ -657,6 +689,7 @@ function mdToHtml(md) {
     closeTable();
     if (line.startsWith('> ')) { if (!inQuote) { out.push('<blockquote>'); inQuote = true; } out.push(`<p>${inline(line.slice(2))}</p>`); continue; }
     closeQuote();
+    if (line.startsWith('#### ')) { out.push(`<h4>${inline(line.slice(5))}</h4>`); continue; }
     if (line.startsWith('### ')) { out.push(`<h3>${inline(line.slice(4))}</h3>`); continue; }
     if (line.startsWith('## ')) { out.push(`<h2>${inline(line.slice(3))}</h2>`); continue; }
     if (line.startsWith('# ')) { out.push(`<h1>${inline(line.slice(2))}</h1>`); continue; }

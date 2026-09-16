@@ -319,7 +319,9 @@ blockquote{background:#1e2530}figure{background:#1d1d25}
 
 <hr/>
 
-<h2>What survives</h2>
+<h2>Conclusions</h2>
+
+<h3>What survives</h3>
 
 <p><strong>Covariance holds where the incumbents collapse.</strong> Across a 5× widening of the dormancy</p>
 <p>threshold, positional recency loses</p>
@@ -341,6 +343,35 @@ blockquote{background:#1e2530}figure{background:#1d1d25}
 <p><strong>And a methodological point.</strong> The dormancy threshold that defines the "hard case" had been</p>
 <p>inherited unexamined across three experiments. Sweeping it changed which signal wins at four</p>
 <p>of the six values tested. A parameter that reorders the conclusion is not a detail.</p>
+
+<h3>What this licenses, and what it does not</h3>
+
+<p><strong>Established.</strong> Keyed on identifiers rather than file paths, a history-based co-activation</p>
+<p>signal is computable on these transcripts (support 84.3% against a</p>
+<p>55% gate), is not relevance under another name (rank correlation</p>
+<p>0.0231 against a 0.8 bar), and keeps dormant units</p>
+<p>better than a volume-matched random ordering in both identifier spaces — at D=10</p>
+<p>+0.1015 in <code>fp</code> and survives the removal of every</p>
+<p>path-bearing token.</p>
+
+<p><strong>Licensed for the design.</strong> Contextual covariance is worth carrying forward as a candidate</p>
+<p><em>protective term for dormant units</em>, alongside the existing four signals, and worth a direct</p>
+<p>offline test in that role. The dormancy threshold D must be treated as a swept parameter in</p>
+<p>every future eviction analysis rather than inherited at 10.</p>
+
+<p><strong>Not licensed.</strong> This does not license shipping covariance, re-weighting relevance, or</p>
+<p>replacing any incumbent signal. The claims have different standing:</p>
+
+<table><thead>
+<tr><th>claim</th><th>status</th></tr></thead><tbody>
+<tr><td>file-keyed covariance is computable on these transcripts</td><td><strong>tested and rejected</strong> (support 6.1%, gate failed)</td></tr>
+<tr><td>identifier-keyed covariance beats the random floor on dormant units</td><td><strong>tested, supported</strong> in <code>fp</code> and <code>fp-nopath</code>; not in <code>lex</code></td></tr>
+<tr><td>covariance beats relevance at M=32, D=10 (pre-registered primary)</td><td><strong>tested, not met</strong> in <code>fp</code> (+0.0517 [-0.0042, +0.1085]); met only in <code>lex</code>, where the floor contrast fails</td></tr>
+<tr><td>covariance is a better keeper than recency on deep dormancy</td><td><strong>observed post hoc</strong> from the D sweep, not pre-registered</td></tr>
+<tr><td>covariance improves the four-signal scorer as an added term</td><td><strong>untested</strong></td></tr>
+<tr><td>covariance helps admission (pulling material back in)</td><td><strong>untested</strong></td></tr>
+<tr><td>any of this changes task success for a live agent</td><td><strong>untested</strong> — no live arm was run</td></tr>
+</tbody></table>
 
 <hr/>
 

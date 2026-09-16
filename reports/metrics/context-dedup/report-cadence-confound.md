@@ -121,7 +121,7 @@ for which rule a run used; the "Rules present" column in the results table shows
 For each run: whether it passed, the **achieved peak** (the largest transcript actually sent), how many
 deletions occurred, and the total tokens billed across the whole run.
 
-## The bug
+### The bug: the limit was not enforced between deletions
 
 Eviction was gated behind the frequency counter:
 
@@ -142,7 +142,7 @@ Concretely, the runs labelled `W=4,700` with N=10 sent **7,657 tokens** — larg
 the 6,977 sent by the runs labelled `W=7,500` with N=1. The infrequent-deletion
 configuration was never fitting into a smaller window. It was fitting into a slightly larger one.
 
-## How we tested it
+### How we tested it
 
 We fit a logistic regression — a standard model for a yes/no outcome — predicting whether a run passed, and
 asked whether each variable adds anything once the others are known. The comparison is a **likelihood-ratio
@@ -187,7 +187,27 @@ comparisons:
 - **N=5, peak 6,005 → 50%** (6 runs) versus the nearest every-step configuration, **N=1, peak 5,972 → 33%** (3 runs).
 - **N=10, peak 7,657 → 100%** (6 runs) versus the nearest every-step configuration, **N=1, peak 7,972 → 100%** (3 runs).
 
-## What survives
+## What we got wrong
+
+**1. "Deleting less often raises task success at the same size limit."** Commit `25e3006` recorded:
+*"Sawtooth beats a wider flat window: W=4700/N=10 matches W=7500/N=1 at 100% pass with 15% fewer tokens and
+6× fewer evictions."* The task-success half of that is **withdrawn**. The N=10 runs labelled W=4,700 were not
+held to 4,700 tokens; they sent 7,657, more than the 6,977 sent
+by the W=7,500 every-step runs they were compared against. Once achieved peak is in the model, deletion
+frequency adds nothing (p = 0.5441) and neither does the nominal limit (p = 0.6596). The corrected
+reading: the infrequent-deletion runs passed because they kept more transcript, not because they deleted less
+often. The cost half of the claim survives and is restated in Conclusions.
+
+**2. The effect size of transcript size was overstated by leaving the deletion rule out of the model.** An
+earlier fit of pass against achieved peak did not adjust for which rule each run used. Because the signal-free
+`random` rule contributes 16 runs, all at N=1, that omission
+confounds rule with deletion frequency and gave an odds ratio of **52.24× per e-fold**. Adjusted
+for rule it is **41.83×**, a 25% overstatement. The
+direction and the significance were unaffected; the magnitude was not.
+
+## Conclusions
+
+### What survives
 
 **Deleting less often is a cost lever, not a quality lever.** At comparable transcript size the
 infrequent-deletion configuration was materially cheaper:
@@ -204,7 +224,28 @@ simulation predicted. That is the half of the original claim worth keeping.
 the thing that predicts performance — how much of the transcript is present when the model is called — and
 use deletion frequency to buy that as cheaply as possible.
 
-## What this does not answer: how wide should the window be?
+### What this licenses, and what it does not
+
+**Established, on this one task.** Task success tracks the transcript size actually sent to the model
+(odds ratio 41.83× per e-fold, p = 0.0002, adjusted for deletion rule). Given that size,
+deletion frequency and the nominal limit carry no further information.
+
+**Licensed for the design.** Configure and enforce eviction against the transcript actually sent, not against a
+threshold that may be overshot between deletions. Treat deletion frequency purely as a cost setting, chosen
+after the target size is fixed.
+
+**Not licensed.**
+
+| claim | status |
+|---|---|
+| deleting less often improves task success | **tested and rejected** — no effect once achieved peak is known (p = 0.5441) |
+| the nominal size limit matters beyond the size actually sent | **tested and rejected** (p = 0.6596) |
+| deleting less often is cheaper at matched transcript size | **observed**, in one comparison of 6 against 3 runs, with no interval |
+| the success threshold is an absolute token count rather than a share of task demand | **untested** — indistinguishable on a single task |
+| the *content* of the retained transcript matters, not only its size | **untested** — see the deeper question below |
+| any of this holds beyond `longbuild` or this model | **untested** |
+
+### What this does not answer: how wide should the window be?
 
 The results identify a threshold — success reaches 100% once about **6,977 tokens**
 of transcript are present — but they cannot say what that number *is*.
@@ -226,7 +267,7 @@ dataset is the same task, so the uncapped demand is a constant 20,993
 tokens. "6,977 tokens" and "33% of demand" are the same number
 wearing two hats. No amount of extra runs on this task can tell them apart.
 
-### The experiment that would
+#### The experiment that would
 
 Sweep the size limit across **tasks with materially different uncapped demand** — one that needs ~8k, one
 ~20k (this task), one ~40k — on the same model. Then:
@@ -240,7 +281,7 @@ A second, cheaper arm settles the model-capacity question directly: run the same
 smaller hard limit (a 131k-token model is already available) and check that the threshold does not move. The
 prediction is that it does not, so long as the limit stays well above the threshold.
 
-### The deeper question underneath it
+#### The deeper question underneath it
 
 This all assumes the only thing that matters is *how much* transcript is present. Everything measured so far
 is consistent with that — and with nothing else mattering. But a companion experiment established that the

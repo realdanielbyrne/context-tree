@@ -42,7 +42,7 @@ async function main() {
     const lastAsst = [...messages].reverse().find((m) => m.role === 'assistant');
     trace.push({ turn, tokBefore: before, evicted: fired, tokAfter: estTokens(messages), units: units.length, filesKnown: [...filesKnown], lastAsstText: (lastAsst?.content || '').slice(0, 120) });
   };
-  const r = await runAgent({ system: SYSTEM, task: TASK, ws, maxTurns: MAXTURNS, think: false, hook, dethrash: DETHRASH, summarizeReads: SUMMARIZE });
+  const r = await runAgent({ system: SYSTEM, task: TASK, ws, maxTurns: MAXTURNS, hook, dethrash: DETHRASH, summarizeReads: SUMMARIZE });
   let printed = ''; try { printed = execSync('python3 report.py', { cwd: ws, timeout: 10000 }).toString().trim(); } catch (e) { printed = 'ERR'; }
   const success = printed.includes('02:02:03');
   console.error(`\nSUCCESS=${success} dethrash=${DETHRASH} summarize=${SUMMARIZE} turns=${r.turns} stop=${r.stop} breakouts=${r.breakouts} (report.py printed ${JSON.stringify(printed.slice(0, 20))})`);

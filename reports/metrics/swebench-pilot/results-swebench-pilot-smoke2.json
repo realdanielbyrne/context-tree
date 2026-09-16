@@ -1,0 +1,147 @@
+{
+  "manifest": {
+    "run_id": "swebench-pilot-smoke2-1789489504196",
+    "experiment": "context-dedup / SWE-bench Verified SOLVABILITY PILOT (gate on backlog item 9)",
+    "model": "unsloth/Qwen3.8-27B-GGUF",
+    "instances": [
+      "psf__requests-2931"
+    ],
+    "repeats": 1,
+    "max_turns": 8,
+    "max_completion_tokens": 2048,
+    "temperature": 0,
+    "capped": false,
+    "eviction": "none",
+    "middleware": "none",
+    "dispatcher": "relaxed",
+    "commit": "470d0fb32240292010e55f3233233e41c930e143",
+    "date": "2026-09-15T16:25:04.200Z",
+    "question": "Can the local 27B solve a three-way-verified SWE-bench instance with UNLIMITED context?",
+    "why": "If it cannot, a context-policy sweep on SWE-bench measures task difficulty, not context policy. NEGATIVE CONTROL on the substrate, not a capability demo.",
+    "falsification": "A 0/n pass rate at temperature 0 with unlimited context means the substrate is unusable for the window/eviction experiments as-is.",
+    "second_question": "Does an uncapped SWE-bench run generate enough context pressure for a window policy to bind? If peak_history_tokens stays far below a deployment window, the substrate fails for a second, independent reason (constraint C1: with a shell, agents shrink their own context).",
+    "caveats": [
+      "ONE instance family (psf/requests) unless CT_SWEBENCH_INSTANCES says otherwise — this is a gate, not a benchmark score.",
+      "The prompt was NOT tuned against the outcome; the first honest configuration is the reported one.",
+      "The agent never sees the gold patch, the test patch, or any F2P/P2P test id (asserted at construction by assertNoTestLeak).",
+      "run_bash has a 30 s timeout and tool output is clipped at ~2000 chars (experiments/coding-harness/lib.mjs) — an agent that wants to run a whole suite will be cut off.",
+      "The model server is shared and GPU-contended; wall_seconds is not a clean latency measure.",
+      "temperature 0, but this host is not bit-reproducible across runs (lib.mjs jitters the sampler after repeated 5xx; see RETRY_STATS)."
+    ],
+    "retry_stats": {
+      "retries": 0,
+      "jittered": 0,
+      "fatal": 0
+    },
+    "verifications": [],
+    "selftests": []
+  },
+  "summary": [
+    {
+      "instance": "psf__requests-2931",
+      "n": 1,
+      "pass_rate": 0,
+      "f2p_rate": 0,
+      "p2p_rate": 1,
+      "turns_median": 9,
+      "turns_min": 9,
+      "turns_max": 9,
+      "peak_history_median": 2729,
+      "peak_history_max": 2729,
+      "max_prompt_tokens_max": 3360,
+      "total_tokens_median": 17929,
+      "reads_median": 1,
+      "rereads_median": 0,
+      "test_runs_median": 0,
+      "empty_diff_runs": 1,
+      "stops": {
+        "maxTurns": 1
+      },
+      "wall_seconds_median": 12
+    }
+  ],
+  "cells": [
+    {
+      "instance": "psf__requests-2931",
+      "repeat": 0,
+      "pass": false,
+      "f2p_pass": false,
+      "p2p_pass": true,
+      "grade_stage": "ok",
+      "f2p_failures": [
+        "test_requests.py::TestRequests::test_binary_put [FAILED]"
+      ],
+      "p2p_failures": [],
+      "turns": 9,
+      "stop": "maxTurns",
+      "tool_calls": 8,
+      "reads": 1,
+      "rereads": 0,
+      "writes": 0,
+      "edits": 0,
+      "files_touched": [],
+      "bash_calls": 7,
+      "bash_rejected": 2,
+      "test_runs": 0,
+      "peak_history_tokens": 2729,
+      "total_prompt_tokens": 17929,
+      "max_prompt_tokens": 3360,
+      "wall_seconds": 12,
+      "error": null,
+      "agent_diff": "",
+      "diff_empty": true,
+      "last_assistant": "",
+      "f2p_tail": "  self.prepare_body(data, files, json)\nrequests/models.py:447: in prepare_body\n    body = self._encode_params(data)\nrequests/models.py:84: in _encode_params\n    return to_native_string(data)\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nstring = b'\\xc3\\xb6\\xc3\\xb6\\xc3\\xb6', encoding = 'ascii'\n\n    def to_native_string(string, encoding='ascii'):\n        \"\"\"\n        Given a string object, regardless of type, returns a representation of that\n        string in the native string type, encoding and decoding where necessary.\n        This assumes ASCII unless told otherwise.\n        \"\"\"\n        out = None\n    \n        if isinstance(string, builtin_str):\n            out = string\n        else:\n            if is_py2:\n                out = string.encode(encoding)\n            else:\n>               out = string.decode(encoding)\nE               UnicodeDecodeError: 'ascii' codec can't decode byte 0xc3 in position 0: ordinal not in range(128)\n\nrequests/utils.py:700: UnicodeDecodeError\n=========================== short test summary info ============================\nFAILED test_requests.py::TestRequests::test_binary_put - UnicodeDecodeError: ...\n1 failed in 0.17s\n\n",
+      "tool_trace": [
+        {
+          "turn": 0,
+          "name": "run_bash",
+          "arg": "grep -rn \"to_native_string\" --include=\"*.py\" .",
+          "out": "./requests/utils.py:686:def to_native_string(string, encoding='ascii'):\n./requests/sessions.py:21:from .utils import to_key_val_list, default_headers, to_native"
+        },
+        {
+          "turn": 1,
+          "name": "read_file",
+          "arg": "requests/models.py",
+          "out": "# -*- coding: utf-8 -*-\n\n\"\"\"\nrequests.models\n~~~~~~~~~~~~~~~\n\nThis module contains the primary objects that power Requests.\n\"\"\"\n\nimport collections\nimport datet"
+        },
+        {
+          "turn": 2,
+          "name": "run_bash",
+          "arg": "sed -n 60,140p requests/models.py",
+          "out": "error: command 'sed' not allowed. Allowed: python3, python, pytest, ls, cat, echo, pwd, mkdir, head, tail, grep, find"
+        },
+        {
+          "turn": 3,
+          "name": "run_bash",
+          "arg": "grep -n \"def prepare_body\" requests/models.py; awk 'NR>=70 && NR<=140' requests/models.py",
+          "out": "406:    def prepare_body(self, data, files, json=None):\n            url.append(query)\n\n        return ''.join(url)\n\n    @staticmethod\n    def _encode_params(dat"
+        },
+        {
+          "turn": 4,
+          "name": "run_bash",
+          "arg": "awk 'NR>=406 && NR<=470' requests/models.py",
+          "out": "error: command 'awk' not allowed. Allowed: python3, python, pytest, ls, cat, echo, pwd, mkdir, head, tail, grep, find"
+        },
+        {
+          "turn": 5,
+          "name": "run_bash",
+          "arg": "head -n 470 requests/models.py | tail -n 65",
+          "out": "    def prepare_body(self, data, files, json=None):\n        \"\"\"Prepares the given HTTP body data.\"\"\"\n\n        # Check if file, fo, generator, iterator.\n        "
+        },
+        {
+          "turn": 6,
+          "name": "run_bash",
+          "arg": "grep -n \"def to_native_string\" -A 15 requests/utils.py",
+          "out": "686:def to_native_string(string, encoding='ascii'):\n687-    \"\"\"\n688-    Given a string object, regardless of type, returns a representation of that\n689-    stri"
+        },
+        {
+          "turn": 7,
+          "name": "run_bash",
+          "arg": "grep -n \"def super_len\" -A 25 requests/utils.py",
+          "out": "50:def super_len(o):\n51-    total_length = 0\n52-    current_position = 0\n53-\n54-    if hasattr(o, '__len__'):\n55-        total_length = len(o)\n56-\n57-    elif h"
+        }
+      ]
+    }
+  ]
+}
