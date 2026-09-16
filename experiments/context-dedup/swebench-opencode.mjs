@@ -36,7 +36,7 @@ import { fileURLToPath } from 'node:url';
 import { makeSwebenchTask, WORK, pythonPathFor, assertNoTestLeak, loadInstance } from './ab-tasks/swebench.mjs';
 import { stratumOf } from './swebench-draw.mjs';
 import { parseJsonLines, sessionIdOf, summarizeEvents, costAt, classifyExit, summarizeExport, eventsCompleteAgainstExport } from './swebench-opencode-events.mjs';
-import { chooseEndpoint, LEASE_MARKER, MAX_LOCAL_SLOTS } from './swebench-endpoint.mjs';
+import { chooseEndpoint, acquireSlots, LEASE_MARKER, MAX_LOCAL_SLOTS } from './swebench-endpoint.mjs';
 import { writeResults, gitSha, nowISO } from '../rung-1-live-probe/lib.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -69,13 +69,34 @@ function modelConfig(model) {
   } catch (e) { return { configured: false, error: String(e.message) }; }
 }
 
-/** The endpoint for ONE run: auto-selected, or pinned by an explicit CT_OPENCODE_MODEL. */
+/**
+ * The endpoint for ONE run: auto-selected, or pinned by an explicit CT_OPENCODE_MODEL.
+ *
+ * A PINNED LOCAL model still takes a lease. It used to return `release: () => {}` and no marker,
+ * so `-m local/...` ran holding no slot: invisible to every other session's capacity check, which
+ * counts leases. Three pinned shards would then be three uncounted connections on a 4-connection
+ * host, and the failure is silent — opencode's start-up model call blocks with no session, no
+ * error and no log line, taking down the OTHER session's runs as readily as our own.
+ * Waiting for a slot is correct here: the alternative is corrupting someone's in-flight cell.
+ */
 function resolveModel() {
-  if (MODEL_REQUEST !== 'auto') {
-    return { model: MODEL_REQUEST, endpoint: endpointOf(MODEL_REQUEST), reason: 'pinned by CT_OPENCODE_MODEL',
+  if (MODEL_REQUEST === 'auto') return chooseEndpoint({ exclusive: EXCLUSIVE });
+  const endpoint = endpointOf(MODEL_REQUEST);
+  if (endpoint !== 'local') {
+    return { model: MODEL_REQUEST, endpoint, reason: 'pinned by CT_OPENCODE_MODEL (remote: no local slot needed)',
       signals: null, marker: null, release: () => {}, decided_at: new Date().toISOString() };
   }
-  return chooseEndpoint({ exclusive: EXCLUSIVE });
+  const lease = acquireSlots({ exclusive: EXCLUSIVE });
+  if (!lease.slots.length) {
+    throw new Error(
+      `pinned local model ${MODEL_REQUEST} but no local slot is free (${MAX_LOCAL_SLOTS} in use). `
+      + 'Refusing to run unleased: an unleased local run is invisible to other sessions and can hang '
+      + 'them at start-up. Wait for a slot, or set CT_OPENCODE_MODEL=auto to fall back to OpenRouter.',
+    );
+  }
+  return { model: MODEL_REQUEST, endpoint, reason: `pinned by CT_OPENCODE_MODEL; holds local slot ${lease.slots.join(',')}`,
+    signals: { pinned: true, slots: lease.slots }, marker: String(lease.slots[0]), release: lease.release,
+    decided_at: new Date().toISOString() };
 }
 
 const opencodeVersion = () => spawnSync('opencode', ['--version'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).stdout.trim();

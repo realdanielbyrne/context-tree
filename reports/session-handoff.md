@@ -192,6 +192,14 @@ in §B is written to satisfy them.
    ⚠️ `--pure` disables plugins, so any arm-bearing run must not pass it; and opencode adds
    ~9,898 tokens of fixed overhead per call, so a window cap must sit well above that (the old
    `W=4,700` design is not reproducible on this host).
+   ⚠️ **The local host does not parallelise — run local cells SEQUENTIALLY.** Measured 2026-09-16
+   under four concurrent arms on the one GPU, solo → 4-way per turn: 89 → 252–419 s,
+   315 → 720–2,392 s, 762 → 2,133–4,531 s, >1,200 → 7,034 s — the last at 98% of its 7,200 s
+   ceiling, one step from silently truncating its cell. Effective throughput was
+   ~1.4 h/cell against ~1.07 h/cell sequential, so concurrency on this endpoint buys latency, not
+   throughput, *and* manufactures a rule-9 failure mode: a turn that times out truncates the cell
+   mid-experiment and presents as a weak arm rather than an instrument failure. Take one slot and
+   leave the rest free. Parallel sharding belongs on OpenRouter, whose backends are not shared.
 3. **The outcome variable is ACHIEVED PEAK, not the nominal cap.** Tokens actually present at call
    time decide outcomes (OR 41.83× per e-fold, arm-adjusted); the nominal cap and the eviction
    cadence add nothing once it is controlled (T5). Report and control for it in every sweep.
@@ -240,6 +248,20 @@ in §B is written to satisfy them.
    export too, not merely in `usage`, so on that endpoint reasoning must be measured from the
    reasoning parts' text. The *requested* limit is recorded nowhere; only the ceiling that was hit is
    recoverable.
+
+10. **Pre-register the EXCLUSION policy before any cell finishes, and then check exclusions for
+   asymmetry.** Dropping a broken cell feels like discarding noise; it is usually discarding
+   evidence. Failures are rarely arm-independent — an arm whose turns run longer times out more
+   often, so excluding its truncated cells keeps only its fastest survivors and biases the
+   comparison **in that arm's favour**. The gates, fixed in advance (adopted from a peer session
+   that committed them with zero cells finished, so the record shows they preceded any result):
+   an arm with fewer than 2 usable cells gets **no verdict** (insufficient); more than 25% of all
+   cells excluded → **descriptive only**, no keep/drop decision; exclusions uneven across arms
+   (max − min ≥ 2) → **descriptive only, do not pool**, because that asymmetry is itself a finding
+   about the arm that truncates rather than noise to be removed. Choose the thresholds before
+   seeing which arm the failures landed in. Deciding afterwards is the defect this project has
+   already paid for twice — T4's n=3 story that inverted, and T7's control that passed two validity
+   conditions on a worthless run.
 
 ---
 
