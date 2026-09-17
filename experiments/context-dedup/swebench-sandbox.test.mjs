@@ -7,7 +7,7 @@ import { tmpdir, constants } from 'node:os';
 import { join } from 'node:path';
 import {
   sandboxConfig, planSandbox, exitFromSandbox, startModelProxy, pythonHomeOf, probeSource, runPreflight,
-  sandboxEnv, innerScript, SANDBOX_BIN, SANDBOX_HOME, RELAY_PORT,
+  sandboxEnv, innerScript, SANDBOX_BIN, SANDBOX_HOME, RELAY_PORT, SANDBOX_CT, MCP_PATHS, MCP_SCRIPT,
 } from './swebench-sandbox.mjs';
 import { sandboxExpectations } from './swebench-opencode.mjs';
 
@@ -195,4 +195,48 @@ print('args:', '$*')
     upstream.close();
     rmSync(L.root, { recursive: true, force: true });
   }
+});
+
+
+test('sandboxConfig caps the window by declaring it, because opencode compacts at context - output cap', () => {
+  const { config } = sandboxConfig(
+    { ...CFG, provider: { ...CFG.provider, local: { ...CFG.provider.local, models: { m: { limit: { context: 151040, output: 32000 } } } } } },
+    'local/m', { K1: 'k' }, { window: 50347 },
+  );
+  assert.equal(config.provider.local.models.m.limit.context, 50347);
+  assert.equal(config.provider.local.models.m.limit.output, 32000, 'only the context moves');
+});
+
+test('sandboxConfig refuses a window for a model the config never declared, rather than silently not capping', () => {
+  assert.throws(() => sandboxConfig(CFG, 'local/absent', { K1: 'k' }, { window: 1000 }), /no entry under provider/);
+});
+
+test('sandboxConfig adds the MCP server only when the arm asks for it, pointing at the in-sandbox script', () => {
+  const off = sandboxConfig(CFG, 'local/m', { K1: 'k' });
+  assert.equal(off.config.mcp, undefined, 'the control arm must not carry the server');
+  const { config } = sandboxConfig(CFG, 'local/m', { K1: 'k' }, {
+    mcp: { storeDir: '/run/mcp/store', db: '/run/xdg/data/opencode/opencode.db', log: '/run/mcp/l.jsonl' },
+  });
+  assert.deepEqual(config.mcp['context-tree'].command, ['node', MCP_SCRIPT]);
+  assert.equal(config.mcp['context-tree'].environment.CT_REPO_ROOT, SANDBOX_CT);
+  assert.equal(config.mcp['context-tree'].environment.CT_MCP_ROOT, '/run/mcp/store');
+});
+
+test('planSandbox binds node and the builds for the MCP arm, and nothing of the repo beyond them', () => {
+  const base = {
+    ws: '/mnt/r/run/workspace', xdgRoot: '/mnt/r/run/xdg', sandboxDir: '/mnt/r/run/sandbox', sockDir: '/tmp/s',
+    venv: '/mnt/w/venvs/v', config: '/mnt/r/run/sandbox/opencode.json', opencodeBin: '/o/opencode', rgBin: '/a/rg',
+    exists: () => true, realpath: (p) => p,
+    readVenvCfg: () => 'home = /mnt/w/py/bin\n',
+  };
+  const { args } = planSandbox({
+    ...base,
+    mcp: { repoRoot: '/repo', nodeBin: '/n/node', storeParent: '/mnt/r/run/mcp' },
+  });
+  const dest = (src) => args[args.indexOf(src) + 1];
+  assert.equal(dest('/n/node'), `${SANDBOX_BIN}/node`);
+  for (const rel of MCP_PATHS) assert.equal(dest(`/repo/${rel}`), `${SANDBOX_CT}/${rel}`, `${rel} is bound`);
+  assert.ok(!args.includes('/repo'), 'the repo root itself is never bound: reports/ holds earlier agents\' diffs');
+  assert.ok(args.some((a, i) => a === '--bind' && args[i + 1] === '/mnt/r/run/mcp'), 'the store is writable');
+  assert.equal(planSandbox(base).args.includes('/n/node'), false, 'the control arm gets no node');
 });

@@ -32,6 +32,7 @@
  *
  *   node experiments/context-dedup/swebench-opencode.mjs            # CT_INSTANCES or selection
  *   CT_INSTANCES=psf__requests-2931 CT_TAG=probe node experiments/context-dedup/swebench-opencode.mjs
+ *   CT_REPEATS=1 CT_REPEAT_START=1 CT_TAG=w2 ...   # a later wave numbered r1, to merge with an r0 wave
  */
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync, openSync, closeSync, realpathSync } from 'node:fs';
@@ -57,14 +58,47 @@ const SELECTION = join(OUTDIR, process.env.CT_SELECTION_FILE || 'selection-v2.js
 const OPENCODE_CONFIG = join(HERE, 'opencode.json');
 const SANDBOX = process.env.CT_SANDBOX !== '0';
 const SANDBOX_ASSETS = process.env.CT_SANDBOX_ASSETS || join(WORK, 'tooling', 'opencode-sandbox');
+/**
+ * The arm (U5, U18–U20):
+ *   off  the host's own context handling — the control
+ *   mcp  the context-tree MCP tools, host still owns the prompt
+ *   ct   the tools PLUS the assembly plugin: context-tree decides what the model sees
+ *
+ * `ct` also needs `CT_CT_TRIGGER` (off|hard|soft|cadence) and its window; those are read
+ * by the sidecar, and recorded here so a cell says which arm produced it.
+ */
+const ARM = process.env.CT_ARM || 'off';
+const WANTS_SIDECAR = ARM === 'mcp' || ARM === 'ct';
+const WANTS_PLUGIN = ARM === 'ct';
+/** Read by the sidecar inside the sandbox; named here so the cell records the arm exactly. */
+const CT_OPTIONS = Object.freeze({
+  CT_CT_TRIGGER: process.env.CT_CT_TRIGGER || 'soft',
+  CT_CT_WINDOW: process.env.CT_CT_WINDOW || '50347',
+  CT_CT_HARD_WINDOW: process.env.CT_CT_HARD_WINDOW || '151040',
+  CT_CT_CADENCE_N: process.env.CT_CT_CADENCE_N || '5',
+  CT_CT_SUMMARIES: process.env.CT_CT_SUMMARIES || '0',
+  CT_CT_ANCHOR: process.env.CT_CT_ANCHOR || '4',
+  CT_CT_REPLY_RESERVE: process.env.CT_CT_REPLY_RESERVE || '8192',
+  CT_CT_TOPK: process.env.CT_CT_TOPK || '5',
+  CT_CT_PROTECT_TAIL: process.env.CT_CT_PROTECT_TAIL || '6',
+  CT_ASSEMBLE_PORT: process.env.CT_ASSEMBLE_PORT || '8899',
+});
+/**
+ * The arm's window in tokens (0 = the model's declared context). opencode compacts at
+ * `limit.context − output cap`, so the window is imposed by declaring it, and the output
+ * cap moves with it — at a 1/3 window the default 32,000-token cap would leave a
+ * threshold below opencode's own ~9,898 tokens of overhead and compact on turn one.
+ */
+const WINDOW = +(process.env.CT_WINDOW || 0);
+const OUTPUT_CAP = +(process.env.CT_OUTPUT_CAP || (WINDOW > 0 ? Math.max(4096, Math.round(WINDOW / 6)) : 0));
 
 /**
  * What the sandbox preflight asserts for one run: the answer sources are absent, and every
  * masked directory above a visible path holds only the entries this run needs.
  */
-export function sandboxExpectations({ work, runsRoot, tag, runDir, venv, pythonHomes, home, repo }) {
+export function sandboxExpectations({ work, runsRoot, tag, runDir, venv, pythonHomes, home, repo, arm = 'off' }) {
   const hidden = ['dataset', 'repos', 'wscache', 'runs', 'locks'].map((d) => join(work, d)).concat([home, repo]);
-  const only = { '/tmp': [], '/home': ['.ct-sandbox', 'agent'], [runsRoot]: [tag], [join(runsRoot, tag)]: [basename(runDir)], [runDir]: ['sandbox', 'workspace', 'xdg'] };
+  const only = { '/tmp': [], '/home': ['.ct-sandbox', 'agent'], [runsRoot]: [tag], [join(runsRoot, tag)]: [basename(runDir)], [runDir]: arm === 'off' ? ['sandbox', 'workspace', 'xdg'] : ['mcp', 'sandbox', 'workspace', 'xdg'] };
   const underMask = (d) => MASKED.some((m) => d === m || d.startsWith(`${m}/`));
   for (const p of [runsRoot, venv, ...pythonHomes]) {
     const parts = p.split('/').filter(Boolean);
@@ -144,6 +178,61 @@ function promptFor(task) {
 }
 
 /** Other `opencode run` processes on the host (not ours). Forensics for external kills. */
+/**
+ * Did the MCP arm actually do anything? Tool calls come from the agent's own
+ * event stream (opencode names an MCP tool `<server>_<tool>`); the ingest ticks
+ * come from the server's log. Zero calls means the arm is inert and the cell is
+ * evidence about the CONTRACT, not about retrieval.
+ */
+function mcpActivity(sandbox, summary) {
+  const calls = Object.entries(summary.tools_by_name ?? {})
+    .filter(([name]) => name.startsWith('context-tree') || /^context_(fetch|search|peek)$/.test(name) || name === 'annotate');
+  const log = sandbox?.record?.mcp?.log;
+  let ingests = 0, appended = 0, ready = false, errors = 0;
+  if (log && existsSync(log)) {
+    for (const line of readFileSync(log, 'utf8').split('\n')) {
+      if (!line) continue;
+      let row;
+      try { row = JSON.parse(line); } catch { continue; }
+      if (row.event === 'ingest') { ingests += 1; appended += row.appended ?? 0; }
+      else if (row.event === 'ready') ready = true;
+      else if (row.event === 'ingest_error' || row.event === 'fatal') errors += 1;
+    }
+  }
+  return {
+    server_ready: ready, ingest_ticks: ingests, events_ingested: appended, server_errors: errors,
+    tool_calls: calls.reduce((n, [, count]) => n + count, 0), tools: Object.fromEntries(calls),
+  };
+}
+
+/**
+ * Did the assembly arm actually change the prompt? The plugin logs one row per turn and
+ * the sidecar logs its decision; zero turns, or turns with nothing dropped, means the arm
+ * is byte-identical to its control and the cell is VOID rather than a null result.
+ */
+function assembleActivity(runDir) {
+  const read = (name) => {
+    const p = join(runDir, 'mcp', name);
+    if (!existsSync(p)) return [];
+    return readFileSync(p, 'utf8').split('\n').filter(Boolean).flatMap((line) => {
+      try { return [JSON.parse(line)]; } catch { return []; }
+    });
+  };
+  const plugin = read('ct-plugin.jsonl');
+  const sidecar = read('ct-mcp.jsonl').filter((r) => r.event === 'assemble' || r.event === 'assemble_error');
+  const turns = plugin.filter((r) => r.turn !== undefined);
+  return {
+    plugin_turns: turns.length,
+    plugin_errors: turns.filter((r) => r.error).length,
+    messages_dropped: turns.reduce((n, r) => n + (r.dropped ?? 0), 0),
+    messages_folded: turns.reduce((n, r) => n + (r.folded ?? 0), 0),
+    assemble_calls: sidecar.length,
+    assemble_errors: sidecar.filter((r) => r.event === 'assemble_error').length,
+    evicted_units: sidecar.reduce((n, r) => n + (r.evicted?.length ?? 0), 0),
+    fired: turns.some((r) => (r.dropped ?? 0) > 0 || (r.folded ?? 0) > 0),
+  };
+}
+
 function otherOpencodeRuns(ownPid = null) {
   const r = spawnSync('pgrep', ['-f', '^opencode run'], { encoding: 'utf8' });
   return (r.stdout || '').split('\n').filter(Boolean).map(Number).filter((p) => p !== ownPid).length;
@@ -158,7 +247,9 @@ function runOpencode({ ws, runDir, prompt, env, model, sandbox }) {
     // final write into a pipe (a piped export arrived cut at 146,176 of 430,431 bytes).
     const outFd = openSync(out, 'w');
     const errFd = openSync(join(runDir, 'stderr.log'), 'w');
-    const ocArgs = ['run', '--pure', '-m', model, '--format', 'json', '--dir', ws, '--auto', prompt];
+    // `--pure` disables EXTERNAL PLUGINS, so an arm that carries one must not pass it
+    // (`oc-runner.mjs:20`). It does not disable MCP servers, so the `mcp` arm keeps it.
+    const ocArgs = ['run', ...(WANTS_PLUGIN ? [] : ['--pure']), '-m', model, '--format', 'json', '--dir', ws, '--auto', prompt];
     const [cmd, args, runEnv] = sandbox ? [sandbox.cmd, sandbox.argsFor(ocArgs), sandbox.env] : ['opencode', ocArgs, env];
     const p = spawn(cmd, args, {
       cwd: ws, env: runEnv, stdio: ['ignore', outFd, errFd], detached: true, // stdio[0]='ignore' == < /dev/null
@@ -247,9 +338,19 @@ async function runOne(task, repeat) {
       const pythonHome = pythonHomeOf(venv);
       sandbox = await openSandbox({
         runDir, ws, xdg, venv, model, configPath: OPENCODE_CONFIG, importName: task.importName,
-        pythonPath: pythonPathFor(ws), assets: SANDBOX_ASSETS,
-        marker: sel.marker !== null && sel.marker !== undefined ? { [LEASE_MARKER]: sel.marker } : {},
-        ...sandboxExpectations({ work: WORK, runsRoot: RUNS_ROOT, tag: TAG, runDir, venv, pythonHomes: [pythonHome, realpathSync(pythonHome)], home: homedir(), repo: REPO }),
+        pythonPath: pythonPathFor(ws), assets: SANDBOX_ASSETS, window: WINDOW,
+        mcp: WANTS_SIDECAR ? { repoRoot: REPO, env: WANTS_PLUGIN ? CT_OPTIONS : {} } : null,
+        plugin: WANTS_PLUGIN,
+        marker: {
+          ...(sel.marker !== null && sel.marker !== undefined ? { [LEASE_MARKER]: sel.marker } : {}),
+          ...(OUTPUT_CAP > 0 ? { OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX: String(OUTPUT_CAP) } : {}),
+          // The plugin runs inside opencode, so its settings ride on the process env.
+          ...(WANTS_PLUGIN ? {
+            CT_ASSEMBLE_URL: `http://127.0.0.1:${CT_OPTIONS.CT_ASSEMBLE_PORT}/assemble`,
+            CT_PLUGIN_EVENTS: join(runDir, 'mcp', 'ct-plugin.jsonl'),
+          } : {}),
+        },
+        ...sandboxExpectations({ work: WORK, runsRoot: RUNS_ROOT, tag: TAG, runDir, venv, pythonHomes: [pythonHome, realpathSync(pythonHome)], home: homedir(), repo: REPO, arm: ARM }),
       });
     }
     r = await runOpencode({ ws, runDir, prompt, env, model, sandbox });
@@ -275,6 +376,11 @@ async function runOne(task, repeat) {
     instance: task.instanceId, repeat, repo: task.repo, difficulty: task.difficulty, stratum: stratumOf(task.difficulty),
     vehicle: 'opencode', opencode_version: opencodeVersion(), model, model_config: modelConfig(model),
     endpoint: sel.endpoint,
+    // The arm, and whether its mechanism FIRED: an arm byte-identical to its
+    // control must never be written up as a failed hypothesis (ladder gate 4).
+    arm: ARM, window: WINDOW > 0 ? WINDOW : null, output_cap: OUTPUT_CAP > 0 ? OUTPUT_CAP : null,
+    ct: WANTS_PLUGIN ? { ...CT_OPTIONS, ...assembleActivity(runDir) } : null,
+    mcp: WANTS_SIDECAR ? mcpActivity(sandbox, s) : null,
     sandbox: sandbox ? sandbox.record : { enabled: false },
     endpoint_selection: { request: MODEL_REQUEST, exclusive: EXCLUSIVE, reason: sel.reason, signals: sel.signals, decided_at: sel.decided_at },
     pass: !!g.pass, f2p_pass: !!g.f2p_pass, p2p_pass: !!g.p2p_pass, grade_stage: g.stage, grade_valid: g.valid !== false,
@@ -311,13 +417,14 @@ async function main() {
     ? process.env.CT_INSTANCES.split(',').map((s) => s.trim()).filter(Boolean)
     : selection.selection.accepted.map((c) => c.instance_id);
   const repeats = +(process.env.CT_REPEATS || 1);
+  const firstRepeat = +(process.env.CT_REPEAT_START || 0);
 
   const cells = [];
   for (const id of ids) {
     const cal = calibrated[id];
     const task = cal ? makeSwebenchTask(id, { p2p: cal.effective }) : makeSwebenchTask(id);
     console.error(`=== ${task.name} (P2P graded ${task.p2p.length}/${task.p2pDataset.length}) ===`);
-    for (let r = 0; r < repeats; r++) cells.push(await runOne(task, r));
+    for (let r = firstRepeat; r < firstRepeat + repeats; r++) cells.push(await runOne(task, r));
     writeResults('swebench-pilot', `results-swebench-opencode-${TAG}.json`, manifestAndCells(ids, cells, selection));
   }
   const path = writeResults('swebench-pilot', `results-swebench-opencode-${TAG}.json`, manifestAndCells(ids, cells, selection));
@@ -344,6 +451,14 @@ function manifestAndCells(ids, cells, selection) {
       sandbox: SANDBOX
         ? 'bwrap: no network (model relay only), no dataset/repos/wscache/other runs/operator home; per-run preflight in each cell'
         : 'OFF (CT_SANDBOX=0): the agent can read the dataset, repos/, wscache/, other runs and the network',
+      arm: ARM === 'ct'
+        ? `ct: context-tree owns assembly at opencode's experimental.chat.messages.transform (trigger ${CT_OPTIONS.CT_CT_TRIGGER}, window ${CT_OPTIONS.CT_CT_WINDOW}, cadence ${CT_OPTIONS.CT_CT_CADENCE_N}, summaries ${CT_OPTIONS.CT_CT_SUMMARIES}); host compaction OFF; per-cell \`ct\` records whether it fired`
+        : ARM === 'mcp'
+          ? 'mcp: @context-tree/mcp attached as an opencode MCP server, fed from the live session db (experiments/context-dedup/ct-sidecar.mjs); per-cell `mcp` records whether it fired'
+          : 'off: the host\'s own context handling, no context-tree server',
+      window: WINDOW > 0
+        ? `${WINDOW} tokens declared as the model's context (opencode compacts at context − output cap), output cap ${OUTPUT_CAP}`
+        : "the model's own declared context",
       run_timeout_s: RUN_TIMEOUT_S, instances: ids,
       selection_file: selection ? SELECTION.split('/').pop() : null,
       grading: 'ab-tasks/swebench.mjs gradeDetail after opencode exits: restore test-patch files, apply test patch, run the instance runner over F2P + calibrated P2P; void grades and errored runs excluded from rates',

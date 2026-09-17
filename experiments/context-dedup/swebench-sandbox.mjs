@@ -29,7 +29,30 @@ export const SANDBOX_ROOT = '/home/.ct-sandbox';
 export const SANDBOX_BIN = `${SANDBOX_ROOT}/bin`;
 export const SANDBOX_SOCK = `${SANDBOX_ROOT}/sock`;
 export const SANDBOX_HOME = '/home/agent';
+/** Where the MCP arm's built packages appear inside the sandbox (U5). */
+export const SANDBOX_CT = `${SANDBOX_ROOT}/ct`;
 export const RELAY_PORT = 8888;
+
+/**
+ * What the MCP arm needs inside the sandbox: node, the three builds, and the
+ * dependency tree they resolve through.
+ *
+ * Bound one subtree at a time, never the repo root — `reports/` holds earlier
+ * agents' diffs and the operator's home is the thing the sandbox exists to
+ * hide. pnpm's links are relative (`../../../node_modules/.pnpm/...`), so the
+ * same relative shape has to appear under `SANDBOX_CT` for them to resolve.
+ */
+export const MCP_PATHS = Object.freeze([
+  'node_modules',
+  'packages/core/package.json', 'packages/core/dist', 'packages/core/node_modules',
+  'packages/mcp/package.json', 'packages/mcp/dist', 'packages/mcp/node_modules',
+  'packages/cli/package.json', 'packages/cli/dist', 'packages/cli/node_modules',
+  'experiments/context-dedup/ct-sidecar.mjs',
+  'experiments/context-dedup/oc-plugin/ct-assemble-plugin.mjs',
+]);
+export const MCP_SCRIPT = `${SANDBOX_CT}/experiments/context-dedup/ct-sidecar.mjs`;
+/** The prompt-assembly plugin, as opencode sees it from inside the sandbox. */
+export const PLUGIN_SCRIPT = `${SANDBOX_CT}/experiments/context-dedup/oc-plugin/ct-assemble-plugin.mjs`;
 export const MASKED = ['/home', '/mnt', '/media', '/srv', '/var/tmp', '/run/user'];
 
 const which = (cmd) => spawnSync('sh', ['-c', `command -v ${cmd}`], { encoding: 'utf8' }).stdout.trim() || null;
@@ -45,16 +68,53 @@ export function pythonHomeOf(venv, read = (p) => readFileSync(p, 'utf8')) {
  * The per-run opencode config: only the run's provider, its baseURL moved onto the relay and its
  * key replaced. Returns the real upstream and key for the proxy.
  */
-export function sandboxConfig(cfg, model, env = process.env) {
-  const [provider] = model.split('/');
+export function sandboxConfig(cfg, model, env = process.env, { window = 0, mcp = null, plugin = false } = {}) {
+  const [provider, ...rest] = model.split('/');
   const entry = cfg.provider?.[provider];
   if (!entry?.options?.baseURL) throw new Error(`provider ${provider} has no baseURL in the opencode config`);
   const upstream = new URL(entry.options.baseURL);
   const keyRef = String(entry.options.apiKey ?? '');
   const envKey = keyRef.match(/^\{env:(\w+)\}$/);
   const apiKey = envKey ? env[envKey[1]] ?? '' : keyRef;
-  const inner = { ...entry, options: { ...entry.options, baseURL: `http://127.0.0.1:${RELAY_PORT}${upstream.pathname.replace(/\/$/, '')}`, apiKey: 'sandboxed' } };
-  return { config: { ...cfg, provider: { [provider]: inner } }, upstream: entry.options.baseURL, apiKey };
+  let models = entry.models;
+  if (window > 0) {
+    // opencode compacts at `limit.context − output cap`, so the declared context
+    // IS the arm's window: the cap has to bind in the host, not in our arithmetic.
+    const id = rest.join('/');
+    const declared = models?.[id];
+    if (!declared) throw new Error(`model ${id} has no entry under provider ${provider}: cannot set a window`);
+    models = { ...models, [id]: { ...declared, limit: { ...declared.limit, context: window } } };
+  }
+  const inner = { ...entry, models, options: { ...entry.options, baseURL: `http://127.0.0.1:${RELAY_PORT}${upstream.pathname.replace(/\/$/, '')}`, apiKey: 'sandboxed' } };
+  const config = { ...cfg, provider: { [provider]: inner } };
+  if (mcp) {
+    // `--pure` disables external PLUGINS, not MCP servers (verified against
+    // 1.18.31 with `opencode mcp list --pure`), so the arm needs no flag change.
+    config.mcp = {
+      'context-tree': {
+        type: 'local',
+        command: ['node', MCP_SCRIPT],
+        enabled: true,
+        environment: {
+          CT_REPO_ROOT: SANDBOX_CT,
+          CT_MCP_ROOT: mcp.storeDir,
+          CT_MCP_DB: mcp.db,
+          CT_MCP_LOG: mcp.log,
+          ...(mcp.pollMs ? { CT_MCP_POLL_MS: String(mcp.pollMs) } : {}),
+          ...(mcp.env ?? {}),
+        },
+      },
+    };
+  }
+  if (plugin) {
+    config.plugin = [PLUGIN_SCRIPT];
+    // Host compaction OFF so context-tree is the only reducer in this arm — otherwise a
+    // result cannot be attributed, and the transform hook fires a second time on the
+    // compaction head with an indistinguishable input. `auto:false` makes a genuine
+    // overflow a hard session error, so the sidecar keeps the prompt under the real context.
+    config.compaction = { auto: false };
+  }
+  return { config, upstream: entry.options.baseURL, apiKey };
 }
 
 /** HTTP proxy on a unix socket to `upstream`, injecting the key. Streams both ways. */
@@ -85,7 +145,7 @@ export function startModelProxy({ socketPath, upstream, apiKey }) {
  * symlinked path (the venv `home` often is one) is bound at its target and linked at its name.
  */
 export function planSandbox({ ws, xdgRoot, sandboxDir, sockDir, venv, config, opencodeBin, rgBin, chdir = ws,
-  exists = existsSync, realpath = realpathSync, readVenvCfg } = {}) {
+  mcp = null, exists = existsSync, realpath = realpathSync, readVenvCfg } = {}) {
   const args = ['--ro-bind', '/', '/', '--dev', '/dev', '--proc', '/proc'];
   const masked = MASKED.filter((p) => exists(p));
   for (const p of masked) args.push('--tmpfs', p);
@@ -93,6 +153,12 @@ export function planSandbox({ ws, xdgRoot, sandboxDir, sockDir, venv, config, op
   args.push('--ro-bind', opencodeBin, `${SANDBOX_BIN}/opencode`, '--ro-bind', rgBin, `${SANDBOX_BIN}/rg`);
   args.push('--bind', sockDir, SANDBOX_SOCK);
   const visible = [];
+  if (mcp) {
+    args.push('--ro-bind', mcp.nodeBin, `${SANDBOX_BIN}/node`);
+    for (const rel of MCP_PATHS) args.push('--ro-bind', join(mcp.repoRoot, rel), `${SANDBOX_CT}/${rel}`);
+    args.push('--bind', mcp.storeParent, mcp.storeParent);
+    visible.push(`${SANDBOX_CT} (ro: ${MCP_PATHS.length} paths)`, mcp.storeParent);
+  }
   const ro = (p) => {
     const real = realpath(p);
     args.push('--ro-bind', real, real);
@@ -183,7 +249,7 @@ export function runPreflight({ bwrap, args, env, python, source }) {
  * fails. `close()` stops the proxy and removes the host socket directory.
  */
 export async function openSandbox({ runDir, ws, xdg, venv, model, configPath, importName, pythonPath,
-  hidden, only, assets, marker = {} }) {
+  hidden, only, assets, marker = {}, window = 0, mcp = null, plugin = false }) {
   const bwrap = which('bwrap');
   if (!bwrap) throw new Error('sandbox: bwrap not found');
   if (!which('socat')) throw new Error('sandbox: socat not found');
@@ -197,7 +263,30 @@ export async function openSandbox({ runDir, ws, xdg, venv, model, configPath, im
   mkdirSync(join(xdg.XDG_CACHE_HOME, 'opencode'), { recursive: true });
   copyFileSync(models, join(xdg.XDG_CACHE_HOME, 'opencode', 'models.json'));
 
-  const { config, upstream, apiKey } = sandboxConfig(JSON.parse(readFileSync(configPath, 'utf8')), model);
+  const mcpPlan = mcp
+    ? {
+        repoRoot: mcp.repoRoot,
+        nodeBin: realpathSync(which('node') || process.execPath),
+        storeParent: join(runDir, 'mcp'),
+        storeDir: join(runDir, 'mcp', 'store'),
+        db: join(xdg.XDG_DATA_HOME, 'opencode', 'opencode.db'),
+        log: join(runDir, 'mcp', 'ct-mcp.jsonl'),
+        pollMs: mcp.pollMs,
+      }
+    : null;
+  if (mcpPlan) {
+    mkdirSync(mcpPlan.storeParent, { recursive: true });
+    for (const rel of MCP_PATHS) {
+      const p = join(mcpPlan.repoRoot, rel);
+      if (!existsSync(p)) throw new Error(`sandbox: MCP arm needs ${p} (run the package build first)`);
+    }
+  }
+  const { config, upstream, apiKey } = sandboxConfig(
+    JSON.parse(readFileSync(configPath, 'utf8')),
+    model,
+    process.env,
+    { window, mcp: mcpPlan, plugin },
+  );
   const config_ = join(sandboxDir, 'opencode.json');
   writeFileSync(config_, JSON.stringify(config, null, 2));
 
@@ -206,7 +295,7 @@ export async function openSandbox({ runDir, ws, xdg, venv, model, configPath, im
   const proxy = await startModelProxy({ socketPath: join(sockDir, 'model.sock'), upstream, apiKey });
   const close = async () => { await proxy.close(); rmSync(sockDir, { recursive: true, force: true }); };
   try {
-    const plan = planSandbox({ ws, xdgRoot: dirname(xdg.XDG_CONFIG_HOME), sandboxDir, sockDir, venv, config: config_, opencodeBin, rgBin });
+    const plan = planSandbox({ ws, xdgRoot: dirname(xdg.XDG_CONFIG_HOME), sandboxDir, sockDir, venv, config: config_, opencodeBin, rgBin, mcp: mcpPlan });
     const env = sandboxEnv({ venv, xdg, config: config_, pythonPath, extra: marker });
     const preflight = runPreflight({ bwrap, args: plan.args, env, python: join(venv, 'bin', 'python'), source: probeSource({ hidden, only, ws, importName }) });
     if (!preflight.ok) throw new Error(`sandbox preflight failed: ${JSON.stringify(preflight)}`);
@@ -220,6 +309,8 @@ export async function openSandbox({ runDir, ws, xdg, venv, model, configPath, im
       record: {
         enabled: true, tool: bwrapVersion, network: `none; model relay 127.0.0.1:${RELAY_PORT} -> ${upstream}`,
         masked: plan.masked, visible: plan.visible, config: config_, preflight: preflight.checks,
+        mcp: mcpPlan ? { script: MCP_SCRIPT, store: mcpPlan.storeDir, log: mcpPlan.log, db: mcpPlan.db } : null,
+        window: window > 0 ? window : null,
       },
     };
   } catch (e) { await close(); throw e; }
