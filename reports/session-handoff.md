@@ -285,6 +285,21 @@ in §B is written to satisfy them.
    seeing which arm the failures landed in. Deciding afterwards is the defect this project has
    already paid for twice — T4's n=3 story that inverted, and T7's control that passed two validity
    conditions on a worthless run.
+11. **Verify the intervention actually FIRES before running arms. A null by construction is the
+   dangerous kind.** An arm that never triggers is *identical* to its control, so any difference
+   between them is pure nondeterminism — and against this substrate's 1.16–2.90× trajectory spread
+   (rule 3) that noise can present as a large, clean effect. Measured 2026-09-16 by a peer session: a
+   re-reference intervention fired **0 times in 41 turns** (19 reads over 18 distinct files; exactly
+   one file read twice), so all four of its arms were the same experiment and were stopped rather than
+   reported. **The cause was a fix, which is why nobody saw it coming:** splitting the task into six
+   focused turns is what finally made the agent *complete* the work (29/40, core 12/12, trace 8/8),
+   but a focused turn gives the agent no reason to re-consult anything. **Completability and
+   re-reference pull against each other on this substrate** — the single-message version re-read
+   constantly and built nothing; the six-turn version builds correctly and never re-reads. Before
+   committing to arms, measure the trigger rate on ONE cell and report it; near zero means the
+   experiment is not ready, whatever the arms would have shown. This bears directly on §B U4
+   (admission has nothing to admit if nothing is needed twice) and U5 (MCP tools that are never
+   called make the arm null), and it is the §1 check-5 gate of the experiment-report skill.
 
 ---
 
@@ -529,6 +544,13 @@ admission must fire at a multi-turn cadence, since per-turn re-mixing is measure
 (`flex-remix` 433k vs 341k effective cost). Record `cacheWrite`/`cacheRead` and report effective cost.
 **Falsification.** If admission does not beat on-demand by a pre-set margin in the regime where the
 buffer actually overflows, attention-as-admission is retired.
+⚠️ **Measure the re-reference rate before building this (rule 11).** A peer session's re-reference
+intervention fired 0 times in 41 turns on the focused multi-turn scenario: 19 reads over 18 distinct
+files, one file read twice. An agent given a focused turn does not re-consult earlier material, so
+admission would have nothing to admit and the arm would be null by construction. The prerequisite
+measurement is cheap — count, on one cell of the intended substrate, how often the agent returns to
+material it already has. If that rate is near zero, this item is not runnable there no matter how
+good the policy is, and the substrate must change before the experiment does.
 
 ### U5 — Does the context-tree MCP server actually help? *(the project's headline claim, never run)*
 **Hypothesis.** An agent in opencode with the context-tree MCP server attached solves more SWE-bench
