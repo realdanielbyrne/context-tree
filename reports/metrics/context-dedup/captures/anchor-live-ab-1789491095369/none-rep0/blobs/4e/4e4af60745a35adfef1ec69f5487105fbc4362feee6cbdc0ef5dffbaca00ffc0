@@ -1,0 +1,1 @@
+{"command":"python3 -c \"\nimport engine\n# find a seed/flaps combo where the bird hits a pipe with powerups off\nfor seed in range(1, 20):\n    for flaps in ['0', '1', '01', '10', '0010', '0101']:\n        st = engine.run(seed, 300, flaps)\n        if not st['alive'] and st['y'] != 1120:\n            print('pipe death:', seed, flaps, st)\n\" | head -5"}

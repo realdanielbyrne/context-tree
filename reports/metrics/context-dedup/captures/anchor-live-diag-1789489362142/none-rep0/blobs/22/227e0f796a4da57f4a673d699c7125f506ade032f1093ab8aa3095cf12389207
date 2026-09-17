@@ -1,0 +1,31 @@
+# Stage 2 — parsing.py
+
+A ledger line has EXACTLY THREE pipe-separated fields at this stage. Stage 5
+extends this to allow a fourth; do not implement the fourth field yet.
+
+    DATE | DESCRIPTION | AMOUNT
+
+## parse_line(line) -> txn dict
+
+1. Split the whole line on "|". Do not limit the number of splits. If the
+   resulting field count is not 3, raise LedgerError.
+2. Strip every field.
+3. DATE must satisfy BOTH of these, else LedgerError:
+   - its SHAPE is YYYY-MM-DD: exactly 4 digits, "-", exactly 2 digits, "-",
+     exactly 2 digits, and nothing else
+   - it is a real calendar date
+   The shape check is not redundant. `datetime.date.fromisoformat` accepts
+   other spellings on modern Python — "20240105" parses fine — so a date that is
+   real but wrongly shaped must still be rejected. Equally, "2024-02-30" has the
+   right shape but is not a real date and must also be rejected.
+4. DESCRIPTION must be non-empty after stripping, else LedgerError.
+5. AMOUNT is parsed with `money.parse_amount`. This is the ONLY place the
+   conversion happens. A ValueError raised by it must be caught and re-raised as
+   a LedgerError; a ValueError must never escape parse_line.
+6. Return a dict `{"date": date, "desc": desc, "amount": cents, "tags": []}`.
+   The "tags" key is present and empty at this stage — it is not optional.
+
+The LedgerError message is free text, but it must be a non-empty string; callers
+record `str(exc)` and only assert that it is a string.
+
+Continued in spec/02b_parse_lines.md, which specifies parse_lines.

@@ -1,0 +1,944 @@
+I'll write the suite, but first let me hunt for two specific scenarios to hard-code as regression tests: a pipe passed while |vy| > GLIDE_VY (non-glide), and a bird that dies on the exact tick a pipe crosses the scoring line (fatal-tick-scores-nothing).
+No hits — key insight: bird trajectory depends only on the flap pattern (seed only affects gaps), so I should enumerate patterns first, then seeds:
+Found a clean non-glide case (`seed=0 ticks=95 flaps="011000"` → score 3: one glide pass +2, one non-glide +1). Still need a floor-death exactly on a crossing tick — widening the pattern/seed search:
+I found 13 candidate patterns but none survived in the initial seed range, so I'm expanding the search to test a larger set of seeds against them.
+No luck in 4000 seeds — let me debug what's actually killing the bird in these candidate runs:
+I found that floor deaths at crossing ticks require a ceiling-bounce fall, and I'm now searching for patterns where the ceiling clamp occurs at the right tick with no flaps during the subsequent free-fall window.
+I found that ceiling-bounce timing is too restrictive, so I'm broadening the search to find patterns where bird-only death occurs at a multiple of 45 ticks and the bird stays low enough during the pipe window to clear any gap.
+I found that my filter missed the lower bound constraint—bird must also stay below the gap top, requiring `min_y ≥ ~120` in the window. Now I'll examine the candidate distribution to see how this affects the results.
+I found that all 69 candidates had the bird swinging near the ceiling in the window, making them impossible for any seed. Now I'll extend the search to longer patterns with a proper feasibility filter to find viable solutions.
+Found a fatal tick case where the bird dies on floor at tick 45 exactly when pipe 0 crosses the scoring line, which should test the "fatal tick scores nothing" rule. Now I'll verify it with the real engine to get exact values for the tests.
+All three regression instances confirmed. Writing the test suite:
+I found two bugs in my test expectations: I forgot that gravity applies before position updates, and I incorrectly assumed t=0 wasn't a spawn tick when it actually is. Now I'll fix the tests.
+DONE — `test_flapsim.py` created with 19 tests, all passing:
+
+- **Physics clamps** (6): flap sets vy exactly to FLAP_V from any state, gravity clamps at VY_MAX, flap bypasses the clamp, soft ceiling zeroes vy, floor kills and clamps y without zeroing vy, exact-boundary survival at `FIELD_H - BIRD_H`
+- **LCG** (4): known values for lcg(0/1/7), spawn advances the LCG exactly once per spawn tick, non-spawn ticks leave state untouched (t=0 *is* a spawn tick), gap_top range
+- **AABB edges** (3): touching edges don't overlap, bird bottom/top exactly at gap boundaries survives, pipe right edge exactly at BIRD_X doesn't hit
+- **Clean-glide bonus** (2): all-glide run scores 8 (4×2), mixed run scores 3 (one +2 glide pass, one +1 non-glide pass)
+- **Per-tick order** (4): engine matches an independent spec/02-order reference loop across a 9-config battery, fatal tick scores nothing (bird floor-dies on the exact tick pipe 0 crosses the scoring line — found by search), ticks_run includes the fatal tick, state dict keys
+
+Two initial failures were bugs in my test expectations (forgot gravity applies before the position update; wrongly excluded t=0 from spawn ticks) — fixed the tests, not the engine.
+
+===STDERR===
+timestamp=2026-09-16T15:55:02.957Z level=INFO run=3596884f message="creating instance" directory=/tmp/oc-anchor-k2mq6z
+timestamp=2026-09-16T15:55:02.958Z level=INFO run=3596884f message=fromDirectory directory=/tmp/oc-anchor-k2mq6z
+timestamp=2026-09-16T15:55:02.969Z level=INFO run=3596884f message=bootstrapping directory=/tmp/oc-anchor-k2mq6z
+timestamp=2026-09-16T15:55:02.972Z level=INFO run=3596884f message=loading path=/tmp/ocx-OddARD/cfg/opencode/config.json
+timestamp=2026-09-16T15:55:02.973Z level=INFO run=3596884f message=loading path=/tmp/ocx-OddARD/cfg/opencode/opencode.json
+timestamp=2026-09-16T15:55:02.975Z level=INFO run=3596884f message=loading path=/tmp/ocx-OddARD/cfg/opencode/opencode.jsonc
+timestamp=2026-09-16T15:55:02.975Z level=INFO run=3596884f message=loading path=/home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/captures/oc-flapsim-v2-anchor-1789573267802/anchor-rep0/opencode.json
+timestamp=2026-09-16T15:55:03.042Z level=INFO run=3596884f message="all LSPs are disabled"
+timestamp=2026-09-16T15:55:03.043Z level=INFO run=3596884f message="all formatters are disabled"
+timestamp=2026-09-16T15:55:03.043Z level=INFO run=3596884f message=init
+timestamp=2026-09-16T15:55:03.154Z level=INFO run=3596884f message="event connected"
+timestamp=2026-09-16T15:55:03.485Z level=INFO run=3596884f message=loop session.id=ses_f551ef735ffe607HQhiZLjw0g4 step=0
+timestamp=2026-09-16T15:55:03.497Z level=INFO run=3596884f message="shell tool using shell" shell=/bin/bash
+timestamp=2026-09-16T15:55:03.514Z level=INFO run=3596884f message=init count=10
+[0m
+> build · unsloth/Qwen3.8-27B-GGUF
+[0m
+timestamp=2026-09-16T15:55:03.564Z level=INFO run=3596884f message="watcher backend" directory=/tmp/oc-anchor-k2mq6z platform=linux backend=inotify
+timestamp=2026-09-16T15:55:03.570Z level=INFO run=3596884f message="project copy refresh started" projectID=global
+timestamp=2026-09-16T15:55:03.571Z level=INFO run=3596884f message="project copy refresh done" projectID=global updated=[] removed=[]
+timestamp=2026-09-16T15:55:03.595Z level=INFO run=3596884f message="booting location services" directory=/tmp/oc-anchor-k2mq6z workspaceID=undefined
+timestamp=2026-09-16T15:55:03.837Z level=INFO run=3596884f message=process session.id=ses_f551ef735ffe607HQhiZLjw0g4 messageID=msg_0aaedc1c300164zU1pxKOpBfkX
+timestamp=2026-09-16T15:55:03.839Z level=INFO run=3596884f message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551ef735ffe607HQhiZLjw0g4 small=false agent=build mode=primary
+timestamp=2026-09-16T15:55:03.844Z level=INFO run=3596884f message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T16:02:09.264Z level=INFO run=3596884f message=evaluated permission=bash pattern="cat > /tmp/search.py <<'EOF'\nimport sys\nsys.path.insert(0, \"/tmp/oc-anchor-k2mq6z\")\nfrom units import *\nfrom physics import step_bird\nfrom world import spawn, scroll, cull\nfrom collide import pipe_hit\n\ndef ref(seed, ticks, flaps):\n    y, vy, score, s, alive = 560, 0, 0, seed, True\n    pipes, trun, scored = [], 0, []\n    for t in range(ticks):\n        trun = t + 1\n        p, s = spawn(t, s)\n        if p: pipes.append(p)\n        y, vy, alive = step_bird(y, vy, flaps[t % len(flaps)] == \"1\")\n        scroll(pipes)\n        hit = False\n        if alive:\n            for q in pipes:\n                if pipe_hit(y, q):\n                    alive = False; hit = True; break\n        if alive:\n            for q in pipes:\n                if not q[\"passed\"] and q[\"x\"] + PIPE_W <= BIRD_X:\n                    q[\"passed\"] = True\n                    score += 1\n                    if abs(vy) <= GLIDE_VY: score += 1\n                    scored.append((t, vy))\n            pipes = cull(pipes)\n        else:\n            crossed = any(q[\"x\"] == SPAWN_X - SCROLL * 46 for q in pipes)\n            return y, vy, score, alive, trun, scored, hit, crossed\n    return y, vy, score, alive, trun, scored, False, False\n\npats = [\"0\", \"1\", \"00\", \"01\", \"10\", \"11\", \"0010\", \"0001\", \"0110\", \"1001\",\n        \"00001\", \"00100\", \"10000\", \"01010\", \"00110\", \"0101\", \"1010\", \"00010\"]\nprint(\"== non-glide passes ==\")\nfound_ng = 0\nfor seed in range(0, 60):\n    for ticks in (200, 300, 400):\n        for fl in pats:\n            y, vy, score, alive, trun, scored, hit, crossed = ref(seed, ticks, fl)\n            ng = [e for e in scored if abs(e[1]) > GLIDE_VY]\n            if ng and found_ng < 3:\n                print(f\"seed={seed} ticks={ticks} flaps={fl} score={score} alive={alive} passes={scored}\")\n                found_ng += 1\nprint(\"== death on crossing tick ==\")\nfound_d = 0\nfor seed in range(0, 200):\n    for ticks in (200, 300, 400, 500):\n        for fl in pats:\n            y, vy, score, alive, trun, scored, hit, crossed = ref(seed, ticks, fl)\n            if not alive and crossed and not hit and found_d < 3:\n                print(f\"seed={seed} ticks={ticks} flaps={fl} die_t={trun-1} score={score} passes={scored}\")\n                found_d += 1\nEOF" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T16:02:09.264Z level=INFO run=3596884f message=evaluated permission=bash pattern="python3 /tmp/search.py" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T16:02:10.022Z level=INFO run=3596884f message=loop session.id=ses_f551ef735ffe607HQhiZLjw0g4 step=1
+[0m$ [0mcat > /tmp/search.py <<'EOF'
+import sys
+sys.path.insert(0, "/tmp/oc-anchor-k2mq6z")
+from units import *
+from physics import step_bird
+from world import spawn, scroll, cull
+from collide import pipe_hit
+
+def ref(seed, ticks, flaps):
+    y, vy, score, s, alive = 560, 0, 0, seed, True
+    pipes, trun, scored = [], 0, []
+    for t in range(ticks):
+        trun = t + 1
+        p, s = spawn(t, s)
+        if p: pipes.append(p)
+        y, vy, alive = step_bird(y, vy, flaps[t % len(flaps)] == "1")
+        scroll(pipes)
+        hit = False
+        if alive:
+            for q in pipes:
+                if pipe_hit(y, q):
+                    alive = False; hit = True; break
+        if alive:
+            for q in pipes:
+                if not q["passed"] and q["x"] + PIPE_W <= BIRD_X:
+                    q["passed"] = True
+                    score += 1
+                    if abs(vy) <= GLIDE_VY: score += 1
+                    scored.append((t, vy))
+            pipes = cull(pipes)
+        else:
+            crossed = any(q["x"] == SPAWN_X - SCROLL * 46 for q in pipes)
+            return y, vy, score, alive, trun, scored, hit, crossed
+    return y, vy, score, alive, trun, scored, False, False
+
+pats = ["0", "1", "00", "01", "10", "11", "0010", "0001", "0110", "1001",
+        "00001", "00100", "10000", "01010", "00110", "0101", "1010", "00010"]
+print("== non-glide passes ==")
+found_ng = 0
+for seed in range(0, 60):
+    for ticks in (200, 300, 400):
+        for fl in pats:
+            y, vy, score, alive, trun, scored, hit, crossed = ref(seed, ticks, fl)
+            ng = [e for e in scored if abs(e[1]) > GLIDE_VY]
+            if ng and found_ng < 3:
+                print(f"seed={seed} ticks={ticks} flaps={fl} score={score} alive={alive} passes={scored}")
+                found_ng += 1
+print("== death on crossing tick ==")
+found_d = 0
+for seed in range(0, 200):
+    for ticks in (200, 300, 400, 500):
+        for fl in pats:
+            y, vy, score, alive, trun, scored, hit, crossed = ref(seed, ticks, fl)
+            if not alive and crossed and not hit and found_d < 3:
+                print(f"seed={seed} ticks={ticks} flaps={fl} die_t={trun-1} score={score} passes={scored}")
+                found_d += 1
+EOF
+python3 /tmp/search.py
+== non-glide passes ==
+== death on crossing tick ==
+[0m
+timestamp=2026-09-16T16:02:10.040Z level=INFO run=3596884f message=process session.id=ses_f551ef735ffe607HQhiZLjw0g4 messageID=msg_0aaf443e8001Ut2soUsJ6fEV7L
+timestamp=2026-09-16T16:02:10.041Z level=INFO run=3596884f message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551ef735ffe607HQhiZLjw0g4 small=false agent=build mode=primary
+timestamp=2026-09-16T16:02:10.042Z level=INFO run=3596884f message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T16:05:22.357Z level=INFO run=3596884f message=evaluated permission=bash pattern="cat > /tmp/search2.py <<'EOF'\nimport sys, itertools\nsys.path.insert(0, \"/tmp/oc-anchor-k2mq6z\")\nfrom units import *\nfrom physics import step_bird\nfrom world import spawn, scroll, cull\nfrom collide import pipe_hit\n\ndef traj(flaps, maxt=600):\n    \"\"\"bird-only trajectory: list of (y, vy) after each tick t\"\"\"\n    y, vy, out = 560, 0, []\n    for t in range(maxt):\n        y, vy, alive = step_bird(y, vy, flaps[t % len(flaps)] == \"1\")\n        out.append((y, vy))\n        if not alive:\n            break\n    return out\n\ndef full(seed, ticks, flaps):\n    y, vy, score, s, alive = 560, 0, 0, seed, True\n    pipes, trun, scored = [], 0, []\n    for t in range(ticks):\n        trun = t + 1\n        p, s = spawn(t, s)\n        if p: pipes.append(p)\n        y, vy, alive = step_bird(y, vy, flaps[t % len(flaps)] == \"1\")\n        scroll(pipes)\n        hit = False\n        if alive:\n            for q in pipes:\n                if pipe_hit(y, q):\n                    alive = False; hit = True; break\n        if alive:\n            for q in pipes:\n                if not q[\"passed\"] and q[\"x\"] + PIPE_W <= BIRD_X:\n                    q[\"passed\"] = True\n                    score += 1\n                    if abs(vy) <= GLIDE_VY: score += 1\n                    scored.append((t, vy))\n            pipes = cull(pipes)\n        else:\n            crossed = any(q[\"x\"] == SPAWN_X - SCROLL * 46 for q in pipes)\n            return y, vy, score, alive, trun, scored, hit, crossed\n    return y, vy, score, alive, trun, scored, False, False\n\nprint(\"== patterns with |vy|>40 at a pass tick (t=45k+45), bird still airborne ==\")\ncands = []\nfor L in range(1, 9):\n    for bits in itertools.product(\"01\", repeat=L):\n        fl = \"\".join(bits)\n        tr = traj(fl)\n        for t in (45, 90, 135, 180, 225, 270):\n            if t < len(tr) and abs(tr[t][1]) > GLIDE_VY:\n                cands.append((fl, t, tr[t]))\n                break\nprint(len(cands), \"candidates; first few:\", cands[:8])\n\nprint(\"== patterns that floor-die exactly on a crossing tick ==\")\ndie_cands = []\nfor L in range(1, 9):\n    for bits in itertools.product(\"01\", repeat=L):\n        fl = \"\".join(bits)\n        tr = traj(fl)\n        d = len(tr) - 1  # death tick (floor; pipe hits ignored here)\n        if d in (45, 90, 135, 180, 225, 270):\n            die_cands.append((fl, d))\nprint(len(die_cands), \"candidates; first few:\", die_cands[:8])\n\nprint(\"== confirm non-glide with seeds ==\")\nn = 0\nfor fl, t, (yy, vyv) in cands:\n    for seed in range(0, 100):\n        y, vy, score, alive, trun, scored, hit, crossed = full(seed, t + 5, fl)\n        if alive and not hit and any(abs(v) > GLIDE_VY for _, v in scored):\n            print(f\"seed={seed} ticks={t+5} flaps={fl} score={score} passes={scored}\")\n            n += 1\n            break\n    if n >= 3: break\n\nprint(\"== confirm floor-death-on-crossing with seeds ==\")\nn = 0\nfor fl, d in die_cands:\n    for seed in range(0, 200):\n        y, vy, score, alive, trun, scored, hit, crossed = full(seed, d + 5, fl)\n        if (not alive) and not hit and crossed and (trun - 1) == d:\n            print(f\"seed={seed} ticks={d+5} flaps={fl} die_t={d} score={score} passes={scored}\")\n            n += 1\n            break\n    if n >= 3: break\nEOF" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T16:05:22.357Z level=INFO run=3596884f message=evaluated permission=bash pattern="python3 /tmp/search2.py" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T16:05:22.465Z level=INFO run=3596884f message=loop session.id=ses_f551ef735ffe607HQhiZLjw0g4 step=2
+[0m$ [0mcat > /tmp/search2.py <<'EOF'
+import sys, itertools
+sys.path.insert(0, "/tmp/oc-anchor-k2mq6z")
+from units import *
+from physics import step_bird
+from world import spawn, scroll, cull
+from collide import pipe_hit
+
+def traj(flaps, maxt=600):
+    """bird-only trajectory: list of (y, vy) after each tick t"""
+    y, vy, out = 560, 0, []
+    for t in range(maxt):
+        y, vy, alive = step_bird(y, vy, flaps[t % len(flaps)] == "1")
+        out.append((y, vy))
+        if not alive:
+            break
+    return out
+
+def full(seed, ticks, flaps):
+    y, vy, score, s, alive = 560, 0, 0, seed, True
+    pipes, trun, scored = [], 0, []
+    for t in range(ticks):
+        trun = t + 1
+        p, s = spawn(t, s)
+        if p: pipes.append(p)
+        y, vy, alive = step_bird(y, vy, flaps[t % len(flaps)] == "1")
+        scroll(pipes)
+        hit = False
+        if alive:
+            for q in pipes:
+                if pipe_hit(y, q):
+                    alive = False; hit = True; break
+        if alive:
+            for q in pipes:
+                if not q["passed"] and q["x"] + PIPE_W <= BIRD_X:
+                    q["passed"] = True
+                    score += 1
+                    if abs(vy) <= GLIDE_VY: score += 1
+                    scored.append((t, vy))
+            pipes = cull(pipes)
+        else:
+            crossed = any(q["x"] == SPAWN_X - SCROLL * 46 for q in pipes)
+            return y, vy, score, alive, trun, scored, hit, crossed
+    return y, vy, score, alive, trun, scored, False, False
+
+print("== patterns with |vy|>40 at a pass tick (t=45k+45), bird still airborne ==")
+cands = []
+for L in range(1, 9):
+    for bits in itertools.product("01", repeat=L):
+        fl = "".join(bits)
+        tr = traj(fl)
+        for t in (45, 90, 135, 180, 225, 270):
+            if t < len(tr) and abs(tr[t][1]) > GLIDE_VY:
+                cands.append((fl, t, tr[t]))
+                break
+print(len(cands), "candidates; first few:", cands[:8])
+
+print("== patterns that floor-die exactly on a crossing tick ==")
+die_cands = []
+for L in range(1, 9):
+    for bits in itertools.product("01", repeat=L):
+        fl = "".join(bits)
+        tr = traj(fl)
+        d = len(tr) - 1  # death tick (floor; pipe hits ignored here)
+        if d in (45, 90, 135, 180, 225, 270):
+            die_cands.append((fl, d))
+print(len(die_cands), "candidates; first few:", die_cands[:8])
+
+print("== confirm non-glide with seeds ==")
+n = 0
+for fl, t, (yy, vyv) in cands:
+    for seed in range(0, 100):
+        y, vy, score, alive, trun, scored, hit, crossed = full(seed, t + 5, fl)
+        if alive and not hit and any(abs(v) > GLIDE_VY for _, v in scored):
+            print(f"seed={seed} ticks={t+5} flaps={fl} score={score} passes={scored}")
+            n += 1
+            break
+    if n >= 3: break
+
+print("== confirm floor-death-on-crossing with seeds ==")
+n = 0
+for fl, d in die_cands:
+    for seed in range(0, 200):
+        y, vy, score, alive, trun, scored, hit, crossed = full(seed, d + 5, fl)
+        if (not alive) and not hit and crossed and (trun - 1) == d:
+            print(f"seed={seed} ticks={d+5} flaps={fl} die_t={d} score={score} passes={scored}")
+            n += 1
+            break
+    if n >= 3: break
+EOF
+python3 /tmp/search2.py
+== patterns with |vy|>40 at a pass tick (t=45k+45), bird still airborne ==
+80 candidates; first few: [('01000', 45, (983, 45)), ('000011', 45, (866, 45)), ('011000', 90, (848, 45)), ('011100', 90, (108, 54)), ('100011', 135, (108, 54)), ('0000101', 45, (794, 45)), ('0000111', 45, (686, 45)), ('0001010', 135, (839, 45))]
+== patterns that floor-die exactly on a crossing tick ==
+1 candidates; first few: [('000011', 135)]
+== confirm non-glide with seeds ==
+seed=0 ticks=50 flaps=01000 score=1 passes=[(45, 45)]
+seed=0 ticks=50 flaps=000011 score=1 passes=[(45, 45)]
+seed=0 ticks=95 flaps=011000 score=3 passes=[(45, -9), (90, 45)]
+== confirm floor-death-on-crossing with seeds ==
+[0m
+timestamp=2026-09-16T16:05:22.484Z level=INFO run=3596884f message=process session.id=ses_f551ef735ffe607HQhiZLjw0g4 messageID=msg_0aaf733a4001fC9oSgfZ8Gay0x
+timestamp=2026-09-16T16:05:22.484Z level=INFO run=3596884f message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551ef735ffe607HQhiZLjw0g4 small=false agent=build mode=primary
+timestamp=2026-09-16T16:05:22.485Z level=INFO run=3596884f message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T16:08:53.511Z level=INFO run=3596884f message=evaluated permission=bash pattern="cat > /tmp/search3.py <<'EOF'\nimport sys, itertools\nsys.path.insert(0, \"/tmp/oc-anchor-k2mq6z\")\nfrom units import *\nfrom physics import step_bird\nfrom world import spawn, scroll, cull\nfrom collide import pipe_hit\n\ndef traj(flaps, maxt=700):\n    y, vy, out = 560, 0, []\n    for t in range(maxt):\n        y, vy, alive = step_bird(y, vy, flaps[t % len(flaps)] == \"1\")\n        out.append((y, vy))\n        if not alive:\n            break\n    return out\n\ndef full(seed, ticks, flaps):\n    y, vy, score, s, alive = 560, 0, 0, seed, True\n    pipes, trun, scored = [], 0, []\n    for t in range(ticks):\n        trun = t + 1\n        p, s = spawn(t, s)\n        if p: pipes.append(p)\n        y, vy, alive = step_bird(y, vy, flaps[t % len(flaps)] == \"1\")\n        scroll(pipes)\n        hit = False\n        if alive:\n            for q in pipes:\n                if pipe_hit(y, q):\n                    alive = False; hit = True; break\n        if alive:\n            for q in pipes:\n                if not q[\"passed\"] and q[\"x\"] + PIPE_W <= BIRD_X:\n                    q[\"passed\"] = True\n                    score += 1\n                    if abs(vy) <= GLIDE_VY: score += 1\n                    scored.append((t, vy))\n            pipes = cull(pipes)\n        else:\n            crossed = any(q[\"x\"] == SPAWN_X - SCROLL * 46 for q in pipes)\n            return y, vy, score, alive, trun, scored, hit, crossed\n    return y, vy, score, alive, trun, scored, False, False\n\ncands = []\nfor L in range(9, 13):\n    for bits in itertools.product(\"01\", repeat=L):\n        fl = \"\".join(bits)\n        tr = traj(fl)\n        d = len(tr) - 1\n        if d in (45, 90, 135, 180, 225, 270, 315):\n            cands.append((fl, d))\nprint(len(cands), \"death-on-crossing candidates\")\nn = 0\nfor fl, d in sorted(cands, key=lambda c: c[1]):\n    for seed in range(0, 400):\n        y, vy, score, alive, trun, scored, hit, crossed = full(seed, d + 5, fl)\n        if (not alive) and not hit and crossed and (trun - 1) == d:\n            print(f\"FOUND seed={seed} ticks={d+5} flaps={fl} die_t={d} score={score} passes={scored}\")\n            n += 1\n            break\n    if n >= 2: break\nEOF" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T16:08:53.511Z level=INFO run=3596884f message=evaluated permission=bash pattern="python3 /tmp/search3.py" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T16:08:54.332Z level=INFO run=3596884f message=loop session.id=ses_f551ef735ffe607HQhiZLjw0g4 step=3
+[0m$ [0mcat > /tmp/search3.py <<'EOF'
+import sys, itertools
+sys.path.insert(0, "/tmp/oc-anchor-k2mq6z")
+from units import *
+from physics import step_bird
+from world import spawn, scroll, cull
+from collide import pipe_hit
+
+def traj(flaps, maxt=700):
+    y, vy, out = 560, 0, []
+    for t in range(maxt):
+        y, vy, alive = step_bird(y, vy, flaps[t % len(flaps)] == "1")
+        out.append((y, vy))
+        if not alive:
+            break
+    return out
+
+def full(seed, ticks, flaps):
+    y, vy, score, s, alive = 560, 0, 0, seed, True
+    pipes, trun, scored = [], 0, []
+    for t in range(ticks):
+        trun = t + 1
+        p, s = spawn(t, s)
+        if p: pipes.append(p)
+        y, vy, alive = step_bird(y, vy, flaps[t % len(flaps)] == "1")
+        scroll(pipes)
+        hit = False
+        if alive:
+            for q in pipes:
+                if pipe_hit(y, q):
+                    alive = False; hit = True; break
+        if alive:
+            for q in pipes:
+                if not q["passed"] and q["x"] + PIPE_W <= BIRD_X:
+                    q["passed"] = True
+                    score += 1
+                    if abs(vy) <= GLIDE_VY: score += 1
+                    scored.append((t, vy))
+            pipes = cull(pipes)
+        else:
+            crossed = any(q["x"] == SPAWN_X - SCROLL * 46 for q in pipes)
+            return y, vy, score, alive, trun, scored, hit, crossed
+    return y, vy, score, alive, trun, scored, False, False
+
+cands = []
+for L in range(9, 13):
+    for bits in itertools.product("01", repeat=L):
+        fl = "".join(bits)
+        tr = traj(fl)
+        d = len(tr) - 1
+        if d in (45, 90, 135, 180, 225, 270, 315):
+            cands.append((fl, d))
+print(len(cands), "death-on-crossing candidates")
+n = 0
+for fl, d in sorted(cands, key=lambda c: c[1]):
+    for seed in range(0, 400):
+        y, vy, score, alive, trun, scored, hit, crossed = full(seed, d + 5, fl)
+        if (not alive) and not hit and crossed and (trun - 1) == d:
+            print(f"FOUND seed={seed} ticks={d+5} flaps={fl} die_t={d} score={score} passes={scored}")
+            n += 1
+            break
+    if n >= 2: break
+EOF
+python3 /tmp/search3.py
+13 death-on-crossing candidates
+[0m
+timestamp=2026-09-16T16:08:54.348Z level=INFO run=3596884f message=process session.id=ses_f551ef735ffe607HQhiZLjw0g4 messageID=msg_0aafa6f3e0019WGsiNwp0ICf9U
+timestamp=2026-09-16T16:08:54.348Z level=INFO run=3596884f message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551ef735ffe607HQhiZLjw0g4 small=false agent=build mode=primary
+timestamp=2026-09-16T16:08:54.349Z level=INFO run=3596884f message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T16:11:48.871Z level=INFO run=3596884f message=evaluated permission=bash pattern="cat > /tmp/search4.py <<'EOF'\nimport sys, itertools\nsys.path.insert(0, \"/tmp/oc-anchor-k2mq6z\")\nfrom units import *\nfrom physics import step_bird\nfrom world import spawn, scroll, cull\nfrom collide import pipe_hit\n\ndef traj(flaps, maxt=700):\n    y, vy, out = 560, 0, []\n    for t in range(maxt):\n        y, vy, alive = step_bird(y, vy, flaps[t % len(flaps)] == \"1\")\n        out.append((y, vy))\n        if not alive:\n            break\n    return out\n\ndef full(seed, ticks, flaps):\n    y, vy, score, s, alive = 560, 0, 0, seed, True\n    pipes, trun, scored = [], 0, []\n    for t in range(ticks):\n        trun = t + 1\n        p, s = spawn(t, s)\n        if p: pipes.append(p)\n        y, vy, alive = step_bird(y, vy, flaps[t % len(flaps)] == \"1\")\n        scroll(pipes)\n        hit = False\n        if alive:\n            for q in pipes:\n                if pipe_hit(y, q):\n                    alive = False; hit = True; break\n        if alive:\n            for q in pipes:\n                if not q[\"passed\"] and q[\"x\"] + PIPE_W <= BIRD_X:\n                    q[\"passed\"] = True\n                    score += 1\n                    if abs(vy) <= GLIDE_VY: score += 1\n                    scored.append((t, vy))\n            pipes = cull(pipes)\n        else:\n            crossed = any(q[\"x\"] == SPAWN_X - SCROLL * 46 for q in pipes)\n            return y, vy, score, alive, trun, scored, hit, crossed\n    return y, vy, score, alive, trun, scored, False, False\n\ncands = []\nfor L in range(1, 13):\n    for bits in itertools.product(\"01\", repeat=L):\n        fl = \"\".join(bits)\n        tr = traj(fl)\n        d = len(tr) - 1\n        if d in (45, 90, 135, 180, 225, 270, 315):\n            cands.append((fl, d))\nprint(len(cands), \"candidates\")\nfound = []\nfor fl, d in sorted(cands, key=lambda c: (c[1], len(c[0]))):\n    for seed in range(0, 4000):\n        y, vy, score, alive, trun, scored, hit, crossed = full(seed, d + 5, fl)\n        if (not alive) and not hit and crossed and (trun - 1) == d:\n            found.append((seed, d + 5, fl, d, score, scored))\n            break\n    if len(found) >= 2:\n        break\nfor f in found:\n    print(\"FOUND seed=%d ticks=%d flaps=%s die_t=%d score=%d passes=%s\" % f)\nEOF" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T16:11:48.871Z level=INFO run=3596884f message=evaluated permission=bash pattern="python3 /tmp/search4.py" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T16:11:51.945Z level=INFO run=3596884f message=loop session.id=ses_f551ef735ffe607HQhiZLjw0g4 step=4
+[0m$ [0mcat > /tmp/search4.py <<'EOF'
+import sys, itertools
+sys.path.insert(0, "/tmp/oc-anchor-k2mq6z")
+from units import *
+from physics import step_bird
+from world import spawn, scroll, cull
+from collide import pipe_hit
+
+def traj(flaps, maxt=700):
+    y, vy, out = 560, 0, []
+    for t in range(maxt):
+        y, vy, alive = step_bird(y, vy, flaps[t % len(flaps)] == "1")
+        out.append((y, vy))
+        if not alive:
+            break
+    return out
+
+def full(seed, ticks, flaps):
+    y, vy, score, s, alive = 560, 0, 0, seed, True
+    pipes, trun, scored = [], 0, []
+    for t in range(ticks):
+        trun = t + 1
+        p, s = spawn(t, s)
+        if p: pipes.append(p)
+        y, vy, alive = step_bird(y, vy, flaps[t % len(flaps)] == "1")
+        scroll(pipes)
+        hit = False
+        if alive:
+            for q in pipes:
+                if pipe_hit(y, q):
+                    alive = False; hit = True; break
+        if alive:
+            for q in pipes:
+                if not q["passed"] and q["x"] + PIPE_W <= BIRD_X:
+                    q["passed"] = True
+                    score += 1
+                    if abs(vy) <= GLIDE_VY: score += 1
+                    scored.append((t, vy))
+            pipes = cull(pipes)
+        else:
+            crossed = any(q["x"] == SPAWN_X - SCROLL * 46 for q in pipes)
+            return y, vy, score, alive, trun, scored, hit, crossed
+    return y, vy, score, alive, trun, scored, False, False
+
+cands = []
+for L in range(1, 13):
+    for bits in itertools.product("01", repeat=L):
+        fl = "".join(bits)
+        tr = traj(fl)
+        d = len(tr) - 1
+        if d in (45, 90, 135, 180, 225, 270, 315):
+            cands.append((fl, d))
+print(len(cands), "candidates")
+found = []
+for fl, d in sorted(cands, key=lambda c: (c[1], len(c[0]))):
+    for seed in range(0, 4000):
+        y, vy, score, alive, trun, scored, hit, crossed = full(seed, d + 5, fl)
+        if (not alive) and not hit and crossed and (trun - 1) == d:
+            found.append((seed, d + 5, fl, d, score, scored))
+            break
+    if len(found) >= 2:
+        break
+for f in found:
+    print("FOUND seed=%d ticks=%d flaps=%s die_t=%d score=%d passes=%s" % f)
+EOF
+python3 /tmp/search4.py
+14 candidates
+[0m
+timestamp=2026-09-16T16:11:51.963Z level=INFO run=3596884f message=process session.id=ses_f551ef735ffe607HQhiZLjw0g4 messageID=msg_0aafd250c001Z2Qspf8UbmBgiN
+timestamp=2026-09-16T16:11:51.964Z level=INFO run=3596884f message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551ef735ffe607HQhiZLjw0g4 small=false agent=build mode=primary
+timestamp=2026-09-16T16:11:51.965Z level=INFO run=3596884f message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T16:15:06.356Z level=INFO run=3596884f message=evaluated permission=bash pattern="cat > /tmp/debug1.py <<'EOF'\nimport sys\nsys.path.insert(0, \"/tmp/oc-anchor-k2mq6z\")\nfrom units import *\nfrom physics import step_bird\nfrom world import spawn, scroll, cull\nfrom collide import pipe_hit\n\ndef traj(flaps, maxt=700):\n    y, vy, out = 560, 0, []\n    for t in range(maxt):\n        y, vy, alive = step_bird(y, vy, flaps[t % len(flaps)] == \"1\")\n        out.append((y, vy))\n        if not alive:\n            break\n    return out\n\nfl = \"000011\"\ntr = traj(fl)\nprint(\"death tick (bird-only):\", len(tr) - 1)\nfor t in (34,35,36,37,38, 79,80,81,82,83, 124,125,126,127,128, 133,134,135):\n    if t < len(tr): print(f\"t={t} y={tr[t][0]} vy={tr[t][1]}\")\n\ndef full(seed, ticks, flaps, verbose=False):\n    y, vy, score, s, alive = 560, 0, 0, seed, True\n    pipes, trun = [], 0\n    for t in range(ticks):\n        trun = t + 1\n        p, s = spawn(t, s)\n        if p: pipes.append(p)\n        y, vy, alive = step_bird(y, vy, flaps[t % len(flaps)] == \"1\")\n        scroll(pipes)\n        hit = False\n        if alive:\n            for q in pipes:\n                if pipe_hit(y, q):\n                    alive = False; hit = True\n                    if verbose: print(f\"  seed={seed} PIPE HIT at t={t} pipe x={q['x']} gap_top={q['gap_top']} bird y={y}\")\n                    break\n        if alive:\n            for q in pipes:\n                if not q[\"passed\"] and q[\"x\"] + PIPE_W <= BIRD_X:\n                    q[\"passed\"] = True\n                    score += 1\n                    if abs(vy) <= GLIDE_VY: score += 1\n            pipes = cull(pipes)\n        else:\n            crossed = any(q[\"x\"] == 160 for q in pipes)\n            if verbose and not hit: print(f\"  seed={seed} FLOOR at t={t} crossed={crossed}\")\n            return trun, score, hit, crossed\n    return ticks, score, False, False\n\nreach = 0\nfor seed in range(0, 200):\n    trun, score, hit, crossed = full(seed, 140, fl)\n    if trun >= 124: reach += 1\nprint(\"seeds reaching t>=124:\", reach, \"/200\")\nfor seed in range(0, 8):\n    print(f\"seed={seed}:\", full(seed, 140, fl))\nEOF" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T16:15:06.357Z level=INFO run=3596884f message=evaluated permission=bash pattern="python3 /tmp/debug1.py" action.permission=* action.action=allow action.pattern=*
+[0m$ [0mcat > /tmp/debug1.py <<'EOF'
+import sys
+sys.path.insert(0, "/tmp/oc-anchor-k2mq6z")
+from units import *
+from physics import step_bird
+from world import spawn, scroll, cull
+from collide import pipe_hit
+
+def traj(flaps, maxt=700):
+    y, vy, out = 560, 0, []
+    for t in range(maxt):
+        y, vy, alive = step_bird(y, vy, flaps[t % len(flaps)] == "1")
+        out.append((y, vy))
+        if not alive:
+            break
+    return out
+
+fl = "000011"
+tr = traj(fl)
+print("death tick (bird-only):", len(tr) - 1)
+for t in (34,35,36,37,38, 79,80,81,82,83, 124,125,126,127,128, 133,134,135):
+    if t < len(tr): print(f"t={t} y={tr[t][0]} vy={tr[t][1]}")
+
+def full(seed, ticks, flaps, verbose=False):
+    y, vy, score, s, alive = 560, 0, 0, seed, True
+    pipes, trun = [], 0
+    for t in range(ticks):
+        trun = t + 1
+        p, s = spawn(t, s)
+        if p: pipes.append(p)
+        y, vy, alive = step_bird(y, vy, flaps[t % len(flaps)] == "1")
+        scroll(pipes)
+        hit = False
+        if alive:
+            for q in pipes:
+                if pipe_hit(y, q):
+                    alive = False; hit = True
+                    if verbose: print(f"  seed={seed} PIPE HIT at t={t} pipe x={q['x']} gap_top={q['gap_top']} bird y={y}")
+                    break
+        if alive:
+            for q in pipes:
+                if not q["passed"] and q["x"] + PIPE_W <= BIRD_X:
+                    q["passed"] = True
+                    score += 1
+                    if abs(vy) <= GLIDE_VY: score += 1
+            pipes = cull(pipes)
+        else:
+            crossed = any(q["x"] == 160 for q in pipes)
+            if verbose and not hit: print(f"  seed={seed} FLOOR at t={t} crossed={crossed}")
+            return trun, score, hit, crossed
+    return ticks, score, False, False
+
+reach = 0
+for seed in range(0, 200):
+    trun, score, hit, crossed = full(seed, 140, fl)
+    if trun >= 124: reach += 1
+print("seeds reaching t>=124:", reach, "/200")
+for seed in range(0, 8):
+    print(f"seed={seed}:", full(seed, 140, fl))
+EOF
+python3 /tmp/debug1.py
+death tick (bird-only): 135
+t=34 y=803 vy=-27
+t=35 y=776 vy=-27
+t=36 y=767 vy=-9
+t=37 y=776 vy=9
+t=38 y=803 vy=27
+t=79 y=902 vy=9
+t=80 y=929 vy=27
+t=81 y=974 vy=45
+t=82 y=947 vy=-27
+t=83 y=920 vy=-27
+t=124 y=1073 vy=-27
+t=125 y=1046 vy=-27
+t=126 y=1037 vy=-9
+t=127 y=1046 vy=9
+t=128 y=1073 vy=27
+t=133 y=1064 vy=9
+t=134 y=1091 vy=27
+t=135 y=1120 vy=45
+seeds reaching t>=124: 116 /200
+seed=0: (131, 3, True, False)
+seed=1: (131, 3, True, False)
+seed=2: (88, 1, True, False)
+seed=3: (88, 1, True, False)
+seed=4: (131, 3, True, False)
+seed=5: (131, 3, True, False)
+seed=6: (88, 1, True, False)
+seed=7: (88, 1, True, False)
+[0m
+timestamp=2026-09-16T16:15:06.426Z level=INFO run=3596884f message=loop session.id=ses_f551ef735ffe607HQhiZLjw0g4 step=5
+timestamp=2026-09-16T16:15:06.445Z level=INFO run=3596884f message=process session.id=ses_f551ef735ffe607HQhiZLjw0g4 messageID=msg_0ab001cbc001pZlblkdKfl9JRt
+timestamp=2026-09-16T16:15:06.445Z level=INFO run=3596884f message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551ef735ffe607HQhiZLjw0g4 small=false agent=build mode=primary
+timestamp=2026-09-16T16:15:06.446Z level=INFO run=3596884f message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T16:19:58.108Z level=INFO run=3596884f message=evaluated permission=bash pattern="cat > /tmp/search5.py <<'EOF'\nimport sys, itertools\nsys.path.insert(0, \"/tmp/oc-anchor-k2mq6z\")\nfrom units import *\nfrom physics import step_bird\nfrom world import spawn, scroll, cull\nfrom collide import pipe_hit\n\ndef full(seed, ticks, flaps):\n    y, vy, score, s, alive = 560, 0, 0, seed, True\n    pipes, trun, scored = [], 0, []\n    for t in range(ticks):\n        trun = t + 1\n        p, s = spawn(t, s)\n        if p: pipes.append(p)\n        y, vy, alive = step_bird(y, vy, flaps[t % len(flaps)] == \"1\")\n        scroll(pipes)\n        hit = False\n        if alive:\n            for q in pipes:\n                if pipe_hit(y, q):\n                    alive = False; hit = True; break\n        if alive:\n            for q in pipes:\n                if not q[\"passed\"] and q[\"x\"] + PIPE_W <= BIRD_X:\n                    q[\"passed\"] = True\n                    score += 1\n                    if abs(vy) <= GLIDE_VY: score += 1\n                    scored.append((t, vy))\n            pipes = cull(pipes)\n        else:\n            crossed = any(q[\"x\"] == 160 for q in pipes)\n            return trun, score, alive, hit, crossed, scored\n    return ticks, score, True, False, False, scored\n\n# find patterns with ceiling clamp at c = 45k+34 and zeros for next 11 ticks\ncands = []\nfor L in range(1, 13):\n    for bits in itertools.product(\"01\", repeat=L):\n        fl = \"\".join(bits)\n        y, vy = 560, 0\n        for t in range(400):\n            flap = fl[t % L] == \"1\"\n            nv = FLAP_V if flap else min(vy + G, VY_MAX)\n            ny = y + nv\n            if ny < 0 and (t - 34) % 45 == 0 and t >= 34:\n                # ceiling clamp at t; need no flaps t+1..t+11\n                if all(fl[(t + i) % L] == \"0\" for i in range(1, 12)):\n                    cands.append((fl, t))\n                    break\n            y, vy = (0, 0) if ny < 0 else (ny, nv)\nprint(len(cands), \"ceiling-bounce candidates\")\nfound = []\nfor fl, c in sorted(cands, key=lambda x: x[1]):\n    d = c + 11\n    for seed in range(0, 300):\n        trun, score, alive, hit, crossed, scored = full(seed, d + 5, fl)\n        if (not alive) and not hit and crossed and (trun - 1) == d:\n            found.append((seed, d + 5, fl, d, score, scored))\n            break\n    if len(found) >= 2:\n        break\nfor f in found:\n    print(\"FOUND seed=%d ticks=%d flaps=%s die_t=%d score=%d passes=%s\" % f)\nEOF" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T16:19:58.108Z level=INFO run=3596884f message=evaluated permission=bash pattern="python3 /tmp/search5.py" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T16:19:58.714Z level=INFO run=3596884f message=loop session.id=ses_f551ef735ffe607HQhiZLjw0g4 step=6
+[0m$ [0mcat > /tmp/search5.py <<'EOF'
+import sys, itertools
+sys.path.insert(0, "/tmp/oc-anchor-k2mq6z")
+from units import *
+from physics import step_bird
+from world import spawn, scroll, cull
+from collide import pipe_hit
+
+def full(seed, ticks, flaps):
+    y, vy, score, s, alive = 560, 0, 0, seed, True
+    pipes, trun, scored = [], 0, []
+    for t in range(ticks):
+        trun = t + 1
+        p, s = spawn(t, s)
+        if p: pipes.append(p)
+        y, vy, alive = step_bird(y, vy, flaps[t % len(flaps)] == "1")
+        scroll(pipes)
+        hit = False
+        if alive:
+            for q in pipes:
+                if pipe_hit(y, q):
+                    alive = False; hit = True; break
+        if alive:
+            for q in pipes:
+                if not q["passed"] and q["x"] + PIPE_W <= BIRD_X:
+                    q["passed"] = True
+                    score += 1
+                    if abs(vy) <= GLIDE_VY: score += 1
+                    scored.append((t, vy))
+            pipes = cull(pipes)
+        else:
+            crossed = any(q["x"] == 160 for q in pipes)
+            return trun, score, alive, hit, crossed, scored
+    return ticks, score, True, False, False, scored
+
+# find patterns with ceiling clamp at c = 45k+34 and zeros for next 11 ticks
+cands = []
+for L in range(1, 13):
+    for bits in itertools.product("01", repeat=L):
+        fl = "".join(bits)
+        y, vy = 560, 0
+        for t in range(400):
+            flap = fl[t % L] == "1"
+            nv = FLAP_V if flap else min(vy + G, VY_MAX)
+            ny = y + nv
+            if ny < 0 and (t - 34) % 45 == 0 and t >= 34:
+                # ceiling clamp at t; need no flaps t+1..t+11
+                if all(fl[(t + i) % L] == "0" for i in range(1, 12)):
+                    cands.append((fl, t))
+                    break
+            y, vy = (0, 0) if ny < 0 else (ny, nv)
+print(len(cands), "ceiling-bounce candidates")
+found = []
+for fl, c in sorted(cands, key=lambda x: x[1]):
+    d = c + 11
+    for seed in range(0, 300):
+        trun, score, alive, hit, crossed, scored = full(seed, d + 5, fl)
+        if (not alive) and not hit and crossed and (trun - 1) == d:
+            found.append((seed, d + 5, fl, d, score, scored))
+            break
+    if len(found) >= 2:
+        break
+for f in found:
+    print("FOUND seed=%d ticks=%d flaps=%s die_t=%d score=%d passes=%s" % f)
+EOF
+python3 /tmp/search5.py
+0 ceiling-bounce candidates
+[0m
+timestamp=2026-09-16T16:19:58.730Z level=INFO run=3596884f message=process session.id=ses_f551ef735ffe607HQhiZLjw0g4 messageID=msg_0ab04927c001hPRuPuAUACvRyu
+timestamp=2026-09-16T16:19:58.730Z level=INFO run=3596884f message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551ef735ffe607HQhiZLjw0g4 small=false agent=build mode=primary
+timestamp=2026-09-16T16:19:58.731Z level=INFO run=3596884f message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T16:31:26.068Z level=INFO run=3596884f message=evaluated permission=bash pattern="cat > /tmp/search6.py <<'EOF'\nimport sys, itertools\nsys.path.insert(0, \"/tmp/oc-anchor-k2mq6z\")\nfrom units import *\nfrom physics import step_bird\nfrom world import spawn, scroll, cull\nfrom collide import pipe_hit\n\ndef full(seed, ticks, flaps):\n    y, vy, score, s, alive = 560, 0, 0, seed, True\n    pipes, trun, scored = [], 0, []\n    for t in range(ticks):\n        trun = t + 1\n        p, s = spawn(t, s)\n        if p: pipes.append(p)\n        y, vy, alive = step_bird(y, vy, flaps[t % len(flaps)] == \"1\")\n        scroll(pipes)\n        hit = False\n        if alive:\n            for q in pipes:\n                if pipe_hit(y, q):\n                    alive = False; hit = True; break\n        if alive:\n            for q in pipes:\n                if not q[\"passed\"] and q[\"x\"] + PIPE_W <= BIRD_X:\n                    q[\"passed\"] = True\n                    score += 1\n                    if abs(vy) <= GLIDE_VY: score += 1\n                    scored.append((t, vy))\n            pipes = cull(pipes)\n        else:\n            crossed = any(q[\"x\"] == 160 for q in pipes)\n            return trun, score, alive, hit, crossed, scored\n    return ticks, score, True, False, False, scored\n\ndef bird_traj(flaps, maxt=400):\n    y, vy, out = 560, 0, []\n    for t in range(maxt):\n        y, vy, alive = step_bird(y, vy, flaps[t % len(flaps)] == \"1\")\n        out.append(y)\n        if not alive:\n            break\n    return out\n\ncands = []\nfor L in range(1, 15):\n    for bits in itertools.product(\"01\", repeat=L):\n        fl = \"\".join(bits)\n        tr = bird_traj(fl)\n        d = len(tr) - 1\n        if d % 45 == 0 and d >= 45:\n            winmax = max(tr[d-5:d])\n            if winmax + BIRD_H <= FIELD_H:   # clears every possible gap\n                cands.append((fl, d, winmax))\nprint(len(cands), \"feasible candidates\")\nfound = []\nfor fl, d, wm in sorted(cands, key=lambda c: c[1]):\n    for seed in range(0, 600):\n        trun, score, alive, hit, crossed, scored = full(seed, d + 5, fl)\n        if (not alive) and not hit and crossed and (trun - 1) == d:\n            found.append((seed, d + 5, fl, d, score, scored))\n            break\n    if len(found) >= 2:\n        break\nfor f in found:\n    print(\"FOUND seed=%d ticks=%d flaps=%s die_t=%d score=%d passes=%s\" % f)\nEOF" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T16:31:26.068Z level=INFO run=3596884f message=evaluated permission=bash pattern="python3 /tmp/search6.py" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T16:31:29.285Z level=INFO run=3596884f message=loop session.id=ses_f551ef735ffe607HQhiZLjw0g4 step=7
+[0m$ [0mcat > /tmp/search6.py <<'EOF'
+import sys, itertools
+sys.path.insert(0, "/tmp/oc-anchor-k2mq6z")
+from units import *
+from physics import step_bird
+from world import spawn, scroll, cull
+from collide import pipe_hit
+
+def full(seed, ticks, flaps):
+    y, vy, score, s, alive = 560, 0, 0, seed, True
+    pipes, trun, scored = [], 0, []
+    for t in range(ticks):
+        trun = t + 1
+        p, s = spawn(t, s)
+        if p: pipes.append(p)
+        y, vy, alive = step_bird(y, vy, flaps[t % len(flaps)] == "1")
+        scroll(pipes)
+        hit = False
+        if alive:
+            for q in pipes:
+                if pipe_hit(y, q):
+                    alive = False; hit = True; break
+        if alive:
+            for q in pipes:
+                if not q["passed"] and q["x"] + PIPE_W <= BIRD_X:
+                    q["passed"] = True
+                    score += 1
+                    if abs(vy) <= GLIDE_VY: score += 1
+                    scored.append((t, vy))
+            pipes = cull(pipes)
+        else:
+            crossed = any(q["x"] == 160 for q in pipes)
+            return trun, score, alive, hit, crossed, scored
+    return ticks, score, True, False, False, scored
+
+def bird_traj(flaps, maxt=400):
+    y, vy, out = 560, 0, []
+    for t in range(maxt):
+        y, vy, alive = step_bird(y, vy, flaps[t % len(flaps)] == "1")
+        out.append(y)
+        if not alive:
+            break
+    return out
+
+cands = []
+for L in range(1, 15):
+    for bits in itertools.product("01", repeat=L):
+        fl = "".join(bits)
+        tr = bird_traj(fl)
+        d = len(tr) - 1
+        if d % 45 == 0 and d >= 45:
+            winmax = max(tr[d-5:d])
+            if winmax + BIRD_H <= FIELD_H:   # clears every possible gap
+                cands.append((fl, d, winmax))
+print(len(cands), "feasible candidates")
+found = []
+for fl, d, wm in sorted(cands, key=lambda c: c[1]):
+    for seed in range(0, 600):
+        trun, score, alive, hit, crossed, scored = full(seed, d + 5, fl)
+        if (not alive) and not hit and crossed and (trun - 1) == d:
+            found.append((seed, d + 5, fl, d, score, scored))
+            break
+    if len(found) >= 2:
+        break
+for f in found:
+    print("FOUND seed=%d ticks=%d flaps=%s die_t=%d score=%d passes=%s" % f)
+EOF
+python3 /tmp/search6.py
+69 feasible candidates
+[0m
+timestamp=2026-09-16T16:31:29.304Z level=INFO run=3596884f message=process session.id=ses_f551ef735ffe607HQhiZLjw0g4 messageID=msg_0ab0f1c07001NNkmhkKYcazUiX
+timestamp=2026-09-16T16:31:29.304Z level=INFO run=3596884f message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551ef735ffe607HQhiZLjw0g4 small=false agent=build mode=primary
+timestamp=2026-09-16T16:31:29.306Z level=INFO run=3596884f message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T16:35:21.668Z level=INFO run=3596884f message=evaluated permission=bash pattern="cat > /tmp/search7.py <<'EOF'\nimport sys, itertools\nsys.path.insert(0, \"/tmp/oc-anchor-k2mq6z\")\nfrom units import *\nfrom physics import step_bird\nfrom world import spawn, scroll, cull\nfrom collide import pipe_hit\n\ndef full(seed, ticks, flaps):\n    y, vy, score, s, alive = 560, 0, 0, seed, True\n    pipes, trun, scored = [], 0, []\n    for t in range(ticks):\n        trun = t + 1\n        p, s = spawn(t, s)\n        if p: pipes.append(p)\n        y, vy, alive = step_bird(y, vy, flaps[t % len(flaps)] == \"1\")\n        scroll(pipes)\n        hit = False\n        if alive:\n            for q in pipes:\n                if pipe_hit(y, q):\n                    alive = False; hit = True; break\n        if alive:\n            for q in pipes:\n                if not q[\"passed\"] and q[\"x\"] + PIPE_W <= BIRD_X:\n                    q[\"passed\"] = True\n                    score += 1\n                    if abs(vy) <= GLIDE_VY: score += 1\n                    scored.append((t, vy))\n            pipes = cull(pipes)\n        else:\n            crossed = any(q[\"x\"] == 160 for q in pipes)\n            return trun, score, alive, hit, crossed, scored\n    return ticks, score, True, False, False, scored\n\ndef bird_traj(flaps, maxt=400):\n    y, vy, out = 560, 0, []\n    for t in range(maxt):\n        y, vy, alive = step_bird(y, vy, flaps[t % len(flaps)] == \"1\")\n        out.append(y)\n        if not alive:\n            break\n    return out\n\ncands = []\nfor L in range(1, 15):\n    for bits in itertools.product(\"01\", repeat=L):\n        fl = \"\".join(bits)\n        tr = bird_traj(fl)\n        d = len(tr) - 1\n        if d % 45 == 0 and d >= 45:\n            lo, hi = min(tr[d-5:d]), max(tr[d-5:d])\n            # feasible g interval for pipe k's window: [hi-920, lo] intersect [40,120)\n            gl, gh = max(40, hi - 920), min(120, lo + 1)\n            if gl < gh:\n                cands.append((fl, d, lo, hi, gl, gh))\nfrom collections import Counter\nprint(\"d distribution:\", Counter(d for _, d, *_ in cands))\nfeas = [(fl, d, lo, hi, gl, gh) for fl, d, lo, hi, gl, gh in cands if d <= 90]\nprint(len(cands), \"candidates with nonempty g interval; d<=90:\", len(feas))\nfor c in sorted(feas, key=lambda c: c[1])[:12]:\n    print(\"  fl=%s d=%d lo=%d hi=%d g∈[%d,%d)\" % c)\nfound = []\nfor fl, d, lo, hi, gl, gh in sorted(cands, key=lambda c: c[1]):\n    for seed in range(0, 2000):\n        trun, score, alive, hit, crossed, scored = full(seed, d + 5, fl)\n        if (not alive) and not hit and crossed and (trun - 1) == d:\n            found.append((seed, d + 5, fl, d, score, scored))\n            break\n    if len(found) >= 2:\n        break\nfor f in found:\n    print(\"FOUND seed=%d ticks=%d flaps=%s die_t=%d score=%d passes=%s\" % f)\nEOF" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T16:35:21.668Z level=INFO run=3596884f message=evaluated permission=bash pattern="python3 /tmp/search7.py" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T16:35:22.991Z level=INFO run=3596884f message=loop session.id=ses_f551ef735ffe607HQhiZLjw0g4 step=8
+[0m$ [0mcat > /tmp/search7.py <<'EOF'
+import sys, itertools
+sys.path.insert(0, "/tmp/oc-anchor-k2mq6z")
+from units import *
+from physics import step_bird
+from world import spawn, scroll, cull
+from collide import pipe_hit
+
+def full(seed, ticks, flaps):
+    y, vy, score, s, alive = 560, 0, 0, seed, True
+    pipes, trun, scored = [], 0, []
+    for t in range(ticks):
+        trun = t + 1
+        p, s = spawn(t, s)
+        if p: pipes.append(p)
+        y, vy, alive = step_bird(y, vy, flaps[t % len(flaps)] == "1")
+        scroll(pipes)
+        hit = False
+        if alive:
+            for q in pipes:
+                if pipe_hit(y, q):
+                    alive = False; hit = True; break
+        if alive:
+            for q in pipes:
+                if not q["passed"] and q["x"] + PIPE_W <= BIRD_X:
+                    q["passed"] = True
+                    score += 1
+                    if abs(vy) <= GLIDE_VY: score += 1
+                    scored.append((t, vy))
+            pipes = cull(pipes)
+        else:
+            crossed = any(q["x"] == 160 for q in pipes)
+            return trun, score, alive, hit, crossed, scored
+    return ticks, score, True, False, False, scored
+
+def bird_traj(flaps, maxt=400):
+    y, vy, out = 560, 0, []
+    for t in range(maxt):
+        y, vy, alive = step_bird(y, vy, flaps[t % len(flaps)] == "1")
+        out.append(y)
+        if not alive:
+            break
+    return out
+
+cands = []
+for L in range(1, 15):
+    for bits in itertools.product("01", repeat=L):
+        fl = "".join(bits)
+        tr = bird_traj(fl)
+        d = len(tr) - 1
+        if d % 45 == 0 and d >= 45:
+            lo, hi = min(tr[d-5:d]), max(tr[d-5:d])
+            # feasible g interval for pipe k's window: [hi-920, lo] intersect [40,120)
+            gl, gh = max(40, hi - 920), min(120, lo + 1)
+            if gl < gh:
+                cands.append((fl, d, lo, hi, gl, gh))
+from collections import Counter
+print("d distribution:", Counter(d for _, d, *_ in cands))
+feas = [(fl, d, lo, hi, gl, gh) for fl, d, lo, hi, gl, gh in cands if d <= 90]
+print(len(cands), "candidates with nonempty g interval; d<=90:", len(feas))
+for c in sorted(feas, key=lambda c: c[1])[:12]:
+    print("  fl=%s d=%d lo=%d hi=%d g∈[%d,%d)" % c)
+found = []
+for fl, d, lo, hi, gl, gh in sorted(cands, key=lambda c: c[1]):
+    for seed in range(0, 2000):
+        trun, score, alive, hit, crossed, scored = full(seed, d + 5, fl)
+        if (not alive) and not hit and crossed and (trun - 1) == d:
+            found.append((seed, d + 5, fl, d, score, scored))
+            break
+    if len(found) >= 2:
+        break
+for f in found:
+    print("FOUND seed=%d ticks=%d flaps=%s die_t=%d score=%d passes=%s" % f)
+EOF
+python3 /tmp/search7.py
+d distribution: Counter()
+0 candidates with nonempty g interval; d<=90: 0
+[0m
+timestamp=2026-09-16T16:35:23.009Z level=INFO run=3596884f message=process session.id=ses_f551ef735ffe607HQhiZLjw0g4 messageID=msg_0ab12acf2001B5pKaAdl1YV5Hu
+timestamp=2026-09-16T16:35:23.010Z level=INFO run=3596884f message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551ef735ffe607HQhiZLjw0g4 small=false agent=build mode=primary
+timestamp=2026-09-16T16:35:23.011Z level=INFO run=3596884f message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T16:45:50.071Z level=INFO run=3596884f message=evaluated permission=bash pattern="cat > /tmp/search8.py <<'EOF'\nimport sys, itertools\nsys.path.insert(0, \"/tmp/oc-anchor-k2mq6z\")\nfrom units import *\nfrom physics import step_bird\nfrom world import spawn, scroll, cull\nfrom collide import pipe_hit\n\ndef full(seed, ticks, flaps):\n    y, vy, score, s, alive = 560, 0, 0, seed, True\n    pipes, trun, scored = [], 0, []\n    for t in range(ticks):\n        trun = t + 1\n        p, s = spawn(t, s)\n        if p: pipes.append(p)\n        y, vy, alive = step_bird(y, vy, flaps[t % len(flaps)] == \"1\")\n        scroll(pipes)\n        hit = False\n        if alive:\n            for q in pipes:\n                if pipe_hit(y, q):\n                    alive = False; hit = True; break\n        if alive:\n            for q in pipes:\n                if not q[\"passed\"] and q[\"x\"] + PIPE_W <= BIRD_X:\n                    q[\"passed\"] = True\n                    score += 1\n                    if abs(vy) <= GLIDE_VY: score += 1\n                    scored.append((t, vy))\n            pipes = cull(pipes)\n        else:\n            crossed = any(q[\"x\"] == 160 for q in pipes)\n            return trun, score, alive, hit, crossed, scored\n    return ticks, score, True, False, False, scored\n\ndef bird_traj(flaps, maxt=500):\n    y, vy, out = 560, 0, []\n    for t in range(maxt):\n        y, vy, alive = step_bird(y, vy, flaps[t % len(flaps)] == \"1\")\n        out.append(y)\n        if not alive:\n            break\n    return out\n\ncands = []\nfor L in range(11, 17):\n    for bits in itertools.product(\"01\", repeat=L):\n        fl = \"\".join(bits)\n        tr = bird_traj(fl)\n        d = len(tr) - 1\n        if d % 45 == 0 and d >= 45:\n            lo, hi = min(tr[d-5:d]), max(tr[d-5:d])\n            if lo >= 40 and hi <= 1040:\n                cands.append((fl, d, lo, hi))\nprint(len(cands), \"feasible candidates\")\nfor c in sorted(cands, key=lambda c: c[1])[:20]:\n    print(\"  fl=%s d=%d lo=%d hi=%d\" % c)\nfound = []\nfor fl, d, lo, hi in sorted(cands, key=lambda c: c[1]):\n    for seed in range(0, 3000):\n        trun, score, alive, hit, crossed, scored = full(seed, d + 5, fl)\n        if (not alive) and not hit and crossed and (trun - 1) == d:\n            found.append((seed, d + 5, fl, d, score, scored))\n            break\n    if len(found) >= 2:\n        break\nfor f in found:\n    print(\"FOUND seed=%d ticks=%d flaps=%s die_t=%d score=%d passes=%s\" % f)\nEOF" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T16:45:50.072Z level=INFO run=3596884f message=evaluated permission=bash pattern="python3 /tmp/search8.py" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T16:45:56.527Z level=INFO run=3596884f message=loop session.id=ses_f551ef735ffe607HQhiZLjw0g4 step=9
+[0m$ [0mcat > /tmp/search8.py <<'EOF'
+import sys, itertools
+sys.path.insert(0, "/tmp/oc-anchor-k2mq6z")
+from units import *
+from physics import step_bird
+from world import spawn, scroll, cull
+from collide import pipe_hit
+
+def full(seed, ticks, flaps):
+    y, vy, score, s, alive = 560, 0, 0, seed, True
+    pipes, trun, scored = [], 0, []
+    for t in range(ticks):
+        trun = t + 1
+        p, s = spawn(t, s)
+        if p: pipes.append(p)
+        y, vy, alive = step_bird(y, vy, flaps[t % len(flaps)] == "1")
+        scroll(pipes)
+        hit = False
+        if alive:
+            for q in pipes:
+                if pipe_hit(y, q):
+                    alive = False; hit = True; break
+        if alive:
+            for q in pipes:
+                if not q["passed"] and q["x"] + PIPE_W <= BIRD_X:
+                    q["passed"] = True
+                    score += 1
+                    if abs(vy) <= GLIDE_VY: score += 1
+                    scored.append((t, vy))
+            pipes = cull(pipes)
+        else:
+            crossed = any(q["x"] == 160 for q in pipes)
+            return trun, score, alive, hit, crossed, scored
+    return ticks, score, True, False, False, scored
+
+def bird_traj(flaps, maxt=500):
+    y, vy, out = 560, 0, []
+    for t in range(maxt):
+        y, vy, alive = step_bird(y, vy, flaps[t % len(flaps)] == "1")
+        out.append(y)
+        if not alive:
+            break
+    return out
+
+cands = []
+for L in range(11, 17):
+    for bits in itertools.product("01", repeat=L):
+        fl = "".join(bits)
+        tr = bird_traj(fl)
+        d = len(tr) - 1
+        if d % 45 == 0 and d >= 45:
+            lo, hi = min(tr[d-5:d]), max(tr[d-5:d])
+            if lo >= 40 and hi <= 1040:
+                cands.append((fl, d, lo, hi))
+print(len(cands), "feasible candidates")
+for c in sorted(cands, key=lambda c: c[1])[:20]:
+    print("  fl=%s d=%d lo=%d hi=%d" % c)
+found = []
+for fl, d, lo, hi in sorted(cands, key=lambda c: c[1]):
+    for seed in range(0, 3000):
+        trun, score, alive, hit, crossed, scored = full(seed, d + 5, fl)
+        if (not alive) and not hit and crossed and (trun - 1) == d:
+            found.append((seed, d + 5, fl, d, score, scored))
+            break
+    if len(found) >= 2:
+        break
+for f in found:
+    print("FOUND seed=%d ticks=%d flaps=%s die_t=%d score=%d passes=%s" % f)
+EOF
+python3 /tmp/search8.py
+3 feasible candidates
+  fl=0100101000000011 d=45 lo=812 hi=1028
+  fl=0101001000000011 d=45 lo=812 hi=1028
+  fl=1111000000011111 d=90 lo=812 hi=1028
+FOUND seed=7 ticks=50 flaps=0100101000000011 die_t=45 score=0 passes=[]
+FOUND seed=7 ticks=50 flaps=0101001000000011 die_t=45 score=0 passes=[]
+[0m
+timestamp=2026-09-16T16:45:56.546Z level=INFO run=3596884f message=process session.id=ses_f551ef735ffe607HQhiZLjw0g4 messageID=msg_0ab1c57b1001mq58jx4i7POWPx
+timestamp=2026-09-16T16:45:56.547Z level=INFO run=3596884f message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551ef735ffe607HQhiZLjw0g4 small=false agent=build mode=primary
+timestamp=2026-09-16T16:45:56.547Z level=INFO run=3596884f message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T16:50:25.883Z level=INFO run=3596884f message=evaluated permission=bash pattern="python3 -c \"\nimport engine\nprint('fatal:', engine.run(7, 50, '0100101000000011'))\nprint('nonglide:', engine.run(0, 95, '011000'))\nprint('glide:', engine.run(7, 200, '0010'))\n\"" action.permission=* action.action=allow action.pattern=*
+[0m$ [0mpython3 -c "
+import engine
+print('fatal:', engine.run(7, 50, '0100101000000011'))
+print('nonglide:', engine.run(0, 95, '011000'))
+print('glide:', engine.run(7, 200, '0010'))
+"
+fatal: {'y': 1120, 'vy': 99, 'score': 0, 'alive': False, 'ticks_run': 46}
+nonglide: {'y': 794, 'vy': 9, 'score': 3, 'alive': True, 'ticks_run': 95}
+glide: {'y': 578, 'vy': -9, 'score': 8, 'alive': True, 'ticks_run': 200}
+[0m
+timestamp=2026-09-16T16:50:26.218Z level=INFO run=3596884f message=loop session.id=ses_f551ef735ffe607HQhiZLjw0g4 step=10
+timestamp=2026-09-16T16:50:26.237Z level=INFO run=3596884f message=process session.id=ses_f551ef735ffe607HQhiZLjw0g4 messageID=msg_0ab20752d001mptJ2dNWLnJEGU
+timestamp=2026-09-16T16:50:26.237Z level=INFO run=3596884f message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551ef735ffe607HQhiZLjw0g4 small=false agent=build mode=primary
+timestamp=2026-09-16T16:50:26.238Z level=INFO run=3596884f message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T17:02:31.406Z level=INFO run=3596884f message=evaluated permission=edit pattern=tmp/oc-anchor-k2mq6z/test_flapsim.py action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T17:02:31.407Z level=INFO run=3596884f message=formatting file=/tmp/oc-anchor-k2mq6z/test_flapsim.py
+timestamp=2026-09-16T17:02:31.408Z level=INFO run=3596884f message="touching file" file=/tmp/oc-anchor-k2mq6z/test_flapsim.py
+[0m← [0mWrite test_flapsim.py
+Wrote file successfully.
+[0m
+timestamp=2026-09-16T17:02:31.468Z level=INFO run=3596884f message=loop session.id=ses_f551ef735ffe607HQhiZLjw0g4 step=11
+timestamp=2026-09-16T17:02:31.487Z level=INFO run=3596884f message=process session.id=ses_f551ef735ffe607HQhiZLjw0g4 messageID=msg_0ab2b862f001Idq2h983m0liV8
+timestamp=2026-09-16T17:02:31.488Z level=INFO run=3596884f message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551ef735ffe607HQhiZLjw0g4 small=false agent=build mode=primary
+timestamp=2026-09-16T17:02:31.488Z level=INFO run=3596884f message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T17:09:10.732Z level=INFO run=3596884f message=evaluated permission=bash pattern="python3 -m unittest test_flapsim -v 2>&1" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T17:09:10.782Z level=INFO run=3596884f message=loop session.id=ses_f551ef735ffe607HQhiZLjw0g4 step=12
+[0m$ [0mpython3 -m unittest test_flapsim -v 2>&1
+test_pipe_hit_gap_boundaries (test_flapsim.CollideTests.test_pipe_hit_gap_boundaries) ... ok
+test_pipe_hit_horizontal_edge (test_flapsim.CollideTests.test_pipe_hit_horizontal_edge) ... ok
+test_rect_overlap_edges (test_flapsim.CollideTests.test_rect_overlap_edges) ... ok
+test_engine_matches_spec_order (test_flapsim.OrderTests.test_engine_matches_spec_order) ... ok
+test_state_keys (test_flapsim.OrderTests.test_state_keys) ... ok
+test_ticks_run_counts_fatal_tick (test_flapsim.OrderTests.test_ticks_run_counts_fatal_tick) ... ok
+test_ceiling_is_soft (test_flapsim.PhysicsTests.test_ceiling_is_soft) ... ok
+test_flap_bypasses_clamp (test_flapsim.PhysicsTests.test_flap_bypasses_clamp) ... ok
+test_flap_sets_vy_exactly (test_flapsim.PhysicsTests.test_flap_sets_vy_exactly) ... ok
+test_floor_boundary_exact (test_flapsim.PhysicsTests.test_floor_boundary_exact) ... FAIL
+test_floor_kills_and_clamps_y (test_flapsim.PhysicsTests.test_floor_kills_and_clamps_y) ... ok
+test_gravity_clamps_at_vy_max (test_flapsim.PhysicsTests.test_gravity_clamps_at_vy_max) ... ok
+test_fatal_tick_scores_nothing (test_flapsim.ScoringTests.test_fatal_tick_scores_nothing) ... ok
+test_glide_bonus_on_every_pass (test_flapsim.ScoringTests.test_glide_bonus_on_every_pass) ... ok
+test_non_glide_pass_scores_one (test_flapsim.ScoringTests.test_non_glide_pass_scores_one) ... ok
+test_gap_top_range (test_flapsim.WorldTests.test_gap_top_range) ... ok
+test_lcg_known_values (test_flapsim.WorldTests.test_lcg_known_values) ... ok
+test_non_spawn_tick_untouched (test_flapsim.WorldTests.test_non_spawn_tick_untouched) ... FAIL
+test_spawn_advances_lcg_once (test_flapsim.WorldTests.test_spawn_advances_lcg_once) ... ok
+
+======================================================================
+FAIL: test_floor_boundary_exact (test_flapsim.PhysicsTests.test_floor_boundary_exact)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/oc-anchor-k2mq6z/test_flapsim.py", line 74, in test_floor_boundary_exact
+    self.assertTrue(alive)
+    ~~~~~~~~~~~~~~~^^^^^^^
+AssertionError: False is not true
+
+======================================================================
+FAIL: test_non_spawn_tick_untouched (test_flapsim.WorldTests.test_non_spawn_tick_untouched)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/oc-anchor-k2mq6z/test_flapsim.py", line 93, in test_non_spawn_tick_untouched
+    self.assertEqual(spawn(t, 7), (None, 7))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Tuples differ: ({'x': 2000, 'gap_top': 109, 'passed': False}, 1282168116) != (None, 7)
+
+First differing element 0:
+{'x': 2000, 'gap_top': 109, 'passed': False}
+None
+
+- ({'gap_top': 109, 'passed': False, 'x': 2000}, 1282168116)
++ (None, 7)
+
+----------------------------------------------------------------------
+Ran 19 tests in 0.003s
+
+FAILED (failures=2)
+[0m
+timestamp=2026-09-16T17:09:10.800Z level=INFO run=3596884f message=process session.id=ses_f551ef735ffe607HQhiZLjw0g4 messageID=msg_0ab319e01001CFfZ1HhBWHX25w
+timestamp=2026-09-16T17:09:10.801Z level=INFO run=3596884f message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551ef735ffe607HQhiZLjw0g4 small=false agent=build mode=primary
+timestamp=2026-09-16T17:09:10.802Z level=INFO run=3596884f message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T17:14:16.861Z level=INFO run=3596884f message=evaluated permission=edit pattern=tmp/oc-anchor-k2mq6z/test_flapsim.py action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T17:14:16.861Z level=INFO run=3596884f message=formatting file=/tmp/oc-anchor-k2mq6z/test_flapsim.py
+timestamp=2026-09-16T17:14:16.863Z level=INFO run=3596884f message="touching file" file=/tmp/oc-anchor-k2mq6z/test_flapsim.py
+[0m← [0mEdit test_flapsim.py
+Index: /tmp/oc-anchor-k2mq6z/test_flapsim.py
+===================================================================
+--- /tmp/oc-anchor-k2mq6z/test_flapsim.py
++++ /tmp/oc-anchor-k2mq6z/test_flapsim.py
+@@ -69,9 +69,10 @@
+     self.assertEqual(y, FIELD_H - BIRD_H)
+     self.assertNotEqual(vy, 0)
+ 
+ def test_floor_boundary_exact(self):
+-    y, vy, alive = step_bird(1102, 18, False)
++    # gravity makes vy 18; bird lands exactly on FIELD_H - BIRD_H and survives
++    y, vy, alive = step_bird(1102, 0, False)
+     self.assertTrue(alive)
+     self.assertEqual(y, FIELD_H - BIRD_H)
+ 
+ 
+
+[0m
+timestamp=2026-09-16T17:14:21.310Z level=INFO run=3596884f message=evaluated permission=edit pattern=tmp/oc-anchor-k2mq6z/test_flapsim.py action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T17:14:21.310Z level=INFO run=3596884f message=formatting file=/tmp/oc-anchor-k2mq6z/test_flapsim.py
+timestamp=2026-09-16T17:14:21.312Z level=INFO run=3596884f message="touching file" file=/tmp/oc-anchor-k2mq6z/test_flapsim.py
+[0m← [0mEdit test_flapsim.py
+Index: /tmp/oc-anchor-k2mq6z/test_flapsim.py
+===================================================================
+--- /tmp/oc-anchor-k2mq6z/test_flapsim.py
++++ /tmp/oc-anchor-k2mq6z/test_flapsim.py
+@@ -89,9 +89,10 @@
+     self.assertFalse(pipe["passed"])
+     self.assertEqual(pipe["gap_top"], 40 + (s >> 8) % 80)
+ 
+ def test_non_spawn_tick_untouched(self):
+-    for t in range(SPAWN_EVERY - 1):
++    # t=0 IS a spawn tick (0 % SPAWN_EVERY == 0); every other tick is not
++    for t in range(1, SPAWN_EVERY):
+         self.assertEqual(spawn(t, 7), (None, 7))
+ 
+ def test_gap_top_range(self):
+     for seed in range(25):
+
+[0m
+timestamp=2026-09-16T17:14:21.373Z level=INFO run=3596884f message=loop session.id=ses_f551ef735ffe607HQhiZLjw0g4 step=13
+timestamp=2026-09-16T17:14:21.395Z level=INFO run=3596884f message=process session.id=ses_f551ef735ffe607HQhiZLjw0g4 messageID=msg_0ab365b40001f3i05pCGbLt6G8
+timestamp=2026-09-16T17:14:21.396Z level=INFO run=3596884f message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551ef735ffe607HQhiZLjw0g4 small=false agent=build mode=primary
+timestamp=2026-09-16T17:14:21.397Z level=INFO run=3596884f message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T17:19:05.832Z level=INFO run=3596884f message=evaluated permission=bash pattern="python3 -m unittest test_flapsim -v 2>&1" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T17:19:05.880Z level=INFO run=3596884f message=loop session.id=ses_f551ef735ffe607HQhiZLjw0g4 step=14
+[0m$ [0mpython3 -m unittest test_flapsim -v 2>&1
+test_pipe_hit_gap_boundaries (test_flapsim.CollideTests.test_pipe_hit_gap_boundaries) ... ok
+test_pipe_hit_horizontal_edge (test_flapsim.CollideTests.test_pipe_hit_horizontal_edge) ... ok
+test_rect_overlap_edges (test_flapsim.CollideTests.test_rect_overlap_edges) ... ok
+test_engine_matches_spec_order (test_flapsim.OrderTests.test_engine_matches_spec_order) ... ok
+test_state_keys (test_flapsim.OrderTests.test_state_keys) ... ok
+test_ticks_run_counts_fatal_tick (test_flapsim.OrderTests.test_ticks_run_counts_fatal_tick) ... ok
+test_ceiling_is_soft (test_flapsim.PhysicsTests.test_ceiling_is_soft) ... ok
+test_flap_bypasses_clamp (test_flapsim.PhysicsTests.test_flap_bypasses_clamp) ... ok
+test_flap_sets_vy_exactly (test_flapsim.PhysicsTests.test_flap_sets_vy_exactly) ... ok
+test_floor_boundary_exact (test_flapsim.PhysicsTests.test_floor_boundary_exact) ... ok
+test_floor_kills_and_clamps_y (test_flapsim.PhysicsTests.test_floor_kills_and_clamps_y) ... ok
+test_gravity_clamps_at_vy_max (test_flapsim.PhysicsTests.test_gravity_clamps_at_vy_max) ... ok
+test_fatal_tick_scores_nothing (test_flapsim.ScoringTests.test_fatal_tick_scores_nothing) ... ok
+test_glide_bonus_on_every_pass (test_flapsim.ScoringTests.test_glide_bonus_on_every_pass) ... ok
+test_non_glide_pass_scores_one (test_flapsim.ScoringTests.test_non_glide_pass_scores_one) ... ok
+test_gap_top_range (test_flapsim.WorldTests.test_gap_top_range) ... ok
+test_lcg_known_values (test_flapsim.WorldTests.test_lcg_known_values) ... ok
+test_non_spawn_tick_untouched (test_flapsim.WorldTests.test_non_spawn_tick_untouched) ... ok
+test_spawn_advances_lcg_once (test_flapsim.WorldTests.test_spawn_advances_lcg_once) ... ok
+
+----------------------------------------------------------------------
+Ran 19 tests in 0.002s
+
+OK
+[0m
+timestamp=2026-09-16T17:19:05.896Z level=INFO run=3596884f message=process session.id=ses_f551ef735ffe607HQhiZLjw0g4 messageID=msg_0ab3ab29a001w95IthoDKlrTNy
+timestamp=2026-09-16T17:19:05.897Z level=INFO run=3596884f message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551ef735ffe607HQhiZLjw0g4 small=false agent=build mode=primary
+timestamp=2026-09-16T17:19:05.897Z level=INFO run=3596884f message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T17:24:23.705Z level=INFO run=3596884f message=loop session.id=ses_f551ef735ffe607HQhiZLjw0g4 step=15
+timestamp=2026-09-16T17:24:23.708Z level=INFO run=3596884f message="exiting loop" session.id=ses_f551ef735ffe607HQhiZLjw0g4
+timestamp=2026-09-16T17:24:23.714Z level=INFO run=3596884f message="disposing instance" directory=/tmp/oc-anchor-k2mq6z
+timestamp=2026-09-16T17:24:23.731Z level=INFO run=3596884f message=loading path=/home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/captures/oc-flapsim-v2-anchor-1789573267802/anchor-rep0/opencode.json

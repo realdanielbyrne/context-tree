@@ -1,0 +1,39 @@
+# Stage 6 — cli.py
+
+A thin command-line front end. It reads files, calls the modules you already
+wrote, prints, and returns an EXIT CODE. It never raises for bad input and it
+never calls `sys.exit` itself.
+
+## main(argv) -> int
+
+`argv` is a list of arguments WITHOUT the program name, exactly what you would
+pass to `parser.parse_args(argv)`. Use `argparse`. The grammar is:
+
+    report [--strict] --ledger LEDGER --rules RULES
+
+so: one positional command whose only accepted value is "report", a required
+`--ledger` path, a required `--rules` path, and an optional `--strict` flag
+stored as a boolean.
+
+Then, IN THIS ORDER:
+
+1. Read the LEDGER file as text and the RULES file as text. If EITHER cannot be
+   read, print `cannot read <path>` to STDERR and return 2. Use the path
+   exactly as given. Catch `OSError`; do not let it propagate.
+2. Call `rules.load_rules` on the rules text. If it raises ValueError, print
+   `rules error: <message>` to STDERR and return 2. Nothing goes to stdout.
+3. Call `parsing.parse_lines` on the ledger text split with `splitlines()`.
+4. If `--strict` was given AND the errors list is non-empty, print one line
+   per error to STDERR in the form `line <n>: <message>`, in the order the
+   errors were reported, and return 1. Print NOTHING to stdout — no report.
+5. Otherwise print `report.render_report(report.summarize(txns, rules))` to
+   STDOUT with a single `print()`, which gives it exactly one trailing newline.
+6. If there were errors and `--strict` was NOT given, additionally print
+   `warning: <k> malformed line(s) skipped` to STDERR, where `<k>` is the
+   number of errors. The report still goes to stdout and the exit code is still
+   0 — a warning is not a failure.
+7. Return 0.
+
+Use `print(..., file=sys.stderr)` for stderr so the tests can capture it with
+`contextlib.redirect_stderr`. A successful run with no malformed lines prints
+the report to stdout and NOTHING AT ALL to stderr.

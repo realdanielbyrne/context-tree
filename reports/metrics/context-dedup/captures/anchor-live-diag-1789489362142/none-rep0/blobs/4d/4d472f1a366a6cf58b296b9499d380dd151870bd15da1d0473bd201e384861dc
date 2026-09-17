@@ -1,0 +1,337 @@
+"""Visible test suite. Run: python3 -m unittest test_ledger -v"""
+
+import contextlib
+import io
+import os
+import tempfile
+import unittest
+
+import money
+import parsing
+import rules
+import report
+import cli
+
+RULES_TEXT = """; visible rules file
+coffee=Food=10
+shop=Shopping=5
+#daily=Habit=20
+rent=Housing=50
+"""
+
+SAMPLE = [
+    "# a sample ledger",
+    "2024-01-01 | Coffee Bar | -4.50 | daily",
+    "2024-01-02 | Rent March | -1,200.00",
+    "2024-01-03 | Coffee Bar | -3.25 | daily",
+    "2024-01-04 | Paycheck | 2,000.00",
+    "2024-01-05 | Corner Shop | -20.00",
+]
+
+
+def row(category, amount_text, count):
+    return category.ljust(15) + amount_text.rjust(12) + str(count).rjust(6)
+
+
+class TestMoney(unittest.TestCase):
+    def test_plain_integer(self):
+        self.assertEqual(money.parse_amount("5"), 500)
+
+    def test_two_decimals(self):
+        self.assertEqual(money.parse_amount("12.34"), 1234)
+
+    def test_one_decimal_is_padded(self):
+        self.assertEqual(money.parse_amount("0.5"), 50)
+
+    def test_dollar_and_commas(self):
+        self.assertEqual(money.parse_amount("$1,234.56"), 123456)
+
+    def test_leading_minus(self):
+        self.assertEqual(money.parse_amount("-3"), -300)
+
+    def test_minus_then_dollar(self):
+        self.assertEqual(money.parse_amount("-$2.05"), -205)
+
+    def test_parentheses(self):
+        self.assertEqual(money.parse_amount("(12.50)"), -1250)
+
+    def test_parentheses_dollar_commas(self):
+        self.assertEqual(money.parse_amount("($1,000)"), -100000)
+
+    def test_surrounding_whitespace(self):
+        self.assertEqual(money.parse_amount("  7.25  "), 725)
+
+    def test_negative_zero(self):
+        self.assertEqual(money.parse_amount("-0.00"), 0)
+
+    def test_bad_empty(self):
+        self.assertRaises(ValueError, money.parse_amount, "")
+
+    def test_bad_three_decimals(self):
+        self.assertRaises(ValueError, money.parse_amount, "1.234")
+
+    def test_bad_letters(self):
+        self.assertRaises(ValueError, money.parse_amount, "12a")
+
+    def test_bad_inner_sign(self):
+        self.assertRaises(ValueError, money.parse_amount, "(-5)")
+
+    def test_bad_dollar_before_sign(self):
+        self.assertRaises(ValueError, money.parse_amount, "$-5")
+
+    def test_bad_comma_grouping(self):
+        self.assertRaises(ValueError, money.parse_amount, "1,23.00")
+
+    def test_bad_leading_plus(self):
+        self.assertRaises(ValueError, money.parse_amount, "+5")
+
+    def test_bad_internal_space(self):
+        self.assertRaises(ValueError, money.parse_amount, "5 5")
+
+    def test_bad_non_string(self):
+        self.assertRaises(ValueError, money.parse_amount, 5)
+
+    def test_format_positive(self):
+        self.assertEqual(money.format_amount(123456), "$1,234.56")
+
+    def test_format_negative(self):
+        self.assertEqual(money.format_amount(-1250), "-$12.50")
+
+    def test_format_zero(self):
+        self.assertEqual(money.format_amount(0), "$0.00")
+
+    def test_format_sub_dime(self):
+        self.assertEqual(money.format_amount(5), "$0.05")
+
+
+class TestParsing(unittest.TestCase):
+    def test_basic_line(self):
+        t = parsing.parse_line("2024-01-05 | Coffee Shop | -4.50")
+        self.assertEqual(t["date"], "2024-01-05")
+        self.assertEqual(t["desc"], "Coffee Shop")
+        self.assertEqual(t["amount"], -450)
+        self.assertEqual(t["tags"], [])
+
+    def test_bad_field_count(self):
+        self.assertRaises(parsing.LedgerError, parsing.parse_line, "2024-01-05 | Coffee")
+
+    def test_bad_date_shape(self):
+        self.assertRaises(parsing.LedgerError, parsing.parse_line, "01/05/2024 | Coffee | 1.00")
+
+    def test_bad_date_compact(self):
+        self.assertRaises(parsing.LedgerError, parsing.parse_line, "20240105 | Coffee | 1.00")
+
+    def test_bad_date_value(self):
+        self.assertRaises(parsing.LedgerError, parsing.parse_line, "2024-13-01 | Coffee | 1.00")
+
+    def test_empty_description(self):
+        self.assertRaises(parsing.LedgerError, parsing.parse_line, "2024-01-05 |    | 1.00")
+
+    def test_bad_amount_becomes_ledger_error(self):
+        self.assertRaises(parsing.LedgerError, parsing.parse_line, "2024-01-05 | Coffee | abc")
+
+    def test_parse_lines_returns_tuple(self):
+        result = parsing.parse_lines([])
+        self.assertIsInstance(result, tuple)
+        self.assertEqual(len(result), 2)
+
+    def test_parse_lines_skips_blank_and_hash(self):
+        lines = ["# comment", "", "2024-01-05 | A | 1.00", "   ", "2024-01-06 | B | 2.00"]
+        txns, errors = parsing.parse_lines(lines)
+        self.assertEqual(len(txns), 2)
+        self.assertEqual(errors, [])
+
+    def test_parse_lines_records_line_numbers(self):
+        lines = ["2024-01-05 | A | 1.00", "bogus", "2024-99-01 | C | 1.00"]
+        txns, errors = parsing.parse_lines(lines)
+        self.assertEqual(len(txns), 1)
+        self.assertEqual([e[0] for e in errors], [2, 3])
+        self.assertTrue(all(isinstance(e[1], str) and e[1] for e in errors))
+
+
+class TestRules(unittest.TestCase):
+    def setUp(self):
+        self.rules = rules.load_rules(RULES_TEXT)
+
+    def test_load_skips_semicolon_comment(self):
+        self.assertEqual(len(self.rules), 4)
+
+    def test_load_fields(self):
+        self.assertEqual(self.rules[0].pattern, "coffee")
+        self.assertEqual(self.rules[0].category, "Food")
+        self.assertEqual(self.rules[0].priority, 10)
+
+    def test_substring_case_insensitive(self):
+        t = {"date": "2024-01-01", "desc": "COFFEE bar", "amount": -100, "tags": []}
+        self.assertEqual(rules.categorize(t, self.rules), "Food")
+
+    def test_highest_priority_wins(self):
+        t = {"date": "2024-01-01", "desc": "coffee shop", "amount": -100, "tags": []}
+        self.assertEqual(rules.categorize(t, self.rules), "Food")
+
+    def test_no_match(self):
+        t = {"date": "2024-01-01", "desc": "mystery thing", "amount": -100, "tags": []}
+        self.assertEqual(rules.categorize(t, self.rules), "uncategorized")
+
+    def test_empty_rule_list(self):
+        t = {"date": "2024-01-01", "desc": "coffee", "amount": -100, "tags": []}
+        self.assertEqual(rules.categorize(t, []), "uncategorized")
+
+    def test_tie_goes_to_earlier_rule(self):
+        rs = rules.load_rules("aa=First=1\nbb=Second=1\n")
+        t = {"date": "2024-01-01", "desc": "aa bb", "amount": -100, "tags": []}
+        self.assertEqual(rules.categorize(t, rs), "First")
+
+    def test_negative_priority(self):
+        rs = rules.load_rules("aa=Low=-5\naa=High=0\n")
+        t = {"date": "2024-01-01", "desc": "aa", "amount": -100, "tags": []}
+        self.assertEqual(rules.categorize(t, rs), "High")
+
+    def test_bad_rule_line(self):
+        self.assertRaises(ValueError, rules.load_rules, "onlytwo=Fields\n")
+
+    def test_bad_priority(self):
+        self.assertRaises(ValueError, rules.load_rules, "a=B=high\n")
+
+    def test_empty_pattern(self):
+        self.assertRaises(ValueError, rules.load_rules, "  =B=1\n")
+
+
+class TestReport(unittest.TestCase):
+    def setUp(self):
+        self.txns, self.errors = parsing.parse_lines(SAMPLE)
+        self.rules = rules.load_rules(RULES_TEXT)
+
+    def test_sample_parses_clean(self):
+        self.assertEqual(self.errors, [])
+        self.assertEqual(len(self.txns), 5)
+
+    def test_summarize(self):
+        rows = report.summarize(self.txns, self.rules)
+        self.assertEqual(
+            rows,
+            [
+                ("Housing", -120000, 1),
+                ("Shopping", -2000, 1),
+                ("Habit", -775, 2),
+                ("uncategorized", 200000, 1),
+            ],
+        )
+
+    def test_summarize_empty(self):
+        self.assertEqual(report.summarize([], self.rules), [])
+
+    def test_render(self):
+        rows = [("Housing", -120000, 1), ("uncategorized", 200000, 1)]
+        expected = "\n".join([
+            "CATEGORY".ljust(15) + "TOTAL".rjust(12) + "COUNT".rjust(6),
+            "-" * 33,
+            row("Housing", "-$1,200.00", 1),
+            row("uncategorized", "$2,000.00", 1),
+            "-" * 33,
+            row("TOTAL", "$800.00", 2),
+        ])
+        self.assertEqual(report.render_report(rows), expected)
+
+    def test_render_does_not_resort(self):
+        rows = [("uncategorized", 200000, 1), ("Housing", -120000, 1)]
+        out = report.render_report(rows).split("\n")
+        self.assertTrue(out[2].startswith("uncategorized"))
+        self.assertTrue(out[3].startswith("Housing"))
+
+    def test_render_empty(self):
+        out = report.render_report([])
+        lines = out.split("\n")
+        self.assertEqual(len(lines), 4)
+        self.assertEqual(lines[-1], row("TOTAL", "$0.00", 0))
+
+
+class TestPhase2(unittest.TestCase):
+    def test_tags_parsed(self):
+        t = parsing.parse_line("2024-01-05 | Coffee | -4.50 | Food, DAILY ,")
+        self.assertEqual(t["tags"], ["food", "daily"])
+
+    def test_empty_tags_field(self):
+        t = parsing.parse_line("2024-01-05 | Coffee | -4.50 |   ")
+        self.assertEqual(t["tags"], [])
+
+    def test_three_fields_still_empty_tags(self):
+        t = parsing.parse_line("2024-01-05 | Coffee | -4.50")
+        self.assertEqual(t["tags"], [])
+
+    def test_five_fields_still_error(self):
+        self.assertRaises(parsing.LedgerError, parsing.parse_line, "a|b|c|d|e")
+
+    def test_tag_rule_matches_exactly(self):
+        rs = rules.load_rules(RULES_TEXT)
+        t = {"date": "2024-01-01", "desc": "coffee shop", "amount": -100, "tags": ["Daily"]}
+        self.assertEqual(rules.categorize(t, rs), "Habit")
+
+    def test_tag_rule_is_not_substring(self):
+        rs = rules.load_rules(RULES_TEXT)
+        t = {"date": "2024-01-01", "desc": "mystery", "amount": -100, "tags": ["dailyish"]}
+        self.assertEqual(rules.categorize(t, rs), "uncategorized")
+
+    def test_tag_rule_does_not_match_description(self):
+        rs = rules.load_rules(RULES_TEXT)
+        t = {"date": "2024-01-01", "desc": "daily grind", "amount": -100, "tags": []}
+        self.assertEqual(rules.categorize(t, rs), "uncategorized")
+
+
+class TestCli(unittest.TestCase):
+    def _write(self, ledger_text, rules_text):
+        d = tempfile.mkdtemp()
+        lp = os.path.join(d, "ledger.txt")
+        rp = os.path.join(d, "rules.txt")
+        with open(lp, "w") as fh:
+            fh.write(ledger_text)
+        with open(rp, "w") as fh:
+            fh.write(rules_text)
+        return lp, rp
+
+    def _run(self, args):
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = cli.main(args)
+        return code, out.getvalue(), err.getvalue()
+
+    def test_report_ok(self):
+        lp, rp = self._write("\n".join(SAMPLE) + "\n", RULES_TEXT)
+        code, out, err = self._run(["report", "--ledger", lp, "--rules", rp])
+        self.assertEqual(code, 0)
+        self.assertEqual(err, "")
+        txns, _ = parsing.parse_lines(SAMPLE)
+        rs = rules.load_rules(RULES_TEXT)
+        self.assertEqual(out, report.render_report(report.summarize(txns, rs)) + "\n")
+
+    def test_strict_reports_errors_and_exits_1(self):
+        lp, rp = self._write("2024-01-01 | A | 1.00\nbogus\n", RULES_TEXT)
+        code, out, err = self._run(["report", "--strict", "--ledger", lp, "--rules", rp])
+        self.assertEqual(code, 1)
+        self.assertEqual(out, "")
+        self.assertTrue(err.startswith("line 2: "), err)
+
+    def test_warning_without_strict(self):
+        lp, rp = self._write("2024-01-01 | A | 1.00\nbogus\n", RULES_TEXT)
+        code, out, err = self._run(["report", "--ledger", lp, "--rules", rp])
+        self.assertEqual(code, 0)
+        self.assertIn("warning: 1 malformed line(s) skipped", err)
+        self.assertTrue(out.startswith("CATEGORY"))
+
+    def test_bad_rules_file(self):
+        lp, rp = self._write("2024-01-01 | A | 1.00\n", "broken rule line\n")
+        code, out, err = self._run(["report", "--ledger", lp, "--rules", rp])
+        self.assertEqual(code, 2)
+        self.assertEqual(out, "")
+        self.assertTrue(err.startswith("rules error: "), err)
+
+    def test_missing_ledger_file(self):
+        _, rp = self._write("", RULES_TEXT)
+        missing = os.path.join(tempfile.mkdtemp(), "nope.txt")
+        code, out, err = self._run(["report", "--ledger", missing, "--rules", rp])
+        self.assertEqual(code, 2)
+        self.assertIn("cannot read " + missing, err)
+
+
+if __name__ == "__main__":
+    unittest.main()

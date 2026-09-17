@@ -1,0 +1,1 @@
+{"command":"python3 -c \"\nimport engine\nfrom units import FIELD_H, BIRD_H\nfor seed in range(1, 20):\n    for flaps in ['0', '1', '01', '10', '0010', '0101']:\n        st = engine.run(seed, 300, flaps)\n        if not st['alive'] and st['y'] != FIELD_H - BIRD_H:\n            print('pipe death:', seed, repr(flaps), st)\n\" | head -5"}

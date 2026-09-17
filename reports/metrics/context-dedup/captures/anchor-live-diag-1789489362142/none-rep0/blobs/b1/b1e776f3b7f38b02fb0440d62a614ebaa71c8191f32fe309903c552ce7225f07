@@ -1,0 +1,13 @@
+Implement the `ledger` toolkit in this workspace from its written specification.
+
+1. Read README.md, then spec/00_conventions.md and spec/00b_contracts.md.
+2. Then, one stage at a time, read that stage's spec file(s) and implement its module: spec/01_money.md + spec/01b_money_format.md -> money.py, spec/02_parsing.md + spec/02b_parse_lines.md -> parsing.py, spec/03_rules.md -> rules.py, spec/04_report.md -> report.py.
+3. After each stage run `python3 -m unittest test_ledger -v` (or a single test class while iterating) and fix whatever fails before moving on.
+4. When stages 1-4 pass, read spec/05_phase2_tags.md and apply the PHASE 2 extension, which changes parsing.py and rules.py.
+5. Then read spec/06_cli.md and implement cli.py.
+6. spec/07_examples.md and spec/07b_examples.md hold the normative worked-example tables; consult them rather than guessing an edge case.
+7. Several specs are split in two — where a file ends with a "continued in" pointer, read the continuation as well.
+8. Append one line to NOTES.md after each stage recording the decision you made.
+9. When the whole suite passes, write SUMMARY.md with one short section per stage, as README.md describes.
+
+Grading uses a held-out suite over the same specified behaviour on different data, so implement the spec rather than special-casing the visible tests. When every test in test_ledger.py passes and SUMMARY.md is written, reply with a short message containing DONE and no tool call.

@@ -1,0 +1,50 @@
+"""Categorization rules.
+
+This stub fixes the public names and signatures only. spec/03_rules.md is
+authoritative for stage 3, and spec/05_phase2_tags.md amends it in stage 5 by
+giving patterns that begin with "#" a tag-matching meaning.
+
+Dependency rule (see spec/00_conventions.md): this module imports nothing from
+the project.
+
+Comment character: a rules-file comment line starts with ";". A line starting
+with "#" is NOT a comment here — see spec/00b_contracts.md.
+"""
+
+
+class Rule:
+    """A single categorization rule. Do not redefine or subclass this."""
+
+    def __init__(self, pattern, category, priority):
+        self.pattern = pattern
+        self.category = category
+        self.priority = priority
+
+    def __repr__(self):
+        return "Rule(%r, %r, %r)" % (self.pattern, self.category, self.priority)
+
+
+def load_rules(text):
+    """Parse rules TEXT (not a path) into a list of Rule, in file order.
+
+    See spec/03_rules.md. The argument is the CONTENT of a rules file, so this
+    function never opens anything. File order is load-bearing: it is the
+    tie-breaker categorize() uses when matching rules have equal priority.
+
+    Raises ValueError for a malformed rule line: not exactly three "="-separated
+    parts, an empty pattern, an empty category, or a non-integer priority.
+    """
+    raise NotImplementedError("load_rules")
+
+
+def categorize(txn, rules):
+    """Return the category string for one txn.
+
+    See spec/03_rules.md, amended by spec/05_phase2_tags.md, which gives a
+    pattern beginning with "#" a tag-matching meaning.
+
+    Selection among matching rules: highest priority wins; ties go to the rule
+    earlier in the list; nothing matching gives the literal "uncategorized".
+    An empty rules list is legal. This function must not mutate its arguments.
+    """
+    raise NotImplementedError("categorize")

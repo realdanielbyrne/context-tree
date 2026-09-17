@@ -1,0 +1,35 @@
+{
+  "run_id": "anchor-live-diag-1789489362142",
+  "experiment": "context-dedup / anchor live PILOT (longbuild)",
+  "model": "unsloth/Qwen3.8-27B-GGUF",
+  "task": "longbuild(ledger, 6 stages, stdlib unittest)",
+  "commit": "51d417e512be10bbfea00b5708c776e9facf51a2",
+  "date": "2026-09-15T16:25:25.560Z",
+  "params": {
+    "arms": [
+      "none"
+    ],
+    "repeats": 1,
+    "max_turns": 60,
+    "top_k": 3,
+    "min_chars": 80,
+    "passive": true
+  },
+  "note": "L0 events.jsonl carries COORDINATES ONLY; payloads are content-addressed in blobs/. Identical content collapses to one blob, so a repeated sha IS recorded duplication.",
+  "cells": [
+    {
+      "cell": "none-rep0",
+      "arm": "none",
+      "repeat": 0,
+      "dir": "reports/metrics/context-dedup/captures/anchor-live-diag-1789489362142/none-rep0",
+      "blobs": 111,
+      "pass": true,
+      "score": null,
+      "turns": 49,
+      "stop": "end_turn",
+      "would_fire": 0,
+      "fires": 0,
+      "error": null
+    }
+  ]
+}

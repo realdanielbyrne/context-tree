@@ -1,0 +1,580 @@
+I have everything from the specs. One thing to nail down first: a scenario where a pipe is passed with `|vy| > GLIDE_VY` (bonus NOT awarded), so that test pins both branches of the bonus rule. Searching for one:
+Good candidates. Verifying the chosen scenario (seed=1, flaps=`0000101`) tick-by-tick before pinning it in a test:
+The scenario has been verified against my manual simulation (at t=45, y=794, vy=+45 → only +1 point; the other three paths are +2 each → 7 points). Now I'll create the test suite:
+All 19 pass. Quick negative control — mutating the tick order in a copy to prove the suite catches regressions:
+That swap was unobservable (physics and scroll touch disjoint state) — a weak mutation. Testing the real spec violations: collision-before-scroll, and position-only scoring:
+Mutation 1 didn't trigger — suspicious. Verifying the mutation was actually applied:
+The mutation is applied yet behavior is unchanged — need to see what's actually happening:
+Still 41 — my mental model of the mutation's effect is wrong somewhere. Instrumenting:
+At tick 40 pre-scroll x=400 can't hit — yet it dies there. Tracing `alive` per step:
+Found it — my mutation was malformed: the `replace` left the original post-scroll collision block in place, so the engine still collided after scroll. Redoing it properly:
+The mutation is caught now — but the restored run also failed. Investigating:
+`engine.py` matches the backup, yet behavior says collision-before-scroll — inspecting what the backup actually contains:
+Found it — a classic CPython pitfall: my "mutation" was the same size as the original (just line moves), and everything happened within the same wall-clock second, so `int(mtime)` matched and Python kept using the **stale mutated `.pyc`** from `__pycache__`. The source is correct; the cache is lying. Clearing it:
+Suite is green on the true original. Re-running both negative controls with clean caches to confirm they're valid:
+Both mutations are now properly detected. Final end-to-end sanity (demo diff + selfcheck), since engine.py was touched during mutation testing:
+DONE
+
+`test_flapsim.py` — 19 stdlib `unittest` tests, all passing:
+
+- **Physics clamps (5)**: flap sets vy (not adds), plain gravity tick, `VY_MAX` clamp, soft ceiling zeroing vy, fatal floor clamping y without zeroing vy
+- **LCG/world (5)**: exact LCG values incl. wraparound, spawn advances the LCG exactly once with the spec gap formula, spawn only on `t % SPAWN_EVERY == 0`, scroll, cull boundary (`x + PIPE_W <= 0`)
+- **AABB edges (3)**: half-open touching edges both orientations, bird bottom exactly at `gap_top + GAP_H` survives / one centi-unit below dies, horizontal no-overlap at both pipe edges
+- **Clean-glide bonus (2)**: both branches — seed 7/`0010` first pass at t=45 with vy=+27 scores 2; seed 1/`0000101` first pass at t=45 with vy=+45 scores only 1 (verified against an independent hand simulation), final score 7 = 1+2+2+2
+- **Per-tick order (4)**: ceiling-pinned bird dies exactly on the tick a pipe scrolls into it (pins spawn-at-t=0 + scroll-before-collision), fatal tick counted in `ticks_run` and run halts, pipe scored exactly once (position-only scoring would give 56, not 8), zero-tick initial state
+
+Mutation-tested the suite: collision-before-scroll and position-only-scoring variants each fail the right tests; restored engine re-passes all 19. Demo output remains byte-identical to spec/09 and `--selfcheck` is all OK. (One detour worth noting: an intermediate "mutation not caught" turned out to be a stale same-size `.pyc` from second-granularity mtime caching — cleared `__pycache__` and re-verified.)
+
+===STDERR===
+timestamp=2026-09-16T21:02:39.650Z level=INFO run=bb6a9dc9 message="creating instance" directory=/tmp/oc-anchor-sHzqET
+timestamp=2026-09-16T21:02:39.651Z level=INFO run=bb6a9dc9 message=fromDirectory directory=/tmp/oc-anchor-sHzqET
+timestamp=2026-09-16T21:02:39.661Z level=INFO run=bb6a9dc9 message=bootstrapping directory=/tmp/oc-anchor-sHzqET
+timestamp=2026-09-16T21:02:39.664Z level=INFO run=bb6a9dc9 message=loading path=/tmp/ocx-LGol4D/cfg/opencode/config.json
+timestamp=2026-09-16T21:02:39.665Z level=INFO run=bb6a9dc9 message=loading path=/tmp/ocx-LGol4D/cfg/opencode/opencode.json
+timestamp=2026-09-16T21:02:39.667Z level=INFO run=bb6a9dc9 message=loading path=/tmp/ocx-LGol4D/cfg/opencode/opencode.jsonc
+timestamp=2026-09-16T21:02:39.667Z level=INFO run=bb6a9dc9 message=loading path=/home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/captures/oc-flapsim-v2-anchor-1789573267802/anchor-rep1/opencode.json
+timestamp=2026-09-16T21:02:39.734Z level=INFO run=bb6a9dc9 message="all LSPs are disabled"
+timestamp=2026-09-16T21:02:39.735Z level=INFO run=bb6a9dc9 message="all formatters are disabled"
+timestamp=2026-09-16T21:02:39.735Z level=INFO run=bb6a9dc9 message=init
+timestamp=2026-09-16T21:02:39.848Z level=INFO run=bb6a9dc9 message="event connected"
+timestamp=2026-09-16T21:02:40.194Z level=INFO run=bb6a9dc9 message=loop session.id=ses_f5412827cffeDOM2z2c63XYZ2k step=0
+timestamp=2026-09-16T21:02:40.204Z level=INFO run=bb6a9dc9 message="shell tool using shell" shell=/bin/bash
+timestamp=2026-09-16T21:02:40.221Z level=INFO run=bb6a9dc9 message=init count=10
+[0m
+> build · unsloth/Qwen3.8-27B-GGUF
+[0m
+timestamp=2026-09-16T21:02:40.263Z level=INFO run=bb6a9dc9 message="watcher backend" directory=/tmp/oc-anchor-sHzqET platform=linux backend=inotify
+timestamp=2026-09-16T21:02:40.265Z level=INFO run=bb6a9dc9 message="project copy refresh started" projectID=global
+timestamp=2026-09-16T21:02:40.266Z level=INFO run=bb6a9dc9 message="project copy refresh done" projectID=global updated=[] removed=[]
+timestamp=2026-09-16T21:02:40.298Z level=INFO run=bb6a9dc9 message="booting location services" directory=/tmp/oc-anchor-sHzqET workspaceID=undefined
+timestamp=2026-09-16T21:02:40.545Z level=INFO run=bb6a9dc9 message=process session.id=ses_f5412827cffeDOM2z2c63XYZ2k messageID=msg_0ac076246001HPUidUFGwax813
+timestamp=2026-09-16T21:02:40.553Z level=INFO run=bb6a9dc9 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5412827cffeDOM2z2c63XYZ2k small=false agent=build mode=primary
+timestamp=2026-09-16T21:02:40.558Z level=INFO run=bb6a9dc9 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:18:04.412Z level=INFO run=bb6a9dc9 message=evaluated permission=external_directory pattern=/tmp/opencode/* action.permission=external_directory action.pattern=/tmp/opencode/* action.action=allow
+timestamp=2026-09-16T21:18:04.417Z level=INFO run=bb6a9dc9 message=evaluated permission=edit pattern=tmp/opencode/find_nobonus.py action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:18:04.418Z level=INFO run=bb6a9dc9 message=formatting file=/tmp/opencode/find_nobonus.py
+timestamp=2026-09-16T21:18:04.418Z level=INFO run=bb6a9dc9 message="touching file" file=/tmp/opencode/find_nobonus.py
+[0m← [0mWrite /tmp/opencode/find_nobonus.py
+Wrote file successfully.
+[0m
+timestamp=2026-09-16T21:18:04.481Z level=INFO run=bb6a9dc9 message=loop session.id=ses_f5412827cffeDOM2z2c63XYZ2k step=1
+timestamp=2026-09-16T21:18:04.501Z level=INFO run=bb6a9dc9 message=process session.id=ses_f5412827cffeDOM2z2c63XYZ2k messageID=msg_0ac157cc3001nYdArPZ1C0SN3l
+timestamp=2026-09-16T21:18:04.502Z level=INFO run=bb6a9dc9 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5412827cffeDOM2z2c63XYZ2k small=false agent=build mode=primary
+timestamp=2026-09-16T21:18:04.503Z level=INFO run=bb6a9dc9 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:18:53.445Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="python3 /tmp/opencode/find_nobonus.py" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:18:53.798Z level=INFO run=bb6a9dc9 message=loop session.id=ses_f5412827cffeDOM2z2c63XYZ2k step=2
+[0m$ [0mpython3 /tmp/opencode/find_nobonus.py
+(1, '01000', (45, 45), False, 1)
+(1, '000011', (45, 45), False, 3)
+(1, '011000', (90, 45), False, 5)
+(1, '0000101', (45, 45), True, 7)
+(1, '0000111', (45, 45), True, 7)
+(1, '0001010', (135, 45), True, 7)
+(1, '0001110', (135, 45), True, 7)
+(1, '0100001', (180, 45), True, 7)
+(1, '1010000', (90, 45), True, 7)
+(1, '1100001', (180, 45), True, 7)
+(1, '1110000', (90, 45), True, 7)
+(1, '00010010', (90, 45), False, 5)
+(1, '00010110', (90, 45), True, 7)
+(1, '00011010', (90, 45), True, 7)
+(1, '00011110', (90, 45), False, 3)
+(1, '01000001', (45, 45), False, 1)
+(1, '01000010', (45, 45), True, 7)
+(1, '01000011', (45, 45), True, 7)
+(1, '10000010', (45, 63), False, 1)
+(1, '10000011', (45, 63), False, 1)
+(1, '10000100', (180, 45), True, 7)
+(1, '10000101', (180, 45), True, 7)
+(1, '10000110', (180, 45), True, 7)
+(1, '10010000', (135, 45), True, 7)
+(1, '10110000', (135, 45), False, 5)
+(1, '11000001', (45, 45), False, 1)
+(1, '11000010', (45, 45), False, 5)
+(1, '11000011', (45, 45), False, 3)
+(1, '11010000', (135, 45), False, 5)
+(1, '001001000', (45, 45), False, 1)
+total 400
+[0m
+timestamp=2026-09-16T21:18:53.816Z level=INFO run=bb6a9dc9 message=process session.id=ses_f5412827cffeDOM2z2c63XYZ2k messageID=msg_0ac163d69001HfDoXz3sUwExIw
+timestamp=2026-09-16T21:18:53.816Z level=INFO run=bb6a9dc9 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5412827cffeDOM2z2c63XYZ2k small=false agent=build mode=primary
+timestamp=2026-09-16T21:18:53.817Z level=INFO run=bb6a9dc9 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:25:40.561Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="python3 -c \"\nfrom engine import run\nevents = []\ndef trace(t, y, vy, score, alive):\n    if t in (45, 90, 135, 180):\n        events.append((t, y, vy, score))\nst = run(1, 200, '0000101', False, trace)\nprint('events at pass ticks:', events)\nprint('final:', st)\n\"" action.permission=* action.action=allow action.pattern=*
+[0m$ [0mpython3 -c "
+from engine import run
+events = []
+def trace(t, y, vy, score, alive):
+    if t in (45, 90, 135, 180):
+        events.append((t, y, vy, score))
+st = run(1, 200, '0000101', False, trace)
+print('events at pass ticks:', events)
+print('final:', st)
+"
+events at pass ticks: [(45, 794, 45, 1), (90, 785, -27, 3), (135, 866, 27, 5), (180, 929, -9, 7)]
+final: {'y': 992, 'vy': 45, 'score': 7, 'alive': True, 'ticks_run': 200}
+[0m
+timestamp=2026-09-16T21:25:40.629Z level=INFO run=bb6a9dc9 message=loop session.id=ses_f5412827cffeDOM2z2c63XYZ2k step=3
+timestamp=2026-09-16T21:25:40.649Z level=INFO run=bb6a9dc9 message=process session.id=ses_f5412827cffeDOM2z2c63XYZ2k messageID=msg_0ac1c72970011ksI1FpvUjsgkA
+timestamp=2026-09-16T21:25:40.650Z level=INFO run=bb6a9dc9 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5412827cffeDOM2z2c63XYZ2k small=false agent=build mode=primary
+timestamp=2026-09-16T21:25:40.651Z level=INFO run=bb6a9dc9 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:30:20.073Z level=INFO run=bb6a9dc9 message=evaluated permission=edit pattern=tmp/oc-anchor-sHzqET/test_flapsim.py action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:30:20.073Z level=INFO run=bb6a9dc9 message=formatting file=/tmp/oc-anchor-sHzqET/test_flapsim.py
+timestamp=2026-09-16T21:30:20.074Z level=INFO run=bb6a9dc9 message="touching file" file=/tmp/oc-anchor-sHzqET/test_flapsim.py
+[0m← [0mWrite test_flapsim.py
+Wrote file successfully.
+[0m
+timestamp=2026-09-16T21:30:20.139Z level=INFO run=bb6a9dc9 message=loop session.id=ses_f5412827cffeDOM2z2c63XYZ2k step=4
+timestamp=2026-09-16T21:30:20.157Z level=INFO run=bb6a9dc9 message=process session.id=ses_f5412827cffeDOM2z2c63XYZ2k messageID=msg_0ac20b66d001SGoI3w250J7n89
+timestamp=2026-09-16T21:30:20.158Z level=INFO run=bb6a9dc9 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5412827cffeDOM2z2c63XYZ2k small=false agent=build mode=primary
+timestamp=2026-09-16T21:30:20.159Z level=INFO run=bb6a9dc9 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:32:34.005Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="python3 -m unittest test_flapsim -v 2>&1" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:32:34.051Z level=INFO run=bb6a9dc9 message=loop session.id=ses_f5412827cffeDOM2z2c63XYZ2k step=5
+[0m$ [0mpython3 -m unittest test_flapsim -v 2>&1
+test_pipe_hit_gap_boundaries (test_flapsim.CollideTests.test_pipe_hit_gap_boundaries) ... ok
+test_pipe_hit_requires_horizontal_overlap (test_flapsim.CollideTests.test_pipe_hit_requires_horizontal_overlap) ... ok
+test_rect_overlap_half_open_edges (test_flapsim.CollideTests.test_rect_overlap_half_open_edges) ... ok
+test_bonus_awarded_when_glide_is_clean (test_flapsim.GlideBonusTests.test_bonus_awarded_when_glide_is_clean) ... ok
+test_bonus_not_awarded_when_diving_hard (test_flapsim.GlideBonusTests.test_bonus_not_awarded_when_diving_hard) ... ok
+test_ceiling_is_soft_and_zeroes_vy (test_flapsim.PhysicsTests.test_ceiling_is_soft_and_zeroes_vy) ... ok
+test_flap_sets_vy_instead_of_adding (test_flapsim.PhysicsTests.test_flap_sets_vy_instead_of_adding) ... ok
+test_floor_clamps_y_and_kills_without_zeroing_vy (test_flapsim.PhysicsTests.test_floor_clamps_y_and_kills_without_zeroing_vy) ... ok
+test_gravity_clamped_at_vy_max (test_flapsim.PhysicsTests.test_gravity_clamped_at_vy_max) ... ok
+test_plain_tick_adds_gravity (test_flapsim.PhysicsTests.test_plain_tick_adds_gravity) ... ok
+test_fatal_tick_counts_and_halts_the_run (test_flapsim.TickOrderTests.test_fatal_tick_counts_and_halts_the_run) ... ok
+test_pipe_kills_on_the_tick_it_scrolls_in (test_flapsim.TickOrderTests.test_pipe_kills_on_the_tick_it_scrolls_in) ... ok
+test_pipe_scored_exactly_once (test_flapsim.TickOrderTests.test_pipe_scored_exactly_once) ... ok
+test_zero_ticks_returns_initial_state (test_flapsim.TickOrderTests.test_zero_ticks_returns_initial_state) ... ok
+test_cull_drops_only_fully_offscreen_pipes (test_flapsim.WorldTests.test_cull_drops_only_fully_offscreen_pipes) ... ok
+test_lcg_values (test_flapsim.WorldTests.test_lcg_values) ... ok
+test_scroll_moves_every_pipe_left (test_flapsim.WorldTests.test_scroll_moves_every_pipe_left) ... ok
+test_spawn_advances_lcg_exactly_once (test_flapsim.WorldTests.test_spawn_advances_lcg_exactly_once) ... ok
+test_spawn_only_on_spawn_ticks (test_flapsim.WorldTests.test_spawn_only_on_spawn_ticks) ... ok
+
+----------------------------------------------------------------------
+Ran 19 tests in 0.001s
+
+OK
+[0m
+timestamp=2026-09-16T21:32:34.070Z level=INFO run=bb6a9dc9 message=process session.id=ses_f5412827cffeDOM2z2c63XYZ2k messageID=msg_0ac22c186001oOhup3RqCfCT57
+timestamp=2026-09-16T21:32:34.070Z level=INFO run=bb6a9dc9 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5412827cffeDOM2z2c63XYZ2k small=false agent=build mode=primary
+timestamp=2026-09-16T21:32:34.072Z level=INFO run=bb6a9dc9 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:35:09.948Z level=INFO run=bb6a9dc9 message="resolved path" arg=engine.py resolved=/tmp/oc-anchor-sHzqET/engine.py
+timestamp=2026-09-16T21:35:09.948Z level=INFO run=bb6a9dc9 message="resolved path" arg=/tmp/opencode/engine.bak resolved=/tmp/opencode/engine.bak
+timestamp=2026-09-16T21:35:09.952Z level=INFO run=bb6a9dc9 message="resolved path" arg=/tmp/opencode/engine.bak resolved=/tmp/opencode/engine.bak
+timestamp=2026-09-16T21:35:09.953Z level=INFO run=bb6a9dc9 message="resolved path" arg=engine.py resolved=/tmp/oc-anchor-sHzqET/engine.py
+timestamp=2026-09-16T21:35:09.953Z level=INFO run=bb6a9dc9 message=evaluated permission=external_directory pattern=/tmp/opencode/* action.permission=external_directory action.pattern=/tmp/opencode/* action.action=allow
+timestamp=2026-09-16T21:35:09.953Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="cp engine.py /tmp/opencode/engine.bak" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:35:09.953Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern=python3 action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:35:09.953Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="python3 -m unittest test_flapsim 2>&1" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:35:09.953Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="tail -3" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:35:09.953Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="cp /tmp/opencode/engine.bak engine.py" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:35:09.953Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="python3 -m unittest test_flapsim" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:35:10.041Z level=INFO run=bb6a9dc9 message=loop session.id=ses_f5412827cffeDOM2z2c63XYZ2k step=6
+[0m$ [0mcp engine.py /tmp/opencode/engine.bak && python3 - <<'EOF'
+src = open("engine.py").read()
+mutated = src.replace("""        y, vy, alive = step_bird(y, vy, flaps[t % n] == "1")
+        scroll(pipes)""", """        scroll(pipes)
+        y, vy, alive = step_bird(y, vy, flaps[t % n] == "1")""")
+assert mutated != src
+open("engine.py", "w").write(mutated)
+EOF
+python3 -m unittest test_flapsim 2>&1 | tail -3; cp /tmp/opencode/engine.bak engine.py && python3 -m unittest test_flapsim 2>&1 | tail -3
+Ran 19 tests in 0.001s
+
+OK
+Ran 19 tests in 0.001s
+
+OK
+[0m
+timestamp=2026-09-16T21:35:10.058Z level=INFO run=bb6a9dc9 message=process session.id=ses_f5412827cffeDOM2z2c63XYZ2k messageID=msg_0ac2522db001CzglV1lnEhu6PH
+timestamp=2026-09-16T21:35:10.058Z level=INFO run=bb6a9dc9 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5412827cffeDOM2z2c63XYZ2k small=false agent=build mode=primary
+timestamp=2026-09-16T21:35:10.059Z level=INFO run=bb6a9dc9 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:37:43.086Z level=INFO run=bb6a9dc9 message="resolved path" arg=/tmp/opencode/engine.bak resolved=/tmp/opencode/engine.bak
+timestamp=2026-09-16T21:37:43.090Z level=INFO run=bb6a9dc9 message="resolved path" arg=engine.py resolved=/tmp/oc-anchor-sHzqET/engine.py
+timestamp=2026-09-16T21:37:43.090Z level=INFO run=bb6a9dc9 message="resolved path" arg=/tmp/opencode/engine.bak resolved=/tmp/opencode/engine.bak
+timestamp=2026-09-16T21:37:43.095Z level=INFO run=bb6a9dc9 message="resolved path" arg=engine.py resolved=/tmp/oc-anchor-sHzqET/engine.py
+timestamp=2026-09-16T21:37:43.095Z level=INFO run=bb6a9dc9 message=evaluated permission=external_directory pattern=/tmp/opencode/* action.permission=external_directory action.pattern=/tmp/opencode/* action.action=allow
+timestamp=2026-09-16T21:37:43.096Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="python3 - <<'EOF'\nsrc = open(\"/tmp/opencode/engine.bak\").read()\nm1 = src.replace(\"\"\"        scroll(pipes)\n        if alive:\"\"\", \"\"\"        if alive:\n            for p in pipes:\n                if pipe_hit(y, p):\n                    alive = False\n                    break\n        scroll(pipes)\n        if alive:\n            pass\n        if alive:\"\"\")\nopen(\"engine.py\", \"w\").write(m1)\nEOF" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:37:43.096Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="echo \"--- mutation 1: collision before scroll ---\"" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:37:43.096Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="python3 -m unittest test_flapsim 2>&1" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:37:43.096Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="tail -4" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:37:43.096Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="cp /tmp/opencode/engine.bak engine.py" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:37:43.096Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="python3 - <<'EOF'\nsrc = open(\"/tmp/opencode/engine.bak\").read()\nm2 = src.replace('if not p[\"passed\"] and p[\"x\"] + PIPE_W <= BIRD_X:', 'if p[\"x\"] + PIPE_W <= BIRD_X:')\nopen(\"engine.py\", \"w\").write(m2)\nEOF" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:37:43.096Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="echo \"--- mutation 2: position-only scoring (no passed flag) ---\"" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:37:43.096Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="python3 -m unittest test_flapsim" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:37:43.096Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="tail -3" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:37:43.227Z level=INFO run=bb6a9dc9 message=loop session.id=ses_f5412827cffeDOM2z2c63XYZ2k step=7
+[0m$ [0mpython3 - <<'EOF'
+src = open("/tmp/opencode/engine.bak").read()
+m1 = src.replace("""        scroll(pipes)
+        if alive:""", """        if alive:
+            for p in pipes:
+                if pipe_hit(y, p):
+                    alive = False
+                    break
+        scroll(pipes)
+        if alive:
+            pass
+        if alive:""")
+open("engine.py", "w").write(m1)
+EOF
+echo "--- mutation 1: collision before scroll ---"; python3 -m unittest test_flapsim 2>&1 | tail -4; cp /tmp/opencode/engine.bak engine.py
+python3 - <<'EOF'
+src = open("/tmp/opencode/engine.bak").read()
+m2 = src.replace('if not p["passed"] and p["x"] + PIPE_W <= BIRD_X:', 'if p["x"] + PIPE_W <= BIRD_X:')
+open("engine.py", "w").write(m2)
+EOF
+echo "--- mutation 2: position-only scoring (no passed flag) ---"; python3 -m unittest test_flapsim 2>&1 | tail -4; cp /tmp/opencode/engine.bak engine.py && python3 -m unittest test_flapsim 2>&1 | tail -3
+--- mutation 1: collision before scroll ---
+----------------------------------------------------------------------
+Ran 19 tests in 0.001s
+
+OK
+--- mutation 2: position-only scoring (no passed flag) ---
+----------------------------------------------------------------------
+Ran 19 tests in 0.001s
+
+FAILED (failures=3)
+Ran 19 tests in 0.001s
+
+OK
+[0m
+timestamp=2026-09-16T21:37:43.245Z level=INFO run=bb6a9dc9 message=process session.id=ses_f5412827cffeDOM2z2c63XYZ2k messageID=msg_0ac27793e001slrsQ33kMJC96x
+timestamp=2026-09-16T21:37:43.246Z level=INFO run=bb6a9dc9 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5412827cffeDOM2z2c63XYZ2k small=false agent=build mode=primary
+timestamp=2026-09-16T21:37:43.246Z level=INFO run=bb6a9dc9 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:40:50.323Z level=INFO run=bb6a9dc9 message="resolved path" arg=/tmp/opencode/engine.bak resolved=/tmp/opencode/engine.bak
+timestamp=2026-09-16T21:40:50.328Z level=INFO run=bb6a9dc9 message="resolved path" arg=engine.py resolved=/tmp/oc-anchor-sHzqET/engine.py
+timestamp=2026-09-16T21:40:50.328Z level=INFO run=bb6a9dc9 message=evaluated permission=external_directory pattern=/tmp/opencode/* action.permission=external_directory action.pattern=/tmp/opencode/* action.action=allow
+timestamp=2026-09-16T21:40:50.328Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="python3 - <<'EOF'\nsrc = open(\"/tmp/opencode/engine.bak\").read()\ntarget = \"        scroll(pipes)\\n        if alive:\"\nprint(\"target present:\", target in src)\nm1 = src.replace(target, \"\"\"        if alive:\n            for p in pipes:\n                if pipe_hit(y, p):\n                    alive = False\n                    break\n        scroll(pipes)\n        if alive:\n            pass\n        if alive:\"\"\")\nprint(\"mutated differs:\", m1 != src)\nopen(\"engine.py\", \"w\").write(m1)\nEOF" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:40:50.328Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="python3 -m unittest test_flapsim.TickOrderTests.test_pipe_kills_on_the_tick_it_scrolls_in -v 2>&1" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:40:50.328Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="tail -6" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:40:50.328Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="cp /tmp/opencode/engine.bak engine.py" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:40:50.380Z level=INFO run=bb6a9dc9 message=loop session.id=ses_f5412827cffeDOM2z2c63XYZ2k step=8
+[0m$ [0mpython3 - <<'EOF'
+src = open("/tmp/opencode/engine.bak").read()
+target = "        scroll(pipes)\n        if alive:"
+print("target present:", target in src)
+m1 = src.replace(target, """        if alive:
+            for p in pipes:
+                if pipe_hit(y, p):
+                    alive = False
+                    break
+        scroll(pipes)
+        if alive:
+            pass
+        if alive:""")
+print("mutated differs:", m1 != src)
+open("engine.py", "w").write(m1)
+EOF
+python3 -m unittest test_flapsim.TickOrderTests.test_pipe_kills_on_the_tick_it_scrolls_in -v 2>&1 | tail -6; cp /tmp/opencode/engine.bak engine.py
+target present: True
+mutated differs: True
+test_pipe_kills_on_the_tick_it_scrolls_in (test_flapsim.TickOrderTests.test_pipe_kills_on_the_tick_it_scrolls_in) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+[0m
+timestamp=2026-09-16T21:40:50.399Z level=INFO run=bb6a9dc9 message=process session.id=ses_f5412827cffeDOM2z2c63XYZ2k messageID=msg_0ac2a544e0010hRuWfO2INzTnz
+timestamp=2026-09-16T21:40:50.399Z level=INFO run=bb6a9dc9 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5412827cffeDOM2z2c63XYZ2k small=false agent=build mode=primary
+timestamp=2026-09-16T21:40:50.400Z level=INFO run=bb6a9dc9 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:43:58.147Z level=INFO run=bb6a9dc9 message="resolved path" arg=/tmp/opencode/engine.bak resolved=/tmp/opencode/engine.bak
+timestamp=2026-09-16T21:43:58.152Z level=INFO run=bb6a9dc9 message="resolved path" arg=engine.py resolved=/tmp/oc-anchor-sHzqET/engine.py
+timestamp=2026-09-16T21:43:58.152Z level=INFO run=bb6a9dc9 message=evaluated permission=external_directory pattern=/tmp/opencode/* action.permission=external_directory action.pattern=/tmp/opencode/* action.action=allow
+timestamp=2026-09-16T21:43:58.152Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="python3 - <<'EOF'\nsrc = open(\"/tmp/opencode/engine.bak\").read()\ntarget = \"        scroll(pipes)\\n        if alive:\"\nm1 = src.replace(target, \"\"\"        if alive:\n            for p in pipes:\n                if pipe_hit(y, p):\n                    alive = False\n                    break\n        scroll(pipes)\n        if alive:\n            pass\n        if alive:\"\"\")\nopen(\"engine.py\", \"w\").write(m1)\nEOF" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:43:58.152Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="python3 -c \"\nfrom engine import run\nst = run(7, 60, '1')\nprint('mutated engine:', st)\nimport inspect, engine\nsrc = inspect.getsource(engine.run)\nprint(src[:400])\n\"" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:43:58.152Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="cp /tmp/opencode/engine.bak engine.py" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:43:58.194Z level=INFO run=bb6a9dc9 message=loop session.id=ses_f5412827cffeDOM2z2c63XYZ2k step=9
+[0m$ [0mpython3 - <<'EOF'
+src = open("/tmp/opencode/engine.bak").read()
+target = "        scroll(pipes)\n        if alive:"
+m1 = src.replace(target, """        if alive:
+            for p in pipes:
+                if pipe_hit(y, p):
+                    alive = False
+                    break
+        scroll(pipes)
+        if alive:
+            pass
+        if alive:""")
+open("engine.py", "w").write(m1)
+EOF
+python3 -c "
+from engine import run
+st = run(7, 60, '1')
+print('mutated engine:', st)
+import inspect, engine
+src = inspect.getsource(engine.run)
+print(src[:400])
+"; cp /tmp/opencode/engine.bak engine.py
+mutated engine: {'y': 0, 'vy': 0, 'score': 0, 'alive': False, 'ticks_run': 41}
+def run(seed, ticks, flaps, powerups=False, on_tick=None):
+    y, vy, score = 560, 0, 0
+    alive, pipes, s = True, [], seed
+    n = max(1, len(flaps))
+    ticks_run = 0
+    for t in range(ticks):
+        pipe, s = spawn(t, s)
+        if pipe is not None:
+            pipes.append(pipe)
+        y, vy, alive = step_bird(y, vy, flaps[t % n] == "1")
+        if alive:
+            for p in pipes:
+[0m
+timestamp=2026-09-16T21:43:58.210Z level=INFO run=bb6a9dc9 message=process session.id=ses_f5412827cffeDOM2z2c63XYZ2k messageID=msg_0ac2d31f4001yxi7da9c5NkWpQ
+timestamp=2026-09-16T21:43:58.211Z level=INFO run=bb6a9dc9 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5412827cffeDOM2z2c63XYZ2k small=false agent=build mode=primary
+timestamp=2026-09-16T21:43:58.213Z level=INFO run=bb6a9dc9 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:46:59.357Z level=INFO run=bb6a9dc9 message="resolved path" arg=/tmp/opencode/engine.bak resolved=/tmp/opencode/engine.bak
+timestamp=2026-09-16T21:46:59.361Z level=INFO run=bb6a9dc9 message="resolved path" arg=engine.py resolved=/tmp/oc-anchor-sHzqET/engine.py
+timestamp=2026-09-16T21:46:59.362Z level=INFO run=bb6a9dc9 message=evaluated permission=external_directory pattern=/tmp/opencode/* action.permission=external_directory action.pattern=/tmp/opencode/* action.action=allow
+timestamp=2026-09-16T21:46:59.362Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="python3 - <<'EOF'\nsrc = open(\"/tmp/opencode/engine.bak\").read()\ntarget = \"        scroll(pipes)\\n        if alive:\"\nm1 = src.replace(target, \"\"\"        for p in pipes:\n            print(t, 'pre-scroll x=', p[\"x\"], 'y=', y)\n        if alive:\n            for p in pipes:\n                if pipe_hit(y, p):\n                    alive = False\n                    break\n        scroll(pipes)\n        if alive:\n            pass\n        if alive:\"\"\")\nopen(\"engine.py\", \"w\").write(m1)\nEOF" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:46:59.362Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="python3 -c \"\nfrom engine import run\nst = run(7, 60, '1')\nprint('result:', st['ticks_run'], st['alive'])\n\" 2>&1" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:46:59.362Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="sed -n '38,46p'" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:46:59.362Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="cp /tmp/opencode/engine.bak engine.py" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:46:59.394Z level=INFO run=bb6a9dc9 message=loop session.id=ses_f5412827cffeDOM2z2c63XYZ2k step=10
+[0m$ [0mpython3 - <<'EOF'
+src = open("/tmp/opencode/engine.bak").read()
+target = "        scroll(pipes)\n        if alive:"
+m1 = src.replace(target, """        for p in pipes:
+            print(t, 'pre-scroll x=', p["x"], 'y=', y)
+        if alive:
+            for p in pipes:
+                if pipe_hit(y, p):
+                    alive = False
+                    break
+        scroll(pipes)
+        if alive:
+            pass
+        if alive:""")
+open("engine.py", "w").write(m1)
+EOF
+python3 -c "
+from engine import run
+st = run(7, 60, '1')
+print('result:', st['ticks_run'], st['alive'])
+" 2>&1 | sed -n '38,46p'; cp /tmp/opencode/engine.bak engine.py
+37 pre-scroll x= 520 y= 0
+38 pre-scroll x= 480 y= 0
+39 pre-scroll x= 440 y= 0
+40 pre-scroll x= 400 y= 0
+result: 41 False
+[0m
+timestamp=2026-09-16T21:46:59.412Z level=INFO run=bb6a9dc9 message=process session.id=ses_f5412827cffeDOM2z2c63XYZ2k messageID=msg_0ac2ff5c50014EVv09QlXnrjsZ
+timestamp=2026-09-16T21:46:59.413Z level=INFO run=bb6a9dc9 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5412827cffeDOM2z2c63XYZ2k small=false agent=build mode=primary
+timestamp=2026-09-16T21:46:59.414Z level=INFO run=bb6a9dc9 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:48:57.204Z level=INFO run=bb6a9dc9 message="resolved path" arg=/tmp/opencode/engine.bak resolved=/tmp/opencode/engine.bak
+timestamp=2026-09-16T21:48:57.208Z level=INFO run=bb6a9dc9 message="resolved path" arg=engine.py resolved=/tmp/oc-anchor-sHzqET/engine.py
+timestamp=2026-09-16T21:48:57.208Z level=INFO run=bb6a9dc9 message=evaluated permission=external_directory pattern=/tmp/opencode/* action.permission=external_directory action.pattern=/tmp/opencode/* action.action=allow
+timestamp=2026-09-16T21:48:57.209Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="python3 - <<'EOF'\nsrc = open(\"/tmp/opencode/engine.bak\").read()\ntarget = \"        scroll(pipes)\\n        if alive:\"\nm1 = src.replace(target, \"\"\"        print(t, 'after-physics alive=', alive, 'y=', y)\n        if alive:\n            for p in pipes:\n                if pipe_hit(y, p):\n                    print(t, 'PIPE HIT x=', p[\"x\"])\n                    alive = False\n                    break\n        scroll(pipes)\n        if alive:\n            pass\n        if alive:\"\"\")\nopen(\"engine.py\", \"w\").write(m1)\nEOF" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:48:57.209Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="python3 -c \"\nfrom engine import run\nst = run(7, 60, '1')\nprint('result:', st['ticks_run'], st['alive'])\n\" 2>&1" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:48:57.209Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="sed -n '38,46p'" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:48:57.209Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="cp /tmp/opencode/engine.bak engine.py" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:48:57.242Z level=INFO run=bb6a9dc9 message=loop session.id=ses_f5412827cffeDOM2z2c63XYZ2k step=11
+[0m$ [0mpython3 - <<'EOF'
+src = open("/tmp/opencode/engine.bak").read()
+target = "        scroll(pipes)\n        if alive:"
+m1 = src.replace(target, """        print(t, 'after-physics alive=', alive, 'y=', y)
+        if alive:
+            for p in pipes:
+                if pipe_hit(y, p):
+                    print(t, 'PIPE HIT x=', p["x"])
+                    alive = False
+                    break
+        scroll(pipes)
+        if alive:
+            pass
+        if alive:""")
+open("engine.py", "w").write(m1)
+EOF
+python3 -c "
+from engine import run
+st = run(7, 60, '1')
+print('result:', st['ticks_run'], st['alive'])
+" 2>&1 | sed -n '38,46p'; cp /tmp/opencode/engine.bak engine.py
+37 after-physics alive= True y= 0
+38 after-physics alive= True y= 0
+39 after-physics alive= True y= 0
+40 after-physics alive= True y= 0
+result: 41 False
+[0m
+timestamp=2026-09-16T21:48:57.260Z level=INFO run=bb6a9dc9 message=process session.id=ses_f5412827cffeDOM2z2c63XYZ2k messageID=msg_0ac31c21d001T0VO523I4aXvjI
+timestamp=2026-09-16T21:48:57.260Z level=INFO run=bb6a9dc9 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5412827cffeDOM2z2c63XYZ2k small=false agent=build mode=primary
+timestamp=2026-09-16T21:48:57.261Z level=INFO run=bb6a9dc9 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:53:55.586Z level=INFO run=bb6a9dc9 message="resolved path" arg=/tmp/opencode/engine.bak resolved=/tmp/opencode/engine.bak
+timestamp=2026-09-16T21:53:55.590Z level=INFO run=bb6a9dc9 message="resolved path" arg=engine.py resolved=/tmp/oc-anchor-sHzqET/engine.py
+timestamp=2026-09-16T21:53:55.590Z level=INFO run=bb6a9dc9 message=evaluated permission=external_directory pattern=/tmp/opencode/* action.permission=external_directory action.pattern=/tmp/opencode/* action.action=allow
+timestamp=2026-09-16T21:53:55.590Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="python3 - <<'EOF'\nsrc = open(\"/tmp/opencode/engine.bak\").read()\norig = \"\"\"        scroll(pipes)\n        if alive:\n            for p in pipes:\n                if pipe_hit(y, p):\n                    alive = False\n                    break\"\"\"\nmut = \"\"\"        if alive:\n            for p in pipes:\n                if pipe_hit(y, p):\n                    alive = False\n                    break\n        scroll(pipes)\"\"\"\nassert orig in src\nopen(\"engine.py\", \"w\").write(src.replace(orig, mut))\nEOF" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:53:55.590Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="echo \"--- collision before scroll (correct mutation) ---\"" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:53:55.590Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="python3 -m unittest test_flapsim 2>&1" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:53:55.590Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="tail -4" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:53:55.590Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="cp /tmp/opencode/engine.bak engine.py" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:53:55.590Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="echo \"--- restored ---\"" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:53:55.590Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="python3 -m unittest test_flapsim" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:53:55.590Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="tail -3" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:53:55.677Z level=INFO run=bb6a9dc9 message=loop session.id=ses_f5412827cffeDOM2z2c63XYZ2k step=12
+[0m$ [0mpython3 - <<'EOF'
+src = open("/tmp/opencode/engine.bak").read()
+orig = """        scroll(pipes)
+        if alive:
+            for p in pipes:
+                if pipe_hit(y, p):
+                    alive = False
+                    break"""
+mut = """        if alive:
+            for p in pipes:
+                if pipe_hit(y, p):
+                    alive = False
+                    break
+        scroll(pipes)"""
+assert orig in src
+open("engine.py", "w").write(src.replace(orig, mut))
+EOF
+echo "--- collision before scroll (correct mutation) ---"; python3 -m unittest test_flapsim 2>&1 | tail -4; cp /tmp/opencode/engine.bak engine.py && echo "--- restored ---" && python3 -m unittest test_flapsim 2>&1 | tail -3
+--- collision before scroll (correct mutation) ---
+----------------------------------------------------------------------
+Ran 19 tests in 0.001s
+
+FAILED (failures=1)
+--- restored ---
+Ran 19 tests in 0.001s
+
+FAILED (failures=1)
+[0m
+timestamp=2026-09-16T21:53:55.698Z level=INFO run=bb6a9dc9 message=process session.id=ses_f5412827cffeDOM2z2c63XYZ2k messageID=msg_0ac364fe0001zbwqP6gYM6CYnT
+timestamp=2026-09-16T21:53:55.699Z level=INFO run=bb6a9dc9 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5412827cffeDOM2z2c63XYZ2k small=false agent=build mode=primary
+timestamp=2026-09-16T21:53:55.700Z level=INFO run=bb6a9dc9 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:57:01.623Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="python3 -m unittest test_flapsim -v 2>&1" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:57:01.624Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="grep -A8 \"FAIL\\|Error\"" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:57:01.624Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="head -30" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:57:01.624Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="diff /tmp/opencode/engine.bak engine.py" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:57:01.624Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="echo \"engine.py matches backup\"" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:57:01.678Z level=INFO run=bb6a9dc9 message=loop session.id=ses_f5412827cffeDOM2z2c63XYZ2k step=13
+[0m$ [0mpython3 -m unittest test_flapsim -v 2>&1 | grep -A8 "FAIL\|Error" | head -30; diff /tmp/opencode/engine.bak engine.py && echo "engine.py matches backup"
+test_pipe_kills_on_the_tick_it_scrolls_in (test_flapsim.TickOrderTests.test_pipe_kills_on_the_tick_it_scrolls_in) ... FAIL
+test_pipe_scored_exactly_once (test_flapsim.TickOrderTests.test_pipe_scored_exactly_once) ... ok
+test_zero_ticks_returns_initial_state (test_flapsim.TickOrderTests.test_zero_ticks_returns_initial_state) ... ok
+test_cull_drops_only_fully_offscreen_pipes (test_flapsim.WorldTests.test_cull_drops_only_fully_offscreen_pipes) ... ok
+test_lcg_values (test_flapsim.WorldTests.test_lcg_values) ... ok
+test_scroll_moves_every_pipe_left (test_flapsim.WorldTests.test_scroll_moves_every_pipe_left) ... ok
+test_spawn_advances_lcg_exactly_once (test_flapsim.WorldTests.test_spawn_advances_lcg_exactly_once) ... ok
+test_spawn_only_on_spawn_ticks (test_flapsim.WorldTests.test_spawn_only_on_spawn_ticks) ... ok
+
+--
+FAIL: test_pipe_kills_on_the_tick_it_scrolls_in (test_flapsim.TickOrderTests.test_pipe_kills_on_the_tick_it_scrolls_in)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/oc-anchor-sHzqET/test_flapsim.py", line 114, in test_pipe_kills_on_the_tick_it_scrolls_in
+    self.assertEqual(st["ticks_run"], 41)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 42 != 41
+
+----------------------------------------------------------------------
+Ran 19 tests in 0.002s
+
+FAILED (failures=1)
+engine.py matches backup
+[0m
+timestamp=2026-09-16T21:57:01.696Z level=INFO run=bb6a9dc9 message=process session.id=ses_f5412827cffeDOM2z2c63XYZ2k messageID=msg_0ac392670001P1pQUUCxEgKpzl
+timestamp=2026-09-16T21:57:01.697Z level=INFO run=bb6a9dc9 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5412827cffeDOM2z2c63XYZ2k small=false agent=build mode=primary
+timestamp=2026-09-16T21:57:01.698Z level=INFO run=bb6a9dc9 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T22:01:14.101Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="grep -n \"scroll(pipes)\" /tmp/opencode/engine.bak engine.py" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T22:01:14.101Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="ls -la --time-style=full-iso /tmp/opencode/engine.bak engine.py __pycache__/ 2>/dev/null" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T22:01:14.101Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern=head action.permission=* action.action=allow action.pattern=*
+[0m$ [0mgrep -n "scroll(pipes)" /tmp/opencode/engine.bak engine.py; ls -la --time-style=full-iso /tmp/opencode/engine.bak engine.py __pycache__/ 2>/dev/null | head
+/tmp/opencode/engine.bak:17:        scroll(pipes)
+engine.py:17:        scroll(pipes)
+-rw-rw-r-- 1 realdanielbyrne realdanielbyrne 1182 2026-09-16 16:35:09.958801910 -0500 /tmp/opencode/engine.bak
+-rw-rw-r-- 1 realdanielbyrne realdanielbyrne 1182 2026-09-16 16:53:55.636975537 -0500 engine.py
+
+__pycache__/:
+total 32
+drwxrwxr-x 2 realdanielbyrne realdanielbyrne   160 2026-09-16 16:53:55.629360865 -0500 .
+drwx------ 4 realdanielbyrne realdanielbyrne   260 2026-09-16 16:30:20.073116975 -0500 ..
+-rw-rw-r-- 1 realdanielbyrne realdanielbyrne   827 2026-09-16 15:44:06.699226391 -0500 collide.cpython-313.pyc
+-rw-rw-r-- 1 realdanielbyrne realdanielbyrne  1567 2026-09-16 16:53:55.629360865 -0500 engine.cpython-313.pyc
+-rw-rw-r-- 1 realdanielbyrne realdanielbyrne   657 2026-09-16 15:44:06.698832317 -0500 physics.cpython-313.pyc
+[0m
+timestamp=2026-09-16T22:01:14.173Z level=INFO run=bb6a9dc9 message=loop session.id=ses_f5412827cffeDOM2z2c63XYZ2k step=14
+timestamp=2026-09-16T22:01:14.191Z level=INFO run=bb6a9dc9 message=process session.id=ses_f5412827cffeDOM2z2c63XYZ2k messageID=msg_0ac3d00c0001hi44CPRmKd3VYI
+timestamp=2026-09-16T22:01:14.191Z level=INFO run=bb6a9dc9 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5412827cffeDOM2z2c63XYZ2k small=false agent=build mode=primary
+timestamp=2026-09-16T22:01:14.192Z level=INFO run=bb6a9dc9 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T22:05:27.842Z level=INFO run=bb6a9dc9 message="resolved path" arg=__pycache__ resolved=/tmp/oc-anchor-sHzqET/__pycache__
+timestamp=2026-09-16T22:05:27.842Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="rm -rf __pycache__" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T22:05:27.843Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="python3 -m unittest test_flapsim -v" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T22:05:27.843Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="tail -5" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T22:05:27.897Z level=INFO run=bb6a9dc9 message=loop session.id=ses_f5412827cffeDOM2z2c63XYZ2k step=15
+[0m$ [0mrm -rf __pycache__ && python3 -m unittest test_flapsim -v 2>&1 | tail -5
+----------------------------------------------------------------------
+Ran 19 tests in 0.001s
+
+OK
+[0m
+timestamp=2026-09-16T22:05:27.915Z level=INFO run=bb6a9dc9 message=process session.id=ses_f5412827cffeDOM2z2c63XYZ2k messageID=msg_0ac40dfdb001XVC5b2FBbbDmtj
+timestamp=2026-09-16T22:05:27.916Z level=INFO run=bb6a9dc9 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5412827cffeDOM2z2c63XYZ2k small=false agent=build mode=primary
+timestamp=2026-09-16T22:05:27.916Z level=INFO run=bb6a9dc9 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T22:08:51.860Z level=INFO run=bb6a9dc9 message="resolved path" arg=__pycache__ resolved=/tmp/oc-anchor-sHzqET/__pycache__
+timestamp=2026-09-16T22:08:51.860Z level=INFO run=bb6a9dc9 message="resolved path" arg=/tmp/opencode/engine.bak resolved=/tmp/opencode/engine.bak
+timestamp=2026-09-16T22:08:51.862Z level=INFO run=bb6a9dc9 message="resolved path" arg=engine.py resolved=/tmp/oc-anchor-sHzqET/engine.py
+timestamp=2026-09-16T22:08:51.862Z level=INFO run=bb6a9dc9 message="resolved path" arg=__pycache__ resolved=/tmp/oc-anchor-sHzqET/__pycache__
+timestamp=2026-09-16T22:08:51.863Z level=INFO run=bb6a9dc9 message=evaluated permission=external_directory pattern=/tmp/opencode/* action.permission=external_directory action.pattern=/tmp/opencode/* action.action=allow
+timestamp=2026-09-16T22:08:51.863Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="python3 - <<'EOF'\nsrc = open(\"/tmp/opencode/engine.bak\").read()\norig = \"\"\"        scroll(pipes)\n        if alive:\n            for p in pipes:\n                if pipe_hit(y, p):\n                    alive = False\n                    break\"\"\"\nmut = \"\"\"        if alive:\n            for p in pipes:\n                if pipe_hit(y, p):\n                    alive = False\n                    break\n        scroll(pipes)\"\"\"\nassert orig in src\nopen(\"engine.py\", \"w\").write(src.replace(orig, mut))\nEOF" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T22:08:51.863Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="rm -rf __pycache__" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T22:08:51.863Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="echo \"--- mutation: collision before scroll ---\"" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T22:08:51.863Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="python3 -m unittest test_flapsim 2>&1" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T22:08:51.863Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="grep -E \"^FAIL|failures\"" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T22:08:51.863Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="cp /tmp/opencode/engine.bak engine.py" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T22:08:51.863Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="echo \"--- restored, clean cache ---\"" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T22:08:51.863Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="python3 -m unittest test_flapsim" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T22:08:51.863Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="tail -3" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T22:08:51.956Z level=INFO run=bb6a9dc9 message=loop session.id=ses_f5412827cffeDOM2z2c63XYZ2k step=16
+[0m$ [0mpython3 - <<'EOF'
+src = open("/tmp/opencode/engine.bak").read()
+orig = """        scroll(pipes)
+        if alive:
+            for p in pipes:
+                if pipe_hit(y, p):
+                    alive = False
+                    break"""
+mut = """        if alive:
+            for p in pipes:
+                if pipe_hit(y, p):
+                    alive = False
+                    break
+        scroll(pipes)"""
+assert orig in src
+open("engine.py", "w").write(src.replace(orig, mut))
+EOF
+rm -rf __pycache__; echo "--- mutation: collision before scroll ---"; python3 -m unittest test_flapsim 2>&1 | grep -E "^FAIL|failures" ; cp /tmp/opencode/engine.bak engine.py && rm -rf __pycache__ && echo "--- restored, clean cache ---" && python3 -m unittest test_flapsim 2>&1 | tail -3
+--- mutation: collision before scroll ---
+FAIL: test_pipe_kills_on_the_tick_it_scrolls_in (test_flapsim.TickOrderTests.test_pipe_kills_on_the_tick_it_scrolls_in)
+FAILED (failures=1)
+--- restored, clean cache ---
+Ran 19 tests in 0.001s
+
+OK
+[0m
+timestamp=2026-09-16T22:08:51.975Z level=INFO run=bb6a9dc9 message=process session.id=ses_f5412827cffeDOM2z2c63XYZ2k messageID=msg_0ac43fcf700137NPxhkpyxYk3e
+timestamp=2026-09-16T22:08:51.975Z level=INFO run=bb6a9dc9 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5412827cffeDOM2z2c63XYZ2k small=false agent=build mode=primary
+timestamp=2026-09-16T22:08:51.976Z level=INFO run=bb6a9dc9 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T22:12:42.384Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="python3 flapsim.py --seed 7 --ticks 200 --flaps 0010" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T22:12:42.385Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="diff /tmp/opencode/expected.txt -" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T22:12:42.385Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="echo \"demo: byte-identical\"" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T22:12:42.385Z level=INFO run=bb6a9dc9 message=evaluated permission=bash pattern="python3 flapsim.py --selfcheck" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T22:12:42.424Z level=INFO run=bb6a9dc9 message=loop session.id=ses_f5412827cffeDOM2z2c63XYZ2k step=17
+[0m$ [0mpython3 flapsim.py --seed 7 --ticks 200 --flaps 0010 | diff /tmp/opencode/expected.txt - && echo "demo: byte-identical" && python3 flapsim.py --selfcheck
+demo: byte-identical
+EX1 seed=7 ticks=200 flaps=0010 expect score=08 alive=1 got score=08 alive=1 OK
+EX2 seed=7 ticks=120 flaps=01 expect score=00 alive=0 got score=00 alive=0 OK
+EX3 seed=3 ticks=200 flaps=0001 expect score=08 alive=1 got score=08 alive=1 OK
+EX4 seed=11 ticks=60 flaps=1 expect score=00 alive=0 got score=00 alive=0 OK
+EX5 seed=2 ticks=90 flaps=0 expect score=00 alive=0 got score=00 alive=0 OK
+EX6 seed=5 ticks=200 flaps=0010 expect score=08 alive=1 got score=08 alive=1 OK
+[0m
+timestamp=2026-09-16T22:12:42.443Z level=INFO run=bb6a9dc9 message=process session.id=ses_f5412827cffeDOM2z2c63XYZ2k messageID=msg_0ac47813a0015O6DKxfQXS0p4J
+timestamp=2026-09-16T22:12:42.444Z level=INFO run=bb6a9dc9 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5412827cffeDOM2z2c63XYZ2k small=false agent=build mode=primary
+timestamp=2026-09-16T22:12:42.445Z level=INFO run=bb6a9dc9 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T22:16:46.479Z level=INFO run=bb6a9dc9 message=loop session.id=ses_f5412827cffeDOM2z2c63XYZ2k step=18
+timestamp=2026-09-16T22:16:46.482Z level=INFO run=bb6a9dc9 message="exiting loop" session.id=ses_f5412827cffeDOM2z2c63XYZ2k
+timestamp=2026-09-16T22:16:46.489Z level=INFO run=bb6a9dc9 message="disposing instance" directory=/tmp/oc-anchor-sHzqET
+timestamp=2026-09-16T22:16:46.509Z level=INFO run=bb6a9dc9 message=loading path=/home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/captures/oc-flapsim-v2-anchor-1789573267802/anchor-rep1/opencode.json

@@ -1,0 +1,24 @@
+64 lines, 2095 chars
+    40	        return selfcheck()
+    41	    seed, ticks, flaps, powerups = parse(argv)
+    42	    st, traces = run(seed, ticks, flaps, powerups=powerups)
+    43	    for row in traces:
+    44	        print(trace(*row))
+    45	    print(digest(seed, ticks, st))
+    46	
+    47	
+    48	
+    49	
+    50	def selfcheck():
+    51	    cases = [("EX1", 7, 200, "0010", 8, 1), ("EX2", 7, 120, "01", 0, 0),
+    52	             ("EX3", 3, 200, "0001", 8, 1), ("EX4", 11, 60, "1", 0, 0),
+    53	             ("EX5", 2, 90, "0", 0, 0), ("EX6", 5, 200, "0010", 8, 1)]
+    54	    for name, seed, ticks, flaps, escore, ealive in cases:
+    55	        st, _ = run(seed, ticks, flaps)
+    56	        a = 1 if st["alive"] else 0
+    57	        ok = "OK" if (st["score"] == escore and a == ealive) else "FAIL"
+    58	        print("%s seed=%d ticks=%d flaps=%s expect score=%02d alive=%d "
+    59	              "got score=%02d alive=%d %s"
+    60	              % (name, seed, ticks, flaps, escore, ealive, st["score"], a, ok))
+    61	
+    62	

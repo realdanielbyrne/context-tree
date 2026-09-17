@@ -1,0 +1,43 @@
+# Stage 5 (EXTENSION) — tags
+
+Do this ONLY once stages 1-4 are implemented and their tests pass. This stage
+CHANGES decisions made in stage 2 and stage 3. Re-read spec/02_parsing.md and
+spec/03_rules.md if you need to — the rest of what they say still holds, and
+this file states only the differences.
+
+## parsing.py — an optional FOURTH field
+
+A ledger line may now have THREE OR FOUR pipe-separated fields:
+
+    DATE | DESCRIPTION | AMOUNT | TAGS
+
+A field count of 3 or 4 is accepted. ANY other count is still a LedgerError, so
+the check becomes a membership test, not an equality test.
+
+TAGS is a comma-separated list. Split it on ",". Strip each element and
+LOWER-CASE it. DROP empty elements, which is what makes a trailing comma
+harmless. Preserve the order of the rest. Store the list under the key "tags".
+
+A three-field line still yields `"tags": []`. A four-field line whose tags field
+is empty or is only commas and spaces also yields `[]`.
+
+    "2024-01-05 | Coffee | -4.50 | Food, DAILY ,"   ->   ["food", "daily"]
+    "2024-01-05 | Coffee | -4.50 |   "              ->   []
+
+## rules.py — TAG patterns
+
+A rule pattern that STARTS WITH "#" is a TAG pattern rather than a description
+substring. Take the text after the "#", strip it, lower-case it, and match it
+against the txn's tags compared lower-cased. The match is EXACT — full-string
+equality against one tag — and never a substring match. So pattern "#daily"
+matches the tag "Daily" but NOT the tag "dailyish", and it does NOT match a
+description containing the word "daily".
+
+A tag pattern on a txn with no tags simply does not match.
+
+Everything else about matching is unchanged: highest priority among matching
+rules wins, ties go to the earlier rule, and no match returns "uncategorized".
+
+Remember spec/00b_contracts.md: rules-file comments start with ";" and NOT with
+"#". A rules line beginning with "#" is a TAG RULE, not a comment. If you
+implemented "#" as a comment character in stage 3, fix it now.

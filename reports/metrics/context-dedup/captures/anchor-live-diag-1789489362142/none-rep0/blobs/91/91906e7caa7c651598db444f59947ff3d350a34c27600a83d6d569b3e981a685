@@ -1,0 +1,44 @@
+"""Command-line front end.
+
+This stub fixes the public name and signature only. spec/06_cli.md is
+authoritative for the argument grammar, the ordered behaviour, the exact
+message texts and the exit codes.
+
+Dependency rule (see spec/00_conventions.md): this module may import parsing,
+rules and report.
+
+Contract: main() returns an int exit code and never calls sys.exit itself, so
+the tests can call it directly and capture stdout and stderr with
+contextlib.redirect_stdout / redirect_stderr. Print to stderr with
+print(..., file=sys.stderr) — a logging handler would bypass the capture.
+
+This module contains no business logic. It reads two files, hands their text to
+parsing and rules, hands the result to report, prints, and picks an exit code.
+Anything more interesting than that belongs in one of the other modules, and
+the ORDER of the steps is specified because the tests distinguish, for example,
+an unreadable rules file (exit 2, "cannot read") from an unparseable one
+(exit 2, "rules error: ").
+
+The stream discipline matters: the report goes to STDOUT and every diagnostic —
+errors and warnings alike — goes to STDERR, so a successful run with clean
+input writes nothing at all to stderr.
+"""
+
+import sys
+
+import parsing
+import rules
+import report
+
+
+def main(argv):
+    """Run the CLI over argv (WITHOUT the program name) and return an exit code.
+
+    See spec/06_cli.md for the argument grammar, the ordered behaviour, the
+    exact message texts and the exit codes:
+
+        0  success — the report was printed
+        1  --strict was given and the ledger had malformed lines
+        2  an input file could not be read, or the rules file was malformed
+    """
+    raise NotImplementedError("main")

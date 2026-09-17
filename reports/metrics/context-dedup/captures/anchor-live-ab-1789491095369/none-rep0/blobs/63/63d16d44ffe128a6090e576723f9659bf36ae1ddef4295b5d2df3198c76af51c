@@ -1,0 +1,17 @@
+"""Constant table for flapsim. All values are centi-units (integers)."""
+
+FIELD_H = 1200     # playfield height
+BIRD_X = 300       # bird's fixed horizontal position
+BIRD_W = 80        # bird width
+BIRD_H = 80        # bird height
+
+G = 18             # gravity added to vy each tick
+FLAP_V = -27       # vy is SET to this on a flap (not added)
+VY_MAX = 260       # terminal downward speed
+
+SCROLL = 40        # how far pipes move left per tick
+PIPE_W = 120       # pipe width
+GAP_H = 1000       # vertical gap height
+SPAWN_X = 2000     # x at which a new pipe appears
+SPAWN_EVERY = 45   # spawn when t % SPAWN_EVERY == 0
+GLIDE_VY = 40      # |vy| at or below this counts as a clean glide

@@ -1,0 +1,96 @@
+
+===STDERR===
+timestamp=2026-09-15T21:02:59.471Z level=INFO run=b43c860a message="creating instance" directory=/tmp/oc-none-jWWU3b
+timestamp=2026-09-15T21:02:59.472Z level=INFO run=b43c860a message=fromDirectory directory=/tmp/oc-none-jWWU3b
+timestamp=2026-09-15T21:02:59.481Z level=INFO run=b43c860a message=bootstrapping directory=/tmp/oc-none-jWWU3b
+timestamp=2026-09-15T21:02:59.485Z level=INFO run=b43c860a message=loading path=/tmp/ocx-WLwUrF/cfg/opencode/config.json
+timestamp=2026-09-15T21:02:59.485Z level=INFO run=b43c860a message=loading path=/tmp/ocx-WLwUrF/cfg/opencode/opencode.json
+timestamp=2026-09-15T21:02:59.487Z level=INFO run=b43c860a message=loading path=/tmp/ocx-WLwUrF/cfg/opencode/opencode.jsonc
+timestamp=2026-09-15T21:02:59.487Z level=INFO run=b43c860a message=loading path=/home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/captures/oc-flapsim-gate-1789506178910/none-rep0/opencode.json
+timestamp=2026-09-15T21:02:59.635Z level=INFO run=b43c860a message="all LSPs are disabled"
+timestamp=2026-09-15T21:02:59.636Z level=INFO run=b43c860a message="all formatters are disabled"
+timestamp=2026-09-15T21:02:59.636Z level=INFO run=b43c860a message=init
+timestamp=2026-09-15T21:02:59.738Z level=INFO run=b43c860a message=created id=ses_f591ead65ffePoKtus4V0WT64s slug=crisp-harbor version=1.18.31 projectID=global directory=/tmp/oc-none-jWWU3b path=tmp/oc-none-jWWU3b workspaceID=undefined parentID=undefined title="New session - 2026-09-15T21:02:59.738Z" agent=undefined model=undefined metadata=undefined permission="[{\"permission\":\"question\",\"pattern\":\"*\",\"action\":\"deny\"},{\"permission\":\"plan_enter\",\"pattern\":\"*\",\"action\":\"deny\"},{\"permission\":\"plan_exit\",\"pattern\":\"*\",\"action\":\"deny\"}]" cost=0 tokens.input=0 tokens.output=0 tokens.reasoning=0 tokens.cache.read=0 tokens.cache.write=0 time.created=1789506179738 time.updated=1789506179738
+timestamp=2026-09-15T21:02:59.747Z level=INFO run=b43c860a message="event connected"
+timestamp=2026-09-15T21:03:00.202Z level=INFO run=b43c860a message=loop session.id=ses_f591ead65ffePoKtus4V0WT64s step=0
+timestamp=2026-09-15T21:03:00.210Z level=INFO run=b43c860a message="shell tool using shell" shell=/bin/bash
+timestamp=2026-09-15T21:03:00.223Z level=INFO run=b43c860a message=init count=10
+[0m
+> build · unsloth/Qwen3.8-27B-GGUF
+[0m
+timestamp=2026-09-15T21:03:00.244Z level=INFO run=b43c860a message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f591ead65ffePoKtus4V0WT64s small=true agent=title mode=primary
+timestamp=2026-09-15T21:03:00.255Z level=INFO run=b43c860a message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-15T21:03:00.298Z level=INFO run=b43c860a message="watcher backend" directory=/tmp/oc-none-jWWU3b platform=linux backend=inotify
+timestamp=2026-09-15T21:03:00.313Z level=INFO run=b43c860a message="booting location services" directory=/tmp/oc-none-jWWU3b workspaceID=undefined
+timestamp=2026-09-15T21:03:00.314Z level=INFO run=b43c860a message="project copy refresh started" projectID=global
+timestamp=2026-09-15T21:03:00.316Z level=INFO run=b43c860a message="project copy refresh done" projectID=global updated=[] removed=[]
+timestamp=2026-09-15T21:03:00.500Z level=INFO run=b43c860a message=process session.id=ses_f591ead65ffePoKtus4V0WT64s messageID=msg_0a6e1546d001mT2hso3MmI9WDc
+timestamp=2026-09-15T21:03:00.501Z level=INFO run=b43c860a message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f591ead65ffePoKtus4V0WT64s small=false agent=build mode=primary
+timestamp=2026-09-15T21:03:00.504Z level=INFO run=b43c860a message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-15T21:03:07.387Z level=INFO run=b43c860a message=evaluated permission=bash pattern="ls -la /tmp/oc-none-jWWU3b" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-15T21:03:07.388Z level=INFO run=b43c860a message=evaluated permission=bash pattern="ls -la /tmp/oc-none-jWWU3b/spec" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-15T21:03:07.437Z level=INFO run=b43c860a message=loop session.id=ses_f591ead65ffePoKtus4V0WT64s step=1
+[0m$ [0mls -la /tmp/oc-none-jWWU3b && ls -la /tmp/oc-none-jWWU3b/spec 2>/dev/null
+total 8
+drwx------    3 realdanielbyrne realdanielbyrne    100 Sep 15 16:02 .
+drwxrwxrwt 7822 root            root            159300 Sep 15 16:03 ..
+-rw-rw-r--    1 realdanielbyrne realdanielbyrne     16 Sep 15 16:02 NOTES.md
+-rw-rw-r--    1 realdanielbyrne realdanielbyrne   1319 Sep 15 16:02 README.md
+drwxrwxr-x    2 realdanielbyrne realdanielbyrne    240 Sep 15 16:02 spec
+total 40
+drwxrwxr-x 2 realdanielbyrne realdanielbyrne  240 Sep 15 16:02 .
+drwx------ 3 realdanielbyrne realdanielbyrne  100 Sep 15 16:02 ..
+-rw-rw-r-- 1 realdanielbyrne realdanielbyrne 1113 Sep 15 16:02 00_overview.md
+-rw-rw-r-- 1 realdanielbyrne realdanielbyrne 1052 Sep 15 16:02 01_units.md
+-rw-rw-r-- 1 realdanielbyrne realdanielbyrne 1199 Sep 15 16:02 02_physics.md
+-rw-rw-r-- 1 realdanielbyrne realdanielbyrne  727 Sep 15 16:02 03_world.md
+-rw-rw-r-- 1 realdanielbyrne realdanielbyrne  842 Sep 15 16:02 04_collide.md
+-rw-rw-r-- 1 realdanielbyrne realdanielbyrne  738 Sep 15 16:02 05_score.md
+-rw-rw-r-- 1 realdanielbyrne realdanielbyrne 1380 Sep 15 16:02 06_cli.md
+-rw-rw-r-- 1 realdanielbyrne realdanielbyrne 1239 Sep 15 16:02 07_powerups.md
+-rw-rw-r-- 1 realdanielbyrne realdanielbyrne 1152 Sep 15 16:02 08_examples.md
+-rw-rw-r-- 1 realdanielbyrne realdanielbyrne 1520 Sep 15 16:02 09_expected_output.md
+[0m
+timestamp=2026-09-15T21:03:07.457Z level=INFO run=b43c860a message=process session.id=ses_f591ead65ffePoKtus4V0WT64s messageID=msg_0a6e170ae001CkCB5NosmwbkJ2
+timestamp=2026-09-15T21:03:07.458Z level=INFO run=b43c860a message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f591ead65ffePoKtus4V0WT64s small=false agent=build mode=primary
+timestamp=2026-09-15T21:03:07.459Z level=INFO run=b43c860a message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-15T21:03:09.585Z level=INFO run=b43c860a message=evaluated permission=read pattern=tmp/oc-none-jWWU3b/README.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-15T21:03:09.597Z level=INFO run=b43c860a message="touching file" file=/tmp/oc-none-jWWU3b/README.md
+[0m→ [0mRead README.md
+timestamp=2026-09-15T21:03:11.301Z level=INFO run=b43c860a message=evaluated permission=read pattern=tmp/oc-none-jWWU3b/spec/00_overview.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-15T21:03:11.306Z level=INFO run=b43c860a message="touching file" file=/tmp/oc-none-jWWU3b/spec/00_overview.md
+[0m→ [0mRead spec/00_overview.md
+timestamp=2026-09-15T21:03:12.372Z level=INFO run=b43c860a message=evaluated permission=read pattern=tmp/oc-none-jWWU3b/spec/01_units.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-15T21:03:12.376Z level=INFO run=b43c860a message="touching file" file=/tmp/oc-none-jWWU3b/spec/01_units.md
+[0m→ [0mRead spec/01_units.md
+timestamp=2026-09-15T21:03:15.018Z level=INFO run=b43c860a message=evaluated permission=read pattern=tmp/oc-none-jWWU3b/spec/02_physics.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-15T21:03:15.026Z level=INFO run=b43c860a message="touching file" file=/tmp/oc-none-jWWU3b/spec/02_physics.md
+[0m→ [0mRead spec/02_physics.md
+timestamp=2026-09-15T21:03:15.886Z level=INFO run=b43c860a message=evaluated permission=read pattern=tmp/oc-none-jWWU3b/spec/03_world.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-15T21:03:15.895Z level=INFO run=b43c860a message="touching file" file=/tmp/oc-none-jWWU3b/spec/03_world.md
+[0m→ [0mRead spec/03_world.md
+timestamp=2026-09-15T21:03:16.801Z level=INFO run=b43c860a message=evaluated permission=read pattern=tmp/oc-none-jWWU3b/spec/04_collide.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-15T21:03:16.805Z level=INFO run=b43c860a message="touching file" file=/tmp/oc-none-jWWU3b/spec/04_collide.md
+[0m→ [0mRead spec/04_collide.md
+timestamp=2026-09-15T21:03:17.665Z level=INFO run=b43c860a message=evaluated permission=read pattern=tmp/oc-none-jWWU3b/spec/05_score.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-15T21:03:17.674Z level=INFO run=b43c860a message="touching file" file=/tmp/oc-none-jWWU3b/spec/05_score.md
+[0m→ [0mRead spec/05_score.md
+timestamp=2026-09-15T21:03:18.566Z level=INFO run=b43c860a message=evaluated permission=read pattern=tmp/oc-none-jWWU3b/spec/06_cli.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-15T21:03:18.574Z level=INFO run=b43c860a message="touching file" file=/tmp/oc-none-jWWU3b/spec/06_cli.md
+[0m→ [0mRead spec/06_cli.md
+timestamp=2026-09-15T21:03:19.505Z level=INFO run=b43c860a message=evaluated permission=read pattern=tmp/oc-none-jWWU3b/spec/07_powerups.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-15T21:03:19.514Z level=INFO run=b43c860a message="touching file" file=/tmp/oc-none-jWWU3b/spec/07_powerups.md
+[0m→ [0mRead spec/07_powerups.md
+timestamp=2026-09-15T21:03:20.359Z level=INFO run=b43c860a message=evaluated permission=read pattern=tmp/oc-none-jWWU3b/spec/08_examples.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-15T21:03:20.368Z level=INFO run=b43c860a message="touching file" file=/tmp/oc-none-jWWU3b/spec/08_examples.md
+[0m→ [0mRead spec/08_examples.md
+timestamp=2026-09-15T21:03:21.279Z level=INFO run=b43c860a message=evaluated permission=read pattern=tmp/oc-none-jWWU3b/spec/09_expected_output.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-15T21:03:21.284Z level=INFO run=b43c860a message="touching file" file=/tmp/oc-none-jWWU3b/spec/09_expected_output.md
+[0m→ [0mRead spec/09_expected_output.md
+timestamp=2026-09-15T21:03:22.154Z level=INFO run=b43c860a message=evaluated permission=read pattern=tmp/oc-none-jWWU3b/NOTES.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-15T21:03:22.157Z level=INFO run=b43c860a message="touching file" file=/tmp/oc-none-jWWU3b/NOTES.md
+[0m→ [0mRead NOTES.md
+timestamp=2026-09-15T21:03:22.206Z level=INFO run=b43c860a message=loop session.id=ses_f591ead65ffePoKtus4V0WT64s step=2
+timestamp=2026-09-15T21:03:22.221Z level=INFO run=b43c860a message=process session.id=ses_f591ead65ffePoKtus4V0WT64s messageID=msg_0a6e1aa5f0019KAAw1gQZnLUNs
+timestamp=2026-09-15T21:03:22.221Z level=INFO run=b43c860a message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f591ead65ffePoKtus4V0WT64s small=false agent=build mode=primary
+timestamp=2026-09-15T21:03:22.222Z level=INFO run=b43c860a message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF

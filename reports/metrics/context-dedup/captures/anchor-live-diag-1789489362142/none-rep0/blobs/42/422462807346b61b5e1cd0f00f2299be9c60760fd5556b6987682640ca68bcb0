@@ -1,0 +1,65 @@
+"""Categorization rules.
+
+Imports nothing from the project. A rules-file comment line starts with ";";
+a line starting with "#" is NOT a comment (stage 5 gives it tag meaning).
+"""
+
+
+class Rule:
+    """A single categorization rule. Do not redefine or subclass this."""
+
+    def __init__(self, pattern, category, priority):
+        self.pattern = pattern
+        self.category = category
+        self.priority = priority
+
+    def __repr__(self):
+        return "Rule(%r, %r, %r)" % (self.pattern, self.category, self.priority)
+
+
+def load_rules(text):
+    """Parse rules TEXT (not a path) into a list of Rule, in file order.
+
+    Skips blank lines and ";" comment lines. Raises ValueError for a line that
+    does not split on "=" into exactly three parts, an empty pattern, an empty
+    category, or a non-integer priority.
+    """
+    rules = []
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith(";"):
+            continue
+        parts = line.split("=")
+        if len(parts) != 3:
+            raise ValueError("rule must have exactly three '='-separated parts: %r" % line)
+        pattern, category, priority_str = (p.strip() for p in parts)
+        if not pattern:
+            raise ValueError("empty pattern in rule: %r" % line)
+        if not category:
+            raise ValueError("empty category in rule: %r" % line)
+        priority = int(priority_str)  # non-integer raises ValueError naturally
+        rules.append(Rule(pattern, category, priority))
+    return rules
+
+
+def categorize(txn, rules):
+    """Return the category string for one txn.
+
+    A rule matches when its lower-cased pattern is a substring of the lower-
+    cased desc. Highest priority wins; ties go to the earlier rule in the list.
+    No match returns the literal "uncategorized".
+    """
+    desc = txn["desc"].lower()
+    tags = [t.lower() for t in txn.get("tags", [])]
+    best = None
+    for rule in rules:
+        if rule.pattern.startswith("#"):
+            tag_name = rule.pattern[1:].strip().lower()
+            matched = tag_name in tags
+        else:
+            matched = rule.pattern.lower() in desc
+        if matched and (best is None or rule.priority > best.priority):
+            best = rule
+    if best is None:
+        return "uncategorized"
+    return best.category

@@ -1,0 +1,12 @@
+exit 1
+stdout:
+
+stderr:
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import world; s,p = world.spawn(0,7); print(s,p)
+                        ~~~~~~~~~~~^^^^^
+  File "/tmp/ct-code-8PDbfd/world.py", line 16, in spawn
+    if t % SPAWN_EVERY != 0:
+           ^^^^^^^^^^^
+NameError: name 'SPAWN_EVERY' is not defined

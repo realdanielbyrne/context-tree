@@ -1,0 +1,130 @@
+{
+  "manifest": {
+    "run_id": "anchor-live-pilot-1789490388603",
+    "experiment": "context-dedup / anchor live PILOT (flapsim)",
+    "model": "unsloth/Qwen3.8-27B-GGUF",
+    "task": "flapsim (headless deterministic side-scroller, 6 modules, mid-run feature change + docs)",
+    "commit": "458e33ef489b55e1e2fd943dc83727b77605f645",
+    "date": "2026-09-15T16:49:14.518Z",
+    "params": {
+      "arms": [
+        "none"
+      ],
+      "repeats": 2,
+      "max_turns": 110,
+      "top_k": 2,
+      "min_chars": 200,
+      "passive": true
+    },
+    "hypothesis": "Returning an anchor (or an anchor plus the most relevant chunks of the resident copy) instead of content the model already has REDUCES cumulative prompt tokens and wall-clock time to completion, at no cost to task success. The saving compounds because a token not appended is never re-sent on any later turn (DV4 measured a 373x multiplier).",
+    "falsification": "FOLD IN only if an anchor arm cuts BOTH cumulative total_prompt_tokens AND wall_seconds against the no-intervention arm, at task score within noise. LEAVE OUT if either metric fails to improve, or if score drops. If the trigger fires too rarely to move either metric, the substrate cannot decide it and the run reports NOT RUNNABLE rather than a null.",
+    "caveats": [
+      "NO EVICTION and NO WINDOW CAP anywhere: the context is append-only, so every anchor is truthful by construction and residency is re-verified at fire time.",
+      "The retrieval query is the model's own request plus recent turns — never the pending question, which would be an oracle a deployed middleware could not have.",
+      "Single task = single problem (caveat C0). Repeats measure within-problem nondeterminism, not between-problem variance.",
+      "Grading is all-or-nothing, so FAIL cells are not distinguished by how close they came.",
+      "total_prompt_tokens is RAW and CUMULATIVE across turns — the right denominator for a cost claim, since every turn re-sends the prefix. The local server reports no cache counters, so this is billed volume, not cache-adjusted cost.",
+      "wall_seconds includes server-side prefix caching, which makes re-sent tokens nearly free in TIME though still billed. Tokens and time can therefore move in opposite directions; both are reported and neither substitutes for the other.",
+      "This host is shared with other work, so wall-clock carries ambient noise. Report the per-turn median alongside the total, and treat a time delta smaller than the between-repeat spread as no effect."
+    ]
+  },
+  "summary": [
+    {
+      "arm": "none",
+      "n": 2,
+      "pass_rate": 0,
+      "passes": 0,
+      "score_mean": 9,
+      "score_total": 40,
+      "turns_median": 111,
+      "would_fire_median": 26.5,
+      "fires_median": 0,
+      "tokens_median": 1571977,
+      "wall_seconds_median": 283,
+      "turn_ms_median": 1208.5,
+      "tokens_saved_median": 0,
+      "residency_false_total": 0,
+      "tokens_delta_pct": 0,
+      "wall_delta_pct": 0,
+      "score_delta": 0,
+      "verdict": "—"
+    }
+  ],
+  "gate": {
+    "would_fire_median": 26.5,
+    "anchorable_tokens_median": 2180.5,
+    "anchorable_share_of_prompt": 0.00139,
+    "decision": "GO — run the full arm comparison"
+  },
+  "retry_stats": {
+    "retries": 0,
+    "jittered": 0,
+    "fatal": 0
+  },
+  "errored_cells": 0,
+  "cells": [
+    {
+      "arm": "none",
+      "repeat": 0,
+      "passive": true,
+      "pass": false,
+      "capture_dir": "reports/metrics/context-dedup/captures/anchor-live-pilot-1789490388603/none-rep0",
+      "capture_blobs": 139,
+      "score_correct": 11,
+      "score_total": 40,
+      "turns": 111,
+      "stop": "maxTurns",
+      "would_fire": 49,
+      "fires": 0,
+      "by_kind": {
+        "duplicate-unchanged": 46,
+        "write-then-read": 2,
+        "cross-tool-duplicate": 1
+      },
+      "residency_false_count": 0,
+      "anchorable_chars": 14134,
+      "substituted_chars": 0,
+      "replaced_chars": 0,
+      "reads": 15,
+      "rereads": 1,
+      "peak_history_tokens": 20658,
+      "total_prompt_tokens": 1883933,
+      "wall_seconds": 287.8,
+      "turn_ms_median": 1490,
+      "turn_ms_total": 285321,
+      "tokens_per_turn": 17127,
+      "error": null
+    },
+    {
+      "arm": "none",
+      "repeat": 1,
+      "passive": true,
+      "pass": false,
+      "capture_dir": "reports/metrics/context-dedup/captures/anchor-live-pilot-1789490388603/none-rep1",
+      "capture_blobs": 103,
+      "score_correct": 7,
+      "score_total": 40,
+      "turns": 111,
+      "stop": "maxTurns",
+      "would_fire": 4,
+      "fires": 0,
+      "by_kind": {
+        "duplicate-unchanged": 2,
+        "write-then-read": 2
+      },
+      "residency_false_count": 0,
+      "anchorable_chars": 3307,
+      "substituted_chars": 0,
+      "replaced_chars": 0,
+      "reads": 17,
+      "rereads": 2,
+      "peak_history_tokens": 16269,
+      "total_prompt_tokens": 1260021,
+      "wall_seconds": 278.2,
+      "turn_ms_median": 927,
+      "turn_ms_total": 276339,
+      "tokens_per_turn": 11455,
+      "error": null
+    }
+  ]
+}

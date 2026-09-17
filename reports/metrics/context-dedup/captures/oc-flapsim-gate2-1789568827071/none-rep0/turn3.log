@@ -1,0 +1,539 @@
+I'll explore some scenarios first to ground the tests in hand-verifiable behavior, then write the suite.
+No non-glide passes with short periodic patterns — the bird reaches a stable low-vy oscillation before passing pipes. But I can craft an exact per-tick flap sequence using a long bit string. Let me construct a scenario where the bird dives fast exactly as it passes the first pipe:
+I passed `tr` positionally into `powerups`. Fixing the call:
+Now I have a hand-verifiable non-glide pass (vy=99 > 40 at tick 45 → worth 1, not 2). Let me examine the per-tick-order scenarios — the early deaths around tick 41:
+These are pipe collisions at tick 40 (first pipe reaches the bird). Let me find a run that passes some pipes then dies on a later one — ideal for the "fatal tick scores nothing" test:
+No natural run passes some pipes then dies — the bird either survives all 200 or dies on the first pipe (~tick 40). Let me verify the scroll-before-collision case by hand and construct a floor-kill timed to a pipe-pass tick for the "fatal tick scores nothing" test:
+K=20 gives death at tick 86 (floor) with score=2 — but I need the death to land exactly on a pipe-pass tick (90) to prove "fatal tick scores nothing." Let me fine-tune the stable phase length:
+Death ticks skip over 90 for seed=7. Let me brute-force over seeds and stable-phase lengths to land a floor-kill exactly on a pipe-pass tick (90, 135, or 180):
+Found it: seed=2 with a stable-then-dive pattern dies exactly on tick 135 (pipe 3's pass tick). Let me verify the details — that it's a floor kill, pipe 3 is actually passing that tick, and the score doesn't increment on the fatal tick:
+Excellent — this is a clean, hand-verifiable "fatal tick scores nothing" scenario: floor-kill on tick 135, which is exactly pipe 3's pass tick (right edge 280 ≤ 300), yet score stays 4. Let me verify all my hand-computed unit-level values before encoding them:
+All values confirmed against the spec. Now I'll write the test suite:
+All 17 pass. Final sanity check that the suite is repeatable and the CLI still matches spec:
+DONE
+
+`test_flapsim.py` — 17 stdlib `unittest` tests, all passing via `python3 -m unittest test_flapsim -v`:
+
+- **Physics clamps** (6): flap sets vy (not adds), gravity added below terminal, gravity clamped at VY_MAX, flap never clamped even from terminal speed, soft ceiling zeroes vy, floor kills.
+- **LCG** (3): formula `(1103515245·s + 12345) % 2³¹`, spawn advances the LCG exactly once and keeps the new state, non-spawn ticks leave state untouched.
+- **AABB edges** (3): strict half-open overlap (touching edges don't collide), bird bottom exactly at `gap_top + GAP_H` is inside, pipe right edge exactly at BIRD_X doesn't hit.
+- **Cull** (1): drops only `x + PIPE_W <= 0`.
+- **Clean-glide bonus** (2): demo run scores 8 (four glide passes × 2); a crafted dive passes a pipe at vy=99 > GLIDE_VY and scores only 1.
+- **Per-tick order** (2): a floor-kill timed exactly to pipe 3's pass tick scores nothing on the fatal tick (score stays 4, not 6); scroll-before-collision confirmed by the bird dying on tick 40 — the first tick the scrolled pipe overlaps.
+
+The two engine-level scenarios use long per-tick flap bit strings so the expected values derive from spec constants (pass ticks at S+45, GLIDE_VY=40, floor at FIELD_H−BIRD_H), not observed output. Selfcheck still 6/6 OK and the demo diff is still clean.
+
+===STDERR===
+timestamp=2026-09-16T14:33:51.310Z level=INFO run=fb9e6ee4 message="creating instance" directory=/tmp/oc-none-8y7wnu
+timestamp=2026-09-16T14:33:51.311Z level=INFO run=fb9e6ee4 message=fromDirectory directory=/tmp/oc-none-8y7wnu
+timestamp=2026-09-16T14:33:51.321Z level=INFO run=fb9e6ee4 message=bootstrapping directory=/tmp/oc-none-8y7wnu
+timestamp=2026-09-16T14:33:51.325Z level=INFO run=fb9e6ee4 message=loading path=/tmp/ocx-5Z3nYs/cfg/opencode/config.json
+timestamp=2026-09-16T14:33:51.325Z level=INFO run=fb9e6ee4 message=loading path=/tmp/ocx-5Z3nYs/cfg/opencode/opencode.json
+timestamp=2026-09-16T14:33:51.327Z level=INFO run=fb9e6ee4 message=loading path=/tmp/ocx-5Z3nYs/cfg/opencode/opencode.jsonc
+timestamp=2026-09-16T14:33:51.327Z level=INFO run=fb9e6ee4 message=loading path=/home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/captures/oc-flapsim-gate2-1789568827071/none-rep0/opencode.json
+timestamp=2026-09-16T14:33:51.377Z level=INFO run=fb9e6ee4 message="all LSPs are disabled"
+timestamp=2026-09-16T14:33:51.378Z level=INFO run=fb9e6ee4 message="all formatters are disabled"
+timestamp=2026-09-16T14:33:51.378Z level=INFO run=fb9e6ee4 message=init
+timestamp=2026-09-16T14:33:51.491Z level=INFO run=fb9e6ee4 message="event connected"
+timestamp=2026-09-16T14:33:51.799Z level=INFO run=fb9e6ee4 message=loop session.id=ses_f5562be4bffeYfbukflBvcLVVt step=0
+timestamp=2026-09-16T14:33:51.809Z level=INFO run=fb9e6ee4 message="shell tool using shell" shell=/bin/bash
+timestamp=2026-09-16T14:33:51.825Z level=INFO run=fb9e6ee4 message=init count=10
+[0m
+> build · unsloth/Qwen3.8-27B-GGUF
+[0m
+timestamp=2026-09-16T14:33:51.871Z level=INFO run=fb9e6ee4 message="watcher backend" directory=/tmp/oc-none-8y7wnu platform=linux backend=inotify
+timestamp=2026-09-16T14:33:51.877Z level=INFO run=fb9e6ee4 message="project copy refresh started" projectID=global
+timestamp=2026-09-16T14:33:51.878Z level=INFO run=fb9e6ee4 message="project copy refresh done" projectID=global updated=[] removed=[]
+timestamp=2026-09-16T14:33:51.895Z level=INFO run=fb9e6ee4 message="booting location services" directory=/tmp/oc-none-8y7wnu workspaceID=undefined
+timestamp=2026-09-16T14:33:52.127Z level=INFO run=fb9e6ee4 message=process session.id=ses_f5562be4bffeYfbukflBvcLVVt messageID=msg_0aaa36bbb001Mr8uhntuioBT9F
+timestamp=2026-09-16T14:33:52.128Z level=INFO run=fb9e6ee4 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5562be4bffeYfbukflBvcLVVt small=false agent=build mode=primary
+timestamp=2026-09-16T14:33:52.133Z level=INFO run=fb9e6ee4 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T14:37:01.218Z level=INFO run=fb9e6ee4 message=evaluated permission=bash pattern="python3 -c \"\nimport engine, world, units\n# LCG check\nprint('lcg(0) =', world.lcg(0))\nprint('lcg(1) =', world.lcg(1))\nprint('expect lcg(0) =', (1103515245*0+12345)%2147483648)\nprint('expect lcg(1) =', (1103515245*1+12345)%2147483648)\n# spawn gap range over many spawns\ns=7; tops=[]\nfor t in range(0, 900, 45):\n    p,s = world.spawn(t, s)\n    tops.append(p['gap_top'])\nprint('first 10 gap_tops:', tops[:10])\nprint('min,max:', min(tops), max(tops))\n\"" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T14:37:01.253Z level=INFO run=fb9e6ee4 message=loop session.id=ses_f5562be4bffeYfbukflBvcLVVt step=1
+[0m$ [0mpython3 -c "
+import engine, world, units
+# LCG check
+print('lcg(0) =', world.lcg(0))
+print('lcg(1) =', world.lcg(1))
+print('expect lcg(0) =', (1103515245*0+12345)%2147483648)
+print('expect lcg(1) =', (1103515245*1+12345)%2147483648)
+# spawn gap range over many spawns
+s=7; tops=[]
+for t in range(0, 900, 45):
+    p,s = world.spawn(t, s)
+    tops.append(p['gap_top'])
+print('first 10 gap_tops:', tops[:10])
+print('min,max:', min(tops), max(tops))
+"
+lcg(0) = 12345
+lcg(1) = 1103527590
+expect lcg(0) = 12345
+expect lcg(1) = 1103527590
+first 10 gap_tops: [109, 55, 88, 93, 40, 92, 112, 112, 62, 101]
+min,max: 40 112
+[0m
+timestamp=2026-09-16T14:37:01.282Z level=INFO run=fb9e6ee4 message=process session.id=ses_f5562be4bffeYfbukflBvcLVVt messageID=msg_0aaa64fd3001jEegOPfxuHs697
+timestamp=2026-09-16T14:37:01.283Z level=INFO run=fb9e6ee4 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5562be4bffeYfbukflBvcLVVt small=false agent=build mode=primary
+timestamp=2026-09-16T14:37:01.284Z level=INFO run=fb9e6ee4 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T14:37:10.804Z level=INFO run=fb9e6ee4 message=evaluated permission=bash pattern="python3 -c \"\nimport engine\n# Look for runs that pass >=2 pipes and end alive, to inspect glide vs non-glide passes.\nfor flaps in ['0010','0100','1000','0001','0110','1100','0101','1010']:\n    st = engine.run(7, 200, flaps)\n    print(f'seed=7 ticks=200 flaps={flaps!r:8} score={st[\\\"score\\\"]} alive={int(st[\\\"alive\\\"])} y={st[\\\"y\\\"]} vy={st[\\\"vy\\\"]} ticks_run={st[\\\"ticks_run\\\"]}')\n\"" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T14:37:10.827Z level=INFO run=fb9e6ee4 message=loop session.id=ses_f5562be4bffeYfbukflBvcLVVt step=2
+[0m$ [0mpython3 -c "
+import engine
+# Look for runs that pass >=2 pipes and end alive, to inspect glide vs non-glide passes.
+for flaps in ['0010','0100','1000','0001','0110','1100','0101','1010']:
+    st = engine.run(7, 200, flaps)
+    print(f'seed=7 ticks=200 flaps={flaps!r:8} score={st[\"score\"]} alive={int(st[\"alive\"])} y={st[\"y\"]} vy={st[\"vy\"]} ticks_run={st[\"ticks_run\"]}')
+"
+seed=7 ticks=200 flaps='0010'   score=8 alive=1 y=578 vy=-9 ticks_run=200
+seed=7 ticks=200 flaps='0100'   score=8 alive=1 y=551 vy=9 ticks_run=200
+seed=7 ticks=200 flaps='1000'   score=8 alive=1 y=560 vy=27 ticks_run=200
+seed=7 ticks=200 flaps='0001'   score=8 alive=1 y=641 vy=-27 ticks_run=200
+seed=7 ticks=200 flaps='0110'   score=0 alive=0 y=38 vy=9 ticks_run=41
+seed=7 ticks=200 flaps='1100'   score=0 alive=0 y=0 vy=0 ticks_run=41
+seed=7 ticks=200 flaps='0101'   score=0 alive=0 y=18 vy=18 ticks_run=41
+seed=7 ticks=200 flaps='1010'   score=0 alive=0 y=0 vy=0 ticks_run=41
+[0m
+timestamp=2026-09-16T14:37:10.843Z level=INFO run=fb9e6ee4 message=process session.id=ses_f5562be4bffeYfbukflBvcLVVt messageID=msg_0aaa6752d001TEciJOBLofA7nV
+timestamp=2026-09-16T14:37:10.843Z level=INFO run=fb9e6ee4 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5562be4bffeYfbukflBvcLVVt small=false agent=build mode=primary
+timestamp=2026-09-16T14:37:10.844Z level=INFO run=fb9e6ee4 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T14:37:36.203Z level=INFO run=fb9e6ee4 message=evaluated permission=bash pattern="python3 -c \"\nimport engine\ndef passes(seed, ticks, flaps):\n    tr=[]\n    st=engine.run(seed,ticks,flaps,tr)\n    # detect score increments and vy at that tick\n    prev=0; out=[]\n    for (t,y,vy,s,a) in tr:\n        if s>prev:\n            out.append((t, s-prev, vy))\n        prev=s\n    return st['score'], int(st['alive']), out\nfor seed in [7,3,5,11,2,1,4,8]:\n    for flaps in ['0010','0100','1000','0001','01100','10010','01010','11000']:\n        sc,al,pv=passes(seed,200,flaps)\n        if al and len(pv)>=1:\n            nonglide=[p for p in pv if abs(p[2])>40]\n            print(f'seed={seed} flaps={flaps!r:8} score={sc} passes={len(pv)} nonglide={nonglide}')\n\"" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T14:37:36.203Z level=INFO run=fb9e6ee4 message=evaluated permission=bash pattern="head -40" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T14:37:36.232Z level=INFO run=fb9e6ee4 message=loop session.id=ses_f5562be4bffeYfbukflBvcLVVt step=3
+[0m$ [0mpython3 -c "
+import engine
+def passes(seed, ticks, flaps):
+    tr=[]
+    st=engine.run(seed,ticks,flaps,tr)
+    # detect score increments and vy at that tick
+    prev=0; out=[]
+    for (t,y,vy,s,a) in tr:
+        if s>prev:
+            out.append((t, s-prev, vy))
+        prev=s
+    return st['score'], int(st['alive']), out
+for seed in [7,3,5,11,2,1,4,8]:
+    for flaps in ['0010','0100','1000','0001','01100','10010','01010','11000']:
+        sc,al,pv=passes(seed,200,flaps)
+        if al and len(pv)>=1:
+            nonglide=[p for p in pv if abs(p[2])>40]
+            print(f'seed={seed} flaps={flaps!r:8} score={sc} passes={len(pv)} nonglide={nonglide}')
+" | head -40
+(no output)
+[0m
+timestamp=2026-09-16T14:37:36.248Z level=INFO run=fb9e6ee4 message=process session.id=ses_f5562be4bffeYfbukflBvcLVVt messageID=msg_0aaa6d86a001kSUzR8KMgzWOwV
+timestamp=2026-09-16T14:37:36.248Z level=INFO run=fb9e6ee4 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5562be4bffeYfbukflBvcLVVt small=false agent=build mode=primary
+timestamp=2026-09-16T14:37:36.249Z level=INFO run=fb9e6ee4 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T14:37:45.060Z level=INFO run=fb9e6ee4 message=evaluated permission=bash pattern="python3 -c \"\nimport engine\ndef passes(seed, ticks, flaps):\n    tr=[]\n    st=engine.run(seed,ticks,flaps,tr)\n    prev=0; out=[]\n    for (t,y,vy,s,a) in tr:\n        if s>prev:\n            out.append((t, s-prev, vy))\n        prev=s\n    return st['score'], int(st['alive']), out\nfound=0\nfor seed in range(1,20):\n    for flaps in ['0010','0100','1000','0001','00110','10001','01001','10010','01100','00101']:\n        sc,al,pv=passes(seed,250,flaps)\n        if sc>0:\n            nonglide=[p for p in pv if abs(p[2])>40]\n            if nonglide:\n                print(f'seed={seed} flaps={flaps!r:8} score={sc} alive={al} passes={pv}')\n                found+=1\nprint('found non-glide runs:', found)\n\"" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T14:37:45.096Z level=INFO run=fb9e6ee4 message=loop session.id=ses_f5562be4bffeYfbukflBvcLVVt step=4
+[0m$ [0mpython3 -c "
+import engine
+def passes(seed, ticks, flaps):
+    tr=[]
+    st=engine.run(seed,ticks,flaps,tr)
+    prev=0; out=[]
+    for (t,y,vy,s,a) in tr:
+        if s>prev:
+            out.append((t, s-prev, vy))
+        prev=s
+    return st['score'], int(st['alive']), out
+found=0
+for seed in range(1,20):
+    for flaps in ['0010','0100','1000','0001','00110','10001','01001','10010','01100','00101']:
+        sc,al,pv=passes(seed,250,flaps)
+        if sc>0:
+            nonglide=[p for p in pv if abs(p[2])>40]
+            if nonglide:
+                print(f'seed={seed} flaps={flaps!r:8} score={sc} alive={al} passes={pv}')
+                found+=1
+print('found non-glide runs:', found)
+"
+found non-glide runs: 0
+[0m
+timestamp=2026-09-16T14:37:45.111Z level=INFO run=fb9e6ee4 message=process session.id=ses_f5562be4bffeYfbukflBvcLVVt messageID=msg_0aaa6fb0a001gxlED74o5GzKf3
+timestamp=2026-09-16T14:37:45.111Z level=INFO run=fb9e6ee4 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5562be4bffeYfbukflBvcLVVt small=false agent=build mode=primary
+timestamp=2026-09-16T14:37:45.112Z level=INFO run=fb9e6ee4 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T14:38:15.136Z level=INFO run=fb9e6ee4 message=evaluated permission=bash pattern="python3 -c \"\nimport engine\n# Flap in balanced '0010' for ticks 0-39, then stop flapping so the bird is diving hard at tick 45 (first pipe pass).\nbits = '0010'*10 + '0'*160   # length 200\ntr=[]\nst=engine.run(7,200,bits,tr)\nprev=0; passes=[]\nfor (t,y,vy,s,a) in tr:\n    if s>prev: passes.append((t,s-prev,vy))\n    prev=s\nprint('score',st['score'],'alive',int(st['alive']),'ticks_run',st['ticks_run'])\nprint('passes (tick, delta, vy):', passes)\n# show state around tick 45\nfor row in tr:\n    if 43<=row[0]<=47: print(row)\n\"" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T14:38:15.159Z level=INFO run=fb9e6ee4 message=loop session.id=ses_f5562be4bffeYfbukflBvcLVVt step=5
+[0m$ [0mpython3 -c "
+import engine
+# Flap in balanced '0010' for ticks 0-39, then stop flapping so the bird is diving hard at tick 45 (first pipe pass).
+bits = '0010'*10 + '0'*160   # length 200
+tr=[]
+st=engine.run(7,200,bits,tr)
+prev=0; passes=[]
+for (t,y,vy,s,a) in tr:
+    if s>prev: passes.append((t,s-prev,vy))
+    prev=s
+print('score',st['score'],'alive',int(st['alive']),'ticks_run',st['ticks_run'])
+print('passes (tick, delta, vy):', passes)
+# show state around tick 45
+for row in tr:
+    if 43<=row[0]<=47: print(row)
+"
+score 1 alive 0 ticks_run 48
+passes (tick, delta, vy): []
+[0m
+timestamp=2026-09-16T14:38:15.176Z level=INFO run=fb9e6ee4 message=process session.id=ses_f5562be4bffeYfbukflBvcLVVt messageID=msg_0aaa77079001VqFtCtyTa5od0v
+timestamp=2026-09-16T14:38:15.176Z level=INFO run=fb9e6ee4 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5562be4bffeYfbukflBvcLVVt small=false agent=build mode=primary
+timestamp=2026-09-16T14:38:15.177Z level=INFO run=fb9e6ee4 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T14:38:23.663Z level=INFO run=fb9e6ee4 message=evaluated permission=bash pattern="python3 -c \"\nimport engine\nbits = '0010'*10 + '0'*160\ntr=[]\nst=engine.run(7,200,bits,tr)\nfor row in tr:\n    if row[3]>0 or row[0]>=44: print(row)\n\"" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T14:38:23.681Z level=INFO run=fb9e6ee4 message=loop session.id=ses_f5562be4bffeYfbukflBvcLVVt step=6
+[0m$ [0mpython3 -c "
+import engine
+bits = '0010'*10 + '0'*160
+tr=[]
+st=engine.run(7,200,bits,tr)
+for row in tr:
+    if row[3]>0 or row[0]>=44: print(row)
+"
+(no output)
+[0m
+timestamp=2026-09-16T14:38:23.695Z level=INFO run=fb9e6ee4 message=process session.id=ses_f5562be4bffeYfbukflBvcLVVt messageID=msg_0aaa791c30015q5xx1RoDpUrxf
+timestamp=2026-09-16T14:38:23.695Z level=INFO run=fb9e6ee4 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5562be4bffeYfbukflBvcLVVt small=false agent=build mode=primary
+timestamp=2026-09-16T14:38:23.696Z level=INFO run=fb9e6ee4 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T14:38:35.612Z level=INFO run=fb9e6ee4 message=evaluated permission=bash pattern="python3 -c \"\nimport engine\nbits = '0010'*10 + '0'*160\ntr=[]\nst=engine.run(7,200,bits,False,tr)\nprev=0; passes=[]\nfor (t,y,vy,s,a) in tr:\n    if s>prev: passes.append((t,s-prev,vy))\n    prev=s\nprint('score',st['score'],'alive',int(st['alive']),'ticks_run',st['ticks_run'])\nprint('passes (tick, delta, vy):', passes)\nfor row in tr:\n    if 43<=row[0]<=48: print(row)\n\"" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T14:38:35.633Z level=INFO run=fb9e6ee4 message=loop session.id=ses_f5562be4bffeYfbukflBvcLVVt step=7
+[0m$ [0mpython3 -c "
+import engine
+bits = '0010'*10 + '0'*160
+tr=[]
+st=engine.run(7,200,bits,False,tr)
+prev=0; passes=[]
+for (t,y,vy,s,a) in tr:
+    if s>prev: passes.append((t,s-prev,vy))
+    prev=s
+print('score',st['score'],'alive',int(st['alive']),'ticks_run',st['ticks_run'])
+print('passes (tick, delta, vy):', passes)
+for row in tr:
+    if 43<=row[0]<=48: print(row)
+"
+score 1 alive 0 ticks_run 48
+passes (tick, delta, vy): [(45, 1, 99)]
+(43, 722, 63, 0, True)
+(44, 803, 81, 0, True)
+(45, 902, 99, 1, True)
+(46, 1019, 117, 1, True)
+(47, 1120, 135, 1, False)
+[0m
+timestamp=2026-09-16T14:38:35.652Z level=INFO run=fb9e6ee4 message=process session.id=ses_f5562be4bffeYfbukflBvcLVVt messageID=msg_0aaa7c0730012F8BkhZMGdknpV
+timestamp=2026-09-16T14:38:35.653Z level=INFO run=fb9e6ee4 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5562be4bffeYfbukflBvcLVVt small=false agent=build mode=primary
+timestamp=2026-09-16T14:38:35.654Z level=INFO run=fb9e6ee4 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T14:39:16.642Z level=INFO run=fb9e6ee4 message=evaluated permission=bash pattern="python3 -c \"\nimport engine\nfor flaps in ['0110','1100','0101','1010']:\n    tr=[]\n    st=engine.run(7,200,flaps,False,tr)\n    print(f'--- flaps={flaps!r} score={st[\\\"score\\\"]} alive={int(st[\\\"alive\\\"])} ticks_run={st[\\\"ticks_run\\\"]}')\n    for row in tr[-4:]: print('   ',row)\n\"" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T14:39:16.666Z level=INFO run=fb9e6ee4 message=loop session.id=ses_f5562be4bffeYfbukflBvcLVVt step=8
+[0m$ [0mpython3 -c "
+import engine
+for flaps in ['0110','1100','0101','1010']:
+    tr=[]
+    st=engine.run(7,200,flaps,False,tr)
+    print(f'--- flaps={flaps!r} score={st[\"score\"]} alive={int(st[\"alive\"])} ticks_run={st[\"ticks_run\"]}')
+    for row in tr[-4:]: print('   ',row)
+"
+--- flaps='0110' score=0 alive=0 ticks_run=41
+    (37, 65, -27, 0, True)
+    (38, 38, -27, 0, True)
+    (39, 29, -9, 0, True)
+    (40, 38, 9, 0, False)
+--- flaps='1100' score=0 alive=0 ticks_run=41
+    (37, 20, -27, 0, True)
+    (38, 11, -9, 0, True)
+    (39, 20, 9, 0, True)
+    (40, 0, 0, 0, False)
+--- flaps='0101' score=0 alive=0 ticks_run=41
+    (37, 0, 0, 0, True)
+    (38, 18, 18, 0, True)
+    (39, 0, 0, 0, True)
+    (40, 18, 18, 0, False)
+--- flaps='1010' score=0 alive=0 ticks_run=41
+    (37, 18, 18, 0, True)
+    (38, 0, 0, 0, True)
+    (39, 18, 18, 0, True)
+    (40, 0, 0, 0, False)
+[0m
+timestamp=2026-09-16T14:39:16.684Z level=INFO run=fb9e6ee4 message=process session.id=ses_f5562be4bffeYfbukflBvcLVVt messageID=msg_0aaa860bd00108tqFHv5k20yaa
+timestamp=2026-09-16T14:39:16.684Z level=INFO run=fb9e6ee4 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5562be4bffeYfbukflBvcLVVt small=false agent=build mode=primary
+timestamp=2026-09-16T14:39:16.685Z level=INFO run=fb9e6ee4 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T14:39:57.651Z level=INFO run=fb9e6ee4 message=evaluated permission=bash pattern="python3 -c \"\nimport engine\ndef analyze(seed,ticks,flaps):\n    tr=[]; st=engine.run(seed,ticks,flaps,False,tr)\n    prev=0; passes=[]\n    for (t,y,vy,s,a) in tr:\n        if s>prev: passes.append((t,s-prev,vy))\n        prev=s\n    return st,passes\n# search for runs that pass 1-3 pipes then die on a pipe\ncands=[]\nfor seed in range(1,30):\n    for flaps in ['0010','0100','1000','0001','0110','1100','0101','1010','1001','0111','1101','1011','0011','0111','1110']:\n        st,pv=analyze(seed,200,flaps)\n        if not st['alive'] and 0<st['score']<8:\n            cands.append((seed,flaps,st['score'],st['ticks_run'],pv))\nfor c in cands[:15]: print(c)\nprint('total:',len(cands))\n\"" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T14:39:57.694Z level=INFO run=fb9e6ee4 message=loop session.id=ses_f5562be4bffeYfbukflBvcLVVt step=9
+[0m$ [0mpython3 -c "
+import engine
+def analyze(seed,ticks,flaps):
+    tr=[]; st=engine.run(seed,ticks,flaps,False,tr)
+    prev=0; passes=[]
+    for (t,y,vy,s,a) in tr:
+        if s>prev: passes.append((t,s-prev,vy))
+        prev=s
+    return st,passes
+# search for runs that pass 1-3 pipes then die on a pipe
+cands=[]
+for seed in range(1,30):
+    for flaps in ['0010','0100','1000','0001','0110','1100','0101','1010','1001','0111','1101','1011','0011','0111','1110']:
+        st,pv=analyze(seed,200,flaps)
+        if not st['alive'] and 0<st['score']<8:
+            cands.append((seed,flaps,st['score'],st['ticks_run'],pv))
+for c in cands[:15]: print(c)
+print('total:',len(cands))
+"
+total: 0
+[0m
+timestamp=2026-09-16T14:39:57.712Z level=INFO run=fb9e6ee4 message=process session.id=ses_f5562be4bffeYfbukflBvcLVVt messageID=msg_0aaa90100001XvnGl8u5yc3xCo
+timestamp=2026-09-16T14:39:57.712Z level=INFO run=fb9e6ee4 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5562be4bffeYfbukflBvcLVVt small=false agent=build mode=primary
+timestamp=2026-09-16T14:39:57.713Z level=INFO run=fb9e6ee4 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T14:41:12.192Z level=INFO run=fb9e6ee4 message=evaluated permission=bash pattern="python3 -c \"\nimport engine\n# 'stable for K ticks (0010) then no-flap' -> find death tick & score\nfor K in range(8, 40):\n    bits = '0010'*K + '0'*(200-4*K)\n    st = engine.run(7,200,bits)\n    if not st['alive']:\n        print(f'K={K:2} (stable {4*K} ticks) death_tick={st[\\\"ticks_run\\\"]-1} score={st[\\\"score\\\"]}')\n\"" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T14:41:12.217Z level=INFO run=fb9e6ee4 message=loop session.id=ses_f5562be4bffeYfbukflBvcLVVt step=10
+[0m$ [0mpython3 -c "
+import engine
+# 'stable for K ticks (0010) then no-flap' -> find death tick & score
+for K in range(8, 40):
+    bits = '0010'*K + '0'*(200-4*K)
+    st = engine.run(7,200,bits)
+    if not st['alive']:
+        print(f'K={K:2} (stable {4*K} ticks) death_tick={st[\"ticks_run\"]-1} score={st[\"score\"]}')
+"
+K= 8 (stable 32 ticks) death_tick=39 score=0
+K= 9 (stable 36 ticks) death_tick=43 score=0
+K=10 (stable 40 ticks) death_tick=47 score=1
+K=11 (stable 44 ticks) death_tick=51 score=2
+K=12 (stable 48 ticks) death_tick=55 score=2
+K=13 (stable 52 ticks) death_tick=59 score=2
+K=14 (stable 56 ticks) death_tick=63 score=2
+K=15 (stable 60 ticks) death_tick=67 score=2
+K=16 (stable 64 ticks) death_tick=71 score=2
+K=17 (stable 68 ticks) death_tick=75 score=2
+K=18 (stable 72 ticks) death_tick=79 score=2
+K=19 (stable 76 ticks) death_tick=83 score=2
+K=20 (stable 80 ticks) death_tick=86 score=2
+K=21 (stable 84 ticks) death_tick=91 score=3
+K=22 (stable 88 ticks) death_tick=95 score=3
+K=23 (stable 92 ticks) death_tick=99 score=4
+K=24 (stable 96 ticks) death_tick=103 score=4
+K=25 (stable 100 ticks) death_tick=107 score=4
+K=26 (stable 104 ticks) death_tick=111 score=4
+K=27 (stable 108 ticks) death_tick=115 score=4
+K=28 (stable 112 ticks) death_tick=119 score=4
+K=29 (stable 116 ticks) death_tick=123 score=4
+K=30 (stable 120 ticks) death_tick=127 score=4
+K=31 (stable 124 ticks) death_tick=130 score=4
+K=32 (stable 128 ticks) death_tick=134 score=4
+K=33 (stable 132 ticks) death_tick=139 score=5
+K=34 (stable 136 ticks) death_tick=143 score=6
+K=35 (stable 140 ticks) death_tick=147 score=6
+K=36 (stable 144 ticks) death_tick=151 score=6
+K=37 (stable 148 ticks) death_tick=155 score=6
+K=38 (stable 152 ticks) death_tick=159 score=6
+K=39 (stable 156 ticks) death_tick=163 score=6
+[0m
+timestamp=2026-09-16T14:41:12.234Z level=INFO run=fb9e6ee4 message=process session.id=ses_f5562be4bffeYfbukflBvcLVVt messageID=msg_0aaaa241b00154uw9cnfifnLZ3
+timestamp=2026-09-16T14:41:12.235Z level=INFO run=fb9e6ee4 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5562be4bffeYfbukflBvcLVVt small=false agent=build mode=primary
+timestamp=2026-09-16T14:41:12.236Z level=INFO run=fb9e6ee4 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T14:41:44.709Z level=INFO run=fb9e6ee4 message=evaluated permission=bash pattern="python3 -c \"\nimport engine\n# first L ticks follow '0010', rest no-flap; find L with death_tick == 90 (pipe2 pass tick)\nfor L in range(78, 96):\n    bits = ('0010'*((L+3)//4))[:L] + '0'*(200-L)\n    st = engine.run(7,200,bits)\n    mark = ' <== death on pipe2 pass tick' if (st['ticks_run']-1)==90 else ''\n    print(f'L={L:3} death_tick={st[\\\"ticks_run\\\"]-1} score={st[\\\"score\\\"]}{mark}')\n\"" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T14:41:44.734Z level=INFO run=fb9e6ee4 message=loop session.id=ses_f5562be4bffeYfbukflBvcLVVt step=11
+[0m$ [0mpython3 -c "
+import engine
+# first L ticks follow '0010', rest no-flap; find L with death_tick == 90 (pipe2 pass tick)
+for L in range(78, 96):
+    bits = ('0010'*((L+3)//4))[:L] + '0'*(200-L)
+    st = engine.run(7,200,bits)
+    mark = ' <== death on pipe2 pass tick' if (st['ticks_run']-1)==90 else ''
+    print(f'L={L:3} death_tick={st[\"ticks_run\"]-1} score={st[\"score\"]}{mark}')
+"
+L= 78 death_tick=83 score=2
+L= 79 death_tick=86 score=2
+L= 80 death_tick=86 score=2
+L= 81 death_tick=86 score=2
+L= 82 death_tick=86 score=2
+L= 83 death_tick=91 score=3
+L= 84 death_tick=91 score=3
+L= 85 death_tick=91 score=3
+L= 86 death_tick=91 score=3
+L= 87 death_tick=95 score=3
+L= 88 death_tick=95 score=3
+L= 89 death_tick=95 score=3
+L= 90 death_tick=95 score=3
+L= 91 death_tick=99 score=4
+L= 92 death_tick=99 score=4
+L= 93 death_tick=99 score=4
+L= 94 death_tick=99 score=4
+L= 95 death_tick=103 score=4
+[0m
+timestamp=2026-09-16T14:41:44.753Z level=INFO run=fb9e6ee4 message=process session.id=ses_f5562be4bffeYfbukflBvcLVVt messageID=msg_0aaaaa320001DMmyggNrpNgE7O
+timestamp=2026-09-16T14:41:44.754Z level=INFO run=fb9e6ee4 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5562be4bffeYfbukflBvcLVVt small=false agent=build mode=primary
+timestamp=2026-09-16T14:41:44.755Z level=INFO run=fb9e6ee4 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T14:42:21.945Z level=INFO run=fb9e6ee4 message=evaluated permission=bash pattern="python3 -c \"\nimport engine\ntargets={90,135,180}\nhits=[]\nfor seed in range(1,40):\n    for L in range(60, 200):\n        bits = ('0010'*((L+3)//4))[:L] + '0'*(200-L)\n        st = engine.run(seed,200,bits)\n        d=st['ticks_run']-1\n        if (not st['alive']) and d in targets and st['score']>0:\n            hits.append((seed,L,d,st['score']))\nfor h in hits[:20]: print(h)\nprint('hits:',len(hits))\n\"" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T14:42:22.373Z level=INFO run=fb9e6ee4 message=loop session.id=ses_f5562be4bffeYfbukflBvcLVVt step=12
+[0m$ [0mpython3 -c "
+import engine
+targets={90,135,180}
+hits=[]
+for seed in range(1,40):
+    for L in range(60, 200):
+        bits = ('0010'*((L+3)//4))[:L] + '0'*(200-L)
+        st = engine.run(seed,200,bits)
+        d=st['ticks_run']-1
+        if (not st['alive']) and d in targets and st['score']>0:
+            hits.append((seed,L,d,st['score']))
+for h in hits[:20]: print(h)
+print('hits:',len(hits))
+"
+(2, 127, 135, 4)
+(2, 128, 135, 4)
+(2, 129, 135, 4)
+(2, 130, 135, 4)
+(5, 127, 135, 4)
+(5, 128, 135, 4)
+(5, 129, 135, 4)
+(5, 130, 135, 4)
+(8, 127, 135, 4)
+(8, 128, 135, 4)
+(8, 129, 135, 4)
+(8, 130, 135, 4)
+(13, 127, 135, 4)
+(13, 128, 135, 4)
+(13, 129, 135, 4)
+(13, 130, 135, 4)
+(16, 127, 135, 4)
+(16, 128, 135, 4)
+(16, 129, 135, 4)
+(16, 130, 135, 4)
+hits: 40
+[0m
+timestamp=2026-09-16T14:42:22.392Z level=INFO run=fb9e6ee4 message=process session.id=ses_f5562be4bffeYfbukflBvcLVVt messageID=msg_0aaab3627001MqTPypaJuWPDOg
+timestamp=2026-09-16T14:42:22.393Z level=INFO run=fb9e6ee4 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5562be4bffeYfbukflBvcLVVt small=false agent=build mode=primary
+timestamp=2026-09-16T14:42:22.394Z level=INFO run=fb9e6ee4 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T14:42:43.205Z level=INFO run=fb9e6ee4 message=evaluated permission=bash pattern="python3 -c \"\nimport engine, units\nseed=2; L=127\nbits = ('0010'*((L+3)//4))[:L] + '0'*(200-L)\ntr=[]; st=engine.run(seed,200,bits,False,tr)\nprint('final: score',st['score'],'alive',int(st['alive']),'ticks_run',st['ticks_run'],'death_tick',st['ticks_run']-1)\nprev=0; passes=[]\nfor (t,y,vy,s,a) in tr:\n    if s>prev: passes.append((t,s-prev,vy))\n    prev=s\nprint('score increments at ticks:',passes)\n# show the death tick and neighbors\nfor row in tr:\n    if 132<=row[0]<=136: print(row)\n# confirm pipe3 (spawned t=90) right edge at tick 135\nx135 = units.SPAWN_X - units.SCROLL*(135-90+1)\nprint('pipe3 x after scroll on tick135 =',x135,'right edge =',x135+units.PIPE_W,'<= BIRD_X?',x135+units.PIPE_W<=units.BIRD_X)\n# floor check at death: y should be clamped to FIELD_H-BIRD_H\nprint('floor y limit =', units.FIELD_H-units.BIRD_H)\n\"" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T14:42:43.229Z level=INFO run=fb9e6ee4 message=loop session.id=ses_f5562be4bffeYfbukflBvcLVVt step=13
+[0m$ [0mpython3 -c "
+import engine, units
+seed=2; L=127
+bits = ('0010'*((L+3)//4))[:L] + '0'*(200-L)
+tr=[]; st=engine.run(seed,200,bits,False,tr)
+print('final: score',st['score'],'alive',int(st['alive']),'ticks_run',st['ticks_run'],'death_tick',st['ticks_run']-1)
+prev=0; passes=[]
+for (t,y,vy,s,a) in tr:
+    if s>prev: passes.append((t,s-prev,vy))
+    prev=s
+print('score increments at ticks:',passes)
+# show the death tick and neighbors
+for row in tr:
+    if 132<=row[0]<=136: print(row)
+# confirm pipe3 (spawned t=90) right edge at tick 135
+x135 = units.SPAWN_X - units.SCROLL*(135-90+1)
+print('pipe3 x after scroll on tick135 =',x135,'right edge =',x135+units.PIPE_W,'<= BIRD_X?',x135+units.PIPE_W<=units.BIRD_X)
+# floor check at death: y should be clamped to FIELD_H-BIRD_H
+print('floor y limit =', units.FIELD_H-units.BIRD_H)
+"
+final: score 4 alive 0 ticks_run 136 death_tick 135
+score increments at ticks: [(45, 2, 27), (90, 2, -27)]
+(132, 803, 81, 4, True)
+(133, 902, 99, 4, True)
+(134, 1019, 117, 4, True)
+(135, 1120, 135, 4, False)
+pipe3 x after scroll on tick135 = 160 right edge = 280 <= BIRD_X? True
+floor y limit = 1120
+[0m
+timestamp=2026-09-16T14:42:43.246Z level=INFO run=fb9e6ee4 message=process session.id=ses_f5562be4bffeYfbukflBvcLVVt messageID=msg_0aaab879f001ZrL8biFy6vj76H
+timestamp=2026-09-16T14:42:43.247Z level=INFO run=fb9e6ee4 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5562be4bffeYfbukflBvcLVVt small=false agent=build mode=primary
+timestamp=2026-09-16T14:42:43.247Z level=INFO run=fb9e6ee4 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T14:44:10.875Z level=INFO run=fb9e6ee4 message=evaluated permission=bash pattern="python3 -c \"\nimport physics, world, collide, units as u\n# physics\nprint('P1', physics.step_bird(560,0,True))     # expect (533,-27,True)\nprint('P2a', physics.step_bird(560,250,False)) # expect (820,260,True) clamp\nprint('P2b', physics.step_bird(560,0,False))   # expect (578,18,True)\nprint('P3', physics.step_bird(560,260,True))   # expect (533,-27,True) flap not clamped\nprint('P4', physics.step_bird(10,0,True))      # expect (0,0,True) ceiling soft\nprint('P5', physics.step_bird(1150,18,False))  # expect (1120,36,False) floor kill\n# lcg\nprint('L1', world.lcg(0), world.lcg(1), world.lcg(12345))\nprint('L1exp', (1103515245*0+12345)%2**31, (1103515245*1+1345+12345-1345+12345)%2**31 if False else (1103515245*1+12345)%2**31, (1103515245*12345+12345)%2**31)\n# spawn\np,s = world.spawn(0, 7); print('S spawn t=0 seed7:', p, 'new s', s, 'lcg(7)=', world.lcg(7))\nprint('S non-spawn:', world.spawn(1, 7))\n# cull\nprint('C', world.cull([{'x':-120},{'x':-119},{'x':0}]))\n# collide\nprint('R1', collide.rect_overlap(0,10,10,20), collide.rect_overlap(0,10,5,15), collide.rect_overlap(0,10,-5,0), collide.rect_overlap(0,10,0,10))\nprint('G bottom-inside y=960:', collide.pipe_hit(960,{'x':300,'gap_top':40}), ' y=961:', collide.pipe_hit(961,{'x':300,'gap_top':40}))\nprint('H touch x=180 y=0:', collide.pipe_hit(0,{'x':180,'gap_top':40}))\n\"" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T14:44:10.898Z level=INFO run=fb9e6ee4 message=loop session.id=ses_f5562be4bffeYfbukflBvcLVVt step=14
+[0m$ [0mpython3 -c "
+import physics, world, collide, units as u
+# physics
+print('P1', physics.step_bird(560,0,True))     # expect (533,-27,True)
+print('P2a', physics.step_bird(560,250,False)) # expect (820,260,True) clamp
+print('P2b', physics.step_bird(560,0,False))   # expect (578,18,True)
+print('P3', physics.step_bird(560,260,True))   # expect (533,-27,True) flap not clamped
+print('P4', physics.step_bird(10,0,True))      # expect (0,0,True) ceiling soft
+print('P5', physics.step_bird(1150,18,False))  # expect (1120,36,False) floor kill
+# lcg
+print('L1', world.lcg(0), world.lcg(1), world.lcg(12345))
+print('L1exp', (1103515245*0+12345)%2**31, (1103515245*1+1345+12345-1345+12345)%2**31 if False else (1103515245*1+12345)%2**31, (1103515245*12345+12345)%2**31)
+# spawn
+p,s = world.spawn(0, 7); print('S spawn t=0 seed7:', p, 'new s', s, 'lcg(7)=', world.lcg(7))
+print('S non-spawn:', world.spawn(1, 7))
+# cull
+print('C', world.cull([{'x':-120},{'x':-119},{'x':0}]))
+# collide
+print('R1', collide.rect_overlap(0,10,10,20), collide.rect_overlap(0,10,5,15), collide.rect_overlap(0,10,-5,0), collide.rect_overlap(0,10,0,10))
+print('G bottom-inside y=960:', collide.pipe_hit(960,{'x':300,'gap_top':40}), ' y=961:', collide.pipe_hit(961,{'x':300,'gap_top':40}))
+print('H touch x=180 y=0:', collide.pipe_hit(0,{'x':180,'gap_top':40}))
+"
+P1 (533, -27, True)
+P2a (820, 260, True)
+P2b (578, 18, True)
+P3 (533, -27, True)
+P4 (0, 0, True)
+P5 (1120, 36, False)
+L1 12345 1103527590 1406932606
+L1exp 12345 1103527590 1406932606
+S spawn t=0 seed7: {'x': 2000, 'gap_top': 109, 'passed': False} new s 1282168116 lcg(7)= 1282168116
+S non-spawn: (None, 7)
+C [{'x': -119}, {'x': 0}]
+R1 False True False True
+G bottom-inside y=960: False  y=961: True
+H touch x=180 y=0: False
+[0m
+timestamp=2026-09-16T14:44:10.919Z level=INFO run=fb9e6ee4 message=process session.id=ses_f5562be4bffeYfbukflBvcLVVt messageID=msg_0aaacde15001SQEfnRX87tWl18
+timestamp=2026-09-16T14:44:10.919Z level=INFO run=fb9e6ee4 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5562be4bffeYfbukflBvcLVVt small=false agent=build mode=primary
+timestamp=2026-09-16T14:44:10.920Z level=INFO run=fb9e6ee4 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T14:46:11.853Z level=INFO run=fb9e6ee4 message=evaluated permission=edit pattern=tmp/oc-none-8y7wnu/test_flapsim.py action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T14:46:11.854Z level=INFO run=fb9e6ee4 message=formatting file=/tmp/oc-none-8y7wnu/test_flapsim.py
+timestamp=2026-09-16T14:46:11.854Z level=INFO run=fb9e6ee4 message="touching file" file=/tmp/oc-none-8y7wnu/test_flapsim.py
+[0m← [0mWrite test_flapsim.py
+Wrote file successfully.
+[0m
+timestamp=2026-09-16T14:46:11.901Z level=INFO run=fb9e6ee4 message=loop session.id=ses_f5562be4bffeYfbukflBvcLVVt step=15
+timestamp=2026-09-16T14:46:11.916Z level=INFO run=fb9e6ee4 message=process session.id=ses_f5562be4bffeYfbukflBvcLVVt messageID=msg_0aaaeb6bf001gJWqluoZMC63W5
+timestamp=2026-09-16T14:46:11.917Z level=INFO run=fb9e6ee4 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5562be4bffeYfbukflBvcLVVt small=false agent=build mode=primary
+timestamp=2026-09-16T14:46:11.918Z level=INFO run=fb9e6ee4 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T14:46:15.553Z level=INFO run=fb9e6ee4 message=evaluated permission=bash pattern="python3 -m unittest test_flapsim -v 2>&1" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T14:46:15.594Z level=INFO run=fb9e6ee4 message=loop session.id=ses_f5562be4bffeYfbukflBvcLVVt step=16
+[0m$ [0mpython3 -m unittest test_flapsim -v 2>&1
+test_pipe_hit_gap_bottom_edge (test_flapsim.TestAABBEdges.test_pipe_hit_gap_bottom_edge) ... ok
+test_pipe_hit_horizontal_touch (test_flapsim.TestAABBEdges.test_pipe_hit_horizontal_touch) ... ok
+test_rect_overlap_is_strict (test_flapsim.TestAABBEdges.test_rect_overlap_is_strict) ... ok
+test_cull_drops_only_fully_offscreen (test_flapsim.TestCull.test_cull_drops_only_fully_offscreen) ... ok
+test_glide_passes_worth_two (test_flapsim.TestGlideBonus.test_glide_passes_worth_two) ... ok
+test_non_glide_pass_worth_one (test_flapsim.TestGlideBonus.test_non_glide_pass_worth_one) ... ok
+test_lcg_formula (test_flapsim.TestLCG.test_lcg_formula) ... ok
+test_spawn_advances_lcg_exactly_once (test_flapsim.TestLCG.test_spawn_advances_lcg_exactly_once) ... ok
+test_spawn_only_on_mod_ticks (test_flapsim.TestLCG.test_spawn_only_on_mod_ticks) ... ok
+test_fatal_tick_scores_nothing (test_flapsim.TestPerTickOrder.test_fatal_tick_scores_nothing) ... ok
+test_scroll_before_collision (test_flapsim.TestPerTickOrder.test_scroll_before_collision) ... ok
+test_ceiling_is_soft_and_zeroes_vy (test_flapsim.TestPhysicsClamps.test_ceiling_is_soft_and_zeroes_vy) ... ok
+test_flap_is_never_clamped (test_flapsim.TestPhysicsClamps.test_flap_is_never_clamped) ... ok
+test_flap_sets_vy_not_adds (test_flapsim.TestPhysicsClamps.test_flap_sets_vy_not_adds) ... ok
+test_floor_kills (test_flapsim.TestPhysicsClamps.test_floor_kills) ... ok
+test_gravity_added_below_terminal (test_flapsim.TestPhysicsClamps.test_gravity_added_below_terminal) ... ok
+test_gravity_clamped_at_vy_max (test_flapsim.TestPhysicsClamps.test_gravity_clamped_at_vy_max) ... ok
+
+----------------------------------------------------------------------
+Ran 17 tests in 0.001s
+
+OK
+[0m
+timestamp=2026-09-16T14:46:15.609Z level=INFO run=fb9e6ee4 message=process session.id=ses_f5562be4bffeYfbukflBvcLVVt messageID=msg_0aaaec52c0012aJ2E9gqcnoHIh
+timestamp=2026-09-16T14:46:15.610Z level=INFO run=fb9e6ee4 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5562be4bffeYfbukflBvcLVVt small=false agent=build mode=primary
+timestamp=2026-09-16T14:46:15.610Z level=INFO run=fb9e6ee4 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T14:46:21.300Z level=INFO run=fb9e6ee4 message=evaluated permission=bash pattern="python3 -m unittest test_flapsim 2>&1" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T14:46:21.300Z level=INFO run=fb9e6ee4 message=evaluated permission=bash pattern="tail -3" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T14:46:21.300Z level=INFO run=fb9e6ee4 message=evaluated permission=bash pattern="python3 flapsim.py --selfcheck" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T14:46:21.300Z level=INFO run=fb9e6ee4 message=evaluated permission=bash pattern="grep -c OK" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T14:46:21.300Z level=INFO run=fb9e6ee4 message=evaluated permission=bash pattern="python3 flapsim.py --seed 7 --ticks 200 --flaps 0010" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T14:46:21.300Z level=INFO run=fb9e6ee4 message=evaluated permission=bash pattern="diff <(sed -n '10,30p' spec/09_expected_output.md) -" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T14:46:21.300Z level=INFO run=fb9e6ee4 message=evaluated permission=bash pattern="sed -n '10,30p' spec/09_expected_output.md" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T14:46:21.300Z level=INFO run=fb9e6ee4 message=evaluated permission=bash pattern="echo DEMO_STILL_CLEAN" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T14:46:21.363Z level=INFO run=fb9e6ee4 message=loop session.id=ses_f5562be4bffeYfbukflBvcLVVt step=17
+[0m$ [0mpython3 -m unittest test_flapsim 2>&1 | tail -3; python3 flapsim.py --selfcheck | grep -c OK; python3 flapsim.py --seed 7 --ticks 200 --flaps 0010 | diff <(sed -n '10,30p' spec/09_expected_output.md) - && echo DEMO_STILL_CLEAN
+Ran 17 tests in 0.000s
+
+OK
+6
+DEMO_STILL_CLEAN
+[0m
+timestamp=2026-09-16T14:46:21.379Z level=INFO run=fb9e6ee4 message=process session.id=ses_f5562be4bffeYfbukflBvcLVVt messageID=msg_0aaaedbb6001GswRD5VFrXs0lA
+timestamp=2026-09-16T14:46:21.380Z level=INFO run=fb9e6ee4 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5562be4bffeYfbukflBvcLVVt small=false agent=build mode=primary
+timestamp=2026-09-16T14:46:21.381Z level=INFO run=fb9e6ee4 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T14:46:32.239Z level=INFO run=fb9e6ee4 message=loop session.id=ses_f5562be4bffeYfbukflBvcLVVt step=18
+timestamp=2026-09-16T14:46:32.241Z level=INFO run=fb9e6ee4 message="exiting loop" session.id=ses_f5562be4bffeYfbukflBvcLVVt
+timestamp=2026-09-16T14:46:32.246Z level=INFO run=fb9e6ee4 message="disposing instance" directory=/tmp/oc-none-8y7wnu
+timestamp=2026-09-16T14:46:32.263Z level=INFO run=fb9e6ee4 message=loading path=/home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/captures/oc-flapsim-gate2-1789568827071/none-rep0/opencode.json

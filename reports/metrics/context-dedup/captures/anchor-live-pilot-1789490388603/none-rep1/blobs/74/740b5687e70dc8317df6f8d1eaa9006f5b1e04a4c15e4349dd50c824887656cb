@@ -1,0 +1,1 @@
+{"command":"python3 -c \"\nimport engine\n# EX2 without powerups: dies at tick 41 (ticks_run=41)\nprint(engine.run(7, 120, '01'))\n# with powerups: shield absorbs pipe hit at t=41, then floor kill\nst = engine.run(7, 120, '01', powerups=True)\nprint(st)\n\""}

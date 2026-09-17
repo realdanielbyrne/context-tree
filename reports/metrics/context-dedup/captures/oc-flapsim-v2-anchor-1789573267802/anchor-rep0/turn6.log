@@ -1,0 +1,226 @@
+Re-reading spec/07 as instructed, and confirming the current state of engine.py/flapsim.py:
+The shield logic is already implemented in engine.py:10,22-27,39-40,48-49 and flapsim.py (since spec/06's CLI included `[--powerups]`, I built it together with the engine). After cross-checking against spec/07 line by line, there are no deviations. Currently proving the strict requirements and gathering actual values for the new tests:
+The hard requirement has been proven (byte-for-byte identical), and I've also obtained concrete values for all behaviors in spec/07: shield absorption (EX2 dies on tick 41 without a shield, and on tick 42 with a shield, shields=0), grant every 5th time (shields=2 at 300 ticks), cap of 3 (3 at 700 ticks — would be 4 without the cap), floor kill not being prevented (still dies, shields remain at 1). Extending the test suite:
+All 26 tests pass, selfcheck all OK, demo unchanged. Now gathering the exact `def` lines to quote in the docs:
+Writing GETTING_STARTED.md:
+Verifying the doc's output block and quoted signatures are character-exact:
+DONE — both items complete:
+
+**1. FEATURE.** Re-read spec/07 and checked it line by line against the code: the shield was already fully implemented in `engine.py` (start at 1, spend-on-hit with the pipe marked `passed`, floor kill unaffected, grant every 5th pipe passed capped at 3) and `flapsim.py` (`--powerups` parsing + DIGEST suffix), so no code changes were needed. Hard requirement proven: `python3 flapsim.py --seed 7 --ticks 200 --flaps 0010` output diffs clean against replay.txt, byte for byte. Extended test_flapsim.py with 7 new tests covering every spec/07 bullet — shield key only when enabled, starts at 1, absorbs a pipe hit (bird dies tick 42 vs 41 unshielded, shields=0), floor kill still kills (shields stay 1), grant on the 5th pass (shields=2 @300 ticks), cap at 3 (@700 ticks it would be 4 uncapped), and the DIGEST `shields=` field. All 26 tests pass; selfcheck still all OK.
+
+**2. DOCS.** GETTING_STARTED.md written with the exact demo command and its exact output (fenced block diffed clean against replay.txt), one section per module quoting character-exact lines from each file (all grep-verified; units.py has no functions, noted, with a real constant line quoted instead), and a "Shield power-up" section explaining the flag's behavior and output.
+
+===STDERR===
+timestamp=2026-09-16T19:35:32.023Z level=INFO run=49dc1ff5 message="creating instance" directory=/tmp/oc-anchor-k2mq6z
+timestamp=2026-09-16T19:35:32.024Z level=INFO run=49dc1ff5 message=fromDirectory directory=/tmp/oc-anchor-k2mq6z
+timestamp=2026-09-16T19:35:32.034Z level=INFO run=49dc1ff5 message=bootstrapping directory=/tmp/oc-anchor-k2mq6z
+timestamp=2026-09-16T19:35:32.038Z level=INFO run=49dc1ff5 message=loading path=/tmp/ocx-OddARD/cfg/opencode/config.json
+timestamp=2026-09-16T19:35:32.038Z level=INFO run=49dc1ff5 message=loading path=/tmp/ocx-OddARD/cfg/opencode/opencode.json
+timestamp=2026-09-16T19:35:32.040Z level=INFO run=49dc1ff5 message=loading path=/tmp/ocx-OddARD/cfg/opencode/opencode.jsonc
+timestamp=2026-09-16T19:35:32.041Z level=INFO run=49dc1ff5 message=loading path=/home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/captures/oc-flapsim-v2-anchor-1789573267802/anchor-rep0/opencode.json
+timestamp=2026-09-16T19:35:32.107Z level=INFO run=49dc1ff5 message="all LSPs are disabled"
+timestamp=2026-09-16T19:35:32.108Z level=INFO run=49dc1ff5 message="all formatters are disabled"
+timestamp=2026-09-16T19:35:32.108Z level=INFO run=49dc1ff5 message=init
+timestamp=2026-09-16T19:35:32.220Z level=INFO run=49dc1ff5 message="event connected"
+timestamp=2026-09-16T19:35:32.552Z level=INFO run=49dc1ff5 message=loop session.id=ses_f551ef735ffe607HQhiZLjw0g4 step=0
+timestamp=2026-09-16T19:35:32.566Z level=INFO run=49dc1ff5 message="shell tool using shell" shell=/bin/bash
+timestamp=2026-09-16T19:35:32.581Z level=INFO run=49dc1ff5 message=init count=10
+[0m
+> build · unsloth/Qwen3.8-27B-GGUF
+[0m
+timestamp=2026-09-16T19:35:32.631Z level=INFO run=49dc1ff5 message="watcher backend" directory=/tmp/oc-anchor-k2mq6z platform=linux backend=inotify
+timestamp=2026-09-16T19:35:32.637Z level=INFO run=49dc1ff5 message="project copy refresh started" projectID=global
+timestamp=2026-09-16T19:35:32.638Z level=INFO run=49dc1ff5 message="project copy refresh done" projectID=global updated=[] removed=[]
+timestamp=2026-09-16T19:35:32.655Z level=INFO run=49dc1ff5 message="booting location services" directory=/tmp/oc-anchor-k2mq6z workspaceID=undefined
+timestamp=2026-09-16T19:35:32.918Z level=INFO run=49dc1ff5 message=process session.id=ses_f551ef735ffe607HQhiZLjw0g4 messageID=msg_0abb79dcf001Blsq49RnV94Sll
+timestamp=2026-09-16T19:35:32.920Z level=INFO run=49dc1ff5 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551ef735ffe607HQhiZLjw0g4 small=false agent=build mode=primary
+timestamp=2026-09-16T19:35:32.925Z level=INFO run=49dc1ff5 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T19:41:28.328Z level=ERROR run=49dc1ff5 message="stream error" providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551ef735ffe607HQhiZLjw0g4 small=false agent=build mode=primary error.error.message="Context size has been exceeded." error.error.type=server_error error.error.code=500
+timestamp=2026-09-16T19:41:30.603Z level=INFO run=49dc1ff5 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551ef735ffe607HQhiZLjw0g4 small=false agent=build mode=primary
+timestamp=2026-09-16T19:41:30.605Z level=INFO run=49dc1ff5 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T19:48:41.155Z level=INFO run=49dc1ff5 message=evaluated permission=read pattern=tmp/oc-anchor-k2mq6z/spec/07_powerups.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-16T19:48:41.163Z level=INFO run=49dc1ff5 message="touching file" file=/tmp/oc-anchor-k2mq6z/spec/07_powerups.md
+[0m→ [0mRead spec/07_powerups.md
+timestamp=2026-09-16T19:48:42.085Z level=INFO run=49dc1ff5 message=evaluated permission=read pattern=tmp/oc-anchor-k2mq6z/engine.py action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-16T19:48:42.097Z level=INFO run=49dc1ff5 message=loop session.id=ses_f551ef735ffe607HQhiZLjw0g4 step=1
+timestamp=2026-09-16T19:48:42.106Z level=INFO run=49dc1ff5 message="touching file" file=/tmp/oc-anchor-k2mq6z/engine.py
+[0m→ [0mRead engine.py
+timestamp=2026-09-16T19:48:42.124Z level=INFO run=49dc1ff5 message=process session.id=ses_f551ef735ffe607HQhiZLjw0g4 messageID=msg_0abc3a9f6001U4OnPMZrkEORFY
+timestamp=2026-09-16T19:48:42.125Z level=INFO run=49dc1ff5 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551ef735ffe607HQhiZLjw0g4 small=false agent=build mode=primary
+timestamp=2026-09-16T19:48:42.126Z level=INFO run=49dc1ff5 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T20:00:25.573Z level=INFO run=49dc1ff5 message=evaluated permission=bash pattern="python3 flapsim.py --seed 7 --ticks 200 --flaps 0010 > /tmp/noflag.txt" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T20:00:25.574Z level=INFO run=49dc1ff5 message=evaluated permission=bash pattern="diff replay.txt /tmp/noflag.txt" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T20:00:25.574Z level=INFO run=49dc1ff5 message=evaluated permission=bash pattern="echo \"HARD REQUIREMENT: byte-identical to replay.txt\"" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T20:00:25.574Z level=INFO run=49dc1ff5 message=evaluated permission=bash pattern="python3 -c \"\nimport engine\nprint('EX2 noflag :', engine.run(7, 120, '01'))\nprint('EX2 shield :', engine.run(7, 120, '01', True))\nprint('grant 300  :', engine.run(7, 300, '0010', True))\nprint('cap   700  :', engine.run(7, 700, '0010', True))\nprint('floor+shield:', engine.run(7, 50, '0100101000000011', True))\n\"" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T20:00:25.618Z level=INFO run=49dc1ff5 message=loop session.id=ses_f551ef735ffe607HQhiZLjw0g4 step=2
+[0m
+[0m$ [0mpython3 flapsim.py --seed 7 --ticks 200 --flaps 0010 > /tmp/noflag.txt && diff replay.txt /tmp/noflag.txt && echo "HARD REQUIREMENT: byte-identical to replay.txt"; python3 -c "
+import engine
+print('EX2 noflag :', engine.run(7, 120, '01'))
+print('EX2 shield :', engine.run(7, 120, '01', True))
+print('grant 300  :', engine.run(7, 300, '0010', True))
+print('cap   700  :', engine.run(7, 700, '0010', True))
+print('floor+shield:', engine.run(7, 50, '0100101000000011', True))
+"
+HARD REQUIREMENT: byte-identical to replay.txt
+EX2 noflag : {'y': 18, 'vy': 18, 'score': 0, 'alive': False, 'ticks_run': 41}
+EX2 shield : {'y': 0, 'vy': 0, 'score': 0, 'alive': False, 'ticks_run': 42, 'shields': 0}
+grant 300  : {'y': 578, 'vy': -9, 'score': 12, 'alive': True, 'ticks_run': 300, 'shields': 2}
+cap   700  : {'y': 578, 'vy': -9, 'score': 30, 'alive': True, 'ticks_run': 700, 'shields': 3}
+floor+shield: {'y': 1120, 'vy': 99, 'score': 0, 'alive': False, 'ticks_run': 46, 'shields': 1}
+[0m
+timestamp=2026-09-16T20:00:25.649Z level=INFO run=49dc1ff5 message=process session.id=ses_f551ef735ffe607HQhiZLjw0g4 messageID=msg_0abce6616001g9rbvrAZgj9lBU
+timestamp=2026-09-16T20:00:25.650Z level=INFO run=49dc1ff5 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551ef735ffe607HQhiZLjw0g4 small=false agent=build mode=primary
+timestamp=2026-09-16T20:00:25.651Z level=INFO run=49dc1ff5 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T20:05:47.747Z level=INFO run=49dc1ff5 message=evaluated permission=edit pattern=tmp/oc-anchor-k2mq6z/test_flapsim.py action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T20:05:47.748Z level=INFO run=49dc1ff5 message=formatting file=/tmp/oc-anchor-k2mq6z/test_flapsim.py
+timestamp=2026-09-16T20:05:47.750Z level=INFO run=49dc1ff5 message="touching file" file=/tmp/oc-anchor-k2mq6z/test_flapsim.py
+[0m← [0mEdit test_flapsim.py
+Index: /tmp/oc-anchor-k2mq6z/test_flapsim.py
+===================================================================
+--- /tmp/oc-anchor-k2mq6z/test_flapsim.py
++++ /tmp/oc-anchor-k2mq6z/test_flapsim.py
+@@ -5,8 +5,9 @@
+ from physics import step_bird
+ from world import lcg, spawn, scroll, cull
+ from collide import rect_overlap, pipe_hit
+ import engine
++import flapsim
+ 
+ 
+ def reference_run(seed, ticks, flaps):
+     """Independent re-implementation of the spec/02 per-tick order."""
+
+[0m
+timestamp=2026-09-16T20:05:57.236Z level=INFO run=49dc1ff5 message=evaluated permission=edit pattern=tmp/oc-anchor-k2mq6z/test_flapsim.py action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T20:05:57.237Z level=INFO run=49dc1ff5 message=formatting file=/tmp/oc-anchor-k2mq6z/test_flapsim.py
+timestamp=2026-09-16T20:05:57.239Z level=INFO run=49dc1ff5 message="touching file" file=/tmp/oc-anchor-k2mq6z/test_flapsim.py
+[0m← [0mEdit test_flapsim.py
+Index: /tmp/oc-anchor-k2mq6z/test_flapsim.py
+===================================================================
+--- /tmp/oc-anchor-k2mq6z/test_flapsim.py
++++ /tmp/oc-anchor-k2mq6z/test_flapsim.py
+@@ -166,6 +166,52 @@
+         st = engine.run(7, 200, "0010")
+         self.assertEqual(set(st), {"y", "vy", "score", "alive", "ticks_run"})
+ 
+ 
++class PowerupsTests(unittest.TestCase):
++    def test_shields_key_only_with_powerups(self):
++        self.assertNotIn("shields", engine.run(7, 200, "0010"))
++        self.assertIn("shields", engine.run(7, 200, "0010", True))
++
++    def test_starts_with_one_shield(self):
++        st = engine.run(7, 200, "0010", True)
++        self.assertTrue(st["alive"])
++        self.assertEqual(st["shields"], 1)
++
++    def test_shield_absorbs_pipe_hit(self):
++        plain = engine.run(7, 120, "01")
++        shielded = engine.run(7, 120, "01", True)
++        self.assertFalse(plain["alive"])
++        self.assertEqual(plain["ticks_run"], 41)
++        # the shield eats the first hit tick; with none left the bird dies next tick
++        self.assertFalse(shielded["alive"])
++        self.assertEqual(shielded["ticks_run"], 42)
++        self.assertEqual(shielded["shields"], 0)
++
++    def test_floor_kill_not_prevented(self):
++        st = engine.run(7, 50, "0100101000000011", True)
++        self.assertFalse(st["alive"])
++        self.assertEqual(st["ticks_run"], 46)
++        self.assertEqual(st["shields"], 1)
++
++    def test_grant_every_fifth_pipe(self):
++        st = engine.run(7, 300, "0010", True)
++        self.assertTrue(st["alive"])
++        self.assertEqual(st["shields"], 2)
++
++    def test_shield_cap_at_three(self):
++        st = engine.run(7, 700, "0010", True)
++        self.assertTrue(st["alive"])
++        self.assertEqual(st["shields"], 3)
++
++    def test_digest_shields_field(self):
++        import io, contextlib
++        buf = io.StringIO()
++        with contextlib.redirect_stdout(buf):
++            flapsim.main(["--seed", "7", "--ticks", "200", "--flaps", "0010", "--powerups"])
++        lines = buf.getvalue().splitlines()
++        self.assertTrue(lines[-1].startswith("DIGEST "))
++        self.assertTrue(lines[-1].endswith(" ticks_run=200 shields=1"))
++
++
+ if __name__ == "__main__":
+     unittest.main()
+
+[0m
+timestamp=2026-09-16T20:05:57.294Z level=INFO run=49dc1ff5 message=loop session.id=ses_f551ef735ffe607HQhiZLjw0g4 step=3
+timestamp=2026-09-16T20:05:57.317Z level=INFO run=49dc1ff5 message=process session.id=ses_f551ef735ffe607HQhiZLjw0g4 messageID=msg_0abd375b3001gV4mfWu7bXgxO1
+timestamp=2026-09-16T20:05:57.318Z level=INFO run=49dc1ff5 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551ef735ffe607HQhiZLjw0g4 small=false agent=build mode=primary
+timestamp=2026-09-16T20:05:57.319Z level=INFO run=49dc1ff5 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T20:10:37.271Z level=INFO run=49dc1ff5 message=evaluated permission=bash pattern="python3 -m unittest test_flapsim 2>&1" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T20:10:37.271Z level=INFO run=49dc1ff5 message=evaluated permission=bash pattern="tail -3" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T20:10:37.271Z level=INFO run=49dc1ff5 message=evaluated permission=bash pattern="python3 flapsim.py --selfcheck" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T20:10:37.271Z level=INFO run=49dc1ff5 message=evaluated permission=bash pattern="grep -c OK" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T20:10:37.271Z level=INFO run=49dc1ff5 message=evaluated permission=bash pattern="python3 flapsim.py --seed 7 --ticks 200 --flaps 0010" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T20:10:37.271Z level=INFO run=49dc1ff5 message=evaluated permission=bash pattern="diff replay.txt -" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T20:10:37.272Z level=INFO run=49dc1ff5 message=evaluated permission=bash pattern="echo \"REGRESSION: demo still byte-identical\"" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T20:10:37.343Z level=INFO run=49dc1ff5 message=loop session.id=ses_f551ef735ffe607HQhiZLjw0g4 step=4
+[0m$ [0mpython3 -m unittest test_flapsim 2>&1 | tail -3 && python3 flapsim.py --selfcheck | grep -c OK && python3 flapsim.py --seed 7 --ticks 200 --flaps 0010 | diff replay.txt - && echo "REGRESSION: demo still byte-identical"
+Ran 26 tests in 0.003s
+
+OK
+6
+REGRESSION: demo still byte-identical
+[0m
+timestamp=2026-09-16T20:10:37.368Z level=INFO run=49dc1ff5 message=process session.id=ses_f551ef735ffe607HQhiZLjw0g4 messageID=msg_0abd7bba4001M0pljDcoRi4mt6
+timestamp=2026-09-16T20:10:37.369Z level=INFO run=49dc1ff5 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551ef735ffe607HQhiZLjw0g4 small=false agent=build mode=primary
+timestamp=2026-09-16T20:10:37.369Z level=INFO run=49dc1ff5 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T20:16:52.354Z level=INFO run=49dc1ff5 message=evaluated permission=grep pattern="^def |^    def " action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T20:16:52.358Z level=INFO run=49dc1ff5 message="downloading ripgrep" url=https://github.com/BurntSushi/ripgrep/releases/download/15.1.0/ripgrep-15.1.0-x86_64-unknown-linux-musl.tar.gz
+timestamp=2026-09-16T20:16:52.604Z level=INFO run=49dc1ff5 message=loop session.id=ses_f551ef735ffe607HQhiZLjw0g4 step=5
+[0m✱ [0mGrep "^def |^    def "[90m in . · 38 matches[0m
+timestamp=2026-09-16T20:16:52.628Z level=INFO run=49dc1ff5 message=process session.id=ses_f551ef735ffe607HQhiZLjw0g4 messageID=msg_0abdd75800010vfgs5ZdpGoZX0
+timestamp=2026-09-16T20:16:52.629Z level=INFO run=49dc1ff5 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551ef735ffe607HQhiZLjw0g4 small=false agent=build mode=primary
+timestamp=2026-09-16T20:16:52.630Z level=INFO run=49dc1ff5 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T20:22:27.474Z level=INFO run=49dc1ff5 message=evaluated permission=edit pattern=tmp/oc-anchor-k2mq6z/GETTING_STARTED.md action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T20:22:27.474Z level=INFO run=49dc1ff5 message=formatting file=/tmp/oc-anchor-k2mq6z/GETTING_STARTED.md
+timestamp=2026-09-16T20:22:27.474Z level=INFO run=49dc1ff5 message="touching file" file=/tmp/oc-anchor-k2mq6z/GETTING_STARTED.md
+[0m
+[0m← [0mWrite GETTING_STARTED.md
+Wrote file successfully.
+[0m
+timestamp=2026-09-16T20:22:27.533Z level=INFO run=49dc1ff5 message=loop session.id=ses_f551ef735ffe607HQhiZLjw0g4 step=6
+timestamp=2026-09-16T20:22:27.557Z level=INFO run=49dc1ff5 message=process session.id=ses_f551ef735ffe607HQhiZLjw0g4 messageID=msg_0abe291d1001GdLpK9Yk0sMRlw
+timestamp=2026-09-16T20:22:27.558Z level=INFO run=49dc1ff5 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551ef735ffe607HQhiZLjw0g4 small=false agent=build mode=primary
+timestamp=2026-09-16T20:22:27.559Z level=INFO run=49dc1ff5 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T20:28:17.530Z level=INFO run=49dc1ff5 message=evaluated permission=bash pattern="sed -n '/^```$/,/^```$/p' GETTING_STARTED.md" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T20:28:17.530Z level=INFO run=49dc1ff5 message=evaluated permission=bash pattern="sed '1d;$d'" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T20:28:17.530Z level=INFO run=49dc1ff5 message=evaluated permission=bash pattern="diff replay.txt /tmp/docblock.txt" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T20:28:17.530Z level=INFO run=49dc1ff5 message=evaluated permission=bash pattern="echo \"DOC OUTPUT BLOCK: EXACT MATCH\"" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T20:28:17.530Z level=INFO run=49dc1ff5 message=evaluated permission=bash pattern="grep -qF \"$l\" \"$f\"" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T20:28:17.530Z level=INFO run=49dc1ff5 message=evaluated permission=bash pattern="echo \"OK  $f: $l\"" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T20:28:17.530Z level=INFO run=49dc1ff5 message=evaluated permission=bash pattern="echo \"MISSING $f: $l\"" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T20:28:17.559Z level=INFO run=49dc1ff5 message=loop session.id=ses_f551ef735ffe607HQhiZLjw0g4 step=7
+[0m$ [0msed -n '/^```$/,/^```$/p' GETTING_STARTED.md | sed '1d;$d' > /tmp/docblock.txt && diff replay.txt /tmp/docblock.txt && echo "DOC OUTPUT BLOCK: EXACT MATCH"; for spec in "physics.py:def step_bird(y, vy, flap):" "world.py:def lcg(s):" "world.py:def spawn(t, s):" "world.py:def scroll(pipes):" "world.py:def cull(pipes):" "collide.py:def rect_overlap(a0, a1, b0, b1):" "collide.py:def pipe_hit(y, pipe):" "engine.py:def run(seed, ticks, flaps, powerups=False, on_tick=None):" "flapsim.py:def selfcheck():" "flapsim.py:def main(argv):" "units.py:FIELD_H = 1200"; do f=${spec%%:*}; l=${spec#*:}; grep -qF "$l" "$f" && echo "OK  $f: $l" || echo "MISSING $f: $l"; done
+DOC OUTPUT BLOCK: EXACT MATCH
+OK  physics.py: def step_bird(y, vy, flap):
+OK  world.py: def lcg(s):
+OK  world.py: def spawn(t, s):
+OK  world.py: def scroll(pipes):
+OK  world.py: def cull(pipes):
+OK  collide.py: def rect_overlap(a0, a1, b0, b1):
+OK  collide.py: def pipe_hit(y, pipe):
+OK  engine.py: def run(seed, ticks, flaps, powerups=False, on_tick=None):
+OK  flapsim.py: def selfcheck():
+OK  flapsim.py: def main(argv):
+OK  units.py: FIELD_H = 1200
+[0m
+timestamp=2026-09-16T20:28:17.583Z level=INFO run=49dc1ff5 message=process session.id=ses_f551ef735ffe607HQhiZLjw0g4 messageID=msg_0abe7e91c001pf5QOJQJ4AMYMY
+timestamp=2026-09-16T20:28:17.584Z level=INFO run=49dc1ff5 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551ef735ffe607HQhiZLjw0g4 small=false agent=build mode=primary
+timestamp=2026-09-16T20:28:17.585Z level=INFO run=49dc1ff5 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T20:34:19.747Z level=INFO run=49dc1ff5 message=loop session.id=ses_f551ef735ffe607HQhiZLjw0g4 step=8
+timestamp=2026-09-16T20:34:19.752Z level=INFO run=49dc1ff5 message="exiting loop" session.id=ses_f551ef735ffe607HQhiZLjw0g4
+timestamp=2026-09-16T20:34:19.758Z level=INFO run=49dc1ff5 message="disposing instance" directory=/tmp/oc-anchor-k2mq6z
+timestamp=2026-09-16T20:34:19.776Z level=INFO run=49dc1ff5 message=loading path=/home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/captures/oc-flapsim-v2-anchor-1789573267802/anchor-rep0/opencode.json

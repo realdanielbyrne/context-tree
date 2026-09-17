@@ -1,0 +1,55 @@
+"""Command line for flapsim: hand-parsed argv, exact output formats."""
+
+import sys
+from engine import run
+
+
+def parse(argv):
+    """Parse --seed/--ticks/--flaps by hand. Returns (seed, ticks, flaps)."""
+    vals = {"--seed": 0, "--ticks": 0, "--flaps": "0"}
+    i = 1
+    while i < len(argv):
+        a = argv[i]
+        if a not in vals:
+            raise SystemExit("unknown flag: " + a)
+        vals[a] = int(argv[i + 1]) if a != "--flaps" else argv[i + 1]
+        i += 2
+    return vals["--seed"], vals["--ticks"], vals["--flaps"]
+
+
+def trace(t, y, vy, score, alive):
+    return "TRACE t=%04d y=%04d vy=%+05d score=%02d alive=%d" % (
+        t, y, vy, score, 1 if alive else 0)
+
+
+def digest(seed, ticks, st):
+    a = 1 if st["alive"] else 0
+    return ("DIGEST seed=%d ticks=%d score=%d alive=%d y=%04d vy=%+05d "
+            "ticks_run=%d" % (seed, ticks, st["score"], a, st["y"],
+                              st["vy"], st["ticks_run"]))
+
+
+def main(argv):
+    if len(argv) == 2 and argv[1] == "--selfcheck":
+        return selfcheck()
+    seed, ticks, flaps = parse(argv)
+    st, traces = run(seed, ticks, flaps)
+    for row in traces:
+        print(trace(*row))
+    print(digest(seed, ticks, st))
+
+
+def selfcheck():
+    cases = [("EX1", 7, 200, "0010", 8, 1), ("EX2", 7, 120, "01", 0, 0),
+             ("EX3", 3, 200, "0001", 8, 1), ("EX4", 11, 60, "1", 0, 0),
+             ("EX5", 2, 90, "0", 0, 0), ("EX6", 5, 200, "0010", 8, 1)]
+    for name, seed, ticks, flaps, escore, ealive in cases:
+        st, _ = run(seed, ticks, flaps)
+        a = 1 if st["alive"] else 0
+        ok = "OK" if (st["score"] == escore and a == ealive) else "FAIL"
+        print("%s seed=%d ticks=%d flaps=%s expect score=%02d alive=%d "
+              "got score=%02d alive=%d %s"
+              % (name, seed, ticks, flaps, escore, ealive, st["score"], a, ok))
+
+
+if __name__ == "__main__": main(sys.argv)

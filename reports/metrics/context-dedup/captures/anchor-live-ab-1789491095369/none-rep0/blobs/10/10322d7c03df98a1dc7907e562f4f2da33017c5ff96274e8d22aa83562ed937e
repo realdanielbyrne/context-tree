@@ -1,0 +1,60 @@
+"""Command line for flapsim: hand-rolled argv parsing and output."""
+
+import sys
+from engine import run
+
+
+def _parse(argv):
+    """Parse --seed/--ticks/--flaps by hand. Returns (seed, ticks, flaps)."""
+    seed, ticks, flaps = 0, 0, "0"
+    i = 0
+    while i < len(argv):
+        if argv[i] == "--seed":
+            seed = int(argv[i + 1]); i += 2
+        elif argv[i] == "--ticks":
+            ticks = int(argv[i + 1]); i += 2
+        elif argv[i] == "--flaps":
+            flaps = argv[i + 1]; i += 2
+        else:
+            raise SystemExit("unknown flag: " + argv[i])
+    return seed, ticks, flaps
+
+
+def _trace(t, st):
+    return ("TRACE t=%04d y=%04d vy=%+05d score=%02d alive=%d"
+            % (t, st["y"], st["vy"], st["score"], 1 if st["alive"] else 0))
+
+
+def _digest(seed, ticks, st):
+    return ("DIGEST seed=%d ticks=%d score=%02d alive=%d y=%04d vy=%+05d"
+            " ticks_run=%d" % (seed, ticks, st["score"],
+                               1 if st["alive"] else 0, st["y"], st["vy"],
+                               st["ticks_run"]))
+
+
+def main(argv):
+    if len(argv) == 2 and argv[1] == "--selfcheck":
+        return selfcheck()
+    seed, ticks, flaps = _parse(argv[1:])
+    every = max(1, ticks // 20)
+    for t in range(ticks):
+        st = run(seed, t + 1, flaps)
+        if (t + 1) % every == 0:
+            print(_trace(t, st))
+        if not st["alive"]:
+            break
+    print(_digest(seed, ticks, st))
+
+
+def selfcheck():
+    cases = [(7, 200, "0010", 8, 1), (7, 120, "01", 0, 0),
+             (3, 200, "0001", 8, 1), (11, 60, "1", 0, 0),
+             (2, 90, "0", 0, 0), (5, 200, "0010", 8, 1)]
+    for i, (seed, ticks, flaps, escore, ealive) in enumerate(cases, 1):
+        st = run(seed, ticks, flaps)
+        ok = st["score"] == escore and st["alive"] == bool(ealive)
+        print("EX%d seed=%d ticks=%d flaps=%s expect score=%02d alive=%d"
+              " got score=%02d alive=%d %s"
+              % (i, seed, ticks, flaps, escore, ealive, st["score"],
+          
+…[2105 chars truncated]

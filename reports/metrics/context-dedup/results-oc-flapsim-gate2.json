@@ -1,0 +1,145 @@
+{
+  "manifest": {
+    "run_id": "oc-flapsim-gate2-1789568827071",
+    "experiment": "context-dedup / anchor arms on opencode (flapsim)",
+    "host": "opencode",
+    "host_version": "1.18.31",
+    "model": "local/unsloth/Qwen3.8-27B-GGUF",
+    "task": "flapsim (headless deterministic side-scroller, 6 modules, mid-run feature change + docs)",
+    "commit": "b92d468ccf10b92c070f6b68e304d166e047cdbe",
+    "date": "2026-09-16T15:06:33.990Z",
+    "params": {
+      "arms": [
+        "none"
+      ],
+      "repeats": 1,
+      "top_k": 2,
+      "turn_timeout_s": 1200
+    },
+    "hypothesis": "Returning an anchor (or an anchor plus the most relevant chunks of the resident copy) instead of content the model already has reduces cumulative prompt tokens AND wall-clock time to completion, at no cost to task success. If it does, fold it into context-tree; if not, leave it out.",
+    "falsification": "FOLD IN only if an arm cuts BOTH tokens and wall-clock against the no-intervention arm at score within noise. Any fired anchor that was not truthful invalidates the run.",
+    "caveats": [
+      "Host is opencode per D20; the previous in-repo harness could not represent a tool call and is not used.",
+      "NO eviction and NO window cap: the context is append-only, so residency is by construction and every anchor is truthful; clipped results are detected and suppressed rather than anchored.",
+      "The mid-run user turn is a real second user message via `run --session`, released on a WORKSPACE predicate so every arm gets it at the same logical stage; `via` is recorded and a between-arm difference in it is a confound, not a result.",
+      "Wall-clock is measured on a shared host and includes provider prefix caching, so tokens and time can move independently; treat a delta inside the between-repeat spread as no effect.",
+      "Single scenario = single problem (caveat C0): repeats measure within-problem nondeterminism, not between-problem variance.",
+      "The model REASONS and that is left alone — it is how the model really behaves, and with reasoning on a smaller context may also mean less to re-reason over per turn. Reasoning is measured from the export reasoning PARTS (chars), because the local host reports reasoning_tokens: 0 while genuinely reasoning; token counts alone would undercount it and would not be comparable with OpenRouter.",
+      "The local host serves 4 concurrent connections and this runner takes one non-exclusive lease per cell. With all slots busy, opencode blocks during its init title call and the run hangs with no error — so a hang is a scheduling symptom, not necessarily a task failure."
+    ]
+  },
+  "summary": [
+    {
+      "arm": "none",
+      "n": 1,
+      "passes": 0,
+      "score_mean": 29,
+      "milestones_mean": 7,
+      "prompt_tokens_median": 2381231,
+      "reasoning_chars_median": 275112,
+      "wall_seconds_median": 2365.3,
+      "cost_usd_total": 0,
+      "fires_median": 0,
+      "would_fire_median": 0,
+      "anchor_untruthful_total": 0,
+      "degenerate_topk_total": 0,
+      "timed_out": 1,
+      "tokens_delta_pct": 0,
+      "wall_delta_pct": 0,
+      "score_delta": 0,
+      "verdict": "—"
+    }
+  ],
+  "cells": [
+    {
+      "arm": "none",
+      "repeat": 0,
+      "session": "ses_f5562be4bffeYfbukflBvcLVVt",
+      "ws": "/tmp/oc-none-8y7wnu",
+      "cell_dir": "reports/metrics/context-dedup/captures/oc-flapsim-gate2-1789568827071/none-rep0",
+      "pass": false,
+      "score_correct": 29,
+      "score_total": 40,
+      "score_parts": {
+        "core": 12,
+        "trace": 8,
+        "feature": 5,
+        "review": 4,
+        "docs": 0
+      },
+      "phase_index": 6,
+      "phase_name": "reviewed",
+      "phases_total": 9,
+      "phases_done": [
+        "start",
+        "modules-started",
+        "modules-complete",
+        "selfcheck-runs",
+        "selfcheck-all-ok",
+        "tests-written",
+        "reviewed"
+      ],
+      "max_py_chars": 5245,
+      "files_over_1800": 2,
+      "module_count": 7,
+      "float_literals": 0,
+      "has_replay": false,
+      "has_review": true,
+      "has_docs": false,
+      "turns_released": 4,
+      "turn_log": [
+        {
+          "turn_id": "core",
+          "index": 0,
+          "seconds": 88.6,
+          "via": "gate",
+          "session": "ses_f5562be4bffeYfbukflBvcLVVt",
+          "timed_out": false,
+          "status": 0
+        },
+        {
+          "turn_id": "engine",
+          "index": 1,
+          "seconds": 315.1,
+          "via": "gate",
+          "session": "ses_f5562be4bffeYfbukflBvcLVVt",
+          "timed_out": false,
+          "status": 0
+        },
+        {
+          "turn_id": "tests",
+          "index": 2,
+          "seconds": 761.5,
+          "via": "gate",
+          "session": "ses_f5562be4bffeYfbukflBvcLVVt",
+          "timed_out": false,
+          "status": 0
+        },
+        {
+          "turn_id": "review",
+          "index": 3,
+          "seconds": 1200.1,
+          "via": "gate",
+          "session": "ses_f5562be4bffeYfbukflBvcLVVt",
+          "timed_out": true,
+          "status": null
+        }
+      ],
+      "wall_seconds": 2365.3,
+      "timed_out": true,
+      "messages": 50,
+      "prompt_tokens": 2381231,
+      "output_tokens": 101713,
+      "cost_usd": 0,
+      "reasoning_parts": 46,
+      "reasoning_chars": 275112,
+      "would_fire": 0,
+      "fires": 0,
+      "by_kind": {},
+      "anchor_untruthful": 0,
+      "degenerate_topk": 0,
+      "replaced_chars": 0,
+      "substituted_chars": 0
+    }
+  ]
+}

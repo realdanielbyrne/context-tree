@@ -1,0 +1,228 @@
+{
+  "manifest": {
+    "run_id": "oc-flapsim-arms-void",
+    "experiment": "context-dedup / anchor arms on opencode (flapsim) \u2014 ABORTED, VOID",
+    "host": "opencode",
+    "model": "local/unsloth/Qwen3.8-27B-GGUF",
+    "commit": "5df9440bd367f2ee514482bb2635b170f68d5c41",
+    "scenario_prompt_version": "flapsim six-turn split (core/engine/tests/review/artifact/feature+docs)",
+    "design": "4 arms x 3 repeats, ONE problem \u2014 stopped early by the user",
+    "outcome": "VOID \u2014 validity condition failed: the treatment arm never fired, so all arms are identical by construction",
+    "validity_condition": "The intervention must fire often enough for arms to differ. It did not.",
+    "arms": [
+      "none",
+      "anchor",
+      "anchor-topk",
+      "placebo"
+    ]
+  },
+  "headline": {
+    "turns_of_agent_work": 44,
+    "would_fire_events": 1,
+    "actual_fires": 0,
+    "cells_started": 10,
+    "cells_with_any_fire": 0,
+    "turns_hitting_ceiling": 3,
+    "ceiling_seconds": 7200
+  },
+  "cells": [
+    {
+      "arm": "none",
+      "cell": "none-rep0",
+      "turns_logged": 6,
+      "turn_seconds": [
+        -17347.2,
+        1210.3,
+        4531.0,
+        5167.8,
+        1935.4,
+        4501.7
+      ],
+      "max_turn_seconds": 5167.8,
+      "timed_out_turns": 0,
+      "would_fire": 0,
+      "fires": 0,
+      "event_kinds": [],
+      "suppressed": [],
+      "transcript_messages": 58,
+      "length_stops": 0
+    },
+    {
+      "arm": "none",
+      "cell": "none-rep1",
+      "turns_logged": 6,
+      "turn_seconds": [
+        -12577.7,
+        1382.3,
+        3577.1,
+        4152.7,
+        1086.1,
+        2378.5
+      ],
+      "max_turn_seconds": 4152.7,
+      "timed_out_turns": 0,
+      "would_fire": 0,
+      "fires": 0,
+      "event_kinds": [],
+      "suppressed": [],
+      "transcript_messages": 53,
+      "length_stops": 0
+    },
+    {
+      "arm": "none",
+      "cell": "none-rep2",
+      "turns_logged": 1,
+      "turn_seconds": [
+        0.0
+      ],
+      "max_turn_seconds": 0.0,
+      "timed_out_turns": 0,
+      "would_fire": 0,
+      "fires": 0,
+      "event_kinds": [],
+      "suppressed": [],
+      "transcript_messages": null,
+      "length_stops": null
+    },
+    {
+      "arm": "anchor",
+      "cell": "anchor-rep0",
+      "turns_logged": 6,
+      "turn_seconds": [
+        -17365.7,
+        607.3,
+        5361.4,
+        6212.5,
+        1655.2,
+        3528.4
+      ],
+      "max_turn_seconds": 6212.5,
+      "timed_out_turns": 0,
+      "would_fire": 0,
+      "fires": 0,
+      "event_kinds": [],
+      "suppressed": [],
+      "transcript_messages": 64,
+      "length_stops": 0
+    },
+    {
+      "arm": "anchor",
+      "cell": "anchor-rep1",
+      "turns_logged": 5,
+      "turn_seconds": [
+        -11350.4,
+        486.4,
+        4447.5,
+        4825.9,
+        1590.6
+      ],
+      "max_turn_seconds": 4825.9,
+      "timed_out_turns": 0,
+      "would_fire": 0,
+      "fires": 0,
+      "event_kinds": [],
+      "suppressed": [],
+      "transcript_messages": null,
+      "length_stops": null
+    },
+    {
+      "arm": "anchor-topk",
+      "cell": "anchor-topk-rep0",
+      "turns_logged": 4,
+      "turn_seconds": [
+        -13392.7,
+        2392.1,
+        3799.1,
+        7200.1
+      ],
+      "max_turn_seconds": 7200.1,
+      "timed_out_turns": 1,
+      "would_fire": 1,
+      "fires": 0,
+      "event_kinds": [
+        "duplicate-unchanged"
+      ],
+      "suppressed": [
+        "topk-degenerate"
+      ],
+      "transcript_messages": 45,
+      "length_stops": 0
+    },
+    {
+      "arm": "anchor-topk",
+      "cell": "anchor-topk-rep1",
+      "turns_logged": 4,
+      "turn_seconds": [
+        -12080.1,
+        1899.5,
+        2979.6,
+        7200.1
+      ],
+      "max_turn_seconds": 7200.1,
+      "timed_out_turns": 1,
+      "would_fire": 0,
+      "fires": 0,
+      "event_kinds": [],
+      "suppressed": [],
+      "transcript_messages": 37,
+      "length_stops": 0
+    },
+    {
+      "arm": "anchor-topk",
+      "cell": "anchor-topk-rep2",
+      "turns_logged": 1,
+      "turn_seconds": [
+        0.0
+      ],
+      "max_turn_seconds": 0.0,
+      "timed_out_turns": 0,
+      "would_fire": 0,
+      "fires": 0,
+      "event_kinds": [],
+      "suppressed": [],
+      "transcript_messages": null,
+      "length_stops": null
+    },
+    {
+      "arm": "placebo",
+      "cell": "placebo-rep0",
+      "turns_logged": 6,
+      "turn_seconds": [
+        -18519.0,
+        719.9,
+        2132.5,
+        7033.9,
+        1431.7,
+        7200.1
+      ],
+      "max_turn_seconds": 7200.1,
+      "timed_out_turns": 1,
+      "would_fire": 0,
+      "fires": 0,
+      "event_kinds": [],
+      "suppressed": [],
+      "transcript_messages": 51,
+      "length_stops": 0
+    },
+    {
+      "arm": "placebo",
+      "cell": "placebo-rep1",
+      "turns_logged": 5,
+      "turn_seconds": [
+        -9753.3,
+        837.0,
+        1586.5,
+        5492.6,
+        1837.2
+      ],
+      "max_turn_seconds": 5492.6,
+      "timed_out_turns": 0,
+      "would_fire": 0,
+      "fires": 0,
+      "event_kinds": [],
+      "suppressed": [],
+      "transcript_messages": null,
+      "length_stops": null
+    }
+  ]
+}

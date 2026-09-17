@@ -1,0 +1,108 @@
+{
+  "manifest": {
+    "run_id": "anchor-live-verify-1789491639559",
+    "experiment": "context-dedup / anchor live PILOT (flapsim)",
+    "model": "unsloth/Qwen3.8-27B-GGUF",
+    "task": "flapsim (headless deterministic side-scroller, 6 modules, mid-run feature change + docs)",
+    "commit": "458e33ef489b55e1e2fd943dc83727b77605f645",
+    "date": "2026-09-15T17:09:09.374Z",
+    "params": {
+      "arms": [
+        "none"
+      ],
+      "repeats": 1,
+      "max_turns": 300,
+      "top_k": 3,
+      "min_chars": 200,
+      "passive": true
+    },
+    "hypothesis": "Returning an anchor (or an anchor plus the most relevant chunks of the resident copy) instead of content the model already has REDUCES cumulative prompt tokens and wall-clock time to completion, at no cost to task success. The saving compounds because a token not appended is never re-sent on any later turn (DV4 measured a 373x multiplier).",
+    "falsification": "FOLD IN only if an anchor arm cuts BOTH cumulative total_prompt_tokens AND wall_seconds against the no-intervention arm, at task score within noise. LEAVE OUT if either metric fails to improve, or if score drops. If the trigger fires too rarely to move either metric, the substrate cannot decide it and the run reports NOT RUNNABLE rather than a null.",
+    "caveats": [
+      "NO EVICTION and NO WINDOW CAP anywhere: the context is append-only, so every anchor is truthful by construction and residency is re-verified at fire time.",
+      "The retrieval query is the model's own request plus recent turns — never the pending question, which would be an oracle a deployed middleware could not have.",
+      "Single task = single problem (caveat C0). Repeats measure within-problem nondeterminism, not between-problem variance.",
+      "Grading is all-or-nothing, so FAIL cells are not distinguished by how close they came.",
+      "total_prompt_tokens is RAW and CUMULATIVE across turns — the right denominator for a cost claim, since every turn re-sends the prefix. The local server reports no cache counters, so this is billed volume, not cache-adjusted cost.",
+      "wall_seconds includes server-side prefix caching, which makes re-sent tokens nearly free in TIME though still billed. Tokens and time can therefore move in opposite directions; both are reported and neither substitutes for the other.",
+      "This host is shared with other work, so wall-clock carries ambient noise. Report the per-turn median alongside the total, and treat a time delta smaller than the between-repeat spread as no effect."
+    ]
+  },
+  "summary": [
+    {
+      "arm": "none",
+      "n": 1,
+      "pass_rate": 1,
+      "passes": 1,
+      "score_mean": 34,
+      "phase_mean": null,
+      "phase_furthest": 0,
+      "terminated": {
+        "turn-limit": 1
+      },
+      "peak_prompt_tokens_median": 95782,
+      "score_total": 40,
+      "turns_median": 301,
+      "would_fire_median": 28,
+      "fires_median": 0,
+      "tokens_median": 15450736,
+      "wall_seconds_median": 509.8,
+      "turn_ms_median": 1022,
+      "tokens_saved_median": 0,
+      "residency_false_total": 0,
+      "tokens_delta_pct": 0,
+      "wall_delta_pct": 0,
+      "score_delta": 0,
+      "verdict": "—"
+    }
+  ],
+  "gate": {
+    "would_fire_median": 28,
+    "anchorable_tokens_median": 12590,
+    "anchorable_share_of_prompt": 0.00081,
+    "decision": "GO — run the full arm comparison"
+  },
+  "retry_stats": {
+    "retries": 0,
+    "jittered": 0,
+    "fatal": 0
+  },
+  "errored_cells": 0,
+  "cells": [
+    {
+      "arm": "none",
+      "repeat": 0,
+      "passive": true,
+      "pass": true,
+      "capture_dir": "reports/metrics/context-dedup/captures/anchor-live-verify-1789491639559/none-rep0",
+      "capture_blobs": 183,
+      "score_correct": 34,
+      "score_total": 40,
+      "turns": 301,
+      "stop": "maxTurns",
+      "would_fire": 28,
+      "fires": 0,
+      "by_kind": {
+        "write-then-read": 4,
+        "duplicate-unchanged": 2,
+        "read-then-edited": 22
+      },
+      "residency_false_count": 0,
+      "anchorable_chars": 50357,
+      "substituted_chars": 0,
+      "replaced_chars": 0,
+      "reads": 49,
+      "rereads": 31,
+      "peak_history_tokens": 68561,
+      "total_prompt_tokens": 15450736,
+      "wall_seconds": 509.8,
+      "turn_ms_median": 1022,
+      "turn_ms_total": 508050,
+      "tokens_per_turn": 51502,
+      "terminated_by": "turn-limit",
+      "peak_prompt_tokens": 95782,
+      "window_headroom_pct": 63.5,
+      "error": null
+    }
+  ]
+}

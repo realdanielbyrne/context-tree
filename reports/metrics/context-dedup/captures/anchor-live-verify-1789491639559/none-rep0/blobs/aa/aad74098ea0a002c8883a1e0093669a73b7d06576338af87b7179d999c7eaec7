@@ -1,0 +1,128 @@
+"""Stdlib unittest suite for flapsim (physics, LCG, AABB, scoring, order)."""
+
+import unittest
+from units import G, FLAP_V, VY_MAX, FIELD_H, BIRD_H, BIRD_X, PIPE_W, GAP_H
+from physics import step_bird
+from world import lcg, spawn, scroll, cull
+from collide import rect_overlap, pipe_hit
+from engine import run
+
+
+class TestPhysics(unittest.TestCase):
+    def test_gravity_adds_and_flap_sets(self):
+        y, vy, alive = step_bird(560, 0, False)
+        self.assertEqual((y, vy, alive), (578, G, True))
+        y, vy, alive = step_bird(560, 100, True)
+        self.assertEqual((y, vy, alive), (533, FLAP_V, True))
+
+    def test_vy_max_clamps_gravity_only(self):
+        # gravity path clamps at VY_MAX
+        y, vy, alive = step_bird(100, VY_MAX + 50, False)
+        self.assertEqual(vy, VY_MAX)
+        # a flap is never clamped even if it would exceed the clamp
+        y, vy, alive = step_bird(100, VY_MAX, True)
+        self.assertEqual(vy, FLAP_V)
+
+    def test_ceiling_is_soft(self):
+        # a flap from near the top pushes y negative: clamped to 0, vy zeroed
+        y, vy, alive = step_bird(10, 0, True)
+        self.assertEqual((y, vy, alive), (0, 0, True))
+
+    def test_floor_kills_and_clamps_y(self):
+        y, vy, alive = step_bird(FIELD_H - 10, 100, False)
+        self.assertFalse(alive)
+        self.assertEqual(y, FIELD_H - BIRD_H)
+        self.assertNotEqual(vy, 0)  # floor does not zero vy
+
+
+class TestLcg(unittest.TestCase):
+    def test_lcg_formula(self):
+        self.assertEqual(lcg(7), (1103515245 * 7 + 12345) % 2147483648)
+
+    def test_spawn_advances_once_and_gap_range(self):
+        s, pipe = spawn(0, 7)
+        self.assertEqual(s, lcg(7))
+        self.assertTrue(40 <= pipe["gap_top"] < 120)
+        self.assertEqual(pipe["x"], 2000)
+        self.assertFalse(pipe["passed"])
+
+    def test_non_spawn_tick_is_noop(self):
+        s, pipe = spawn(1, 7)
+        self.assertIsNone(pipe)
+        self.assertEqual(s, 7)
+
+
+class TestAabb(unittest.TestCase):
+    def test_touching_edges_do_not_overlap(self):
+        self.assertFalse(rect_overlap(0, 10, 10, 20))
+        self.assertFalse(rect_overlap(10, 20, 0, 10))
+
+    def test_overlap_and_disjoint(self):
+        self.assertTrue(rect_overlap(0, 10, 5, 15))
+        self.assertFalse(rect_overlap(0, 10, 20, 30))
+
+    def test_pipe_hit_gap_boundaries(self):
+        pipe = {"x": BIRD_X, "gap_top": 400, "passed": False}
+        # bottom exactly at gap bottom -> inside the gap, survives
+        self.assertFalse(pipe_hit(400 + GAP_H - BIRD_H, pipe))
+        # one centi-unit below the gap bottom -> hit
+        self.assertTrue(pipe_hit(400 + GAP_H - BIRD_H + 1, pipe))
+        # top exactly at gap top -> inside; one above -> hit
+        self.assertFalse(pipe_hit(400, pipe))
+        self.assertTrue(pipe_hit(399, pipe))
+
+    def test_pipe_right_edge_at_bird_x_no_overlap(self):
+        pipe = {"x": BIRD_X - PIPE_W, "gap_top": 0, "passed": False}
+        self.assertFalse(pipe_hit(560, pipe))
+
+
+class TestScoring(unittest.TestCase):
+    def test_clean_glide_bonus(self):
+        # seed 7, flaps 0010: bird passes pipes with |vy| <= GLIDE_VY often
+        st, _ = run(7, 200, "0010")
+        self.assertEqual(st["score"], 8)
+
+    def test_pipe_scored_once(self):
+        # a long run must never double-count: score stays bounded and alive
+        st, _ = run(3, 200, "0001")
+        self.assertEqual(st["score"], 8)
+        self.assertTrue(st["alive"])
+
+
+class TestTickOrder(unittest.TestCase):
+    def test_ticks_run_includes_fatal_tick(self):
+        st, _ = run(7, 120, "01")
+        self.assertFalse(st["alive"])
+        self.assertGreaterEqual(st["ticks_run"], 1)
+        self.assertLessEqual(st["ticks_run"], 120)
+
+    def test_floor_kill_scores_nothing_that_tick(self):
+        # seed 2, no flaps: bird falls to the floor; score must stay 0
+        st, _ = run(2, 90, "0")
+        self.assertFalse(st["alive"])
+        self.assertEqual(st["score"], 0)
+
+    def test_scroll_before_collision(self):
+        # a pipe spawned at t=0 reaches the bird only after scrolling;
+        # with flaps "1" (always flap) seed 11 dies within 60 ticks
+        st, _ = run(11, 60, "1")
+        self.assertFalse(st["alive"])
+        self.assertEqual(st["score"], 0)
+
+    def test_cull_after_scoring(self):
+        # culling before scoring would drop pipes at the exact boundary;
+        # a full 200-tick run still scores exactly 8 for seed 7
+        st, _ = run(7, 200, "0010")
+        self.assertEqual(st["score"], 8)
+
+    def test_scroll_and_cull_mechanics(self):
+        pipes = [{"x": 100, "gap_top": 40, "passed": False}]
+        scroll(pipes)
+        self.assertEqual(pipes[0]["x"], 60)
+        self.assertEqual(cull([{"x": -PIPE_W, "gap_top": 0, "passed": True}]), [])
+        self.assertEqual(len(cull([{"x": -PIPE_W + 1, "gap_top": 0,
+                                    "passed": True}])), 1)
+
+
+if __name__ == "__main__":
+    unittest.main()

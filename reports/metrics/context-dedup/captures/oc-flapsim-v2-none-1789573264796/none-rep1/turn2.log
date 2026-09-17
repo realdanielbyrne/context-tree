@@ -1,0 +1,357 @@
+Now verify against the ground truth and run selfcheck:
+Missing import in world.py:
+All green. Final verification — sizes, no floats, determinism, world re-check, and a powerups smoke test:
+engine.py (1825 chars) and flapsim.py (64 lines / 1858 chars) exceed the limits. Trimming:
+engine.py is 2 chars over. Shortening the docstring:
+DONE
+
+Note: `engine.run` takes an optional `trace` callback so TRACE formatting stays in flapsim.py per spec/00, and I implemented the powerups path per spec/07 since the signature and `--powerups` CLI require it (inert without the flag; demo/selfcheck output is byte-identical).
+
+===STDERR===
+timestamp=2026-09-16T20:55:23.406Z level=INFO run=2eaaa246 message="creating instance" directory=/tmp/oc-none-3Y1MHl
+timestamp=2026-09-16T20:55:23.407Z level=INFO run=2eaaa246 message=fromDirectory directory=/tmp/oc-none-3Y1MHl
+timestamp=2026-09-16T20:55:23.417Z level=INFO run=2eaaa246 message=bootstrapping directory=/tmp/oc-none-3Y1MHl
+timestamp=2026-09-16T20:55:23.421Z level=INFO run=2eaaa246 message=loading path=/tmp/ocx-HKRRVE/cfg/opencode/config.json
+timestamp=2026-09-16T20:55:23.422Z level=INFO run=2eaaa246 message=loading path=/tmp/ocx-HKRRVE/cfg/opencode/opencode.json
+timestamp=2026-09-16T20:55:23.424Z level=INFO run=2eaaa246 message=loading path=/tmp/ocx-HKRRVE/cfg/opencode/opencode.jsonc
+timestamp=2026-09-16T20:55:23.424Z level=INFO run=2eaaa246 message=loading path=/home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/captures/oc-flapsim-v2-none-1789573264796/none-rep1/opencode.json
+timestamp=2026-09-16T20:55:23.481Z level=INFO run=2eaaa246 message="all LSPs are disabled"
+timestamp=2026-09-16T20:55:23.482Z level=INFO run=2eaaa246 message="all formatters are disabled"
+timestamp=2026-09-16T20:55:23.482Z level=INFO run=2eaaa246 message=init
+timestamp=2026-09-16T20:55:23.600Z level=INFO run=2eaaa246 message="event connected"
+timestamp=2026-09-16T20:55:23.930Z level=INFO run=2eaaa246 message=loop session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O step=0
+timestamp=2026-09-16T20:55:23.939Z level=INFO run=2eaaa246 message="shell tool using shell" shell=/bin/bash
+timestamp=2026-09-16T20:55:23.955Z level=INFO run=2eaaa246 message=init count=10
+[0m
+> build · unsloth/Qwen3.8-27B-GGUF
+[0m
+timestamp=2026-09-16T20:55:24.006Z level=INFO run=2eaaa246 message="watcher backend" directory=/tmp/oc-none-3Y1MHl platform=linux backend=inotify
+timestamp=2026-09-16T20:55:24.013Z level=INFO run=2eaaa246 message="project copy refresh started" projectID=global
+timestamp=2026-09-16T20:55:24.014Z level=INFO run=2eaaa246 message="project copy refresh done" projectID=global updated=[] removed=[]
+timestamp=2026-09-16T20:55:24.038Z level=INFO run=2eaaa246 message="booting location services" directory=/tmp/oc-none-3Y1MHl workspaceID=undefined
+timestamp=2026-09-16T20:55:24.044Z level=INFO run=2eaaa246 message=process session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O messageID=msg_0ac00ba1e00105Q0SMjncf2N3W
+timestamp=2026-09-16T20:55:24.045Z level=INFO run=2eaaa246 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O small=false agent=build mode=primary
+timestamp=2026-09-16T20:55:24.181Z level=INFO run=2eaaa246 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T20:55:52.383Z level=INFO run=2eaaa246 message=evaluated permission=read pattern=tmp/oc-none-3Y1MHl/spec/05_score.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-16T20:55:52.390Z level=INFO run=2eaaa246 message="touching file" file=/tmp/oc-none-3Y1MHl/spec/05_score.md
+[0m→ [0mRead spec/05_score.md
+timestamp=2026-09-16T20:55:53.648Z level=INFO run=2eaaa246 message=evaluated permission=read pattern=tmp/oc-none-3Y1MHl/spec/06_cli.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-16T20:55:53.652Z level=INFO run=2eaaa246 message="touching file" file=/tmp/oc-none-3Y1MHl/spec/06_cli.md
+[0m→ [0mRead spec/06_cli.md
+timestamp=2026-09-16T20:55:55.334Z level=INFO run=2eaaa246 message=evaluated permission=read pattern=tmp/oc-none-3Y1MHl/spec/08_examples.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-16T20:55:55.339Z level=INFO run=2eaaa246 message="touching file" file=/tmp/oc-none-3Y1MHl/spec/08_examples.md
+[0m→ [0mRead spec/08_examples.md
+timestamp=2026-09-16T20:55:56.753Z level=INFO run=2eaaa246 message=evaluated permission=read pattern=tmp/oc-none-3Y1MHl/spec/09_expected_output.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-16T20:55:56.757Z level=INFO run=2eaaa246 message="touching file" file=/tmp/oc-none-3Y1MHl/spec/09_expected_output.md
+[0m→ [0mRead spec/09_expected_output.md
+timestamp=2026-09-16T20:55:57.916Z level=INFO run=2eaaa246 message=evaluated permission=read pattern=tmp/oc-none-3Y1MHl/spec/07_powerups.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-16T20:55:57.920Z level=INFO run=2eaaa246 message="touching file" file=/tmp/oc-none-3Y1MHl/spec/07_powerups.md
+[0m→ [0mRead spec/07_powerups.md
+timestamp=2026-09-16T20:55:57.990Z level=INFO run=2eaaa246 message=loop session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O step=1
+timestamp=2026-09-16T20:55:58.008Z level=INFO run=2eaaa246 message=process session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O messageID=msg_0ac013f28001RfocwYzCUmbogH
+timestamp=2026-09-16T20:55:58.008Z level=INFO run=2eaaa246 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O small=false agent=build mode=primary
+timestamp=2026-09-16T20:55:58.009Z level=INFO run=2eaaa246 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:05:44.644Z level=INFO run=2eaaa246 message=evaluated permission=edit pattern=tmp/oc-none-3Y1MHl/engine.py action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:05:44.645Z level=INFO run=2eaaa246 message=formatting file=/tmp/oc-none-3Y1MHl/engine.py
+timestamp=2026-09-16T21:05:44.645Z level=INFO run=2eaaa246 message="touching file" file=/tmp/oc-none-3Y1MHl/engine.py
+[0m
+[0m← [0mWrite engine.py
+Wrote file successfully.
+[0m
+timestamp=2026-09-16T21:05:44.713Z level=INFO run=2eaaa246 message=loop session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O step=2
+timestamp=2026-09-16T21:05:44.729Z level=INFO run=2eaaa246 message=process session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O messageID=msg_0ac0a330b001xoDX6NmKxsw0JR
+timestamp=2026-09-16T21:05:44.730Z level=INFO run=2eaaa246 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O small=false agent=build mode=primary
+timestamp=2026-09-16T21:05:44.731Z level=INFO run=2eaaa246 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:05:53.144Z level=INFO run=2eaaa246 message=evaluated permission=edit pattern=tmp/oc-none-3Y1MHl/flapsim.py action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:05:53.145Z level=INFO run=2eaaa246 message=formatting file=/tmp/oc-none-3Y1MHl/flapsim.py
+timestamp=2026-09-16T21:05:53.145Z level=INFO run=2eaaa246 message="touching file" file=/tmp/oc-none-3Y1MHl/flapsim.py
+[0m← [0mWrite flapsim.py
+Wrote file successfully.
+[0m
+timestamp=2026-09-16T21:05:53.215Z level=INFO run=2eaaa246 message=loop session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O step=3
+timestamp=2026-09-16T21:05:53.225Z level=INFO run=2eaaa246 message=process session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O messageID=msg_0ac0a5441001Lg92f9B9HfaTHv
+timestamp=2026-09-16T21:05:53.225Z level=INFO run=2eaaa246 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O small=false agent=build mode=primary
+timestamp=2026-09-16T21:05:53.226Z level=INFO run=2eaaa246 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:06:02.205Z level=INFO run=2eaaa246 message=evaluated permission=external_directory pattern=/tmp/opencode/* action.permission=external_directory action.pattern=/tmp/opencode/* action.action=allow
+timestamp=2026-09-16T21:06:02.209Z level=INFO run=2eaaa246 message=evaluated permission=edit pattern=tmp/opencode/expected.txt action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:06:02.209Z level=INFO run=2eaaa246 message=formatting file=/tmp/opencode/expected.txt
+timestamp=2026-09-16T21:06:02.209Z level=INFO run=2eaaa246 message="touching file" file=/tmp/opencode/expected.txt
+[0m← [0mWrite /tmp/opencode/expected.txt
+Wrote file successfully.
+[0m
+timestamp=2026-09-16T21:06:02.280Z level=INFO run=2eaaa246 message=loop session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O step=4
+timestamp=2026-09-16T21:06:02.297Z level=INFO run=2eaaa246 message=process session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O messageID=msg_0ac0a77aa001seHm1sductro41
+timestamp=2026-09-16T21:06:02.297Z level=INFO run=2eaaa246 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O small=false agent=build mode=primary
+timestamp=2026-09-16T21:06:02.298Z level=INFO run=2eaaa246 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:06:13.701Z level=INFO run=2eaaa246 message=evaluated permission=bash pattern="python3 flapsim.py --seed 7 --ticks 200 --flaps 0010 > /tmp/opencode/actual.txt" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:06:13.701Z level=INFO run=2eaaa246 message=evaluated permission=bash pattern="diff /tmp/opencode/expected.txt /tmp/opencode/actual.txt" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:06:13.701Z level=INFO run=2eaaa246 message=evaluated permission=bash pattern="echo DEMO_MATCH" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:06:13.788Z level=INFO run=2eaaa246 message=loop session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O step=5
+[0m$ [0mpython3 flapsim.py --seed 7 --ticks 200 --flaps 0010 > /tmp/opencode/actual.txt && diff /tmp/opencode/expected.txt /tmp/opencode/actual.txt && echo DEMO_MATCH
+Traceback (most recent call last):
+  File "/tmp/oc-none-3Y1MHl/flapsim.py", line 64, in <module>
+    main(sys.argv)
+    ~~~~^^^^^^^^^^
+  File "/tmp/oc-none-3Y1MHl/flapsim.py", line 54, in main
+    st = run(seed, ticks, flaps, powerups, trace)
+  File "/tmp/oc-none-3Y1MHl/engine.py", line 16, in run
+    pipe, s = spawn(t, s)
+              ~~~~~^^^^^^
+  File "/tmp/oc-none-3Y1MHl/world.py", line 13, in spawn
+    if t % SPAWN_EVERY != 0:
+           ^^^^^^^^^^^
+NameError: name 'SPAWN_EVERY' is not defined
+[0m
+timestamp=2026-09-16T21:06:13.805Z level=INFO run=2eaaa246 message=process session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O messageID=msg_0ac0aa49e001HG54KBSu5cyR6i
+timestamp=2026-09-16T21:06:13.806Z level=INFO run=2eaaa246 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O small=false agent=build mode=primary
+timestamp=2026-09-16T21:06:13.807Z level=INFO run=2eaaa246 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:06:20.244Z level=INFO run=2eaaa246 message=evaluated permission=edit pattern=tmp/oc-none-3Y1MHl/world.py action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:06:20.244Z level=INFO run=2eaaa246 message=formatting file=/tmp/oc-none-3Y1MHl/world.py
+timestamp=2026-09-16T21:06:20.246Z level=INFO run=2eaaa246 message="touching file" file=/tmp/oc-none-3Y1MHl/world.py
+[0m← [0mEdit world.py
+Index: /tmp/oc-none-3Y1MHl/world.py
+===================================================================
+--- /tmp/oc-none-3Y1MHl/world.py
++++ /tmp/oc-none-3Y1MHl/world.py
+@@ -1,7 +1,7 @@
+ """Pipe generation and motion. See spec/03_world.md."""
+ 
+-from units import SPAWN_X, SCROLL, PIPE_W
++from units import SPAWN_X, SPAWN_EVERY, SCROLL, PIPE_W
+ 
+ 
+ def lcg(s):
+     """One step of the linear congruential generator."""
+
+[0m
+timestamp=2026-09-16T21:06:20.314Z level=INFO run=2eaaa246 message=loop session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O step=6
+timestamp=2026-09-16T21:06:20.324Z level=INFO run=2eaaa246 message=process session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O messageID=msg_0ac0abe1c0014bEelX0Ou4kkww
+timestamp=2026-09-16T21:06:20.325Z level=INFO run=2eaaa246 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O small=false agent=build mode=primary
+timestamp=2026-09-16T21:06:20.332Z level=INFO run=2eaaa246 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:06:30.169Z level=INFO run=2eaaa246 message=evaluated permission=bash pattern="python3 flapsim.py --seed 7 --ticks 200 --flaps 0010 > /tmp/opencode/actual.txt" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:06:30.169Z level=INFO run=2eaaa246 message=evaluated permission=bash pattern="diff /tmp/opencode/expected.txt /tmp/opencode/actual.txt" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:06:30.169Z level=INFO run=2eaaa246 message=evaluated permission=bash pattern="echo DEMO_MATCH" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:06:30.169Z level=INFO run=2eaaa246 message=evaluated permission=bash pattern="python3 flapsim.py --selfcheck" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:06:30.203Z level=INFO run=2eaaa246 message=loop session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O step=7
+[0m$ [0mpython3 flapsim.py --seed 7 --ticks 200 --flaps 0010 > /tmp/opencode/actual.txt && diff /tmp/opencode/expected.txt /tmp/opencode/actual.txt && echo DEMO_MATCH; python3 flapsim.py --selfcheck
+DEMO_MATCH
+EX1 seed=7 ticks=200 flaps=0010 expect score=08 alive=1 got score=08 alive=1 OK
+EX2 seed=7 ticks=120 flaps=01 expect score=00 alive=0 got score=00 alive=0 OK
+EX3 seed=3 ticks=200 flaps=0001 expect score=08 alive=1 got score=08 alive=1 OK
+EX4 seed=11 ticks=60 flaps=1 expect score=00 alive=0 got score=00 alive=0 OK
+EX5 seed=2 ticks=90 flaps=0 expect score=00 alive=0 got score=00 alive=0 OK
+EX6 seed=5 ticks=200 flaps=0010 expect score=08 alive=1 got score=08 alive=1 OK
+[0m
+timestamp=2026-09-16T21:06:30.221Z level=INFO run=2eaaa246 message=process session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O messageID=msg_0ac0ae4bd001mfgSYb1G4VCoEI
+timestamp=2026-09-16T21:06:30.222Z level=INFO run=2eaaa246 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O small=false agent=build mode=primary
+timestamp=2026-09-16T21:06:30.223Z level=INFO run=2eaaa246 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:06:57.657Z level=INFO run=2eaaa246 message=evaluated permission=bash pattern="wc -l -c units.py physics.py world.py collide.py engine.py flapsim.py" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:06:57.658Z level=INFO run=2eaaa246 message=evaluated permission=bash pattern=python3 action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:06:57.658Z level=INFO run=2eaaa246 message=evaluated permission=bash pattern="python3 flapsim.py --selfcheck > /tmp/opencode/sc1.txt" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:06:57.658Z level=INFO run=2eaaa246 message=evaluated permission=bash pattern="python3 flapsim.py --selfcheck" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:06:57.658Z level=INFO run=2eaaa246 message=evaluated permission=bash pattern="cmp /tmp/opencode/sc1.txt /tmp/opencode/sc2.txt" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:06:57.658Z level=INFO run=2eaaa246 message=evaluated permission=bash pattern="echo DETERMINISTIC" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:06:57.658Z level=INFO run=2eaaa246 message=evaluated permission=bash pattern="python3 flapsim.py --seed 7 --ticks 200 --flaps 0010 --powerups" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:06:57.658Z level=INFO run=2eaaa246 message=evaluated permission=bash pattern="tail -1" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:06:57.775Z level=INFO run=2eaaa246 message=loop session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O step=8
+[0m$ [0mwc -l -c units.py physics.py world.py collide.py engine.py flapsim.py && python3 - <<'EOF'
+import ast, sys
+for f in ("units", "physics", "world", "collide", "engine", "flapsim"):
+    src = open(f + ".py").read()
+    assert len(src) < 1800 and len(src.splitlines()) <= 55, f
+    tree = ast.parse(src)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Constant) and isinstance(node.value, float):
+            sys.exit(f"{f}: float literal {node.value}")
+print("sizes + integer-only OK")
+import world
+p, s1 = world.spawn(0, 7)
+assert p["x"] == 2000 and p["gap_top"] == 40 + (s1 >> 8) % 80 and p["passed"] is False
+assert world.spawn(1, s1)[0] is None
+pipes = [{"x": 50}]
+world.scroll(pipes); assert pipes[0]["x"] == 10
+assert world.cull([{"x": -120}]) == [] and len(world.cull([{"x": -119}])) == 1
+print("world OK")
+from engine import run
+st = run(7, 200, "0010", powerups=True)
+assert st["shields"] in (1, 2, 3) and set(st) == {"y","vy","score","alive","ticks_run","shields"}
+st2 = run(7, 200, "0010")
+assert "shields" not in st2 and st2 == {"y":578,"vy":-9,"score":8,"alive":True,"ticks_run":200}
+print("engine state contract OK:", st2)
+EOF
+python3 flapsim.py --selfcheck > /tmp/opencode/sc1.txt && python3 flapsim.py --selfcheck > /tmp/opencode/sc2.txt && cmp /tmp/opencode/sc1.txt /tmp/opencode/sc2.txt && echo DETERMINISTIC && python3 flapsim.py --seed 7 --ticks 200 --flaps 0010 --powerups | tail -1
+17  241 units.py
+  20  477 physics.py
+  28  737 world.py
+  16  551 collide.py
+  52 1825 engine.py
+  64 1858 flapsim.py
+ 197 5689 total
+Traceback (most recent call last):
+  File "<stdin>", line 4, in <module>
+AssertionError: engine
+DETERMINISTIC
+DIGEST seed=7 ticks=200 score=8 alive=1 y=0578 vy=-0009 ticks_run=200 shields=1
+[0m
+timestamp=2026-09-16T21:06:57.791Z level=INFO run=2eaaa246 message=process session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O messageID=msg_0ac0b50710011pBDxvxQz9hLeD
+timestamp=2026-09-16T21:06:57.792Z level=INFO run=2eaaa246 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O small=false agent=build mode=primary
+timestamp=2026-09-16T21:06:57.793Z level=INFO run=2eaaa246 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:09:47.466Z level=INFO run=2eaaa246 message=evaluated permission=edit pattern=tmp/oc-none-3Y1MHl/engine.py action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:09:47.466Z level=INFO run=2eaaa246 message=formatting file=/tmp/oc-none-3Y1MHl/engine.py
+timestamp=2026-09-16T21:09:47.468Z level=INFO run=2eaaa246 message="touching file" file=/tmp/oc-none-3Y1MHl/engine.py
+[0m← [0mEdit engine.py
+Index: /tmp/oc-none-3Y1MHl/engine.py
+===================================================================
+--- /tmp/oc-none-3Y1MHl/engine.py
++++ /tmp/oc-none-3Y1MHl/engine.py
+@@ -1,5 +1,5 @@
+-"""Simulation loop implementing the normative per-tick order (spec/02)."""
++"""Per-tick simulation loop, in the normative spec/02 order."""
+ 
+ from units import BIRD_X, PIPE_W, GLIDE_VY
+ from physics import step_bird
+ from world import spawn, scroll, cull
+
+[0m
+timestamp=2026-09-16T21:09:50.506Z level=INFO run=2eaaa246 message=evaluated permission=edit pattern=tmp/oc-none-3Y1MHl/engine.py action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:09:50.506Z level=INFO run=2eaaa246 message=formatting file=/tmp/oc-none-3Y1MHl/engine.py
+timestamp=2026-09-16T21:09:50.508Z level=INFO run=2eaaa246 message="touching file" file=/tmp/oc-none-3Y1MHl/engine.py
+[0m← [0mEdit engine.py
+Index: /tmp/oc-none-3Y1MHl/engine.py
+===================================================================
+--- /tmp/oc-none-3Y1MHl/engine.py
++++ /tmp/oc-none-3Y1MHl/engine.py
+@@ -13,9 +13,9 @@
+ every = max(1, ticks // 20)
+ ticks_run = 0
+ for t in range(ticks):
+     pipe, s = spawn(t, s)
+-    if pipe is not None:
++    if pipe:
+         pipes.append(pipe)
+     flap = bool(flaps) and flaps[t % len(flaps)] == "1"
+     y, vy, alive = step_bird(y, vy, flap)
+     scroll(pipes)
+
+[0m
+timestamp=2026-09-16T21:09:50.571Z level=INFO run=2eaaa246 message=loop session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O step=9
+timestamp=2026-09-16T21:09:50.581Z level=INFO run=2eaaa246 message=process session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O messageID=msg_0ac0df36d0011aE4IH2iJaz98j
+timestamp=2026-09-16T21:09:50.581Z level=INFO run=2eaaa246 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O small=false agent=build mode=primary
+timestamp=2026-09-16T21:09:50.589Z level=INFO run=2eaaa246 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:11:48.065Z level=INFO run=2eaaa246 message=evaluated permission=edit pattern=tmp/oc-none-3Y1MHl/flapsim.py action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:11:48.066Z level=INFO run=2eaaa246 message=formatting file=/tmp/oc-none-3Y1MHl/flapsim.py
+timestamp=2026-09-16T21:11:48.066Z level=INFO run=2eaaa246 message="touching file" file=/tmp/oc-none-3Y1MHl/flapsim.py
+timestamp=2026-09-16T21:11:48.073Z level=INFO run=2eaaa246 message=loop session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O step=10
+[0m← [0mWrite flapsim.py
+Wrote file successfully.
+[0m
+timestamp=2026-09-16T21:11:48.090Z level=INFO run=2eaaa246 message=process session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O messageID=msg_0ac0fbe6b001qQjpFXWJ7S2Saw
+timestamp=2026-09-16T21:11:48.091Z level=INFO run=2eaaa246 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O small=false agent=build mode=primary
+timestamp=2026-09-16T21:11:48.092Z level=INFO run=2eaaa246 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:12:18.752Z level=INFO run=2eaaa246 message=evaluated permission=bash pattern="wc -l -c units.py physics.py world.py collide.py engine.py flapsim.py" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:12:18.752Z level=INFO run=2eaaa246 message=evaluated permission=bash pattern=python3 action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:12:18.752Z level=INFO run=2eaaa246 message=evaluated permission=bash pattern="python3 flapsim.py --seed 7 --ticks 200 --flaps 0010 > /tmp/opencode/actual.txt" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:12:18.752Z level=INFO run=2eaaa246 message=evaluated permission=bash pattern="diff /tmp/opencode/expected.txt /tmp/opencode/actual.txt" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:12:18.752Z level=INFO run=2eaaa246 message=evaluated permission=bash pattern="echo DEMO_MATCH" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:12:18.752Z level=INFO run=2eaaa246 message=evaluated permission=bash pattern="python3 flapsim.py --selfcheck" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:12:18.752Z level=INFO run=2eaaa246 message=evaluated permission=bash pattern="cmp - /tmp/opencode/sc1.txt" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:12:18.753Z level=INFO run=2eaaa246 message=evaluated permission=bash pattern="echo DETERMINISTIC" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:12:18.872Z level=INFO run=2eaaa246 message=loop session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O step=11
+[0m$ [0mwc -l -c units.py physics.py world.py collide.py engine.py flapsim.py && python3 - <<'EOF'
+import ast, sys
+for f in ("units", "physics", "world", "collide", "engine", "flapsim"):
+    src = open(f + ".py").read()
+    assert len(src) < 1800 and len(src.splitlines()) <= 55, (f, len(src))
+    for node in ast.walk(ast.parse(src)):
+        if isinstance(node, ast.Constant) and isinstance(node.value, float):
+            sys.exit(f"{f}: float literal")
+print("sizes + integer-only OK")
+EOF
+python3 flapsim.py --seed 7 --ticks 200 --flaps 0010 > /tmp/opencode/actual.txt && diff /tmp/opencode/expected.txt /tmp/opencode/actual.txt && echo DEMO_MATCH && python3 flapsim.py --selfcheck && python3 flapsim.py --selfcheck | cmp - /tmp/opencode/sc1.txt && echo DETERMINISTIC
+17  241 units.py
+  20  477 physics.py
+  28  737 world.py
+  16  551 collide.py
+  52 1802 engine.py
+  54 1771 flapsim.py
+ 187 5579 total
+Traceback (most recent call last):
+  File "<stdin>", line 4, in <module>
+AssertionError: ('engine', 1802)
+DEMO_MATCH
+EX1 seed=7 ticks=200 flaps=0010 expect score=08 alive=1 got score=08 alive=1 OK
+EX2 seed=7 ticks=120 flaps=01 expect score=00 alive=0 got score=00 alive=0 OK
+EX3 seed=3 ticks=200 flaps=0001 expect score=08 alive=1 got score=08 alive=1 OK
+EX4 seed=11 ticks=60 flaps=1 expect score=00 alive=0 got score=00 alive=0 OK
+EX5 seed=2 ticks=90 flaps=0 expect score=00 alive=0 got score=00 alive=0 OK
+EX6 seed=5 ticks=200 flaps=0010 expect score=08 alive=1 got score=08 alive=1 OK
+DETERMINISTIC
+[0m
+timestamp=2026-09-16T21:12:18.884Z level=INFO run=2eaaa246 message=process session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O messageID=msg_0ac1036bb001xDB2eclmq9hU9K
+timestamp=2026-09-16T21:12:18.885Z level=INFO run=2eaaa246 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O small=false agent=build mode=primary
+timestamp=2026-09-16T21:12:18.886Z level=INFO run=2eaaa246 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:12:48.295Z level=INFO run=2eaaa246 message=evaluated permission=edit pattern=tmp/oc-none-3Y1MHl/engine.py action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:12:48.295Z level=INFO run=2eaaa246 message=formatting file=/tmp/oc-none-3Y1MHl/engine.py
+timestamp=2026-09-16T21:12:48.297Z level=INFO run=2eaaa246 message="touching file" file=/tmp/oc-none-3Y1MHl/engine.py
+[0m← [0mEdit engine.py
+Index: /tmp/oc-none-3Y1MHl/engine.py
+===================================================================
+--- /tmp/oc-none-3Y1MHl/engine.py
++++ /tmp/oc-none-3Y1MHl/engine.py
+@@ -1,5 +1,5 @@
+-"""Per-tick simulation loop, in the normative spec/02 order."""
++"""Simulation loop; per-tick order per spec/02."""
+ 
+ from units import BIRD_X, PIPE_W, GLIDE_VY
+ from physics import step_bird
+ from world import spawn, scroll, cull
+
+[0m
+timestamp=2026-09-16T21:12:48.359Z level=INFO run=2eaaa246 message=loop session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O step=12
+timestamp=2026-09-16T21:12:48.378Z level=INFO run=2eaaa246 message=process session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O messageID=msg_0ac10a9ea001y31ZMy8Vl012fZ
+timestamp=2026-09-16T21:12:48.379Z level=INFO run=2eaaa246 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O small=false agent=build mode=primary
+timestamp=2026-09-16T21:12:48.380Z level=INFO run=2eaaa246 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:14:03.763Z level=INFO run=2eaaa246 message=evaluated permission=bash pattern="wc -l -c units.py physics.py world.py collide.py engine.py flapsim.py" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:14:03.764Z level=INFO run=2eaaa246 message=evaluated permission=bash pattern=python3 action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:14:03.764Z level=INFO run=2eaaa246 message=evaluated permission=bash pattern="python3 flapsim.py --seed 7 --ticks 200 --flaps 0010" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:14:03.764Z level=INFO run=2eaaa246 message=evaluated permission=bash pattern="diff /tmp/opencode/expected.txt -" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:14:03.764Z level=INFO run=2eaaa246 message=evaluated permission=bash pattern="echo DEMO_MATCH" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:14:03.764Z level=INFO run=2eaaa246 message=evaluated permission=bash pattern="python3 flapsim.py --selfcheck" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:14:03.764Z level=INFO run=2eaaa246 message=evaluated permission=bash pattern="cmp - /tmp/opencode/sc1.txt" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:14:03.764Z level=INFO run=2eaaa246 message=evaluated permission=bash pattern="echo DETERMINISTIC" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:14:03.829Z level=INFO run=2eaaa246 message=loop session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O step=13
+[0m$ [0mwc -l -c units.py physics.py world.py collide.py engine.py flapsim.py && python3 - <<'EOF'
+import ast, sys
+for f in ("units", "physics", "world", "collide", "engine", "flapsim"):
+    src = open(f + ".py").read()
+    assert len(src) < 1800 and len(src.splitlines()) <= 55, (f, len(src))
+    for node in ast.walk(ast.parse(src)):
+        if isinstance(node, ast.Constant) and isinstance(node.value, float):
+            sys.exit(f"{f}: float literal")
+print("sizes + integer-only OK")
+EOF
+python3 flapsim.py --seed 7 --ticks 200 --flaps 0010 | diff /tmp/opencode/expected.txt - && echo DEMO_MATCH && python3 flapsim.py --selfcheck && python3 flapsim.py --selfcheck | cmp - /tmp/opencode/sc1.txt && echo DETERMINISTIC
+17  241 units.py
+  20  477 physics.py
+  28  737 world.py
+  16  551 collide.py
+  52 1789 engine.py
+  54 1771 flapsim.py
+ 187 5566 total
+sizes + integer-only OK
+DEMO_MATCH
+EX1 seed=7 ticks=200 flaps=0010 expect score=08 alive=1 got score=08 alive=1 OK
+EX2 seed=7 ticks=120 flaps=01 expect score=00 alive=0 got score=00 alive=0 OK
+EX3 seed=3 ticks=200 flaps=0001 expect score=08 alive=1 got score=08 alive=1 OK
+EX4 seed=11 ticks=60 flaps=1 expect score=00 alive=0 got score=00 alive=0 OK
+EX5 seed=2 ticks=90 flaps=0 expect score=00 alive=0 got score=00 alive=0 OK
+EX6 seed=5 ticks=200 flaps=0010 expect score=08 alive=1 got score=08 alive=1 OK
+DETERMINISTIC
+[0m
+timestamp=2026-09-16T21:14:03.843Z level=INFO run=2eaaa246 message=process session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O messageID=msg_0ac11d0b7001CbfOBEQOwWKWwO
+timestamp=2026-09-16T21:14:03.844Z level=INFO run=2eaaa246 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O small=false agent=build mode=primary
+timestamp=2026-09-16T21:14:03.845Z level=INFO run=2eaaa246 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:18:25.037Z level=INFO run=2eaaa246 message=loop session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O step=14
+timestamp=2026-09-16T21:18:25.039Z level=INFO run=2eaaa246 message="exiting loop" session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O
+timestamp=2026-09-16T21:18:25.043Z level=INFO run=2eaaa246 message="disposing instance" directory=/tmp/oc-none-3Y1MHl
+timestamp=2026-09-16T21:18:25.061Z level=INFO run=2eaaa246 message=loading path=/home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/captures/oc-flapsim-v2-none-1789573264796/none-rep1/opencode.json

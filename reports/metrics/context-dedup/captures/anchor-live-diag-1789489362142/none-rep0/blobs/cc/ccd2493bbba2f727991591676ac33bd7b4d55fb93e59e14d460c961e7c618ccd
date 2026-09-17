@@ -1,0 +1,228 @@
+"""HELD-OUT grading suite (never shown to the agent)."""
+
+import contextlib
+import io
+import os
+import tempfile
+import unittest
+
+import money
+import parsing
+import rules
+import report
+import cli
+
+HID_RULES = """; held-out rules
+market=Groceries=10
+gas=Auto=5
+#work=Business=30
+salary=Income=1
+"""
+
+HID_LINES = [
+    "# held-out sample",
+    "2023-06-01 | Corner Market | -35.20 | weekly",
+    "2023-06-02 | Gas Station | (45.00) | Work",
+    "2023-06-03 | Salary June | $3,000 ",
+    "",
+    "2023-06-04 | Corner Market | -$4.80 | WEEKLY,",
+    "2023-06-05 | Odd Thing | 1.5",
+    "2023-13-01 | Bad Date | 1.00",
+]
+
+
+def row(category, amount_text, count):
+    return category.ljust(15) + amount_text.rjust(12) + str(count).rjust(6)
+
+
+class HMoney(unittest.TestCase):
+    def test_values(self):
+        self.assertEqual(money.parse_amount("42"), 4200)
+        self.assertEqual(money.parse_amount("0.07"), 7)
+        self.assertEqual(money.parse_amount("0.7"), 70)
+        self.assertEqual(money.parse_amount("$12,345.60"), 1234560)
+        self.assertEqual(money.parse_amount("-0.99"), -99)
+        self.assertEqual(money.parse_amount("($2,500.25)"), -250025)
+        self.assertEqual(money.parse_amount(" -$0.01 "), -1)
+        self.assertEqual(money.parse_amount("-0.00"), 0)
+
+    def test_rejects(self):
+        for bad in ["", "   ", "abc", "1.2345", "(+1)", "(-1)", "$-1", "12,34", "+7", "1..2", "5 5"]:
+            with self.subTest(bad=bad):
+                self.assertRaises(ValueError, money.parse_amount, bad)
+
+    def test_non_string(self):
+        self.assertRaises(ValueError, money.parse_amount, None)
+
+    def test_format(self):
+        self.assertEqual(money.format_amount(0), "$0.00")
+        self.assertEqual(money.format_amount(7), "$0.07")
+        self.assertEqual(money.format_amount(-7), "-$0.07")
+        self.assertEqual(money.format_amount(1234560), "$12,345.60")
+        self.assertEqual(money.format_amount(-250025), "-$2,500.25")
+
+
+class HParsing(unittest.TestCase):
+    def test_line(self):
+        t = parsing.parse_line(" 2023-06-02 | Gas Station | (45.00) ")
+        self.assertEqual(t, {"date": "2023-06-02", "desc": "Gas Station", "amount": -4500, "tags": []})
+
+    def test_errors(self):
+        for bad in [
+            "2023-06-02 | Gas Station",
+            "2023-6-2 | Gas | 1.00",
+            "20230602 | Gas | 1.00",
+            "2023-02-30 | Gas | 1.00",
+            "2023-06-02 |  | 1.00",
+            "2023-06-02 | Gas | nope",
+            "a|b|c|d|e",
+        ]:
+            with self.subTest(bad=bad):
+                self.assertRaises(parsing.LedgerError, parsing.parse_line, bad)
+
+    def test_parse_lines(self):
+        txns, errors = parsing.parse_lines(HID_LINES)
+        self.assertEqual(len(txns), 5)
+        self.assertEqual([e[0] for e in errors], [8])
+        self.assertIsInstance(errors[0][1], str)
+        self.assertEqual(txns[0]["amount"], -3520)
+        self.assertEqual(txns[1]["tags"], ["work"])
+        self.assertEqual(txns[3]["tags"], ["weekly"])
+
+
+class HRules(unittest.TestCase):
+    def setUp(self):
+        self.rs = rules.load_rules(HID_RULES)
+
+    def test_loaded(self):
+        self.assertEqual(len(self.rs), 4)
+        self.assertEqual([r.pattern for r in self.rs], ["market", "gas", "#work", "salary"])
+        self.assertEqual(self.rs[2].priority, 30)
+
+    def test_bad(self):
+        for bad in ["a=b", "a=b=c=d", "a=b=x", "=b=1", "a= =1"]:
+            with self.subTest(bad=bad):
+                self.assertRaises(ValueError, rules.load_rules, bad + "\n")
+
+    def test_match(self):
+        t = {"date": "2023-06-01", "desc": "CORNER MARKET", "amount": -1, "tags": []}
+        self.assertEqual(rules.categorize(t, self.rs), "Groceries")
+
+    def test_tag_beats_substring(self):
+        t = {"date": "2023-06-02", "desc": "Gas Station", "amount": -1, "tags": ["Work"]}
+        self.assertEqual(rules.categorize(t, self.rs), "Business")
+
+    def test_tag_exact_only(self):
+        t = {"date": "2023-06-02", "desc": "nothing", "amount": -1, "tags": ["workday"]}
+        self.assertEqual(rules.categorize(t, self.rs), "uncategorized")
+
+    def test_tie_earlier_wins(self):
+        rs = rules.load_rules("zz=Late=3\n;c\nqq=Early=3\n")
+        t = {"date": "2023-06-02", "desc": "qq zz", "amount": -1, "tags": []}
+        self.assertEqual(rules.categorize(t, rs), "Late")
+
+    def test_empty_rules(self):
+        t = {"date": "2023-06-05", "desc": "anything", "amount": 1, "tags": ["work"]}
+        self.assertEqual(rules.categorize(t, []), "uncategorized")
+
+
+class HReport(unittest.TestCase):
+    def setUp(self):
+        self.txns, _ = parsing.parse_lines(HID_LINES)
+        self.rs = rules.load_rules(HID_RULES)
+
+    def test_summarize(self):
+        rows = report.summarize(self.txns, self.rs)
+        self.assertEqual(
+            rows,
+            [
+                ("Business", -4500, 1),
+                ("Groceries", -4000, 2),
+                ("uncategorized", 150, 1),
+                ("Income", 300000, 1),
+            ],
+        )
+
+    def test_render(self):
+        rows = [("Auto", -4500, 2), ("Income", 300000, 1)]
+        expected = "\n".join([
+            "CATEGORY".ljust(15) + "TOTAL".rjust(12) + "COUNT".rjust(6),
+            "-" * 33,
+            row("Auto", "-$45.00", 2),
+            row("Income", "$3,000.00", 1),
+            "-" * 33,
+            row("TOTAL", "$2,955.00", 3),
+        ])
+        self.assertEqual(report.render_report(rows), expected)
+
+    def test_render_preserves_order(self):
+        rows = [("Income", 300000, 1), ("Auto", -4500, 2)]
+        lines = report.render_report(rows).split("\n")
+        self.assertTrue(lines[2].startswith("Income"))
+        self.assertTrue(lines[3].startswith("Auto"))
+
+    def test_render_empty(self):
+        lines = report.render_report([]).split("\n")
+        self.assertEqual(len(lines), 4)
+        self.assertEqual(lines[1], "-" * 33)
+        self.assertEqual(lines[2], "-" * 33)
+        self.assertEqual(lines[3], row("TOTAL", "$0.00", 0))
+
+
+class HCli(unittest.TestCase):
+    def _write(self, ledger_text, rules_text):
+        d = tempfile.mkdtemp()
+        lp = os.path.join(d, "led.txt")
+        rp = os.path.join(d, "rul.txt")
+        with open(lp, "w") as fh:
+            fh.write(ledger_text)
+        with open(rp, "w") as fh:
+            fh.write(rules_text)
+        return lp, rp
+
+    def _run(self, args):
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = cli.main(args)
+        return code, out.getvalue(), err.getvalue()
+
+    def test_ok(self):
+        lp, rp = self._write("\n".join(HID_LINES[:4]) + "\n", HID_RULES)
+        code, out, err = self._run(["report", "--ledger", lp, "--rules", rp])
+        self.assertEqual(code, 0)
+        self.assertEqual(err, "")
+        txns, _ = parsing.parse_lines(HID_LINES[:4])
+        rs = rules.load_rules(HID_RULES)
+        self.assertEqual(out, report.render_report(report.summarize(txns, rs)) + "\n")
+
+    def test_strict(self):
+        lp, rp = self._write("\n".join(HID_LINES) + "\n", HID_RULES)
+        code, out, err = self._run(["report", "--strict", "--ledger", lp, "--rules", rp])
+        self.assertEqual(code, 1)
+        self.assertEqual(out, "")
+        self.assertTrue(err.startswith("line 8: "), err)
+
+    def test_warning(self):
+        lp, rp = self._write("\n".join(HID_LINES) + "\n", HID_RULES)
+        code, out, err = self._run(["report", "--ledger", lp, "--rules", rp])
+        self.assertEqual(code, 0)
+        self.assertIn("warning: 1 malformed line(s) skipped", err)
+        self.assertTrue(out.startswith("CATEGORY"))
+
+    def test_rules_error(self):
+        lp, rp = self._write("2023-06-01 | A | 1.00\n", "this is not a rule\n")
+        code, out, err = self._run(["report", "--ledger", lp, "--rules", rp])
+        self.assertEqual(code, 2)
+        self.assertEqual(out, "")
+        self.assertTrue(err.startswith("rules error: "), err)
+
+    def test_missing_rules_file(self):
+        lp, _ = self._write("2023-06-01 | A | 1.00\n", HID_RULES)
+        missing = os.path.join(tempfile.mkdtemp(), "gone.txt")
+        code, out, err = self._run(["report", "--ledger", lp, "--rules", missing])
+        self.assertEqual(code, 2)
+        self.assertIn("cannot read " + missing, err)
+
+
+if __name__ == "__main__":
+    unittest.main()

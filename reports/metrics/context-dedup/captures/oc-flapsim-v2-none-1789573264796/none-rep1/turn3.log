@@ -1,0 +1,189 @@
+First, let me pin down exact engine values for the scenarios I want to assert on (death tick in the EX2 case, and the two glide-bonus runs):
+The `10000` pattern still flaps at t=45 (45 % 5 == 0), so a bonus was awarded — I need a pattern whose last flap is at t=41, with no flaps after that. Constructing one: period 7, flapping on residues {4,5,6} → `"0000111"`:
+All values pinned. Writing the suite:
+1 failure — my test's expected value was wrong, not the engine: starting from `y=-3` with `vy=5`, after `y += vy` it becomes `y=20 ≥ 0`, so per the spec's order (move first, then check the ceiling) no clamping occurs. I'll fix the test case:
+DONE — 22 tests, all passing. One test failure along the way was a wrong expectation in my own test (ceiling clamp only fires when y < 0 *after* `y += vy`), not an engine bug; fixed the test case.
+
+===STDERR===
+timestamp=2026-09-16T21:18:25.666Z level=INFO run=7099bb47 message="creating instance" directory=/tmp/oc-none-3Y1MHl
+timestamp=2026-09-16T21:18:25.668Z level=INFO run=7099bb47 message=fromDirectory directory=/tmp/oc-none-3Y1MHl
+timestamp=2026-09-16T21:18:25.677Z level=INFO run=7099bb47 message=bootstrapping directory=/tmp/oc-none-3Y1MHl
+timestamp=2026-09-16T21:18:25.681Z level=INFO run=7099bb47 message=loading path=/tmp/ocx-HKRRVE/cfg/opencode/config.json
+timestamp=2026-09-16T21:18:25.681Z level=INFO run=7099bb47 message=loading path=/tmp/ocx-HKRRVE/cfg/opencode/opencode.json
+timestamp=2026-09-16T21:18:25.683Z level=INFO run=7099bb47 message=loading path=/tmp/ocx-HKRRVE/cfg/opencode/opencode.jsonc
+timestamp=2026-09-16T21:18:25.683Z level=INFO run=7099bb47 message=loading path=/home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/captures/oc-flapsim-v2-none-1789573264796/none-rep1/opencode.json
+timestamp=2026-09-16T21:18:25.736Z level=INFO run=7099bb47 message="all LSPs are disabled"
+timestamp=2026-09-16T21:18:25.737Z level=INFO run=7099bb47 message="all formatters are disabled"
+timestamp=2026-09-16T21:18:25.737Z level=INFO run=7099bb47 message=init
+timestamp=2026-09-16T21:18:25.853Z level=INFO run=7099bb47 message="event connected"
+timestamp=2026-09-16T21:18:26.180Z level=INFO run=7099bb47 message=loop session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O step=0
+timestamp=2026-09-16T21:18:26.191Z level=INFO run=7099bb47 message="shell tool using shell" shell=/bin/bash
+timestamp=2026-09-16T21:18:26.207Z level=INFO run=7099bb47 message=init count=10
+[0m
+> build · unsloth/Qwen3.8-27B-GGUF
+[0m
+timestamp=2026-09-16T21:18:26.252Z level=INFO run=7099bb47 message="watcher backend" directory=/tmp/oc-none-3Y1MHl platform=linux backend=inotify
+timestamp=2026-09-16T21:18:26.259Z level=INFO run=7099bb47 message="project copy refresh started" projectID=global
+timestamp=2026-09-16T21:18:26.260Z level=INFO run=7099bb47 message="project copy refresh done" projectID=global updated=[] removed=[]
+timestamp=2026-09-16T21:18:26.277Z level=INFO run=7099bb47 message="booting location services" directory=/tmp/oc-none-3Y1MHl workspaceID=undefined
+timestamp=2026-09-16T21:18:26.509Z level=INFO run=7099bb47 message=process session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O messageID=msg_0ac15d1890011cepgs5qjGU6XW
+timestamp=2026-09-16T21:18:26.511Z level=INFO run=7099bb47 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O small=false agent=build mode=primary
+timestamp=2026-09-16T21:18:26.516Z level=INFO run=7099bb47 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:28:48.445Z level=INFO run=7099bb47 message=evaluated permission=bash pattern="python3 - <<'EOF'\nfrom engine import run\nimport json\nfor args in [(7,45,\"0010\"), (7,46,\"0010\"), (7,46,\"10000\"), (2,90,\"0\"), (7,120,\"01\"), (7,200,\"0010\")]:\n    print(args, json.dumps(run(*args)))\nEOF" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:28:48.502Z level=INFO run=7099bb47 message=loop session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O step=1
+[0m$ [0mpython3 - <<'EOF'
+from engine import run
+import json
+for args in [(7,45,"0010"), (7,46,"0010"), (7,46,"10000"), (2,90,"0"), (7,120,"01"), (7,200,"0010")]:
+    print(args, json.dumps(run(*args)))
+EOF
+(7, 45, '0010') {"y": 587, "vy": 9, "score": 0, "alive": true, "ticks_run": 45}
+(7, 46, '0010') {"y": 614, "vy": 27, "score": 2, "alive": true, "ticks_run": 46}
+(7, 46, '10000') {"y": 938, "vy": -27, "score": 2, "alive": true, "ticks_run": 46}
+(2, 90, '0') {"y": 1120, "vy": 144, "score": 0, "alive": false, "ticks_run": 8}
+(7, 120, '01') {"y": 18, "vy": 18, "score": 0, "alive": false, "ticks_run": 41}
+(7, 200, '0010') {"y": 578, "vy": -9, "score": 8, "alive": true, "ticks_run": 200}
+[0m
+timestamp=2026-09-16T21:28:48.522Z level=INFO run=7099bb47 message=process session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O messageID=msg_0ac1f5079001mcnv8SYykBZs56
+timestamp=2026-09-16T21:28:48.523Z level=INFO run=7099bb47 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O small=false agent=build mode=primary
+timestamp=2026-09-16T21:28:48.524Z level=INFO run=7099bb47 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:50:41.559Z level=INFO run=7099bb47 message=evaluated permission=bash pattern="python3 - <<'EOF'\nfrom engine import run\nimport json\nprint(json.dumps(run(7, 46, \"0000111\")))\n# verify the trajectory assumptions: last flap at t=41, vy=+45 at t=45\nEOF" action.permission=* action.action=allow action.pattern=*
+[0m$ [0mpython3 - <<'EOF'
+from engine import run
+import json
+print(json.dumps(run(7, 46, "0000111")))
+# verify the trajectory assumptions: last flap at t=41, vy=+45 at t=45
+EOF
+{"y": 686, "vy": 45, "score": 1, "alive": true, "ticks_run": 46}
+[0m
+timestamp=2026-09-16T21:50:41.630Z level=INFO run=7099bb47 message=loop session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O step=2
+timestamp=2026-09-16T21:50:41.648Z level=INFO run=7099bb47 message=process session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O messageID=msg_0ac3359e0001V3CoVNQENE4H4k
+timestamp=2026-09-16T21:50:41.649Z level=INFO run=7099bb47 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O small=false agent=build mode=primary
+timestamp=2026-09-16T21:50:41.650Z level=INFO run=7099bb47 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T22:04:33.681Z level=INFO run=7099bb47 message=evaluated permission=edit pattern=tmp/oc-none-3Y1MHl/test_flapsim.py action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T22:04:33.683Z level=INFO run=7099bb47 message=formatting file=/tmp/oc-none-3Y1MHl/test_flapsim.py
+timestamp=2026-09-16T22:04:33.683Z level=INFO run=7099bb47 message="touching file" file=/tmp/oc-none-3Y1MHl/test_flapsim.py
+[0m← [0mWrite test_flapsim.py
+Wrote file successfully.
+[0m
+timestamp=2026-09-16T22:04:33.751Z level=INFO run=7099bb47 message=loop session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O step=3
+timestamp=2026-09-16T22:04:33.769Z level=INFO run=7099bb47 message=process session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O messageID=msg_0ac400c59001LdFXkZU9761n4f
+timestamp=2026-09-16T22:04:33.769Z level=INFO run=7099bb47 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O small=false agent=build mode=primary
+timestamp=2026-09-16T22:04:33.770Z level=INFO run=7099bb47 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T22:07:03.459Z level=INFO run=7099bb47 message=evaluated permission=bash pattern="python3 -m unittest test_flapsim -v" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T22:07:03.501Z level=INFO run=7099bb47 message=loop session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O step=4
+[0m$ [0mpython3 -m unittest test_flapsim -v
+test_bird_bottom_exactly_at_gap_end_survives (test_flapsim.TestCollision.test_bird_bottom_exactly_at_gap_end_survives) ... ok
+test_bird_top_exactly_at_gap_start_survives (test_flapsim.TestCollision.test_bird_top_exactly_at_gap_start_survives) ... ok
+test_hit_when_outside_gap (test_flapsim.TestCollision.test_hit_when_outside_gap) ... ok
+test_pipe_edge_touching_bird_does_not_hit (test_flapsim.TestCollision.test_pipe_edge_touching_bird_does_not_hit) ... ok
+test_rect_overlap_half_open_edges (test_flapsim.TestCollision.test_rect_overlap_half_open_edges) ... ok
+test_ceiling_is_soft_and_zeroes_vy (test_flapsim.TestPhysics.test_ceiling_is_soft_and_zeroes_vy) ... FAIL
+test_flap_is_never_clamped (test_flapsim.TestPhysics.test_flap_is_never_clamped) ... ok
+test_flap_sets_vy_instead_of_adding (test_flapsim.TestPhysics.test_flap_sets_vy_instead_of_adding) ... ok
+test_floor_kills_without_zeroing_vy (test_flapsim.TestPhysics.test_floor_kills_without_zeroing_vy) ... ok
+test_gravity_below_max_not_clamped (test_flapsim.TestPhysics.test_gravity_below_max_not_clamped) ... ok
+test_gravity_clamps_at_vy_max (test_flapsim.TestPhysics.test_gravity_clamps_at_vy_max) ... ok
+test_glide_bonus_awarded_when_level (test_flapsim.TestScoring.test_glide_bonus_awarded_when_level) ... ok
+test_no_bonus_when_diving_hard (test_flapsim.TestScoring.test_no_bonus_when_diving_hard) ... ok
+test_demo_run_matches_spec_09 (test_flapsim.TestTickOrder.test_demo_run_matches_spec_09) ... ok
+test_first_pipe_passes_exactly_at_tick_45 (test_flapsim.TestTickOrder.test_first_pipe_passes_exactly_at_tick_45) ... ok
+test_pipe_death_scores_nothing (test_flapsim.TestTickOrder.test_pipe_death_scores_nothing) ... ok
+test_ticks_run_includes_fatal_tick (test_flapsim.TestTickOrder.test_ticks_run_includes_fatal_tick) ... ok
+test_lcg_known_values (test_flapsim.TestWorld.test_lcg_known_values) ... ok
+test_lcg_stays_in_range (test_flapsim.TestWorld.test_lcg_stays_in_range) ... ok
+test_scroll_and_cull (test_flapsim.TestWorld.test_scroll_and_cull) ... ok
+test_spawn_advances_lcg_once_and_gap_formula (test_flapsim.TestWorld.test_spawn_advances_lcg_once_and_gap_formula) ... ok
+test_spawn_only_on_tick_multiples (test_flapsim.TestWorld.test_spawn_only_on_tick_multiples) ... ok
+
+======================================================================
+FAIL: test_ceiling_is_soft_and_zeroes_vy (test_flapsim.TestPhysics.test_ceiling_is_soft_and_zeroes_vy)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/oc-none-3Y1MHl/test_flapsim.py", line 35, in test_ceiling_is_soft_and_zeroes_vy
+    self.assertEqual(step_bird(-3, 5, False), (0, 0, True))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Tuples differ: (20, 23, True) != (0, 0, True)
+
+First differing element 0:
+20
+0
+
+- (20, 23, True)
+?  -   ^^
+
++ (0, 0, True)
+?     ^
+
+
+----------------------------------------------------------------------
+Ran 22 tests in 0.001s
+
+FAILED (failures=1)
+[0m
+timestamp=2026-09-16T22:07:03.518Z level=INFO run=7099bb47 message=process session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O messageID=msg_0ac42554f001pgOEeRBygQWJXw
+timestamp=2026-09-16T22:07:03.519Z level=INFO run=7099bb47 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O small=false agent=build mode=primary
+timestamp=2026-09-16T22:07:03.520Z level=INFO run=7099bb47 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T22:08:53.632Z level=INFO run=7099bb47 message=evaluated permission=edit pattern=tmp/oc-none-3Y1MHl/test_flapsim.py action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T22:08:53.633Z level=INFO run=7099bb47 message=formatting file=/tmp/oc-none-3Y1MHl/test_flapsim.py
+timestamp=2026-09-16T22:08:53.635Z level=INFO run=7099bb47 message="touching file" file=/tmp/oc-none-3Y1MHl/test_flapsim.py
+[0m← [0mEdit test_flapsim.py
+Index: /tmp/oc-none-3Y1MHl/test_flapsim.py
+===================================================================
+--- /tmp/oc-none-3Y1MHl/test_flapsim.py
++++ /tmp/oc-none-3Y1MHl/test_flapsim.py
+@@ -31,9 +31,9 @@
+     self.assertEqual(y, 560 + FLAP_V)
+ 
+ def test_ceiling_is_soft_and_zeroes_vy(self):
+     self.assertEqual(step_bird(10, -50, False), (0, 0, True))
+-    self.assertEqual(step_bird(-3, 5, False), (0, 0, True))
++    self.assertEqual(step_bird(-3, -50, False), (0, 0, True))
+ 
+ def test_floor_kills_without_zeroing_vy(self):
+     y, vy, alive = step_bird(1150, 10, False)
+     self.assertFalse(alive)
+
+[0m
+timestamp=2026-09-16T22:08:53.699Z level=INFO run=7099bb47 message=loop session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O step=5
+timestamp=2026-09-16T22:08:53.717Z level=INFO run=7099bb47 message=process session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O messageID=msg_0ac4403c5001FYRN5o5bXt9iDg
+timestamp=2026-09-16T22:08:53.717Z level=INFO run=7099bb47 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O small=false agent=build mode=primary
+timestamp=2026-09-16T22:08:53.718Z level=INFO run=7099bb47 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T22:13:52.238Z level=INFO run=7099bb47 message=evaluated permission=bash pattern="python3 -m unittest test_flapsim -v" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T22:13:52.287Z level=INFO run=7099bb47 message=loop session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O step=6
+[0m$ [0mpython3 -m unittest test_flapsim -v
+test_bird_bottom_exactly_at_gap_end_survives (test_flapsim.TestCollision.test_bird_bottom_exactly_at_gap_end_survives) ... ok
+test_bird_top_exactly_at_gap_start_survives (test_flapsim.TestCollision.test_bird_top_exactly_at_gap_start_survives) ... ok
+test_hit_when_outside_gap (test_flapsim.TestCollision.test_hit_when_outside_gap) ... ok
+test_pipe_edge_touching_bird_does_not_hit (test_flapsim.TestCollision.test_pipe_edge_touching_bird_does_not_hit) ... ok
+test_rect_overlap_half_open_edges (test_flapsim.TestCollision.test_rect_overlap_half_open_edges) ... ok
+test_ceiling_is_soft_and_zeroes_vy (test_flapsim.TestPhysics.test_ceiling_is_soft_and_zeroes_vy) ... ok
+test_flap_is_never_clamped (test_flapsim.TestPhysics.test_flap_is_never_clamped) ... ok
+test_flap_sets_vy_instead_of_adding (test_flapsim.TestPhysics.test_flap_sets_vy_instead_of_adding) ... ok
+test_floor_kills_without_zeroing_vy (test_flapsim.TestPhysics.test_floor_kills_without_zeroing_vy) ... ok
+test_gravity_below_max_not_clamped (test_flapsim.TestPhysics.test_gravity_below_max_not_clamped) ... ok
+test_gravity_clamps_at_vy_max (test_flapsim.TestPhysics.test_gravity_clamps_at_vy_max) ... ok
+test_glide_bonus_awarded_when_level (test_flapsim.TestScoring.test_glide_bonus_awarded_when_level) ... ok
+test_no_bonus_when_diving_hard (test_flapsim.TestScoring.test_no_bonus_when_diving_hard) ... ok
+test_demo_run_matches_spec_09 (test_flapsim.TestTickOrder.test_demo_run_matches_spec_09) ... ok
+test_first_pipe_passes_exactly_at_tick_45 (test_flapsim.TestTickOrder.test_first_pipe_passes_exactly_at_tick_45) ... ok
+test_pipe_death_scores_nothing (test_flapsim.TestTickOrder.test_pipe_death_scores_nothing) ... ok
+test_ticks_run_includes_fatal_tick (test_flapsim.TestTickOrder.test_ticks_run_includes_fatal_tick) ... ok
+test_lcg_known_values (test_flapsim.TestWorld.test_lcg_known_values) ... ok
+test_lcg_stays_in_range (test_flapsim.TestWorld.test_lcg_stays_in_range) ... ok
+test_scroll_and_cull (test_flapsim.TestWorld.test_scroll_and_cull) ... ok
+test_spawn_advances_lcg_once_and_gap_formula (test_flapsim.TestWorld.test_spawn_advances_lcg_once_and_gap_formula) ... ok
+test_spawn_only_on_tick_multiples (test_flapsim.TestWorld.test_spawn_only_on_tick_multiples) ... ok
+
+----------------------------------------------------------------------
+Ran 22 tests in 0.001s
+
+OK
+[0m
+timestamp=2026-09-16T22:13:52.303Z level=INFO run=7099bb47 message=process session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O messageID=msg_0ac489221001Nr78cCVvMYqpNU
+timestamp=2026-09-16T22:13:52.303Z level=INFO run=7099bb47 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O small=false agent=build mode=primary
+timestamp=2026-09-16T22:13:52.304Z level=INFO run=7099bb47 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T22:18:02.140Z level=INFO run=7099bb47 message=loop session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O step=7
+timestamp=2026-09-16T22:18:02.143Z level=INFO run=7099bb47 message="exiting loop" session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O
+timestamp=2026-09-16T22:18:02.147Z level=INFO run=7099bb47 message="disposing instance" directory=/tmp/oc-none-3Y1MHl
+timestamp=2026-09-16T22:18:02.166Z level=INFO run=7099bb47 message=loading path=/home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/captures/oc-flapsim-v2-none-1789573264796/none-rep1/opencode.json

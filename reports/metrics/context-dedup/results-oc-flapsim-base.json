@@ -1,0 +1,116 @@
+{
+  "manifest": {
+    "run_id": "oc-flapsim-base-1789494850208",
+    "experiment": "context-dedup / anchor arms on opencode (flapsim)",
+    "host": "opencode",
+    "host_version": "1.18.31",
+    "model": "local/unsloth/Qwen3.8-27B-GGUF",
+    "task": "flapsim (headless deterministic side-scroller, 6 modules, mid-run feature change + docs)",
+    "commit": "7410791ef014fa39928486789ea9d9100c1e697e",
+    "date": "2026-09-15T18:06:44.168Z",
+    "params": {
+      "arms": [
+        "none"
+      ],
+      "repeats": 1,
+      "top_k": 2,
+      "turn_timeout_s": 2400
+    },
+    "hypothesis": "Returning an anchor (or an anchor plus the most relevant chunks of the resident copy) instead of content the model already has reduces cumulative prompt tokens AND wall-clock time to completion, at no cost to task success. If it does, fold it into context-tree; if not, leave it out.",
+    "falsification": "FOLD IN only if an arm cuts BOTH tokens and wall-clock against the no-intervention arm at score within noise. Any fired anchor that was not truthful invalidates the run.",
+    "caveats": [
+      "Host is opencode per D20; the previous in-repo harness could not represent a tool call and is not used.",
+      "NO eviction and NO window cap: the context is append-only, so residency is by construction and every anchor is truthful; clipped results are detected and suppressed rather than anchored.",
+      "The mid-run user turn is a real second user message via `run --session`, released on a WORKSPACE predicate so every arm gets it at the same logical stage; `via` is recorded and a between-arm difference in it is a confound, not a result.",
+      "Wall-clock is measured on a shared host and includes provider prefix caching, so tokens and time can move independently; treat a delta inside the between-repeat spread as no effect.",
+      "Single scenario = single problem (caveat C0): repeats measure within-problem nondeterminism, not between-problem variance."
+    ]
+  },
+  "summary": [
+    {
+      "arm": "none",
+      "n": 1,
+      "passes": 0,
+      "score_mean": 0,
+      "milestones_mean": 1,
+      "prompt_tokens_median": 0,
+      "wall_seconds_median": 752.4,
+      "cost_usd_total": 0,
+      "fires_median": 0,
+      "would_fire_median": 0,
+      "anchor_untruthful_total": 0,
+      "degenerate_topk_total": 0,
+      "timed_out": 0,
+      "tokens_delta_pct": null,
+      "wall_delta_pct": 0,
+      "score_delta": 0,
+      "verdict": "—"
+    }
+  ],
+  "cells": [
+    {
+      "arm": "none",
+      "repeat": 0,
+      "session": "ses_f59cb8a30ffe0EKFp9kznindvx",
+      "ws": "/tmp/oc-none-YQP0nu",
+      "cell_dir": "reports/metrics/context-dedup/captures/oc-flapsim-base-1789494850208/none-rep0",
+      "pass": false,
+      "score_correct": 0,
+      "score_total": 40,
+      "score_parts": {
+        "core": 0,
+        "trace": 0,
+        "feature": 0,
+        "review": 0,
+        "docs": 0
+      },
+      "phase_index": 0,
+      "phase_name": "start",
+      "phases_total": 9,
+      "phases_done": [
+        "start"
+      ],
+      "max_py_chars": 0,
+      "files_over_1800": 0,
+      "module_count": 0,
+      "float_literals": 0,
+      "has_replay": false,
+      "has_review": false,
+      "has_docs": false,
+      "turns_released": 2,
+      "turn_log": [
+        {
+          "turn_id": "build",
+          "index": 0,
+          "seconds": 373.5,
+          "via": "gate",
+          "session": "ses_f59cb8a30ffe0EKFp9kznindvx",
+          "timed_out": false,
+          "status": 0
+        },
+        {
+          "turn_id": "feature-and-docs",
+          "index": 1,
+          "seconds": 378.9,
+          "via": "unmet-milestone",
+          "session": "ses_f59cb8a30ffe0EKFp9kznindvx",
+          "timed_out": false,
+          "status": 0
+        }
+      ],
+      "wall_seconds": 752.4,
+      "timed_out": false,
+      "messages": 0,
+      "prompt_tokens": 0,
+      "output_tokens": 0,
+      "cost_usd": 0,
+      "would_fire": 0,
+      "fires": 0,
+      "by_kind": {},
+      "anchor_untruthful": 0,
+      "degenerate_topk": 0,
+      "replaced_chars": 0,
+      "substituted_chars": 0
+    }
+  ]
+}

@@ -1,0 +1,79 @@
+NOTES.md already exists — checking its current content before appending:
+DONE
+
+- `replay.txt` created via the exact demo command and diffed character-for-character against the fenced block in spec/09_expected_output.md — identical
+- `NOTES.md` now has one line per completed phase: core modules, engine + CLI, test suite, self-review with fixes, and the replay artifact
+
+===STDERR===
+timestamp=2026-09-16T23:37:13.005Z level=INFO run=90391b66 message="creating instance" directory=/tmp/oc-anchor-sHzqET
+timestamp=2026-09-16T23:37:13.006Z level=INFO run=90391b66 message=fromDirectory directory=/tmp/oc-anchor-sHzqET
+timestamp=2026-09-16T23:37:13.017Z level=INFO run=90391b66 message=bootstrapping directory=/tmp/oc-anchor-sHzqET
+timestamp=2026-09-16T23:37:13.020Z level=INFO run=90391b66 message=loading path=/tmp/ocx-LGol4D/cfg/opencode/config.json
+timestamp=2026-09-16T23:37:13.021Z level=INFO run=90391b66 message=loading path=/tmp/ocx-LGol4D/cfg/opencode/opencode.json
+timestamp=2026-09-16T23:37:13.023Z level=INFO run=90391b66 message=loading path=/tmp/ocx-LGol4D/cfg/opencode/opencode.jsonc
+timestamp=2026-09-16T23:37:13.023Z level=INFO run=90391b66 message=loading path=/home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/captures/oc-flapsim-v2-anchor-1789573267802/anchor-rep1/opencode.json
+timestamp=2026-09-16T23:37:13.089Z level=INFO run=90391b66 message="all LSPs are disabled"
+timestamp=2026-09-16T23:37:13.090Z level=INFO run=90391b66 message="all formatters are disabled"
+timestamp=2026-09-16T23:37:13.090Z level=INFO run=90391b66 message=init
+timestamp=2026-09-16T23:37:13.191Z level=INFO run=90391b66 message="event connected"
+timestamp=2026-09-16T23:37:13.512Z level=INFO run=90391b66 message=loop session.id=ses_f5412827cffeDOM2z2c63XYZ2k step=0
+timestamp=2026-09-16T23:37:13.523Z level=INFO run=90391b66 message="shell tool using shell" shell=/bin/bash
+timestamp=2026-09-16T23:37:13.539Z level=INFO run=90391b66 message=init count=10
+[0m
+> build · unsloth/Qwen3.8-27B-GGUF
+[0m
+timestamp=2026-09-16T23:37:13.585Z level=INFO run=90391b66 message="watcher backend" directory=/tmp/oc-anchor-sHzqET platform=linux backend=inotify
+timestamp=2026-09-16T23:37:13.590Z level=INFO run=90391b66 message="project copy refresh started" projectID=global
+timestamp=2026-09-16T23:37:13.591Z level=INFO run=90391b66 message="project copy refresh done" projectID=global updated=[] removed=[]
+timestamp=2026-09-16T23:37:13.615Z level=INFO run=90391b66 message="booting location services" directory=/tmp/oc-anchor-sHzqET workspaceID=undefined
+timestamp=2026-09-16T23:37:13.845Z level=INFO run=90391b66 message=process session.id=ses_f5412827cffeDOM2z2c63XYZ2k messageID=msg_0ac94e22d001pWxOGA6YGT5Nxq
+timestamp=2026-09-16T23:37:13.847Z level=INFO run=90391b66 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5412827cffeDOM2z2c63XYZ2k small=false agent=build mode=primary
+timestamp=2026-09-16T23:37:13.851Z level=INFO run=90391b66 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T23:43:15.679Z level=INFO run=90391b66 message=evaluated permission=bash pattern="ls NOTES.md 2>/dev/null" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T23:43:15.679Z level=INFO run=90391b66 message=evaluated permission=bash pattern="python3 flapsim.py --seed 7 --ticks 200 --flaps 0010 > replay.txt" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T23:43:15.679Z level=INFO run=90391b66 message=evaluated permission=bash pattern="sed -n '/^```$/,/^```$/p' spec/09_expected_output.md" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T23:43:15.679Z level=INFO run=90391b66 message=evaluated permission=bash pattern="sed '1d;$d'" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T23:43:15.679Z level=INFO run=90391b66 message=evaluated permission=bash pattern="diff - replay.txt" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T23:43:15.679Z level=INFO run=90391b66 message=evaluated permission=bash pattern="echo \"replay.txt matches spec/09\"" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T23:43:15.720Z level=INFO run=90391b66 message=loop session.id=ses_f5412827cffeDOM2z2c63XYZ2k step=1
+[0m$ [0mls NOTES.md 2>/dev/null; python3 flapsim.py --seed 7 --ticks 200 --flaps 0010 > replay.txt && sed -n '/^```$/,/^```$/p' spec/09_expected_output.md | sed '1d;$d' | diff - replay.txt && echo "replay.txt matches spec/09"
+NOTES.md
+replay.txt matches spec/09
+[0m
+timestamp=2026-09-16T23:43:15.743Z level=INFO run=90391b66 message=process session.id=ses_f5412827cffeDOM2z2c63XYZ2k messageID=msg_0ac9a690c001GVYyuVBt86D3UI
+timestamp=2026-09-16T23:43:15.744Z level=INFO run=90391b66 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5412827cffeDOM2z2c63XYZ2k small=false agent=build mode=primary
+timestamp=2026-09-16T23:43:15.745Z level=INFO run=90391b66 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T23:50:52.959Z level=INFO run=90391b66 message=evaluated permission=read pattern=tmp/oc-anchor-sHzqET/NOTES.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-16T23:50:52.965Z level=INFO run=90391b66 message="touching file" file=/tmp/oc-anchor-sHzqET/NOTES.md
+[0m→ [0mRead NOTES.md
+timestamp=2026-09-16T23:50:53.025Z level=INFO run=90391b66 message=loop session.id=ses_f5412827cffeDOM2z2c63XYZ2k step=2
+timestamp=2026-09-16T23:50:53.045Z level=INFO run=90391b66 message=process session.id=ses_f5412827cffeDOM2z2c63XYZ2k messageID=msg_0aca16365001dpZFGK9swTP1la
+timestamp=2026-09-16T23:50:53.046Z level=INFO run=90391b66 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5412827cffeDOM2z2c63XYZ2k small=false agent=build mode=primary
+timestamp=2026-09-16T23:50:53.047Z level=INFO run=90391b66 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-17T00:01:00.380Z level=INFO run=90391b66 message=evaluated permission=edit pattern=tmp/oc-anchor-sHzqET/NOTES.md action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-17T00:01:00.381Z level=INFO run=90391b66 message=formatting file=/tmp/oc-anchor-sHzqET/NOTES.md
+timestamp=2026-09-17T00:01:00.383Z level=INFO run=90391b66 message="touching file" file=/tmp/oc-anchor-sHzqET/NOTES.md
+[0m
+[0m← [0mEdit NOTES.md
+Index: /tmp/oc-anchor-sHzqET/NOTES.md
+===================================================================
+--- /tmp/oc-anchor-sHzqET/NOTES.md
++++ /tmp/oc-anchor-sHzqET/NOTES.md
+@@ -1,1 +1,7 @@
+ # Working notes
++
++- Core: units.py, physics.py, world.py, collide.py implemented per spec/01-04; boundary cases (soft ceiling, fatal floor, LCG advance-once, half-open AABB) unit-checked.
++- Engine and CLI: engine.py run() with the normative tick order (spawn, physics, scroll, collide, score, cull, halt); flapsim.py hand-parses argv, prints TRACE/DIGEST in the literal formats; demo output byte-identical to spec/09, --selfcheck all OK.
++- Tests: test_flapsim.py, 19 stdlib unittest tests covering physics clamps, LCG, AABB edges, both glide-bonus branches, and per-tick order; suite passes and mutation testing confirms it catches order/scoring regressions.
++- Review: REVIEW.md with four findings (hard-coded initial y, empty-bit-string crash, raw CLI tracebacks, unvalidated flaps bits); all fixed, re-verified against tests, spec/09 diff, and --selfcheck.
++- Artifact: replay.txt produced from the demo command; verified character-for-character against spec/09_expected_output.md.
+
+[0m
+timestamp=2026-09-17T00:01:00.443Z level=INFO run=90391b66 message=loop session.id=ses_f5412827cffeDOM2z2c63XYZ2k step=3
+timestamp=2026-09-17T00:01:00.465Z level=INFO run=90391b66 message=process session.id=ses_f5412827cffeDOM2z2c63XYZ2k messageID=msg_0acaaa81f00159GKZzoukImeMy
+timestamp=2026-09-17T00:01:00.465Z level=INFO run=90391b66 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5412827cffeDOM2z2c63XYZ2k small=false agent=build mode=primary
+timestamp=2026-09-17T00:01:00.466Z level=INFO run=90391b66 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-17T00:03:42.964Z level=INFO run=90391b66 message=loop session.id=ses_f5412827cffeDOM2z2c63XYZ2k step=4
+timestamp=2026-09-17T00:03:42.968Z level=INFO run=90391b66 message="exiting loop" session.id=ses_f5412827cffeDOM2z2c63XYZ2k
+timestamp=2026-09-17T00:03:42.973Z level=INFO run=90391b66 message="disposing instance" directory=/tmp/oc-anchor-sHzqET
+timestamp=2026-09-17T00:03:42.991Z level=INFO run=90391b66 message=loading path=/home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/captures/oc-flapsim-v2-anchor-1789573267802/anchor-rep1/opencode.json

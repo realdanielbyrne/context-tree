@@ -1,0 +1,18 @@
+# Stage 2, part 2 — parsing.parse_lines
+
+## parse_lines(lines) -> (txns, errors)
+
+`lines` is any iterable of strings — a list, or a file object. Return a
+2-TUPLE (not a list of two elements, not a dict):
+
+    txns    a list of txn dicts, in input order
+    errors  a list of (lineno, message) 2-tuples
+
+`lineno` is 1-BASED and counts EVERY element of `lines`, including the ones
+that were skipped. So a bad line preceded by a comment and a blank line is
+line 3, not line 1. `message` is `str(exc)` of the LedgerError.
+
+SKIPPING — silently skip, recording no error, any line whose stripped form is
+empty or starts with "#". A line that raises LedgerError is recorded in
+`errors` and is NOT added to `txns`. Parsing continues after an error; one bad
+line never aborts the run.

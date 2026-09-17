@@ -1,0 +1,25 @@
+"""Per-tick bird physics: flap/gravity, integration, ceiling and floor."""
+
+from units import G, FLAP_V, VY_MAX, FIELD_H, BIRD_H
+
+
+def step_bird(y, vy, flap):
+    """Advance the bird one tick. Returns (y, vy, alive).
+
+    A flap SETS vy to FLAP_V (never clamped); otherwise gravity is added and
+    clamped at VY_MAX. The ceiling is soft (clamps y, zeroes vy); the floor
+    kills the bird but does not zero vy.
+    """
+    if flap:
+        vy = FLAP_V
+    else:
+        vy = min(vy + G, VY_MAX)
+    y += vy
+    alive = True
+    if y < 0:
+        y = 0
+        vy = 0
+    elif y + BIRD_H > FIELD_H:
+        y = FIELD_H - BIRD_H
+        alive = False
+    return y, vy, alive

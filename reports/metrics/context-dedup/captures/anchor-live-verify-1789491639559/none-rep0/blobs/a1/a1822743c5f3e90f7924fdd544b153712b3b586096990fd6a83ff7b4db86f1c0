@@ -1,0 +1,32 @@
+"""World generation: the LCG and pipe spawning, scrolling, culling."""
+
+from units import SPAWN_X, SCROLL, PIPE_W, SPAWN_EVERY
+
+
+def lcg(s):
+    """Advance the LCG once; return the new state."""
+    return (1103515245 * s + 12345) % 2147483648
+
+
+def spawn(t, s):
+    """If tick t is a spawn tick, return (new_state, pipe_or_None).
+
+    The LCG advances exactly once per spawn, before the gap is computed.
+    """
+    if t % SPAWN_EVERY != 0:
+        return s, None
+    s = lcg(s)
+    gap_top = 40 + (s >> 8) % 80
+    pipe = {"x": SPAWN_X, "gap_top": gap_top, "passed": False}
+    return s, pipe
+
+
+def scroll(pipes):
+    """Move every pipe left by SCROLL."""
+    for p in pipes:
+        p["x"] -= SCROLL
+
+
+def cull(pipes):
+    """Drop every pipe whose right edge is at or behind x = 0."""
+    return [p for p in pipes if p["x"] + PIPE_W > 0]

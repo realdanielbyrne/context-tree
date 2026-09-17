@@ -1,0 +1,84 @@
+"""Ledger line parsing.
+
+May import money and nothing else from the project. Raises LedgerError, never
+ValueError: the ValueError from money.parse_amount is converted here.
+"""
+
+import datetime
+import re
+
+import money
+
+
+class LedgerError(Exception):
+    """Raised for any malformed ledger line.
+
+    The message is free text but must be a non-empty string; parse_lines
+    records str(exc) for each failing line and callers print it.
+    """
+
+
+_DATE_SHAPE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _check_date(date_str):
+    if not _DATE_SHAPE.match(date_str):
+        raise LedgerError("bad date shape: %r" % date_str)
+    year, month, day = (int(p) for p in date_str.split("-"))
+    try:
+        datetime.date(year, month, day)
+    except ValueError:
+        raise LedgerError("not a real calendar date: %r" % date_str)
+
+
+def parse_line(line):
+    """Parse one ledger line into a txn dict.
+
+    Stage 2 form: DATE | DESCRIPTION | AMOUNT (exactly three fields).
+    Returns {"date", "desc", "amount", "tags"} with tags always present.
+    Raises LedgerError for any malformed input.
+    """
+    fields = line.split("|")
+    if len(fields) not in (3, 4):
+        raise LedgerError("expected 3 or 4 pipe-separated fields, got %d" % len(fields))
+
+    date_str, desc, amount_str = (f.strip() for f in fields[:3])
+
+    _check_date(date_str)
+
+    if not desc:
+        raise LedgerError("empty description")
+
+    try:
+        cents = money.parse_amount(amount_str)
+    except ValueError as exc:
+        raise LedgerError("bad amount %r: %s" % (amount_str, exc))
+
+    tags = []
+    if len(fields) == 4:
+        for element in fields[3].split(","):
+            tag = element.strip().lower()
+            if tag:
+                tags.append(tag)
+
+    return {"date": date_str, "desc": desc, "amount": cents, "tags": tags}
+
+
+def parse_lines(lines):
+    """Parse an iterable of lines into a 2-tuple (txns, errors).
+
+    Skips blank and "#" comment lines silently. Malformed lines become
+    (lineno, message) pairs with a 1-based lineno counting every element of
+    the input, including skipped ones. Never raises for bad lines.
+    """
+    txns = []
+    errors = []
+    for lineno, line in enumerate(lines, start=1):
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        try:
+            txns.append(parse_line(line))
+        except LedgerError as exc:
+            errors.append((lineno, str(exc)))
+    return (txns, errors)

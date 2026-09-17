@@ -1,0 +1,46 @@
+"""Money parsing and formatting — integer cents only.
+
+This stub fixes the public names and signatures. It does NOT describe the
+behaviour; spec/01_money.md is authoritative and spec/07_examples.md holds the
+normative example table. Read both before implementing.
+
+Dependency rule (see spec/00_conventions.md): this module imports nothing from
+the project. It is the bottom of the dependency order, so parsing.py and
+report.py may import it but it may import neither of them.
+
+Never use float. Every value that represents money in this project is a signed
+integer number of cents, so that summing a column of amounts is exact and the
+rendered report never shows a rounding artefact.
+
+What this module must NOT do: read files, know about ledger lines or rules, or
+raise LedgerError — that type belongs to parsing.py, and this module is below it
+in the dependency order. The only exception type it raises is ValueError.
+"""
+
+
+def parse_amount(s):
+    """Parse a money string into signed integer cents.
+
+    The parsing rules are ORDERED and the order is load-bearing; see
+    spec/01_money.md. The accepted and rejected tables in spec/07_examples.md
+    are normative and settle every edge case, including the ones the prose
+    leaves implicit.
+
+    Returns a signed int number of cents. Raises ValueError on anything the
+    spec does not accept, including a non-str argument.
+    """
+    raise NotImplementedError("parse_amount")
+
+
+def format_amount(cents):
+    """Format signed integer cents as a currency string.
+
+    See spec/01b_money_format.md, with the worked table in spec/07b_examples.md.
+    Thousands separators, exactly two decimal places, a leading "$", and the
+    minus sign placed BEFORE the "$" for negatives.
+
+    This is the only place in the project where money becomes text; report.py
+    calls it rather than formatting amounts itself, so the fixed-width columns
+    in stage 4 depend on this being exactly right.
+    """
+    raise NotImplementedError("format_amount")

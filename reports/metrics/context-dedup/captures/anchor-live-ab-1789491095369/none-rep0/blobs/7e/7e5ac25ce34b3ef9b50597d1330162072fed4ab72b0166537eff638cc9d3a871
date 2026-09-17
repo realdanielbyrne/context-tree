@@ -1,0 +1,54 @@
+"""The deterministic run loop. Per-tick order is normative (spec/02)."""
+
+from units import BIRD_X, PIPE_W, GLIDE_VY
+from physics import step_bird
+from world import spawn, scroll, cull
+from collide import pipe_hit
+
+
+def _score(pipes, vy, score, shields, passed_count):
+    """Step 5: award points for pipes whose right edge is behind the bird."""
+    for p in pipes:
+        if not p["passed"] and p["x"] + PIPE_W <= BIRD_X:
+            p["passed"] = True
+            score += 1
+            passed_count += 1
+            if abs(vy) <= GLIDE_VY:
+                score += 1
+            if shields is not None and passed_count % 5 == 0:
+                shields = min(shields + 1, 3)
+    return score, shields, passed_count
+
+
+def run(seed, ticks, flaps="0", powerups=False):
+    """Simulate `ticks` ticks. Returns the final state dict."""
+    y, vy, alive = 560, 0, True
+    score, pipes, s = 0, [], seed
+    shields = 1 if powerups else None
+    passed_count, ticks_run = 0, 0
+    for t in range(ticks):
+        if not alive:
+            break
+        ticks_run = t + 1
+        s, pipe = spawn(t, s)          # 1. SPAWN
+        if pipe is not None:
+            pipes.append(pipe)
+        y, vy, alive = step_bird(y, vy, flaps[t % len(flaps)] == "1")  # 2
+        scroll(pipes)                  # 3. SCROLL
+        for p in pipes:                # 4. COLLIDE
+            if pipe_hit(y, p):
+                if shields is not None and shields > 0:
+                    shields -= 1
+                    p["passed"] = True
+                else:
+                    alive = False
+                break
+        if alive:                      # 5. SCORE (dead ticks score nothing)
+            score, shields, passed_count = _score(
+                pipes, vy, score, shields, passed_count)
+        pipes = cull(pipes)            # 6. CULL
+    state = {"y": y, "vy": vy, "score": score,
+             "alive": alive, "ticks_run": ticks_run}
+    if powerups:
+        state["shields"] = shields
+    return state

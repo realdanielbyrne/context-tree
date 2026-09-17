@@ -1,0 +1,63 @@
+"""Command-line front end.
+
+May import parsing, rules and report only. main() returns an int exit code and
+never calls sys.exit itself; diagnostics go to stderr via print(...,
+file=sys.stderr), the report goes to stdout. No business logic lives here.
+"""
+
+import argparse
+import sys
+
+import parsing
+import rules
+import report
+
+
+def main(argv):
+    """Run the CLI over argv (WITHOUT the program name) and return an exit code.
+
+    Exit codes: 0 success, 1 --strict with malformed lines, 2 unreadable file
+    or malformed rules. Never raises for bad input.
+    """
+    parser = argparse.ArgumentParser(prog="ledger")
+    parser.add_argument("command", choices=["report"])
+    parser.add_argument("--ledger", required=True)
+    parser.add_argument("--rules", required=True)
+    parser.add_argument("--strict", action="store_true")
+    args = parser.parse_args(argv)
+
+    try:
+        with open(args.ledger, "r") as f:
+            ledger_text = f.read()
+    except OSError:
+        print("cannot read %s" % args.ledger, file=sys.stderr)
+        return 2
+    try:
+        with open(args.rules, "r") as f:
+            rules_text = f.read()
+    except OSError:
+        print("cannot read %s" % args.rules, file=sys.stderr)
+        return 2
+
+    try:
+        rule_list = rules.load_rules(rules_text)
+    except ValueError as exc:
+        print("rules error: %s" % exc, file=sys.stderr)
+        return 2
+
+    txns, errors = parsing.parse_lines(ledger_text.splitlines())
+
+    if args.strict and errors:
+        for lineno, message in errors:
+            print("line %d: %s" % (lineno, message), file=sys.stderr)
+        return 1
+
+    print(report.render_report(report.summarize(txns, rule_list)))
+
+    if errors and not args.strict:
+        print(
+            "warning: %d malformed line(s) skipped" % len(errors),
+            file=sys.stderr,
+        )
+
+    return 0

@@ -1,0 +1,38 @@
+# Project conventions (read this before anything else)
+
+## Language and dependencies
+
+Python 3, STANDARD LIBRARY ONLY. No third-party imports, no network access, no
+pytest. The only test runner available is `python3 -m unittest`.
+
+## Module layout
+
+The modules are FLAT in the workspace root and import each other by plain name
+(`import money`), never as a package. There is no __init__.py and you must not
+create one. The allowed dependency direction is strictly:
+
+    money.py     imports nothing from this project
+    parsing.py   may import money
+    rules.py     imports nothing from this project
+    report.py    may import money and rules
+    cli.py       may import parsing, rules and report
+
+Do not introduce a cycle. Do not move code between modules.
+
+## Money
+
+INTEGER CENTS everywhere. Never use float for money — not for parsing, not for
+summing, not for rounding. A cent value is a plain signed `int`.
+
+## The transaction dict
+
+A "transaction" (txn) is a plain dict with exactly these four keys:
+
+    {"date": str, "desc": str, "amount": int, "tags": list}
+
+`date` is the raw "YYYY-MM-DD" string exactly as it appeared in the input.
+`desc` is the stripped description. `amount` is signed cents. `tags` is a list
+of strings, empty unless the line carried a tags field (see stage 5).
+
+Continued in spec/00b_contracts.md — error contracts, comment syntax, and the
+rule about signatures. Read it now; it is short and it is normative.

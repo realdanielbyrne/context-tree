@@ -1,0 +1,41 @@
+# Stage 4 — report.py
+
+## summarize(txns, rule_list) -> list of (category, total_cents, count)
+
+Categorize every txn with `rules.categorize`, passing `rule_list` through
+unchanged, then group the txns by the returned category.
+
+For each group, `total_cents` is the sum of that group's "amount" values and
+`count` is how many txns are in it. Return a list of 3-TUPLES — tuples, not
+lists and not dicts — sorted by `total_cents` ASCENDING, so the most negative
+category comes first. Ties on total are broken by category name ASCENDING using
+plain `str` comparison, which is case-sensitive: "Zebra" sorts before "apple".
+
+An empty `txns` gives an empty list.
+
+## render_report(rows) -> str
+
+`rows` is exactly what `summarize` returns and is rendered IN THE ORDER GIVEN
+— `render_report` never re-sorts. Build these lines and join them with "
+".
+There is NO trailing newline. The column widths are exact and total 33:
+
+  1. the header line:
+         "CATEGORY".ljust(15) + "TOTAL".rjust(12) + "COUNT".rjust(6)
+  2. a rule line:  "-" * 33
+  3. one line per row, in order:
+         category.ljust(15) + money.format_amount(total).rjust(12)
+             + str(count).rjust(6)
+  4. a SECOND rule line:  "-" * 33
+  5. the grand-total line:
+         "TOTAL".ljust(15) + money.format_amount(grand).rjust(12)
+             + str(total_count).rjust(6)
+     where `grand` is the sum of every row's total and `total_count` is the
+     sum of every row's count.
+
+Note that `ljust` and `rjust` do NOT truncate: a category name longer than 15
+characters simply pushes the rest of its line right. That is correct — do not
+truncate it, and do not switch to a format spec that would.
+
+An EMPTY `rows` still produces FOUR lines: the header, both rule lines, and a
+grand-total line reading "$0.00" with a count of 0.

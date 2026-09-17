@@ -1,0 +1,63 @@
+"""The deterministic run loop, following the per-tick order in spec/02."""
+
+from units import BIRD_X, PIPE_W, GLIDE_VY
+from physics import step_bird
+from world import spawn, scroll, cull
+from collide import pipe_hit
+
+
+def _score(y, vy, pipes, score):
+    """Step 5: score any pipe whose right edge is at or behind the bird."""
+    for p in pipes:
+        if not p["passed"] and p["x"] + PIPE_W <= BIRD_X:
+            p["passed"] = True
+            score += 1
+            if abs(vy) <= GLIDE_VY:
+                score += 1
+    return score
+
+
+def run(seed, ticks, flaps="0", powerups=False):
+    """Run the simulation; return (state_dict, trace_ticks).
+
+    trace_ticks is a list of (t, y, vy, score, alive) snapshots taken at the
+    END of each tick where t % max(1, ticks//20) == 0.
+    """
+    y, vy, score, alive = 560, 0, 0, True
+    pipes, s, n, traces = [], seed, 0, []
+    shields, passed_n = (1, 0) if powerups else (0, 0)
+    every = max(1, ticks // 20)
+    while n < ticks and alive:
+        t = n
+        s, pipe = spawn(t, s)
+        if pipe is not None:
+            pipes.append(pipe)
+        flap = flaps[t % len(flaps)] == "1"
+        y, vy, alive = step_bird(y, vy, flap)
+        scroll(pipes)
+        for p in pipes:
+            if pipe_hit(y, p):
+                if powerups and shields > 0:
+                    shields -= 1
+                    p["passed"] = True
+                else:
+                    alive = False
+                break
+        if alive:
+            score = _score(y, vy, pipes, score)
+            if powerups:
+                for p in pipes:
+                    if p["passed"] and not p.get("counted"):
+                        p["counted"] = True
+                        passed_n += 1
+                        if passed_n % 5 == 0 and shields < 3:
+                            shields += 1
+        pipes = cull(pipes)
+        n += 1
+        if t % every == 0:
+            traces.append((t, y, vy, score, alive))
+    state = {"y": y, "vy": vy, "score": score, "alive": alive,
+             "ticks_run": n}
+    if powerups:
+        state["shields"] = shields
+    return state, traces

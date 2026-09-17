@@ -1,0 +1,173 @@
+I'll probe the engine to pin down exact values for the test assertions before writing them:
+All values verified (two of my hand-computed guesses were off — `lcg(1)` and the death tick for seed 7/flaps "01" — good thing I probed). Writing the suite:
+One test name is misleading (it covers both ceiling and floor) — fixing, then running:
+DONE
+
+`test_flapsim.py` has 19 tests (6 test classes), all passing under `python3 -m unittest test_flapsim -v`: physics clamps (flap-sets-vy, flap never clamped, gravity clamp at `VY_MAX`, soft ceiling vs lethal floor, exact-boundary survival), LCG (concrete values, spawn cadence with single advance per spawn, `gap_top` range over 500 advances), AABB edges (touching edges, both vertical gap boundaries, both horizontal pipe boundaries), clean-glide bonus (awarded at |vy|=27, withheld at |vy|=45), and per-tick order (pass tick pinned to t=45 proving spawn+scroll ordering, fatal tick counted but scoring nothing, scroll-before-collision proven by the exact death tick, each pipe scored once).
+
+===STDERR===
+timestamp=2026-09-16T21:12:31.993Z level=INFO run=ef211c32 message="creating instance" directory=/tmp/oc-placebo-c852WN
+timestamp=2026-09-16T21:12:31.994Z level=INFO run=ef211c32 message=fromDirectory directory=/tmp/oc-placebo-c852WN
+timestamp=2026-09-16T21:12:32.004Z level=INFO run=ef211c32 message=bootstrapping directory=/tmp/oc-placebo-c852WN
+timestamp=2026-09-16T21:12:32.007Z level=INFO run=ef211c32 message=loading path=/tmp/ocx-t3oQqC/cfg/opencode/config.json
+timestamp=2026-09-16T21:12:32.008Z level=INFO run=ef211c32 message=loading path=/tmp/ocx-t3oQqC/cfg/opencode/opencode.json
+timestamp=2026-09-16T21:12:32.010Z level=INFO run=ef211c32 message=loading path=/tmp/ocx-t3oQqC/cfg/opencode/opencode.jsonc
+timestamp=2026-09-16T21:12:32.010Z level=INFO run=ef211c32 message=loading path=/home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/captures/oc-flapsim-v2-placebo-1789573273804/placebo-rep1/opencode.json
+timestamp=2026-09-16T21:12:32.074Z level=INFO run=ef211c32 message="all LSPs are disabled"
+timestamp=2026-09-16T21:12:32.074Z level=INFO run=ef211c32 message="all formatters are disabled"
+timestamp=2026-09-16T21:12:32.075Z level=INFO run=ef211c32 message=init
+timestamp=2026-09-16T21:12:32.167Z level=INFO run=ef211c32 message="event connected"
+timestamp=2026-09-16T21:12:32.479Z level=INFO run=ef211c32 message=loop session.id=ses_f54006dc0ffejMK0lRE47q69vf step=0
+timestamp=2026-09-16T21:12:32.489Z level=INFO run=ef211c32 message="shell tool using shell" shell=/bin/bash
+timestamp=2026-09-16T21:12:32.503Z level=INFO run=ef211c32 message=init count=10
+[0m
+> build · unsloth/Qwen3.8-27B-GGUF
+[0m
+timestamp=2026-09-16T21:12:32.547Z level=INFO run=ef211c32 message="watcher backend" directory=/tmp/oc-placebo-c852WN platform=linux backend=inotify
+timestamp=2026-09-16T21:12:32.553Z level=INFO run=ef211c32 message="project copy refresh started" projectID=global
+timestamp=2026-09-16T21:12:32.554Z level=INFO run=ef211c32 message="project copy refresh done" projectID=global updated=[] removed=[]
+timestamp=2026-09-16T21:12:32.578Z level=INFO run=ef211c32 message="booting location services" directory=/tmp/oc-placebo-c852WN workspaceID=undefined
+timestamp=2026-09-16T21:12:32.585Z level=INFO run=ef211c32 message=process session.id=ses_f54006dc0ffejMK0lRE47q69vf messageID=msg_0ac106be3001KF6v0V2WrQ4Fdx
+timestamp=2026-09-16T21:12:32.586Z level=INFO run=ef211c32 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f54006dc0ffejMK0lRE47q69vf small=false agent=build mode=primary
+timestamp=2026-09-16T21:12:32.718Z level=INFO run=ef211c32 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:20:25.970Z level=INFO run=ef211c32 message=evaluated permission=bash pattern="python3 - <<'EOF'\nfrom engine import run\nfrom physics import step_bird\nfrom world import lcg, spawn, scroll, cull\nfrom collide import rect_overlap, pipe_hit\nimport units as u\n\nprint(\"lcg(0) =\", lcg(0), \" lcg(1) =\", lcg(1))\np, s = spawn(0, 7); print(\"spawn(0,7):\", p, \"s:\", s, \"expected s:\", (1103515245*7+12345) % 2147483648)\nprint(\"spawn(1,7):\", spawn(1, 7))\nprint(\"spawn(44,7):\", spawn(44, 7))\n\nfor args in [((560, 100, True),), ((560, 300, False),), ((0, 250, False),),\n             ((-5, -13, False),), ((1102, 0, False),), ((1190, 260, False),),\n             ((100, -260, True),)]:\n    print(\"step_bird\", args[0], \"->\", step_bird(*args[0]))\n\nprint(\"rect touching:\", rect_overlap(300, 380, 380, 500), rect_overlap(380, 500, 300, 380))\nprint(\"pipe bottom==gap_bottom:\", pipe_hit(960, {\"x\": 300, \"gap_top\": 40}),\n      \"one below:\", pipe_hit(961, {\"x\": 300, \"gap_top\": 40}))\nprint(\"pipe top==gap_top:\", pipe_hit(40, {\"x\": 300, \"gap_top\": 40}),\n      \"one above:\", pipe_hit(39, {\"x\": 300, \"gap_top\": 40}))\nprint(\"h-edge right==BIRD_X:\", pipe_hit(500, {\"x\": u.BIRD_X - u.PIPE_W, \"gap_top\": 40}),\n      \"one in:\", pipe_hit(500, {\"x\": u.BIRD_X - u.PIPE_W + 1, \"gap_top\": 40}))\nprint(\"bird right==pipe left:\", pipe_hit(500, {\"x\": u.BIRD_X + u.BIRD_W, \"gap_top\": 40}))\n\nfor label, kw in [(\"7/45/0010\", dict(seed=7, ticks=45, flaps=\"0010\")),\n                  (\"7/46/0010\", dict(seed=7, ticks=46, flaps=\"0010\")),\n                  (\"7/46/01000\", dict(seed=7, ticks=46, flaps=\"01000\")),\n                  (\"2/90/0\", dict(seed=2, ticks=90, flaps=\"0\")),\n                  (\"7/120/01\", dict(seed=7, ticks=120, flaps=\"01\")),\n                  (\"7/200/0010\", dict(seed=7, ticks=200, flaps=\"0010\"))]:\n    print(label, \"->\", run(**kw))\n\n# gap_top range over 500 seeds\ngts = []\ns = 0\nfor _ in range(500):\n    s = lcg(s)\n    gts.append(40 + (s >> 8) % 80)\nprint(\"gap_top min/max:\", min(gts), max(gts))\nEOF" action.permission=* action.action=allow action.pattern=*
+[0m$ [0mpython3 - <<'EOF'
+from engine import run
+from physics import step_bird
+from world import lcg, spawn, scroll, cull
+from collide import rect_overlap, pipe_hit
+import units as u
+
+print("lcg(0) =", lcg(0), " lcg(1) =", lcg(1))
+p, s = spawn(0, 7); print("spawn(0,7):", p, "s:", s, "expected s:", (1103515245*7+12345) % 2147483648)
+print("spawn(1,7):", spawn(1, 7))
+print("spawn(44,7):", spawn(44, 7))
+
+for args in [((560, 100, True),), ((560, 300, False),), ((0, 250, False),),
+             ((-5, -13, False),), ((1102, 0, False),), ((1190, 260, False),),
+             ((100, -260, True),)]:
+    print("step_bird", args[0], "->", step_bird(*args[0]))
+
+print("rect touching:", rect_overlap(300, 380, 380, 500), rect_overlap(380, 500, 300, 380))
+print("pipe bottom==gap_bottom:", pipe_hit(960, {"x": 300, "gap_top": 40}),
+      "one below:", pipe_hit(961, {"x": 300, "gap_top": 40}))
+print("pipe top==gap_top:", pipe_hit(40, {"x": 300, "gap_top": 40}),
+      "one above:", pipe_hit(39, {"x": 300, "gap_top": 40}))
+print("h-edge right==BIRD_X:", pipe_hit(500, {"x": u.BIRD_X - u.PIPE_W, "gap_top": 40}),
+      "one in:", pipe_hit(500, {"x": u.BIRD_X - u.PIPE_W + 1, "gap_top": 40}))
+print("bird right==pipe left:", pipe_hit(500, {"x": u.BIRD_X + u.BIRD_W, "gap_top": 40}))
+
+for label, kw in [("7/45/0010", dict(seed=7, ticks=45, flaps="0010")),
+                  ("7/46/0010", dict(seed=7, ticks=46, flaps="0010")),
+                  ("7/46/01000", dict(seed=7, ticks=46, flaps="01000")),
+                  ("2/90/0", dict(seed=2, ticks=90, flaps="0")),
+                  ("7/120/01", dict(seed=7, ticks=120, flaps="01")),
+                  ("7/200/0010", dict(seed=7, ticks=200, flaps="0010"))]:
+    print(label, "->", run(**kw))
+
+# gap_top range over 500 seeds
+gts = []
+s = 0
+for _ in range(500):
+    s = lcg(s)
+    gts.append(40 + (s >> 8) % 80)
+print("gap_top min/max:", min(gts), max(gts))
+EOF
+lcg(0) = 12345  lcg(1) = 1103527590
+spawn(0,7): {'x': 2000, 'gap_top': 109, 'passed': False} s: 1282168116 expected s: 1282168116
+spawn(1,7): (None, 7)
+spawn(44,7): (None, 7)
+step_bird (560, 100, True) -> (533, -27, True)
+step_bird (560, 300, False) -> (820, 260, True)
+step_bird (0, 250, False) -> (260, 260, True)
+step_bird (-5, -13, False) -> (0, 5, True)
+step_bird (1102, 0, False) -> (1120, 18, True)
+step_bird (1190, 260, False) -> (1120, 260, False)
+step_bird (100, -260, True) -> (73, -27, True)
+rect touching: False False
+pipe bottom==gap_bottom: False one below: True
+pipe top==gap_top: False one above: True
+h-edge right==BIRD_X: False one in: False
+bird right==pipe left: False
+7/45/0010 -> {'y': 587, 'vy': 9, 'score': 0, 'alive': True, 'ticks_run': 45}
+7/46/0010 -> {'y': 614, 'vy': 27, 'score': 2, 'alive': True, 'ticks_run': 46}
+7/46/01000 -> {'y': 983, 'vy': 45, 'score': 1, 'alive': True, 'ticks_run': 46}
+2/90/0 -> {'y': 1120, 'vy': 144, 'score': 0, 'alive': False, 'ticks_run': 8}
+7/120/01 -> {'y': 18, 'vy': 18, 'score': 0, 'alive': False, 'ticks_run': 41}
+7/200/0010 -> {'y': 578, 'vy': -9, 'score': 8, 'alive': True, 'ticks_run': 200}
+gap_top min/max: 40 119
+[0m
+timestamp=2026-09-16T21:20:26.009Z level=INFO run=ef211c32 message=loop session.id=ses_f54006dc0ffejMK0lRE47q69vf step=1
+timestamp=2026-09-16T21:20:26.029Z level=INFO run=ef211c32 message=process session.id=ses_f54006dc0ffejMK0lRE47q69vf messageID=msg_0ac17a59b001XO9ywd5rQuIMLY
+timestamp=2026-09-16T21:20:26.030Z level=INFO run=ef211c32 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f54006dc0ffejMK0lRE47q69vf small=false agent=build mode=primary
+timestamp=2026-09-16T21:20:26.031Z level=INFO run=ef211c32 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:30:59.107Z level=INFO run=ef211c32 message=evaluated permission=edit pattern=tmp/oc-placebo-c852WN/test_flapsim.py action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:30:59.108Z level=INFO run=ef211c32 message=formatting file=/tmp/oc-placebo-c852WN/test_flapsim.py
+timestamp=2026-09-16T21:30:59.108Z level=INFO run=ef211c32 message="touching file" file=/tmp/oc-placebo-c852WN/test_flapsim.py
+[0m← [0mWrite test_flapsim.py
+Wrote file successfully.
+[0m
+timestamp=2026-09-16T21:31:03.128Z level=INFO run=ef211c32 message=loop session.id=ses_f54006dc0ffejMK0lRE47q69vf step=2
+timestamp=2026-09-16T21:31:03.146Z level=INFO run=ef211c32 message=process session.id=ses_f54006dc0ffejMK0lRE47q69vf messageID=msg_0ac215e5a001YkRqBR3ew0MRHE
+timestamp=2026-09-16T21:31:03.147Z level=INFO run=ef211c32 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f54006dc0ffejMK0lRE47q69vf small=false agent=build mode=primary
+timestamp=2026-09-16T21:31:03.147Z level=INFO run=ef211c32 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:33:48.402Z level=INFO run=ef211c32 message=evaluated permission=edit pattern=tmp/oc-placebo-c852WN/test_flapsim.py action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:33:48.403Z level=INFO run=ef211c32 message=formatting file=/tmp/oc-placebo-c852WN/test_flapsim.py
+timestamp=2026-09-16T21:33:48.404Z level=INFO run=ef211c32 message="touching file" file=/tmp/oc-placebo-c852WN/test_flapsim.py
+[0m← [0mEdit test_flapsim.py
+Index: /tmp/oc-placebo-c852WN/test_flapsim.py
+===================================================================
+--- /tmp/oc-placebo-c852WN/test_flapsim.py
++++ /tmp/oc-placebo-c852WN/test_flapsim.py
+@@ -19,9 +19,9 @@
+ def test_gravity_clamps_at_vy_max(self):
+     self.assertEqual(step_bird(560, 300, False), (820, units.VY_MAX, True))
+     self.assertEqual(step_bird(0, units.VY_MAX - 10, False), (units.VY_MAX, units.VY_MAX, True))
+ 
+-def test_ceiling_is_soft_and_zeroes_vy(self):
++def test_ceiling_is_soft_floor_kills(self):
+     self.assertEqual(step_bird(-5, -27, False), (0, 0, True))
+     self.assertEqual(step_bird(1190, units.VY_MAX, False), (units.FIELD_H - units.BIRD_H, units.VY_MAX, False))
+ 
+ def test_landing_exactly_on_ceiling_or_floor_survives(self):
+
+[0m
+timestamp=2026-09-16T21:33:48.469Z level=INFO run=ef211c32 message=loop session.id=ses_f54006dc0ffejMK0lRE47q69vf step=3
+timestamp=2026-09-16T21:33:48.485Z level=INFO run=ef211c32 message=process session.id=ses_f54006dc0ffejMK0lRE47q69vf messageID=msg_0ac23e437001g23n62tabY0445
+timestamp=2026-09-16T21:33:48.486Z level=INFO run=ef211c32 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f54006dc0ffejMK0lRE47q69vf small=false agent=build mode=primary
+timestamp=2026-09-16T21:33:48.487Z level=INFO run=ef211c32 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:36:16.125Z level=INFO run=ef211c32 message=evaluated permission=bash pattern="python3 -m unittest test_flapsim -v 2>&1" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:36:16.170Z level=INFO run=ef211c32 message=loop session.id=ses_f54006dc0ffejMK0lRE47q69vf step=4
+[0m$ [0mpython3 -m unittest test_flapsim -v 2>&1
+test_pipe_hit_horizontal_edges (test_flapsim.TestAabb.test_pipe_hit_horizontal_edges) ... ok
+test_pipe_hit_vertical_gap_edges (test_flapsim.TestAabb.test_pipe_hit_vertical_gap_edges) ... ok
+test_rect_overlap_and_touching_edges (test_flapsim.TestAabb.test_rect_overlap_and_touching_edges) ... ok
+test_bonus_awarded_when_level_at_pass (test_flapsim.TestGlideBonus.test_bonus_awarded_when_level_at_pass) ... ok
+test_no_bonus_when_diving_hard_at_pass (test_flapsim.TestGlideBonus.test_no_bonus_when_diving_hard_at_pass) ... ok
+test_gap_top_stays_in_range (test_flapsim.TestLcgAndSpawn.test_gap_top_stays_in_range) ... ok
+test_lcg_values (test_flapsim.TestLcgAndSpawn.test_lcg_values) ... ok
+test_spawn_cadence_and_single_advance (test_flapsim.TestLcgAndSpawn.test_spawn_cadence_and_single_advance) ... ok
+test_ceiling_is_soft_floor_kills (test_flapsim.TestPhysics.test_ceiling_is_soft_floor_kills) ... ok
+test_flap_is_never_clamped (test_flapsim.TestPhysics.test_flap_is_never_clamped) ... ok
+test_flap_sets_vy_instead_of_adding (test_flapsim.TestPhysics.test_flap_sets_vy_instead_of_adding) ... ok
+test_gravity_clamps_at_vy_max (test_flapsim.TestPhysics.test_gravity_clamps_at_vy_max) ... ok
+test_landing_exactly_on_ceiling_or_floor_survives (test_flapsim.TestPhysics.test_landing_exactly_on_ceiling_or_floor_survives) ... ok
+test_cull_drops_only_fully_offscreen_pipes (test_flapsim.TestScrollAndCull.test_cull_drops_only_fully_offscreen_pipes) ... ok
+test_scroll_moves_every_pipe_left (test_flapsim.TestScrollAndCull.test_scroll_moves_every_pipe_left) ... ok
+test_each_pipe_scored_once (test_flapsim.TestTickOrder.test_each_pipe_scored_once) ... ok
+test_fatal_tick_counts_and_scores_nothing (test_flapsim.TestTickOrder.test_fatal_tick_counts_and_scores_nothing) ... ok
+test_pass_tick_pins_spawn_and_scroll_order (test_flapsim.TestTickOrder.test_pass_tick_pins_spawn_and_scroll_order) ... ok
+test_scroll_happens_before_collision (test_flapsim.TestTickOrder.test_scroll_happens_before_collision) ... ok
+
+----------------------------------------------------------------------
+Ran 19 tests in 0.001s
+
+OK
+[0m
+timestamp=2026-09-16T21:36:16.187Z level=INFO run=ef211c32 message=process session.id=ses_f54006dc0ffejMK0lRE47q69vf messageID=msg_0ac26252d001dl77vDWxaLaLX7
+timestamp=2026-09-16T21:36:16.188Z level=INFO run=ef211c32 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f54006dc0ffejMK0lRE47q69vf small=false agent=build mode=primary
+timestamp=2026-09-16T21:36:16.189Z level=INFO run=ef211c32 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:38:57.904Z level=INFO run=ef211c32 message=loop session.id=ses_f54006dc0ffejMK0lRE47q69vf step=5
+timestamp=2026-09-16T21:38:57.906Z level=INFO run=ef211c32 message="exiting loop" session.id=ses_f54006dc0ffejMK0lRE47q69vf
+timestamp=2026-09-16T21:38:57.911Z level=INFO run=ef211c32 message="disposing instance" directory=/tmp/oc-placebo-c852WN
+timestamp=2026-09-16T21:38:57.922Z level=INFO run=ef211c32 message=loading path=/home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/captures/oc-flapsim-v2-placebo-1789573273804/placebo-rep1/opencode.json

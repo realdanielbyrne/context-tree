@@ -1,0 +1,56 @@
+"""Game loop: runs the per-tick order (spec/02) and returns final state."""
+
+from units import BIRD_X, PIPE_W, GLIDE_VY
+from physics import step_bird
+from world import spawn, scroll, cull
+from collide import pipe_hit
+
+
+def _score(pipes, y, vy, score):
+    """Step 5: score pipes whose right edge is at or behind the bird's left."""
+    for p in pipes:
+        if not p["passed"] and p["x"] + PIPE_W <= BIRD_X:
+            p["passed"] = True
+            score += 1
+            if abs(vy) <= GLIDE_VY:
+                score += 1
+    return score
+
+
+def run(seed, ticks, flaps, powerups=False):
+    """Simulate up to `ticks` ticks; stop early if the bird dies."""
+    y, vy, alive = 560, 0, True
+    score, s, pipes = 0, seed, []
+    shields = 1 if powerups else 0
+    passed_count = 0
+    ticks_run = 0
+    for t in range(ticks):
+        if not alive:
+            break
+        ticks_run += 1
+        flap = flaps[t % len(flaps)] == "1"
+        s, pipe = spawn(t, s)
+        if pipe is not None:
+            pipes.append(pipe)
+        y, vy, alive = step_bird(y, vy, flap)
+        scroll(pipes)
+        if alive:
+            for p in pipes:
+                if pipe_hit(y, p):
+                    if powerups and shields > 0:
+                        shields -= 1
+                        p["passed"] = True
+                    else:
+                        alive = False
+                    break
+        if alive:
+            score = _score(pipes, y, vy, score)
+            passed_count += sum(1 for p in pipes if p["passed"])
+            if powerups and passed_count % 5 == 0:
+                shields = min(shields + 1, 3)
+        pipes = cull(pipes)
+    state = {"y": y, "vy": vy, "score": score, "alive": alive,
+             "ticks_run": ticks_run}
+    if powerups:
+        state["shields"] = shields
+    return state

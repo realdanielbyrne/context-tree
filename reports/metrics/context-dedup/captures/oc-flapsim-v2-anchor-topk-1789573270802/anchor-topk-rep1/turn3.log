@@ -1,0 +1,199 @@
+I'll first pin down exact expected values for the trickier tests (especially a seed where the bird passes a pipe while diving, `|vy| > GLIDE_VY`, so no bonus is awarded):
+Seed 3 gives exactly the diving pass I need (score=1, no bonus). Verifying the remaining expected values:
+All values confirmed (note: EX2's death tick is t=40 → `ticks_run=41`, which cleanly pins spawn-before-scroll). Writing the suite:
+One failure — my hand-computed `lcg(7)` constant was wrong. Verifying the true value independently:
+The code is right; my addition was off (…606,715 + 12,345 = …619,060). Fixing the test constant:
+All 15 tests pass — covering physics clamps (flap-set, VY_MAX gravity clamp, ceiling, floor boundary), the LCG (formula, bounds, once-per-spawn advance), AABB edges (touching intervals, pipe/gap boundaries), the clean-glide bonus (awarded at |vy|=27, denied at vy=+45), and per-tick order (fatal tick counted, spawn-before-scroll, pass tick 45, scroll-into-bird).
+
+DONE
+
+===STDERR===
+timestamp=2026-09-16T21:13:13.780Z level=INFO run=4b39b63d message="creating instance" directory=/tmp/oc-anchor-topk-yJCbkm
+timestamp=2026-09-16T21:13:13.782Z level=INFO run=4b39b63d message=fromDirectory directory=/tmp/oc-anchor-topk-yJCbkm
+timestamp=2026-09-16T21:13:13.791Z level=INFO run=4b39b63d message=bootstrapping directory=/tmp/oc-anchor-topk-yJCbkm
+timestamp=2026-09-16T21:13:13.795Z level=INFO run=4b39b63d message=loading path=/tmp/ocx-1qKgSH/cfg/opencode/config.json
+timestamp=2026-09-16T21:13:13.795Z level=INFO run=4b39b63d message=loading path=/tmp/ocx-1qKgSH/cfg/opencode/opencode.json
+timestamp=2026-09-16T21:13:13.797Z level=INFO run=4b39b63d message=loading path=/tmp/ocx-1qKgSH/cfg/opencode/opencode.jsonc
+timestamp=2026-09-16T21:13:13.798Z level=INFO run=4b39b63d message=loading path=/home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/captures/oc-flapsim-v2-anchor-topk-1789573270802/anchor-topk-rep1/opencode.json
+timestamp=2026-09-16T21:13:13.865Z level=INFO run=4b39b63d message="all LSPs are disabled"
+timestamp=2026-09-16T21:13:13.866Z level=INFO run=4b39b63d message="all formatters are disabled"
+timestamp=2026-09-16T21:13:13.866Z level=INFO run=4b39b63d message=init
+timestamp=2026-09-16T21:13:13.972Z level=INFO run=4b39b63d message="event connected"
+timestamp=2026-09-16T21:13:14.292Z level=INFO run=4b39b63d message=loop session.id=ses_f544c2617ffe210aq23r3BnCnM step=0
+timestamp=2026-09-16T21:13:14.301Z level=INFO run=4b39b63d message="shell tool using shell" shell=/bin/bash
+timestamp=2026-09-16T21:13:14.317Z level=INFO run=4b39b63d message=init count=10
+[0m
+> build · unsloth/Qwen3.8-27B-GGUF
+[0m
+timestamp=2026-09-16T21:13:14.362Z level=INFO run=4b39b63d message="watcher backend" directory=/tmp/oc-anchor-topk-yJCbkm platform=linux backend=inotify
+timestamp=2026-09-16T21:13:14.368Z level=INFO run=4b39b63d message="project copy refresh started" projectID=global
+timestamp=2026-09-16T21:13:14.369Z level=INFO run=4b39b63d message="project copy refresh done" projectID=global updated=[] removed=[]
+timestamp=2026-09-16T21:13:14.393Z level=INFO run=4b39b63d message="booting location services" directory=/tmp/oc-anchor-topk-yJCbkm workspaceID=undefined
+timestamp=2026-09-16T21:13:14.643Z level=INFO run=4b39b63d message=process session.id=ses_f544c2617ffe210aq23r3BnCnM messageID=msg_0ac110f37001lrQ2FFxQgYQNye
+timestamp=2026-09-16T21:13:14.645Z level=INFO run=4b39b63d message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f544c2617ffe210aq23r3BnCnM small=false agent=build mode=primary
+timestamp=2026-09-16T21:13:14.650Z level=INFO run=4b39b63d message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:23:46.304Z level=INFO run=4b39b63d message=evaluated permission=bash pattern="python3 - <<'EOF'\nimport contextlib, io\nimport engine, world\n\n# find seeds whose first gap_top >= 64 (needed for the \"01000\" diving-bird scenario)\ncands = []\nfor seed in range(1, 51):\n    s = world.lcg(seed)\n    g = 40 + (s >> 8) % 80\n    if g >= 64:\n        cands.append((seed, g))\nprint(\"candidates:\", cands[:10])\n\nfor seed, g in cands[:5]:\n    with contextlib.redirect_stdout(io.StringIO()):\n        st = engine.run(seed, 46, \"01000\")\n    print(\"seed\", seed, \"gap_top\", g, \"->\", st)\nEOF" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:23:46.347Z level=INFO run=4b39b63d message=loop session.id=ses_f544c2617ffe210aq23r3BnCnM step=1
+[0m$ [0mpython3 - <<'EOF'
+import contextlib, io
+import engine, world
+
+# find seeds whose first gap_top >= 64 (needed for the "01000" diving-bird scenario)
+cands = []
+for seed in range(1, 51):
+    s = world.lcg(seed)
+    g = 40 + (s >> 8) % 80
+    if g >= 64:
+        cands.append((seed, g))
+print("candidates:", cands[:10])
+
+for seed, g in cands[:5]:
+    with contextlib.redirect_stdout(io.StringIO()):
+        st = engine.run(seed, 46, "01000")
+    print("seed", seed, "gap_top", g, "->", st)
+EOF
+candidates: [(3, 99), (4, 97), (5, 64), (7, 109), (8, 107), (9, 74), (10, 72), (11, 118), (12, 117), (13, 83)]
+seed 3 gap_top 99 -> {'y': 983, 'vy': 45, 'score': 1, 'alive': True, 'ticks_run': 46}
+seed 4 gap_top 97 -> {'y': 983, 'vy': 45, 'score': 1, 'alive': True, 'ticks_run': 46}
+seed 5 gap_top 64 -> {'y': 983, 'vy': 45, 'score': 1, 'alive': True, 'ticks_run': 46}
+seed 7 gap_top 109 -> {'y': 983, 'vy': 45, 'score': 1, 'alive': True, 'ticks_run': 46}
+seed 8 gap_top 107 -> {'y': 983, 'vy': 45, 'score': 1, 'alive': True, 'ticks_run': 46}
+[0m
+timestamp=2026-09-16T21:23:46.368Z level=INFO run=4b39b63d message=process session.id=ses_f544c2617ffe210aq23r3BnCnM messageID=msg_0ac1ab42e0016joZegKudSFq2h
+timestamp=2026-09-16T21:23:46.368Z level=INFO run=4b39b63d message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f544c2617ffe210aq23r3BnCnM small=false agent=build mode=primary
+timestamp=2026-09-16T21:23:46.369Z level=INFO run=4b39b63d message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:27:04.597Z level=INFO run=4b39b63d message=evaluated permission=bash pattern="python3 - <<'EOF'\nimport contextlib, io\nimport engine\n\ndef q(seed, ticks, flaps):\n    with contextlib.redirect_stdout(io.StringIO()):\n        return engine.run(seed, ticks, flaps)\n\nprint(\"pass boundary:\", q(7, 45, \"0010\"), q(7, 46, \"0010\"))\nprint(\"no-flap fall :\", q(2, 90, \"0\"))\nprint(\"ceiling pipe :\", q(7, 120, \"01\"))\nEOF" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:27:04.624Z level=INFO run=4b39b63d message=loop session.id=ses_f544c2617ffe210aq23r3BnCnM step=2
+[0m$ [0mpython3 - <<'EOF'
+import contextlib, io
+import engine
+
+def q(seed, ticks, flaps):
+    with contextlib.redirect_stdout(io.StringIO()):
+        return engine.run(seed, ticks, flaps)
+
+print("pass boundary:", q(7, 45, "0010"), q(7, 46, "0010"))
+print("no-flap fall :", q(2, 90, "0"))
+print("ceiling pipe :", q(7, 120, "01"))
+EOF
+pass boundary: {'y': 587, 'vy': 9, 'score': 0, 'alive': True, 'ticks_run': 45} {'y': 614, 'vy': 27, 'score': 2, 'alive': True, 'ticks_run': 46}
+no-flap fall : {'y': 1120, 'vy': 144, 'score': 0, 'alive': False, 'ticks_run': 8}
+ceiling pipe : {'y': 18, 'vy': 18, 'score': 0, 'alive': False, 'ticks_run': 41}
+[0m
+timestamp=2026-09-16T21:27:04.646Z level=INFO run=4b39b63d message=process session.id=ses_f544c2617ffe210aq23r3BnCnM messageID=msg_0ac1dbab300173x43uZcSZSCjD
+timestamp=2026-09-16T21:27:04.646Z level=INFO run=4b39b63d message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f544c2617ffe210aq23r3BnCnM small=false agent=build mode=primary
+timestamp=2026-09-16T21:27:04.647Z level=INFO run=4b39b63d message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:45:15.702Z level=INFO run=4b39b63d message=evaluated permission=edit pattern=tmp/oc-anchor-topk-yJCbkm/test_flapsim.py action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:45:15.703Z level=INFO run=4b39b63d message=formatting file=/tmp/oc-anchor-topk-yJCbkm/test_flapsim.py
+timestamp=2026-09-16T21:45:15.704Z level=INFO run=4b39b63d message="touching file" file=/tmp/oc-anchor-topk-yJCbkm/test_flapsim.py
+[0m← [0mWrite test_flapsim.py
+Wrote file successfully.
+[0m
+timestamp=2026-09-16T21:45:15.768Z level=INFO run=4b39b63d message=loop session.id=ses_f544c2617ffe210aq23r3BnCnM step=3
+timestamp=2026-09-16T21:45:15.787Z level=INFO run=4b39b63d message=process session.id=ses_f544c2617ffe210aq23r3BnCnM messageID=msg_0ac2e60fa001073FLCpKPhUALg
+timestamp=2026-09-16T21:45:15.788Z level=INFO run=4b39b63d message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f544c2617ffe210aq23r3BnCnM small=false agent=build mode=primary
+timestamp=2026-09-16T21:45:15.789Z level=INFO run=4b39b63d message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:47:11.954Z level=INFO run=4b39b63d message=evaluated permission=bash pattern="python3 -m unittest test_flapsim -v" action.permission=* action.action=allow action.pattern=*
+[0m$ [0mpython3 -m unittest test_flapsim -v
+test_pipe_hit_gap_edges (test_flapsim.AabbTests.test_pipe_hit_gap_edges) ... ok
+test_pipe_hit_horizontal_edges (test_flapsim.AabbTests.test_pipe_hit_horizontal_edges) ... ok
+test_rect_overlap_edges (test_flapsim.AabbTests.test_rect_overlap_edges) ... ok
+test_glide_bonus_awarded_when_level (test_flapsim.GlideBonusTests.test_glide_bonus_awarded_when_level) ... ok
+test_no_bonus_when_diving (test_flapsim.GlideBonusTests.test_no_bonus_when_diving) ... ok
+test_lcg_formula_and_bounds (test_flapsim.LcgTests.test_lcg_formula_and_bounds) ... FAIL
+test_spawn_advances_lcg_once_per_spawn_tick (test_flapsim.LcgTests.test_spawn_advances_lcg_once_per_spawn_tick) ... ok
+test_ceiling_is_soft_and_zeroes_vy (test_flapsim.PhysicsTests.test_ceiling_is_soft_and_zeroes_vy) ... ok
+test_flap_sets_vy_and_is_never_clamped (test_flapsim.PhysicsTests.test_flap_sets_vy_and_is_never_clamped) ... ok
+test_floor_kills_and_clamps_y (test_flapsim.PhysicsTests.test_floor_kills_and_clamps_y) ... ok
+test_gravity_clamped_at_vy_max (test_flapsim.PhysicsTests.test_gravity_clamped_at_vy_max) ... ok
+test_halt_counts_fatal_tick (test_flapsim.TickOrderTests.test_halt_counts_fatal_tick) ... ok
+test_pass_tick_is_45 (test_flapsim.TickOrderTests.test_pass_tick_is_45) ... ok
+test_scroll_moves_pipe_into_bird (test_flapsim.TickOrderTests.test_scroll_moves_pipe_into_bird) ... ok
+test_spawn_before_scroll (test_flapsim.TickOrderTests.test_spawn_before_scroll) ... ok
+
+======================================================================
+FAIL: test_lcg_formula_and_bounds (test_flapsim.LcgTests.test_lcg_formula_and_bounds)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/oc-anchor-topk-yJCbkm/test_flapsim.py", line 42, in test_lcg_formula_and_bounds
+    self.assertEqual(world.lcg(7), 1282279216)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1282168116 != 1282279216
+
+----------------------------------------------------------------------
+Ran 15 tests in 0.001s
+
+FAILED (failures=1)
+[0m
+timestamp=2026-09-16T21:47:12.029Z level=INFO run=4b39b63d message=loop session.id=ses_f544c2617ffe210aq23r3BnCnM step=4
+timestamp=2026-09-16T21:47:12.047Z level=INFO run=4b39b63d message=process session.id=ses_f544c2617ffe210aq23r3BnCnM messageID=msg_0ac30271f00106UPJ6HLIXENqm
+timestamp=2026-09-16T21:47:12.048Z level=INFO run=4b39b63d message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f544c2617ffe210aq23r3BnCnM small=false agent=build mode=primary
+timestamp=2026-09-16T21:47:12.049Z level=INFO run=4b39b63d message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:52:10.180Z level=INFO run=4b39b63d message=evaluated permission=bash pattern="python3 -c \"\nprint((1103515245 * 7 + 12345) % 2147483648)\nprint(1103515245 * 7, (1103515245 * 7 + 12345))\n\"" action.permission=* action.action=allow action.pattern=*
+[0m$ [0mpython3 -c "
+print((1103515245 * 7 + 12345) % 2147483648)
+print(1103515245 * 7, (1103515245 * 7 + 12345))
+"
+1282168116
+7724606715 7724619060
+[0m
+timestamp=2026-09-16T21:52:10.253Z level=INFO run=4b39b63d message=loop session.id=ses_f544c2617ffe210aq23r3BnCnM step=5
+timestamp=2026-09-16T21:52:10.263Z level=INFO run=4b39b63d message=process session.id=ses_f544c2617ffe210aq23r3BnCnM messageID=msg_0ac34b40f001Az2GLe1gAoNZD3
+timestamp=2026-09-16T21:52:10.264Z level=INFO run=4b39b63d message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f544c2617ffe210aq23r3BnCnM small=false agent=build mode=primary
+timestamp=2026-09-16T21:52:10.272Z level=INFO run=4b39b63d message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:55:31.440Z level=INFO run=4b39b63d message=evaluated permission=edit pattern=tmp/oc-anchor-topk-yJCbkm/test_flapsim.py action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:55:31.441Z level=INFO run=4b39b63d message=formatting file=/tmp/oc-anchor-topk-yJCbkm/test_flapsim.py
+timestamp=2026-09-16T21:55:31.443Z level=INFO run=4b39b63d message="touching file" file=/tmp/oc-anchor-topk-yJCbkm/test_flapsim.py
+[0m← [0mEdit test_flapsim.py
+Index: /tmp/oc-anchor-topk-yJCbkm/test_flapsim.py
+===================================================================
+--- /tmp/oc-anchor-topk-yJCbkm/test_flapsim.py
++++ /tmp/oc-anchor-topk-yJCbkm/test_flapsim.py
+@@ -38,9 +38,9 @@
+ 
+ class LcgTests(unittest.TestCase):
+     def test_lcg_formula_and_bounds(self):
+         self.assertEqual(world.lcg(0), 12345)
+-        self.assertEqual(world.lcg(7), 1282279216)
++        self.assertEqual(world.lcg(7), 1282168116)
+         for s in (1, 2, 7, 11, 2 ** 30):
+             self.assertTrue(0 <= world.lcg(s) < 2147483648)
+ 
+     def test_spawn_advances_lcg_once_per_spawn_tick(self):
+
+[0m
+timestamp=2026-09-16T21:55:31.509Z level=INFO run=4b39b63d message=loop session.id=ses_f544c2617ffe210aq23r3BnCnM step=6
+timestamp=2026-09-16T21:55:31.526Z level=INFO run=4b39b63d message=process session.id=ses_f544c2617ffe210aq23r3BnCnM messageID=msg_0ac37c637001uwH41CXuNBfkBU
+timestamp=2026-09-16T21:55:31.527Z level=INFO run=4b39b63d message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f544c2617ffe210aq23r3BnCnM small=false agent=build mode=primary
+timestamp=2026-09-16T21:55:31.527Z level=INFO run=4b39b63d message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T21:58:45.677Z level=INFO run=4b39b63d message=evaluated permission=bash pattern="python3 -m unittest test_flapsim -v" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T21:58:45.721Z level=INFO run=4b39b63d message=loop session.id=ses_f544c2617ffe210aq23r3BnCnM step=7
+[0m$ [0mpython3 -m unittest test_flapsim -v
+test_pipe_hit_gap_edges (test_flapsim.AabbTests.test_pipe_hit_gap_edges) ... ok
+test_pipe_hit_horizontal_edges (test_flapsim.AabbTests.test_pipe_hit_horizontal_edges) ... ok
+test_rect_overlap_edges (test_flapsim.AabbTests.test_rect_overlap_edges) ... ok
+test_glide_bonus_awarded_when_level (test_flapsim.GlideBonusTests.test_glide_bonus_awarded_when_level) ... ok
+test_no_bonus_when_diving (test_flapsim.GlideBonusTests.test_no_bonus_when_diving) ... ok
+test_lcg_formula_and_bounds (test_flapsim.LcgTests.test_lcg_formula_and_bounds) ... ok
+test_spawn_advances_lcg_once_per_spawn_tick (test_flapsim.LcgTests.test_spawn_advances_lcg_once_per_spawn_tick) ... ok
+test_ceiling_is_soft_and_zeroes_vy (test_flapsim.PhysicsTests.test_ceiling_is_soft_and_zeroes_vy) ... ok
+test_flap_sets_vy_and_is_never_clamped (test_flapsim.PhysicsTests.test_flap_sets_vy_and_is_never_clamped) ... ok
+test_floor_kills_and_clamps_y (test_flapsim.PhysicsTests.test_floor_kills_and_clamps_y) ... ok
+test_gravity_clamped_at_vy_max (test_flapsim.PhysicsTests.test_gravity_clamped_at_vy_max) ... ok
+test_halt_counts_fatal_tick (test_flapsim.TickOrderTests.test_halt_counts_fatal_tick) ... ok
+test_pass_tick_is_45 (test_flapsim.TickOrderTests.test_pass_tick_is_45) ... ok
+test_scroll_moves_pipe_into_bird (test_flapsim.TickOrderTests.test_scroll_moves_pipe_into_bird) ... ok
+test_spawn_before_scroll (test_flapsim.TickOrderTests.test_spawn_before_scroll) ... ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 0.001s
+
+OK
+[0m
+timestamp=2026-09-16T21:58:45.739Z level=INFO run=4b39b63d message=process session.id=ses_f544c2617ffe210aq23r3BnCnM messageID=msg_0ac3abcdc001bb1xfQ4JCLJAn4
+timestamp=2026-09-16T21:58:45.740Z level=INFO run=4b39b63d message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f544c2617ffe210aq23r3BnCnM small=false agent=build mode=primary
+timestamp=2026-09-16T21:58:45.741Z level=INFO run=4b39b63d message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T22:02:52.734Z level=INFO run=4b39b63d message=loop session.id=ses_f544c2617ffe210aq23r3BnCnM step=8
+timestamp=2026-09-16T22:02:52.737Z level=INFO run=4b39b63d message="exiting loop" session.id=ses_f544c2617ffe210aq23r3BnCnM
+timestamp=2026-09-16T22:02:52.741Z level=INFO run=4b39b63d message="disposing instance" directory=/tmp/oc-anchor-topk-yJCbkm
+timestamp=2026-09-16T22:02:52.753Z level=INFO run=4b39b63d message=loading path=/home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/captures/oc-flapsim-v2-anchor-topk-1789573270802/anchor-topk-rep1/opencode.json

@@ -1,0 +1,28 @@
+# Stage 1, part 2 — money.format_amount
+
+## format_amount(cents) -> str
+
+`cents` is a signed `int` number of cents. Produce a currency string:
+
+  - Take the ABSOLUTE value. The sign is handled separately, at the end.
+  - Split it into whole dollars and a remainder of cents with `divmod(v, 100)`.
+  - Render the dollars with "," thousands separators — Python's `"{:,}"` format
+    does exactly this.
+  - Render the cents with EXACTLY two digits, zero-padded, so 5 cents renders as
+    "05" and 70 cents renders as "70". Never one digit, never three.
+  - Join them with ".", prefix "$".
+  - If the input was negative, put "-" BEFORE the "$".
+
+So the sign goes outside the currency symbol: "-$12.50" is correct and
+"$-12.50" is wrong. Likewise "$12.50" is correct and "$12.5" is wrong.
+
+Zero formats as "$0.00" and never as "-$0.00", because zero is not negative.
+
+Do not round, and do not go through `float` to get the two decimal places —
+the input is already an exact integer number of cents.
+
+This function is the ONLY place money is turned into text. report.py calls it
+rather than formatting amounts itself, so getting it right once fixes the
+column alignment in stage 4 as well.
+
+The worked table is in spec/07b_examples.md.

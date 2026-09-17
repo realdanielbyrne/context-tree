@@ -1,0 +1,37 @@
+# Stage 1 — money.py
+
+## parse_amount(s) -> int
+
+Parse a money string into SIGNED INTEGER CENTS. Apply these steps IN ORDER; the
+order decides how a string like "$-5" reads.
+
+1. If `s` is not a `str`, raise ValueError. Do not coerce numbers.
+2. Strip outer whitespace. If nothing is left, raise ValueError.
+3. NEGATIVE FORMS — at most one of these applies:
+   - Wrapped in parentheses, "(" ... ")" — NEGATIVE. Take the text between them
+     and strip it. If that inner text starts with "-" or "+", raise ValueError:
+     a sign inside parentheses is a double-negative and is not accepted.
+   - Starts with "-" — NEGATIVE. Take the rest and strip it.
+   - Starts with "+" — raise ValueError. A leading plus is never accepted.
+   - Otherwise positive.
+4. CURRENCY SYMBOL — an optional "$" may appear ONLY at the very start of what
+   remains after step 3, i.e. after the sign or after the opening parenthesis.
+   So "-$5" and "($5)" are valid but "$-5" is NOT: there the "$" is consumed
+   first and the remainder still carries a sign, which step 5 rejects. Remove
+   one leading "$" if present.
+5. MAGNITUDE — what remains must match one of these two shapes:
+   - NO comma:   one or more digits, optionally "." then 1 OR 2 digits
+   - WITH comma: 1-3 digits, then one or more groups of "," + EXACTLY 3 digits,
+                 optionally "." then 1 OR 2 digits
+   Anything else raises ValueError: letters, an empty remainder, a second ".",
+   three or more decimals, bad grouping, or internal whitespace.
+6. CENTS — split the magnitude on ".". A one-digit fractional part is
+   RIGHT-padded with "0", so "0.5" is 50 cents, not 5. Cents equal
+   whole * 100 + fraction. Apply the sign from step 3; return an `int`.
+
+Negative zero is just zero: "-0.00" returns 0, not -0.
+
+The tables in spec/07_examples.md are normative — where an example and your
+reading of this prose disagree, the example wins.
+
+Continued in spec/01b_money_format.md, which specifies format_amount.

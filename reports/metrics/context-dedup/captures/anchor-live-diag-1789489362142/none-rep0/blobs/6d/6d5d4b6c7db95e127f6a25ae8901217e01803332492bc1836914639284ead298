@@ -1,0 +1,27 @@
+# Worked examples, part 2 — format_amount and categorize (normative)
+
+## money.format_amount
+
+              0    ->  "$0.00"
+              5    ->  "$0.05"
+              7    ->  "$0.07"
+             -7    ->  "-$0.07"
+          -1250    ->  "-$12.50"
+         123456    ->  "$1,234.56"
+        1234560    ->  "$12,345.60"
+        -250025    ->  "-$2,500.25"
+
+## rules.categorize precedence, given this rules text
+
+    ; a comment
+    coffee=Food=10
+    shop=Shopping=5
+    #daily=Habit=20
+    rent=Housing=50
+
+    desc "COFFEE bar",  tags []         -> "Food"          case-insensitive
+    desc "coffee shop", tags []         -> "Food"          10 beats 5
+    desc "coffee shop", tags ["Daily"]  -> "Habit"         20 beats 10
+    desc "daily grind", tags []         -> "uncategorized" tag rule, not desc
+    desc "mystery",     tags ["dailyish"] -> "uncategorized" exact tag only
+    desc "mystery",     tags []         -> "uncategorized"

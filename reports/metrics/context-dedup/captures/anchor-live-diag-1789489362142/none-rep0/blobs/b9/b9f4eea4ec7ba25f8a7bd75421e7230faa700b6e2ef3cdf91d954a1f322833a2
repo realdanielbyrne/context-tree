@@ -1,0 +1,43 @@
+# Worked examples, part 1 — money.parse_amount (normative)
+
+These tables are part of the specification. Where an example and your reading of
+the prose disagree, the example wins. The format_amount and categorize tables
+are in spec/07b_examples.md.
+
+## money.parse_amount — accepted
+
+    "5"             ->        500
+    "42"            ->       4200
+    "12.34"         ->       1234
+    "0.5"           ->         50      one decimal is right-padded
+    "0.07"          ->          7
+    "0.7"           ->         70
+    "$1,234.56"     ->     123456
+    "$12,345.60"    ->    1234560
+    "-3"            ->       -300
+    "-$2.05"        ->       -205
+    "-0.99"         ->        -99
+    " -$0.01 "      ->         -1      outer whitespace is stripped
+    "(12.50)"       ->      -1250      parentheses mean negative
+    "($1,000)"      ->    -100000
+    "($2,500.25)"   ->    -250025
+    "  7.25  "      ->        725
+    "-0.00"         ->          0      negative zero is zero
+
+## money.parse_amount — must raise ValueError
+
+    ""              empty after stripping
+    "   "           empty after stripping
+    "abc"           not a number
+    "12a"           trailing garbage
+    "1.234"         three decimal places
+    "1..2"          two decimal points
+    "5 5"           internal whitespace
+    "+5"            leading plus is never accepted
+    "(-5)"          sign inside parentheses
+    "(+1)"          sign inside parentheses
+    "$-5"           "$" must follow the sign, not precede it
+    "1,23.00"       malformed thousands grouping
+    "12,34"         malformed thousands grouping
+    5               not a str
+    None            not a str

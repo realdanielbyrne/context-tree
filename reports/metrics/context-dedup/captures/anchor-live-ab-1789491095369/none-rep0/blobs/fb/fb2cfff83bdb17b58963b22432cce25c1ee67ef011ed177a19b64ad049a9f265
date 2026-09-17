@@ -1,0 +1,5 @@
+# Review findings (PHASE 4)
+
+- flapsim.py:17 `_parse` reads `argv[i + 1]` without checking the flag has a value, so `--flaps` as the last argument raises an uncaught `IndexError` -> add a bounds check and raise `SystemExit("missing value for " + argv[i])`.
+- engine.py:20 `run(seed, ticks, flaps="0", powerups=False)` accepts `powerups` but ignores it, so spec/07's contract (`shields` in the returned state when enabled) is unmet -> implement the shield logic (spend on pipe hit, +1 per 5th pipe passed, cap 3).
+- flapsim.py:42 `main` never parses or forwards a `--powerups` flag and `_digest` never prints the trailing `shields=` field required by spec/07 -> parse the flag and append ` shields=%d` to DIGEST only when powerups is on.

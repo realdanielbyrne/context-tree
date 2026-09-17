@@ -1,0 +1,226 @@
+Before writing the suite, let me verify the exact values my scenario-based tests will assert (hand-derived from the spec, but I want to confirm against the engine):
+All scenario values have been verified (the only thing that was wrong was my probe — the bird at y=500 is *inside* the gap, so for the scroll test I'll use a bird stuck to the ceiling at y=0). Now I'll create the test suite:
+Fixing a convoluted (and wrong) list comprehension in the score-jump test before running:
+The jump's tick is the second element of each pair, not the first — off-by-one in my comprehension:
+All 16 tests pass, covering physics clamps (flap-set, VY_MAX, soft ceiling, killing floor, half-open boundary), the LCG (formula, range, determinism, spawn-tick rule, gap_top), AABB edges (touching/disjoint/identical/contained, gap boundaries, horizontal edges), the clean-glide bonus (awarded at |vy|≤40, withheld at |vy|=45), and per-tick order (score jumps only on pass ticks, scroll-before-collide, fatal tick counted and unscored).
+
+DONE
+
+===STDERR===
+timestamp=2026-09-16T16:28:02.273Z level=INFO run=e428d8b9 message="creating instance" directory=/tmp/oc-anchor-topk-hTgE3x
+timestamp=2026-09-16T16:28:02.275Z level=INFO run=e428d8b9 message=fromDirectory directory=/tmp/oc-anchor-topk-hTgE3x
+timestamp=2026-09-16T16:28:02.285Z level=INFO run=e428d8b9 message=bootstrapping directory=/tmp/oc-anchor-topk-hTgE3x
+timestamp=2026-09-16T16:28:02.289Z level=INFO run=e428d8b9 message=loading path=/tmp/ocx-5Xtjiy/cfg/opencode/config.json
+timestamp=2026-09-16T16:28:02.289Z level=INFO run=e428d8b9 message=loading path=/tmp/ocx-5Xtjiy/cfg/opencode/opencode.json
+timestamp=2026-09-16T16:28:02.291Z level=INFO run=e428d8b9 message=loading path=/tmp/ocx-5Xtjiy/cfg/opencode/opencode.jsonc
+timestamp=2026-09-16T16:28:02.291Z level=INFO run=e428d8b9 message=loading path=/home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/captures/oc-flapsim-v2-anchor-topk-1789573270802/anchor-topk-rep0/opencode.json
+timestamp=2026-09-16T16:28:02.357Z level=INFO run=e428d8b9 message="all LSPs are disabled"
+timestamp=2026-09-16T16:28:02.358Z level=INFO run=e428d8b9 message="all formatters are disabled"
+timestamp=2026-09-16T16:28:02.358Z level=INFO run=e428d8b9 message=init
+timestamp=2026-09-16T16:28:02.470Z level=INFO run=e428d8b9 message="event connected"
+timestamp=2026-09-16T16:28:02.797Z level=INFO run=e428d8b9 message=loop session.id=ses_f551eeb8fffeDktlLt6w0nI1QU step=0
+timestamp=2026-09-16T16:28:02.807Z level=INFO run=e428d8b9 message="shell tool using shell" shell=/bin/bash
+timestamp=2026-09-16T16:28:02.823Z level=INFO run=e428d8b9 message=init count=10
+[0m
+> build · unsloth/Qwen3.8-27B-GGUF
+[0m
+timestamp=2026-09-16T16:28:02.865Z level=INFO run=e428d8b9 message="watcher backend" directory=/tmp/oc-anchor-topk-hTgE3x platform=linux backend=inotify
+timestamp=2026-09-16T16:28:02.867Z level=INFO run=e428d8b9 message="project copy refresh started" projectID=global
+timestamp=2026-09-16T16:28:02.868Z level=INFO run=e428d8b9 message="project copy refresh done" projectID=global updated=[] removed=[]
+timestamp=2026-09-16T16:28:02.896Z level=INFO run=e428d8b9 message="booting location services" directory=/tmp/oc-anchor-topk-hTgE3x workspaceID=undefined
+timestamp=2026-09-16T16:28:03.123Z level=INFO run=e428d8b9 message=process session.id=ses_f551eeb8fffeDktlLt6w0nI1QU messageID=msg_0ab0bf5710010ocRHkIMQQLw47
+timestamp=2026-09-16T16:28:03.125Z level=INFO run=e428d8b9 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551eeb8fffeDktlLt6w0nI1QU small=false agent=build mode=primary
+timestamp=2026-09-16T16:28:03.130Z level=INFO run=e428d8b9 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T16:56:32.453Z level=INFO run=e428d8b9 message=evaluated permission=bash pattern="python3 - <<'EOF'\nimport engine, world, collide, units\n\n# glide bonus scenarios\nprint(\"run(7,46,'0010')  :\", engine.run(7, 46, \"0010\"))\nprint(\"run(7,100,'01000'):\", engine.run(7, 100, \"01000\"))\n\n# per-tick order scenarios\nprint(\"run(11,60,'1')    :\", engine.run(11, 60, \"1\"))\nprint(\"run(7,120,'01')   :\", engine.run(7, 120, \"01\"))\n\n# score jump ticks via trace callback\njumps = []\ndef tr(t, y, vy, score, alive):\n    if jumps and score != jumps[-1][1]:\n        jumps.append((t, score))\n    elif not jumps:\n        jumps.append((t, score))\nengine.run(7, 200, \"0010\", trace=tr)\nprint(\"score trajectory  :\", jumps)\n\n# physics boundary constructions\nfrom physics import step_bird\nprint(\"floor exact bottom:\", step_bird(1084, 18, False))   # expect y=1120, alive True\nprint(\"floor one over    :\", step_bird(1085, 18, False))   # expect dead\n\n# scroll-before-collide geometry: pipe right edge at bird left edge before scroll\np = {\"x\": 400, \"gap_top\": 40, \"passed\": False}\nprint(\"pre-scroll overlap :\", collide.pipe_hit(500, p))     # x=400: [400,520) vs [300,380) -> no\nworld.scroll([p])\nprint(\"post-scroll overlap:\", collide.pipe_hit(500, p), \"x =\", p[\"x\"])  # x=360 -> yes\n\n# spawn ticks\ns = 7\nprint(\"spawn(0,7)  :\", world.spawn(0, s)[1] == world.lcg(7))\nprint(\"spawn(44,7) :\", world.spawn(44, s))\nprint(\"spawn(90,7) state advances:\", world.spawn(90, s)[1] == world.lcg(s))\nEOF" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T16:56:32.492Z level=INFO run=e428d8b9 message=loop session.id=ses_f551eeb8fffeDktlLt6w0nI1QU step=1
+[0m$ [0mpython3 - <<'EOF'
+import engine, world, collide, units
+
+# glide bonus scenarios
+print("run(7,46,'0010')  :", engine.run(7, 46, "0010"))
+print("run(7,100,'01000'):", engine.run(7, 100, "01000"))
+
+# per-tick order scenarios
+print("run(11,60,'1')    :", engine.run(11, 60, "1"))
+print("run(7,120,'01')   :", engine.run(7, 120, "01"))
+
+# score jump ticks via trace callback
+jumps = []
+def tr(t, y, vy, score, alive):
+    if jumps and score != jumps[-1][1]:
+        jumps.append((t, score))
+    elif not jumps:
+        jumps.append((t, score))
+engine.run(7, 200, "0010", trace=tr)
+print("score trajectory  :", jumps)
+
+# physics boundary constructions
+from physics import step_bird
+print("floor exact bottom:", step_bird(1084, 18, False))   # expect y=1120, alive True
+print("floor one over    :", step_bird(1085, 18, False))   # expect dead
+
+# scroll-before-collide geometry: pipe right edge at bird left edge before scroll
+p = {"x": 400, "gap_top": 40, "passed": False}
+print("pre-scroll overlap :", collide.pipe_hit(500, p))     # x=400: [400,520) vs [300,380) -> no
+world.scroll([p])
+print("post-scroll overlap:", collide.pipe_hit(500, p), "x =", p["x"])  # x=360 -> yes
+
+# spawn ticks
+s = 7
+print("spawn(0,7)  :", world.spawn(0, s)[1] == world.lcg(7))
+print("spawn(44,7) :", world.spawn(44, s))
+print("spawn(90,7) state advances:", world.spawn(90, s)[1] == world.lcg(s))
+EOF
+run(7,46,'0010')  : {'y': 614, 'vy': 27, 'score': 2, 'alive': True, 'ticks_run': 46}
+run(7,100,'01000'): {'y': 1120, 'vy': 45, 'score': 1, 'alive': False, 'ticks_run': 66}
+run(11,60,'1')    : {'y': 0, 'vy': 0, 'score': 0, 'alive': False, 'ticks_run': 41}
+run(7,120,'01')   : {'y': 18, 'vy': 18, 'score': 0, 'alive': False, 'ticks_run': 41}
+score trajectory  : [(0, 0), (45, 2), (90, 4), (135, 6), (180, 8)]
+floor exact bottom: (1120, 36, True)
+floor one over    : (1120, 36, False)
+pre-scroll overlap : False
+post-scroll overlap: False x = 360
+spawn(0,7)  : True
+spawn(44,7) : (None, 7)
+spawn(90,7) state advances: True
+[0m
+timestamp=2026-09-16T16:56:32.512Z level=INFO run=e428d8b9 message=process session.id=ses_f551eeb8fffeDktlLt6w0nI1QU messageID=msg_0ab260bef0014ZjrPI124aLYIR
+timestamp=2026-09-16T16:56:32.513Z level=INFO run=e428d8b9 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551eeb8fffeDktlLt6w0nI1QU small=false agent=build mode=primary
+timestamp=2026-09-16T16:56:32.514Z level=INFO run=e428d8b9 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T17:06:00.083Z level=INFO run=e428d8b9 message=evaluated permission=edit pattern=tmp/oc-anchor-topk-hTgE3x/test_flapsim.py action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T17:06:00.084Z level=INFO run=e428d8b9 message=formatting file=/tmp/oc-anchor-topk-hTgE3x/test_flapsim.py
+timestamp=2026-09-16T17:06:00.085Z level=INFO run=e428d8b9 message="touching file" file=/tmp/oc-anchor-topk-hTgE3x/test_flapsim.py
+[0m← [0mWrite test_flapsim.py
+Wrote file successfully.
+[0m
+timestamp=2026-09-16T17:06:00.145Z level=INFO run=e428d8b9 message=loop session.id=ses_f551eeb8fffeDktlLt6w0nI1QU step=2
+timestamp=2026-09-16T17:06:00.163Z level=INFO run=e428d8b9 message=process session.id=ses_f551eeb8fffeDktlLt6w0nI1QU messageID=msg_0ab2eb55400141E19cvJpW8k0Q
+timestamp=2026-09-16T17:06:00.164Z level=INFO run=e428d8b9 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551eeb8fffeDktlLt6w0nI1QU small=false agent=build mode=primary
+timestamp=2026-09-16T17:06:00.165Z level=INFO run=e428d8b9 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T17:10:54.290Z level=INFO run=e428d8b9 message=evaluated permission=edit pattern=tmp/oc-anchor-topk-hTgE3x/test_flapsim.py action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T17:10:54.291Z level=INFO run=e428d8b9 message=formatting file=/tmp/oc-anchor-topk-hTgE3x/test_flapsim.py
+timestamp=2026-09-16T17:10:54.292Z level=INFO run=e428d8b9 message="touching file" file=/tmp/oc-anchor-topk-hTgE3x/test_flapsim.py
+[0m← [0mEdit test_flapsim.py
+Index: /tmp/oc-anchor-topk-hTgE3x/test_flapsim.py
+===================================================================
+--- /tmp/oc-anchor-topk-hTgE3x/test_flapsim.py
++++ /tmp/oc-anchor-topk-hTgE3x/test_flapsim.py
+@@ -121,10 +121,10 @@
+ class TestTickOrder(unittest.TestCase):
+     def test_score_jumps_only_on_pass_ticks(self):
+         seen = []
+         engine.run(7, 200, "0010", trace=lambda t, y, vy, score, alive: seen.append((t, score)))
++        jumps = [t for (t, s0), (_, s1) in zip(seen, seen[1:]) if s1 != s0]
+         steps = [s1 - s0 for (_, s0), (_, s1) in zip(seen, seen[1:]) if s1 != s0]
+-        jumps = [t for (t, _), (_, s1) in zip(seen, seen[1:]) if s1 != seen[seen.index((t, _))][1]]
+         self.assertEqual(jumps, [45, 90, 135, 180])  # spawn tick + 45, never elsewhere
+         self.assertEqual(steps, [2, 2, 2, 2])        # base point + glide bonus each time
+ 
+     def test_scroll_before_collide(self):
+
+[0m
+timestamp=2026-09-16T17:10:54.354Z level=INFO run=e428d8b9 message=loop session.id=ses_f551eeb8fffeDktlLt6w0nI1QU step=3
+timestamp=2026-09-16T17:10:54.373Z level=INFO run=e428d8b9 message=process session.id=ses_f551eeb8fffeDktlLt6w0nI1QU messageID=msg_0ab3332950015awc8sR9egiH7F
+timestamp=2026-09-16T17:10:54.373Z level=INFO run=e428d8b9 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551eeb8fffeDktlLt6w0nI1QU small=false agent=build mode=primary
+timestamp=2026-09-16T17:10:54.374Z level=INFO run=e428d8b9 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T17:15:57.174Z level=INFO run=e428d8b9 message=evaluated permission=bash pattern="python3 -m unittest test_flapsim -v 2>&1" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T17:15:57.225Z level=INFO run=e428d8b9 message=loop session.id=ses_f551eeb8fffeDktlLt6w0nI1QU step=4
+[0m$ [0mpython3 -m unittest test_flapsim -v 2>&1
+test_pipe_hit_gap_boundaries (test_flapsim.TestCollide.test_pipe_hit_gap_boundaries) ... ok
+test_pipe_hit_horizontal_edges (test_flapsim.TestCollide.test_pipe_hit_horizontal_edges) ... ok
+test_rect_overlap_edges (test_flapsim.TestCollide.test_rect_overlap_edges) ... ok
+test_ceiling_is_soft_and_zeroes_vy (test_flapsim.TestPhysics.test_ceiling_is_soft_and_zeroes_vy) ... ok
+test_flap_sets_vy_instead_of_adding (test_flapsim.TestPhysics.test_flap_sets_vy_instead_of_adding) ... ok
+test_floor_boundary_is_half_open (test_flapsim.TestPhysics.test_floor_boundary_is_half_open) ... ok
+test_floor_kills_and_clamps_y (test_flapsim.TestPhysics.test_floor_kills_and_clamps_y) ... ok
+test_gravity_clamped_at_vy_max (test_flapsim.TestPhysics.test_gravity_clamped_at_vy_max) ... ok
+test_clean_glide_bonus_awarded (test_flapsim.TestScoring.test_clean_glide_bonus_awarded) ... ok
+test_no_bonus_when_diving_hard (test_flapsim.TestScoring.test_no_bonus_when_diving_hard) ... ok
+test_fatal_tick_counted_and_unscored (test_flapsim.TestTickOrder.test_fatal_tick_counted_and_unscored) ... ok
+test_score_jumps_only_on_pass_ticks (test_flapsim.TestTickOrder.test_score_jumps_only_on_pass_ticks) ... FAIL
+test_scroll_before_collide (test_flapsim.TestTickOrder.test_scroll_before_collide) ... ok
+test_lcg_matches_formula (test_flapsim.TestWorld.test_lcg_matches_formula) ... ok
+test_lcg_range_and_determinism (test_flapsim.TestWorld.test_lcg_range_and_determinism) ... ok
+test_spawn_tick_rule_and_gap_top (test_flapsim.TestWorld.test_spawn_tick_rule_and_gap_top) ... ok
+
+======================================================================
+FAIL: test_score_jumps_only_on_pass_ticks (test_flapsim.TestTickOrder.test_score_jumps_only_on_pass_ticks)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/oc-anchor-topk-hTgE3x/test_flapsim.py", line 127, in test_score_jumps_only_on_pass_ticks
+    self.assertEqual(jumps, [45, 90, 135, 180])  # spawn tick + 45, never elsewhere
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [44, 89, 134, 179] != [45, 90, 135, 180]
+
+First differing element 0:
+44
+45
+
+- [44, 89, 134, 179]
++ [45, 90, 135, 180]
+
+----------------------------------------------------------------------
+Ran 16 tests in 0.001s
+
+FAILED (failures=1)
+[0m
+timestamp=2026-09-16T17:15:57.243Z level=INFO run=e428d8b9 message=process session.id=ses_f551eeb8fffeDktlLt6w0nI1QU messageID=msg_0ab37d1ac0019VOTd7pVSNEVsx
+timestamp=2026-09-16T17:15:57.243Z level=INFO run=e428d8b9 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551eeb8fffeDktlLt6w0nI1QU small=false agent=build mode=primary
+timestamp=2026-09-16T17:15:57.244Z level=INFO run=e428d8b9 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T17:20:53.879Z level=INFO run=e428d8b9 message=evaluated permission=edit pattern=tmp/oc-anchor-topk-hTgE3x/test_flapsim.py action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T17:20:53.880Z level=INFO run=e428d8b9 message=formatting file=/tmp/oc-anchor-topk-hTgE3x/test_flapsim.py
+timestamp=2026-09-16T17:20:53.882Z level=INFO run=e428d8b9 message="touching file" file=/tmp/oc-anchor-topk-hTgE3x/test_flapsim.py
+timestamp=2026-09-16T17:20:53.888Z level=INFO run=e428d8b9 message=loop session.id=ses_f551eeb8fffeDktlLt6w0nI1QU step=5
+[0m← [0mEdit test_flapsim.py
+Index: /tmp/oc-anchor-topk-hTgE3x/test_flapsim.py
+===================================================================
+--- /tmp/oc-anchor-topk-hTgE3x/test_flapsim.py
++++ /tmp/oc-anchor-topk-hTgE3x/test_flapsim.py
+@@ -121,9 +121,9 @@
+ class TestTickOrder(unittest.TestCase):
+     def test_score_jumps_only_on_pass_ticks(self):
+         seen = []
+         engine.run(7, 200, "0010", trace=lambda t, y, vy, score, alive: seen.append((t, score)))
+-        jumps = [t for (t, s0), (_, s1) in zip(seen, seen[1:]) if s1 != s0]
++        jumps = [t1 for (_, s0), (t1, s1) in zip(seen, seen[1:]) if s1 != s0]
+         steps = [s1 - s0 for (_, s0), (_, s1) in zip(seen, seen[1:]) if s1 != s0]
+         self.assertEqual(jumps, [45, 90, 135, 180])  # spawn tick + 45, never elsewhere
+         self.assertEqual(steps, [2, 2, 2, 2])        # base point + glide bonus each time
+ 
+
+[0m
+timestamp=2026-09-16T17:20:53.907Z level=INFO run=e428d8b9 message=process session.id=ses_f551eeb8fffeDktlLt6w0nI1QU messageID=msg_0ab3c5882001Pxn3h1BKPvnVKN
+timestamp=2026-09-16T17:20:53.908Z level=INFO run=e428d8b9 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551eeb8fffeDktlLt6w0nI1QU small=false agent=build mode=primary
+timestamp=2026-09-16T17:20:53.909Z level=INFO run=e428d8b9 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T17:26:12.611Z level=INFO run=e428d8b9 message=evaluated permission=bash pattern="python3 -m unittest test_flapsim -v 2>&1" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T17:26:12.656Z level=INFO run=e428d8b9 message=loop session.id=ses_f551eeb8fffeDktlLt6w0nI1QU step=6
+[0m$ [0mpython3 -m unittest test_flapsim -v 2>&1
+test_pipe_hit_gap_boundaries (test_flapsim.TestCollide.test_pipe_hit_gap_boundaries) ... ok
+test_pipe_hit_horizontal_edges (test_flapsim.TestCollide.test_pipe_hit_horizontal_edges) ... ok
+test_rect_overlap_edges (test_flapsim.TestCollide.test_rect_overlap_edges) ... ok
+test_ceiling_is_soft_and_zeroes_vy (test_flapsim.TestPhysics.test_ceiling_is_soft_and_zeroes_vy) ... ok
+test_flap_sets_vy_instead_of_adding (test_flapsim.TestPhysics.test_flap_sets_vy_instead_of_adding) ... ok
+test_floor_boundary_is_half_open (test_flapsim.TestPhysics.test_floor_boundary_is_half_open) ... ok
+test_floor_kills_and_clamps_y (test_flapsim.TestPhysics.test_floor_kills_and_clamps_y) ... ok
+test_gravity_clamped_at_vy_max (test_flapsim.TestPhysics.test_gravity_clamped_at_vy_max) ... ok
+test_clean_glide_bonus_awarded (test_flapsim.TestScoring.test_clean_glide_bonus_awarded) ... ok
+test_no_bonus_when_diving_hard (test_flapsim.TestScoring.test_no_bonus_when_diving_hard) ... ok
+test_fatal_tick_counted_and_unscored (test_flapsim.TestTickOrder.test_fatal_tick_counted_and_unscored) ... ok
+test_score_jumps_only_on_pass_ticks (test_flapsim.TestTickOrder.test_score_jumps_only_on_pass_ticks) ... ok
+test_scroll_before_collide (test_flapsim.TestTickOrder.test_scroll_before_collide) ... ok
+test_lcg_matches_formula (test_flapsim.TestWorld.test_lcg_matches_formula) ... ok
+test_lcg_range_and_determinism (test_flapsim.TestWorld.test_lcg_range_and_determinism) ... ok
+test_spawn_tick_rule_and_gap_top (test_flapsim.TestWorld.test_spawn_tick_rule_and_gap_top) ... ok
+
+----------------------------------------------------------------------
+Ran 16 tests in 0.001s
+
+OK
+[0m
+timestamp=2026-09-16T17:26:12.674Z level=INFO run=e428d8b9 message=process session.id=ses_f551eeb8fffeDktlLt6w0nI1QU messageID=msg_0ab4135b3001ilRUgHfRc56mKB
+timestamp=2026-09-16T17:26:12.675Z level=INFO run=e428d8b9 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551eeb8fffeDktlLt6w0nI1QU small=false agent=build mode=primary
+timestamp=2026-09-16T17:26:12.675Z level=INFO run=e428d8b9 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T17:31:20.687Z level=INFO run=e428d8b9 message=loop session.id=ses_f551eeb8fffeDktlLt6w0nI1QU step=7
+timestamp=2026-09-16T17:31:20.690Z level=INFO run=e428d8b9 message="exiting loop" session.id=ses_f551eeb8fffeDktlLt6w0nI1QU
+timestamp=2026-09-16T17:31:20.695Z level=INFO run=e428d8b9 message="disposing instance" directory=/tmp/oc-anchor-topk-hTgE3x
+timestamp=2026-09-16T17:31:20.713Z level=INFO run=e428d8b9 message=loading path=/home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/captures/oc-flapsim-v2-anchor-topk-1789573270802/anchor-topk-rep0/opencode.json

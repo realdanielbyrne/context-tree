@@ -1,0 +1,56 @@
+"""Aggregation and fixed-width rendering.
+
+May import money and rules only. summarize decides what is in the table and in
+what order; render_report only decides how it looks and never re-sorts. All
+money text goes through money.format_amount.
+"""
+
+import money
+import rules
+
+
+def summarize(txns, rule_list):
+    """Group txns by category into [(category, total_cents, count)].
+
+    Sorted by total ascending (most negative first), ties broken by category
+    name ascending with plain case-sensitive str comparison. Returns a list of
+    3-tuples; empty txns gives an empty list.
+    """
+    groups = {}
+    for txn in txns:
+        category = rules.categorize(txn, rule_list)
+        total, count = groups.get(category, (0, 0))
+        groups[category] = (total + txn["amount"], count + 1)
+
+    rows = [(cat, total, count) for cat, (total, count) in groups.items()]
+    rows.sort(key=lambda row: (row[1], row[0]))
+    return rows
+
+
+def render_report(rows):
+    """Render summarize() output as a fixed-width text table.
+
+    Header, rule line, one line per row in the order given, second rule line,
+    grand-total line. Columns are 15/12/6 (ljust/rjust/rjust), joined with
+    newlines, no trailing newline. Empty rows still yields four lines.
+    """
+    lines = []
+    lines.append("CATEGORY".ljust(15) + "TOTAL".rjust(12) + "COUNT".rjust(6))
+    lines.append("-" * 33)
+    grand = 0
+    total_count = 0
+    for category, total, count in rows:
+        lines.append(
+            category.ljust(15)
+            + money.format_amount(total).rjust(12)
+            + str(count).rjust(6)
+        )
+        grand += total
+        total_count += count
+    lines.append("-" * 33)
+    lines.append(
+        "TOTAL".ljust(15)
+        + money.format_amount(grand).rjust(12)
+        + str(total_count).rjust(6)
+    )
+    return "\n".join(lines)

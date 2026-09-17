@@ -1,0 +1,140 @@
+One test failure — not an engine bug but a bug in my test: on non-flap ticks, gravity is added to the input `vy` first, so starting from `vy=18` gives `vy=36`. To land exactly on the floor boundary, the input needs to be `vy=0`:
+DONE. `test_flapsim.py` has 18 tests, all passing:
+
+- **Physics clamps** (5): flap sets `vy` rather than adding, gravity clamps at `VY_MAX`, soft ceiling zeroes vy, floor clamps y and kills without zeroing vy, exact floor boundary (`y + BIRD_H == FIELD_H`) survives.
+- **LCG/world** (4): `lcg` known values and range, spawn advances the LCG exactly once and derives `gap_top` from the advanced state, spawn gating on `t % SPAWN_EVERY`, cull boundary at `x + PIPE_W == 0`.
+- **AABB edges** (4): half-open touching edges don't overlap, pipe right edge exactly at `BIRD_X` no hit, bird top/bottom exactly on gap edges survives, one centi-unit outside hits.
+- **Clean-glide bonus** (2): level pass scores 2 per pipe (seed 7 / "0010" → 8), a hand-computed free-fall scenario passes pipe 0 at `vy=180 > GLIDE_VY` and scores exactly 1.
+- **Per-tick order** (3): floor kill landing exactly on a pass tick scores nothing (dead bird, score-after-collision), ceiling-stuck run dies at the first post-scroll overlap pinning spawn+scroll to their own tick (`ticks_run=41`, would be 42 if either lagged), and state-dict keys without powerups.
+
+The one failure during development was a bug in my test expectation (forgot gravity applies before the floor check), not the engine — fixed, and `--selfcheck` still reports all six OK.
+
+===STDERR===
+timestamp=2026-09-16T15:57:26.487Z level=INFO run=a5c1c547 message="creating instance" directory=/tmp/oc-placebo-aWoshv
+timestamp=2026-09-16T15:57:26.488Z level=INFO run=a5c1c547 message=fromDirectory directory=/tmp/oc-placebo-aWoshv
+timestamp=2026-09-16T15:57:26.498Z level=INFO run=a5c1c547 message=bootstrapping directory=/tmp/oc-placebo-aWoshv
+timestamp=2026-09-16T15:57:26.502Z level=INFO run=a5c1c547 message=loading path=/tmp/ocx-okfOTi/cfg/opencode/config.json
+timestamp=2026-09-16T15:57:26.502Z level=INFO run=a5c1c547 message=loading path=/tmp/ocx-okfOTi/cfg/opencode/opencode.json
+timestamp=2026-09-16T15:57:26.504Z level=INFO run=a5c1c547 message=loading path=/tmp/ocx-okfOTi/cfg/opencode/opencode.jsonc
+timestamp=2026-09-16T15:57:26.504Z level=INFO run=a5c1c547 message=loading path=/home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/captures/oc-flapsim-v2-placebo-1789573273804/placebo-rep0/opencode.json
+timestamp=2026-09-16T15:57:26.569Z level=INFO run=a5c1c547 message="all LSPs are disabled"
+timestamp=2026-09-16T15:57:26.571Z level=INFO run=a5c1c547 message="all formatters are disabled"
+timestamp=2026-09-16T15:57:26.571Z level=INFO run=a5c1c547 message=init
+timestamp=2026-09-16T15:57:26.674Z level=INFO run=a5c1c547 message="event connected"
+timestamp=2026-09-16T15:57:27.013Z level=INFO run=a5c1c547 message=loop session.id=ses_f551edfeaffe2cFQM1H6sm5Sal step=0
+timestamp=2026-09-16T15:57:27.025Z level=INFO run=a5c1c547 message="shell tool using shell" shell=/bin/bash
+timestamp=2026-09-16T15:57:27.042Z level=INFO run=a5c1c547 message=init count=10
+[0m
+> build · unsloth/Qwen3.8-27B-GGUF
+[0m
+timestamp=2026-09-16T15:57:27.095Z level=INFO run=a5c1c547 message="watcher backend" directory=/tmp/oc-placebo-aWoshv platform=linux backend=inotify
+timestamp=2026-09-16T15:57:27.101Z level=INFO run=a5c1c547 message="project copy refresh started" projectID=global
+timestamp=2026-09-16T15:57:27.102Z level=INFO run=a5c1c547 message="project copy refresh done" projectID=global updated=[] removed=[]
+timestamp=2026-09-16T15:57:27.132Z level=INFO run=a5c1c547 message="booting location services" directory=/tmp/oc-placebo-aWoshv workspaceID=undefined
+timestamp=2026-09-16T15:57:27.385Z level=INFO run=a5c1c547 message=process session.id=ses_f551edfeaffe2cFQM1H6sm5Sal messageID=msg_0aaeff26a001FvuRn2SJB3p5Hb
+timestamp=2026-09-16T15:57:27.386Z level=INFO run=a5c1c547 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551edfeaffe2cFQM1H6sm5Sal small=false agent=build mode=primary
+timestamp=2026-09-16T15:57:27.391Z level=INFO run=a5c1c547 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T16:22:18.051Z level=INFO run=a5c1c547 message=evaluated permission=edit pattern=tmp/oc-placebo-aWoshv/test_flapsim.py action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T16:22:18.052Z level=INFO run=a5c1c547 message=formatting file=/tmp/oc-placebo-aWoshv/test_flapsim.py
+timestamp=2026-09-16T16:22:18.053Z level=INFO run=a5c1c547 message="touching file" file=/tmp/oc-placebo-aWoshv/test_flapsim.py
+[0m← [0mWrite test_flapsim.py
+Wrote file successfully.
+[0m
+timestamp=2026-09-16T16:22:18.117Z level=INFO run=a5c1c547 message=loop session.id=ses_f551edfeaffe2cFQM1H6sm5Sal step=1
+timestamp=2026-09-16T16:22:18.135Z level=INFO run=a5c1c547 message=process session.id=ses_f551edfeaffe2cFQM1H6sm5Sal messageID=msg_0ab06b307001ZdUt1tXl6ejEc7
+timestamp=2026-09-16T16:22:18.136Z level=INFO run=a5c1c547 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551edfeaffe2cFQM1H6sm5Sal small=false agent=build mode=primary
+timestamp=2026-09-16T16:22:18.137Z level=INFO run=a5c1c547 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T16:23:46.728Z level=INFO run=a5c1c547 message=evaluated permission=bash pattern="python3 -m unittest test_flapsim -v 2>&1" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T16:23:46.775Z level=INFO run=a5c1c547 message=loop session.id=ses_f551edfeaffe2cFQM1H6sm5Sal step=2
+[0m$ [0mpython3 -m unittest test_flapsim -v 2>&1
+test_bird_exactly_inside_gap_survives (test_flapsim.CollideTests.test_bird_exactly_inside_gap_survives) ... ok
+test_bird_just_outside_gap_hits (test_flapsim.CollideTests.test_bird_just_outside_gap_hits) ... ok
+test_pipe_right_edge_at_bird_x_does_not_hit (test_flapsim.CollideTests.test_pipe_right_edge_at_bird_x_does_not_hit) ... ok
+test_rect_overlap_half_open_edges (test_flapsim.CollideTests.test_rect_overlap_half_open_edges) ... ok
+test_bonus_awarded_when_level (test_flapsim.GlideBonusTests.test_bonus_awarded_when_level) ... ok
+test_no_bonus_when_diving (test_flapsim.GlideBonusTests.test_no_bonus_when_diving) ... ok
+test_ceiling_is_soft_and_zeroes_vy (test_flapsim.PhysicsTests.test_ceiling_is_soft_and_zeroes_vy) ... ok
+test_flap_sets_vy_instead_of_adding (test_flapsim.PhysicsTests.test_flap_sets_vy_instead_of_adding) ... ok
+test_floor_boundary_exact_is_alive (test_flapsim.PhysicsTests.test_floor_boundary_exact_is_alive) ... FAIL
+test_floor_clamps_y_and_kills_without_zeroing_vy (test_flapsim.PhysicsTests.test_floor_clamps_y_and_kills_without_zeroing_vy) ... ok
+test_gravity_clamps_at_vy_max (test_flapsim.PhysicsTests.test_gravity_clamps_at_vy_max) ... ok
+test_fatal_tick_scores_nothing (test_flapsim.TickOrderTests.test_fatal_tick_scores_nothing) ... ok
+test_spawn_and_scroll_happen_on_their_own_tick (test_flapsim.TickOrderTests.test_spawn_and_scroll_happen_on_their_own_tick) ... ok
+test_state_keys_without_powerups (test_flapsim.TickOrderTests.test_state_keys_without_powerups) ... ok
+test_cull_boundary (test_flapsim.WorldTests.test_cull_boundary) ... ok
+test_lcg_values (test_flapsim.WorldTests.test_lcg_values) ... ok
+test_spawn_advances_lcg_once_and_uses_advanced_state (test_flapsim.WorldTests.test_spawn_advances_lcg_once_and_uses_advanced_state) ... ok
+test_spawn_only_on_spawn_ticks (test_flapsim.WorldTests.test_spawn_only_on_spawn_ticks) ... ok
+
+======================================================================
+FAIL: test_floor_boundary_exact_is_alive (test_flapsim.PhysicsTests.test_floor_boundary_exact_is_alive)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/oc-placebo-aWoshv/test_flapsim.py", line 29, in test_floor_boundary_exact_is_alive
+    self.assertEqual((y, vy, alive), (FIELD_H - BIRD_H, 18, True))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Tuples differ: (1120, 36, False) != (1120, 18, True)
+
+First differing element 1:
+36
+18
+
+- (1120, 36, False)
++ (1120, 18, True)
+
+----------------------------------------------------------------------
+Ran 18 tests in 0.001s
+
+FAILED (failures=1)
+[0m
+timestamp=2026-09-16T16:23:46.797Z level=INFO run=a5c1c547 message=process session.id=ses_f551edfeaffe2cFQM1H6sm5Sal messageID=msg_0ab080d5a001pitJ40zJ9dixA6
+timestamp=2026-09-16T16:23:46.797Z level=INFO run=a5c1c547 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551edfeaffe2cFQM1H6sm5Sal small=false agent=build mode=primary
+timestamp=2026-09-16T16:23:46.798Z level=INFO run=a5c1c547 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T16:26:41.225Z level=INFO run=a5c1c547 message=evaluated permission=edit pattern=tmp/oc-placebo-aWoshv/test_flapsim.py action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T16:26:41.225Z level=INFO run=a5c1c547 message=formatting file=/tmp/oc-placebo-aWoshv/test_flapsim.py
+timestamp=2026-09-16T16:26:41.227Z level=INFO run=a5c1c547 message="touching file" file=/tmp/oc-placebo-aWoshv/test_flapsim.py
+[0m← [0mEdit test_flapsim.py
+Index: /tmp/oc-placebo-aWoshv/test_flapsim.py
+===================================================================
+--- /tmp/oc-placebo-aWoshv/test_flapsim.py
++++ /tmp/oc-placebo-aWoshv/test_flapsim.py
+@@ -24,9 +24,9 @@
+         self.assertEqual((y, alive), (FIELD_H - BIRD_H, False))
+         self.assertEqual(vy, VY_MAX)
+ 
+     def test_floor_boundary_exact_is_alive(self):
+-        y, vy, alive = physics.step_bird(FIELD_H - BIRD_H - 18, 18, False)
++        y, vy, alive = physics.step_bird(FIELD_H - BIRD_H - 18, 0, False)
+         self.assertEqual((y, vy, alive), (FIELD_H - BIRD_H, 18, True))
+ 
+ 
+ class WorldTests(unittest.TestCase):
+
+[0m
+timestamp=2026-09-16T16:26:41.292Z level=INFO run=a5c1c547 message=loop session.id=ses_f551edfeaffe2cFQM1H6sm5Sal step=3
+timestamp=2026-09-16T16:26:41.312Z level=INFO run=a5c1c547 message=process session.id=ses_f551edfeaffe2cFQM1H6sm5Sal messageID=msg_0ab0ab70f0017aylRV519v09QX
+timestamp=2026-09-16T16:26:41.312Z level=INFO run=a5c1c547 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551edfeaffe2cFQM1H6sm5Sal small=false agent=build mode=primary
+timestamp=2026-09-16T16:26:41.313Z level=INFO run=a5c1c547 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T16:29:25.193Z level=INFO run=a5c1c547 message=evaluated permission=bash pattern="python3 -m unittest test_flapsim -v 2>&1" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T16:29:25.193Z level=INFO run=a5c1c547 message=evaluated permission=bash pattern="tail -5" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T16:29:25.193Z level=INFO run=a5c1c547 message=evaluated permission=bash pattern="python3 flapsim.py --selfcheck" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T16:29:25.248Z level=INFO run=a5c1c547 message=loop session.id=ses_f551edfeaffe2cFQM1H6sm5Sal step=4
+[0m$ [0mpython3 -m unittest test_flapsim -v 2>&1 | tail -5 && python3 flapsim.py --selfcheck
+----------------------------------------------------------------------
+Ran 18 tests in 0.001s
+
+OK
+EX1 seed=7 ticks=200 flaps=0010 expect score=08 alive=1 got score=08 alive=1 OK
+EX2 seed=7 ticks=120 flaps=01 expect score=00 alive=0 got score=00 alive=0 OK
+EX3 seed=3 ticks=200 flaps=0001 expect score=08 alive=1 got score=08 alive=1 OK
+EX4 seed=11 ticks=60 flaps=1 expect score=00 alive=0 got score=00 alive=0 OK
+EX5 seed=2 ticks=90 flaps=0 expect score=00 alive=0 got score=00 alive=0 OK
+EX6 seed=5 ticks=200 flaps=0010 expect score=08 alive=1 got score=08 alive=1 OK
+[0m
+timestamp=2026-09-16T16:29:25.265Z level=INFO run=a5c1c547 message=process session.id=ses_f551edfeaffe2cFQM1H6sm5Sal messageID=msg_0ab0d3782001j176p15Bz1qMNA
+timestamp=2026-09-16T16:29:25.266Z level=INFO run=a5c1c547 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551edfeaffe2cFQM1H6sm5Sal small=false agent=build mode=primary
+timestamp=2026-09-16T16:29:25.267Z level=INFO run=a5c1c547 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T16:32:58.370Z level=INFO run=a5c1c547 message=loop session.id=ses_f551edfeaffe2cFQM1H6sm5Sal step=5
+timestamp=2026-09-16T16:32:58.373Z level=INFO run=a5c1c547 message="exiting loop" session.id=ses_f551edfeaffe2cFQM1H6sm5Sal
+timestamp=2026-09-16T16:32:58.379Z level=INFO run=a5c1c547 message="disposing instance" directory=/tmp/oc-placebo-aWoshv
+timestamp=2026-09-16T16:32:58.398Z level=INFO run=a5c1c547 message=loading path=/home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/captures/oc-flapsim-v2-placebo-1789573273804/placebo-rep0/opencode.json

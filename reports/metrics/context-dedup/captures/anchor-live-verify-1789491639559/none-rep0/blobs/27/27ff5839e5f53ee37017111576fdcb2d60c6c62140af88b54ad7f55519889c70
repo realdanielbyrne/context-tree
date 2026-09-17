@@ -1,0 +1,20 @@
+"""Axis-aligned collision with half-open intervals. Touching edges do not hit."""
+
+from units import BIRD_X, BIRD_W, BIRD_H, PIPE_W, GAP_H
+
+
+def rect_overlap(a0, a1, b0, b1):
+    """True iff the half-open intervals [a0,a1) and [b0,b1) overlap."""
+    return a0 < b1 and b0 < a1
+
+
+def pipe_hit(y, pipe):
+    """True if the bird at height y hits the given pipe.
+
+    The bird occupies [BIRD_X, BIRD_X+BIRD_W) x [y, y+BIRD_H). A pipe at x
+    occupies [x, x+PIPE_W); its open gap is [gap_top, gap_top+GAP_H).
+    """
+    horizontal = rect_overlap(BIRD_X, BIRD_X + BIRD_W,
+                              pipe["x"], pipe["x"] + PIPE_W)
+    outside = y < pipe["gap_top"] or y + BIRD_H > pipe["gap_top"] + GAP_H
+    return horizontal and outside

@@ -1,0 +1,49 @@
+"""Aggregation and fixed-width rendering.
+
+This stub fixes the public names and signatures only. spec/04_report.md is
+authoritative, including the exact column widths, which are asserted
+character-for-character by the tests.
+
+Dependency rule (see spec/00_conventions.md): this module may import money and
+rules, and must not import parsing or cli.
+
+The division of labour between the two functions is strict. summarize decides
+WHAT is in the table and in WHAT ORDER. render_report decides only how it LOOKS,
+and renders whatever order it is handed — it never sorts, never filters, and
+never drops a row. Tests exercise it with deliberately out-of-order rows.
+
+This module formats no money itself: every amount goes through
+money.format_amount.
+"""
+
+import money
+import rules
+
+
+def summarize(txns, rule_list):
+    """Group txns by category into [(category, total_cents, count)].
+
+    See spec/04_report.md. Each txn is categorized with rules.categorize, then
+    grouped; total_cents is the sum of the group's amounts and count is the
+    size of the group.
+
+    Returns a list of 3-TUPLES sorted by total ascending — most negative first
+    — with ties broken by category name ascending using plain str comparison,
+    which is case-sensitive. An empty txns list gives an empty list.
+    """
+    raise NotImplementedError("summarize")
+
+
+def render_report(rows):
+    """Render summarize() output as a fixed-width text table.
+
+    See spec/04_report.md for the exact layout, which the tests assert
+    character for character: a header, a rule line, one line per row in the
+    order given, a second rule line, then a grand-total line. Joined with
+    newlines, with NO trailing newline.
+
+    The three columns are 15, 12 and 6 characters wide, ljust then rjust then
+    rjust, totalling 33 — which is also the length of each rule line. An empty
+    rows list still renders four lines.
+    """
+    raise NotImplementedError("render_report")

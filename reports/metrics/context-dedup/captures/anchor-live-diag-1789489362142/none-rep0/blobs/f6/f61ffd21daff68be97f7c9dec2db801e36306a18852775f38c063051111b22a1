@@ -1,0 +1,53 @@
+"""Ledger line parsing.
+
+This stub fixes the public names and signatures only. spec/02_parsing.md is
+authoritative for stage 2, and spec/05_phase2_tags.md amends it in stage 5 by
+adding an optional fourth field. Read the stage 2 spec now and the stage 5 spec
+later; do not implement the fourth field before stage 5.
+
+Dependency rule (see spec/00_conventions.md): this module may import money and
+nothing else from the project.
+
+Error contract: this module raises LedgerError, never ValueError. The ValueError
+money.parse_amount raises must be caught here and converted — see
+spec/00b_contracts.md.
+
+Note the asymmetry: parse_line RAISES on a bad line, while parse_lines never
+raises and instead COLLECTS what went wrong — one bad line must never abort a
+batch run.
+"""
+
+import money
+
+
+class LedgerError(Exception):
+    """Raised for any malformed ledger line.
+
+    The message is free text but must be a non-empty string; parse_lines
+    records str(exc) for each failing line and callers print it.
+    """
+
+
+def parse_line(line):
+    """Parse one ledger line into a txn dict.
+
+    See spec/02_parsing.md, amended by spec/05_phase2_tags.md, which adds an
+    optional fourth field. Returns a dict with exactly the keys "date", "desc",
+    "amount" and "tags" — all four always present, "tags" empty rather than
+    absent when the line carries none.
+
+    Raises LedgerError for a malformed line: a bad field count, a wrongly
+    shaped or unreal date, an empty description, or a rejected amount.
+    """
+    raise NotImplementedError("parse_line")
+
+
+def parse_lines(lines):
+    """Parse an iterable of lines into (txns, errors).
+
+    See spec/02b_parse_lines.md. Returns a 2-TUPLE, not a list of two things.
+    Comment and blank lines are skipped silently; malformed lines become
+    (lineno, message) pairs with a 1-based lineno that counts skipped lines
+    too, so it matches what a text editor would show.
+    """
+    raise NotImplementedError("parse_lines")

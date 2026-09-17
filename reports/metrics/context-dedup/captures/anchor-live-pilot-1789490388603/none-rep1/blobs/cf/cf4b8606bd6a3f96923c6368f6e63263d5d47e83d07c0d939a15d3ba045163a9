@@ -1,0 +1,1 @@
+{"command":"python3 -c \"\nimport collide as c\nprint(c.rect_overlap(0,10,10,20))   # False, touching\nprint(c.rect_overlap(0,10,9,20))    # True\np = {'x': 380, 'gap_top': 100}\nprint(c.pipe_hit(100, p))           # bird top at gap top -> inside, no hit\nprint(c.pipe_hit(100-80+1, p))      # y=21: y<100 -> hit True\n\""}

@@ -1,0 +1,27 @@
+Build `flapsim`, a headless deterministic side-scroller engine, from the specs in spec/.
+
+PHASE 1 — read README.md, then every file in spec/ (00 through 09).
+  spec/07_powerups.md is future work: read it for context but DO NOT implement it yet.
+
+PHASE 2 — implement the six modules named in spec/00_overview.md, one at a time.
+  After each one, run `python3 flapsim.py --selfcheck` and fix whatever fails.
+
+PHASE 3 — write test_flapsim.py, a stdlib `unittest` suite of at least 12 tests
+  covering the physics clamps, the LCG, the AABB edges, the clean-glide bonus and
+  the per-tick order.
+
+PHASE 4 — REVIEW. Read each of your six modules and check it against its spec.
+  Write REVIEW.md with at least three findings, one per line, in the form
+
+      - <file>:<line> <what is wrong> -> <the fix>
+
+  Line numbers and function names must be real. Then fix what you found and re-run
+  `python3 flapsim.py --selfcheck`.
+
+PHASE 5 — produce the artifact:
+
+      python3 flapsim.py --seed 7 --ticks 200 --flaps 0010 > replay.txt
+
+  and confirm replay.txt contains what you expect. Append one line per phase to NOTES.md.
+
+When replay.txt and REVIEW.md both exist and --selfcheck reports all OK, reply DONE.

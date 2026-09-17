@@ -1,0 +1,1 @@
+{"command":"python3 -c \"\nimport engine\n# verify shield is spent on a pipe hit: EX2 with powerups should have shields=0\nst = engine.run(7, 120, '01', powerups=True)\nassert st['shields'] == 0 and not st['alive'], st\n# verify cap at 3: EX1 with powerups\nst = engine.run(7, 200, '0010', powerups=True)\nprint(st)\n\""}

@@ -1,0 +1,49 @@
+{
+  "run_id": "anchor-live-pilot-1789490388603",
+  "experiment": "context-dedup / anchor live PILOT (flapsim)",
+  "model": "unsloth/Qwen3.8-27B-GGUF",
+  "task": "flapsim (headless deterministic side-scroller, 6 modules, mid-run feature change + docs)",
+  "commit": "458e33ef489b55e1e2fd943dc83727b77605f645",
+  "date": "2026-09-15T16:49:14.518Z",
+  "params": {
+    "arms": [
+      "none"
+    ],
+    "repeats": 2,
+    "max_turns": 110,
+    "top_k": 2,
+    "min_chars": 200,
+    "passive": true
+  },
+  "note": "L0 events.jsonl carries COORDINATES ONLY; payloads are content-addressed in blobs/. Identical content collapses to one blob, so a repeated sha IS recorded duplication.",
+  "cells": [
+    {
+      "cell": "none-rep0",
+      "arm": "none",
+      "repeat": 0,
+      "dir": "reports/metrics/context-dedup/captures/anchor-live-pilot-1789490388603/none-rep0",
+      "blobs": 139,
+      "pass": false,
+      "score": "11/40",
+      "turns": 111,
+      "stop": "maxTurns",
+      "would_fire": 49,
+      "fires": 0,
+      "error": null
+    },
+    {
+      "cell": "none-rep1",
+      "arm": "none",
+      "repeat": 1,
+      "dir": "reports/metrics/context-dedup/captures/anchor-live-pilot-1789490388603/none-rep1",
+      "blobs": 103,
+      "pass": false,
+      "score": "7/40",
+      "turns": 111,
+      "stop": "maxTurns",
+      "would_fire": 4,
+      "fires": 0,
+      "error": null
+    }
+  ]
+}

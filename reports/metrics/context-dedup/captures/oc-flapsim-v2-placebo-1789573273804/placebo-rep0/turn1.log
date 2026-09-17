@@ -1,0 +1,227 @@
+Test expectation error on my side (ceiling case), not a module bug — re-running with corrected checks:
+Another arithmetic slip in my test (bottom-exactly-gap-bottom needs `y = 960`):
+DONE. All four modules are in place and verified:
+
+- `units.py` — constant table (19 lines)
+- `physics.py` — `step_bird`: flap sets `vy=FLAP_V`, gravity clamps at `VY_MAX`, soft ceiling zeroes vy, floor kills (18 lines)
+- `world.py` — `lcg`, `spawn(t, s)` (advances LCG once per spawn tick, returns `(pipe_or_None, new_s)`), `scroll`, `cull` (23 lines)
+- `collide.py` — `rect_overlap`, `pipe_hit` with half-open intervals (12 lines)
+
+All under the 55-line/1800-char limits, integers only, no import side effects. Boundary cases from spec/04 verified: touching edges don't collide, bird bottom exactly at `gap_top + GAP_H` survives, pipe right edge exactly at `BIRD_X` doesn't overlap.
+
+===STDERR===
+timestamp=2026-09-16T15:41:14.343Z level=INFO run=57c001c4 message="creating instance" directory=/tmp/oc-placebo-aWoshv
+timestamp=2026-09-16T15:41:14.344Z level=INFO run=57c001c4 message=fromDirectory directory=/tmp/oc-placebo-aWoshv
+timestamp=2026-09-16T15:41:14.354Z level=INFO run=57c001c4 message=bootstrapping directory=/tmp/oc-placebo-aWoshv
+timestamp=2026-09-16T15:41:14.358Z level=INFO run=57c001c4 message=loading path=/tmp/ocx-okfOTi/cfg/opencode/config.json
+timestamp=2026-09-16T15:41:14.358Z level=INFO run=57c001c4 message=loading path=/tmp/ocx-okfOTi/cfg/opencode/opencode.json
+timestamp=2026-09-16T15:41:14.360Z level=INFO run=57c001c4 message=loading path=/tmp/ocx-okfOTi/cfg/opencode/opencode.jsonc
+timestamp=2026-09-16T15:41:14.360Z level=INFO run=57c001c4 message=loading path=/home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/captures/oc-flapsim-v2-placebo-1789573273804/placebo-rep0/opencode.json
+timestamp=2026-09-16T15:41:15.556Z level=INFO run=57c001c4 message="all LSPs are disabled"
+timestamp=2026-09-16T15:41:15.557Z level=INFO run=57c001c4 message="all formatters are disabled"
+timestamp=2026-09-16T15:41:15.557Z level=INFO run=57c001c4 message=init
+timestamp=2026-09-16T15:41:15.670Z level=INFO run=57c001c4 message=created id=ses_f551edfeaffe2cFQM1H6sm5Sal slug=lucky-lagoon version=1.18.31 projectID=global directory=/tmp/oc-placebo-aWoshv path=tmp/oc-placebo-aWoshv workspaceID=undefined parentID=undefined title="New session - 2026-09-16T15:41:15.670Z" agent=undefined model=undefined metadata=undefined permission="[{\"permission\":\"question\",\"pattern\":\"*\",\"action\":\"deny\"},{\"permission\":\"plan_enter\",\"pattern\":\"*\",\"action\":\"deny\"},{\"permission\":\"plan_exit\",\"pattern\":\"*\",\"action\":\"deny\"}]" cost=0 tokens.input=0 tokens.output=0 tokens.reasoning=0 tokens.cache.read=0 tokens.cache.write=0 time.created=1789573275670 time.updated=1789573275670
+timestamp=2026-09-16T15:41:15.678Z level=INFO run=57c001c4 message="event connected"
+timestamp=2026-09-16T15:41:16.011Z level=INFO run=57c001c4 message=loop session.id=ses_f551edfeaffe2cFQM1H6sm5Sal step=0
+timestamp=2026-09-16T15:41:16.019Z level=INFO run=57c001c4 message="shell tool using shell" shell=/bin/bash
+timestamp=2026-09-16T15:41:16.033Z level=INFO run=57c001c4 message=init count=10
+[0m
+> build · unsloth/Qwen3.8-27B-GGUF
+[0m
+timestamp=2026-09-16T15:41:16.045Z level=INFO run=57c001c4 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551edfeaffe2cFQM1H6sm5Sal small=true agent=title mode=primary
+timestamp=2026-09-16T15:41:16.057Z level=INFO run=57c001c4 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T15:41:16.101Z level=INFO run=57c001c4 message="watcher backend" directory=/tmp/oc-placebo-aWoshv platform=linux backend=inotify
+timestamp=2026-09-16T15:41:16.137Z level=INFO run=57c001c4 message="booting location services" directory=/tmp/oc-placebo-aWoshv workspaceID=undefined
+timestamp=2026-09-16T15:41:16.142Z level=INFO run=57c001c4 message="project copy refresh started" projectID=global
+timestamp=2026-09-16T15:41:16.143Z level=INFO run=57c001c4 message="project copy refresh done" projectID=global updated=[] removed=[]
+timestamp=2026-09-16T15:41:16.346Z level=INFO run=57c001c4 message=process session.id=ses_f551edfeaffe2cFQM1H6sm5Sal messageID=msg_0aae1216d001AApYzXtojIijix
+timestamp=2026-09-16T15:41:16.357Z level=INFO run=57c001c4 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551edfeaffe2cFQM1H6sm5Sal small=false agent=build mode=primary
+timestamp=2026-09-16T15:41:16.358Z level=INFO run=57c001c4 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T15:42:17.003Z level=INFO run=57c001c4 message=evaluated permission=read pattern=tmp/oc-placebo-aWoshv/spec/00_overview.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-16T15:42:17.011Z level=INFO run=57c001c4 message="touching file" file=/tmp/oc-placebo-aWoshv/spec/00_overview.md
+[0m→ [0mRead spec/00_overview.md
+timestamp=2026-09-16T15:42:17.925Z level=INFO run=57c001c4 message=evaluated permission=read pattern=tmp/oc-placebo-aWoshv/spec/01_units.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-16T15:42:17.930Z level=INFO run=57c001c4 message="touching file" file=/tmp/oc-placebo-aWoshv/spec/01_units.md
+[0m→ [0mRead spec/01_units.md
+timestamp=2026-09-16T15:42:19.074Z level=INFO run=57c001c4 message=evaluated permission=read pattern=tmp/oc-placebo-aWoshv/spec/02_physics.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-16T15:42:19.079Z level=INFO run=57c001c4 message="touching file" file=/tmp/oc-placebo-aWoshv/spec/02_physics.md
+[0m→ [0mRead spec/02_physics.md
+timestamp=2026-09-16T15:42:19.932Z level=INFO run=57c001c4 message=evaluated permission=read pattern=tmp/oc-placebo-aWoshv/spec/03_world.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-16T15:42:19.937Z level=INFO run=57c001c4 message="touching file" file=/tmp/oc-placebo-aWoshv/spec/03_world.md
+[0m→ [0mRead spec/03_world.md
+timestamp=2026-09-16T15:42:20.887Z level=INFO run=57c001c4 message=evaluated permission=read pattern=tmp/oc-placebo-aWoshv/spec/04_collide.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-16T15:42:20.891Z level=INFO run=57c001c4 message="touching file" file=/tmp/oc-placebo-aWoshv/spec/04_collide.md
+[0m→ [0mRead spec/04_collide.md
+timestamp=2026-09-16T15:42:20.947Z level=INFO run=57c001c4 message=loop session.id=ses_f551edfeaffe2cFQM1H6sm5Sal step=1
+timestamp=2026-09-16T15:42:20.957Z level=INFO run=57c001c4 message=process session.id=ses_f551edfeaffe2cFQM1H6sm5Sal messageID=msg_0aae21f15001qjkz3MOW0FSi0Z
+timestamp=2026-09-16T15:42:20.958Z level=INFO run=57c001c4 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551edfeaffe2cFQM1H6sm5Sal small=false agent=build mode=primary
+timestamp=2026-09-16T15:42:20.959Z level=INFO run=57c001c4 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T15:43:20.439Z level=INFO run=57c001c4 message=evaluated permission=bash pattern="ls -la /tmp/oc-placebo-aWoshv" action.permission=* action.action=allow action.pattern=*
+[0m
+[0m$ [0mls -la /tmp/oc-placebo-aWoshv
+total 8
+drwx------    3 realdanielbyrne realdanielbyrne    100 Sep 16 10:41 .
+drwxrwxrwt 7981 root            root            163320 Sep 16 10:42 ..
+-rw-rw-r--    1 realdanielbyrne realdanielbyrne     16 Sep 16 10:41 NOTES.md
+-rw-rw-r--    1 realdanielbyrne realdanielbyrne   1319 Sep 16 10:41 README.md
+drwxrwxr-x    2 realdanielbyrne realdanielbyrne    240 Sep 16 10:41 spec
+[0m
+timestamp=2026-09-16T15:43:20.481Z level=INFO run=57c001c4 message=loop session.id=ses_f551edfeaffe2cFQM1H6sm5Sal step=2
+timestamp=2026-09-16T15:43:20.496Z level=INFO run=57c001c4 message=process session.id=ses_f551edfeaffe2cFQM1H6sm5Sal messageID=msg_0aae307a2001pEHcmtr7tfjI41
+timestamp=2026-09-16T15:43:20.497Z level=INFO run=57c001c4 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551edfeaffe2cFQM1H6sm5Sal small=false agent=build mode=primary
+timestamp=2026-09-16T15:43:20.498Z level=INFO run=57c001c4 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T15:43:22.923Z level=INFO run=57c001c4 message=evaluated permission=read pattern=tmp/oc-placebo-aWoshv/NOTES.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-16T15:43:22.927Z level=INFO run=57c001c4 message="touching file" file=/tmp/oc-placebo-aWoshv/NOTES.md
+[0m→ [0mRead NOTES.md
+timestamp=2026-09-16T15:43:23.704Z level=INFO run=57c001c4 message=evaluated permission=read pattern=tmp/oc-placebo-aWoshv/README.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-16T15:43:23.708Z level=INFO run=57c001c4 message="touching file" file=/tmp/oc-placebo-aWoshv/README.md
+[0m→ [0mRead README.md
+timestamp=2026-09-16T15:43:23.761Z level=INFO run=57c001c4 message=loop session.id=ses_f551edfeaffe2cFQM1H6sm5Sal step=3
+timestamp=2026-09-16T15:43:23.769Z level=INFO run=57c001c4 message=process session.id=ses_f551edfeaffe2cFQM1H6sm5Sal messageID=msg_0aae31473001XtnLP5Z6bUhAIF
+timestamp=2026-09-16T15:43:23.769Z level=INFO run=57c001c4 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551edfeaffe2cFQM1H6sm5Sal small=false agent=build mode=primary
+timestamp=2026-09-16T15:43:23.770Z level=INFO run=57c001c4 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T15:43:28.812Z level=INFO run=57c001c4 message=evaluated permission=edit pattern=tmp/oc-placebo-aWoshv/units.py action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T15:43:28.813Z level=INFO run=57c001c4 message=formatting file=/tmp/oc-placebo-aWoshv/units.py
+timestamp=2026-09-16T15:43:28.813Z level=INFO run=57c001c4 message="touching file" file=/tmp/oc-placebo-aWoshv/units.py
+[0m
+[0m← [0mWrite units.py
+Wrote file successfully.
+[0m
+timestamp=2026-09-16T15:43:32.817Z level=INFO run=57c001c4 message=evaluated permission=edit pattern=tmp/oc-placebo-aWoshv/physics.py action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T15:43:32.823Z level=INFO run=57c001c4 message=formatting file=/tmp/oc-placebo-aWoshv/physics.py
+timestamp=2026-09-16T15:43:32.823Z level=INFO run=57c001c4 message="touching file" file=/tmp/oc-placebo-aWoshv/physics.py
+[0m← [0mWrite physics.py
+Wrote file successfully.
+[0m
+timestamp=2026-09-16T15:43:35.484Z level=INFO run=57c001c4 message=evaluated permission=edit pattern=tmp/oc-placebo-aWoshv/world.py action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T15:43:35.484Z level=INFO run=57c001c4 message=formatting file=/tmp/oc-placebo-aWoshv/world.py
+timestamp=2026-09-16T15:43:35.484Z level=INFO run=57c001c4 message="touching file" file=/tmp/oc-placebo-aWoshv/world.py
+[0m← [0mWrite world.py
+Wrote file successfully.
+[0m
+timestamp=2026-09-16T15:43:36.928Z level=INFO run=57c001c4 message=evaluated permission=edit pattern=tmp/oc-placebo-aWoshv/collide.py action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T15:43:36.929Z level=INFO run=57c001c4 message=formatting file=/tmp/oc-placebo-aWoshv/collide.py
+timestamp=2026-09-16T15:43:36.929Z level=INFO run=57c001c4 message="touching file" file=/tmp/oc-placebo-aWoshv/collide.py
+timestamp=2026-09-16T15:43:36.936Z level=INFO run=57c001c4 message=loop session.id=ses_f551edfeaffe2cFQM1H6sm5Sal step=4
+[0m← [0mWrite collide.py
+Wrote file successfully.
+[0m
+timestamp=2026-09-16T15:43:36.954Z level=INFO run=57c001c4 message=process session.id=ses_f551edfeaffe2cFQM1H6sm5Sal messageID=msg_0aae347ea001dVEhFxiWfrqygZ
+timestamp=2026-09-16T15:43:36.955Z level=INFO run=57c001c4 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551edfeaffe2cFQM1H6sm5Sal small=false agent=build mode=primary
+timestamp=2026-09-16T15:43:36.956Z level=INFO run=57c001c4 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T15:44:00.838Z level=INFO run=57c001c4 message=evaluated permission=bash pattern="wc -l -c units.py physics.py world.py collide.py" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T15:44:00.839Z level=INFO run=57c001c4 message=evaluated permission=bash pattern=python3 action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T15:44:00.928Z level=INFO run=57c001c4 message=loop session.id=ses_f551edfeaffe2cFQM1H6sm5Sal step=5
+[0m$ [0mwc -l -c units.py physics.py world.py collide.py && python3 - <<'EOF'
+import units, physics, world, collide
+
+# physics: flap sets vy; gravity clamps at VY_MAX; ceiling soft; floor kills
+assert physics.step_bird(560, 0, True) == (533, -27, True)
+assert physics.step_bird(560, 250, False) == (820, 260, True)
+assert physics.step_bird(-10, 5, False) == (0, 0, True)
+assert physics.step_bird(units.FIELD_H - 70, 260, False) == (units.FIELD_H - units.BIRD_H, 260, False)
+
+# world: lcg + spawn only on t % 45 == 0, advances state once
+s = 1
+p, s1 = world.spawn(0, 1)
+assert s1 == world.lcg(1) and p["gap_top"] == 40 + (s1 >> 8) % 80 and p["x"] == units.SPAWN_X and p["passed"] is False
+p2, s2 = world.spawn(1, s1)
+assert p2 is None and s2 == s1
+pipes = [{"x": 50, "gap_top": 40, "passed": True}, {"x": -119, "gap_top": 40, "passed": False}]
+world.scroll(pipes)
+assert pipes[0]["x"] == 10 and pipes[1]["x"] == -159
+assert world.cull(pipes) == [pipes[0]]
+
+# collide: half-open boundaries per spec/04
+assert collide.rect_overlap(0, 10, 10, 20) is False
+assert collide.pipe_hit(units.FIELD_H - units.BIRD_H - 960, {"x": 300, "gap_top": 40}) is False  # bottom exactly gap bottom -> inside
+assert collide.pipe_hit(560, {"x": units.BIRD_X + units.BIRD_W, "gap_top": 40}) is False        # right edge at BIRD_X+W... check below
+assert collide.pipe_hit(560, {"x": units.BIRD_X - units.PIPE_W, "gap_top": 40}) is False        # pipe right edge exactly BIRD_X
+assert collide.pipe_hit(30, {"x": units.BIRD_X, "gap_top": 40}) is True                          # above gap
+print("all checks passed")
+EOF
+19  260 units.py
+  18  396 physics.py
+  23  510 world.py
+  12  344 collide.py
+  72 1510 total
+Traceback (most recent call last):
+  File "<stdin>", line 6, in <module>
+AssertionError
+[0m
+timestamp=2026-09-16T15:44:00.945Z level=INFO run=57c001c4 message=process session.id=ses_f551edfeaffe2cFQM1H6sm5Sal messageID=msg_0aae3a5a20018d2CHemhIgfnwg
+timestamp=2026-09-16T15:44:00.946Z level=INFO run=57c001c4 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551edfeaffe2cFQM1H6sm5Sal small=false agent=build mode=primary
+timestamp=2026-09-16T15:44:00.946Z level=INFO run=57c001c4 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T15:44:35.626Z level=INFO run=57c001c4 message=evaluated permission=bash pattern="python3 - <<'EOF'\nimport units, physics, world, collide\n\n# physics: flap sets vy; gravity clamps at VY_MAX; ceiling soft; floor kills\nassert physics.step_bird(560, 0, True) == (533, -27, True)\nassert physics.step_bird(560, 250, False) == (820, 260, True)\nassert physics.step_bird(10, -27, True) == (0, 0, True)          # ceiling: y<0 -> y=0, vy=0\nassert physics.step_bird(units.FIELD_H - 70, 260, False) == (units.FIELD_H - units.BIRD_H, 260, False)\n\n# world: lcg + spawn only on t % 45 == 0, advances state once\ns1 = world.lcg(1)\np, s2 = world.spawn(0, 1)\nassert s2 == s1 and p[\"gap_top\"] == 40 + (s1 >> 8) % 80 and p[\"x\"] == units.SPAWN_X and p[\"passed\"] is False\nassert world.spawn(1, s2) == (None, s2)\npipes = [{\"x\": 50, \"gap_top\": 40, \"passed\": True}, {\"x\": -119, \"gap_top\": 40, \"passed\": False}]\nworld.scroll(pipes)\nassert pipes[0][\"x\"] == 10 and pipes[1][\"x\"] == -159\nassert world.cull(pipes) == [pipes[0]]\n\n# collide: half-open boundaries per spec/04\nassert collide.rect_overlap(0, 10, 10, 20) is False\ngap = {\"x\": units.BIRD_X, \"gap_top\": 40}\nassert collide.pipe_hit(30, gap) is True                                   # above the gap\nassert collide.pipe_hit(40, gap) is False                                  # top exactly gap_top -> inside\nassert collide.pipe_hit(1160 - units.BIRD_H + 960, gap) is False           # bottom exactly gap_top+GAP_H -> inside\nassert collide.pipe_hit(560, {\"x\": units.BIRD_X - units.PIPE_W, \"gap_top\": 40}) is False  # pipe right edge at BIRD_X\nprint(\"all checks passed\")\nEOF" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-16T15:44:35.706Z level=INFO run=57c001c4 message=loop session.id=ses_f551edfeaffe2cFQM1H6sm5Sal step=6
+[0m$ [0mpython3 - <<'EOF'
+import units, physics, world, collide
+
+# physics: flap sets vy; gravity clamps at VY_MAX; ceiling soft; floor kills
+assert physics.step_bird(560, 0, True) == (533, -27, True)
+assert physics.step_bird(560, 250, False) == (820, 260, True)
+assert physics.step_bird(10, -27, True) == (0, 0, True)          # ceiling: y<0 -> y=0, vy=0
+assert physics.step_bird(units.FIELD_H - 70, 260, False) == (units.FIELD_H - units.BIRD_H, 260, False)
+
+# world: lcg + spawn only on t % 45 == 0, advances state once
+s1 = world.lcg(1)
+p, s2 = world.spawn(0, 1)
+assert s2 == s1 and p["gap_top"] == 40 + (s1 >> 8) % 80 and p["x"] == units.SPAWN_X and p["passed"] is False
+assert world.spawn(1, s2) == (None, s2)
+pipes = [{"x": 50, "gap_top": 40, "passed": True}, {"x": -119, "gap_top": 40, "passed": False}]
+world.scroll(pipes)
+assert pipes[0]["x"] == 10 and pipes[1]["x"] == -159
+assert world.cull(pipes) == [pipes[0]]
+
+# collide: half-open boundaries per spec/04
+assert collide.rect_overlap(0, 10, 10, 20) is False
+gap = {"x": units.BIRD_X, "gap_top": 40}
+assert collide.pipe_hit(30, gap) is True                                   # above the gap
+assert collide.pipe_hit(40, gap) is False                                  # top exactly gap_top -> inside
+assert collide.pipe_hit(1160 - units.BIRD_H + 960, gap) is False           # bottom exactly gap_top+GAP_H -> inside
+assert collide.pipe_hit(560, {"x": units.BIRD_X - units.PIPE_W, "gap_top": 40}) is False  # pipe right edge at BIRD_X
+print("all checks passed")
+EOF
+Traceback (most recent call last):
+  File "<stdin>", line 24, in <module>
+AssertionError
+[0m
+timestamp=2026-09-16T15:44:35.723Z level=INFO run=57c001c4 message=process session.id=ses_f551edfeaffe2cFQM1H6sm5Sal messageID=msg_0aae42d7c0013LODD8l2aGwBKf
+timestamp=2026-09-16T15:44:35.724Z level=INFO run=57c001c4 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551edfeaffe2cFQM1H6sm5Sal small=false agent=build mode=primary
+timestamp=2026-09-16T15:44:35.725Z level=INFO run=57c001c4 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T15:45:16.945Z level=INFO run=57c001c4 message=evaluated permission=bash pattern="python3 - <<'EOF'\nimport units, physics, world, collide\n\nassert physics.step_bird(560, 0, True) == (533, -27, True)\nassert physics.step_bird(560, 250, False) == (820, 260, True)\nassert physics.step_bird(10, -27, True) == (0, 0, True)\nassert physics.step_bird(units.FIELD_H - 70, 260, False) == (units.FIELD_H - units.BIRD_H, 260, False)\n\ns1 = world.lcg(1)\np, s2 = world.spawn(0, 1)\nassert s2 == s1 and p[\"gap_top\"] == 40 + (s1 >> 8) % 80 and p[\"x\"] == units.SPAWN_X and p[\"passed\"] is False\nassert world.spawn(1, s2) == (None, s2)\npipes = [{\"x\": 50, \"gap_top\": 40, \"passed\": True}, {\"x\": -119, \"gap_top\": 40, \"passed\": False}]\nworld.scroll(pipes)\nassert pipes[0][\"x\"] == 10 and pipes[1][\"x\"] == -159\nassert world.cull(pipes) == [pipes[0]]\n\nassert collide.rect_overlap(0, 10, 10, 20) is False\ngap = {\"x\": units.BIRD_X, \"gap_top\": 40}\nassert collide.pipe_hit(30, gap) is True      # above the gap -> hit\nassert collide.pipe_hit(40, gap) is False     # top exactly gap_top -> inside\nassert collide.pipe_hit(960, gap) is False    # bottom exactly gap_top+GAP_H (1040) -> inside\nassert collide.pipe_hit(560, {\"x\": units.BIRD_X - units.PIPE_W, \"gap_top\": 40}) is False\nprint(\"all checks passed\")\nEOF" action.permission=* action.action=allow action.pattern=*
+[0m$ [0mpython3 - <<'EOF'
+import units, physics, world, collide
+
+assert physics.step_bird(560, 0, True) == (533, -27, True)
+assert physics.step_bird(560, 250, False) == (820, 260, True)
+assert physics.step_bird(10, -27, True) == (0, 0, True)
+assert physics.step_bird(units.FIELD_H - 70, 260, False) == (units.FIELD_H - units.BIRD_H, 260, False)
+
+s1 = world.lcg(1)
+p, s2 = world.spawn(0, 1)
+assert s2 == s1 and p["gap_top"] == 40 + (s1 >> 8) % 80 and p["x"] == units.SPAWN_X and p["passed"] is False
+assert world.spawn(1, s2) == (None, s2)
+pipes = [{"x": 50, "gap_top": 40, "passed": True}, {"x": -119, "gap_top": 40, "passed": False}]
+world.scroll(pipes)
+assert pipes[0]["x"] == 10 and pipes[1]["x"] == -159
+assert world.cull(pipes) == [pipes[0]]
+
+assert collide.rect_overlap(0, 10, 10, 20) is False
+gap = {"x": units.BIRD_X, "gap_top": 40}
+assert collide.pipe_hit(30, gap) is True      # above the gap -> hit
+assert collide.pipe_hit(40, gap) is False     # top exactly gap_top -> inside
+assert collide.pipe_hit(960, gap) is False    # bottom exactly gap_top+GAP_H (1040) -> inside
+assert collide.pipe_hit(560, {"x": units.BIRD_X - units.PIPE_W, "gap_top": 40}) is False
+print("all checks passed")
+EOF
+all checks passed
+[0m
+timestamp=2026-09-16T15:45:17.011Z level=INFO run=57c001c4 message=loop session.id=ses_f551edfeaffe2cFQM1H6sm5Sal step=7
+timestamp=2026-09-16T15:45:17.027Z level=INFO run=57c001c4 message=process session.id=ses_f551edfeaffe2cFQM1H6sm5Sal messageID=msg_0aae4ced5001gUFriuZ5szqNTT
+timestamp=2026-09-16T15:45:17.028Z level=INFO run=57c001c4 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f551edfeaffe2cFQM1H6sm5Sal small=false agent=build mode=primary
+timestamp=2026-09-16T15:45:17.029Z level=INFO run=57c001c4 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T15:45:25.979Z level=INFO run=57c001c4 message=loop session.id=ses_f551edfeaffe2cFQM1H6sm5Sal step=8
+timestamp=2026-09-16T15:45:25.980Z level=INFO run=57c001c4 message="exiting loop" session.id=ses_f551edfeaffe2cFQM1H6sm5Sal
+timestamp=2026-09-16T15:45:25.984Z level=INFO run=57c001c4 message="disposing instance" directory=/tmp/oc-placebo-aWoshv
+timestamp=2026-09-16T15:45:26.002Z level=INFO run=57c001c4 message=loading path=/home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/captures/oc-flapsim-v2-placebo-1789573273804/placebo-rep0/opencode.json

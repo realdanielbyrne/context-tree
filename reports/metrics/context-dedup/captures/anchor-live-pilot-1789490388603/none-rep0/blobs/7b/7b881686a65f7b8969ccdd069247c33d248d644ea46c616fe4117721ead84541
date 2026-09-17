@@ -1,0 +1,44 @@
+"""The deterministic run loop, following the normative per-tick order."""
+
+from units import BIRD_X, PIPE_W, GLIDE_VY, SPAWN_EVERY
+from physics import step_bird
+from world import spawn, scroll, cull
+from collide import pipe_hit
+
+
+def _tick(t, y, vy, score, alive, pipes, s, flap):
+    """Execute one tick (steps 1-6). Returns the updated state tuple."""
+    if t % SPAWN_EVERY == 0:
+        s, pipe = spawn(t, s)
+        if pipe is not None:
+            pipes.append(pipe)
+    y, vy, alive = step_bird(y, vy, flap)
+    scroll(pipes)
+    for p in pipes:
+        if alive and pipe_hit(y, p):
+            alive = False
+    if alive:
+        for p in pipes:
+            if not p["passed"] and p["x"] + PIPE_W <= BIRD_X:
+                p["passed"] = True
+                score += 1
+                if abs(vy) <= GLIDE_VY:
+                    score += 1
+    pipes = cull(pipes)
+    return y, vy, score, alive, pipes, s
+
+
+def run(seed, ticks, flaps="0", powerups=False):
+    """Run the simulation. Returns a state dict (see spec/00)."""
+    y, vy, score, alive = 560, 0, 0, True
+    pipes, s, ticks_run = [], seed, 0
+    for t in range(ticks):
+        if not alive:
+            break
+        flap = flaps[t % len(flaps)] == "1"
+        y, vy, score, alive, pipes, s = _tick(
+            t, y, vy, score, alive, pipes, s, flap)
+        ticks_run += 1
+    state = {"y": y, "vy": vy, "score": score,
+             "alive": alive, "ticks_run": ticks_run}
+    return state

@@ -1,0 +1,38 @@
+# Conventions, part 2 — contracts
+
+## Error types
+
+    money.parse_amount    raises the builtin ValueError
+    parsing.parse_line    raises parsing.LedgerError (defined in the stub)
+    rules.load_rules      raises the builtin ValueError
+    cli.main              never raises for bad input; it returns an exit code
+
+A LedgerError must not leak out of parsing as a ValueError, and a ValueError
+must not leak out of parsing at all — stage 2 says exactly where the conversion
+from one to the other happens. Do not catch exceptions more broadly than the
+spec says: a bare `except:` anywhere in this project is wrong.
+
+## Comment syntax differs per file kind, ON PURPOSE
+
+    ledger lines : a line whose stripped form starts with "#" is a comment
+    rules text   : a line whose stripped form starts with ";" is a comment
+
+This is because "#" is reserved as the TAG-MATCH prefix in rule patterns, which
+stage 5 introduces. Do NOT unify the two comment characters, and do not treat a
+rules line beginning with "#" as a comment. This is the single most common way
+to get stage 3 and stage 5 wrong, and the two stages disagree about it only if
+you implement "#" as a rules comment in stage 3.
+
+Blank and whitespace-only lines are skipped wherever lines are parsed, in both
+file kinds.
+
+## Signatures
+
+Public names and signatures are fixed by the stubs. Do not rename them, do not
+add required arguments, and do not change a return type from a tuple to a list
+or vice versa where the spec names one. A function the spec says returns a
+2-tuple must return a tuple, not a list of two elements.
+
+## Style
+
+No third-party imports. Standard-library imports only, at the top of the file.

@@ -1,0 +1,185 @@
+I re-read spec/07 — the shield behavior is already fully implemented in engine.py:12,25-27,38-41 (from the engine phase), and it matches the spec line by line. What's missing is the proof, tests, and documentation. First, let me prove that the flag-off behavior hasn't changed, and compute the exact values for the shield test scenario:
+The flag-off output is byte-for-byte identical to replay.txt, and all shield scenarios have been resolved. I'll extend the test suite with a `TestShields` class:
+Now GETTING_STARTED.md with the exact demo output and character-exact `def` quotes:
+Final verification — test suite, selfcheck, demo-vs-replay proof, and character-exact check of every quoted `def` line in GETTING_STARTED.md:
+DONE — both items shipped:
+
+1. **FEATURE**: Re-read spec/07 and verified the shield implementation already matches it line for line (engine.py:12,25-27,38-41; flapsim.py:44-45) — no engine changes were needed. Proved the hard requirement: the demo output diffs clean against replay.txt. Extended test_flapsim.py with 5 shield tests (state key only with flag, shield absorbs a pipe hit and never scores it, floor kill not prevented, 5th-pipe refill, cap at 3) — suite now 27/27 OK, selfcheck 6/6 OK.
+2. **DOCS**: GETTING_STARTED.md written with the exact demo command + its exact output, one section per module (each quoting character-exact `def` lines, verified by grep; units.py has no functions so it quotes a constant line and says why), and a "Shield power-up" section including the documented counting interpretation for shielded pipes.
+
+===STDERR===
+timestamp=2026-09-16T23:45:21.608Z level=INFO run=a2a39945 message="creating instance" directory=/tmp/oc-none-3Y1MHl
+timestamp=2026-09-16T23:45:21.609Z level=INFO run=a2a39945 message=fromDirectory directory=/tmp/oc-none-3Y1MHl
+timestamp=2026-09-16T23:45:21.618Z level=INFO run=a2a39945 message=bootstrapping directory=/tmp/oc-none-3Y1MHl
+timestamp=2026-09-16T23:45:21.622Z level=INFO run=a2a39945 message=loading path=/tmp/ocx-HKRRVE/cfg/opencode/config.json
+timestamp=2026-09-16T23:45:21.622Z level=INFO run=a2a39945 message=loading path=/tmp/ocx-HKRRVE/cfg/opencode/opencode.json
+timestamp=2026-09-16T23:45:21.624Z level=INFO run=a2a39945 message=loading path=/tmp/ocx-HKRRVE/cfg/opencode/opencode.jsonc
+timestamp=2026-09-16T23:45:21.624Z level=INFO run=a2a39945 message=loading path=/home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/captures/oc-flapsim-v2-none-1789573264796/none-rep1/opencode.json
+timestamp=2026-09-16T23:45:21.676Z level=INFO run=a2a39945 message="all LSPs are disabled"
+timestamp=2026-09-16T23:45:21.677Z level=INFO run=a2a39945 message="all formatters are disabled"
+timestamp=2026-09-16T23:45:21.677Z level=INFO run=a2a39945 message=init
+timestamp=2026-09-16T23:45:21.788Z level=INFO run=a2a39945 message="event connected"
+timestamp=2026-09-16T23:45:22.110Z level=INFO run=a2a39945 message=loop session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O step=0
+timestamp=2026-09-16T23:45:22.125Z level=INFO run=a2a39945 message="shell tool using shell" shell=/bin/bash
+timestamp=2026-09-16T23:45:22.141Z level=INFO run=a2a39945 message=init count=10
+[0m
+> build · unsloth/Qwen3.8-27B-GGUF
+[0m
+timestamp=2026-09-16T23:45:22.192Z level=INFO run=a2a39945 message="watcher backend" directory=/tmp/oc-none-3Y1MHl platform=linux backend=inotify
+timestamp=2026-09-16T23:45:22.198Z level=INFO run=a2a39945 message="project copy refresh started" projectID=global
+timestamp=2026-09-16T23:45:22.200Z level=INFO run=a2a39945 message="project copy refresh done" projectID=global updated=[] removed=[]
+timestamp=2026-09-16T23:45:22.226Z level=INFO run=a2a39945 message="booting location services" directory=/tmp/oc-none-3Y1MHl workspaceID=undefined
+timestamp=2026-09-16T23:45:22.454Z level=INFO run=a2a39945 message=process session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O messageID=msg_0ac9c56c7001rfTqHS8Sl0waej
+timestamp=2026-09-16T23:45:22.456Z level=INFO run=a2a39945 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O small=false agent=build mode=primary
+timestamp=2026-09-16T23:45:22.461Z level=INFO run=a2a39945 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-16T23:56:32.897Z level=INFO run=a2a39945 message=evaluated permission=read pattern=tmp/oc-none-3Y1MHl/spec/07_powerups.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-16T23:56:32.904Z level=INFO run=a2a39945 message="touching file" file=/tmp/oc-none-3Y1MHl/spec/07_powerups.md
+[0m→ [0mRead spec/07_powerups.md
+timestamp=2026-09-16T23:56:34.066Z level=INFO run=a2a39945 message=evaluated permission=read pattern=tmp/oc-none-3Y1MHl/engine.py action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-16T23:56:34.070Z level=INFO run=a2a39945 message="touching file" file=/tmp/oc-none-3Y1MHl/engine.py
+[0m→ [0mRead engine.py
+timestamp=2026-09-16T23:56:35.266Z level=INFO run=a2a39945 message=evaluated permission=read pattern=tmp/oc-none-3Y1MHl/flapsim.py action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-16T23:56:35.270Z level=INFO run=a2a39945 message="touching file" file=/tmp/oc-none-3Y1MHl/flapsim.py
+[0m→ [0mRead flapsim.py
+timestamp=2026-09-16T23:56:35.339Z level=INFO run=a2a39945 message=loop session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O step=1
+timestamp=2026-09-16T23:56:35.361Z level=INFO run=a2a39945 message=process session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O messageID=msg_0aca69c8e001P1aMOajUs19qqO
+timestamp=2026-09-16T23:56:35.362Z level=INFO run=a2a39945 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O small=false agent=build mode=primary
+timestamp=2026-09-16T23:56:35.363Z level=INFO run=a2a39945 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-17T00:03:33.004Z level=INFO run=a2a39945 message=evaluated permission=bash pattern="python3 flapsim.py --seed 7 --ticks 200 --flaps 0010 > /tmp/opencode/replay_check.txt" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-17T00:03:33.005Z level=INFO run=a2a39945 message=evaluated permission=bash pattern="diff replay.txt /tmp/opencode/replay_check.txt" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-17T00:03:33.005Z level=INFO run=a2a39945 message=evaluated permission=bash pattern="echo UNCHANGED_VS_REPLAY" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-17T00:03:33.005Z level=INFO run=a2a39945 message=evaluated permission=bash pattern=python3 action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-17T00:03:33.056Z level=INFO run=a2a39945 message=loop session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O step=2
+[0m
+[0m$ [0mpython3 flapsim.py --seed 7 --ticks 200 --flaps 0010 > /tmp/opencode/replay_check.txt && diff replay.txt /tmp/opencode/replay_check.txt && echo UNCHANGED_VS_REPLAY && python3 - <<'EOF'
+from engine import run
+import json
+print("A", json.dumps(run(7, 200, "0010", powerups=True)))
+print("B", json.dumps(run(7, 120, "01", powerups=True)))
+print("C", json.dumps(run(2, 90, "0", powerups=True)))
+print("D", json.dumps(run(7, 226, "0010", powerups=True)))
+print("E", json.dumps(run(7, 766, "0010", powerups=True)))
+EOF
+UNCHANGED_VS_REPLAY
+A {"y": 578, "vy": -9, "score": 8, "alive": true, "ticks_run": 200, "shields": 1}
+B {"y": 0, "vy": 0, "score": 0, "alive": false, "ticks_run": 42, "shields": 0}
+C {"y": 1120, "vy": 144, "score": 0, "alive": false, "ticks_run": 8, "shields": 1}
+D {"y": 614, "vy": 27, "score": 10, "alive": true, "ticks_run": 226, "shields": 2}
+E {"y": 614, "vy": 27, "score": 34, "alive": true, "ticks_run": 766, "shields": 3}
+[0m
+timestamp=2026-09-17T00:03:33.075Z level=INFO run=a2a39945 message=process session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O messageID=msg_0acacfc43001Eu0pQSZ8ieUFMl
+timestamp=2026-09-17T00:03:33.076Z level=INFO run=a2a39945 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O small=false agent=build mode=primary
+timestamp=2026-09-17T00:03:33.077Z level=INFO run=a2a39945 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-17T00:07:17.451Z level=INFO run=a2a39945 message=evaluated permission=edit pattern=tmp/oc-none-3Y1MHl/test_flapsim.py action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-17T00:07:17.452Z level=INFO run=a2a39945 message=formatting file=/tmp/oc-none-3Y1MHl/test_flapsim.py
+timestamp=2026-09-17T00:07:17.454Z level=INFO run=a2a39945 message="touching file" file=/tmp/oc-none-3Y1MHl/test_flapsim.py
+[0m← [0mEdit test_flapsim.py
+Index: /tmp/oc-none-3Y1MHl/test_flapsim.py
+===================================================================
+--- /tmp/oc-none-3Y1MHl/test_flapsim.py
++++ /tmp/oc-none-3Y1MHl/test_flapsim.py
+@@ -139,6 +139,44 @@
+         self.assertEqual(
+             st, {"y": 578, "vy": -9, "score": 8, "alive": True, "ticks_run": 200})
+ 
+ 
++class TestShields(unittest.TestCase):
++    def test_shields_key_only_with_powerups(self):
++        plain = run(7, 200, "0010")
++        armed = run(7, 200, "0010", powerups=True)
++        self.assertNotIn("shields", plain)
++        for k, v in plain.items():
++            self.assertEqual(armed[k], v)
++        self.assertEqual(armed["shields"], 1)
++
++    def test_shield_absorbs_pipe_hit(self):
++        # without powerups the bird dies at t=40; the shield buys one more tick
++        plain = run(7, 120, "01")
++        armed = run(7, 120, "01", powerups=True)
++        self.assertEqual(plain["ticks_run"], 41)
++        self.assertFalse(armed["alive"])
++        self.assertGreater(armed["ticks_run"], plain["ticks_run"])
++        self.assertEqual(armed["shields"], 0)
++        self.assertEqual(armed["score"], 0)
++
++    def test_floor_kill_not_prevented_by_shield(self):
++        st = run(2, 90, "0", powerups=True)
++        self.assertFalse(st["alive"])
++        self.assertEqual(st["ticks_run"], 8)
++        self.assertEqual(st["shields"], 1)
++
++    def test_fifth_pipe_passed_grants_shield(self):
++        st = run(7, 226, "0010", powerups=True)
++        self.assertTrue(st["alive"])
++        self.assertEqual(st["score"], 10)
++        self.assertEqual(st["shields"], 2)
++
++    def test_shields_capped_at_3(self):
++        st = run(7, 766, "0010", powerups=True)
++        self.assertTrue(st["alive"])
++        self.assertEqual(st["score"], 34)
++        self.assertEqual(st["shields"], 3)
++
++
+ if __name__ == "__main__":
+     unittest.main()
+
+[0m
+timestamp=2026-09-17T00:07:17.518Z level=INFO run=a2a39945 message=loop session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O step=3
+timestamp=2026-09-17T00:07:17.540Z level=INFO run=a2a39945 message=process session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O messageID=msg_0acb06911001TvI5gaUkpJQBRF
+timestamp=2026-09-17T00:07:17.541Z level=INFO run=a2a39945 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O small=false agent=build mode=primary
+timestamp=2026-09-17T00:07:17.542Z level=INFO run=a2a39945 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-17T00:16:46.279Z level=INFO run=a2a39945 message=evaluated permission=edit pattern=tmp/oc-none-3Y1MHl/GETTING_STARTED.md action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-17T00:16:46.280Z level=INFO run=a2a39945 message=formatting file=/tmp/oc-none-3Y1MHl/GETTING_STARTED.md
+timestamp=2026-09-17T00:16:46.280Z level=INFO run=a2a39945 message="touching file" file=/tmp/oc-none-3Y1MHl/GETTING_STARTED.md
+[0m← [0mWrite GETTING_STARTED.md
+Wrote file successfully.
+[0m
+timestamp=2026-09-17T00:16:46.347Z level=INFO run=a2a39945 message=loop session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O step=4
+timestamp=2026-09-17T00:16:46.372Z level=INFO run=a2a39945 message=process session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O messageID=msg_0acb91710001E41pcXZfOONXlM
+timestamp=2026-09-17T00:16:46.373Z level=INFO run=a2a39945 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O small=false agent=build mode=primary
+timestamp=2026-09-17T00:16:46.374Z level=INFO run=a2a39945 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-17T00:20:07.184Z level=INFO run=a2a39945 message=evaluated permission=bash pattern="python3 -m unittest test_flapsim 2>&1" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-17T00:20:07.184Z level=INFO run=a2a39945 message=evaluated permission=bash pattern="tail -2" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-17T00:20:07.184Z level=INFO run=a2a39945 message=evaluated permission=bash pattern="python3 flapsim.py --selfcheck" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-17T00:20:07.184Z level=INFO run=a2a39945 message=evaluated permission=bash pattern="grep -c OK" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-17T00:20:07.184Z level=INFO run=a2a39945 message=evaluated permission=bash pattern="python3 flapsim.py --seed 7 --ticks 200 --flaps 0010" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-17T00:20:07.184Z level=INFO run=a2a39945 message=evaluated permission=bash pattern="diff replay.txt -" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-17T00:20:07.184Z level=INFO run=a2a39945 message=evaluated permission=bash pattern="echo DEMO_STILL_MATCHES_REPLAY" action.permission=* action.action=allow action.pattern=*
+[0m$ [0mpython3 -m unittest test_flapsim 2>&1 | tail -2 && python3 flapsim.py --selfcheck | grep -c OK && python3 flapsim.py --seed 7 --ticks 200 --flaps 0010 | diff replay.txt - && echo DEMO_STILL_MATCHES_REPLAY
+OK
+6
+DEMO_STILL_MATCHES_REPLAY
+[0m
+timestamp=2026-09-17T00:20:30.116Z level=INFO run=a2a39945 message=evaluated permission=bash pattern="grep -c '^def step_bird(y, vy, flap):$' physics.py" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-17T00:20:30.116Z level=INFO run=a2a39945 message=evaluated permission=bash pattern="grep -c '^def lcg(s):$' world.py" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-17T00:20:30.116Z level=INFO run=a2a39945 message=evaluated permission=bash pattern="grep -c '^def spawn(t, s):$' world.py" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-17T00:20:30.116Z level=INFO run=a2a39945 message=evaluated permission=bash pattern="grep -c '^def scroll(pipes):$' world.py" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-17T00:20:30.116Z level=INFO run=a2a39945 message=evaluated permission=bash pattern="grep -c '^def cull(pipes):$' world.py" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-17T00:20:30.116Z level=INFO run=a2a39945 message=evaluated permission=bash pattern="grep -c '^def rect_overlap(a0, a1, b0, b1):$' collide.py" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-17T00:20:30.116Z level=INFO run=a2a39945 message=evaluated permission=bash pattern="grep -c '^def pipe_hit(y, pipe):$' collide.py" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-17T00:20:30.116Z level=INFO run=a2a39945 message=evaluated permission=bash pattern="grep -c '^def run(seed, ticks, flaps, powerups=False, trace=None):$' engine.py" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-17T00:20:30.116Z level=INFO run=a2a39945 message=evaluated permission=bash pattern="grep -c '^def selfcheck():$' flapsim.py" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-17T00:20:30.116Z level=INFO run=a2a39945 message=evaluated permission=bash pattern="grep -c '^def main(argv):$' flapsim.py" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-17T00:20:30.116Z level=INFO run=a2a39945 message=evaluated permission=bash pattern="grep -c '^FIELD_H = 1200$' units.py" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-17T00:20:30.143Z level=INFO run=a2a39945 message=loop session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O step=5
+[0m$ [0mgrep -c '^def step_bird(y, vy, flap):$' physics.py; grep -c '^def lcg(s):$' world.py; grep -c '^def spawn(t, s):$' world.py; grep -c '^def scroll(pipes):$' world.py; grep -c '^def cull(pipes):$' world.py; grep -c '^def rect_overlap(a0, a1, b0, b1):$' collide.py; grep -c '^def pipe_hit(y, pipe):$' collide.py; grep -c '^def run(seed, ticks, flaps, powerups=False, trace=None):$' engine.py; grep -c '^def selfcheck():$' flapsim.py; grep -c '^def main(argv):$' flapsim.py; grep -c '^FIELD_H = 1200$' units.py
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+[0m
+timestamp=2026-09-17T00:20:30.167Z level=INFO run=a2a39945 message=process session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O messageID=msg_0acbc8143001CAlJqEkPLR5c9V
+timestamp=2026-09-17T00:20:30.167Z level=INFO run=a2a39945 message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O small=false agent=build mode=primary
+timestamp=2026-09-17T00:20:30.168Z level=INFO run=a2a39945 message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-17T00:24:59.515Z level=INFO run=a2a39945 message=loop session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O step=6
+timestamp=2026-09-17T00:24:59.520Z level=INFO run=a2a39945 message="exiting loop" session.id=ses_f5410ec8dffeT01OYEFQrtQZ1O
+timestamp=2026-09-17T00:24:59.525Z level=INFO run=a2a39945 message="disposing instance" directory=/tmp/oc-none-3Y1MHl
+timestamp=2026-09-17T00:24:59.544Z level=INFO run=a2a39945 message=loading path=/home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/captures/oc-flapsim-v2-none-1789573264796/none-rep1/opencode.json

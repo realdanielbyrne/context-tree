@@ -1,0 +1,99 @@
+The workspace only contains `spec/` and a stub `NOTES.md` — no engine files exist here yet, so I'll build the full base per spec first, then add the shield feature on top. Reading all specs:
+
+===STDERR===
+timestamp=2026-09-15T18:00:24.209Z level=INFO run=1bf2985c message="creating instance" directory=/tmp/oc-none-YQP0nu
+timestamp=2026-09-15T18:00:24.210Z level=INFO run=1bf2985c message=fromDirectory directory=/tmp/oc-none-YQP0nu
+timestamp=2026-09-15T18:00:24.220Z level=INFO run=1bf2985c message=bootstrapping directory=/tmp/oc-none-YQP0nu
+timestamp=2026-09-15T18:00:24.224Z level=INFO run=1bf2985c message=loading path=/tmp/ocx-N48t49/cfg/opencode/config.json
+timestamp=2026-09-15T18:00:24.224Z level=INFO run=1bf2985c message=loading path=/tmp/ocx-N48t49/cfg/opencode/opencode.json
+timestamp=2026-09-15T18:00:24.226Z level=INFO run=1bf2985c message=loading path=/tmp/ocx-N48t49/cfg/opencode/opencode.jsonc
+timestamp=2026-09-15T18:00:24.226Z level=INFO run=1bf2985c message=loading path=/home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/captures/oc-flapsim-base-1789494850208/none-rep0/opencode.json
+timestamp=2026-09-15T18:00:24.276Z level=INFO run=1bf2985c message="all LSPs are disabled"
+timestamp=2026-09-15T18:00:24.277Z level=INFO run=1bf2985c message="all formatters are disabled"
+timestamp=2026-09-15T18:00:24.277Z level=INFO run=1bf2985c message=init
+timestamp=2026-09-15T18:00:24.384Z level=INFO run=1bf2985c message="event connected"
+timestamp=2026-09-15T18:00:24.682Z level=INFO run=1bf2985c message=loop session.id=ses_f59cb8a30ffe0EKFp9kznindvx step=0
+timestamp=2026-09-15T18:00:24.691Z level=INFO run=1bf2985c message="shell tool using shell" shell=/bin/bash
+timestamp=2026-09-15T18:00:24.703Z level=INFO run=1bf2985c message=init count=10
+[0m
+> build · unsloth/Qwen3.8-27B-GGUF
+[0m
+timestamp=2026-09-15T18:00:24.745Z level=INFO run=1bf2985c message="watcher backend" directory=/tmp/oc-none-YQP0nu platform=linux backend=inotify
+timestamp=2026-09-15T18:00:24.751Z level=INFO run=1bf2985c message="project copy refresh started" projectID=global
+timestamp=2026-09-15T18:00:24.752Z level=INFO run=1bf2985c message="project copy refresh done" projectID=global updated=[] removed=[]
+timestamp=2026-09-15T18:00:24.765Z level=INFO run=1bf2985c message="booting location services" directory=/tmp/oc-none-YQP0nu workspaceID=undefined
+timestamp=2026-09-15T18:00:24.984Z level=INFO run=1bf2985c message=process session.id=ses_f59cb8a30ffe0EKFp9kznindvx messageID=msg_0a63a296d001BNS1pzWA4404Xg
+timestamp=2026-09-15T18:00:24.995Z level=INFO run=1bf2985c message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f59cb8a30ffe0EKFp9kznindvx small=false agent=build mode=primary
+timestamp=2026-09-15T18:00:25.000Z level=INFO run=1bf2985c message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-15T18:00:35.992Z level=INFO run=1bf2985c message=evaluated permission=bash pattern="ls -la /tmp/oc-none-YQP0nu/" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-15T18:00:35.992Z level=INFO run=1bf2985c message=evaluated permission=bash pattern="ls -la /tmp/oc-none-YQP0nu/spec/" action.permission=* action.action=allow action.pattern=*
+timestamp=2026-09-15T18:00:36.019Z level=INFO run=1bf2985c message=loop session.id=ses_f59cb8a30ffe0EKFp9kznindvx step=1
+[0m$ [0mls -la /tmp/oc-none-YQP0nu/ && ls -la /tmp/oc-none-YQP0nu/spec/ 2>/dev/null
+total 8
+drwx------    3 realdanielbyrne realdanielbyrne    100 Sep 15 12:54 .
+drwxrwxrwt 7810 root            root            158540 Sep 15 13:00 ..
+-rw-rw-r--    1 realdanielbyrne realdanielbyrne     16 Sep 15 12:54 NOTES.md
+-rw-rw-r--    1 realdanielbyrne realdanielbyrne   1319 Sep 15 12:54 README.md
+drwxrwxr-x    2 realdanielbyrne realdanielbyrne    240 Sep 15 12:54 spec
+total 40
+drwxrwxr-x 2 realdanielbyrne realdanielbyrne  240 Sep 15 12:54 .
+drwx------ 3 realdanielbyrne realdanielbyrne  100 Sep 15 12:54 ..
+-rw-rw-r-- 1 realdanielbyrne realdanielbyrne 1113 Sep 15 12:54 00_overview.md
+-rw-rw-r-- 1 realdanielbyrne realdanielbyrne 1052 Sep 15 12:54 01_units.md
+-rw-rw-r-- 1 realdanielbyrne realdanielbyrne 1199 Sep 15 12:54 02_physics.md
+-rw-rw-r-- 1 realdanielbyrne realdanielbyrne  727 Sep 15 12:54 03_world.md
+-rw-rw-r-- 1 realdanielbyrne realdanielbyrne  842 Sep 15 12:54 04_collide.md
+-rw-rw-r-- 1 realdanielbyrne realdanielbyrne  738 Sep 15 12:54 05_score.md
+-rw-rw-r-- 1 realdanielbyrne realdanielbyrne 1380 Sep 15 12:54 06_cli.md
+-rw-rw-r-- 1 realdanielbyrne realdanielbyrne 1239 Sep 15 12:54 07_powerups.md
+-rw-rw-r-- 1 realdanielbyrne realdanielbyrne 1152 Sep 15 12:54 08_examples.md
+-rw-rw-r-- 1 realdanielbyrne realdanielbyrne 1520 Sep 15 12:54 09_expected_output.md
+[0m
+timestamp=2026-09-15T18:00:36.036Z level=INFO run=1bf2985c message=process session.id=ses_f59cb8a30ffe0EKFp9kznindvx messageID=msg_0a63a55b4001mUqdBrLZ8qH3et
+timestamp=2026-09-15T18:00:36.037Z level=INFO run=1bf2985c message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f59cb8a30ffe0EKFp9kznindvx small=false agent=build mode=primary
+timestamp=2026-09-15T18:00:36.038Z level=INFO run=1bf2985c message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-15T18:00:48.478Z level=INFO run=1bf2985c message=evaluated permission=read pattern=tmp/oc-none-YQP0nu/spec/00_overview.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-15T18:00:48.485Z level=INFO run=1bf2985c message="touching file" file=/tmp/oc-none-YQP0nu/spec/00_overview.md
+[0m→ [0mRead spec/00_overview.md
+timestamp=2026-09-15T18:00:48.768Z level=INFO run=1bf2985c message=evaluated permission=read pattern=tmp/oc-none-YQP0nu/spec/01_units.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-15T18:00:48.772Z level=INFO run=1bf2985c message="touching file" file=/tmp/oc-none-YQP0nu/spec/01_units.md
+[0m→ [0mRead spec/01_units.md
+timestamp=2026-09-15T18:00:48.912Z level=INFO run=1bf2985c message=evaluated permission=read pattern=tmp/oc-none-YQP0nu/spec/02_physics.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-15T18:00:48.917Z level=INFO run=1bf2985c message="touching file" file=/tmp/oc-none-YQP0nu/spec/02_physics.md
+[0m→ [0mRead spec/02_physics.md
+timestamp=2026-09-15T18:00:49.029Z level=INFO run=1bf2985c message=evaluated permission=read pattern=tmp/oc-none-YQP0nu/spec/03_world.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-15T18:00:49.032Z level=INFO run=1bf2985c message="touching file" file=/tmp/oc-none-YQP0nu/spec/03_world.md
+[0m→ [0mRead spec/03_world.md
+timestamp=2026-09-15T18:00:49.705Z level=INFO run=1bf2985c message=evaluated permission=read pattern=tmp/oc-none-YQP0nu/spec/04_collide.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-15T18:00:49.709Z level=INFO run=1bf2985c message="touching file" file=/tmp/oc-none-YQP0nu/spec/04_collide.md
+[0m→ [0mRead spec/04_collide.md
+timestamp=2026-09-15T18:00:49.923Z level=INFO run=1bf2985c message=evaluated permission=read pattern=tmp/oc-none-YQP0nu/spec/05_score.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-15T18:00:49.928Z level=INFO run=1bf2985c message="touching file" file=/tmp/oc-none-YQP0nu/spec/05_score.md
+[0m→ [0mRead spec/05_score.md
+timestamp=2026-09-15T18:00:49.970Z level=INFO run=1bf2985c message=loop session.id=ses_f59cb8a30ffe0EKFp9kznindvx step=2
+timestamp=2026-09-15T18:00:49.986Z level=INFO run=1bf2985c message=process session.id=ses_f59cb8a30ffe0EKFp9kznindvx messageID=msg_0a63a8c34001SnUeIT9uhhqck6
+timestamp=2026-09-15T18:00:49.986Z level=INFO run=1bf2985c message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f59cb8a30ffe0EKFp9kznindvx small=false agent=build mode=primary
+timestamp=2026-09-15T18:00:49.987Z level=INFO run=1bf2985c message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-15T18:00:52.021Z level=INFO run=1bf2985c message=evaluated permission=read pattern=tmp/oc-none-YQP0nu/spec/06_cli.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-15T18:00:52.026Z level=INFO run=1bf2985c message="touching file" file=/tmp/oc-none-YQP0nu/spec/06_cli.md
+[0m→ [0mRead spec/06_cli.md
+timestamp=2026-09-15T18:00:52.703Z level=INFO run=1bf2985c message=evaluated permission=read pattern=tmp/oc-none-YQP0nu/spec/07_powerups.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-15T18:00:52.707Z level=INFO run=1bf2985c message="touching file" file=/tmp/oc-none-YQP0nu/spec/07_powerups.md
+[0m→ [0mRead spec/07_powerups.md
+timestamp=2026-09-15T18:00:52.848Z level=INFO run=1bf2985c message=evaluated permission=read pattern=tmp/oc-none-YQP0nu/spec/08_examples.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-15T18:00:52.851Z level=INFO run=1bf2985c message="touching file" file=/tmp/oc-none-YQP0nu/spec/08_examples.md
+[0m→ [0mRead spec/08_examples.md
+timestamp=2026-09-15T18:00:52.970Z level=INFO run=1bf2985c message=evaluated permission=read pattern=tmp/oc-none-YQP0nu/spec/09_expected_output.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-15T18:00:52.974Z level=INFO run=1bf2985c message="touching file" file=/tmp/oc-none-YQP0nu/spec/09_expected_output.md
+[0m→ [0mRead spec/09_expected_output.md
+timestamp=2026-09-15T18:00:53.737Z level=INFO run=1bf2985c message=evaluated permission=read pattern=tmp/oc-none-YQP0nu/NOTES.md action.permission=read action.pattern=* action.action=allow
+timestamp=2026-09-15T18:00:53.740Z level=INFO run=1bf2985c message="touching file" file=/tmp/oc-none-YQP0nu/NOTES.md
+[0m→ [0mRead NOTES.md
+timestamp=2026-09-15T18:00:53.783Z level=INFO run=1bf2985c message=loop session.id=ses_f59cb8a30ffe0EKFp9kznindvx step=3
+timestamp=2026-09-15T18:00:53.796Z level=INFO run=1bf2985c message=process session.id=ses_f59cb8a30ffe0EKFp9kznindvx messageID=msg_0a63a9b18001L51v4lS7qCVYR9
+timestamp=2026-09-15T18:00:53.796Z level=INFO run=1bf2985c message=stream providerID=local modelID=unsloth/Qwen3.8-27B-GGUF session.id=ses_f59cb8a30ffe0EKFp9kznindvx small=false agent=build mode=primary
+timestamp=2026-09-15T18:00:53.796Z level=INFO run=1bf2985c message="llm runtime selected" llm.runtime=ai-sdk llm.provider=local llm.model=unsloth/Qwen3.8-27B-GGUF
+timestamp=2026-09-15T18:06:42.506Z level=INFO run=1bf2985c message=loop session.id=ses_f59cb8a30ffe0EKFp9kznindvx step=4
+timestamp=2026-09-15T18:06:42.508Z level=INFO run=1bf2985c message="exiting loop" session.id=ses_f59cb8a30ffe0EKFp9kznindvx
+timestamp=2026-09-15T18:06:42.513Z level=INFO run=1bf2985c message="disposing instance" directory=/tmp/oc-none-YQP0nu
+timestamp=2026-09-15T18:06:42.532Z level=INFO run=1bf2985c message=loading path=/home/realdanielbyrne/GitHub/context-tree/reports/metrics/context-dedup/captures/oc-flapsim-base-1789494850208/none-rep0/opencode.json

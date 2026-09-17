@@ -1,0 +1,80 @@
+"""Command line for flapsim: hand-parsed argv, exact output format."""
+
+import sys
+from engine import run
+
+
+def _parse(argv):
+    """Parse --seed/--ticks/--flaps/--powerups by hand. Returns dict or None."""
+    opts = {"seed": 0, "ticks": 0, "flaps": "0", "powerups": False}
+    i = 1
+    while i < len(argv):
+        a = argv[i]
+        if a == "--selfcheck":
+            return {"selfcheck": True}
+        if a in ("--seed", "--ticks") and i + 1 < len(argv):
+            opts[a[2:]] = int(argv[i + 1])
+            i += 2
+        elif a == "--flaps" and i + 1 < len(argv):
+            opts["flaps"] = argv[i + 1] or "0"
+            i += 2
+        elif a == "--powerups":
+            opts["powerups"] = True
+            i += 1
+        else:
+            return None
+    return opts
+
+
+def _digest(st, n, powerups):
+    line = ("DIGEST seed=%d ticks=%d score=%02d alive=%d y=%04d vy=%+05d "
+            "ticks_run=%d" % (st["seed"], n, st["score"], int(st["alive"]),
+                              st["y"], st["vy"], st["ticks_run"]))
+    if powerups:
+        line += " shields=%d" % st["shields"]
+    return line
+
+
+def _normal(opts):
+    st = run(opts["seed"], opts["ticks"], opts["flaps"], opts["powerups"])
+    st["seed"] = opts["seed"]
+    n = opts["ticks"]
+    every = max(1, n // 20)
+    for t in range(n):
+        if not st["alive"]:
+            break
+        run_t = run(opts["seed"], t + 1, opts["flaps"], opts["powerups"])
+        if (t + 1) % every == 0:
+            print("TRACE t=%04d y=%04d vy=%+05d score=%02d alive=%d"
+                  % (t + 1, run_t["y"], run_t["vy"], run_t["score"],
+                     int(run_t["alive"])))
+    print(_digest(st, n, opts["powerups"]))
+
+
+def _selfcheck():
+    cases = [(7, 200, "0010", 8, 1), (7, 120, "01", 0, 0),
+             (3, 200, "0001", 8, 1), (11, 60, "1", 0, 0),
+             (2, 90, "0", 0, 0), (5, 200, "0010", 8, 1)]
+    for i, (seed, ticks, flaps, escore, ealive) in enumerate(cases, 1):
+        st = run(seed, ticks, flaps)
+        ok = st["score"] == escore and int(st["alive"]) == ealive
+        print("EX%d seed=%d ticks=%d flaps=%s expect score=%02d alive=%d "
+              "got score=%02d alive=%d %s"
+              % (i, seed, ticks, flaps, escore, ealive, st["score"],
+                 int(st["alive"]), "OK" if ok else "FAIL"))
+
+
+def main(argv):
+    opts = _parse(argv)
+    if opts is None:
+        print("usage: flapsim.py --seed S --ticks N --flaps BITS [--powerups]")
+        return 1
+    if opts.get("selfcheck"):
+        _selfcheck()
+    else:
+        _normal(opts)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

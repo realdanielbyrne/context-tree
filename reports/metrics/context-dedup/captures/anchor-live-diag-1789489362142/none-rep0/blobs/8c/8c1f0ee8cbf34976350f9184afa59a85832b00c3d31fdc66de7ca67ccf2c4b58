@@ -1,0 +1,40 @@
+# Stage 3 — rules.py
+
+A rules file maps descriptions to categories. It is a plain multi-line string,
+NOT a path — the caller has already read the file.
+
+## load_rules(text) -> list of Rule
+
+Split `text` into lines. For each line:
+
+  - Strip it. SKIP it, with no error, if it is empty or if it starts with ";".
+    ";" is the rules-file comment character. "#" is NOT a comment here — stage 5
+    gives "#" a meaning at the start of a pattern, so a line beginning with "#"
+    is a real rule and must be parsed as one.
+  - Split the stripped line on "=". There must be EXACTLY three parts. Two parts
+    or four parts both raise ValueError.
+  - Part 0 is the PATTERN, stripped. If it is empty, raise ValueError.
+  - Part 1 is the CATEGORY, stripped. If it is empty, raise ValueError.
+  - Part 2 is the PRIORITY, stripped, converted with `int()`. A non-integer
+    raises ValueError naturally and that is the behaviour we want — do not
+    catch it and do not substitute a default. Priorities may be negative.
+
+Return a list of `Rule` objects — the class is already defined in the stub, do
+not redefine it — in FILE ORDER. File order is load-bearing: it is the
+tie-breaker in `categorize`.
+
+## categorize(txn, rules) -> str
+
+A rule MATCHES a txn when the rule's pattern, lower-cased, appears as a
+SUBSTRING of the txn's "desc", lower-cased. Matching is therefore
+case-insensitive and unanchored: pattern "shop" matches "Corner Shopping".
+(Stage 5 adds a second, different pattern form. Until then this is the only one.)
+
+Among ALL matching rules, pick the one with the HIGHEST `priority`. If two or
+more matching rules tie on priority, the one appearing EARLIER in the `rules`
+list wins. Return that rule's `category` string.
+
+If no rule matches, return the literal string "uncategorized" — lower-case, and
+never None and never an empty string.
+
+`rules` may be empty, in which case every txn is "uncategorized".

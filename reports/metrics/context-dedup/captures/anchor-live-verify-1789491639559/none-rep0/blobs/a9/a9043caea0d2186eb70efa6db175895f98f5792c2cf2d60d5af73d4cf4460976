@@ -1,0 +1,11 @@
+62 lines, 2093 chars
+    53	        st, _ = run(seed, ticks, flaps)
+    54	        a = 1 if st["alive"] else 0
+    55	        ok = "OK" if (st["score"] == escore and a == ealive) else "FAIL"
+    56	        print("%s seed=%d ticks=%d flaps=%s expect score=%02d alive=%d "
+    57	              "got score=%02d alive=%d %s"
+    58	              % (name, seed, ticks, flaps, escore, ealive, st["score"], a, ok))
+    59	
+    60	
+    61	if __name__ == "__main__":
+    62	    main(sys.argv)

@@ -1,0 +1,45 @@
+# ledger — a pure-stdlib Python transaction toolkit
+
+Implement a small ledger toolkit from a written specification. Python 3
+STANDARD LIBRARY ONLY: no pip, no third-party imports, no network, no pytest.
+Five modules exist in the workspace root as STUBS with the right names and
+signatures; fill them in.
+
+    STAGE 1   money.py     spec/01_money.md + spec/01b_money_format.md
+    STAGE 2   parsing.py   spec/02_parsing.md + spec/02b_parse_lines.md
+    STAGE 3   rules.py     spec/03_rules.md
+    STAGE 4   report.py    spec/04_report.md
+    STAGE 5   (extension)  spec/05_phase2_tags.md   changes parsing.py + rules.py
+    STAGE 6   cli.py       spec/06_cli.md
+
+Four reference documents are also normative; consult them, do not guess:
+
+    spec/00_conventions.md   project conventions — READ THIS FIRST
+    spec/00b_contracts.md    error contracts and comment syntax
+    spec/07_examples.md      worked examples for money.parse_amount
+    spec/07b_examples.md     worked examples for format_amount and categorize
+
+Several specs are split in two. Where a file ends with a "continued in" pointer,
+READ THE CONTINUATION — it carries requirements the first half omits. The specs
+are authoritative; the stubs only fix names and signatures.
+
+## How to check your work
+
+    python3 -m unittest test_ledger -v
+
+While iterating you may run one class, e.g. `python3 -m unittest
+test_ledger.TestMoney -v`. The classes are TestMoney, TestParsing, TestRules,
+TestReport, TestPhase2 and TestCli. You are done when EVERY test passes.
+
+Grading uses a HELD-OUT suite over the same behaviour on DIFFERENT data, so
+implement the SPEC, not the visible test cases.
+
+## Working notes
+
+After each stage, append one line to NOTES.md: `stage <n>: <decision made>`.
+
+## Final deliverable
+
+Once the whole suite passes, write SUMMARY.md: one section per stage, headed
+`## Stage <n> — <module>`, each saying in two or three sentences what you
+implemented and which spec edge case was most likely to be got wrong.
