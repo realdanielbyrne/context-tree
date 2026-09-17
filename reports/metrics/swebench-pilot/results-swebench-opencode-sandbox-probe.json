@@ -1,0 +1,186 @@
+{
+  "manifest": {
+    "run_id": "swebench-opencode-sandbox-probe",
+    "date": "2026-09-17T04:08:24.969Z",
+    "commit": "e9ff86ecb979e53ce8767a52596ef17bf145ffcb",
+    "vehicle": "opencode",
+    "opencode_version": "1.18.31",
+    "model": "local/HuggingJoost/Swift-Qwen3.8-27B-NVFP4-GGUF",
+    "models_used": [
+      "local/HuggingJoost/Swift-Qwen3.8-27B-NVFP4-GGUF"
+    ],
+    "endpoint_policy": "pinned: local/HuggingJoost/Swift-Qwen3.8-27B-NVFP4-GGUF",
+    "endpoints_used": {
+      "local": 1,
+      "openrouter": 0
+    },
+    "invocation": "opencode run --pure -m <model> --format json --dir <ws> --auto <prompt> < /dev/null; per-run XDG dirs; export with same XDG env",
+    "config": "experiments/context-dedup/opencode.json (no credential in file)",
+    "model_configs": {
+      "local/HuggingJoost/Swift-Qwen3.8-27B-NVFP4-GGUF": {
+        "configured": true,
+        "limit_output": 32000,
+        "limit_context": 151040,
+        "options": null
+      }
+    },
+    "host_defaults": "thinking ON on every endpoint (host default), no tool-output clip, no cap, no eviction, no middleware",
+    "sandbox": "bwrap: no network (model relay only), no dataset/repos/wscache/other runs/operator home; per-run preflight in each cell",
+    "run_timeout_s": 1800,
+    "instances": [
+      "psf__requests-1142"
+    ],
+    "selection_file": "selection-v2.json",
+    "grading": "ab-tasks/swebench.mjs gradeDetail after opencode exits: restore test-patch files, apply test patch, run the instance runner over F2P + calibrated P2P; void grades and errored runs excluded from rates",
+    "prices_per_million_usd": {
+      "local/HuggingJoost/Swift-Qwen3.8-27B-NVFP4-GGUF": null
+    }
+  },
+  "cells": [
+    {
+      "instance": "psf__requests-1142",
+      "repeat": 0,
+      "repo": "psf/requests",
+      "difficulty": "<15 min fix",
+      "stratum": "E",
+      "vehicle": "opencode",
+      "opencode_version": "1.18.31",
+      "model": "local/HuggingJoost/Swift-Qwen3.8-27B-NVFP4-GGUF",
+      "model_config": {
+        "configured": true,
+        "limit_output": 32000,
+        "limit_context": 151040,
+        "options": null
+      },
+      "endpoint": "local",
+      "sandbox": {
+        "enabled": true,
+        "tool": "bubblewrap 0.11.0",
+        "network": "none; model relay 127.0.0.1:8888 -> http://127.0.0.1:8888/v1",
+        "masked": [
+          "/home",
+          "/mnt",
+          "/media",
+          "/srv",
+          "/var/tmp",
+          "/run/user"
+        ],
+        "visible": [
+          "/mnt/data/ctx-swebench/venvs/psf__requests__1.1__py3.9",
+          "/mnt/data/ctx-swebench/tooling/pythons/cpython-3.9-linux-x86_64-gnu",
+          "/mnt/data/ctx-swebench/opencode-runs/sandbox-probe/psf__requests-1142__r0/sandbox/opencode.json",
+          "/mnt/data/ctx-swebench/opencode-runs/sandbox-probe/psf__requests-1142__r0/xdg",
+          "/mnt/data/ctx-swebench/opencode-runs/sandbox-probe/psf__requests-1142__r0/workspace"
+        ],
+        "config": "/mnt/data/ctx-swebench/opencode-runs/sandbox-probe/psf__requests-1142__r0/sandbox/opencode.json",
+        "preflight": {
+          "hidden /mnt/data/ctx-swebench/dataset": true,
+          "hidden /mnt/data/ctx-swebench/repos": true,
+          "hidden /mnt/data/ctx-swebench/wscache": true,
+          "hidden /mnt/data/ctx-swebench/runs": true,
+          "hidden /mnt/data/ctx-swebench/locks": true,
+          "hidden /home/realdanielbyrne": true,
+          "hidden /home/realdanielbyrne/GitHub/context-tree": true,
+          "only  in /tmp": true,
+          "only .ct-sandbox,agent in /home": true,
+          "only sandbox-probe in /mnt/data/ctx-swebench/opencode-runs": true,
+          "only psf__requests-1142__r0 in /mnt/data/ctx-swebench/opencode-runs/sandbox-probe": true,
+          "only sandbox,workspace,xdg in /mnt/data/ctx-swebench/opencode-runs/sandbox-probe/psf__requests-1142__r0": true,
+          "only data in /mnt": true,
+          "only ctx-swebench in /mnt/data": true,
+          "only opencode-runs,venvs,tooling in /mnt/data/ctx-swebench": true,
+          "only psf__requests__1.1__py3.9 in /mnt/data/ctx-swebench/venvs": true,
+          "only pythons in /mnt/data/ctx-swebench/tooling": true,
+          "only cpython-3.9-linux-x86_64-gnu,cpython-3.9.25-linux-x86_64-gnu in /mnt/data/ctx-swebench/tooling/pythons": true,
+          "workspace writable": true,
+          "imports from workspace": true,
+          "no outbound network": true,
+          "no DNS": true
+        }
+      },
+      "endpoint_selection": {
+        "request": "local/HuggingJoost/Swift-Qwen3.8-27B-NVFP4-GGUF",
+        "exclusive": true,
+        "reason": "pinned by CT_OPENCODE_MODEL; holds local slot 0,1,2,3",
+        "signals": {
+          "pinned": true,
+          "slots": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        "decided_at": "2026-09-17T04:05:40.507Z"
+      },
+      "pass": true,
+      "f2p_pass": true,
+      "p2p_pass": true,
+      "grade_stage": "ok",
+      "grade_valid": true,
+      "f2p_failures": [],
+      "p2p_failures": [],
+      "p2p_graded_n": 5,
+      "p2p_dataset_n": 5,
+      "run_valid": true,
+      "scored": true,
+      "exit_code": 0,
+      "signal": null,
+      "timed_out": false,
+      "wall_seconds": 163,
+      "exit_outcome": "ok",
+      "killed_externally": false,
+      "other_opencode_runs_at_start": 0,
+      "other_opencode_runs_peak": 1,
+      "ended_at": "2026-09-17T04:08:23.156Z",
+      "last_event_type": "step_finish",
+      "error": null,
+      "steps": 30,
+      "tool_calls": 29,
+      "tools_by_name": {
+        "bash": 20,
+        "grep": 3,
+        "read": 5,
+        "edit": 1
+      },
+      "tool_errors": 0,
+      "files_edited": [
+        "/mnt/data/ctx-swebench/opencode-runs/sandbox-probe/psf__requests-1142__r0/workspace/requests/models.py"
+      ],
+      "files_read": [
+        "/mnt/data/ctx-swebench/opencode-runs/sandbox-probe/psf__requests-1142__r0/workspace/requests/models.py",
+        "/mnt/data/ctx-swebench/opencode-runs/sandbox-probe/psf__requests-1142__r0/workspace/requests/utils.py"
+      ],
+      "reads": 5,
+      "diff_empty": false,
+      "agent_diff": "diff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/psf__requests-1142/requests/models.py /mnt/data/ctx-swebench/opencode-runs/sandbox-probe/psf__requests-1142__r0/workspace/requests/models.py\n--- /mnt/data/ctx-swebench/wscache/psf__requests-1142/requests/models.py\t2013-01-24 12:00:24.000000000 -0600\n+++ /mnt/data/ctx-swebench/opencode-runs/sandbox-probe/psf__requests-1142__r0/workspace/requests/models.py\t2026-09-16 23:08:11.500206806 -0500\n@@ -386,6 +386,10 @@\n         self.body = body\n \n     def prepare_content_length(self, body):\n+        \"\"\"Should content-length be set?\"\"\"\n+        if body is None:\n+            return\n+\n         self.headers['Content-Length'] = '0'\n         if hasattr(body, 'seek') and hasattr(body, 'tell'):\n             body.seek(0, 2)\n",
+      "tokens": {
+        "input": 15475,
+        "output": 10647,
+        "reasoning": 0,
+        "cache_read": 483654,
+        "cache_write": 0
+      },
+      "peak_prompt_tokens": 24372,
+      "first_step_prompt_tokens": 7740,
+      "cost_reported": 0,
+      "cost_list_price": null,
+      "events": 98,
+      "events_unparseable": 0,
+      "session_id": "ses_f5275544bffei7xCDruowUMV04",
+      "export_ok": true,
+      "export_part_types": {
+        "text": 10,
+        "step-start": 30,
+        "reasoning": 30,
+        "tool": 29,
+        "step-finish": 30
+      },
+      "export_bytes": 175394,
+      "events_complete": true,
+      "events_missing_steps": 0,
+      "events_missing_tool_calls": 0,
+      "run_dir": "/mnt/data/ctx-swebench/opencode-runs/sandbox-probe/psf__requests-1142__r0"
+    }
+  ]
+}

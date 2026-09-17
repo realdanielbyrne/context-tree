@@ -12,6 +12,40 @@ from the experiment record (see the disposition table). See memory `untested-not
 
 ## Where things stand
 
+### Harness state (2026-09-17) — read before citing any pass rate
+
+- **The SWE-bench harness is sandboxed.** `swebench-opencode.mjs` runs opencode under bubblewrap: no
+  network (the model is reached through a key-injecting relay), and the dataset, `repos/`, `wscache/`,
+  other runs and the operator's home are hidden. A per-run preflight is recorded in `cell.sandbox`;
+  `CT_SANDBOX=0` turns it off and says so in the manifest. **Pre-sandbox pass rates — T13, T14,
+  `baseline-swift` — are contaminated** (agents read gold patches from the host and, in one run, from
+  PyPI) and must not be cited as clean. See memory `swebench-harness-leak`.
+- **The clean local baseline is 19/30** (Swift NVFP4, 3 repeats,
+  `results-swebench-opencode-baseline-swift-sbx-x3.json`): 3/3 on pytest-7205, requests-1142,
+  sklearn-14894, pytest-8399, django-11138; 2/3 on sklearn-14983 and xarray-6721; **0/3** on
+  pylint-4970, django-14034, xarray-6992. 6 of 30 runs peaked above 100K and 4 compacted.
+- **`assembleFlex` has no production caller.** The migration put eviction, drift, the flex assembler
+  and the RRF retriever in `packages/core` and rewired `context_search` to `ensembleRetrieve`, but
+  nothing calls the assembler on a live turn: the host owns the prompt. The harness sidecar
+  (`experiments/context-dedup/ct-sidecar.mjs`) plus the transform plugin are what make the assembler,
+  classifier, eviction and retriever run together, and they live in `experiments/` because the
+  triggers they exercise are hypotheses, not settled results.
+- **opencode 1.18.31 seam facts**, verified against the installed binary: the assembly hook is
+  `experimental.chat.messages.transform` and it is **in-place only** (`output.messages = …` silently
+  no-ops); the system prompt, skills and MCP instructions are assembled *after* it, so they are out of
+  its reach; the same hook fires a second time on a clone of the compaction head with an empty `input`,
+  so the two calls are indistinguishable unless compaction is off. `--pure` disables external plugins
+  (so an arm-bearing run must not pass it) but **not** MCP servers. `compaction.auto: false` disables
+  host compaction and makes a genuine overflow a hard session error. A plugin registering only
+  `chat.params` hung opencode at init in this repo's own run — avoid that hook.
+- **RRF is BM25-only everywhere** until the local MiniLM embedder lands (still the open deployment
+  task): `packages/mcp/src/bin.ts` builds the retriever with no embedder, so `context_search` always
+  reports `fallback: "no-embedder"`.
+- **D21** (new decision): a shell-shaped tool is phased by its **command**, not its name. `bash` was
+  665 of 1,247 tool calls on the baseline and everything shell-shaped mapped to `other`, so 53% of the
+  trace sat in the neutral bucket; applying the rules takes segmentation from 144 to 258 phases across
+  the same 30 runs.
+
 - **`reports/algorithm.md`** — the clean, self-contained implementation spec. Two fresh spec-only
   audits; zero BLOCKERs beyond the two subsystems it marks **OPEN** (retrieval trigger, resource bound).
   This session also fixed the `τ`/z-score contradiction (`τ = z-drift > 1`) and defined the per-unit
@@ -312,6 +346,7 @@ in §B is written to satisfy them.
 | T3 | Prefix mutation costs ~12.5× a read, so append-only is cost-optimal below the hard window | **rejected in its strong form** — true only at cadence N=1 | `context-dedup/report-{dv2-cache-cost,dv3-cadence-ttl}.md` |
 | T4 | Reference recency (idle) beats positional recency as an eviction signal | **rejected** (pooled p=1.000) | `context-dedup/report-ab-combined.{md,html}` |
 | T5 | A small window with infrequent eviction beats a wider flat window on task success | **retracted → null** once achieved peak is controlled (p=0.54) | `context-dedup/report-{cadence-confound,window-metric}.{md,html}` |
+| T5a | The eviction trigger belongs at the HARD limit, not a soft floor (the 2026-09-14 change to `assemble/flex.ts`) | **contested — C0 evidence**; the spec block recording it ends "Single-problem evidence". Re-opened as U18 (soft limit) and U19 (cadence) on the 10-problem harness | `assemble/flex.ts:59,87`; `reports/algorithm-notebook.md` |
 | T6 | More context is monotonically better | **rejected as stated**; more *organic* context is better | `context-dedup/report-{sensitivity-control,window-metric}.{md,html}` |
 | T7 | A ballast positive control can show whether the pass/fail harness detects composition | **void** (the control stopped attempting the task); superseded by T8 | `context-dedup/report-sensitivity-control.{md,html}` |
 | T8 | Choosing *which* units to evict has a large ceiling under volume matching | **supported** — 96% of random's damage is avoidable; incumbents claim ~18–25% | `attention-over-history/report-attention-over-history.{md,html}` |
@@ -490,6 +525,12 @@ a shell-based edit reads as zero (use the diff for liveness), and diff records t
 
 Each entry is a hypothesis and the experiment that would test it. Ordered by value, not by number.
 
+> ⚠️ **U1, U8 and U9 need a PRICED endpoint (added 2026-09-17).** All three are cache-cost claims,
+> and the local endpoint reports `cost=0` with no cache accounting, so `g*` has nothing to bind to.
+> Do not schedule them against the local SWE-bench baseline; they need OpenRouter. The *capability*
+> half of the same territory — does a soft limit hold accuracy — is U18, which the local harness can
+> answer.
+
 ### U1 — Is `g* = w/r` the right place to evict, live?
 **Hypothesis.** Keeping a unit costs `r·B` per turn and re-fetching it costs `w·B` once, so a policy
 that evicts a unit exactly when its expected next use is beyond `w/r` turns achieves lower
@@ -517,6 +558,14 @@ the transcript corpus and Δ(damage avoided) on the LOUO instrument, micro- and 
 **Falsification.** If ablating priority costs less than the numerical floor, drop the term — a
 four-signal scorer that is really three signals is a liability, not a tuning opportunity.
 **Blocks:** any coefficient re-fit. Do not tune weights in a scorer whose terms may be collinear.
+⚠️ **Blocked by a wiring defect, not by cost (found 2026-09-17).** `assemble/flex-store.ts:156` sets
+`lastReferencedTurn = order`, so **reference-recency IS positional recency** today, and both the
+`refRecency` weight and `priorityHalfLife` decay measure what `recency` already measures. Run on a
+store built that way, this ablation compares a term against itself. The harness sidecar
+(`experiments/context-dedup/ct-sidecar.mjs`) supplies a real `lastReferencedTurn` — set when the agent
+returns to material a unit produced — and U2 is only meaningful on runs it produced. Same defect
+gates **U16**, whose whole question is whether the priority channel adds anything over
+reference-recency.
 
 ### U3 — Does contextual covariance earn a place as a protective term?
 **Hypothesis.** Adding identifier-keyed contextual covariance to the scorer as a *protective term for
@@ -577,6 +626,17 @@ must run under a cap that binds — and because achieved peak is a per-run draw 
 problem), the cap must be chosen against the *distribution* of peaks rather than a problem's median,
 with repeats sized to cover that spread. Budget for it: the baseline alone cost $13.20 for 33 runs.
 
+> ✅ **That blocker is VOID — the 8/10 baseline was contaminated (corrected 2026-09-17).** T14's
+> agents read the gold patch from the host and the network; the sandboxed re-run of the same 10
+> problems (local Swift, 3 repeats, `results-swebench-opencode-baseline-swift-sbx-x3.json`) solves
+> **19 of 30**: 5 problems 3/3, 2 at 2/3 (sklearn-14983, xarray-6721), 3 at 0/3 (pylint-4970,
+> django-14034, xarray-6992). Headroom is 11 failures of 30 and **5 problems can move**, so the
+> comparison is runnable at the native window. Two caveats survive: the 5 problems at 3/3 are ceiling
+> and can only lose, so pair on **pass counts (0–3)** rather than a binary McNemar; and if that is
+> still underpowered, take more problems from the pre-registered reserve rather than more repeats.
+> There is also natural pressure to work with — 6 of 30 runs peaked above 100K and 4 compacted.
+> **U5's first two arms are U18's first two arms**: `off` vs `soft` answers both on the same runs.
+
 ### U6 — Is there value above the unit-independent ceiling?
 **Hypothesis.** A set-aware eviction policy (scoring *combinations*, not units) achieves lower damage
 than the oracle's unit-independent ceiling, because single-unit effects are not additive.
@@ -614,6 +674,15 @@ fraction is the wrong *shape*).
 (b) fixed `f = 0.375·W`, (c) floating hot-set target from `g*`. Substrate: SWE-bench through opencode,
 with the cap set well above the ~9,898-token host overhead. Metric: solve rate + cache-adjusted cost.
 **Falsification.** Retire the 25–50% sweep permanently unless (b) wins.
+
+> ⚠️ **This is a COST claim, and it does not settle the capability question (added 2026-09-17).**
+> Everything above is cache economics on a *priced* endpoint, so it cannot be run on the local
+> harness at all (`cost=0`, no cache accounting — see the note above U1). The operator's counter-claim
+> is about capability and about production shape: with a 1M host window the hard limit **never
+> binds**, so a soft limit is the only trigger that ever fires, and the question is whether ~1/3 of
+> the window still solves what the full window solves. That is **U18**, and it can be answered on the
+> local harness. Both can be true: a soft limit can cost more in cache writes and still be the only
+> mechanism that exists in production.
 
 ### U9 — Is prefix-preservation conditional on cache state?
 **Hypothesis.** The assembler should preserve the cached prefix only while the cache is *warm*: when a
@@ -718,6 +787,47 @@ and close the line — an intervention with nothing to intervene on is not a nul
 `anchor` does not beat the length-matched `placebo` on task success, the effect is withholding
 rather than referring, and the anchoring framing is retired. If `anchor` degrades task success at
 all, it is retired regardless of any token saving.
+
+### U18 — Does a soft limit context-tree imposes hold accuracy at ~1/3 of the window?
+**Hypothesis.** With a large host window the hard limit never binds, so a soft limit is the only
+eviction trigger that ever fires in production. At `W_soft ≈ W/3` the agent solves what it solves at
+the full window, at materially lower achieved peak.
+**Why it is untested.** The package evicts only when `window − replyReserve` binds
+(`assemble/flex.ts:295-301`), a trigger changed on 2026-09-14 whose own spec block ends "Single-problem
+evidence (C0)" — `longbuild`, one problem repeated. `DEFAULT_SOFT_TARGET_FRAC = 0.375` survives but no
+longer triggers anything; it only sizes the reduce-on-overflow budget. And until the harness sidecar
+existed, nothing called `assembleFlex` on a live turn at all, so no soft limit could fire.
+**Experiment.** SWE-bench through opencode, sandboxed, paired within problem. The soft limit is
+expressed by passing `window = W_soft` to `assembleFlex` — no package change. Arms `off` (host
+compaction, no plugin) vs `soft` at `W_soft = 50,347` (1/3 of 151,040), 10 problems × 3 repeats.
+Primary: solve rate and **achieved peak** (the one measure that moves task success, OR ~52× per
+e-fold). Then sweep `W_soft` ∈ {1/2, 1/3, 1/4} once the trigger question is settled; a dynamic limit
+for thrashing problems is a later arm.
+**Falsification.** If solve rate drops at 1/3, the claim is refuted **at that window** and the sweep
+moves up, not down. If peak does not fall, the trigger is not firing — the cell is VOID, not a null.
+
+### U19 — Does an eviction cadence beat evicting whenever the limit binds, across problems?
+**Hypothesis.** Firing eviction every N turns beats firing it whenever the limit binds, on achieved
+peak at equal solve rate.
+**Why it is untested.** DV3 found an interior optimum **25–39% cheaper than append-only while N=1 is
+183% worse**, and `DEFAULT_EVICT_HEADROOM_TOKENS = 0` ships as a seam precisely because the right
+headroom is not a constant. But that evidence is C0 — one problem repeated, which measures
+within-problem nondeterminism and says nothing about between-problem variance (standing rule 1).
+**Experiment.** Same substrate and pairing as U18. `cadence N=5` — `window = W_soft` on every fifth
+turn, `Infinity` otherwise — against `soft` (every turn) and `hard` (the shipped default), 3 repeats.
+**Falsification.** If cadence does not beat `soft` on peak-at-equal-solve-rate, cadence is not a
+separate lever on this substrate and DV3's cost optimum does not transfer to capability.
+
+### U20 — Does the assembler need summaries, or is dropping enough?
+**Hypothesis.** Folding dormant units to summaries beats dropping them outright at the same soft limit.
+**Why it is untested.** Nothing generates summaries during a live session — the summarizer runs only
+from the CLI — so a live flex buffer is all-raw, `repr()` renders every unit raw, and the stable
+summary run that carries the second cache breakpoint never forms (`assemble/flex.ts:231,334`).
+**Experiment.** The winning trigger from U18/U19 re-run with the sidecar summarizing closed phases
+through the relay, 3 repeats, against its summaries-off twin. Summarizer calls, tokens and latency
+are counted separately — they share the same GPU slots as the agent.
+**Falsification.** If summaries do not improve solve rate at equal achieved peak, the summary-headed
+tree is not earning its model calls on this substrate, and dropping is the cheaper mechanism.
 
 ### U13 — Does the drift classifier survive a corrected test on a corrected clock?
 **Hypothesis.** The topic-shift signal (`z(lexJaccard) + z(semCos)`, K=5) beats its permutation null
