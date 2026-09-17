@@ -20,6 +20,8 @@ import type { LineFailure, TranscriptResult, TranscriptOptions } from './claude-
 
 const EPOCH = '1970-01-01T00:00:00.000Z';
 const ERROR_DETAIL_CHARS = 200;
+/** L0 keeps the head of the command for phasing (D21); the full args stay in `args_blob`. */
+const COMMAND_CHARS = 512;
 
 export function mapOpencodeExport(
   doc: unknown,
@@ -125,6 +127,9 @@ export function mapOpencodeExport(
 
       const path = firstString(input, ['filePath', 'file_path', 'path']);
       if (path !== undefined) callEvent.path = path;
+      // D21: `bash` is one name over every phase; the command is what phases it.
+      const command = firstString(input, ['command']);
+      if (command !== undefined) callEvent.command = command.slice(0, COMMAND_CHARS);
       if (typeof input.content === 'string') callEvent.blob = put(input.content);
       if (Object.keys(input).length > 0) callEvent.args_blob = put(JSON.stringify(input));
       if (messageSeq !== undefined) callEvent.parent_seq = messageSeq;

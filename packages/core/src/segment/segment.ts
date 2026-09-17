@@ -62,6 +62,12 @@ export function segment(
   // Sets, not `includes`: the pass must stay O(n) for a 400+ event trace (§16 M1).
   const neutral = new Set<PhaseType>(config.neutralPhases);
   const fileTools = new Set<string>(config.fileTools);
+  // Compiled once, not per event: the pass stays O(n) in events, O(rules) per
+  // shell event, and the rule list is a fixed handful (D21).
+  const commandRules = (config.toolPhaseByCommand ?? []).map((rule) => ({
+    re: new RegExp(rule.pattern),
+    phase: rule.phase,
+  }));
   const unmappedTools: string[] = [];
   const unmappedSeen = new Set<string>();
   const toolsSeen = new Map<NodeKey, Set<string>>();
@@ -168,7 +174,12 @@ export function segment(
           unmappedSeen.add(event.tool);
           unmappedTools.push(event.tool);
         }
-        const phaseType = mapped ?? 'other';
+        // D21: one shell tool name covers every phase, so the command decides
+        // when the harness gives us one. No match falls back to the name map.
+        const byCommand = event.command === undefined
+          ? undefined
+          : commandRules.find((rule) => rule.re.test(event.command as string))?.phase;
+        const phaseType = byCommand ?? mapped ?? 'other';
 
         let phase: OpenPhase;
         if (open === null) {

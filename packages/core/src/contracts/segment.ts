@@ -49,9 +49,20 @@ export interface Segmentation {
   stats: SegmentStats;
 }
 
+/** A `command` pattern and the phase it implies (D21). `pattern` is a JS regex source. */
+export interface CommandPhaseRule {
+  pattern: string;
+  phase: PhaseType;
+}
+
 export interface SegmentConfig {
   /** Tool name -> phase. Config-remappable because names differ per harness. */
   toolPhase: Readonly<Record<string, PhaseType>>;
+  /**
+   * Ordered `command` rules, consulted before `toolPhase` for events that carry
+   * a `command` (D21). First match wins; no match falls back to the name map.
+   */
+  toolPhaseByCommand: readonly CommandPhaseRule[];
   /**
    * Phases that attach to the open phase instead of opening a new one
    * (Ruling C6). Default `['other']`; `[]` restores the literal §7 rule.

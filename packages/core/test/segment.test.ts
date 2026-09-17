@@ -26,6 +26,10 @@ const call =
     path === undefined
       ? { seq, type: 'tool_call', ts: TS, tool }
       : { seq, type: 'tool_call', ts: TS, tool, path };
+/** A shell-shaped call: one tool name, the command is what phases it (D21). */
+const shell =
+  (command: string, tool = 'bash'): Draft =>
+  (seq) => ({ seq, type: 'tool_call', ts: TS, tool, command });
 const boundary =
   (to: PhaseType): Draft =>
   (seq) => ({ seq, type: 'segment_boundary', ts: TS, from: null, to });
@@ -182,6 +186,61 @@ describe('segment — tool mapping (§18: tool-name drift)', () => {
     const s = segment(build([call('Bash'), call('Read')]), options({ toolPhase: { Bash: 'verification' } }));
     expect(phaseTypes(s)).toEqual(['verification', 'diagnosis']);
     expect(s.stats.unmappedTools).toEqual([]);
+  });
+});
+
+describe('segment — shell commands phase the shell tool (D21)', () => {
+  it('phases a test run as verification, because one tool name covers every phase an agent works in', () => {
+    const s = segment(
+      build([call('read', 'a.py'), shell('python -m pytest tests/test_x.py -q')]),
+      options(),
+    );
+    expect(phaseTypes(s)).toEqual(['diagnosis', 'verification']);
+  });
+
+  it('phases read-only inspection as diagnosis and leaves mutation neutral, rather than guessing intent', () => {
+    const s = segment(
+      build([shell('ls -la src'), shell('grep -rn foo src'), shell('cp a b'), shell('mkdir out')]),
+      options(),
+    );
+    // The two inspections open one diagnosis phase; `cp`/`mkdir` are neutral,
+    // so they attach to it (Ruling C6) instead of opening an `other` phase.
+    expect(phaseTypes(s)).toEqual(['diagnosis']);
+  });
+
+  it('keeps `python repro.py` neutral, because the command cannot say whether it diagnoses or verifies', () => {
+    const s = segment(build([call('edit', 'a.py'), shell('python repro.py')]), options());
+    expect(phaseTypes(s)).toEqual(['implementation']);
+  });
+
+  it('prefers the command over the tool name, so a shell test run is not the shell tool`s neutral phase', () => {
+    const s = segment(build([shell('pytest -q'), call('bash')]), options());
+    expect(phaseTypes(s)).toEqual(['verification']);
+  });
+
+  it('falls back to the name map when no rule matches and when a project clears the rules', () => {
+    const cleared = segment(build([shell('pytest -q'), call('read', 'a.py')]), options({ toolPhaseByCommand: [] }));
+    expect(phaseTypes(cleared)).toEqual(['other', 'diagnosis']);
+  });
+
+  it('phases a command that MENTIONS a test runner while inspecting as diagnosis, not as a test run', () => {
+    // First match wins, so an anchored inspection rule has to precede the runner rules:
+    // `grep -rn pytest` reads a file, it does not run tests.
+    const s = segment(
+      build([shell('grep -rn pytest setup.cfg'), shell('find . -name "runtests.py"'), shell('git log --grep pytest')]),
+      options(),
+    );
+    expect(phaseTypes(s)).toEqual(['diagnosis']);
+  });
+
+  it('still phases a real test run as verification when it follows a cd or a pipe', () => {
+    const s = segment(build([shell('cd src && pytest -q'), shell('python -m pytest tests/')]), options());
+    expect(phaseTypes(s)).toEqual(['verification']);
+  });
+
+  it('applies rules by command text whatever the tool is named, since harnesses name their shell differently', () => {
+    const s = segment(build([shell('pytest -q', 'run_command'), shell('ls', 'Bash')]), options());
+    expect(phaseTypes(s)).toEqual(['verification', 'diagnosis']);
   });
 });
 

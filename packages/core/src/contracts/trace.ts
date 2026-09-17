@@ -34,6 +34,12 @@ export interface ToolCallEvent extends TraceEventBase {
   type: 'tool_call';
   /** Harness-native tool name. Mapped to a phase via `config.toolPhase`. */
   tool: string;
+  /**
+   * The shell command a shell-shaped tool ran, when the harness exposes one
+   * (D21). One tool name (`bash`) covers test runs, inspection and edits, so
+   * the name alone cannot phase it; `config.toolPhaseByCommand` reads this.
+   */
+  command?: string;
   /** Repo-relative path for file-shaped tools; keys the file node. */
   path?: string;
   /** Post-edit content (edits/writes) — what `spans/` parses. */

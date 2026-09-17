@@ -71,6 +71,8 @@ segmentation algorithm can change without data migration.
 | D19 | ~~Eval budgets are a function of the target window W~~ — **superseded by D20**. The budget derivation and the harness it served are deleted; the budget fractions (.05/.10/.20/.20/.35/.10) remain correct as assembler defaults, not harness exports. D17's `rootKeep` derivation from W remains in force. | Original rationale still valid for the fractions; the harness-specific claim ("Zero code change — the harness derives and exports `EVAL_LAZY_TOKENS`; `eval/src/loop.ts` is untouched") is void — see D20 |
 | D20 | The bespoke evaluation harness (`eval/`, `eval-resumption/`, `packages/cli/src/commands/eval.ts`) is **deleted**. `ChatMessage` (`packages/core/src/contracts/models.ts:9`) has no `tool_calls` field and no `'tool'` role, so the harness stripped the model's own tool calls from history and replayed results as `role: 'user'` text — every arm comparison taken with it was invalid. Evaluation now means running tasks in an external host (opencode) with and without the MCP server attached: same harness, same model, one variable. §15 is superseded by this host-with-MCP-vs-without design. §17's product-side testing (`packages/core/test/`) is unaffected (added 2026-09-09) | Fixing `ChatMessage` to carry tool calls would deepen a reimplementation of something mature agent harnesses already do correctly. A real 645-call Claude Code session reaches 32% of a 1M window; the generated scenarios peaked near 4.5%. The harness was measuring an artifact of its own replay, not the product |
 
+| D21 | A shell-shaped tool is phased by its **command**, not by its name: `ToolCallEvent.command` (the head of the command, 512 chars) plus an ordered `toolPhaseByCommand` rule list consulted before `toolPhase`, first match wins, no match falls back to the name map (added in implementation, 2026-09-17) | §7's name-only map assumed one tool per phase, which no real agent harness has. On the sandboxed SWE-bench baseline (30 runs, local 27B) `bash` was 665 of 1,247 tool calls and everything shell-shaped mapped to `other`, so **54% of the trace landed in the neutral bucket** and the tree could not see a diagnose/implement/verify cycle it had just executed: test runs (39% of bash calls) and read-only inspection (29%) were invisible as phases. Applying the rules across the same 30 traces takes segmentation from 144 phases to 258. Stays inside D1: the rules are a fixed, ordered regex list over a field already in L0, so the pass is still deterministic, O(n) in events, zero LLM, and bit-identical across runs — it is not content clustering. `command` is written to L0 (not read from `args_blob`) so D15 hermeticity and D8 rebuildability are untouched. Ambiguous commands (`python repro.py`, `cd`, mutation) stay `other` rather than guess an intent the text cannot settle |
+
 ## 4. Prior art and reference implementations
 
 | Paper | arXiv | Take from it | Sample code |
@@ -225,7 +227,10 @@ const TOOL_PHASE: Record<string, PhaseType> = {
 ```
 
 Algorithm: single pass over L0. A new **phase node** opens when the current
-tool's mapped phase differs from the open phase node's `phase_type`. File edits
+tool's mapped phase differs from the open phase node's `phase_type`. For a
+shell-shaped call the **command** decides the phase before the name map does
+(D21) — one `bash` name covers diagnosis, implementation and verification, so
+the name alone would send the majority of a real trace to `other`. File edits
 create **file nodes** under the implementation phase, keyed by path (re-edits
 append spans to the same file node). User messages attach to the currently open
 phase. Config file (`context-tree.config.json`) lets a project remap tools →

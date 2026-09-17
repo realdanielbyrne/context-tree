@@ -91,6 +91,7 @@ export function ingest(options: IngestOptions): IngestResult {
 
   const segmentation = segment(events, {
     toolPhase: config.toolPhase,
+    toolPhaseByCommand: config.toolPhaseByCommand,
     neutralPhases: config.neutralPhases,
     fileTools: config.fileTools,
     taskTitle: config.taskTitle,

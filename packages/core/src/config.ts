@@ -5,6 +5,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, isAbsolute, resolve } from 'node:path';
 import { ConfigError } from './contracts/errors.js';
+import type { CommandPhaseRule } from './contracts/segment.js';
 import { PHASE_TYPES, type PhaseType } from './contracts/tree.js';
 
 /**
@@ -52,6 +53,34 @@ export const DEFAULT_TOOL_PHASE: Readonly<Record<string, PhaseType>> = Object.fr
   task: 'other',
   webfetch: 'other',
 });
+
+/**
+ * Shell commands -> phase (D21), consulted before the name map for events that
+ * carry a `command`. Ordered; first match wins.
+ *
+ * One tool name covers everything an agent does in a shell, so the name map
+ * alone sends it to `other`: on the SWE-bench baseline `bash` was 665 of 1,247
+ * tool calls, and 53% of the whole trace landed in the neutral bucket. Test
+ * runners (39% of those calls) are verification and read-only inspection (29%)
+ * is diagnosis; the rest — mutation, `cd`, `python` scripts whose intent the
+ * command cannot settle — stays `other` rather than guess.
+ */
+export const DEFAULT_TOOL_PHASE_BY_COMMAND: readonly CommandPhaseRule[] = Object.freeze([
+  // ANCHORED INSPECTION FIRST. First match wins, and the verification patterns match a
+  // test runner's NAME anywhere in the line — so `grep -rn pytest setup.cfg` or
+  // `find . -name runtests.py` would otherwise be phased as a test run. A command that
+  // STARTS with a read-only verb is inspection whatever it mentions.
+  { pattern: String.raw`^\s*\(?\s*(ls|cat|head|tail|grep|rg|find|wc|file|which|tree|pwd|stat|du)(\s|$)`, phase: 'diagnosis' },
+  { pattern: String.raw`^\s*\(?\s*sed\s+-n(\s|$)`, phase: 'diagnosis' },
+  { pattern: String.raw`^\s*\(?\s*git\s+(log|show|diff|status|blame)(\s|$)`, phase: 'diagnosis' },
+  { pattern: String.raw`(^|[\s;|&(])(pytest|tox|nox)(\s|$)`, phase: 'verification' },
+  { pattern: String.raw`(^|[\s;|&(])python[0-9.]*\s+-m\s+(pytest|unittest)(\s|$)`, phase: 'verification' },
+  { pattern: String.raw`runtests\.py`, phase: 'verification' },
+  { pattern: String.raw`(^|[\s;|&(])(npm|pnpm|yarn)\s+(run\s+)?test(\s|$)`, phase: 'verification' },
+  { pattern: String.raw`(^|[\s;|&(])(vitest|jest)(\s|$)`, phase: 'verification' },
+  { pattern: String.raw`(^|[\s;|&(])(go|cargo)\s+test(\s|$)`, phase: 'verification' },
+  { pattern: String.raw`(^|[\s;|&(])make\s+(test|check)(\s|$)`, phase: 'verification' },
+] as CommandPhaseRule[]);
 
 /** Tools whose `path` argument keys a file node under the phase (§7). */
 export const DEFAULT_FILE_TOOLS: readonly string[] = Object.freeze([
@@ -101,6 +130,8 @@ export interface ContextTreeConfig {
   /** §9.2 / D14. Mode A is the v1 default (§19 Q5). */
   mode: 'tool-backend' | 'middleware';
   toolPhase: Record<string, PhaseType>;
+  /** D21: ordered `command` rules, consulted before `toolPhase`. Replaces the defaults when set. */
+  toolPhaseByCommand: CommandPhaseRule[];
   neutralPhases: PhaseType[];
   fileTools: string[];
   languages: Record<string, string>;
@@ -129,6 +160,7 @@ export const DEFAULT_CONFIG: ContextTreeConfig = {
   provider: 'anthropic',
   mode: 'tool-backend',
   toolPhase: { ...DEFAULT_TOOL_PHASE },
+  toolPhaseByCommand: [...DEFAULT_TOOL_PHASE_BY_COMMAND],
   neutralPhases: ['other'],
   fileTools: [...DEFAULT_FILE_TOOLS],
   languages: { ...DEFAULT_LANGUAGES },
@@ -187,6 +219,11 @@ export function resolveConfig(
     languages: { ...DEFAULT_CONFIG.languages, ...(partial.languages ?? {}) },
     summarize: { ...DEFAULT_CONFIG.summarize, ...(partial.summarize ?? {}) },
     retrieval: { ...DEFAULT_CONFIG.retrieval, ...(partial.retrieval ?? {}) },
+    // Ordered rules, so a partial list REPLACES the defaults: merging would
+    // splice a project's rule into an order it did not choose.
+    toolPhaseByCommand: partial.toolPhaseByCommand
+      ? partial.toolPhaseByCommand.map((r) => ({ ...r }))
+      : [...DEFAULT_CONFIG.toolPhaseByCommand],
     neutralPhases: partial.neutralPhases ? [...partial.neutralPhases] : [...DEFAULT_CONFIG.neutralPhases],
     fileTools: partial.fileTools ? [...partial.fileTools] : [...DEFAULT_CONFIG.fileTools],
   };
@@ -204,6 +241,18 @@ export function resolveConfig(
     merged.toolPhase[tool] = assertPhase(phase, `toolPhase.${tool}`);
   }
   merged.neutralPhases = merged.neutralPhases.map((p, i) => assertPhase(p, `neutralPhases[${i}]`));
+
+  // A bad pattern must fail here, not once per event inside the segmenter.
+  merged.toolPhaseByCommand = merged.toolPhaseByCommand.map((rule, i) => {
+    try {
+      new RegExp(rule.pattern);
+    } catch (error) {
+      throw new ConfigError(
+        `toolPhaseByCommand[${i}].pattern is not a valid regex: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+    return { pattern: rule.pattern, phase: assertPhase(rule.phase, `toolPhaseByCommand[${i}].phase`) };
+  });
 
   if (merged.summarize.concurrency <= 0) throw new ConfigError('summarize.concurrency must be > 0');
   if (merged.rootKeep <= 0) throw new ConfigError('rootKeep must be > 0');

@@ -54,7 +54,7 @@ const TRACE_EVENT_TYPES: readonly TraceEventType[] = [
 const FIELD_ORDER: Readonly<Record<TraceEventType, readonly string[]>> = {
   user_message: ['seq', 'type', 'ts', 'blob'],
   assistant_message: ['seq', 'type', 'ts', 'blob'],
-  tool_call: ['seq', 'type', 'ts', 'tool', 'path', 'blob', 'args_blob', 'parent_seq'],
+  tool_call: ['seq', 'type', 'ts', 'tool', 'command', 'path', 'blob', 'args_blob', 'parent_seq'],
   tool_result: ['seq', 'type', 'ts', 'call_seq', 'output_blob', 'truncated', 'error'],
   segment_boundary: ['seq', 'type', 'ts', 'from', 'to'],
   manual_annotation: ['seq', 'type', 'ts', 'node_id', 'blob', 'link_to', 'link_kind'],
