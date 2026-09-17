@@ -24,6 +24,15 @@ from the experiment record (see the disposition table). See memory `untested-not
   `results-swebench-opencode-baseline-swift-sbx-x3.json`): 3/3 on pytest-7205, requests-1142,
   sklearn-14894, pytest-8399, django-11138; 2/3 on sklearn-14983 and xarray-6721; **0/3** on
   pylint-4970, django-14034, xarray-6992. 6 of 30 runs peaked above 100K and 4 compacted.
+- **Swift is the baseline model, decided on a like-for-like run.** The non-Swift
+  `unsloth/Qwen3.8-27B-GGUF` (UD-Q8_K_XL) scored **the same 19/30** over its own 3 repeats
+  (`results-swebench-opencode-baseline-q8-sbx-x3.json`, same sandbox, same 151,040 window, same 4
+  slots) and agreed with Swift on 8 of 10 problems — the same 5 always solved and the same 3 never
+  solved, differing only on sklearn-14983 (1/3 vs 2/3) and xarray-6721 (3/3 vs 2/3). At equal
+  accuracy Swift is the cheaper instrument: median peak 45.6K vs 61.9K tokens, 312 s vs 416 s,
+  19.5K vs 31.3K output tokens, 52K vs 95K reasoning characters. **Those three never-solved problems
+  are a property of the 27B class here, not of a quantization** — which is what makes them the
+  headroom U18's arms have to move.
 - **`assembleFlex` has no production caller.** The migration put eviction, drift, the flex assembler
   and the RRF retriever in `packages/core` and rewired `context_search` to `ensembleRetrieve`, but
   nothing calls the assembler on a live turn: the host owns the prompt. The harness sidecar
