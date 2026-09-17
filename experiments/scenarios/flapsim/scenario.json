@@ -85,5 +85,7 @@
     "Every seed file is under 1900 chars so a read leaves a COMPLETE resident copy; the harness clips tool output at 2000 and a clipped read makes any 'it is above in this conversation' claim false.",
     "Verification is routed through --selfcheck rather than `unittest` because unittest prints a timing line that varies between runs, so two identical runs never compare equal.",
     "Phases are SEPARATE USER TURNS, not one message. A single message asking for all five phases made the model produce 141,497 chars of reasoning and never call a write tool \u2014 26 minutes to write nothing. The SWE-bench pilot reaches a 121k-token peak on this same model and harness and completes, so the limit was the over-stuffed prompt, not the model. Splitting also matches how work really arrives from a user."
-  ]
+  ],
+  "status": "RETIRED \u2014 do not use for re-reference experiments",
+  "retired_because": "Completability and re-reference pull against each other here. The single-message form made the agent re-read constantly and complete nothing; the six-turn form completes the work correctly (29/40, 12/12 held-out) and produces almost no re-reads \u2014 19 reads across 18 distinct files, 1 read twice. A live four-arm run was VOID: 1 would-fire event and 0 substitutions across 44 turns. Superseded for this purpose by the SWE-bench 10-problem baseline. See U17 in reports/session-handoff.md."
 }

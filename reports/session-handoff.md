@@ -678,6 +678,47 @@ Then, if the saving holds, a live arm through `oc-runner.mjs` with the substitut
 **Falsification.** If the real saving is under 10% of spend after cache pricing, close the dedup line
 of work entirely; T12 already closed the block-level half.
 
+### U17 — Does an agent use resident content when told it is there, instead of re-fetching it?
+**Hypothesis.** When a tool is about to return content whose bytes are ALREADY in the model's
+context, returning a short referential anchor instead ("you read X at turn k; it is above,
+unchanged") leaves the agent able to complete the task, and the *reference* is what does the work —
+not the mere withholding. If so, the same substitution reduces cumulative prompt tokens and
+wall-clock to completion, because a token never appended is never re-sent on any later turn.
+
+**What is already settled, and what is not.** T12 rejected the COST half offline: the substitution
+removes **0.22%** of what four real sessions actually sent (1.61% against a simulated stream), well
+under its 10% bar, because the motivating "59.2% of reads are re-reads" is a PATH statistic — at the
+CONTENT level only **5.8%** of reads carry bytes an honest anchor could replace. The BEHAVIOURAL
+half was never tested. A live four-arm attempt on a bespoke `flapsim` scenario came back **VOID, not
+null**: across 44 turns in 10 cells the trigger produced 1 would-fire event and **0 substitutions**,
+so all arms were identical by construction (`report-oc-flapsim-arms-void.md`).
+
+**Why the flapsim construct is abandoned.** Its single-message form made the agent re-read
+constantly and complete nothing; splitting it into six focused turns made it complete the work
+correctly (29/40, 12/12 held-out) and removed its reason to re-consult anything — 19 reads across 18
+DISTINCT files. **Completability and re-reference pull against each other**, and a substrate built to
+manufacture re-reads cannot be trusted to produce them without also destroying the task.
+
+**Experiment.** Use the repo's established **SWE-bench 10-problem × 3-repeat baseline** as the
+substrate rather than a bespoke task — real problems, a held-out grader, and a measured noise floor
+(8/10 problems pass 3/3; within-problem peak spread 1.16–2.90×, median 1.87×).
+1. **Trigger-rate gate FIRST, on ONE cell, reported before any arm is run** (standing rule): how
+   often does a tool return bytes already resident? Near-zero means the experiment is not ready,
+   whatever the arms would show. This is the step whose absence voided the flapsim run.
+2. Only if it fires: arms `none` / `anchor` / `anchor-topk` / `placebo` (length-matched,
+   non-referential) at `tool.execute.after` through `oc-runner.mjs`, one endpoint throughout.
+3. **Pair within problem.** Against a 1.87× median trajectory spread, detecting the 5–14% token
+   effect predicted offline would need n≈73 per arm unpaired; pairing is the only affordable route.
+4. Primary outcomes: task success (low variance — outcomes were stable while trajectories were not)
+   and prompt tokens. NOT output tokens: on the local endpoint they bundle reasoning while
+   `tokens.reasoning` reads 0.
+
+**Falsification.** If the trigger fires on fewer than ~4 opportunities per cell, report NOT RUNNABLE
+and close the line — an intervention with nothing to intervene on is not a null. If it fires and
+`anchor` does not beat the length-matched `placebo` on task success, the effect is withholding
+rather than referring, and the anchoring framing is retired. If `anchor` degrades task success at
+all, it is retired regardless of any token saving.
+
 ### U13 — Does the drift classifier survive a corrected test on a corrected clock?
 **Hypothesis.** The topic-shift signal (`z(lexJaccard) + z(semCos)`, K=5) beats its permutation null
 under the *corrected* held-out condition.
