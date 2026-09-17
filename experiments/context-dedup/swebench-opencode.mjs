@@ -26,17 +26,23 @@
  * The instance interpreter reaches opencode's shell by PATH (venv bin first) and PYTHONPATH
  * (the workspace), set on the opencode process environment; the prompt states it.
  *
+ * SANDBOX (default on; CT_SANDBOX=0 disables it and says so in the results): opencode runs under
+ * bubblewrap with no network and no view of the dataset, repos/, wscache/, other runs or the
+ * operator's home — see swebench-sandbox.mjs. Each run's preflight is recorded in its cell.
+ *
  *   node experiments/context-dedup/swebench-opencode.mjs            # CT_INSTANCES or selection
  *   CT_INSTANCES=psf__requests-2931 CT_TAG=probe node experiments/context-dedup/swebench-opencode.mjs
  */
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync, openSync, closeSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync, openSync, closeSync, realpathSync } from 'node:fs';
+import { constants as osConstants, homedir } from 'node:os';
+import { join, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeSwebenchTask, WORK, pythonPathFor, assertNoTestLeak, loadInstance } from './ab-tasks/swebench.mjs';
 import { stratumOf } from './swebench-draw.mjs';
 import { parseJsonLines, sessionIdOf, summarizeEvents, costAt, classifyExit, summarizeExport, eventsCompleteAgainstExport } from './swebench-opencode-events.mjs';
 import { chooseEndpoint, acquireSlots, LEASE_MARKER, MAX_LOCAL_SLOTS } from './swebench-endpoint.mjs';
+import { openSandbox, exitFromSandbox, pythonHomeOf, MASKED } from './swebench-sandbox.mjs';
 import { writeResults, gitSha, nowISO } from '../rung-1-live-probe/lib.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -49,6 +55,26 @@ const RUN_TIMEOUT_S = +(process.env.CT_RUN_TIMEOUT_S || 3600);
 const RUNS_ROOT = process.env.CT_RUNS_ROOT || join(WORK, 'opencode-runs');
 const SELECTION = join(OUTDIR, process.env.CT_SELECTION_FILE || 'selection-v2.json');
 const OPENCODE_CONFIG = join(HERE, 'opencode.json');
+const SANDBOX = process.env.CT_SANDBOX !== '0';
+const SANDBOX_ASSETS = process.env.CT_SANDBOX_ASSETS || join(WORK, 'tooling', 'opencode-sandbox');
+
+/**
+ * What the sandbox preflight asserts for one run: the answer sources are absent, and every
+ * masked directory above a visible path holds only the entries this run needs.
+ */
+export function sandboxExpectations({ work, runsRoot, tag, runDir, venv, pythonHomes, home, repo }) {
+  const hidden = ['dataset', 'repos', 'wscache', 'runs', 'locks'].map((d) => join(work, d)).concat([home, repo]);
+  const only = { '/tmp': [], '/home': ['.ct-sandbox', 'agent'], [runsRoot]: [tag], [join(runsRoot, tag)]: [basename(runDir)], [runDir]: ['sandbox', 'workspace', 'xdg'] };
+  const underMask = (d) => MASKED.some((m) => d === m || d.startsWith(`${m}/`));
+  for (const p of [runsRoot, venv, ...pythonHomes]) {
+    const parts = p.split('/').filter(Boolean);
+    for (let i = 1; i < parts.length; i++) {
+      const dir = `/${parts.slice(0, i).join('/')}`;
+      if (underMask(dir)) only[dir] = [...new Set([...(only[dir] ?? []), parts[i]])];
+    }
+  }
+  return { hidden, only };
+}
 
 /** List prices per million tokens. Local runs have no per-token price. */
 const pricesFor = (model) => (model.startsWith('openrouter/qwen/qwen3.8-27b') ? { input: 0.214, output: 2.55 } : null);
@@ -109,6 +135,7 @@ function promptFor(task) {
     'Environment: the repository is checked out at the relevant older commit in the current directory.',
     `\`python\`/\`python3\` on PATH is this project's own virtual environment (${task.python}) with its dependencies installed, and the current directory is first on the import path. Tests run with ${runner}. There is no network access.`,
     'Fix the library source so the reported problem is resolved without breaking existing behaviour. Do not modify test files; the fix is graded by tests you cannot see.',
+    'Do a review of your code changes, and fix any issues you find.',
   ];
   // These lines are harness-authored, so they get the full leak check (patch lines included).
   const inst = task.__instance ?? loadInstance(task.instanceId);
@@ -122,7 +149,7 @@ function otherOpencodeRuns(ownPid = null) {
   return (r.stdout || '').split('\n').filter(Boolean).map(Number).filter((p) => p !== ownPid).length;
 }
 
-function runOpencode({ ws, runDir, prompt, env, model }) {
+function runOpencode({ ws, runDir, prompt, env, model, sandbox }) {
   return new Promise((resolve) => {
     const t0 = Date.now();
     const othersAtStart = otherOpencodeRuns();
@@ -131,15 +158,18 @@ function runOpencode({ ws, runDir, prompt, env, model }) {
     // final write into a pipe (a piped export arrived cut at 146,176 of 430,431 bytes).
     const outFd = openSync(out, 'w');
     const errFd = openSync(join(runDir, 'stderr.log'), 'w');
-    const p = spawn('opencode', ['run', '--pure', '-m', model, '--format', 'json', '--dir', ws, '--auto', prompt], {
-      cwd: ws, env, stdio: ['ignore', outFd, errFd], detached: true, // stdio[0]='ignore' == < /dev/null
+    const ocArgs = ['run', '--pure', '-m', model, '--format', 'json', '--dir', ws, '--auto', prompt];
+    const [cmd, args, runEnv] = sandbox ? [sandbox.cmd, sandbox.argsFor(ocArgs), sandbox.env] : ['opencode', ocArgs, env];
+    const p = spawn(cmd, args, {
+      cwd: ws, env: runEnv, stdio: ['ignore', outFd, errFd], detached: true, // stdio[0]='ignore' == < /dev/null
     });
     let timedOut = false;
     // Our own timeout uses SIGKILL, so any SIGTERM/SIGINT in the record came from OUTSIDE.
     const timer = setTimeout(() => { timedOut = true; try { process.kill(-p.pid, 'SIGKILL'); } catch {} }, RUN_TIMEOUT_S * 1000);
     let othersPeak = othersAtStart;
     const poll = setInterval(() => { othersPeak = Math.max(othersPeak, otherOpencodeRuns(p.pid)); }, 15_000);
-    p.on('close', (code, signal) => {
+    p.on('close', (rawCode, rawSignal) => {
+      const { code, signal } = sandbox ? exitFromSandbox(rawCode, rawSignal, osConstants.signals) : { code: rawCode, signal: rawSignal };
       clearTimeout(timer); clearInterval(poll);
       closeSync(outFd); closeSync(errFd);
       const stdout = readFileSync(out, 'utf8');
@@ -210,8 +240,23 @@ async function runOne(task, repeat) {
 
   // The slot is released as soon as opencode exits — grading never touches the model — and on
   // any throw, so a failed run cannot hold a local connection slot.
-  let r;
-  try { r = await runOpencode({ ws, runDir, prompt, env, model }); } finally { sel.release(); }
+  let r, sandbox = null;
+  try {
+    if (SANDBOX) {
+      const venv = dirname(dirname(task.python));
+      const pythonHome = pythonHomeOf(venv);
+      sandbox = await openSandbox({
+        runDir, ws, xdg, venv, model, configPath: OPENCODE_CONFIG, importName: task.importName,
+        pythonPath: pythonPathFor(ws), assets: SANDBOX_ASSETS,
+        marker: sel.marker !== null && sel.marker !== undefined ? { [LEASE_MARKER]: sel.marker } : {},
+        ...sandboxExpectations({ work: WORK, runsRoot: RUNS_ROOT, tag: TAG, runDir, venv, pythonHomes: [pythonHome, realpathSync(pythonHome)], home: homedir(), repo: REPO }),
+      });
+    }
+    r = await runOpencode({ ws, runDir, prompt, env, model, sandbox });
+  } finally {
+    sel.release();
+    await sandbox?.close();
+  }
   const { events, bad } = parseJsonLines(r.stdout);
   const sessionID = sessionIdOf(events);
   const s = summarizeEvents(events);
@@ -230,6 +275,7 @@ async function runOne(task, repeat) {
     instance: task.instanceId, repeat, repo: task.repo, difficulty: task.difficulty, stratum: stratumOf(task.difficulty),
     vehicle: 'opencode', opencode_version: opencodeVersion(), model, model_config: modelConfig(model),
     endpoint: sel.endpoint,
+    sandbox: sandbox ? sandbox.record : { enabled: false },
     endpoint_selection: { request: MODEL_REQUEST, exclusive: EXCLUSIVE, reason: sel.reason, signals: sel.signals, decided_at: sel.decided_at },
     pass: !!g.pass, f2p_pass: !!g.f2p_pass, p2p_pass: !!g.p2p_pass, grade_stage: g.stage, grade_valid: g.valid !== false,
     f2p_failures: g.f2p_failures ?? null, p2p_failures: (g.p2p_failures ?? []).slice(0, 10),
@@ -295,6 +341,9 @@ function manifestAndCells(ids, cells, selection) {
       config: 'experiments/context-dedup/opencode.json (no credential in file)',
       model_configs: Object.fromEntries(models.map((m) => [m, modelConfig(m)])),
       host_defaults: 'thinking ON on every endpoint (host default), no tool-output clip, no cap, no eviction, no middleware',
+      sandbox: SANDBOX
+        ? 'bwrap: no network (model relay only), no dataset/repos/wscache/other runs/operator home; per-run preflight in each cell'
+        : 'OFF (CT_SANDBOX=0): the agent can read the dataset, repos/, wscache/, other runs and the network',
       run_timeout_s: RUN_TIMEOUT_S, instances: ids,
       selection_file: selection ? SELECTION.split('/').pop() : null,
       grading: 'ab-tasks/swebench.mjs gradeDetail after opencode exits: restore test-patch files, apply test patch, run the instance runner over F2P + calibrated P2P; void grades and errored runs excluded from rates',
