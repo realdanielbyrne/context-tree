@@ -173,18 +173,17 @@ function promptFor(task) {
         'Environment: the repository is checked out at the relevant older commit in the current directory.',
         `\`python\`/\`python3\` on PATH is this project's own virtual environment (${task.python}) with its dependencies installed, and the current directory is first on the import path. Tests run with ${runner}. There is no network access.`,
         'Fix the library source so the reported problem is resolved without breaking existing behaviour. Do not modify test files; the fix is graded by tests you cannot see.',
-        `1. Understand before changing. Restate what the change needs to accomplish and identify every function, file, or caller the edit could affect. If anything in the request is ambiguous, ask before writing code.
-
+        ` When editting code follow these instructions.
+1. Understand before changing. Restate what the change needs to accomplish and identify every function, file, or caller the edit could affect. If anything in the request is ambiguous, ask before writing code.
 2. Make the edit. Keep changes minimal and scoped to the request. Don't refactor, rename, or "improve" unrelated code.
-
 3. Review your own diff before presenting it. Read the changed code as if someone else wrote it and check specifically for:
 
-Logic errors: off-by-one, inverted conditions, wrong comparison operators
-Unhandled cases: null/undefined, empty collections, error paths, edge inputs
-Broken contracts: changed signatures or return types that callers still depend on
-State and side effects: anything mutated that shouldn't be, or that now happens in a different order
-Consistency: naming, style, and error-handling conventions match the surrounding code
-Leftovers: debug prints, commented-out code, unused imports or variables`,
+- Logic errors: off-by-one, inverted conditions, wrong comparison operators
+- Unhandled cases: null/undefined, empty collections, error paths, edge inputs
+- Broken contracts: changed signatures or return types that callers still depend on
+- State and side effects: anything mutated that shouldn't be, or that now happens in a different order
+- Consistency: naming, style, and error-handling conventions match the surrounding code
+- Leftovers: debug prints, commented-out code, unused imports or variables`,
     ];
     // These lines are harness-authored, so they get the full leak check (patch lines included).
     const inst = task.__instance ?? loadInstance(task.instanceId);
