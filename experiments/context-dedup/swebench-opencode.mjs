@@ -174,7 +174,7 @@ function promptFor(task) {
         `\`python\`/\`python3\` on PATH is this project's own virtual environment (${task.python}) with its dependencies installed, and the current directory is first on the import path. Tests run with ${runner}. There is no network access.`,
         'Fix the library source so the reported problem is resolved without breaking existing behaviour. Do not modify test files; the fix is graded by tests you cannot see.',
         ` When editting code follow these instructions.
-1. Understand before changing. Restate what the change needs to accomplish and identify every function, file, or caller the edit could affect. If anything in the request is ambiguous, ask before writing code.
+1. Understand before changing. Restate what the change needs to accomplish and identify every function, file, or caller the edit could affect.
 2. Make the edit. Keep changes minimal and scoped to the request. Don't refactor, rename, or "improve" unrelated code.
 3. Review your own diff before presenting it. Read the changed code as if someone else wrote it and check specifically for:
 
