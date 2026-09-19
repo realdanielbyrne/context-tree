@@ -91,6 +91,7 @@ CT_OPENCODE_MODEL=local/HuggingJoost/Swift-Qwen3.8-27B-NVFP4-GGUF \
 CT_LOCAL_EXCLUSIVE=1 CT_RUN_TIMEOUT_S=7200 CT_TAG=u18-soft-w0 \
 node experiments/context-dedup/swebench-opencode.mjs
 
+# U18 is packaged: experiments/u18-soft-limit/run.sh (gates, three arms, resume, verdict).
 # U19 — cadence          CT_CT_TRIGGER=cadence CT_CT_CADENCE_N=5
 # U20 — summaries        CT_CT_SUMMARIES=1 (on the winning trigger)
 # control                CT_ARM=off

@@ -72,7 +72,10 @@ test('sandboxExpectations pins every masked ancestor to the entries the run need
   const e = sandboxExpectations({
     work: '/mnt/data/w', runsRoot: '/mnt/data/w/runs-oc', tag: 't', runDir: '/mnt/data/w/runs-oc/t/i__r0',
     venv: '/mnt/data/w/venvs/v', pythonHomes: ['/mnt/data/w/tooling/py/link', '/mnt/data/w/tooling/py/real'], home: '/home/u', repo: '/home/u/r',
+    exists: (p) => p !== '/snap',
   });
+  assert.deepEqual(e.only['/usr/lib/python3/dist-packages'], []);
+  assert.ok(!('/snap' in e.only), 'a library mask the host lacks is not asserted');
   assert.deepEqual(e.only['/mnt'], ['data']);
   assert.deepEqual(e.only['/mnt/data'], ['w']);
   assert.deepEqual(e.only['/mnt/data/w'].sort(), ['runs-oc', 'tooling', 'venvs']);

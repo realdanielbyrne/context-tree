@@ -98,6 +98,13 @@ Each of these produces a run that completes, grades, and reports nothing wrong.
   sidecar booted on its own defaults — `CT_CT_TRIGGER=off`, which never evicts — while the cell
   recorded the arm that was asked for. Fixed, and the cell now carries the sidecar's own account:
   **check `ct.arm_agrees` before reading any arm result**, and `ct.arm_disagreements` when it is false.
+- **The sandbox's read-only root exposes the HOST's Python libraries**, and one of them was a pool
+  problem's fix: `/usr/lib/python3/dist-packages/requests` (2.32.3) against psf__requests-1142.
+  Found by U18's adversarial review; no baseline run had read it. `MASKED_LIBRARIES` now hides
+  `/usr/lib/python3/dist-packages`, `/usr/local/lib`, `/opt` and `/snap`, and the preflight asserts
+  each empty. What cannot be masked is pip's vendored copy inside every venv
+  (`site-packages/pip/_vendor/requests`) — search a run's `events.jsonl` for it
+  (`experiments/u18-soft-limit/lib.mjs foreignLibraryReads`). Re-check when the pool changes.
 - **An arm byte-identical to its control is void, not a null result.** Prove the mechanism fired
   (units dropped > 0) before reporting anything about it.
 

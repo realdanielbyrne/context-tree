@@ -43,7 +43,7 @@ import { makeSwebenchTask, WORK, pythonPathFor, assertNoTestLeak, loadInstance }
 import { stratumOf } from './swebench-draw.mjs';
 import { parseJsonLines, sessionIdOf, summarizeEvents, costAt, classifyExit, summarizeExport, eventsCompleteAgainstExport } from './swebench-opencode-events.mjs';
 import { chooseEndpoint, acquireSlots, LEASE_MARKER, MAX_LOCAL_SLOTS } from './swebench-endpoint.mjs';
-import { openSandbox, exitFromSandbox, pythonHomeOf, MASKED } from './swebench-sandbox.mjs';
+import { openSandbox, exitFromSandbox, pythonHomeOf, MASKED, MASKED_LIBRARIES } from './swebench-sandbox.mjs';
 import { writeResults, gitSha, nowISO } from '../rung-1-live-probe/lib.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -109,9 +109,11 @@ const OUTPUT_CAP = +(process.env.CT_OUTPUT_CAP || (WINDOW > 0 ? Math.max(4096, M
  * What the sandbox preflight asserts for one run: the answer sources are absent, and every
  * masked directory above a visible path holds only the entries this run needs.
  */
-export function sandboxExpectations({ work, runsRoot, tag, runDir, venv, pythonHomes, home, repo, arm = 'off' }) {
+export function sandboxExpectations({ work, runsRoot, tag, runDir, venv, pythonHomes, home, repo, arm = 'off', exists = existsSync }) {
     const hidden = ['dataset', 'repos', 'wscache', 'runs', 'locks'].map((d) => join(work, d)).concat([home, repo]);
     const only = { '/tmp': [], '/home': ['.ct-sandbox', 'agent'], [runsRoot]: [tag], [join(runsRoot, tag)]: [basename(runDir)], [runDir]: arm === 'off' ? ['sandbox', 'workspace', 'xdg'] : ['mcp', 'sandbox', 'workspace', 'xdg'] };
+    // A masked library directory still exists (as an empty tmpfs), so it is asserted empty.
+    for (const lib of MASKED_LIBRARIES) if (exists(lib)) only[lib] = [];
     const underMask = (d) => MASKED.some((m) => d === m || d.startsWith(`${m}/`));
     for (const p of [runsRoot, venv, ...pythonHomes]) {
         const parts = p.split('/').filter(Boolean);

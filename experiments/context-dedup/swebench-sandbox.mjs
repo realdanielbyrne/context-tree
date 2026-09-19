@@ -59,7 +59,15 @@ export const MCP_PATHS = Object.freeze([
 export const MCP_SCRIPT = `${SANDBOX_CT}/experiments/context-dedup/ct-sidecar.mjs`;
 /** The prompt-assembly plugin, as opencode sees it from inside the sandbox. */
 export const PLUGIN_SCRIPT = `${SANDBOX_CT}/experiments/context-dedup/oc-plugin/ct-assemble-plugin.mjs`;
-export const MASKED = ['/home', '/mnt', '/media', '/srv', '/var/tmp', '/run/user'];
+/**
+ * Host copies of third-party Python libraries. The read-only root exposes them, and a pool
+ * problem's library can be among them at a RELEASED version — the fix, readable with `cat`
+ * (`/usr/lib/python3/dist-packages/requests` against psf__requests-1142). The instance venv
+ * and its interpreter live under /mnt and are bound back explicitly, so nothing a run needs
+ * is here.
+ */
+export const MASKED_LIBRARIES = ['/snap', '/opt', '/usr/lib/python3/dist-packages', '/usr/local/lib'];
+export const MASKED = ['/home', '/mnt', '/media', '/srv', '/var/tmp', '/run/user', ...MASKED_LIBRARIES];
 
 const which = (cmd) => spawnSync('sh', ['-c', `command -v ${cmd}`], { encoding: 'utf8' }).stdout.trim() || null;
 
