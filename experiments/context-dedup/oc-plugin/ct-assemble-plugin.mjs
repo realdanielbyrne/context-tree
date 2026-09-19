@@ -75,7 +75,13 @@ function queryOf(messages) {
   return '';
 }
 
+// A plugin that fails to import registers no hooks and opencode says NOTHING about it —
+// no log line, no error — which is indistinguishable from a plugin that loaded and never
+// fired. One line at module scope tells the two apart afterwards.
+log({ event: 'loaded', url: URL_ });
+
 export const server = async () => {
+  log({ event: 'registered' });
   let turn = 0;
   return {
     'experimental.chat.messages.transform': async (_input, output) => {

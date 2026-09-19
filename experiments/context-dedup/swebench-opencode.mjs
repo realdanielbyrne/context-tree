@@ -70,6 +70,17 @@ const SANDBOX_ASSETS = process.env.CT_SANDBOX_ASSETS || join(WORK, 'tooling', 'o
 const ARM = process.env.CT_ARM || 'off';
 const WANTS_SIDECAR = ARM === 'mcp' || ARM === 'ct';
 const WANTS_PLUGIN = ARM === 'ct';
+/**
+ * G0 (mutation visibility) — the gate, never a measured run. `CT_G0_MARKER` puts a unique
+ * token in the task statement and hands it to the relay as a needle, so the wire record
+ * says whether that message reached the provider; `CT_G0_DROP_FIRST` tells the sidecar to
+ * drop exactly that message. Both perturb the run on purpose — one changes the prompt, the
+ * other removes the task — so a cell carrying either is a gate cell and not a result.
+ */
+const G0_MARKER = process.env.CT_G0_MARKER || '';
+const G0_FOLD_MARKER = process.env.CT_G0_FOLD_MARKER || '';
+const G0_FOLD_TEXT = G0_FOLD_MARKER ? `Continue the task. Harness marker: ${G0_FOLD_MARKER}` : '';
+const G0_DROP_FIRST = process.env.CT_G0_DROP_FIRST === '1';
 /** Read by the sidecar inside the sandbox; named here so the cell records the arm exactly. */
 const CT_OPTIONS = Object.freeze({
     CT_CT_TRIGGER: process.env.CT_CT_TRIGGER || 'soft',
@@ -82,6 +93,8 @@ const CT_OPTIONS = Object.freeze({
     CT_CT_TOPK: process.env.CT_CT_TOPK || '5',
     CT_CT_PROTECT_TAIL: process.env.CT_CT_PROTECT_TAIL || '6',
     CT_ASSEMBLE_PORT: process.env.CT_ASSEMBLE_PORT || '8899',
+    // Recorded, not just forwarded: a gate cell has to be unmistakable in the results file.
+    ...(G0_DROP_FIRST ? { CT_G0_DROP_FIRST: '1', CT_G0_FOLD_TEXT: G0_FOLD_TEXT } : {}),
 });
 /**
  * The arm's window in tokens (0 = the model's declared context). opencode compacts at
@@ -174,6 +187,9 @@ function promptFor(task) {
         `\`python\`/\`python3\` on PATH is this project's own virtual environment (${task.python}) with its dependencies installed, and the current directory is first on the import path. Tests run with ${runner}. There is no network access.`,
         'Fix the library source so the reported problem is resolved without breaking existing behaviour. Do not modify test files; the fix is graded by tests you cannot see.',
         'Do a review of your code changes, and fix any issues you find.',
+        // G0 only. A random token the model has no reason to reproduce, so its presence on
+        // the wire means THIS message was sent, not that the agent quoted it back.
+        ...(G0_MARKER ? [`Ignore this line; it is a harness marker: ${G0_MARKER}`] : []),
     ];
     // These lines are harness-authored, so they get the full leak check (patch lines included).
     const inst = task.__instance ?? loadInstance(task.instanceId);
@@ -210,6 +226,38 @@ function mcpActivity(sandbox, summary) {
 }
 
 /**
+ * Did the sidecar receive the arm we asked for?
+ *
+ * The knobs travel a long way — runner env, `mcp.env`, the sandbox plan, the per-run
+ * opencode config, the MCP `environment` block — and a break anywhere leaves the sidecar on
+ * its OWN defaults, which start at `CT_CT_TRIGGER=off`: never evicts. The cell would still
+ * record the requested arm. One link of that chain was missing for the whole of this arm's
+ * life, so the request is compared against what the sidecar says it booted with.
+ */
+const ARM_FIELDS = Object.freeze({
+    CT_CT_TRIGGER: ['trigger', String],
+    CT_CT_WINDOW: ['softWindow', Number],
+    CT_CT_HARD_WINDOW: ['hardWindow', Number],
+    CT_CT_CADENCE_N: ['cadenceN', Number],
+    CT_CT_SUMMARIES: ['summaries', (v) => v === '1'],
+    CT_CT_ANCHOR: ['anchor', Number],
+    CT_CT_REPLY_RESERVE: ['replyReserve', Number],
+    CT_CT_TOPK: ['topK', Number],
+    CT_CT_PROTECT_TAIL: ['protectTail', Number],
+});
+
+export function armDisagreements(requested, ready) {
+    if (!ready) return ['the sidecar never reported ready: nothing confirms which arm it booted with'];
+    const out = [];
+    for (const [key, [field, cast]] of Object.entries(ARM_FIELDS)) {
+        if (requested[key] === undefined) continue;
+        const want = cast(requested[key]);
+        if (ready[field] !== want) out.push(`${key}: asked ${JSON.stringify(want)}, sidecar booted ${JSON.stringify(ready[field])}`);
+    }
+    return out;
+}
+
+/**
  * Did the assembly arm actually change the prompt? The plugin logs one row per turn and
  * the sidecar logs its decision; zero turns, or turns with nothing dropped, means the arm
  * is byte-identical to its control and the cell is VOID rather than a null result.
@@ -223,9 +271,19 @@ function assembleActivity(runDir) {
         });
     };
     const plugin = read('ct-plugin.jsonl');
-    const sidecar = read('ct-mcp.jsonl').filter((r) => r.event === 'assemble' || r.event === 'assemble_error');
+    const rows = read('ct-mcp.jsonl');
+    const sidecar = rows.filter((r) => r.event === 'assemble' || r.event === 'assemble_error');
+    const ready = rows.find((r) => r.event === 'ready');
+    const disagreements = armDisagreements(CT_OPTIONS, ready?.arm);
     const turns = plugin.filter((r) => r.turn !== undefined);
     return {
+        arm_effective: ready?.arm ?? null,
+        arm_agrees: disagreements.length === 0,
+        arm_disagreements: disagreements,
+        // Zero turns means one of two different defects: the module never imported, or it
+        // imported and its hook never ran. opencode logs neither, so the plugin says so itself.
+        plugin_loaded: plugin.some((r) => r.event === 'loaded'),
+        plugin_registered: plugin.some((r) => r.event === 'registered'),
         plugin_turns: turns.length,
         plugin_errors: turns.filter((r) => r.error).length,
         messages_dropped: turns.reduce((n, r) => n + (r.dropped ?? 0), 0),
@@ -345,6 +403,10 @@ async function runOne(task, repeat) {
                 pythonPath: pythonPathFor(ws), assets: SANDBOX_ASSETS, window: WINDOW,
                 mcp: WANTS_SIDECAR ? { repoRoot: REPO, env: WANTS_PLUGIN ? CT_OPTIONS : {} } : null,
                 plugin: WANTS_PLUGIN,
+                needles: {
+                    ...(G0_MARKER ? { g0: G0_MARKER } : {}),
+                    ...(G0_FOLD_MARKER ? { g0fold: G0_FOLD_MARKER } : {}),
+                },
                 marker: {
                     ...(sel.marker !== null && sel.marker !== undefined ? { [LEASE_MARKER]: sel.marker } : {}),
                     ...(OUTPUT_CAP > 0 ? { OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX: String(OUTPUT_CAP) } : {}),

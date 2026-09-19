@@ -19,7 +19,8 @@
  * unsandboxed run received from the operator's real home.
  */
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { appendFileSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import http from 'node:http';
 import https from 'node:https';
 import { tmpdir } from 'node:os';
@@ -48,7 +49,12 @@ export const MCP_PATHS = Object.freeze([
   'packages/mcp/package.json', 'packages/mcp/dist', 'packages/mcp/node_modules',
   'packages/cli/package.json', 'packages/cli/dist', 'packages/cli/node_modules',
   'experiments/context-dedup/ct-sidecar.mjs',
-  'experiments/context-dedup/oc-plugin/ct-assemble-plugin.mjs',
+  // The DIRECTORY, not the plugin file. opencode reports nothing when a plugin module
+  // fails to import — no log line, no error, zero hooks registered — so a missing sibling
+  // turns the `ct` arm into its control in silence. Binding the file alone did exactly
+  // that: `ct-assemble-plugin.mjs` imports `./apply-decisions.mjs`, which was not here,
+  // and gate G0 found the arm inert on its first run.
+  'experiments/context-dedup/oc-plugin',
 ]);
 export const MCP_SCRIPT = `${SANDBOX_CT}/experiments/context-dedup/ct-sidecar.mjs`;
 /** The prompt-assembly plugin, as opencode sees it from inside the sandbox. */
@@ -117,19 +123,113 @@ export function sandboxConfig(cfg, model, env = process.env, { window = 0, mcp =
   return { config, upstream: entry.options.baseURL, apiKey };
 }
 
+/**
+ * THE WIRE RECORD — what actually reached the provider, measured where no arm can reach.
+ *
+ * The plugin, the sidecar and opencode each log what they BELIEVE the prompt became, and
+ * none of the three is evidence. `experimental.chat.messages.transform` is in-place-only,
+ * so an edit that looks applied in the plugin's own log can still be discarded before
+ * serialization — leaving an arm byte-identical to its control with nothing saying so.
+ * The relay is downstream of all of them, so its bytes are the only truth (gate G0).
+ *
+ * Counting is streaming, never buffered: a prompt runs to ~0.5 MB and a relay that holds
+ * one changes the timing of the thing it is measuring. `latin1` keeps each chunk
+ * byte-exact, so an ASCII needle split across a chunk boundary is still found via `carry`.
+ * Occurrences are non-overlapping.
+ */
+/**
+ * `role` counts the PROVIDER's messages, which is not opencode's message count: one
+ * assistant message with two tool calls serializes as three. `tools` is what separates a
+ * request that went through the plugin's hook from one that did not — opencode's
+ * title-generation call carries no tool schemas, and (measured) shows `role: 3`, so size
+ * and message count cannot tell the two apart. Both names are reserved.
+ */
+export const WIRE_NEEDLES = Object.freeze({ role: '"role":', tools: '"tools":' });
+
+export function makeWireCounter(needles) {
+  // `indexOf('')` answers 0 forever, so an empty needle spins the scan loop and hangs the
+  // relay — with the request already in flight and nothing in any log to explain it.
+  const names = Object.keys(needles).filter((n) => typeof needles[n] === 'string' && needles[n].length > 0);
+  const longest = names.reduce((n, k) => Math.max(n, needles[k].length), 1);
+  const counts = Object.fromEntries(names.map((n) => [n, 0]));
+  let carry = '';
+  return {
+    push(chunk) {
+      const text = carry + chunk.toString('latin1');
+      const base = carry.length;
+      for (const name of names) {
+        const needle = needles[name];
+        for (let at = text.indexOf(needle); at !== -1; at = text.indexOf(needle, at + needle.length)) {
+          // A match lying wholly inside the carry was counted on the previous chunk; the
+          // carry is re-examined only so a match that SPANS the boundary is not missed.
+          if (at + needle.length > base) counts[name] += 1;
+        }
+      }
+      carry = longest > 1 ? text.slice(-(longest - 1)) : '';
+    },
+    counts: () => ({ ...counts }),
+  };
+}
+
+/**
+ * One row per upstream request. The row is written once both halves are known — the body
+ * has ended and the upstream answered — because a size without a status cannot say
+ * whether the provider accepted the prompt. `abandon` covers the exits where no status
+ * ever arrives (upstream error, client hangup, a killed run), so a request that went out
+ * is never silently unrecorded.
+ */
+function openWireRecord({ wireLog, needles, req, n }) {
+  const counter = makeWireCounter(needles);
+  const hash = createHash('sha256');
+  const row = { n, ts: new Date().toISOString(), method: req.method, path: req.url, bytes: 0, status: null };
+  let ended = false;
+  let answered = false;
+  let wrote = false;
+  const write = () => {
+    if (wrote || !ended || !answered) return;
+    wrote = true;
+    try {
+      appendFileSync(wireLog, `${JSON.stringify({ ...row, sha256: hash.digest('hex'), counts: counter.counts() })}\n`);
+    } catch (e) {
+      // Evidence, not the experiment — the run continues. But a wire log that silently
+      // stops growing reads as a run that stopped making requests, so say so somewhere:
+      // `n` leaves a visible gap in the file and this leaves one in the run's stderr.
+      process.stderr.write(`sandbox relay: wire record ${row.n} not written: ${e.message}\n`);
+    }
+  };
+  req.on('data', (chunk) => { row.bytes += chunk.length; hash.update(chunk); counter.push(chunk); });
+  req.on('end', () => { ended = true; write(); });
+  return {
+    status: (code) => { row.status = code; answered = true; write(); },
+    abandon: () => { ended = true; answered = true; write(); },
+  };
+}
+
 /** HTTP proxy on a unix socket to `upstream`, injecting the key. Streams both ways. */
-export function startModelProxy({ socketPath, upstream, apiKey }) {
+export function startModelProxy({ socketPath, upstream, apiKey, wireLog = null, needles = {} }) {
   const u = new URL(upstream);
   const mod = u.protocol === 'https:' ? https : http;
+  // A caller needle named `role` or `tools` would replace the built-in and quietly change
+  // what every reader of this log thinks it is filtering on.
+  for (const name of Object.keys(needles)) {
+    if (name in WIRE_NEEDLES) throw new Error(`wire needle "${name}" is reserved`);
+  }
+  const watch = { ...WIRE_NEEDLES, ...needles };
+  let seq = 0;
   const server = http.createServer((req, res) => {
     const headers = { ...req.headers, host: u.host };
     if (apiKey) headers.authorization = `Bearer ${apiKey}`;
+    // Observed, not intercepted: a second `data` listener rides alongside `pipe`, which
+    // keeps owning backpressure. Nothing here can change the bytes.
+    seq += 1;
+    const wire = wireLog ? openWireRecord({ wireLog, needles: watch, req, n: seq }) : null;
     const up = mod.request({ protocol: u.protocol, hostname: u.hostname, port: u.port || undefined, method: req.method, path: req.url, headers }, (r) => {
+      wire?.status(r.statusCode);
       res.writeHead(r.statusCode, r.headers);
       r.pipe(res);
     });
-    up.on('error', (e) => { if (!res.headersSent) res.writeHead(502, { 'content-type': 'text/plain' }); res.end(`sandbox proxy: ${e.message}`); });
-    res.on('close', () => up.destroy());
+    up.on('error', (e) => { wire?.abandon(); if (!res.headersSent) res.writeHead(502, { 'content-type': 'text/plain' }); res.end(`sandbox proxy: ${e.message}`); });
+    res.on('close', () => { wire?.abandon(); up.destroy(); });
     req.pipe(up);
   });
   server.requestTimeout = 0;
@@ -249,7 +349,7 @@ export function runPreflight({ bwrap, args, env, python, source }) {
  * fails. `close()` stops the proxy and removes the host socket directory.
  */
 export async function openSandbox({ runDir, ws, xdg, venv, model, configPath, importName, pythonPath,
-  hidden, only, assets, marker = {}, window = 0, mcp = null, plugin = false }) {
+  hidden, only, assets, marker = {}, window = 0, mcp = null, plugin = false, needles = {} }) {
   const bwrap = which('bwrap');
   if (!bwrap) throw new Error('sandbox: bwrap not found');
   if (!which('socat')) throw new Error('sandbox: socat not found');
@@ -272,6 +372,12 @@ export async function openSandbox({ runDir, ws, xdg, venv, model, configPath, im
         db: join(xdg.XDG_DATA_HOME, 'opencode', 'opencode.db'),
         log: join(runDir, 'mcp', 'ct-mcp.jsonl'),
         pollMs: mcp.pollMs,
+        // THE ARM ITSELF. Dropping this is how every `ct` arm ran inert: `sandboxConfig`
+        // spreads `mcp.env` into the sidecar's environment, so a plan without it starts the
+        // sidecar on ITS OWN defaults — `CT_CT_TRIGGER=off`, which never evicts — while the
+        // runner's default is `soft` and the cell records `soft`. A control wearing a
+        // treatment's label, with nothing in any log to contradict it. Found by gate G0.
+        env: mcp.env ?? {},
       }
     : null;
   if (mcpPlan) {
@@ -292,7 +398,10 @@ export async function openSandbox({ runDir, ws, xdg, venv, model, configPath, im
 
   // A unix socket path is limited to 108 bytes; run dirs are longer, so the socket lives in /tmp.
   const sockDir = mkdtempSync(join(tmpdir(), 'ct-sbx-'));
-  const proxy = await startModelProxy({ socketPath: join(sockDir, 'model.sock'), upstream, apiKey });
+  // Always on: a run's prompts are only auditable while they are going past, and nothing
+  // downstream of the relay records them. It costs one hash and a few scans per request.
+  const wireLog = join(runDir, 'wire.jsonl');
+  const proxy = await startModelProxy({ socketPath: join(sockDir, 'model.sock'), upstream, apiKey, wireLog, needles });
   const close = async () => { await proxy.close(); rmSync(sockDir, { recursive: true, force: true }); };
   try {
     const plan = planSandbox({ ws, xdgRoot: dirname(xdg.XDG_CONFIG_HOME), sandboxDir, sockDir, venv, config: config_, opencodeBin, rgBin, mcp: mcpPlan });
@@ -311,6 +420,7 @@ export async function openSandbox({ runDir, ws, xdg, venv, model, configPath, im
         masked: plan.masked, visible: plan.visible, config: config_, preflight: preflight.checks,
         mcp: mcpPlan ? { script: MCP_SCRIPT, store: mcpPlan.storeDir, log: mcpPlan.log, db: mcpPlan.db } : null,
         window: window > 0 ? window : null,
+        wire: wireLog, wire_needles: Object.keys({ ...WIRE_NEEDLES, ...needles }),
       },
     };
   } catch (e) { await close(); throw e; }

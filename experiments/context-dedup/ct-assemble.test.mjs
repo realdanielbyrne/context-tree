@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { planDecisions, windowForTurn, validateArm, ARM } from './ct-sidecar.mjs';
 import { applyDecisions } from './oc-plugin/apply-decisions.mjs';
+import { armDisagreements } from './swebench-opencode.mjs';
 import * as plugin from './oc-plugin/ct-assemble-plugin.mjs';
 
 const SOFT = 50_347;
@@ -203,4 +204,32 @@ test('the sidecar ingests a message only once it can gain no further events', ()
   const source = readFileSync(new URL('./ct-sidecar.mjs', import.meta.url), 'utf8');
   assert.match(source, /function ingestable\(message\)/);
   assert.ok(!/mapped\.events\.slice\(/.test(source), 'no whole-document slice may drive appends');
+});
+
+/**
+ * The knobs reach the sidecar through five hops; when one dropped them the sidecar ran on
+ * its own defaults (`trigger: off`, which never evicts) while the cell recorded the arm
+ * that was asked for. The cell now carries the sidecar's own account of what it booted.
+ */
+test('a sidecar booted on different settings than were asked for is reported, not recorded as the arm', () => {
+  const asked = { CT_CT_TRIGGER: 'soft', CT_CT_WINDOW: '50347', CT_CT_SUMMARIES: '0' };
+  const agreed = { trigger: 'soft', softWindow: 50_347, summaries: false };
+  assert.deepEqual(armDisagreements(asked, agreed), []);
+
+  // The exact failure G0 found: the env never arrived, so the sidecar defaulted to `off`.
+  const defaulted = { trigger: 'off', softWindow: 50_347, summaries: false };
+  const found = armDisagreements(asked, defaulted);
+  assert.equal(found.length, 1);
+  assert.match(found[0], /CT_CT_TRIGGER: asked "soft", sidecar booted "off"/);
+});
+
+test('a sidecar that never reported ready is a disagreement, not an agreement', () => {
+  // Absent evidence must never read as confirmation.
+  assert.deepEqual(armDisagreements({ CT_CT_TRIGGER: 'soft' }, undefined).length, 1);
+});
+
+test('summaries and numeric knobs are compared after casting, not as strings', () => {
+  const asked = { CT_CT_SUMMARIES: '1', CT_CT_TOPK: '5' };
+  assert.deepEqual(armDisagreements(asked, { summaries: true, topK: 5 }), []);
+  assert.equal(armDisagreements(asked, { summaries: false, topK: 5 }).length, 1);
 });

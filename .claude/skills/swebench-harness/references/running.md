@@ -147,14 +147,38 @@ artifacts a sandboxed run already writes, under `/mnt/data/ctx-swebench/opencode
 | `mcp/ct-mcp.jsonl` | the sidecar's side, including `assemble` / `assemble_error` |
 | `export.json` | the full session as opencode stored it; `parts[].type === "compaction"` marks a host compaction |
 | `events.jsonl`, `prompt.txt`, `workspace/` | the event stream, the exact prompt, the edited tree |
+| `wire.jsonl` | **what actually went upstream**: one row per provider request with `bytes`, `sha256` and needle `counts` (`role` = messages). Written by the relay, outside the sandbox, downstream of the plugin — the only artifact an inert arm cannot fake |
 
 Run one cell (`CT_INSTANCES=<id>`), not the pool, and read the per-turn decision log by hand before
 committing hours.
 
 ## Gates before a batch
 
-- **G0 mutation visibility** — prove an in-place `splice` reaches the provider, read off the relay's
-  wire record, not the plugin's own log. Without this every arm may be inert.
+- **G0 mutation visibility** — prove an in-place edit reaches the provider, read off the relay's wire
+  record, not the plugin's own log. Without this every arm may be inert. **PASSED 2026-09-18** on
+  Swift-NVFP4 / xarray-6721 (`reports/metrics/swebench-pilot/g0-mutation-visibility.json`).
+
+  ```bash
+  node experiments/context-dedup/g0-mutation-visibility.mjs        # ~20 min, takes all 4 slots
+  CT_G0_ONLY=grade node experiments/context-dedup/g0-mutation-visibility.mjs   # re-grade, run nothing
+  ```
+
+  Two runs on one instance. A random marker goes in the task statement; the control must keep it on
+  every hook-mediated request, while `CT_G0_DROP_FIRST=1` **folds** that message to a second marker
+  and **splices** the assistant message after it, from three messages on. The claim is two-sided: the
+  original marker must leave the wire *and* the replacement must arrive on it — removal alone could be
+  opencode's own doing.
+
+  It folds rather than splicing the task statement because opencode's loop holds exactly **one** user
+  message: splicing it out draws `500 Jinja Exception: No user query found in messages`, and a
+  rejected request cannot answer the question while the marker is duly absent. Requests are selected
+  by `counts.tools > 0` and `status === 200`, never by message count — the title-generation call
+  carries three provider messages and never passes through the hook.
+
+  The verdict has three outcomes: PASS, FAIL, and **VOID** (the gate could not ask its question — an
+  echoed marker, a plugin that never imported, rejected requests, missing wire rows). Exit 1 on
+  anything but PASS. Both runs are **gate cells, not results** — they never pool with a measured arm.
+
 - **G1 fidelity** — one `soft` cell completes and grades, every tool call still paired with its
   result, no session error.
 - **G2 mechanism fires** — units dropped > 0 on at least one cell, and the agent still finishes.

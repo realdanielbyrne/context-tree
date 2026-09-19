@@ -78,12 +78,26 @@ Each of these produces a run that completes, grades, and reports nothing wrong.
   on the arm, not the sandbox). Only the zero counts in `ct.assemble_*` betray it. Never debug an
   arm by turning the sandbox off.
 - **`CT_ARM=ct` needs `packages/*/dist` built**, and it drops `--pure` (which disables plugins).
+- **opencode says NOTHING when a plugin module fails to import** — no log line, no error, zero hooks
+  registered, the run completes normally. A plugin whose sibling import is missing inside the sandbox
+  is therefore indistinguishable from one that loaded and never fired. This is not hypothetical: the
+  `ct` arm was inert this way until gate G0 caught it (`oc-plugin/apply-decisions.mjs` was not bound;
+  `MCP_PATHS` now binds the whole `oc-plugin` directory). The plugin logs `loaded` and `registered`
+  rows for exactly this reason — check `ct.plugin_loaded` in the cell before reading anything else.
+- **`@opencode-ai/plugin` fails to install in the sandbox** (`background dependency install failed`,
+  ECONNREFUSED — there is no network). It is a detached fork whose result is ignored, so it does
+  **not** block plugin loading. Expect the WARN in every sandboxed run and do not chase it.
 - **`CT_CT_HEAD_TOKENS` cannot be set from the shell** for a sandboxed run. The sidecar reads it
   (default 12,000) but the runner's forwarded key set omits it and `sandboxEnv` is a whitelist.
 - **`swebench-endpoint.mjs`'s `LOCAL_MODEL` is hardcoded to the Q8 model**, not Swift. `auto` will
   never choose Swift — that is why every Swift baseline is explicitly pinned.
 - **A mistyped knob is refused at start-up**, deliberately: `CT_CT_WINDOW=50k` reads as `NaN`, which
   the keep-everything path would swallow with nothing logged. Trust the refusal; don't work around it.
+- **The arm knobs travel five hops to reach the sidecar, and a break anywhere is silent.** For the
+  whole of this arm's life `openSandbox` dropped `mcp.env`, so no `CT_CT_*` ever arrived and the
+  sidecar booted on its own defaults — `CT_CT_TRIGGER=off`, which never evicts — while the cell
+  recorded the arm that was asked for. Fixed, and the cell now carries the sidecar's own account:
+  **check `ct.arm_agrees` before reading any arm result**, and `ct.arm_disagreements` when it is false.
 - **An arm byte-identical to its control is void, not a null result.** Prove the mechanism fired
   (units dropped > 0) before reporting anything about it.
 

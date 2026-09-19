@@ -48,6 +48,7 @@
  *   CT_CT_REPLY_RESERVE                                       (default 8192)
  *   CT_CT_TOPK         retrieval hits appended as the tail    (default 5)
  *   CT_CT_PROTECT_TAIL messages at the end never dropped      (default 6)
+ *   CT_G0_DROP_FIRST   1 = the G0 gate, not an arm (see below)
  */
 import { existsSync, appendFileSync, mkdirSync } from 'node:fs';
 import http from 'node:http';
@@ -81,6 +82,8 @@ const ROOT = process.env.CT_MCP_ROOT;
 const DB = process.env.CT_MCP_DB
   ?? join(process.env.XDG_DATA_HOME ?? join(process.env.HOME ?? '', '.local', 'share'), 'opencode', 'opencode.db');
 const LOG = process.env.CT_MCP_LOG;
+const G0_DROP_FIRST = process.env.CT_G0_DROP_FIRST === '1';
+const G0_FOLD_TEXT = process.env.CT_G0_FOLD_TEXT || '';
 
 export const ARM = Object.freeze({
   trigger: process.env.CT_CT_TRIGGER || 'off',
@@ -317,6 +320,40 @@ export function planDecisions({ messages, index, evicted, protectTail, summaries
   return decisions;
 }
 
+/**
+ * G0 — MUTATION VISIBILITY. A gate, not an arm, and deliberately not a policy.
+ *
+ * Every arm's evidence rests on one unproven claim: that an in-place edit in the plugin
+ * survives into the bytes opencode sends. Nothing downstream of the plugin can check it —
+ * the plugin's log records its intention, the sidecar's records its verdict, and both sit
+ * upstream of the serializer. Only the relay's wire record is evidence.
+ *
+ * THE GATE MAY NOT BREAK THE REQUEST IT IS MEASURING. Dropping the task statement was the
+ * obvious design and it is wrong: opencode's loop holds exactly ONE user message, so
+ * splicing it out leaves system + assistant, and this chat template answers
+ * `500 Jinja Exception: No user query found in messages`. A rejected prompt says nothing
+ * about what the provider would have read, and the missing marker reads as success.
+ *
+ * So the gate makes both edits the arms make, on the same array, in the same turn:
+ *
+ *   FOLD  messages[0] -> a replacement carrying a SECOND marker. Two-sided and direct: the
+ *         task statement's marker must vanish from the wire and the replacement's must
+ *         appear. A user message survives, so the request stays well-formed.
+ *   SPLICE messages[1] from four messages on — an assistant message, which carries its own
+ *         tool calls and results together and so can never orphan a result.
+ *
+ * It does nothing before three messages: at turn one the array is the task statement alone,
+ * and there is nothing to edit that would leave a request worth sending. Those early turns
+ * are the within-run control — the original marker must be on the wire there.
+ */
+export function g0Decisions(messages, foldText) {
+  const decisions = messages.map((m) => ({ id: m.id, action: 'keep' }));
+  if (messages.length < 3 || !foldText) return decisions;
+  decisions[0] = { id: messages[0].id, action: 'fold', text: foldText, g0: true };
+  if (messages.length >= 4) decisions[1] = { id: messages[1].id, action: 'drop', g0: true };
+  return decisions;
+}
+
 /** The per-session state the package has nowhere to put (see U2: `lastReferencedTurn`). */
 function makeSession() {
   return {
@@ -396,8 +433,15 @@ function trackReferences(handle, session) {
 
 async function assembleForTurn({ handle, session, messages, query }) {
   session.turn += 1;
-  const window = windowForTurn({ ...ARM, turn: session.turn });
   const total = messages.reduce((n, m) => n + (m.tokens ?? 0), 0);
+
+  // The gate short-circuits the pipeline on purpose: it is testing the seam, not the policy.
+  if (G0_DROP_FIRST) {
+    const decisions = g0Decisions(messages, G0_FOLD_TEXT);
+    return { turn: session.turn, g0: 'drop_first', window: null, total, evicted: [], decisions };
+  }
+
+  const window = windowForTurn({ ...ARM, turn: session.turn });
 
   // The trigger says never evict AND the prompt fits the real context: nothing to do.
   // When it does NOT fit we still assemble, at the real context as a ceiling — the plugin
@@ -586,7 +630,7 @@ async function main() {
   process.on('SIGTERM', () => shutdown('SIGTERM'));
 
   await server.connect(new StdioServerTransport());
-  record({ event: 'ready', root: ROOT, db: DB, poll_ms: POLL_MS, assemble_port: port, arm: ARM });
+  record({ event: 'ready', root: ROOT, db: DB, poll_ms: POLL_MS, assemble_port: port, arm: ARM, g0_drop_first: G0_DROP_FIRST });
   log(`ready (root=${ROOT}, db=${DB}, poll=${POLL_MS}ms, assemble=${port || 'off'}, trigger=${ARM.trigger})`);
 }
 

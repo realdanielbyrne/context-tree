@@ -1,12 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import http from 'node:http';
 import { tmpdir, constants } from 'node:os';
 import { join } from 'node:path';
 import {
   sandboxConfig, planSandbox, exitFromSandbox, startModelProxy, pythonHomeOf, probeSource, runPreflight,
+  makeWireCounter,
   sandboxEnv, innerScript, SANDBOX_BIN, SANDBOX_HOME, RELAY_PORT, SANDBOX_CT, MCP_PATHS, MCP_SCRIPT,
 } from './swebench-sandbox.mjs';
 import { sandboxExpectations } from './swebench-opencode.mjs';
@@ -239,4 +240,113 @@ test('planSandbox binds node and the builds for the MCP arm, and nothing of the 
   assert.ok(!args.includes('/repo'), 'the repo root itself is never bound: reports/ holds earlier agents\' diffs');
   assert.ok(args.some((a, i) => a === '--bind' && args[i + 1] === '/mnt/r/run/mcp'), 'the store is writable');
   assert.equal(planSandbox(base).args.includes('/n/node'), false, 'the control arm gets no node');
+});
+
+/**
+ * The wire record is the ONLY evidence gate G0 accepts, so the ways it can be quietly
+ * wrong are the ways every arm can be quietly wrong: a marker lost at a chunk boundary
+ * reads as a splice that fired, and a marker counted twice reads as one that did not.
+ */
+test('the wire counter finds a needle split across chunks, and counts it once', () => {
+  const counter = makeWireCounter({ g0: 'CTG0-abcdef', role: '"role":' });
+  counter.push(Buffer.from('{"role":"user","text":"CTG'));
+  counter.push(Buffer.from('0-abcdef"}'));
+  assert.deepEqual(counter.counts(), { g0: 1, role: 1 });
+});
+
+test('the wire counter never double-counts the carry it re-examines', () => {
+  const counter = makeWireCounter({ g0: 'MARK' });
+  // MARK lands wholly inside the tail that is carried into the next push.
+  counter.push(Buffer.from('....MARK'));
+  counter.push(Buffer.from('....'));
+  counter.push(Buffer.from('MARK'));
+  assert.equal(counter.counts().g0, 2);
+});
+
+test('the wire counter is byte-exact across a split multibyte character', () => {
+  const utf8 = Buffer.from('{"role":"user","t":"é MARK"}', 'utf8');
+  const counter = makeWireCounter({ g0: 'MARK', role: '"role":' });
+  // Split INSIDE the two-byte é: a utf8-decoding counter would replace both halves.
+  const cut = utf8.indexOf(0xc3) + 1;
+  counter.push(utf8.subarray(0, cut));
+  counter.push(utf8.subarray(cut));
+  assert.deepEqual(counter.counts(), { g0: 1, role: 1 });
+});
+
+test('startModelProxy records what went upstream without changing it', async () => {
+  const seen = [];
+  const upstream = http.createServer((req, res) => {
+    let body = '';
+    req.on('data', (c) => { body += c; });
+    req.on('end', () => { seen.push(body); res.writeHead(201).end('ok'); });
+  });
+  await new Promise((r) => upstream.listen(0, '127.0.0.1', r));
+  const dir = mkdtempSync(join(tmpdir(), 'ct-wire-'));
+  const wireLog = join(dir, 'wire.jsonl');
+  const proxy = await startModelProxy({
+    socketPath: join(dir, 'm.sock'), upstream: `http://127.0.0.1:${upstream.address().port}/v1`,
+    apiKey: 'real', wireLog, needles: { g0: 'CTG0-zz' },
+  });
+  const payload = '{"tools":[],"messages":[{"role":"system"},{"role":"user","c":"CTG0-zz"}]}';
+  try {
+    await new Promise((resolve, reject) => {
+      const req = http.request({ socketPath: join(dir, 'm.sock'), method: 'POST', path: '/v1/chat' }, (res) => {
+        res.resume();
+        res.on('end', resolve);
+      });
+      req.on('error', reject);
+      req.end(payload);
+    });
+    // The relay observes; the bytes upstream are the bytes the client sent.
+    assert.deepEqual(seen, [payload]);
+    const rows = readFileSync(wireLog, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].bytes, Buffer.byteLength(payload));
+    assert.equal(rows[0].status, 201);
+    assert.equal(rows[0].path, '/v1/chat');
+    assert.deepEqual(rows[0].counts, { role: 2, tools: 1, g0: 1 });
+    // The relay numbers its rows, so a lost one leaves a visible gap rather than reading
+    // as a run that stopped making requests.
+    assert.equal(rows[0].n, 1);
+    assert.match(rows[0].sha256, /^[0-9a-f]{64}$/);
+  } finally {
+    await proxy.close();
+    upstream.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('an empty needle is dropped rather than hanging the relay', () => {
+  const counter = makeWireCounter({ empty: '', g0: 'MARK' });
+  counter.push(Buffer.from('a MARK b'));
+  assert.deepEqual(counter.counts(), { g0: 1 });
+});
+
+test('the arm knobs reach the sidecar through the config, not just the plan', () => {
+  // `openSandbox` builds the plan that `sandboxConfig` reads; for a whole arm's life the
+  // plan dropped `env`, so every knob stopped here and the sidecar booted on its defaults.
+  const { config } = sandboxConfig(CFG, 'local/m', { K1: 'k' }, {
+    mcp: {
+      storeDir: '/run/mcp/store', db: '/run/xdg/data/opencode/opencode.db', log: '/run/mcp/l.jsonl',
+      env: { CT_CT_TRIGGER: 'soft', CT_CT_WINDOW: '50347' },
+    },
+  });
+  const environment = config.mcp['context-tree'].environment;
+  assert.equal(environment.CT_CT_TRIGGER, 'soft');
+  assert.equal(environment.CT_CT_WINDOW, '50347');
+});
+
+test('a caller cannot quietly redefine a reserved wire needle', () => {
+  // `role` and `tools` are what every reader of the log filters on; shadowing one would
+  // change what "a hook-mediated request" means without any reader knowing.
+  const dir = mkdtempSync(join(tmpdir(), 'ct-wire2-'));
+  try {
+    // Refused before the server is ever created, so there is nothing to clean up.
+    assert.throws(
+      () => startModelProxy({ socketPath: join(dir, 'm.sock'), upstream: 'http://127.0.0.1:1/v1', apiKey: 'k', needles: { tools: 'x' } }),
+      /reserved/,
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
