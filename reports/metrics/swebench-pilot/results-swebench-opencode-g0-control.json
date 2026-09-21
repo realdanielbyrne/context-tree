@@ -1,8 +1,8 @@
 {
   "manifest": {
     "run_id": "swebench-opencode-g0-control",
-    "date": "2026-09-21T14:59:48.754Z",
-    "commit": "29795af409b6ec9ba1ac178d795b7f566153a85b",
+    "date": "2026-09-21T18:48:41.257Z",
+    "commit": "ea03ef5a9e01c402284b5f53e031692a59e0e2cf",
     "vehicle": "opencode",
     "opencode_version": "1.18.31",
     "model": "local/HuggingJoost/Swift-Qwen3.8-27B-NVFP4-GGUF",
@@ -73,8 +73,10 @@
           "anchor": 4,
           "protectionBonus": 2,
           "summaries": false,
+          "summaryRender": "headline",
           "softTargetFrac": 0.375,
           "reducer": "chunk",
+          "evictMode": "drop",
           "topK": 5,
           "wPriority": 2,
           "wRecency": 1,
@@ -102,11 +104,13 @@
         "arm_disagreements": [],
         "plugin_loaded": true,
         "plugin_registered": true,
-        "plugin_turns": 30,
+        "plugin_turns": 16,
         "plugin_errors": 0,
         "messages_dropped": 0,
         "messages_folded": 0,
         "messages_reduced": 0,
+        "messages_stubbed": 0,
+        "stubbed_units": 0,
         "reduced_units": 0,
         "assemble_calls": 0,
         "assemble_errors": 0,
@@ -117,8 +121,8 @@
       },
       "mcp": {
         "server_ready": true,
-        "ingest_ticks": 31,
-        "events_ingested": 110,
+        "ingest_ticks": 17,
+        "events_ingested": 64,
         "server_errors": 0,
         "tool_calls": 0,
         "tools": {}
@@ -190,7 +194,8 @@
           "tools",
           "g0",
           "g0fold",
-          "g0reduce"
+          "g0reduce",
+          "g0stub"
         ]
       },
       "endpoint_selection": {
@@ -206,7 +211,7 @@
             3
           ]
         },
-        "decided_at": "2026-09-21T14:54:41.902Z"
+        "decided_at": "2026-09-21T18:43:11.662Z"
       },
       "pass": true,
       "f2p_pass": true,
@@ -222,20 +227,20 @@
       "exit_code": 0,
       "signal": null,
       "timed_out": false,
-      "wall_seconds": 283,
+      "wall_seconds": 305,
       "exit_outcome": "ok",
       "killed_externally": false,
       "other_opencode_runs_at_start": 0,
       "other_opencode_runs_peak": 1,
-      "ended_at": "2026-09-21T14:59:25.274Z",
+      "ended_at": "2026-09-21T18:48:17.253Z",
       "last_event_type": "step_finish",
       "error": null,
-      "steps": 30,
-      "tool_calls": 34,
+      "steps": 16,
+      "tool_calls": 19,
       "tools_by_name": {
-        "bash": 19,
-        "read": 10,
-        "grep": 4,
+        "bash": 6,
+        "grep": 5,
+        "read": 7,
         "edit": 1
       },
       "tool_errors": 0,
@@ -244,37 +249,36 @@
       ],
       "files_read": [
         "/mnt/data/ctx-swebench/opencode-runs/g0-control/pydata__xarray-6721__r0/workspace/xarray/core/common.py",
-        "/mnt/data/ctx-swebench/opencode-runs/g0-control/pydata__xarray-6721__r0/workspace/xarray/core/variable.py",
-        "/mnt/data/ctx-swebench/opencode-runs/g0-control/pydata__xarray-6721__r0/workspace/xarray/core/dataset.py",
-        "/mnt/data/ctx-swebench/opencode-runs/g0-control/pydata__xarray-6721__r0/workspace/xarray/core/indexing.py",
-        "/mnt/data/ctx-swebench/opencode-runs/g0-control/pydata__xarray-6721__r0/workspace/xarray/core/utils.py"
+        "/mnt/data/ctx-swebench/opencode-runs/g0-control/pydata__xarray-6721__r0/workspace/xarray/core/pycompat.py",
+        "/mnt/data/ctx-swebench/opencode-runs/g0-control/pydata__xarray-6721__r0/workspace/xarray/core/dataarray.py",
+        "/mnt/data/ctx-swebench/opencode-runs/g0-control/pydata__xarray-6721__r0/workspace/xarray/core/variable.py"
       ],
-      "reads": 10,
+      "reads": 7,
       "diff_empty": false,
-      "agent_diff": "diff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/pydata__xarray-6721/xarray/core/common.py /mnt/data/ctx-swebench/opencode-runs/g0-control/pydata__xarray-6721__r0/workspace/xarray/core/common.py\n--- /mnt/data/ctx-swebench/wscache/pydata__xarray-6721/xarray/core/common.py\t2022-06-25 06:00:50.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/g0-control/pydata__xarray-6721__r0/workspace/xarray/core/common.py\t2026-09-21 09:56:37.584965416 -0500\n@@ -2023,7 +2023,7 @@\n \n     chunks: dict[Any, tuple[int, ...]] = {}\n     for v in variables:\n-        if hasattr(v.data, \"chunks\"):\n+        if hasattr(v._data, \"chunks\"):\n             for dim, c in v.chunksizes.items():\n                 if dim in chunks and c != chunks[dim]:\n                     raise ValueError(\n",
+      "agent_diff": "diff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/pydata__xarray-6721/xarray/core/common.py /mnt/data/ctx-swebench/opencode-runs/g0-control/pydata__xarray-6721__r0/workspace/xarray/core/common.py\n--- /mnt/data/ctx-swebench/wscache/pydata__xarray-6721/xarray/core/common.py\t2022-06-25 06:00:50.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/g0-control/pydata__xarray-6721__r0/workspace/xarray/core/common.py\t2026-09-21 13:46:25.992027079 -0500\n@@ -2023,7 +2023,7 @@\n \n     chunks: dict[Any, tuple[int, ...]] = {}\n     for v in variables:\n-        if hasattr(v.data, \"chunks\"):\n+        if is_duck_dask_array(v._data):\n             for dim, c in v.chunksizes.items():\n                 if dim in chunks and c != chunks[dim]:\n                     raise ValueError(\n",
       "tokens": {
-        "input": 34886,
-        "output": 12912,
+        "input": 22061,
+        "output": 11429,
         "reasoning": 0,
-        "cache_read": 820870,
+        "cache_read": 385554,
         "cache_write": 0
       },
-      "peak_prompt_tokens": 40356,
-      "first_step_prompt_tokens": 15136,
+      "peak_prompt_tokens": 31456,
+      "first_step_prompt_tokens": 15345,
       "cost_reported": 0,
       "cost_list_price": null,
-      "events": 105,
+      "events": 60,
       "events_unparseable": 0,
-      "session_id": "ses_f3b889e1effe3O92KBHDlkFbBu",
+      "session_id": "ses_f3ab76c0dffejaSakaB8Mo5Kni",
       "export_ok": true,
       "export_part_types": {
-        "text": 12,
-        "step-start": 30,
-        "reasoning": 30,
-        "tool": 34,
-        "step-finish": 30
+        "text": 10,
+        "step-start": 16,
+        "reasoning": 16,
+        "tool": 19,
+        "step-finish": 16
       },
-      "export_bytes": 240162,
+      "export_bytes": 135708,
       "events_complete": true,
       "events_missing_steps": 0,
       "events_missing_tool_calls": 0,
