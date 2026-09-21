@@ -109,6 +109,8 @@ export function renderEvent(event: TraceEvent, blobs: BlobStore): string {
       return `### user (seq ${event.seq})\n${blobs.getText(event.blob)}`;
     case 'assistant_message':
       return `### assistant (seq ${event.seq})\n${blobs.getText(event.blob)}`;
+    case 'reasoning':
+      return `### reasoning (seq ${event.seq})\n${blobs.getText(event.blob)}`;
     case 'tool_call': {
       const target = event.path === undefined ? '' : ` ${event.path}`;
       const lines = [`### tool_call ${event.tool}${target} (seq ${event.seq})`];

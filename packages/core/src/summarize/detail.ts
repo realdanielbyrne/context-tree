@@ -132,6 +132,7 @@ function renderEvent(event: TraceEvent, blobs: BlobStore | undefined): string {
   switch (event.type) {
     case 'user_message':
     case 'assistant_message':
+    case 'reasoning':
     case 'manual_annotation':
       return `${head}\n${payload(blobs, event.blob)}`;
     case 'tool_call': {

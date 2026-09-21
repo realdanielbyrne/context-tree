@@ -30,6 +30,8 @@ interface OpenTurn {
   hostId?: string;
   fromUser: boolean;
   messageSeq?: Seq;
+  /** Nothing but thinking so far: the message it precedes is still this turn. */
+  onlyReasoning: boolean;
   callSeqs: Set<Seq>;
 }
 
@@ -37,10 +39,12 @@ interface OpenTurn {
 function continuesUnstamped(open: OpenTurn, event: TraceEvent): boolean {
   switch (event.type) {
     case 'user_message':
-    case 'assistant_message':
+    case 'reasoning':
       return false;
+    case 'assistant_message':
+      return open.onlyReasoning;
     case 'tool_call':
-      return event.parent_seq !== undefined && event.parent_seq === open.messageSeq;
+      return event.parent_seq === undefined ? open.onlyReasoning : event.parent_seq === open.messageSeq;
     case 'tool_result':
       return open.callSeqs.has(event.call_seq);
     case 'segment_boundary':
@@ -78,12 +82,14 @@ export function deriveTurns(events: Iterable<TraceEvent>): Turn[] {
         startSeq: event.seq,
         endSeq: event.seq,
         fromUser: event.type === 'user_message',
+        onlyReasoning: true,
         callSeqs: new Set(),
         ...(stamped !== undefined ? { hostId: stamped } : {}),
       };
     }
     const current = open as OpenTurn;
     current.endSeq = event.seq;
+    if (event.type !== 'reasoning') current.onlyReasoning = false;
     if (event.type === 'user_message' || event.type === 'assistant_message') current.messageSeq ??= event.seq;
     if (event.type === 'tool_call') current.callSeqs.add(event.seq);
   }

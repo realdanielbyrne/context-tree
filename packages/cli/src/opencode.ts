@@ -11,6 +11,7 @@
  */
 import type {
   AssistantMessageEvent,
+  ReasoningEvent,
   ToolCallEvent,
   ToolResultEvent,
   TraceEventInput,
@@ -81,6 +82,7 @@ export function mapOpencodeExport(
     }
 
     const textParts: string[] = [];
+    const reasoningParts: string[] = [];
     const toolParts: Array<Record<string, unknown>> = [];
 
     for (const part of parts as unknown[]) {
@@ -91,10 +93,16 @@ export function mapOpencodeExport(
       } else if (type === 'tool') {
         toolParts.push(part);
       } else if (type === 'reasoning') {
-        skipped += 1;
+        if (typeof part.text === 'string' && part.text.length > 0) reasoningParts.push(part.text);
       } else if (typeof type === 'string') {
         skipped += 1;
       }
+    }
+
+    // opencode replays a message's reasoning to the model with the rest of it (D24).
+    if (reasoningParts.length > 0) {
+      const event: TraceEventInput<ReasoningEvent> = { seq: nextSeq(), type: 'reasoning', ts, blob: put(reasoningParts.join('\n\n')), ...turn };
+      events.push(event);
     }
 
     let messageSeq: number | undefined;

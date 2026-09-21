@@ -8,6 +8,7 @@ import type { LinkKind, PhaseType } from './tree.js';
 export type TraceEventType =
   | 'user_message'
   | 'assistant_message'
+  | 'reasoning'
   | 'tool_call'
   | 'tool_result'
   | 'segment_boundary'
@@ -33,6 +34,16 @@ export interface UserMessageEvent extends TraceEventBase {
 
 export interface AssistantMessageEvent extends TraceEventBase {
   type: 'assistant_message';
+  blob: BlobRef;
+}
+
+/**
+ * The model's thinking for one host message. It segments nothing and carries no
+ * coordinates, but a host that replays it sends it on every turn, so a trace without it
+ * under-sizes the prompt (D24).
+ */
+export interface ReasoningEvent extends TraceEventBase {
+  type: 'reasoning';
   blob: BlobRef;
 }
 
@@ -83,6 +94,7 @@ export interface ManualAnnotationEvent extends TraceEventBase {
 export type TraceEvent =
   | UserMessageEvent
   | AssistantMessageEvent
+  | ReasoningEvent
   | ToolCallEvent
   | ToolResultEvent
   | SegmentBoundaryEvent

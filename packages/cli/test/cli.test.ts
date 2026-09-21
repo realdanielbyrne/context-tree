@@ -375,15 +375,20 @@ describe('import --from-opencode', () => {
     expect(result.format).toBe('opencode');
     expect(result.failures).toEqual([]);
     // 4 messages yield: user_message, assistant_message + read call/result + edit call/result,
-    // assistant_message + bash call/result, user_message = 10 events
+    // reasoning + assistant_message + bash call/result, user_message = 11 events
     // system message is skipped, unknown-future-type is skipped
-    expect(result.events).toBe(10);
+    expect(result.events).toBe(11);
     expect(result.skipped).toBeGreaterThan(0);
 
     const events = readFileSync(join(root, 'trace.jsonl'), 'utf8')
       .trim()
       .split('\n')
       .map((line) => JSON.parse(line) as Record<string, unknown>);
+
+    // Reasoning is replayed to the model, so it is in L0, ahead of the message it belongs to (D24).
+    const reasoning = events.find((e) => e.type === 'reasoning');
+    expect(reasoning).toBeDefined();
+    expect(events.find((e) => e.seq === (reasoning?.seq as number) + 1)).toMatchObject({ type: 'assistant_message' });
 
     // Monotonic gap-free seqs
     const seqs = events.map((e) => e.seq as number);

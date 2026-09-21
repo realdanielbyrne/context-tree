@@ -14,6 +14,7 @@
 import type {
   AssistantMessageEvent,
   BlobStore,
+  ReasoningEvent,
   ToolCallEvent,
   ToolResultEvent,
   TraceEventInput,
@@ -105,6 +106,12 @@ export function mapClaudeCodeTranscript(
       continue;
     }
 
+    const thinking = joinText(blocks, 'thinking');
+    if (thinking.length > 0) {
+      const event: TraceEventInput<ReasoningEvent> = { seq: nextSeq(), type: 'reasoning', ts, blob: put(thinking) };
+      events.push(event);
+    }
+
     const text = joinText(blocks);
     let messageSeq: number | undefined;
     if (text.length > 0) {
@@ -119,8 +126,6 @@ export function mapClaudeCodeTranscript(
 
     for (const block of blocks) {
       if (!isRecord(block)) continue;
-      // Only these three block types have an L0 event. `thinking` and friends
-      // are the model's own scratch space and carry no coordinates.
       if (block.type === 'tool_use') {
         const seq = nextSeq();
         const call = toolCall(block, ts, seq, messageSeq, put);
@@ -206,11 +211,12 @@ function contentBlocks(content: unknown): unknown[] {
   return Array.isArray(content) ? content : [];
 }
 
-function joinText(blocks: readonly unknown[]): string {
+function joinText(blocks: readonly unknown[], type: 'text' | 'thinking' = 'text'): string {
   const parts: string[] = [];
   for (const block of blocks) {
-    if (!isRecord(block) || block.type !== 'text') continue;
-    if (typeof block.text === 'string' && block.text.length > 0) parts.push(block.text);
+    if (!isRecord(block) || block.type !== type) continue;
+    const text = block[type];
+    if (typeof text === 'string' && text.length > 0) parts.push(text);
   }
   return parts.join('\n\n');
 }

@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import {
   JsonlTraceLog,
   isAssistantMessage,
+  isReasoning,
   isManualAnnotation,
   isSegmentBoundary,
   isToolCall,
@@ -228,10 +229,12 @@ describe('type guards', () => {
     { seq: 4, type: 'tool_result', ts: TS, call_seq: 3 },
     { seq: 5, type: 'segment_boundary', ts: TS, from: null, to: 'implementation' },
     { seq: 6, type: 'manual_annotation', ts: TS, blob: REF_A },
+    { seq: 7, type: 'reasoning', ts: TS, blob: REF_A },
   ];
   const guards: Record<TraceEvent['type'], (e: TraceEvent) => boolean> = {
     user_message: isUserMessage,
     assistant_message: isAssistantMessage,
+    reasoning: isReasoning,
     tool_call: isToolCall,
     tool_result: isToolResult,
     segment_boundary: isSegmentBoundary,

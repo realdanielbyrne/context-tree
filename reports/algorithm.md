@@ -53,8 +53,8 @@ rebuildable; **L1 stores coordinates, not content** (a node names a `seq` range;
   - A **phase** is the segmenter's (stage 0) contiguous run of events under one tool-phase. It is
     the *grouping*: a closed phase becomes an L1 node with a `seq` range and, once latched, a
     versioned summary.
-  - A **turn** is **one host message** — its text plus every tool call it issued and their
-    results. **The turn is the unit** the classifier, the assembler, the ejector and retrieval all
+  - A **turn** is **one host message** — its reasoning (D24: the host replays it, so the unit is
+    sized with it), its text, and every tool call it issued with their results. **The turn is the unit** the classifier, the assembler, the ejector and retrieval all
     operate on, because it is the only boundary a host can act on exactly. Importers stamp each L0
     event with its host message id (`turn_id`); a trace without it derives turns by a deterministic
     fallback (a message event plus the calls it issued). Turns are a pure function of L0 — not L1

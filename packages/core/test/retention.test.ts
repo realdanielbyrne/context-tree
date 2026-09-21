@@ -181,6 +181,27 @@ describe('deriveTurns', () => {
     expect(turns.map((t) => [t.hostId, t.startSeq, t.endSeq])).toEqual([['X', 1, 5], ['Y', 6, 6]]);
   });
 
+  it('reasoning opens the turn of the message it precedes, stamped or not', () => {
+    const unstamped = deriveTurns([
+      ev(1, { type: 'user_message', blob: 'b' }),
+      ev(2, { type: 'reasoning', blob: 'b' }),
+      ev(3, { type: 'assistant_message', blob: 'b' }),
+      ev(4, { type: 'tool_call', tool: 'read', parent_seq: 3 }),
+      ev(5, { type: 'tool_result', call_seq: 4 }),
+      ev(6, { type: 'reasoning', blob: 'b' }),
+      ev(7, { type: 'tool_call', tool: 'bash' }),
+      ev(8, { type: 'tool_result', call_seq: 7 }),
+    ]);
+    expect(unstamped.map((t) => [t.startSeq, t.endSeq, t.fromUser])).toEqual([[1, 1, true], [2, 5, false], [6, 8, false]]);
+
+    const stamped = deriveTurns([
+      ev(1, { type: 'reasoning', blob: 'b', turn_id: 'm1' }),
+      ev(2, { type: 'assistant_message', blob: 'b', turn_id: 'm1' }),
+      ev(3, { type: 'reasoning', blob: 'b', turn_id: 'm2' }),
+    ]);
+    expect(stamped.map((t) => [t.hostId, t.startSeq, t.endSeq])).toEqual([['m1', 1, 2], ['m2', 3, 3]]);
+  });
+
   it('covers every event exactly once, in order', () => {
     const events = Array.from({ length: 40 }, (_, i) => ev(i + 1, i % 3 === 0 ? { type: 'assistant_message', blob: 'b' } : i % 3 === 1 ? { type: 'tool_call', tool: 'x' } : { type: 'tool_result', call_seq: i }));
     const turns = deriveTurns(events);

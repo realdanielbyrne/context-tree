@@ -9,7 +9,7 @@ Limit code comments and let the code speak for itself. Limit excessive expositio
 ## Plan and decisions
 
 `docs/IMPLEMENTATION_PLAN.md` carries the design and a decision record
-(§3, D1–D20) with rationale and citations. **Do not silently deviate from a D-numbered
+(§3, D1–D24) with rationale and citations. **Do not silently deviate from a D-numbered
 decision.** If implementation reveals a decision is wrong, say so, propose the
 change, and update the plan's decision row — don't just write different code.
 §19 lists deliberately open questions; those are yours to decide (with a stated
