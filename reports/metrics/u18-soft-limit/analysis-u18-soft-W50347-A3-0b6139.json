@@ -1,0 +1,642 @@
+{
+  "experiment": "U18 soft limit",
+  "generated_at": "2026-09-21T18:08:58.188Z",
+  "sources": {
+    "off": [
+      "results-swebench-opencode-u18-off-w0.json"
+    ],
+    "hard": [
+      "results-swebench-opencode-u18-hard-A3-3b1020-w0.json"
+    ],
+    "soft": [
+      "results-swebench-opencode-u18-soft-W50347-A3-0b6139-w0.json"
+    ]
+  },
+  "selection_sha256": "b14b63e723b220be76ac523f86c373c6709e2811173b86ff99aef42301effeba",
+  "commits": [
+    "29795af409b6ec9ba1ac178d795b7f566153a85b"
+  ],
+  "mixed_commits": null,
+  "dirty_tree_runs": 8,
+  "instrument_failures_rerun": [],
+  "gates": {
+    "hard": [
+      {
+        "tag": "u18-hard-A3-3b1020-gate-a1",
+        "pass": true,
+        "commit": "0406d2b061d25eb033a3c0bfa354d5177c614fdb"
+      },
+      {
+        "tag": "u18-hard-A3-3b1020-gate-a2",
+        "pass": true,
+        "commit": "29795af409b6ec9ba1ac178d795b7f566153a85b"
+      }
+    ],
+    "soft": [
+      {
+        "tag": "u18-soft-W50347-A3-0b6139-gate-a1",
+        "pass": false,
+        "commit": "1ed9c901b3a08c4936d7e3118ea7f07f7d0ad5a6"
+      },
+      {
+        "tag": "u18-soft-W50347-A3-0b6139-gate-a2",
+        "pass": true,
+        "commit": "0406d2b061d25eb033a3c0bfa354d5177c614fdb"
+      },
+      {
+        "tag": "u18-soft-W50347-A3-0b6139-gate-a3",
+        "pass": true,
+        "commit": "29795af409b6ec9ba1ac178d795b7f566153a85b"
+      }
+    ],
+    "stub": [],
+    "summary": []
+  },
+  "config": {
+    "CT_CT_WINDOW": "50347",
+    "CT_CT_HARD_WINDOW": "151040",
+    "CT_CT_REPLY_RESERVE": "8192",
+    "CT_CT_HEAD_TOKENS": "12000",
+    "CT_ASSEMBLE_MS": "8000",
+    "CT_CT_NEUTRAL_PHASES": "other",
+    "CT_CONTRACT": "v1",
+    "CT_CT_UNIT": "turn",
+    "CT_CT_PROTECTION": "soft",
+    "CT_CT_ANCHOR": "3",
+    "CT_CT_PROTECTION_BONUS": "2",
+    "CT_CT_SUMMARY_RENDER": "headline",
+    "CT_CT_SOFT_TARGET_FRAC": "0.375",
+    "CT_CT_REDUCER": "chunk",
+    "CT_CT_EVICT_MODE": "drop",
+    "CT_CT_TOPK": "5",
+    "CT_CT_W_PRIORITY": "2",
+    "CT_CT_W_RECENCY": "1",
+    "CT_CT_W_REFRECENCY": "0.5",
+    "CT_CT_W_DORMANCY": "1",
+    "CT_CT_W_RELEVANCE": "0",
+    "CT_CT_PRIORITY_HALFLIFE": "4",
+    "CT_CT_EVICT_HEADROOM": "0",
+    "CT_CT_DRIFT_K": "5",
+    "CT_CT_DRIFT_TAU": "1",
+    "CT_CT_RRF_K": "60",
+    "CT_CT_CHUNK_SIZE": "800",
+    "CT_CT_CHUNK_OVERLAP": "100"
+  },
+  "tags": {
+    "off": "u18-off",
+    "hard": "u18-hard-A3-3b1020",
+    "soft": "u18-soft-W50347-A3-0b6139",
+    "stub": "u18-stub-W50347-A3-54dea7",
+    "summary": "u18-summary-W50347-A3-0ba765"
+  },
+  "verdict": "INCOMPLETE",
+  "why": "off: 10/30 cells; hard: 9/30 cells; soft: 10/30 cells",
+  "window": 50347,
+  "rules": {
+    "minEngagedCells": 8,
+    "refuteDelta": -3,
+    "materialPeakRatio": 0.75,
+    "aaDrift": 3,
+    "maxUnscoredShare": 0.25,
+    "unscoredAsymmetry": 2,
+    "maxPluginErrorShare": 0.1,
+    "gatePeakFactor": 1.3,
+    "gateMinSteps": 20,
+    "minRecallCells": 3,
+    "gateMaxAssembleMs": 4000
+  },
+  "integrity_problems": [],
+  "incomplete": [
+    "off: 10/30 cells",
+    "hard: 9/30 cells",
+    "soft: 10/30 cells"
+  ],
+  "arms": {
+    "off": {
+      "cells": 10,
+      "solved": 6,
+      "rate_itt": 0.6,
+      "unscored": [],
+      "timeouts": 0,
+      "median_peak": 47812,
+      "max_peak": 119204,
+      "compacted_cells": 1,
+      "engaged_cells": 0,
+      "recall_tool_calls": 0,
+      "cells_with_recall": 0,
+      "cells_ended_at_output_cap": 0,
+      "agent_evict_calls": 0,
+      "plugin_error_turns": 0,
+      "plugin_turns": 0
+    },
+    "hard": {
+      "cells": 9,
+      "solved": 6,
+      "rate_itt": 0.667,
+      "unscored": [],
+      "timeouts": 0,
+      "median_peak": 38368,
+      "max_peak": 91793,
+      "compacted_cells": 0,
+      "engaged_cells": 0,
+      "recall_tool_calls": 1,
+      "cells_with_recall": 1,
+      "cells_ended_at_output_cap": 0,
+      "agent_evict_calls": 0,
+      "plugin_error_turns": 0,
+      "plugin_turns": 273
+    },
+    "soft": {
+      "cells": 10,
+      "solved": 5,
+      "rate_itt": 0.5,
+      "unscored": [],
+      "timeouts": 0,
+      "median_peak": 38644,
+      "max_peak": 54745,
+      "compacted_cells": 0,
+      "engaged_cells": 5,
+      "recall_tool_calls": 0,
+      "cells_with_recall": 0,
+      "cells_ended_at_output_cap": 2,
+      "agent_evict_calls": 0,
+      "plugin_error_turns": 0,
+      "plugin_turns": 305
+    }
+  },
+  "primary_soft_vs_off": {
+    "rows": [
+      {
+        "instance": "django__django-11138",
+        "control_solved": 1,
+        "treatment_solved": 0,
+        "control_peak": 119204,
+        "treatment_peak": 54745,
+        "peak_ratio": 0.459,
+        "control_wire_bytes": 420819,
+        "treatment_wire_bytes": 205163,
+        "binding": true,
+        "treatment_engaged_cells": 1
+      },
+      {
+        "instance": "django__django-14034",
+        "control_solved": 0,
+        "treatment_solved": 0,
+        "control_peak": 47695,
+        "treatment_peak": 38661,
+        "peak_ratio": 0.811,
+        "control_wire_bytes": 187422,
+        "treatment_wire_bytes": 153011,
+        "binding": false,
+        "treatment_engaged_cells": 1
+      },
+      {
+        "instance": "psf__requests-1142",
+        "control_solved": 1,
+        "treatment_solved": 1,
+        "control_peak": 40661,
+        "treatment_peak": 24886,
+        "peak_ratio": 0.612,
+        "control_wire_bytes": 156320,
+        "treatment_wire_bytes": 94981,
+        "binding": false,
+        "treatment_engaged_cells": 0
+      },
+      {
+        "instance": "pydata__xarray-6721",
+        "control_solved": 1,
+        "treatment_solved": 1,
+        "control_peak": 24638,
+        "treatment_peak": 38627,
+        "peak_ratio": 1.568,
+        "control_wire_bytes": 89298,
+        "treatment_wire_bytes": 138351,
+        "binding": false,
+        "treatment_engaged_cells": 0
+      },
+      {
+        "instance": "pydata__xarray-6992",
+        "control_solved": 0,
+        "treatment_solved": 0,
+        "control_peak": 30755,
+        "treatment_peak": 30208,
+        "peak_ratio": 0.982,
+        "control_wire_bytes": 113123,
+        "treatment_wire_bytes": 111838,
+        "binding": false,
+        "treatment_engaged_cells": 0
+      },
+      {
+        "instance": "pylint-dev__pylint-4970",
+        "control_solved": 0,
+        "treatment_solved": 0,
+        "control_peak": 110664,
+        "treatment_peak": 45332,
+        "peak_ratio": 0.41,
+        "control_wire_bytes": 403901,
+        "treatment_wire_bytes": 167444,
+        "binding": true,
+        "treatment_engaged_cells": 1
+      },
+      {
+        "instance": "pytest-dev__pytest-7205",
+        "control_solved": 1,
+        "treatment_solved": 1,
+        "control_peak": 47929,
+        "treatment_peak": 30506,
+        "peak_ratio": 0.636,
+        "control_wire_bytes": 179395,
+        "treatment_wire_bytes": 115856,
+        "binding": false,
+        "treatment_engaged_cells": 0
+      },
+      {
+        "instance": "pytest-dev__pytest-8399",
+        "control_solved": 1,
+        "treatment_solved": 0,
+        "control_peak": 46431,
+        "treatment_peak": 40157,
+        "peak_ratio": 0.865,
+        "control_wire_bytes": 177172,
+        "treatment_wire_bytes": 154188,
+        "binding": false,
+        "treatment_engaged_cells": 1
+      },
+      {
+        "instance": "scikit-learn__scikit-learn-14894",
+        "control_solved": 1,
+        "treatment_solved": 1,
+        "control_peak": 52016,
+        "treatment_peak": 32942,
+        "peak_ratio": 0.633,
+        "control_wire_bytes": 177786,
+        "treatment_wire_bytes": 120742,
+        "binding": true,
+        "treatment_engaged_cells": 0
+      },
+      {
+        "instance": "scikit-learn__scikit-learn-14983",
+        "control_solved": 0,
+        "treatment_solved": 1,
+        "control_peak": 53083,
+        "treatment_peak": 44217,
+        "peak_ratio": 0.833,
+        "control_wire_bytes": 194497,
+        "treatment_wire_bytes": 161404,
+        "binding": true,
+        "treatment_engaged_cells": 1
+      }
+    ],
+    "delta_solved_itt": -1,
+    "sign_flip_p_treatment_worse": 0.5,
+    "collapsed": [],
+    "binding_problems": [
+      "django__django-11138",
+      "pylint-dev__pylint-4970",
+      "scikit-learn__scikit-learn-14894",
+      "scikit-learn__scikit-learn-14983"
+    ],
+    "binding_peak_fell_on": 4,
+    "binding_peak_ratio_geomean": 0.561,
+    "binding_wire_ratio_geomean": 0.581,
+    "engaged_cell_peak_ratio_median": 0.811
+  },
+  "attribution": {
+    "soft_vs_hard": {
+      "rows": [
+        {
+          "instance": "django__django-14034",
+          "control_solved": 0,
+          "treatment_solved": 0,
+          "control_peak": 39520,
+          "treatment_peak": 38661,
+          "peak_ratio": 0.978,
+          "control_wire_bytes": 160372,
+          "treatment_wire_bytes": 153011,
+          "binding": false,
+          "treatment_engaged_cells": 1
+        },
+        {
+          "instance": "psf__requests-1142",
+          "control_solved": 1,
+          "treatment_solved": 1,
+          "control_peak": 30915,
+          "treatment_peak": 24886,
+          "peak_ratio": 0.805,
+          "control_wire_bytes": 117864,
+          "treatment_wire_bytes": 94981,
+          "binding": false,
+          "treatment_engaged_cells": 0
+        },
+        {
+          "instance": "pydata__xarray-6721",
+          "control_solved": 1,
+          "treatment_solved": 1,
+          "control_peak": 34101,
+          "treatment_peak": 38627,
+          "peak_ratio": 1.133,
+          "control_wire_bytes": 125614,
+          "treatment_wire_bytes": 138351,
+          "binding": false,
+          "treatment_engaged_cells": 0
+        },
+        {
+          "instance": "pydata__xarray-6992",
+          "control_solved": 0,
+          "treatment_solved": 0,
+          "control_peak": 48230,
+          "treatment_peak": 30208,
+          "peak_ratio": 0.626,
+          "control_wire_bytes": 173853,
+          "treatment_wire_bytes": 111838,
+          "binding": false,
+          "treatment_engaged_cells": 0
+        },
+        {
+          "instance": "pylint-dev__pylint-4970",
+          "control_solved": 0,
+          "treatment_solved": 0,
+          "control_peak": 91793,
+          "treatment_peak": 45332,
+          "peak_ratio": 0.494,
+          "control_wire_bytes": 326335,
+          "treatment_wire_bytes": 167444,
+          "binding": true,
+          "treatment_engaged_cells": 1
+        },
+        {
+          "instance": "pytest-dev__pytest-7205",
+          "control_solved": 1,
+          "treatment_solved": 1,
+          "control_peak": 32123,
+          "treatment_peak": 30506,
+          "peak_ratio": 0.95,
+          "control_wire_bytes": 122213,
+          "treatment_wire_bytes": 115856,
+          "binding": false,
+          "treatment_engaged_cells": 0
+        },
+        {
+          "instance": "pytest-dev__pytest-8399",
+          "control_solved": 1,
+          "treatment_solved": 0,
+          "control_peak": 26537,
+          "treatment_peak": 40157,
+          "peak_ratio": 1.513,
+          "control_wire_bytes": 101727,
+          "treatment_wire_bytes": 154188,
+          "binding": false,
+          "treatment_engaged_cells": 1
+        },
+        {
+          "instance": "scikit-learn__scikit-learn-14894",
+          "control_solved": 1,
+          "treatment_solved": 1,
+          "control_peak": 38368,
+          "treatment_peak": 32942,
+          "peak_ratio": 0.859,
+          "control_wire_bytes": 136623,
+          "treatment_wire_bytes": 120742,
+          "binding": false,
+          "treatment_engaged_cells": 0
+        },
+        {
+          "instance": "scikit-learn__scikit-learn-14983",
+          "control_solved": 1,
+          "treatment_solved": 1,
+          "control_peak": 67635,
+          "treatment_peak": 44217,
+          "peak_ratio": 0.654,
+          "control_wire_bytes": 246131,
+          "treatment_wire_bytes": 161404,
+          "binding": true,
+          "treatment_engaged_cells": 1
+        }
+      ],
+      "delta_solved_itt": -1,
+      "sign_flip_p_treatment_worse": 0.5,
+      "collapsed": [],
+      "binding_problems": [
+        "pylint-dev__pylint-4970",
+        "scikit-learn__scikit-learn-14983"
+      ],
+      "binding_peak_fell_on": 2,
+      "binding_peak_ratio_geomean": 0.568,
+      "binding_wire_ratio_geomean": 0.58,
+      "engaged_cell_peak_ratio_median": 0.816
+    },
+    "hard_vs_off": {
+      "rows": [
+        {
+          "instance": "django__django-11138",
+          "control_solved": 1,
+          "treatment_solved": 0,
+          "control_peak": 119204,
+          "treatment_peak": null,
+          "peak_ratio": null,
+          "control_wire_bytes": 420819,
+          "treatment_wire_bytes": null,
+          "binding": true,
+          "treatment_engaged_cells": 0
+        },
+        {
+          "instance": "django__django-14034",
+          "control_solved": 0,
+          "treatment_solved": 0,
+          "control_peak": 47695,
+          "treatment_peak": 39520,
+          "peak_ratio": 0.829,
+          "control_wire_bytes": 187422,
+          "treatment_wire_bytes": 160372,
+          "binding": false,
+          "treatment_engaged_cells": 0
+        },
+        {
+          "instance": "psf__requests-1142",
+          "control_solved": 1,
+          "treatment_solved": 1,
+          "control_peak": 40661,
+          "treatment_peak": 30915,
+          "peak_ratio": 0.76,
+          "control_wire_bytes": 156320,
+          "treatment_wire_bytes": 117864,
+          "binding": false,
+          "treatment_engaged_cells": 0
+        },
+        {
+          "instance": "pydata__xarray-6721",
+          "control_solved": 1,
+          "treatment_solved": 1,
+          "control_peak": 24638,
+          "treatment_peak": 34101,
+          "peak_ratio": 1.384,
+          "control_wire_bytes": 89298,
+          "treatment_wire_bytes": 125614,
+          "binding": false,
+          "treatment_engaged_cells": 0
+        },
+        {
+          "instance": "pydata__xarray-6992",
+          "control_solved": 0,
+          "treatment_solved": 0,
+          "control_peak": 30755,
+          "treatment_peak": 48230,
+          "peak_ratio": 1.568,
+          "control_wire_bytes": 113123,
+          "treatment_wire_bytes": 173853,
+          "binding": false,
+          "treatment_engaged_cells": 0
+        },
+        {
+          "instance": "pylint-dev__pylint-4970",
+          "control_solved": 0,
+          "treatment_solved": 0,
+          "control_peak": 110664,
+          "treatment_peak": 91793,
+          "peak_ratio": 0.829,
+          "control_wire_bytes": 403901,
+          "treatment_wire_bytes": 326335,
+          "binding": true,
+          "treatment_engaged_cells": 0
+        },
+        {
+          "instance": "pytest-dev__pytest-7205",
+          "control_solved": 1,
+          "treatment_solved": 1,
+          "control_peak": 47929,
+          "treatment_peak": 32123,
+          "peak_ratio": 0.67,
+          "control_wire_bytes": 179395,
+          "treatment_wire_bytes": 122213,
+          "binding": false,
+          "treatment_engaged_cells": 0
+        },
+        {
+          "instance": "pytest-dev__pytest-8399",
+          "control_solved": 1,
+          "treatment_solved": 1,
+          "control_peak": 46431,
+          "treatment_peak": 26537,
+          "peak_ratio": 0.572,
+          "control_wire_bytes": 177172,
+          "treatment_wire_bytes": 101727,
+          "binding": false,
+          "treatment_engaged_cells": 0
+        },
+        {
+          "instance": "scikit-learn__scikit-learn-14894",
+          "control_solved": 1,
+          "treatment_solved": 1,
+          "control_peak": 52016,
+          "treatment_peak": 38368,
+          "peak_ratio": 0.738,
+          "control_wire_bytes": 177786,
+          "treatment_wire_bytes": 136623,
+          "binding": true,
+          "treatment_engaged_cells": 0
+        },
+        {
+          "instance": "scikit-learn__scikit-learn-14983",
+          "control_solved": 0,
+          "treatment_solved": 1,
+          "control_peak": 53083,
+          "treatment_peak": 67635,
+          "peak_ratio": 1.274,
+          "control_wire_bytes": 194497,
+          "treatment_wire_bytes": 246131,
+          "binding": true,
+          "treatment_engaged_cells": 0
+        }
+      ],
+      "delta_solved_itt": 0,
+      "sign_flip_p_treatment_worse": 0.75,
+      "collapsed": [],
+      "binding_problems": [
+        "pylint-dev__pylint-4970",
+        "scikit-learn__scikit-learn-14894",
+        "scikit-learn__scikit-learn-14983"
+      ],
+      "binding_peak_fell_on": 2,
+      "binding_peak_ratio_geomean": 0.92,
+      "binding_wire_ratio_geomean": 0.923,
+      "engaged_cell_peak_ratio_median": null
+    }
+  },
+  "recall": {},
+  "a_a_noise": {
+    "historical_solved": 19,
+    "fresh_off_solved": 6,
+    "by_problem": [
+      {
+        "instance": "django__django-11138",
+        "historical": 3,
+        "fresh": 1,
+        "historical_peak": 118462,
+        "fresh_peak": 119204
+      },
+      {
+        "instance": "django__django-14034",
+        "historical": 0,
+        "fresh": 0,
+        "historical_peak": 45440,
+        "fresh_peak": 47695
+      },
+      {
+        "instance": "psf__requests-1142",
+        "historical": 3,
+        "fresh": 1,
+        "historical_peak": 19501,
+        "fresh_peak": 40661
+      },
+      {
+        "instance": "pydata__xarray-6721",
+        "historical": 2,
+        "fresh": 1,
+        "historical_peak": 84429,
+        "fresh_peak": 24638
+      },
+      {
+        "instance": "pydata__xarray-6992",
+        "historical": 0,
+        "fresh": 0,
+        "historical_peak": 52997,
+        "fresh_peak": 30755
+      },
+      {
+        "instance": "pylint-dev__pylint-4970",
+        "historical": 0,
+        "fresh": 0,
+        "historical_peak": 105798,
+        "fresh_peak": 110664
+      },
+      {
+        "instance": "pytest-dev__pytest-7205",
+        "historical": 3,
+        "fresh": 1,
+        "historical_peak": 21675,
+        "fresh_peak": 47929
+      },
+      {
+        "instance": "pytest-dev__pytest-8399",
+        "historical": 3,
+        "fresh": 1,
+        "historical_peak": 41803,
+        "fresh_peak": 46431
+      },
+      {
+        "instance": "scikit-learn__scikit-learn-14894",
+        "historical": 3,
+        "fresh": 1,
+        "historical_peak": 30881,
+        "fresh_peak": 52016
+      },
+      {
+        "instance": "scikit-learn__scikit-learn-14983",
+        "historical": 2,
+        "fresh": 0,
+        "historical_peak": 45746,
+        "fresh_peak": 53083
+      }
+    ]
+  }
+}

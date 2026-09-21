@@ -1,8 +1,8 @@
 {
   "manifest": {
     "run_id": "swebench-opencode-g0-drop",
-    "date": "2026-09-21T04:50:15.417Z",
-    "commit": "0406d2b061d25eb033a3c0bfa354d5177c614fdb",
+    "date": "2026-09-21T15:06:10.752Z",
+    "commit": "29795af409b6ec9ba1ac178d795b7f566153a85b",
     "vehicle": "opencode",
     "opencode_version": "1.18.31",
     "model": "local/HuggingJoost/Swift-Qwen3.8-27B-NVFP4-GGUF",
@@ -68,8 +68,8 @@
         "CT_ASSEMBLE_PORT": "8899",
         "CT_ASSEMBLE_MS": "8000",
         "CT_G0_DROP_FIRST": "1",
-        "CT_G0_FOLD_TEXT": "Continue the task. Harness marker: CTG0FOLD-ccb4b19fdd5a2f9a0e533688",
-        "CT_G0_REDUCE_TEXT": "[output reduced] Harness marker: CTG0REDUCE-1fe1ce57039a4172036c71e9",
+        "CT_G0_FOLD_TEXT": "Continue the task. Harness marker: CTG0FOLD-dfbff7f8f55d3d4756e62a5f",
+        "CT_G0_REDUCE_TEXT": "[output reduced] Harness marker: CTG0REDUCE-18d3a4aaa6fc3a47e66fc754",
         "arm_effective": {
           "unit": "turn",
           "protection": "soft",
@@ -105,13 +105,13 @@
         "arm_disagreements": [],
         "plugin_loaded": true,
         "plugin_registered": true,
-        "plugin_turns": 25,
+        "plugin_turns": 24,
         "plugin_errors": 0,
-        "messages_dropped": 22,
-        "messages_folded": 23,
-        "messages_reduced": 21,
+        "messages_dropped": 21,
+        "messages_folded": 22,
+        "messages_reduced": 20,
         "reduced_units": 0,
-        "assemble_calls": 25,
+        "assemble_calls": 24,
         "assemble_errors": 0,
         "evicted_units": 0,
         "evict_calls": 0,
@@ -120,11 +120,14 @@
       },
       "mcp": {
         "server_ready": true,
-        "ingest_ticks": 26,
-        "events_ingested": 85,
+        "ingest_ticks": 25,
+        "events_ingested": 86,
         "server_errors": 0,
-        "tool_calls": 0,
-        "tools": {}
+        "tool_calls": 2,
+        "tools": {
+          "context-tree_search": 1,
+          "context-tree_annotate": 1
+        }
       },
       "sandbox": {
         "enabled": true,
@@ -209,7 +212,7 @@
             3
           ]
         },
-        "decided_at": "2026-09-21T04:45:12.869Z"
+        "decided_at": "2026-09-21T14:59:49.425Z"
       },
       "pass": true,
       "f2p_pass": true,
@@ -225,57 +228,61 @@
       "exit_code": 0,
       "signal": null,
       "timed_out": false,
-      "wall_seconds": 279,
+      "wall_seconds": 358,
       "exit_outcome": "ok",
       "killed_externally": false,
       "other_opencode_runs_at_start": 0,
       "other_opencode_runs_peak": 1,
-      "ended_at": "2026-09-21T04:49:52.274Z",
+      "ended_at": "2026-09-21T15:05:47.487Z",
       "last_event_type": "step_finish",
       "error": null,
-      "steps": 25,
-      "tool_calls": 28,
+      "steps": 24,
+      "tool_calls": 26,
       "tools_by_name": {
         "bash": 12,
-        "grep": 6,
-        "read": 8,
-        "edit": 2
+        "grep": 4,
+        "read": 5,
+        "context-tree_search": 1,
+        "edit": 2,
+        "webfetch": 1,
+        "context-tree_annotate": 1
       },
-      "tool_errors": 0,
+      "tool_errors": 1,
       "files_edited": [
         "/mnt/data/ctx-swebench/opencode-runs/g0-drop/pydata__xarray-6721__r0/workspace/xarray/core/common.py",
         "/mnt/data/ctx-swebench/opencode-runs/g0-drop/pydata__xarray-6721__r0/workspace/xarray/core/variable.py"
       ],
       "files_read": [
         "/mnt/data/ctx-swebench/opencode-runs/g0-drop/pydata__xarray-6721__r0/workspace/xarray/core/common.py",
-        "/mnt/data/ctx-swebench/opencode-runs/g0-drop/pydata__xarray-6721__r0/workspace/xarray/core/variable.py"
+        "/mnt/data/ctx-swebench/opencode-runs/g0-drop/pydata__xarray-6721__r0/workspace/xarray/core/variable.py",
+        "/mnt/data/ctx-swebench/opencode-runs/g0-drop/pydata__xarray-6721__r0/workspace/xarray/core/dataset.py"
       ],
-      "reads": 8,
+      "reads": 5,
       "diff_empty": false,
-      "agent_diff": "diff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/pydata__xarray-6721/xarray/core/common.py /mnt/data/ctx-swebench/opencode-runs/g0-drop/pydata__xarray-6721__r0/workspace/xarray/core/common.py\n--- /mnt/data/ctx-swebench/wscache/pydata__xarray-6721/xarray/core/common.py\t2022-06-25 06:00:50.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/g0-drop/pydata__xarray-6721__r0/workspace/xarray/core/common.py\t2026-09-20 23:48:37.129737981 -0500\n@@ -2023,7 +2023,7 @@\n \n     chunks: dict[Any, tuple[int, ...]] = {}\n     for v in variables:\n-        if hasattr(v.data, \"chunks\"):\n+        if hasattr(v._data, \"chunks\"):\n             for dim, c in v.chunksizes.items():\n                 if dim in chunks and c != chunks[dim]:\n                     raise ValueError(\ndiff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/pydata__xarray-6721/xarray/core/variable.py /mnt/data/ctx-swebench/opencode-runs/g0-drop/pydata__xarray-6721__r0/workspace/xarray/core/variable.py\n--- /mnt/data/ctx-swebench/wscache/pydata__xarray-6721/xarray/core/variable.py\t2022-06-25 06:00:50.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/g0-drop/pydata__xarray-6721__r0/workspace/xarray/core/variable.py\t2026-09-20 23:48:39.270756763 -0500\n@@ -1015,7 +1015,7 @@\n         xarray.unify_chunks\n         \"\"\"\n         if hasattr(self._data, \"chunks\"):\n-            return Frozen({dim: c for dim, c in zip(self.dims, self.data.chunks)})\n+            return Frozen({dim: c for dim, c in zip(self.dims, self._data.chunks)})\n         else:\n             return {}\n \n",
+      "agent_diff": "diff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/pydata__xarray-6721/xarray/core/common.py /mnt/data/ctx-swebench/opencode-runs/g0-drop/pydata__xarray-6721__r0/workspace/xarray/core/common.py\n--- /mnt/data/ctx-swebench/wscache/pydata__xarray-6721/xarray/core/common.py\t2022-06-25 06:00:50.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/g0-drop/pydata__xarray-6721__r0/workspace/xarray/core/common.py\t2026-09-21 10:02:13.669297417 -0500\n@@ -2023,7 +2023,7 @@\n \n     chunks: dict[Any, tuple[int, ...]] = {}\n     for v in variables:\n-        if hasattr(v.data, \"chunks\"):\n+        if hasattr(v._data, \"chunks\"):\n             for dim, c in v.chunksizes.items():\n                 if dim in chunks and c != chunks[dim]:\n                     raise ValueError(\ndiff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/pydata__xarray-6721/xarray/core/variable.py /mnt/data/ctx-swebench/opencode-runs/g0-drop/pydata__xarray-6721__r0/workspace/xarray/core/variable.py\n--- /mnt/data/ctx-swebench/wscache/pydata__xarray-6721/xarray/core/variable.py\t2022-06-25 06:00:50.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/g0-drop/pydata__xarray-6721__r0/workspace/xarray/core/variable.py\t2026-09-21 10:02:15.742311773 -0500\n@@ -1015,7 +1015,7 @@\n         xarray.unify_chunks\n         \"\"\"\n         if hasattr(self._data, \"chunks\"):\n-            return Frozen({dim: c for dim, c in zip(self.dims, self.data.chunks)})\n+            return Frozen({dim: c for dim, c in zip(self.dims, self._data.chunks)})\n         else:\n             return {}\n \n",
       "tokens": {
-        "input": 33572,
-        "output": 10685,
+        "input": 27943,
+        "output": 8557,
         "reasoning": 0,
-        "cache_read": 534476,
+        "cache_read": 470931,
         "cache_write": 0
       },
-      "peak_prompt_tokens": 31159,
-      "first_step_prompt_tokens": 15135,
+      "peak_prompt_tokens": 27827,
+      "first_step_prompt_tokens": 15136,
       "cost_reported": 0,
       "cost_list_price": null,
-      "events": 81,
+      "events": 83,
       "events_unparseable": 0,
-      "session_id": "ses_f3db69e09ffey1zlemF4DzFTUI",
+      "session_id": "ses_f3b83ecbaffe0xlxTg8L48tp2e",
       "export_ok": true,
       "export_part_types": {
-        "text": 4,
-        "step-start": 25,
-        "reasoning": 25,
-        "tool": 28,
-        "step-finish": 25
+        "text": 10,
+        "step-start": 24,
+        "reasoning": 24,
+        "tool": 26,
+        "step-finish": 24
       },
-      "export_bytes": 183453,
+      "export_bytes": 161997,
       "events_complete": true,
       "events_missing_steps": 0,
       "events_missing_tool_calls": 0,
