@@ -6,16 +6,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
-import { ceilingOf, evictCallFor, policyFromEnv, validatePolicy } from './oc-plugin/policy.mjs';
+import { assembleWindowFor, ceilingOf, evictCallFor, policyFromEnv, reserveOf, validatePolicy } from './oc-plugin/policy.mjs';
 import { applyDecisions } from './oc-plugin/apply-decisions.mjs';
 import { armDisagreements, effectiveArm } from './swebench-opencode.mjs';
 
-// The verdict planner moved into the package with the rest of the pipeline (D22); these
-// cases stay here because they are about opencode's message shape.
-const { planVerdicts } = await import(pathToFileURL(new URL('../../packages/mcp/dist/index.js', import.meta.url).pathname).href);
-const planDecisions = ({ messages, index, evicted, protectTail, summaries }) =>
-  planVerdicts(messages, index ?? null, evicted.filter((u) => u.start !== null && u.start !== undefined).map((u) => ({ summary: null, ...u })), protectTail, !!summaries);
 import * as plugin from './oc-plugin/ct-assemble-plugin.mjs';
 
 const SOFT = 50_347;
@@ -47,72 +41,19 @@ test('the floor fires under every arm when the host prompt alone would overflow,
   assert.equal(ceilingOf(policy('off')), HARD - 12_000 - 8192);
 });
 
-const msg = (id, extra = {}) => ({ id, role: 'assistant', tokens: 100, hasTools: false, ...extra });
-const messages = [msg('m1'), msg('m2'), msg('m3'), msg('m4'), msg('m5'), msg('m6')];
-const index = new Map([
-  ['m1', { start: 1, end: 2 }], ['m2', { start: 3, end: 6 }], ['m3', { start: 7, end: 9 }],
-  ['m4', { start: 10, end: 12 }], ['m5', { start: 13, end: 15 }], ['m6', { start: 16, end: 18 }],
-]);
-const action = (decisions, id) => decisions.find((d) => d.id === id)?.action;
-
-test('a message is dropped only when its L0 range overlaps an evicted unit', () => {
-  const decisions = planDecisions({
-    messages, index, evicted: [{ nodeId: 'n1', start: 3, end: 9, summary: null }],
-    protectTail: 2, summaries: false,
-  });
-  assert.equal(action(decisions, 'm2'), 'drop');
-  assert.equal(action(decisions, 'm3'), 'drop');
-  assert.equal(action(decisions, 'm4'), 'keep', 'outside the evicted span');
+test('a treatment turn assembles at the arm\'s own window; the control assembles nothing', () => {
+  assert.equal(assembleWindowFor(policy('off')), null);
+  assert.equal(assembleWindowFor(policy('soft')), SOFT);
+  assert.equal(assembleWindowFor(policy('cadence')), SOFT, 'assembly runs every turn; only eviction keeps the cadence');
+  assert.equal(assembleWindowFor(policy('hard')), HARD);
+  assert.equal(reserveOf(policy('soft'), SOFT), 20_192);
+  assert.equal(reserveOf(policy('soft'), 100), 99, 'a reserve can never swallow the window');
 });
 
-test('the task statement and the working tail are never dropped, whatever the assembler says', () => {
-  const decisions = planDecisions({
-    messages, index, evicted: [{ nodeId: 'n1', start: 1, end: 18, summary: null }],
-    protectTail: 2, summaries: false,
-  });
-  assert.equal(action(decisions, 'm1'), 'keep', 'first message is the task statement');
-  assert.equal(action(decisions, 'm5'), 'keep', 'protected tail');
-  assert.equal(action(decisions, 'm6'), 'keep', 'protected tail');
-  assert.deepEqual(['m2', 'm3', 'm4'].map((id) => action(decisions, id)), ['drop', 'drop', 'drop']);
-});
-
-test('a message with no L0 range yet is kept, because nothing is known about it', () => {
-  const partial = new Map(index);
-  partial.delete('m3');
-  const decisions = planDecisions({
-    messages, index: partial, evicted: [{ nodeId: 'n1', start: 1, end: 18, summary: null }],
-    protectTail: 1, summaries: false,
-  });
-  assert.equal(action(decisions, 'm3'), 'keep');
-});
-
-test('with no index at all every message is kept — an un-indexed run must not evict blind', () => {
-  const decisions = planDecisions({
-    messages, index: null, evicted: [{ nodeId: 'n1', start: 1, end: 18, summary: null }],
-    protectTail: 1, summaries: false,
-  });
-  assert.ok(decisions.every((d) => d.action === 'keep'));
-});
-
-test('summaries fold the unit once and drop the rest; a tool-carrying message is never folded', () => {
-  const withTools = [msg('m1'), msg('m2', { hasTools: true }), msg('m3'), msg('m4'), msg('m5'), msg('m6')];
-  const decisions = planDecisions({
-    messages: withTools, index, evicted: [{ nodeId: 'n1', start: 3, end: 9, summary: 'gist of n1' }],
-    protectTail: 2, summaries: true,
-  });
-  // m2 carries a tool call and its result, so it is keep-or-drop only: folding it to text
-  // would separate the call from the result.
-  assert.equal(action(decisions, 'm2'), 'drop');
-  assert.equal(action(decisions, 'm3'), 'fold');
-  assert.equal(decisions.find((d) => d.id === 'm3').text, 'gist of n1');
-});
-
-test('one unit folds into exactly one message, so a summary is never repeated', () => {
-  const decisions = planDecisions({
-    messages, index, evicted: [{ nodeId: 'n1', start: 1, end: 15, summary: 'gist' }],
-    protectTail: 1, summaries: true,
-  });
-  assert.equal(decisions.filter((d) => d.action === 'fold').length, 1);
+test('the G0 gate assembles every turn and never evicts, whatever the trigger says', () => {
+  const gate = policyFromEnv({ CT_G0_DROP_FIRST: '1', CT_CT_TRIGGER: 'soft' });
+  assert.equal(assembleWindowFor(gate), HARD);
+  assert.equal(evictCallFor(gate, 5, 10_000_000), null);
 });
 
 test('applyDecisions mutates the array in place, because the hook discards a return value', () => {
@@ -187,15 +128,25 @@ test('a misconfigured policy is refused rather than silently reduced to its cont
   assert.deepEqual(bad({}), []);
 });
 
-test('a fold the message shape cannot take is recorded, so a summaries arm cannot look inert by accident', () => {
-  const toolOnly = [msg('m1'), msg('m2', { hasTools: true }), msg('m3', { hasTools: true }), msg('m4')];
-  const decisions = planDecisions({
-    messages: toolOnly, index, evicted: [{ nodeId: 'n1', start: 3, end: 9, summary: 'gist' }],
-    protectTail: 1, summaries: true,
-  });
-  const wanted = decisions.filter((d) => d.foldWanted);
-  assert.equal(wanted.length, 1, 'the unit wanted a fold and no message could take one');
-  assert.equal(wanted[0].action, 'drop');
+test('a reduction swaps tool OUTPUT text in place — the part, its call and its result stay put', () => {
+  const tool = (output) => ({ type: 'tool', tool: 'read', state: { status: 'completed', input: { filePath: 'a' }, output } });
+  const host = { info: { id: 'b', role: 'assistant' }, parts: [{ type: 'text', text: 'looking' }, tool('AAAA'.repeat(100)), tool('BBBB'.repeat(100))] };
+  const live = [{ info: { id: 'a', role: 'user' }, parts: [{ type: 'text', text: 'task' }] }, host];
+  const result = applyDecisions(live, [{ id: 'b', action: 'reduce', outputs: [{ index: 1, text: 'B…' }] }]);
+  assert.deepEqual(result, { dropped: 0, folded: 0, reduced: 1 });
+  assert.equal(live.length, 2);
+  assert.deepEqual(live[1].parts.map((p) => p.state?.output ?? p.text), ['looking', 'AAAA'.repeat(100), 'B…']);
+  assert.deepEqual(live[1].parts[2].state.input, { filePath: 'a' }, 'the call is untouched');
+  // The host's own objects are what the session store and the graded export reference.
+  assert.equal(host.parts[2].state.output, 'BBBB'.repeat(100));
+  assert.notEqual(live[1], host);
+});
+
+test('a reduction that names no existing tool output changes nothing and counts nothing', () => {
+  const live = [{ info: { id: 'b', role: 'assistant' }, parts: [{ type: 'text', text: 'no tools here' }] }];
+  const before = live[0];
+  assert.deepEqual(applyDecisions(live, [{ id: 'b', action: 'reduce', outputs: [{ index: 0, text: 'x' }] }]), { dropped: 0, folded: 0, reduced: 0 });
+  assert.equal(live[0], before);
 });
 
 test('the plugin never mutates the host message object it folds, only the array slot', () => {
@@ -231,7 +182,7 @@ test('the sidecar ingests a message only once it can gain no further events', ()
  */
 test('an arm that booted on different settings than were asked for is reported, not recorded as the arm', () => {
   const asked = { CT_CT_TRIGGER: 'soft', CT_CT_WINDOW: '50347', CT_CT_SUMMARIES: '0', CT_CT_ANCHOR: '3', CT_CT_W_DORMANCY: '2' };
-  const ready = { pipeline: { anchor: 3, weights: { priority: 2, recency: 1, refRecency: 0.5, dormancy: 2 } }, neutral_phases: ['other'], contract: 'v1' };
+  const ready = { pipeline: { anchor: 3, wDormancy: 2 }, neutral_phases: ['other'], contract: 'v1' };
   const loaded = { policy: { trigger: 'soft', softWindow: 50_347, summaries: false } };
   assert.deepEqual(armDisagreements(asked, effectiveArm(ready, loaded)), []);
 

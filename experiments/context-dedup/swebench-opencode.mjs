@@ -46,6 +46,7 @@ import { chooseEndpoint, acquireSlots, LEASE_MARKER, MAX_LOCAL_SLOTS } from './s
 import { openSandbox, exitFromSandbox, pythonHomeOf, MASKED, MASKED_LIBRARIES } from './swebench-sandbox.mjs';
 import { writeResults, gitSha, nowISO } from '../rung-1-live-probe/lib.mjs';
 import { policyFromEnv, validatePolicy } from './oc-plugin/policy.mjs';
+import { pathToFileURL } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = join(HERE, '..', '..');
@@ -81,41 +82,47 @@ const WANTS_PLUGIN = ARM === 'ct';
 const G0_MARKER = process.env.CT_G0_MARKER || '';
 const G0_FOLD_MARKER = process.env.CT_G0_FOLD_MARKER || '';
 const G0_FOLD_TEXT = G0_FOLD_MARKER ? `Continue the task. Harness marker: ${G0_FOLD_MARKER}` : '';
+const G0_REDUCE_MARKER = process.env.CT_G0_REDUCE_MARKER || '';
+const G0_REDUCE_TEXT = G0_REDUCE_MARKER ? `[output reduced] Harness marker: ${G0_REDUCE_MARKER}` : '';
 const G0_DROP_FIRST = process.env.CT_G0_DROP_FIRST === '1';
 /**
  * The arm, in two halves that travel to two processes. POLICY (when to evict, at what
- * window) is the plugin's and rides on opencode's process env; PIPELINE (the server
- * defaults of the tools it calls — every one PROVISIONAL in core, so every one a knob)
- * is the sidecar's and rides on the MCP `environment` block. Both are named here so a
- * cell says exactly which arm produced it; an unset knob is recorded as `null`, meaning
- * the package default, which the sidecar's own `ready` row then spells out.
+ * window) is the plugin's and rides on opencode's process env; PIPELINE (the server defaults
+ * of the tools it calls) is the sidecar's and rides on the MCP `environment` block.
+ *
+ * The pipeline half is NOT listed here: it is `@context-tree/mcp`'s parameter registry, read
+ * from the build the sidecar will run. An unset knob is recorded as absent, meaning the
+ * package default, which the sidecar's own `ready` row then spells out.
  */
 const POLICY_KEYS = Object.freeze({
     CT_CT_TRIGGER: 'soft', CT_CT_WINDOW: '50347', CT_CT_HARD_WINDOW: '151040', CT_CT_CADENCE_N: '5',
-    CT_CT_SUMMARIES: '0', CT_CT_REPLY_RESERVE: '8192', CT_CT_HEAD_TOKENS: '12000', CT_CT_PROTECT_TAIL: '6',
+    CT_CT_REPLY_RESERVE: '8192', CT_CT_HEAD_TOKENS: '12000',
 });
-const PIPELINE_KEYS = Object.freeze([
-    'CT_CT_ANCHOR', 'CT_CT_W_PRIORITY', 'CT_CT_W_RECENCY', 'CT_CT_W_REFRECENCY', 'CT_CT_W_DORMANCY',
-    'CT_CT_PRIORITY_HALFLIFE', 'CT_CT_EVICT_HEADROOM', 'CT_CT_SOFT_TARGET_FRAC', 'CT_CT_REDUCER',
-    'CT_CT_DRIFT_K', 'CT_CT_DRIFT_TAU', 'CT_CT_RRF_K', 'CT_CT_CHUNK_SIZE', 'CT_CT_CHUNK_OVERLAP',
-    'CT_CT_NEUTRAL_PHASES', 'CT_CONTRACT',
-]);
+const POLICY_FIELDS = Object.freeze({
+    CT_CT_TRIGGER: ['trigger', String], CT_CT_WINDOW: ['softWindow', Number], CT_CT_HARD_WINDOW: ['hardWindow', Number],
+    CT_CT_CADENCE_N: ['cadenceN', Number], CT_CT_REPLY_RESERVE: ['replyReserve', Number], CT_CT_HEAD_TOKENS: ['headTokens', Number],
+});
+const SIDECAR_ONLY_KEYS = Object.freeze(['CT_CT_NEUTRAL_PHASES', 'CT_CONTRACT']);
+
+/** `[env, key, cast]` per registry row — so a parameter added to the package is forwarded and checked with no edit here. */
+async function pipelineRegistry() {
+    const dist = join(REPO, 'packages', 'mcp', 'dist', 'index.js');
+    if (!existsSync(dist)) return [];
+    const { PIPELINE_PARAMS } = await import(pathToFileURL(dist).href);
+    const cast = (spec) => (spec.kind === 'bool' ? (v) => v === '1' : spec.kind === 'enum' ? String : Number);
+    return PIPELINE_PARAMS.map((spec) => [spec.env, spec.key, cast(spec)]);
+}
+const PIPELINE_REGISTRY = await pipelineRegistry();
 const fromEnv = (keys) => Object.fromEntries(keys.filter((k) => process.env[k] !== undefined && process.env[k] !== '').map((k) => [k, process.env[k]]));
 const POLICY_ENV = Object.freeze(Object.fromEntries(Object.entries(POLICY_KEYS).map(([k, d]) => [k, process.env[k] || d])));
-// CT_CT_PROTECT_TAIL is both: the plugin passes it per call, the sidecar holds the default.
-const PIPELINE_ENV = Object.freeze({ ...fromEnv(PIPELINE_KEYS), CT_CT_PROTECT_TAIL: POLICY_ENV.CT_CT_PROTECT_TAIL });
+const PIPELINE_ENV = Object.freeze(fromEnv([...PIPELINE_REGISTRY.map(([env]) => env), ...SIDECAR_ONLY_KEYS]));
 const ASSEMBLE_PORT = process.env.CT_ASSEMBLE_PORT || '8899';
 const ASSEMBLE_MS = process.env.CT_ASSEMBLE_MS || '8000';
-const CT_OPTIONS = Object.freeze({
-    ...POLICY_ENV, ...PIPELINE_ENV, CT_ASSEMBLE_PORT: ASSEMBLE_PORT, CT_ASSEMBLE_MS: ASSEMBLE_MS,
-    // Recorded, not just forwarded: a gate cell has to be unmistakable in the results file.
-    ...(G0_DROP_FIRST ? { CT_G0_DROP_FIRST: '1', CT_G0_FOLD_TEXT: G0_FOLD_TEXT } : {}),
-});
-/** What the SIDECAR needs. The policy never goes there: a sidecar cannot evict by itself any more. */
-const SIDECAR_ENV = Object.freeze({
-    ...PIPELINE_ENV, CT_ASSEMBLE_PORT: ASSEMBLE_PORT,
-    ...(G0_DROP_FIRST ? { CT_G0_DROP_FIRST: '1', CT_G0_FOLD_TEXT: G0_FOLD_TEXT } : {}),
-});
+const G0_EXTRA = G0_DROP_FIRST ? { CT_G0_DROP_FIRST: '1', CT_G0_FOLD_TEXT: G0_FOLD_TEXT, CT_G0_REDUCE_TEXT: G0_REDUCE_TEXT } : {};
+// Recorded, not just forwarded: a gate cell has to be unmistakable in the results file.
+const CT_OPTIONS = Object.freeze({ ...POLICY_ENV, ...PIPELINE_ENV, CT_ASSEMBLE_PORT: ASSEMBLE_PORT, CT_ASSEMBLE_MS: ASSEMBLE_MS, ...G0_EXTRA });
+/** What the SIDECAR needs. The policy never goes there: it cannot evict by itself. */
+const SIDECAR_ENV = Object.freeze({ ...PIPELINE_ENV, CT_ASSEMBLE_PORT: ASSEMBLE_PORT, ...G0_EXTRA });
 /**
  * The arm's window in tokens (0 = the model's declared context). opencode compacts at
  * `limit.context − output cap`, so the window is imposed by declaring it, and the output
@@ -257,28 +264,8 @@ function mcpActivity(sandbox, summary) {
  * life, so the request is compared against what the sidecar says it booted with.
  */
 const ARM_FIELDS = Object.freeze({
-    CT_CT_TRIGGER: ['trigger', String],
-    CT_CT_WINDOW: ['softWindow', Number],
-    CT_CT_HARD_WINDOW: ['hardWindow', Number],
-    CT_CT_CADENCE_N: ['cadenceN', Number],
-    CT_CT_SUMMARIES: ['summaries', (v) => v === '1'],
-    CT_CT_REPLY_RESERVE: ['replyReserve', Number],
-    CT_CT_HEAD_TOKENS: ['headTokens', Number],
-    CT_CT_PROTECT_TAIL: ['protectTail', Number],
-    CT_CT_ANCHOR: ['anchor', Number],
-    CT_CT_W_PRIORITY: ['w_priority', Number],
-    CT_CT_W_RECENCY: ['w_recency', Number],
-    CT_CT_W_REFRECENCY: ['w_refRecency', Number],
-    CT_CT_W_DORMANCY: ['w_dormancy', Number],
-    CT_CT_PRIORITY_HALFLIFE: ['priorityHalfLife', Number],
-    CT_CT_EVICT_HEADROOM: ['evictHeadroomTokens', Number],
-    CT_CT_SOFT_TARGET_FRAC: ['softTargetFrac', Number],
-    CT_CT_REDUCER: ['reducer', String],
-    CT_CT_DRIFT_K: ['driftK', Number],
-    CT_CT_DRIFT_TAU: ['driftTau', Number],
-    CT_CT_RRF_K: ['rrfK', Number],
-    CT_CT_CHUNK_SIZE: ['chunkSize', Number],
-    CT_CT_CHUNK_OVERLAP: ['chunkOverlap', Number],
+    ...POLICY_FIELDS,
+    ...Object.fromEntries(PIPELINE_REGISTRY.map(([env, key, cast]) => [env, [key, cast]])),
     CT_CT_NEUTRAL_PHASES: ['neutralPhases', (v) => (v === 'none' ? '' : v.split(',').map((p) => p.trim()).filter(Boolean).join(','))],
     CT_CONTRACT: ['contract', String],
 });
@@ -289,11 +276,9 @@ const ARM_FIELDS = Object.freeze({
  */
 export function effectiveArm(ready, loaded) {
     if (!ready || !loaded?.policy) return null;
-    const { weights = {}, ...pipeline } = ready.pipeline ?? {};
     return {
-        ...pipeline, ...Object.fromEntries(Object.entries(weights).map(([k, v]) => [`w_${k}`, v])),
+        ...(ready.pipeline ?? {}),
         neutralPhases: (ready.neutral_phases ?? []).join(','), contract: ready.contract ?? null,
-        // The policy last: `protectTail` is passed per call, so the plugin's value is the one that ran.
         ...loaded.policy,
     };
 }
@@ -324,7 +309,7 @@ function assembleActivity(runDir) {
     };
     const plugin = read('ct-plugin.jsonl');
     const rows = read('ct-mcp.jsonl');
-    const sidecar = rows.filter((r) => r.event === 'assemble' || r.event === 'assemble_error');
+    const sidecar = rows.filter((r) => r.event === 'assemble' || r.event === 'evict' || r.event === 'assemble_error');
     const ready = rows.find((r) => r.event === 'ready');
     const loaded = plugin.find((r) => r.event === 'loaded');
     const effective = effectiveArm(ready, loaded);
@@ -342,12 +327,14 @@ function assembleActivity(runDir) {
         plugin_errors: turns.filter((r) => r.error).length,
         messages_dropped: turns.reduce((n, r) => n + (r.dropped ?? 0), 0),
         messages_folded: turns.reduce((n, r) => n + (r.folded ?? 0), 0),
+        messages_reduced: turns.reduce((n, r) => n + (r.reduced ?? 0), 0),
+        reduced_units: Math.max(0, ...rows.filter((r) => r.event === 'assemble').map((r) => r.reduced ?? 0)),
         assemble_calls: sidecar.length,
         assemble_errors: sidecar.filter((r) => r.event === 'assemble_error').length,
-        evicted_units: sidecar.reduce((n, r) => n + (r.evicted?.length ?? 0), 0),
+        evicted_units: rows.filter((r) => r.event === 'evict').reduce((n, r) => n + (r.evicted?.length ?? 0), 0),
         evict_calls: rows.filter((r) => r.event === 'evict').length,
         floor_evictions: turns.filter((r) => r.evict_floor).length,
-        fired: turns.some((r) => (r.dropped ?? 0) > 0 || (r.folded ?? 0) > 0),
+        fired: turns.some((r) => (r.dropped ?? 0) > 0 || (r.folded ?? 0) > 0 || (r.reduced ?? 0) > 0),
     };
 }
 
@@ -462,13 +449,14 @@ async function runOne(task, repeat) {
                 needles: {
                     ...(G0_MARKER ? { g0: G0_MARKER } : {}),
                     ...(G0_FOLD_MARKER ? { g0fold: G0_FOLD_MARKER } : {}),
+                    ...(G0_REDUCE_MARKER ? { g0reduce: G0_REDUCE_MARKER } : {}),
                 },
                 marker: {
                     ...(sel.marker !== null && sel.marker !== undefined ? { [LEASE_MARKER]: sel.marker } : {}),
                     ...(OUTPUT_CAP > 0 ? { OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX: String(OUTPUT_CAP) } : {}),
                     // The plugin runs inside opencode, so its settings ride on the process env.
                     ...(WANTS_PLUGIN ? {
-                        ...POLICY_ENV, CT_ASSEMBLE_MS: ASSEMBLE_MS,
+                        ...POLICY_ENV, CT_ASSEMBLE_MS: ASSEMBLE_MS, ...(G0_DROP_FIRST ? { CT_G0_DROP_FIRST: '1' } : {}),
                         CT_TOOLS_URL: `http://127.0.0.1:${ASSEMBLE_PORT}/v1/tools`,
                         CT_PLUGIN_EVENTS: join(runDir, 'mcp', 'ct-plugin.jsonl'),
                     } : {}),
@@ -537,10 +525,10 @@ async function main() {
     if (WANTS_PLUGIN) {
         // Refused HERE, before a GPU-hour is spent: inside the sandbox a bad knob can only fail open.
         const problems = validatePolicy(policyFromEnv(POLICY_ENV));
-        for (const k of PIPELINE_KEYS.filter((key) => !['CT_CT_REDUCER', 'CT_CT_NEUTRAL_PHASES', 'CT_CONTRACT'].includes(key))) {
-            if (PIPELINE_ENV[k] !== undefined && !(Number.isFinite(Number(PIPELINE_ENV[k])) && Number(PIPELINE_ENV[k]) >= 0)) problems.push(`${k} must be a non-negative number, got "${PIPELINE_ENV[k]}"`);
-        }
-        if (PIPELINE_ENV.CT_CT_REDUCER && !['chunk', 'summarize'].includes(PIPELINE_ENV.CT_CT_REDUCER)) problems.push(`CT_CT_REDUCER must be chunk|summarize, got "${PIPELINE_ENV.CT_CT_REDUCER}"`);
+        try {
+            const { pipelineFromEnv } = await import(pathToFileURL(join(REPO, 'packages', 'mcp', 'dist', 'index.js')).href);
+            pipelineFromEnv(PIPELINE_ENV);
+        } catch (error) { problems.push(String(error?.message ?? error)); }
         if (problems.length) throw new Error(`arm misconfigured: ${problems.join('; ')}`);
     }
     const selection = existsSync(SELECTION) ? JSON.parse(readFileSync(SELECTION, 'utf8')) : null;
@@ -584,7 +572,7 @@ function manifestAndCells(ids, cells, selection) {
                 ? 'bwrap: no network (model relay only), no dataset/repos/wscache/other runs/operator home; per-run preflight in each cell'
                 : 'OFF (CT_SANDBOX=0): the agent can read the dataset, repos/, wscache/, other runs and the network',
             arm: ARM === 'ct'
-                ? `ct: the plugin at opencode's experimental.chat.messages.transform calls the @context-tree/mcp tools over loopback HTTP — evict per its policy (trigger ${CT_OPTIONS.CT_CT_TRIGGER}, window ${CT_OPTIONS.CT_CT_WINDOW}, cadence ${CT_OPTIONS.CT_CT_CADENCE_N}, summaries ${CT_OPTIONS.CT_CT_SUMMARIES}), then verdicts; eviction is sticky; the agent sees the same tools over MCP; host compaction OFF; per-cell \`ct\` records whether it fired`
+                ? `ct: the plugin at opencode's experimental.chat.messages.transform calls the @context-tree/mcp tools over loopback HTTP — assemble, then evict per its policy (trigger ${CT_OPTIONS.CT_CT_TRIGGER}, window ${CT_OPTIONS.CT_CT_WINDOW}, cadence ${CT_OPTIONS.CT_CT_CADENCE_N}, summaries ${CT_OPTIONS.CT_CT_SUMMARIES}), on top of assemble every turn; rulings are sticky; the agent sees the same tools over MCP; host compaction OFF; per-cell \`ct\` records whether it fired`
                 : ARM === 'mcp'
                     ? 'mcp: @context-tree/mcp attached as an opencode MCP server, fed from the live session db (experiments/context-dedup/ct-sidecar.mjs); per-cell `mcp` records whether it fired'
                     : 'off: the host\'s own context handling, no context-tree server',

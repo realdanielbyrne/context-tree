@@ -8,7 +8,7 @@
  * and a reduction replaces a tool's OUTPUT TEXT while the call and its result stay paired.
  */
 import { deriveTurns, resolveReducer, type NodeId, type TraceEvent } from '@context-tree/core';
-import { dispositionOf, sessionOf, sessionUnits, type SessionUnit } from '../session.js';
+import { dispositionOf, sessionOf, sessionUnits } from '../session.js';
 import type { ToolContext } from '../types.js';
 
 export type Decision =
@@ -53,37 +53,44 @@ export async function decisionsFor(
   const lastSeq = ctx.handle.trace.lastSeq();
   const events = lastSeq >= 1 ? [...ctx.handle.trace.read({ from: 1, to: lastSeq })] : [];
   const turnOf = new Map(deriveTurns(events).flatMap((t) => (t.hostId !== undefined ? [[t.hostId, t] as const] : [])));
-  const folded = new Set<string>();
-  const foldRefused = new Set<string>();
 
-  return messages.map((message): Decision => {
+  const located = messages.map((message) => {
+    const turn = turnOf.get(message.id);
+    const unit = turn === undefined ? undefined : units.find((u) => u.startSeq <= turn.startSeq && turn.startSeq <= u.endSeq);
+    return { message, turn, unit, disposition: unit === undefined ? undefined : dispositionOf(session, unit.id) };
+  });
+
+  // A folded phase is carried by ONE message: the first of its messages that has no tool
+  // parts (a call and its result must travel together, so such a message is keep-or-drop).
+  // A phase with no such message loses its summary, and says so once rather than silently.
+  const summaryOf = new Map<string, string>();
+  for (const { unit, disposition } of located) if (unit !== undefined && disposition?.kind === 'fold') summaryOf.set(unit.phase.id, disposition.text);
+  const carrier = new Map<string, string>();
+  for (const { message, unit, disposition } of located) {
+    const inFold = unit !== undefined && summaryOf.has(unit.phase.id) && (disposition?.kind === 'fold' || disposition?.kind === 'drop');
+    if (inFold && message.hasTools !== true && !carrier.has(unit.phase.id)) carrier.set(unit.phase.id, message.id);
+  }
+  const refusalReported = new Set<string>();
+
+  return located.map(({ message, turn, unit, disposition }): Decision => {
     const keep: Decision = { id: message.id, action: 'keep' };
     // Not ingested yet: nothing is known about it, so nothing is done to it.
-    const turn = turnOf.get(message.id);
-    if (turn === undefined) return keep;
-    const unit: SessionUnit | undefined = units.find((u) => u.startSeq <= turn.startSeq && turn.startSeq <= u.endSeq);
-    if (unit === undefined) return keep;
-
-    const disposition = dispositionOf(session, unit.id);
+    if (turn === undefined || unit === undefined || disposition === undefined) return keep;
     switch (disposition.kind) {
       case 'keep':
         return keep;
-      case 'drop':
-        return { id: message.id, action: 'drop', unit: unit.id };
       case 'reduce': {
         const outputs = reducedOutputs(ctx, events.slice(turn.startSeq - 1, turn.endSeq), disposition.tokens / Math.max(1, unit.tokens));
         return outputs.length > 0 ? { id: message.id, action: 'reduce', unit: unit.id, outputs } : keep;
       }
-      case 'fold': {
-        // One message carries the summary; a message with tool parts cannot (a call and its
-        // result must travel together), so the refusal is recorded ONCE rather than swallowed.
-        if (!folded.has(unit.id) && message.hasTools !== true) {
-          folded.add(unit.id);
-          return { id: message.id, action: 'fold', unit: unit.id, text: disposition.text };
-        }
-        const firstRefusal = !folded.has(unit.id) && !foldRefused.has(unit.id);
-        if (firstRefusal) foldRefused.add(unit.id);
-        return { id: message.id, action: 'drop', unit: unit.id, ...(firstRefusal ? { foldWanted: true as const } : {}) };
+      case 'fold':
+      case 'drop': {
+        const phase = unit.phase.id;
+        const summary = summaryOf.get(phase);
+        if (summary !== undefined && carrier.get(phase) === message.id) return { id: message.id, action: 'fold', unit: unit.id, text: summary };
+        const refused = summary !== undefined && !carrier.has(phase) && !refusalReported.has(phase);
+        if (refused) refusalReported.add(phase);
+        return { id: message.id, action: 'drop', unit: unit.id, ...(refused ? { foldWanted: true as const } : {}) };
       }
     }
   });

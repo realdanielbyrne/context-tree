@@ -20,7 +20,8 @@
  * instance:
  *
  *   control    CT_ARM=ct, no edit        the marker must be on EVERY mediated request
- *   treatment  CT_G0_DROP_FIRST=1        the gate folds that message to a SECOND marker and
+ *   treatment  CT_G0_DROP_FIRST=1        the gate folds that message to a SECOND marker,
+ *                                        replaces one tool OUTPUT with a THIRD, and
  *                                        splices the assistant message after it
  *
  * The claim is two-sided, which is what makes it a proof rather than a coincidence: the
@@ -104,12 +105,15 @@ function readArm(tag, since) {
   const conv = mediated(wire);
   const marked = (r) => (r.counts?.g0 ?? 0);
   const replaced = (r) => (r.counts?.g0fold ?? 0);
+  const reducedOn = (r) => (r.counts?.g0reduce ?? 0);
 
   // The edit happens BEFORE the request leaves, so every mediated request from the first
   // reported edit onward must already show it. An existential "some request lacked the
   // marker" would be satisfied by a subagent session or a retry.
   const edits = plugin.filter((r) => (r.dropped ?? 0) > 0 || (r.folded ?? 0) > 0);
   const drops = plugin.filter((r) => (r.dropped ?? 0) > 0);
+  const reduces = plugin.filter((r) => (r.reduced ?? 0) > 0);
+  const afterReduce = reduces.length > 0 ? conv.filter((r) => String(r.ts) >= String(reduces[0].ts)) : [];
   const firstEditTs = edits.length > 0 ? String(edits[0].ts) : null;
   const after = firstEditTs ? conv.filter((r) => String(r.ts) >= firstEditTs) : [];
   const before = firstEditTs ? conv.filter((r) => String(r.ts) < firstEditTs) : conv;
@@ -139,6 +143,12 @@ function readArm(tag, since) {
     plugin_turns: plugin.filter((r) => r.turn !== undefined).length,
     plugin_errors: plugin.filter((r) => r.error).length,
     fold_turns: plugin.filter((r) => (r.folded ?? 0) > 0).length,
+    // The edit every reduction makes: a tool OUTPUT replaced in place. Same two-sided,
+    // ordered claim as the fold — text that exists only in the replacement must arrive.
+    reduce_turns: reduces.length,
+    after_first_reduce: afterReduce.length,
+    after_all_reduced: afterReduce.length > 0 && afterReduce.every((r) => reducedOn(r) >= 1),
+    reduce_seen: conv.filter((r) => reducedOn(r) >= 1).length,
     drop_turns: drops.length,
     // The sidecar's own account of taking the gate path, so "the flag never arrived" is not
     // reported as "the splice was discarded" — two defects, one symptom.
@@ -174,6 +184,7 @@ export function gradeG0({ control, treatment }) {
   if (treatment.fold_turns === 0 && treatment.drop_turns === 0 && treatment.sidecar_g0_rows === 0 && treatment.sidecar_assembles > 0) {
     voids.push('treatment: the sidecar never entered the gate path — CT_G0_DROP_FIRST did not reach it, so nothing was asked to edit');
   }
+  if (control.reduce_seen > 0) voids.push(`control: the reduced-output text appeared on ${control.reduce_seen} requests without any edit; it is not unique to the plugin`);
   if (control.replacement_seen > 0) {
     voids.push(`control: the replacement text appeared on ${control.replacement_seen} requests without any edit; it is not unique to the plugin`);
   }
@@ -187,6 +198,9 @@ export function gradeG0({ control, treatment }) {
 
   if (treatment.fold_turns === 0) reasons.push('treatment never edited: no plugin turn reports a fold');
   if (treatment.drop_turns === 0) reasons.push('treatment never spliced: no plugin turn reports a drop');
+  if (treatment.reduce_turns === 0) reasons.push('treatment never reduced: no plugin turn reports an edited tool output');
+  else if (treatment.after_first_reduce === 0) reasons.push('treatment made no mediated request after its first reduction: the run ended too early to observe one');
+  else if (!treatment.after_all_reduced) reasons.push("treatment's reduced tool output never reached the provider: an in-place output edit is not what gets serialized");
   // ORDERED, not existential. "Some request lacked the marker" is satisfied by a subagent
   // session or a retry; "every request after the first edit lacked it, and every request
   // before it carried it" is satisfied only by the edit.
@@ -209,13 +223,14 @@ export function gradeG0({ control, treatment }) {
   };
 }
 
-function run({ tag, drop, marker, foldMarker }) {
+function run({ tag, drop, marker, foldMarker, reduceMarker }) {
   const env = {
     ...process.env,
     CT_ARM: 'ct',
     CT_CT_TRIGGER: 'off',
     CT_G0_MARKER: marker,
     CT_G0_FOLD_MARKER: foldMarker,
+    CT_G0_REDUCE_MARKER: reduceMarker,
     CT_TAG: tag,
     CT_INSTANCES: INSTANCE,
     CT_REPEATS: '1',
@@ -247,17 +262,19 @@ function main() {
   const markerFile = join(OUTDIR, 'g0-marker.json');
   let marker;
   let foldMarker;
+  let reduceMarker;
   let since;
   if (only === 'grade') {
     if (!existsSync(markerFile)) throw new Error(`no ${markerFile}: nothing to grade`);
-    ({ marker, foldMarker, at: since } = JSON.parse(readFileSync(markerFile, 'utf8')));
+    ({ marker, foldMarker, reduceMarker, at: since } = JSON.parse(readFileSync(markerFile, 'utf8')));
   } else {
     marker = `CTG0-${randomBytes(12).toString('hex')}`;
     foldMarker = `CTG0FOLD-${randomBytes(12).toString('hex')}`;
+    reduceMarker = `CTG0REDUCE-${randomBytes(12).toString('hex')}`;
     since = new Date().toISOString();
     mkdirSync(OUTDIR, { recursive: true });
-    writeFileSync(markerFile, JSON.stringify({ marker, foldMarker, instance: INSTANCE, at: since }, null, 2));
-    for (const arm of ARMS) run({ ...arm, marker, foldMarker });
+    writeFileSync(markerFile, JSON.stringify({ marker, foldMarker, reduceMarker, instance: INSTANCE, at: since }, null, 2));
+    for (const arm of ARMS) run({ ...arm, marker, foldMarker, reduceMarker });
   }
 
   const control = readArm(ARMS[0].tag, since);
@@ -266,7 +283,7 @@ function main() {
   const report = {
     gate: 'G0 mutation visibility',
     question: 'does an in-place splice at experimental.chat.messages.transform reach the provider?',
-    marker, fold_marker: foldMarker, instance: INSTANCE, model: MODEL, at: new Date().toISOString(),
+    marker, fold_marker: foldMarker, reduce_marker: reduceMarker, instance: INSTANCE, model: MODEL, at: new Date().toISOString(),
     control, treatment, ...verdict,
   };
   writeFileSync(join(OUTDIR, 'g0-mutation-visibility.json'), `${JSON.stringify(report, null, 2)}\n`);

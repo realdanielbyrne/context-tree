@@ -103,10 +103,12 @@ describe('representUnits — assembly chooses a representation and removes nothi
     expect(out.get('u0')).toMatchObject({ kind: 'fold', text: 'what phase one did' });
     expect(out.get('u1')).toEqual({ kind: 'drop', why: 'covered' });
     expect(out.get('u2')?.kind).toBe('keep');
-    // Summaries off, or a member inside the anchor or pinned: the phase stays raw.
+    // Summaries off, or a member inside the anchor: the phase stays raw.
     expect([...representUnits(units, ap()).values()].every((d) => d.kind === 'keep')).toBe(true);
     expect(representUnits(units.slice(0, 2), ap({ summaries: true })).get('u0')?.kind).toBe('keep');
-    expect(representUnits([au(0, 50, { group: closed, pinned: true }), ...units.slice(1)], ap({ summaries: true })).get('u0')?.kind).toBe('keep');
+    // A pinned member stays raw and out of the fold; the rest of its phase still folds.
+    const pinnedFirst = representUnits([au(0, 50, { group: closed, pinned: true }), ...units.slice(1)], ap({ summaries: true }));
+    expect([pinnedFirst.get('u0')?.kind, pinnedFirst.get('u1')?.kind]).toEqual(['keep', 'fold']);
   });
 
   it('never reduces a pinned unit', () => {

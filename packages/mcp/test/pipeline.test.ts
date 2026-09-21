@@ -229,6 +229,44 @@ describe('decisions for host messages — a rendering of the rulings, with no ru
   });
 });
 
+describe('folding a phase to its summary', () => {
+  /** user | assistant text + Read | Read | Edit … so the closed diagnosis phase has one text-bearing message. */
+  function folding(textInPhase: boolean): ToolContext {
+    const ctx = seed(0, 0, { summaries: true, anchor: 1, reducer: 'none' });
+    const { trace, blobs, store } = ctx.handle;
+    const call = (tool: string, turn_id: string): void => {
+      const c = trace.append({ type: 'tool_call', ts: TS, tool, path: 'src/a.ts', turn_id, ...(tool === 'Edit' ? { blob: blobs.put('x') } : {}) });
+      trace.append({ type: 'tool_result', ts: TS, call_seq: c.seq, output_blob: blobs.put('out'), turn_id });
+    };
+    call('Read', 'm1');
+    if (textInPhase) trace.append({ type: 'assistant_message', ts: TS, blob: blobs.put('I see the bug'), turn_id: 'm2' });
+    call('Read', 'm3');
+    call('Edit', 'm4');
+    call('Edit', 'm5');
+    ingest({ handle: ctx.handle });
+    const diagnosis = store.byKind('phase').find((n) => n.phase_type === 'diagnosis')!;
+    store.putSummary({ node_id: diagnosis.id, model: 'test', text: 'Read a.ts; the bug is in price().', meta: { files: [], symbols: [], tests: [], artifacts: [], open_questions: [], decisions: [], node_ids: [] } });
+    return ctx;
+  }
+  const ids = ['m0', 'm1', 'm2', 'm3', 'm4', 'm5'];
+  const host = (hasText: boolean) => ids.filter((id) => hasText || id !== 'm2').map((id) => ({ id, hasTools: id !== 'm0' && id !== 'm2' }));
+
+  it('the first TEXT-ONLY message of the phase carries the summary; its other messages go', async () => {
+    const data = unwrap(await contextAssemble(folding(true), { window_tokens: 100_000, messages: host(true) }));
+    const by = Object.fromEntries(data.decisions!.map((d) => [d.id, d]));
+    expect(by['m2']).toMatchObject({ action: 'fold', text: 'Read a.ts; the bug is in price().' });
+    expect([by['m1']!.action, by['m3']!.action]).toEqual(['drop', 'drop']);
+    expect([by['m0']!.action, by['m4']!.action, by['m5']!.action]).toEqual(['keep', 'keep', 'keep']);
+    expect(data.actions).toMatchObject({ fold: 1, drop: 2 });
+  });
+
+  it('a phase with no text-only message loses its summary and says so exactly once', async () => {
+    const data = unwrap(await contextAssemble(folding(false), { window_tokens: 100_000, messages: host(false) }));
+    expect(data.actions).toMatchObject({ fold: 0, drop: 2 });
+    expect(data.decisions!.filter((d) => d.action === 'drop' && d.foldWanted === true)).toHaveLength(1);
+  });
+});
+
 describe('the parameter registry', () => {
   it('is the single source: env, defaults, tool arguments and /v1/params all derive from it', () => {
     const p = pipelineFromEnv({ CT_CT_ANCHOR: '3', CT_CT_W_DORMANCY: '2.5', CT_CT_REDUCER: 'summarize', CT_CT_SUMMARIES: '1', CT_CT_UNIT: 'phase', CT_CT_TOPK: '9' });

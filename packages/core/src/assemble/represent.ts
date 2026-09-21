@@ -65,10 +65,11 @@ export function representUnits(units: readonly AssembleUnit[], params: AssembleP
 
   if (params.summaries) {
     const groups = new Map<string, number[]>();
-    units.forEach((u, i) => { if (u.group !== undefined) groups.set(u.group.id, [...(groups.get(u.group.id) ?? []), i]); });
+    // A pinned member stays raw and stays out of the fold; it does not stop its phase folding.
+    units.forEach((u, i) => { if (u.group !== undefined && !u.pinned) groups.set(u.group.id, [...(groups.get(u.group.id) ?? []), i]); });
     for (const members of groups.values()) {
       const group = units[members[0]!]!.group!;
-      const foldable = group.closed && group.summary !== undefined && members.every((i) => i < anchorFrom && !units[i]!.pinned);
+      const foldable = group.closed && group.summary !== undefined && members.every((i) => i < anchorFrom);
       if (!foldable) continue;
       members.forEach((i, n) => {
         out.set(units[i]!.id, n === 0

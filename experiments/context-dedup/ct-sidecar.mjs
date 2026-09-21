@@ -5,7 +5,8 @@
  * It does the one thing `@context-tree/mcp` cannot do for itself — feed L0 from a LIVE
  * opencode session — and then starts the package's server on that store:
  *
- *   1. FOLLOW. opencode 1.18.31 keeps sessions in SQLite
+ *   1. FOLLOW. Each event is stamped with its opencode message id (`turn_id`), which is what
+ *      makes a pipeline unit — a turn — the same thing as a host message. opencode 1.18.31 keeps sessions in SQLite
  *      (`$XDG_DATA_HOME/opencode/opencode.db`, tables `message` and `part`, each row a JSON
  *      `data` column plus its ids) — the shapes `opencode export` prints, so
  *      `mapOpencodeExport` reads them unchanged. The db is polled read-only rather than
@@ -13,9 +14,7 @@
  *      take a slot from the run it is measuring. Only SETTLED parts are ingested, so L0
  *      stays an append-only prefix. `packages/mcp/dist/bin.js` alone serves a store someone
  *      built earlier; in a SWE-bench cell the only history is the one being produced now.
- *   2. PUBLISH the message index (opencode message id -> L0 seq range) into the session,
- *      which is what lets `verdicts` name host messages.
- *   3. SERVE the tool registry (D22) twice over one session: MCP stdio to the agent, and
+ *   2. SERVE the tool registry (D22) twice over one session: MCP stdio to the agent, and
  *      loopback HTTP to the plugin (`oc-plugin/`), which holds the eviction POLICY.
  *
  * Why a separate process from the plugin: the plugin runs inside opencode's bun runtime,
@@ -31,11 +30,9 @@
  *   CT_ASSEMBLE_PORT   the HTTP tool API's port; 0 disables it   (default 8899, loopback only)
  *   CT_ASSEMBLE_TOKEN  bearer token for that API
  *   CT_CONTRACT        system-contract version shipped as MCP instructions (default v1)
- *   CT_CT_NEUTRAL_PHASES  comma list, or `none` — decides unit granularity (default: config)
- *   CT_CT_ANCHOR, CT_CT_W_*, CT_CT_PRIORITY_HALFLIFE, CT_CT_EVICT_HEADROOM,
- *   CT_CT_SOFT_TARGET_FRAC, CT_CT_REDUCER, CT_CT_DRIFT_K, CT_CT_DRIFT_TAU, CT_CT_RRF_K,
- *   CT_CT_CHUNK_SIZE, CT_CT_CHUNK_OVERLAP, CT_CT_PROTECT_TAIL
- *                      server defaults for the pipeline tools (`pipelineFromEnv`); a value
+ *   CT_CT_NEUTRAL_PHASES  comma list, or `none` — decides PHASE granularity (default: config)
+ *   CT_CT_*            server defaults for the pipeline tools. The list is not restated here:
+ *                      it is `@context-tree/mcp` PIPELINE_PARAMS (`GET /v1/params`), and a value
  *                      that does not parse stops the process.
  *   CT_G0_DROP_FIRST   1 = the G0 gate, not an arm (see below)
  *
@@ -55,7 +52,7 @@ const REPO = process.env.CT_REPO_ROOT ?? join(HERE, '..', '..');
 const dist = (pkg) => pathToFileURL(join(REPO, 'packages', pkg, 'dist', 'index.js')).href;
 
 const { TreeRetriever, ingest, openTaskStore, resolveConfig } = await import(dist('core'));
-const { TOOLS, createHttpApi, createServer, createSession, pipelineFromEnv, toolContext, withHandlers } = await import(dist('mcp'));
+const { TOOLS, countActions, createHttpApi, createServer, createSession, pipelineFromEnv, toolContext, withHandlers } = await import(dist('mcp'));
 const { mapOpencodeExport } = await import(dist('cli'));
 
 const requireFromCore = createRequire(join(REPO, 'packages', 'core', 'dist', 'index.js'));
@@ -72,6 +69,7 @@ const DB = process.env.CT_MCP_DB
 const LOG = process.env.CT_MCP_LOG;
 const G0_DROP_FIRST = process.env.CT_G0_DROP_FIRST === '1';
 const G0_FOLD_TEXT = process.env.CT_G0_FOLD_TEXT || '';
+const G0_REDUCE_TEXT = process.env.CT_G0_REDUCE_TEXT || '';
 
 const log = (message) => process.stderr.write(`ct-sidecar: ${message}\n`);
 const record = (row) => {
@@ -150,18 +148,12 @@ function readSession(db, sessionId = null) {
 }
 
 /**
- * Follows the session: appends what is new and re-derives L1, and records which L0
- * seqs each opencode message produced.
- *
- * The seq index is what lets a unit (a phase node, which spans seqs) name the
- * messages the plugin must act on. It is built by mapping each message ALONE and
- * walking a cursor — the mapper is deterministic and per-message sequential, so the
- * ranges line up with the whole-document mapping. The sum is asserted against that
- * mapping; a mismatch disables the index rather than returning wrong ranges.
+ * Follows the session: appends what is new and re-derives L1. Each message is mapped ALONE
+ * and appended immediately, so its events carry its own id as `turn_id` and L0 receives
+ * exactly one turn per host message.
  */
-export function makeFollower(handle, { onIndex } = {}) {
+export function makeFollower(handle) {
   const done = new Set();
-  const index = new Map();
   let sessionId = null;
   let appendedTotal = 0;
 
@@ -177,22 +169,17 @@ export function makeFollower(handle, { onIndex } = {}) {
     let appended = 0;
     for (const message of doc.messages) {
       if (done.has(message.info.id) || !ingestable(message)) continue;
-      // Mapped ALONE and appended immediately, so the index range is what L0 actually
-      // received rather than an arithmetic claim about it.
-      const start = handle.trace.lastSeq() + 1;
-      const mapped = mapOpencodeExport({ messages: [message] }, { startSeq: start - 1, blobs: handle.blobs });
+      const mapped = mapOpencodeExport({ messages: [message] }, { startSeq: handle.trace.lastSeq(), blobs: handle.blobs });
       for (const event of mapped.events) {
         const { seq: _seq, ...rest } = event;
         handle.trace.append(rest);
       }
       done.add(message.info.id);
-      if (mapped.events.length > 0) index.set(message.info.id, { start, end: handle.trace.lastSeq() });
       appended += mapped.events.length;
     }
     if (appended === 0) return { appended: 0, total: appendedTotal };
 
     appendedTotal += appended;
-    onIndex?.(new Map(index));
     const stats = ingest({ handle });
     return { appended, total: appendedTotal, messages: done.size, nodes: stats.stats.nodes, phases: stats.stats.phases };
   };
@@ -217,6 +204,9 @@ export function makeFollower(handle, { onIndex } = {}) {
  *   FOLD  messages[0] -> a replacement carrying a SECOND marker. Two-sided and direct: the
  *         task statement's marker must vanish from the wire and the replacement's must
  *         appear. A user message survives, so the request stays well-formed.
+ *   REDUCE the first tool output past messages[1], from five messages on — the edit every
+ *         reduction makes. Two-sided like the fold: text that exists nowhere but the
+ *         replacement must arrive on the wire.
  *   SPLICE messages[1] from four messages on — an assistant message, which carries its own
  *         tool calls and results together and so can never orphan a result.
  *
@@ -224,59 +214,41 @@ export function makeFollower(handle, { onIndex } = {}) {
  * and there is nothing to edit that would leave a request worth sending. Those early turns
  * are the within-run control — the original marker must be on the wire there.
  */
-export function g0Decisions(messages, foldText) {
+export function g0Decisions(messages, foldText, reduceText = '') {
   const decisions = messages.map((m) => ({ id: m.id, action: 'keep' }));
   if (messages.length < 3 || !foldText) return decisions;
   decisions[0] = { id: messages[0].id, action: 'fold', text: foldText, g0: true };
   if (messages.length >= 4) decisions[1] = { id: messages[1].id, action: 'drop', g0: true };
+  // REDUCE: the first tool-carrying message past the spliced one has its first tool OUTPUT
+  // replaced. The call and its result stay paired, so the request stays well-formed.
+  const target = reduceText && messages.length >= 5 ? messages.findIndex((m, i) => i >= 2 && m.hasTools) : -1;
+  if (target >= 0) decisions[target] = { id: messages[target].id, action: 'reduce', outputs: [{ index: 0, text: reduceText }], g0: true };
   return decisions;
 }
 
-/**
- * The HTTP calls, as the evidence the gates read. One `assemble` row per turn — written
- * when `verdicts` answers, carrying that turn's `evict` if there was one —
- * so a turn with no evict call is visibly a turn where the policy did not fire.
- */
-function makeCallLog() {
-  let lastEvict = null;
-  return ({ tool, ok, ms, input, outcome }) => {
-    if (!ok) {
-      record({ event: 'assemble_error', tool, ms, error: `${outcome.error?.code}: ${outcome.error?.message}`.slice(0, 800) });
-      return;
-    }
-    const data = outcome.data;
-    if (tool === 'evict') {
-      lastEvict = { turn: data.turn, window: input.window_tokens, reserve: input.reserve_tokens ?? 0, evicted: data.evicted, fired: data.fired, live_before: data.live_tokens_before, live_after: data.live_tokens_after, ms };
-      record({ event: 'evict', ...lastEvict });
-      return;
-    }
-    if (tool !== 'verdicts') {
-      record({ event: 'tool', tool, ms });
-      return;
-    }
-    const evict = lastEvict?.turn === data.turn ? lastEvict : null;
-    record({
-      event: 'assemble', turn: data.turn, window: evict?.window ?? null, evict_called: evict !== null,
-      total: data.total_tokens, kept_tokens: data.kept_tokens, evicted: evict?.evicted ?? [], evicted_total: data.evicted_units,
-      live_unit_tokens: evict?.live_after ?? null, ceiling: input.ceiling_tokens ?? null, over_ceiling: data.over_ceiling,
-      escalations: data.escalations, protect_tail: data.protect_tail, indexed: data.indexed, ms: ms + (evict?.ms ?? 0),
-      dropped: data.decisions.filter((d) => d.action === 'drop').length,
-      folded: data.decisions.filter((d) => d.action === 'fold').length,
-      fold_unavailable: data.decisions.filter((d) => d.action === 'drop' && d.foldWanted).length,
-      ...(G0_DROP_FIRST ? { g0: 'drop_first' } : {}),
-    });
-  };
+/** Every HTTP call, as the evidence the gates read: one row per `assemble`, one per `evict`. */
+function logCall({ tool, ok, ms, input, outcome }) {
+  if (!ok) {
+    record({ event: 'assemble_error', tool, ms, error: `${outcome.error?.code}: ${outcome.error?.message}`.slice(0, 800) });
+    return;
+  }
+  const data = outcome.data;
+  const actions = data.decisions ? countActions(data.decisions) : null;
+  if (tool === 'assemble') {
+    const by = (kind) => (data.units ?? []).filter((u) => u.representation === kind).length;
+    record({ event: 'assemble', turn: data.turn, window: input.window_tokens, per_unit_budget: data.per_unit_budget, units: data.units?.length ?? 0, tokens_raw: data.tokens_raw, tokens_assembled: data.tokens_assembled, reduced: by('reduce'), folded: by('fold'), actions, ms, ...(G0_DROP_FIRST ? { g0: 'drop_first' } : {}) });
+  } else if (tool === 'evict') {
+    record({ event: 'evict', turn: data.turn, window: input.window_tokens, reserve: input.reserve_tokens ?? 0, fired: data.fired, evicted: data.evicted, evicted_total: data.evicted_total, tokens_before: data.tokens_before, tokens_after: data.tokens_after, over_budget: data.over_budget, actions, ms });
+  } else {
+    record({ event: 'tool', tool, ms });
+  }
 }
 
 /** The G0 gate swaps ONE stage behind its name; the transports and the plugin are untouched. */
-const g0Verdicts = async (_ctx, input) => {
-  const messages = input?.messages ?? [];
-  const total = messages.reduce((n, m) => n + (m.tokens ?? 0), 0);
-  return {
-    ok: true,
-    data: { turn: input?.turn ?? 0, indexed: true, total_tokens: total, kept_tokens: total, protect_tail: 0, escalations: 0, over_ceiling: false, evicted_units: 0, decisions: g0Decisions(messages, G0_FOLD_TEXT) },
-  };
-};
+const g0Assemble = async (_ctx, input) => ({
+  ok: true,
+  data: { turn: input?.turn ?? 0, per_unit_budget: 0, tokens_raw: 0, tokens_assembled: 0, units: [], decisions: g0Decisions(input?.messages ?? [], G0_FOLD_TEXT, G0_REDUCE_TEXT) },
+});
 
 function neutralPhasesFromEnv() {
   const raw = process.env.CT_CT_NEUTRAL_PHASES;
@@ -294,7 +266,7 @@ async function main() {
   const handle = openTaskStore(config);
   const retriever = new TreeRetriever({ store: handle.store, blobs: handle.blobs, trace: handle.trace });
   const session = createSession(pipeline);
-  const tools = G0_DROP_FIRST ? withHandlers({ verdicts: g0Verdicts }) : TOOLS;
+  const tools = G0_DROP_FIRST ? withHandlers({ assemble: g0Assemble }) : TOOLS;
   const contract = process.env.CT_CONTRACT || 'v1';
   const options = { config, handle, retriever, mode: config.mode, session, tools, contract };
   const ctx = toolContext(options);
@@ -304,7 +276,7 @@ async function main() {
   let api = null;
   if (port) {
     try {
-      api = await createHttpApi({ ctx, tools, port, token: process.env.CT_ASSEMBLE_TOKEN || '', onCall: makeCallLog() });
+      api = await createHttpApi({ ctx, tools, port, token: process.env.CT_ASSEMBLE_TOKEN || '', onCall: logCall });
     } catch (error) {
       // EADDRINUSE must not take the process down: the agent would lose the MCP tools too.
       record({ event: 'assemble_server_error', error: String(error?.message ?? error) });
@@ -312,7 +284,7 @@ async function main() {
     }
   }
 
-  const follow = makeFollower(handle, { onIndex: (index) => { session.messageIndex = index; } });
+  const follow = makeFollower(handle);
   let db = null;
   const openDb = () => {
     if (db || !existsSync(DB)) return db;
@@ -339,7 +311,7 @@ async function main() {
     closing = true;
     clearInterval(timer);
     void api?.close();
-    record({ event: 'shutdown', signal, turns: session.turn });
+    record({ event: 'shutdown', signal, turns: session.turn, evicted: session.evicted.size });
     void server.close().finally(() => {
       try {
         handle.close();

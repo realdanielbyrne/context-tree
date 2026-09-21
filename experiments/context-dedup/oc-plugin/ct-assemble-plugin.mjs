@@ -19,10 +19,11 @@
  *
  * The plugin holds the POLICY and nothing else. The pipeline is tools served over loopback
  * HTTP by `@context-tree/mcp` (D22), running in the sidecar because it needs Node (SQLite,
- * tree-sitter) and this is opencode's bun runtime. Each turn the plugin calls
- * `evict` if — and only if — its policy says so (`policy.mjs`), then
- * `verdicts` to learn what that means for the host's messages. A fault in either
- * call leaves the prompt untouched rather than taking down the host we are measuring.
+ * tree-sitter) and this is opencode's bun runtime. A treatment turn calls `assemble` (how
+ * each unit is represented) and then `evict` if — and only if — its policy says so
+ * (`policy.mjs`). The LAST call it makes carries the message list and answers with one
+ * decision per message. A fault in either call leaves the prompt untouched rather than
+ * taking down the host we are measuring.
  *
  * It registers exactly ONE hook. A plugin registering only `chat.params` hung opencode
  * at init in this repo's own run (`oc-runner.mjs:27-29`, cause undiagnosed).
@@ -39,7 +40,7 @@
  */
 import { appendFileSync } from 'node:fs';
 import { applyDecisions } from './apply-decisions.mjs';
-import { ceilingOf, evictCallFor, policyFromEnv, validatePolicy } from './policy.mjs';
+import { assembleWindowFor, ceilingOf, evictCallFor, policyFromEnv, reserveOf, validatePolicy } from './policy.mjs';
 
 const URL_ = process.env.CT_TOOLS_URL || 'http://127.0.0.1:8899/v1/tools';
 const TIMEOUT_MS = Number(process.env.CT_ASSEMBLE_MS || 8000);
@@ -68,6 +69,17 @@ const estimateTokens = (message) => {
 };
 
 const hasTools = (message) => (message.parts ?? []).some((p) => p.type === 'tool');
+const sizeOf = (messages) => messages.reduce((n, m) => n + estimateTokens(m), 0);
+
+/** The turn's question — ranks what a reduction keeps: the newest user text in the array. */
+function queryOf(messages) {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    if (messages[i]?.info?.role !== 'user') continue;
+    const text = (messages[i].parts ?? []).filter((p) => p.type === 'text').map((p) => p.text).join('\n');
+    if (text.trim()) return text.slice(0, 2000);
+  }
+  return undefined;
+}
 
 // A plugin that fails to import registers no hooks and opencode says NOTHING about it —
 // no log line, no error — which is indistinguishable from a plugin that loaded and never
@@ -100,36 +112,42 @@ export const server = async () => {
       // anyway the arm does nothing and says so, rather than running on a NaN window.
       if (PROBLEMS.length > 0) { log({ turn, error: `policy refused: ${PROBLEMS.join('; ')}`, applied: false }); return; }
 
-      const sized = messages.map((m) => ({ id: m?.info?.id, tokens: estimateTokens(m), hasTools: hasTools(m) }));
+      const sized = messages.map((m) => ({ id: m?.info?.id, hasTools: hasTools(m) }));
       const before = messages.length;
-      const beforeTokens = sized.reduce((n, m) => n + m.tokens, 0);
+      const beforeTokens = sizeOf(messages);
       const deadline = Date.now() + TIMEOUT_MS;
       const started = Date.now();
 
-      let evict = null;
-      let verdicts;
+      let assembled = null;
+      let evicted = null;
       try {
-        const call = evictCallFor(POLICY, turn, beforeTokens);
-        if (call) {
-          const { floor, ...args } = call;
-          evict = { floor, window: args.window_tokens, ...(await callTool('evict', args, deadline)) };
+        const evictCall = evictCallFor(POLICY, turn, beforeTokens);
+        const window = assembleWindowFor(POLICY);
+        if (window !== null) {
+          assembled = await callTool('assemble', {
+            window_tokens: window, reserve_tokens: reserveOf(POLICY, window), query: queryOf(messages), turn,
+            ...(evictCall ? {} : { messages: sized }),
+          }, deadline);
         }
-        verdicts = await callTool('verdicts', {
-          messages: sized, protect_tail: POLICY.protectTail, summaries: POLICY.summaries, ceiling_tokens: ceilingOf(POLICY), turn,
-        }, deadline);
+        if (evictCall) {
+          const { floor, ...args } = evictCall;
+          evicted = { floor, window: args.window_tokens, ...(await callTool('evict', { ...args, messages: sized }, deadline)) };
+        }
       } catch (error) {
         // Fail open: an unreachable or slow server must leave the turn untouched.
         log({ turn, error: String(error?.message ?? error), before, applied: false, ms: Date.now() - started });
         return;
       }
 
-      const applied = applyDecisions(messages, verdicts.decisions ?? []);
+      const decisions = (evicted ?? assembled)?.decisions ?? [];
+      const applied = applyDecisions(messages, decisions);
+      const keptTokens = sizeOf(messages);
       log({
-        turn, before, after: messages.length, before_tokens: beforeTokens, kept_tokens: verdicts.kept_tokens,
-        dropped: applied.dropped, folded: applied.folded, decisions: (verdicts.decisions ?? []).length,
-        evict_called: evict !== null, evict_window: evict?.window ?? null, evict_floor: evict?.floor ?? false,
-        evicted_now: evict?.evicted?.length ?? 0, evicted_total: verdicts.evicted_units,
-        indexed: verdicts.indexed, over_ceiling: verdicts.over_ceiling, escalations: verdicts.escalations, ms: Date.now() - started,
+        turn, before, after: messages.length, before_tokens: beforeTokens, kept_tokens: keptTokens,
+        dropped: applied.dropped, folded: applied.folded, reduced: applied.reduced, decisions: decisions.length,
+        assembled: assembled !== null, evict_called: evicted !== null, evict_window: evicted?.window ?? null, evict_floor: evicted?.floor ?? false,
+        evicted_now: evicted?.evicted?.length ?? 0, evicted_total: evicted?.evicted_total ?? null,
+        over_ceiling: keptTokens > ceilingOf(POLICY), ms: Date.now() - started,
       });
     },
   };

@@ -49,12 +49,13 @@ const arm = (over = {}) => ({
   before_first_drop: 1, before_all_marked: true, after_first_drop: 3, after_all_clean: true,
   after_all_replaced: true, replacement_seen: 3,
   plugin_loaded: true, plugin_turns: 4, plugin_errors: 0, fold_turns: 3, drop_turns: 3,
+  reduce_turns: 2, after_first_reduce: 2, after_all_reduced: true, reduce_seen: 2,
   sidecar_g0_rows: 3, sidecar_assembles: 4, ...over,
 });
 const control = (over = {}) => arm({
   tag: 'control', present: 4, missing: 0, fold_turns: 0, drop_turns: 0, sidecar_g0_rows: 0,
   before_first_drop: 4, after_first_drop: 0, after_all_clean: false, after_all_replaced: false,
-  replacement_seen: 0, ...over,
+  replacement_seen: 0, reduce_turns: 0, after_first_reduce: 0, after_all_reduced: false, reduce_seen: 0, ...over,
 });
 
 test('G0 passes only when the control holds the marker and the treatment loses it in order', () => {
@@ -167,4 +168,17 @@ test('a replacement that shows up in the control was never unique to the plugin'
   const verdict = gradeG0({ control: control({ replacement_seen: 2 }), treatment: arm() });
   assert.equal(verdict.void, true);
   assert.match(verdict.voids.join(' '), /not unique to the plugin/);
+});
+
+test('an in-place output reduction that never reaches the wire fails the gate', () => {
+  assert.match(gradeG0({ control: control(), treatment: arm({ reduce_turns: 0 }) }).reasons.join(' '), /never reduced/);
+  assert.match(gradeG0({ control: control(), treatment: arm({ after_all_reduced: false }) }).reasons.join(' '), /reduced tool output never reached/);
+  assert.match(gradeG0({ control: control({ reduce_seen: 1 }), treatment: arm() }).voids.join(' '), /reduced-output text appeared/);
+});
+
+test('the gate reduces the first tool output past the spliced message, from five messages on', () => {
+  const messages = [0, 1, 2, 3, 4].map((i) => ({ id: `m${i}`, hasTools: i >= 3 }));
+  assert.deepEqual(g0Decisions(messages, 'FOLD', 'REDUCED')[3], { id: 'm3', action: 'reduce', outputs: [{ index: 0, text: 'REDUCED' }], g0: true });
+  assert.ok(g0Decisions(messages.slice(0, 4), 'FOLD', 'REDUCED').every((d) => d.action !== 'reduce'));
+  assert.ok(g0Decisions(messages, 'FOLD').every((d) => d.action !== 'reduce'));
 });

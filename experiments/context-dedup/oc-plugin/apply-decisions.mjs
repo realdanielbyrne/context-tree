@@ -11,9 +11,12 @@
 
 /**
  * Mutates `messages` in place — the hook discards a return value, so a new array would
- * be silently ignored. `drop` splices; `fold` REPLACES the element with a shallow clone
- * rather than editing the host's own message object, which the session store and the
- * export used for grading also reference.
+ * be silently ignored. `drop` splices; `fold` and `reduce` REPLACE the element with a
+ * shallow clone rather than editing the host's own message object, which the session
+ * store and the export used for grading also reference.
+ *
+ * `reduce` swaps the OUTPUT TEXT of the named tool parts and nothing else: the part, its
+ * call and its result stay where they are, so a reduction can never orphan a result.
  */
 export function applyDecisions(messages, decisions) {
   const byId = new Map();
@@ -24,6 +27,7 @@ export function applyDecisions(messages, decisions) {
   }
   let dropped = 0;
   let folded = 0;
+  let reduced = 0;
   for (let i = messages.length - 1; i >= 0; i -= 1) {
     const id = messages[i]?.info?.id;
     if (typeof id !== 'string') continue;
@@ -43,7 +47,25 @@ export function applyDecisions(messages, decisions) {
       if (!text) continue;
       messages[i] = { ...message, parts: [{ ...text, text: decision.text }] };
       folded += 1;
+      continue;
+    }
+    if (decision.action === 'reduce' && Array.isArray(decision.outputs)) {
+      const message = messages[i];
+      const byToolIndex = new Map(decision.outputs.map((o) => [o.index, o.text]));
+      let toolIndex = -1;
+      let touched = false;
+      const parts = (message.parts ?? []).map((part) => {
+        if (part.type !== 'tool') return part;
+        toolIndex += 1;
+        const text = byToolIndex.get(toolIndex);
+        if (typeof text !== 'string' || typeof part.state?.output !== 'string') return part;
+        touched = true;
+        return { ...part, state: { ...part.state, output: text } };
+      });
+      if (!touched) continue;
+      messages[i] = { ...message, parts };
+      reduced += 1;
     }
   }
-  return { dropped, folded };
+  return { dropped, folded, reduced };
 }
