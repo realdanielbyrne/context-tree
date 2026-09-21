@@ -4,7 +4,7 @@
  * TESTED-AND-LOST (`reports/metrics/ds-star-retrieval-pass-report.md`) and is
  * replaced by the RRF ensemble over L0-unit chunks (`retrieve/ensemble.ts`). The
  * L0-replay / expansion machinery (`fetchBranch`, `peek`) is VALID SCAFFOLDING and
- * survives the swap. Retiring the rank path + rewiring `context_search` is the
+ * survives the swap. Retiring the rank path + rewiring `search` is the
  * retrieval-swap step — see `reports/session-handoff.md`.
  *
  * §9 tree-side read paths: collapsed-tree (RAPTOR) retrieval, the beam-search
@@ -15,7 +15,7 @@
  * read side keeps the same single execution model as ingestion (§7.1).
  *
  * §19 Q2 is decided: search covers SUMMARIES ONLY, never raw turns. Raw turns
- * are reachable only by an explicit `context_fetch` / `context_peek` on a node
+ * are reachable only by an explicit `fetch` / `peek` on a node
  * a summary pointed at.
  */
 import { excerptAround } from './excerpt.js';
@@ -165,7 +165,7 @@ export class TreeRetriever {
   }
 
   /**
-   * `context_search`. Vector path when L3 can answer, beam otherwise, and the
+   * `search`. Vector path when L3 can answer, beam otherwise, and the
    * result says which ran so §15's eval attributes recall to the mechanism
    * that earned it. When L0 is available, distinctive terms from the query
    * are grepped against raw events and merged via rank-reciprocal fusion.
@@ -338,7 +338,7 @@ export class TreeRetriever {
   /**
    * Top-down beam search over summary TEXT — the fallback §9 mandates when L3
    * is absent. Needs no embedder and no network, which is the point: offline
-   * (i.e. CI) `context_search` still answers.
+   * (i.e. CI) `search` still answers.
    *
    * Only the top-`beamWidth` nodes of each level are expanded; the rest of the
    * level is still scored and rankable, but its subtree is never visited. That
@@ -392,7 +392,7 @@ export class TreeRetriever {
   }
 
   /**
-   * `context_fetch`. Defaults to `depth: 'full'` (R9): `depth: 'summary'` is
+   * `fetch`. Defaults to `depth: 'full'` (R9): `depth: 'summary'` is
    * an L1 read of the §8 paraphrase, `depth: 'full'` replays the branch's L0
    * span through L2, and `depth: 'index'` lists that span's events instead of
    * reading them (R10) — a shape-before-content peek at a branch too big to
@@ -532,7 +532,7 @@ export class TreeRetriever {
   }
 
   /**
-   * `context_peek` — §9's "suspicion costs one small call, not a full
+   * `peek` — §9's "suspicion costs one small call, not a full
    * expansion". Reads RAW L0 payloads, not the summary, because rule 3 of the
    * system contract points here precisely when a summary is suspected stale.
    */

@@ -52,7 +52,7 @@ Run selection and endpoint:
 
 Context-tree arms (`CT_ARM=ct` only; `off`/`mcp` ignore them). The arm has two halves in two
 processes (D22): the **plugin** holds the POLICY — it calls the `@context-tree/mcp` tool
-`context_evict` when its trigger says so, then `context_verdicts` — and the **sidecar** (a host
+`evict` when its trigger says so, then `verdicts` — and the **sidecar** (a host
 adapter, no pipeline logic) holds the PIPELINE defaults of those tools. Eviction is sticky.
 
 Policy (plugin, `oc-plugin/policy.mjs`):

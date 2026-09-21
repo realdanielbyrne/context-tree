@@ -13,7 +13,7 @@ import type { SummaryHit } from './types.js';
 import type { TreeRetriever } from './retriever.js';
 
 const PROVIDER_ID = 'vector';
-/** Enough of a summary to judge relevance without a `context_fetch`. */
+/** Enough of a summary to judge relevance without a `fetch`. */
 const SNIPPET_CHARS = 240;
 /** Cap for the un-summarized case, where hydrate falls back to a raw excerpt. */
 const HYDRATE_PEEK_CHARS = 2_000;
@@ -63,7 +63,7 @@ export function createVectorProvider(retriever: TreeRetriever): RetrievalProvide
         return { text: branch.text, path: branch.file, provider: PROVIDER_ID, truncated: false };
       }
       // Not summarized yet (§8 summarizes async after phase close). A capped raw
-      // excerpt is the honest answer; the agent escalates with context_fetch.
+      // excerpt is the honest answer; the agent escalates with fetch.
       const text = retriever.peek(nodeId, HYDRATE_PEEK_CHARS);
       return { text, path: branch.file, provider: PROVIDER_ID, truncated: text.length >= HYDRATE_PEEK_CHARS };
     },

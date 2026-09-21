@@ -1,5 +1,5 @@
 /**
- * §9 `context_fetch` — expansion. `depth: 'summary'` is an L1 read;
+ * §9 `fetch` — expansion. `depth: 'summary'` is an L1 read;
  * `depth: 'full'` (the default, R9) replays the branch's L0 span through L2;
  * `depth: 'index'` (R10) lists that span's events instead of reading them.
  * `file` narrows any depth to the file node(s) keyed by one path (§10 rule 4);
@@ -12,7 +12,7 @@ import { failFrom, ok, parseArgs, requireNode } from '../result.js';
 import { recordRetrieval } from '../observe.js';
 import type { ToolContext, ToolOutcome } from '../types.js';
 
-export const CONTEXT_FETCH = 'context_fetch';
+export const CONTEXT_FETCH = 'fetch';
 
 /**
  * Zone A content (D5): permanent in every prompt, so every token is paid for
@@ -34,7 +34,7 @@ export const CONTEXT_FETCH_DESCRIPTION =
   'stored tree and never invalidates the cached prompt prefix.';
 
 const shape = {
-  branch_id: z.string().min(1).describe('Node id of the branch to read, as returned by context_search.'),
+  branch_id: z.string().min(1).describe('Node id of the branch to read, as returned by search.'),
   depth: z
     .enum(['summary', 'index', 'full'])
     .optional()
@@ -74,7 +74,7 @@ export interface ContextFetchData {
   summary_version: number;
   /** The §8 rehydration pointers — read these first to judge what else to fetch. */
   meta: SummaryMeta | null;
-  /** Nodes this result actually covers; each is a valid `context_peek` target. */
+  /** Nodes this result actually covers; each is a valid `peek` target. */
   nodes: NodeId[];
   /** L0 ranges read. Empty at depth `summary`, which touches L1 only. */
   spans: SeqSpan[];

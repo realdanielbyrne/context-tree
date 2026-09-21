@@ -1,5 +1,5 @@
 /**
- * `context_units` — what the pipeline is working over. A UNIT is one segmenter
+ * `units` — what the pipeline is working over. A UNIT is one segmenter
  * phase: the thing the classifier scores, eviction removes and the reducer shrinks.
  * Everything else in the pipeline is opaque without this listing.
  */
@@ -10,7 +10,7 @@ import { advanceTurn, sessionOf, sessionUnits } from '../session.js';
 import type { ToolContext, ToolOutcome } from '../types.js';
 import { turnArg } from './pipeline-args.js';
 
-export const CONTEXT_UNITS = 'context_units';
+export const CONTEXT_UNITS = 'units';
 
 export const CONTEXT_UNITS_DESCRIPTION =
   'List the units of this session in creation order — one per work phase — with their size in heuristic ' +

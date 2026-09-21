@@ -1,8 +1,8 @@
 /**
- * `context_assemble` — the whole pipeline in one call, for a caller that wants the
+ * `assemble` — the whole pipeline in one call, for a caller that wants the
  * composed answer rather than the stages: classify, evict, reduce and lay out, plus
  * the retrieval tail. STATELESS — it reports what the assembler would build over the
- * live units and changes nothing; `context_evict` is the call that commits.
+ * live units and changes nothing; `evict` is the call that commits.
  */
 import { z } from 'zod';
 import { assembleFlex, ensembleRetrieve, type NodeId } from '@context-tree/core';
@@ -11,13 +11,13 @@ import { advanceTurn, sessionOf, sessionUnits } from '../session.js';
 import type { ToolContext, ToolOutcome } from '../types.js';
 import { budgetShape, flexOptions, layoutShape, turnArg } from './pipeline-args.js';
 
-export const CONTEXT_ASSEMBLE = 'context_assemble';
+export const CONTEXT_ASSEMBLE = 'assemble';
 
 export const CONTEXT_ASSEMBLE_DESCRIPTION =
   'Report the prompt the assembler would build for window_tokens: which units stay raw, which fold to ' +
   'summaries, which are evicted or reduced, what retrieval appends, and the token budget of each zone. ' +
   'Changes nothing. Reach for it when you want to see the consequence of a limit before committing to it ' +
-  'with context_evict.';
+  'with evict.';
 
 const shape = {
   ...budgetShape,

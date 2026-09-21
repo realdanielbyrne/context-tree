@@ -22,7 +22,7 @@ async function main(): Promise<void> {
   const handle: TaskStore = openTaskStore(config);
 
   /**
-   * No embedder is wired here, so `context_search` runs the §9 beam fallback
+   * No embedder is wired here, so `search` runs the §9 beam fallback
    * over summary text. That is deliberate for v1: no `ModelProvider` implements
    * `embed` yet (§19 Q1 defers the embedding default to M6), and it keeps the
    * stdio server free of network calls. A host with an embedder builds its own

@@ -98,7 +98,7 @@ node experiments/context-dedup/swebench-opencode.mjs
 # today's shipped default CT_CT_TRIGGER=hard
 ```
 
-The trigger is **whether the plugin calls `context_evict` this turn, and at what window**
+The trigger is **whether the plugin calls `evict` this turn, and at what window**
 (`oc-plugin/policy.mjs`): `off` → never, `hard` → every turn at the real context, `soft` → every
 turn at `CT_CT_WINDOW`, `cadence` → every Nth turn at `CT_CT_WINDOW`. Eviction is sticky, so an off
 turn leaves the prompt as it was. Nothing in `packages/` changes between arms; every stage is a
@@ -147,7 +147,7 @@ artifacts a sandboxed run already writes, under `/mnt/data/ctx-swebench/opencode
 | Path | What it holds |
 |---|---|
 | `mcp/ct-plugin.jsonl` | what the plugin did to the message array, per turn |
-| `mcp/ct-mcp.jsonl` | the sidecar's side: `ready` (pipeline defaults), `ingest`, one `evict` row per `context_evict` call, one `assemble` row per turn (written when `context_verdicts` answers), `assemble_error` |
+| `mcp/ct-mcp.jsonl` | the sidecar's side: `ready` (pipeline defaults), `ingest`, one `evict` row per `evict` call, one `assemble` row per turn (written when `verdicts` answers), `assemble_error` |
 | `export.json` | the full session as opencode stored it; `parts[].type === "compaction"` marks a host compaction |
 | `events.jsonl`, `prompt.txt`, `workspace/` | the event stream, the exact prompt, the edited tree |
 | `wire.jsonl` | **what actually went upstream**: one row per provider request with `bytes`, `sha256` and needle `counts` (`role` = messages). Written by the relay, outside the sandbox, downstream of the plugin — the only artifact an inert arm cannot fake |

@@ -1,6 +1,6 @@
 /**
- * §9 read-side types — the shapes the three read tools (`context_search`,
- * `context_fetch`, `context_peek`) return.
+ * §9 read-side types — the shapes the three read tools (`search`,
+ * `fetch`, `peek`) return.
  *
  * This module knows the TREE only. External backends (graft, Serena, Augment,
  * ripgrep) live in `providers/`; the MCP package wires the two together, which

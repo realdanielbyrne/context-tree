@@ -228,7 +228,7 @@ function promptFor(task) {
  */
 function mcpActivity(sandbox, summary) {
     const calls = Object.entries(summary.tools_by_name ?? {})
-        .filter(([name]) => name.startsWith('context-tree') || /^context_(fetch|search|peek)$/.test(name) || name === 'annotate');
+        .filter(([name]) => name.startsWith('context-tree'));
     const log = sandbox?.record?.mcp?.log;
     let ingests = 0, appended = 0, ready = false, errors = 0;
     if (log && existsSync(log)) {
@@ -584,7 +584,7 @@ function manifestAndCells(ids, cells, selection) {
                 ? 'bwrap: no network (model relay only), no dataset/repos/wscache/other runs/operator home; per-run preflight in each cell'
                 : 'OFF (CT_SANDBOX=0): the agent can read the dataset, repos/, wscache/, other runs and the network',
             arm: ARM === 'ct'
-                ? `ct: the plugin at opencode's experimental.chat.messages.transform calls the @context-tree/mcp tools over loopback HTTP — context_evict per its policy (trigger ${CT_OPTIONS.CT_CT_TRIGGER}, window ${CT_OPTIONS.CT_CT_WINDOW}, cadence ${CT_OPTIONS.CT_CT_CADENCE_N}, summaries ${CT_OPTIONS.CT_CT_SUMMARIES}), then context_verdicts; eviction is sticky; the agent sees the same tools over MCP; host compaction OFF; per-cell \`ct\` records whether it fired`
+                ? `ct: the plugin at opencode's experimental.chat.messages.transform calls the @context-tree/mcp tools over loopback HTTP — evict per its policy (trigger ${CT_OPTIONS.CT_CT_TRIGGER}, window ${CT_OPTIONS.CT_CT_WINDOW}, cadence ${CT_OPTIONS.CT_CT_CADENCE_N}, summaries ${CT_OPTIONS.CT_CT_SUMMARIES}), then verdicts; eviction is sticky; the agent sees the same tools over MCP; host compaction OFF; per-cell \`ct\` records whether it fired`
                 : ARM === 'mcp'
                     ? 'mcp: @context-tree/mcp attached as an opencode MCP server, fed from the live session db (experiments/context-dedup/ct-sidecar.mjs); per-cell `mcp` records whether it fired'
                     : 'off: the host\'s own context handling, no context-tree server',

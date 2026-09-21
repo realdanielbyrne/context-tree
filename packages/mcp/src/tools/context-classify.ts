@@ -1,5 +1,5 @@
 /**
- * `context_classify` — the drift classifier's verdict per unit (stage 1). Read-only
+ * `classify` — the drift classifier's verdict per unit (stage 1). Read-only
  * and repeatable: classification is computed once per state of the trace
  * (`session.ts`), so asking twice does not count an observation twice.
  */
@@ -9,7 +9,7 @@ import { failFrom, ok } from '../result.js';
 import { sessionOf, sessionUnits } from '../session.js';
 import type { ToolContext, ToolOutcome } from '../types.js';
 
-export const CONTEXT_CLASSIFY = 'context_classify';
+export const CONTEXT_CLASSIFY = 'classify';
 
 export const CONTEXT_CLASSIFY_DESCRIPTION =
   'Score every unit for topic drift against the recent work: a drift value, its z-score against the ' +

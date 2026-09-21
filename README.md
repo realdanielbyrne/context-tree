@@ -53,9 +53,9 @@ tells it when to reach for them. Retrieval:
 
 | Tool | Signature | Behavior |
 |---|---|---|
-| `context_fetch` | `{branch_id, depth?, file?}` | Branch content. `file` narrows to one file node — the common case, since a verification phase usually needs one file from implementation. Appended to the transcript tail; never mutates the tree or the cache prefix. |
-| `context_search` | `{query, kind?}` | Ranks branches by collapsed-tree retrieval over summary vectors (beam search over summary text when embeddings are absent), then returns the best-matching **events** across them — each with its `seq` and a `retrieval.excerptChars` excerpt of its own text, `retrieval.eventHits` of them. A hit is a payload; fetch only when the excerpt is not enough. |
-| `context_peek` | `{node_id, max_chars?}` | A cheap excerpt for relevance checking — suspicion costs one small call, not a full expansion. |
+| `fetch` | `{branch_id, depth?, file?}` | Branch content. `file` narrows to one file node — the common case, since a verification phase usually needs one file from implementation. Appended to the transcript tail; never mutates the tree or the cache prefix. |
+| `search` | `{query, kind?}` | Ranks branches by collapsed-tree retrieval over summary vectors (beam search over summary text when embeddings are absent), then returns the best-matching **events** across them — each with its `seq` and a `retrieval.excerptChars` excerpt of its own text, `retrieval.eventHits` of them. A hit is a payload; fetch only when the excerpt is not enough. |
+| `peek` | `{node_id, max_chars?}` | A cheap excerpt for relevance checking — suspicion costs one small call, not a full expansion. |
 | `annotate` | `{node_id, text, link_to?, link_kind?}` | Write side: adds a lateral link and/or a note. A review-phase discovery can mark an implementation branch `superseded_by` a later one. |
 
 The pipeline itself is tools too, so an agent can manage its own context and a host
@@ -63,13 +63,13 @@ plugin can drive each stage — or skip one — instead of calling a black box:
 
 | Tool | Behavior |
 |---|---|
-| `context_units` | The units in the session (one per work phase): size, evicted?, protected by the recency anchor? |
-| `context_classify` | Which units have drifted away from the current work. |
-| `context_evict` | `{window_tokens, anchor?, weights?, dry_run?, …}` — evict the least valuable units to fit. Sticky until restored; nothing is lost. |
-| `context_restore` | `{node_ids? \| all?}` — bring evicted units back. |
-| `context_reduce` | `{node_id, budget_tokens, reducer?, query?}` — one unit shrunk to a budget. |
-| `context_assemble` | What a limit would do to the prompt, without doing it. |
-| `context_verdicts` | HTTP only, for host plugins: keep / drop / fold per host message. |
+| `units` | The units in the session (one per work phase): size, evicted?, protected by the recency anchor? |
+| `classify` | Which units have drifted away from the current work. |
+| `evict` | `{window_tokens, anchor?, weights?, dry_run?, …}` — evict the least valuable units to fit. Sticky until restored; nothing is lost. |
+| `restore` | `{node_ids? \| all?}` — bring evicted units back. |
+| `reduce` | `{node_id, budget_tokens, reducer?, query?}` — one unit shrunk to a budget. |
+| `assemble` | What a limit would do to the prompt, without doing it. |
+| `verdicts` | HTTP only, for host plugins: keep / drop / fold per host message. |
 
 Both transports serve one registry over one session: MCP stdio for the agent, and
 `context-tree-mcp --http <port>` (`GET /v1/tools`, `POST /v1/tools/<name>`) for a

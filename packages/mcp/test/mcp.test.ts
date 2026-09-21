@@ -167,9 +167,9 @@ function expectError<T>(outcome: ToolOutcome<T>): { code: string; message: strin
   return outcome.error;
 }
 
-// ── context_fetch ──────────────────────────────────────────────────────────
+// ── fetch ──────────────────────────────────────────────────────────
 
-describe('context_fetch', () => {
+describe('fetch', () => {
   it("defaults to depth 'full' (R9) — a summary cannot carry a literal the paraphrase dropped", async () => {
     const fixture = seed();
     const data = unwrap(
@@ -294,7 +294,7 @@ describe('context_fetch', () => {
 
     expect(error.code).toBe('unknown_node');
     expect(error.message).toContain('n_does_not_exist');
-    expect(error.message).toContain('context_search');
+    expect(error.message).toContain('search');
   });
 
   it('a file the branch never touched reports unknown_file naming the path, not an empty success', async () => {
@@ -316,7 +316,7 @@ describe('context_fetch', () => {
   });
 });
 
-// ── context_search ─────────────────────────────────────────────────────────
+// ── search ─────────────────────────────────────────────────────────
 
 /** Deterministic keyword embedder: no network, and the ranking is assertable. */
 const DIMS = ['pricing', 'rounding', 'deploy', 'release'] as const;
@@ -347,7 +347,7 @@ function expectWorkRepresented(data: ContextSearchData, worker: NodeId): void {
   expect(own.some((hit) => typeof hit.seq === 'number' && typeof hit.excerpt === 'string')).toBe(true);
 }
 
-describe('context_search', () => {
+describe('search', () => {
   it('degrades to BM25-only when no embedder is injected, and says so', async () => {
     const fixture = seed();
     const data = unwrap(
@@ -423,7 +423,7 @@ describe('context_search', () => {
 
 });
 
-describe('context_search — whole-unit hits with an excerpt', () => {
+describe('search — whole-unit hits with an excerpt', () => {
   it('each hit names its unit (node_id + seq) and carries an excerpt of its best-matching content', async () => {
     const fixture = seed();
     const data = unwrap(
@@ -451,9 +451,9 @@ describe('context_search — whole-unit hits with an excerpt', () => {
   });
 });
 
-// ── context_peek ───────────────────────────────────────────────────────────
+// ── peek ───────────────────────────────────────────────────────────
 
-describe('context_peek', () => {
+describe('peek', () => {
   it('honours a small max_chars so a suspicion costs one small call, not an expansion (§9)', async () => {
     const fixture = seed();
     const data = unwrap(
@@ -675,9 +675,9 @@ describe('registered surface', () => {
       expect(tools.map((tool) => tool.name).sort()).toEqual([...onMcp].sort());
       expect([...TOOL_NAMES].sort()).toEqual(TOOLS.map((tool) => tool.name).sort());
       // The retrieval tools are still there; the pipeline stages are now beside them.
-      for (const name of [ANNOTATE, CONTEXT_FETCH, CONTEXT_PEEK, CONTEXT_SEARCH, 'context_evict', 'context_classify']) expect(onMcp).toContain(name);
+      for (const name of [ANNOTATE, CONTEXT_FETCH, CONTEXT_PEEK, CONTEXT_SEARCH, 'evict', 'classify']) expect(onMcp).toContain(name);
       // Takes the host's message array, which an agent never holds.
-      expect(onMcp).not.toContain('context_verdicts');
+      expect(onMcp).not.toContain('verdicts');
     } finally {
       await close();
     }
@@ -808,7 +808,7 @@ describe('stdout discipline', () => {
 
 /** The eval harness dispatches by node id it got from search; that round trip must close. */
 describe('search -> fetch round trip', () => {
-  it('every search hit is a valid context_fetch target', async () => {
+  it('every search hit is a valid fetch target', async () => {
     const fixture = seed();
     const ctx = contextFor(fixture);
     const search = unwrap((await contextSearch(ctx, { query: 'pricing rounding' })) as ToolOutcome<ContextSearchData>);

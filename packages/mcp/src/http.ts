@@ -6,7 +6,7 @@
  *   POST /v1/tools/<name>   body = the tool's input; answers the handler's ToolOutcome
  *
  * Same handlers, same context, same session as the MCP server in this process — a
- * plugin's `context_evict` and an agent's are one state. Loopback only. The agent
+ * plugin's `evict` and an agent's are one state. Loopback only. The agent
  * under test usually shares that loopback and can run shell commands, so a bearer
  * token is supported: a stray POST must not be able to move the turn clock or evict.
  */

@@ -62,7 +62,7 @@ export const KNOBS = Object.freeze([
   { name: 'W_DORMANCY', ct: 'CT_CT_W_DORMANCY', def: '1', half: 'pipeline', note: 'eviction score weight (subtracted)' },
   { name: 'PRIORITY_HALFLIFE', ct: 'CT_CT_PRIORITY_HALFLIFE', def: '4', half: 'pipeline', positive: true, note: 'priority decay half-life, turns' },
   { name: 'EVICT_HEADROOM', ct: 'CT_CT_EVICT_HEADROOM', def: '0', half: 'pipeline', note: 'extra tokens freed when eviction fires' },
-  { name: 'SOFT_TARGET_FRAC', ct: 'CT_CT_SOFT_TARGET_FRAC', def: '0.375', half: 'pipeline', max: 1, note: 'sizes reduce-on-overflow (context_assemble only)' },
+  { name: 'SOFT_TARGET_FRAC', ct: 'CT_CT_SOFT_TARGET_FRAC', def: '0.375', half: 'pipeline', max: 1, note: 'sizes reduce-on-overflow (assemble only)' },
   { name: 'REDUCER', ct: 'CT_CT_REDUCER', def: 'chunk', half: 'pipeline', oneOf: ['chunk', 'summarize'], note: 'reduce-on-overflow reducer' },
   { name: 'DRIFT_K', ct: 'CT_CT_DRIFT_K', def: '5', half: 'pipeline', int: true, positive: true, note: 'drift classifier recent-window, units' },
   { name: 'DRIFT_TAU', ct: 'CT_CT_DRIFT_TAU', def: '1', half: 'pipeline', note: 'topic-shift threshold on z-drift' },
@@ -328,7 +328,7 @@ function armSummary(cells) {
     engaged_cells: cells.filter(engaged).length,
     // The agent can call the pipeline tools itself (D22). In `hard` that would make the
     // plumbing control evict, so it is counted where it can be seen.
-    agent_evict_calls: cells.reduce((n, c) => n + Object.entries(c.mcp?.tools ?? {}).filter(([t]) => /context_(evict|restore)$/.test(t)).reduce((m, [, k]) => m + k, 0), 0),
+    agent_evict_calls: cells.reduce((n, c) => n + Object.entries(c.mcp?.tools ?? {}).filter(([t]) => /^context-tree_(evict|restore)$/.test(t)).reduce((m, [, k]) => m + k, 0), 0),
     plugin_error_turns: cells.reduce((n, c) => n + (c.ct?.plugin_errors ?? 0) + (c.ct?.assemble_errors ?? 0), 0), plugin_turns: turns,
   };
 }

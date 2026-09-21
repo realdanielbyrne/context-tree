@@ -3,7 +3,7 @@
  *
  * The pipeline is tools (`@context-tree/mcp`, D22) and eviction is sticky: a unit
  * evicted once stays out until restored. So an eviction policy is nothing more than
- * WHEN `context_evict` is called, and with what window:
+ * WHEN `evict` is called, and with what window:
  *
  *   off      never                              the control
  *   hard     every turn, at the model's real context   today's shipped default

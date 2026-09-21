@@ -77,7 +77,7 @@ One test per event type:
 |---|---|
 | append a turn to the active branch | Zone A + Zone B; only Zone C is fresh |
 | phase transition | Zone A; Zone B up to the newly-appended summary |
-| `context_fetch` result | everything before the tail |
+| `fetch` result | everything before the tail |
 | a middle branch re-summarized | Zone A; Zone B up to that branch (the honest cost of D3/D4) |
 | Zone B relevance-ordered *(negative control)* | nothing — the harness must catch this |
 
@@ -98,7 +98,7 @@ model:
 
 Metrics: success rate, tool-call count, input tokens split cache-read vs
 cache-write, p50/p95 latency, cost per task, and organization quality
-(stale-summary incidents, `context_peek` precision).
+(stale-summary incidents, `peek` precision).
 
 It costs real money and it is not part of `pnpm test`.
 

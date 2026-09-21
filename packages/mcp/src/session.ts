@@ -5,8 +5,8 @@
  * so whatever must survive from one call to the next lives here: the turn
  * clock, the classifier's causal statistics, which units the agent came back
  * to, and — the one piece of real state — WHICH UNITS ARE EVICTED. Eviction is
- * sticky: a unit stays out until `context_restore` brings it back. A policy that
- * simply does not call `context_evict` this turn therefore leaves the prompt
+ * sticky: a unit stays out until `restore` brings it back. A policy that
+ * simply does not call `evict` this turn therefore leaves the prompt
  * exactly as it was, instead of re-admitting everything and rewriting the cached
  * prefix.
  */
@@ -56,7 +56,7 @@ export interface PipelineDefaults {
   rrfK: number;
   chunkSize: number;
   chunkOverlap: number;
-  /** Trailing host messages `context_verdicts` never drops. */
+  /** Trailing host messages `verdicts` never drops. */
   protectTail: number;
 }
 
@@ -148,7 +148,7 @@ export interface Session {
   readonly evicted: Set<NodeId>;
   /**
    * Host message id -> the L0 seq range it produced. Supplied by whatever feeds L0
-   * from a live host; `null` means no adapter is attached and `context_verdicts` has
+   * from a live host; `null` means no adapter is attached and `verdicts` has
    * nothing to map.
    */
   messageIndex: ReadonlyMap<string, { start: number; end: number }> | null;
@@ -205,8 +205,8 @@ function trackReferences(ctx: ToolContext, session: Session): void {
 /**
  * The units, classified ONCE per state of the trace. The classifier folds each
  * call's drifts into its running statistics, so re-classifying an unchanged trace —
- * an agent calling `context_classify` twice, or `context_units` then
- * `context_evict` — would count the same observation again and shift every later
+ * an agent calling `classify` twice, or `units` then
+ * `evict` — would count the same observation again and shift every later
  * z-score.
  */
 export async function sessionUnits(ctx: ToolContext): Promise<{ units: SessionUnit[]; corpus: EnsembleUnit[] }> {

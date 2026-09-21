@@ -28,7 +28,7 @@ function spanLabel(span: SymbolSpan): string {
  * block's decisions/open-questions/fetchable-nodes are merges over EVERY child,
  * so an uncapped list re-introduces the ~50-tok/branch growth that capping the
  * root's headline list (D17) removed. Prompt lossy, L1 lossless — the full list
- * stays in the stored SummaryMeta and is reachable by context_fetch.
+ * stays in the stored SummaryMeta and is reachable by fetch.
  */
 const LIST_MAX_VALUES = 40;
 
@@ -42,7 +42,7 @@ function listLine(label: string, values: readonly string[]): string | null {
 /**
  * A Zone B summary block. The §8 rehydration pointers (files, symbols, tests,
  * artifacts, open questions, covered node ids) are rendered, not just the prose:
- * they are what lets the model notice it needs `context_fetch` at all (§9).
+ * they are what lets the model notice it needs `fetch` at all (§9).
  */
 export function renderSummaryBlock(node: TreeNode, summary: NodeSummary, isRoot: boolean): string {
   // No seq range here, deliberately: `span_end_seq` grows on every append to
@@ -94,7 +94,7 @@ export function renderLinksBlock(node: TreeNode, links: readonly NodeLink[]): st
  * Max rendered args bytes when a post-state blob is also present (v5.9b).
  *
  * Exported because the SAME rule has to hold wherever an event is rendered.
- * It did not: `retrieve/detail.ts` rendered `context_fetch` results with
+ * It did not: `retrieve/detail.ts` rendered `fetch` results with
  * uncapped args, so a write's content appeared twice — once JSON-escaped in the
  * args and once raw in the post-state — in exactly the payload the model reads
  * back. Measured on the frozen store: 6 of 754 events carry a byte-identical
@@ -147,7 +147,7 @@ export function renderEvent(event: TraceEvent, blobs: BlobStore): string {
   }
 }
 
-/** A tail block — `context_fetch` / `context_search` / `context_peek` output. */
+/** A tail block — `fetch` / `search` / `peek` output. */
 export function renderTailBlock(id: string, text: string, ephemeral: boolean): string {
   return `## retrieved: ${id}${ephemeral ? ' (dropped at the next phase boundary)' : ''}\n${text}`;
 }
@@ -155,7 +155,7 @@ export function renderTailBlock(id: string, text: string, ephemeral: boolean): s
 const BARE_ELISION = '...';
 
 export function elision(dropped: number): string {
-  return `\n...[${dropped} chars elided - call \`context_fetch\` for the full detail]`;
+  return `\n...[${dropped} chars elided - call \`fetch\` for the full detail]`;
 }
 
 /** Never split a surrogate pair — a lone half is not valid text to send. */
@@ -170,7 +170,7 @@ export function safeCut(text: string, at: number): number {
  * Shrinks `text` to at most `maxTokens` under `tokenizer`, keeping the head and
  * saying loudly how much went missing. Truncation is deliberately visible in the
  * text: §10 rule 4's Zone C overflow is supposed to push the model toward a
- * narrow `context_fetch`, which it cannot do if the loss is invisible.
+ * narrow `fetch`, which it cannot do if the loss is invisible.
  */
 export function truncateToTokens(text: string, maxTokens: number, tokenizer: Tokenizer): string {
   if (tokenizer.count(text) <= maxTokens) return text;

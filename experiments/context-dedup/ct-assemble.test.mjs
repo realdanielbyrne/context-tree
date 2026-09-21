@@ -23,7 +23,7 @@ const HARD = 151_040;
 const policy = (trigger, cadenceN = 5) => policyFromEnv({ CT_CT_TRIGGER: trigger, CT_CT_WINDOW: String(SOFT), CT_CT_HARD_WINDOW: String(HARD), CT_CT_CADENCE_N: String(cadenceN) });
 const windowOf = (trigger, turn, hostTokens = 1000) => evictCallFor(policy(trigger), turn, hostTokens)?.window_tokens ?? null;
 
-test('the trigger is WHETHER the plugin calls context_evict, and at what window', () => {
+test('the trigger is WHETHER the plugin calls evict, and at what window', () => {
   // `off` makes no call at all: eviction is sticky, so no call leaves the prompt as it was.
   assert.equal(windowOf('off', 1), null);
   assert.equal(windowOf('hard', 1), HARD);

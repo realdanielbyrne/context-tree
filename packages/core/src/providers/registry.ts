@@ -84,7 +84,7 @@ export class ProviderRegistry {
   }
 
   /**
-   * Routes `context_fetch` back to the provider that produced the candidate.
+   * Routes `fetch` back to the provider that produced the candidate.
    * Availability is deliberately not re-checked: hydration usually just reads a
    * file, which still works when the provider's own binary has gone missing.
    */

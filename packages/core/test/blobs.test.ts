@@ -99,7 +99,7 @@ describe('round-trip', () => {
   });
 });
 
-describe('getTextPrefix — §9 context_peek', () => {
+describe('getTextPrefix — §9 peek', () => {
   it('reads no more than maxBytes even when the blob is much larger', () => {
     const store = tmpStore();
     const body = 'x'.repeat(10_000);

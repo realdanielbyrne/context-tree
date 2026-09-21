@@ -140,7 +140,7 @@ export interface ContextTreeConfig {
   summarize: { concurrency: number; maxSummaryTokens: number };
   /**
    * `limit`: the ranked branch pool. `eventHits` / `excerptChars`: how many EVENT hits
-   * `context_search` returns from that pool and how much of each event's text a hit
+   * `search` returns from that pool and how much of each event's text a hit
    * carries. The two defaults are the published claude.ai interface's (5 hits;
    * ~200-360-word chunks) and were measured, not derived, on one store — see
    * `reports/algorithm.md` Tier 2 before treating them as settled.

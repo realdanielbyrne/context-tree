@@ -70,7 +70,7 @@ export type Reducer = (input: ReduceInput, ctx: ReduceContext) => string;
 
 /**
  * A visible gap marker between kept spans, so the loss is not silent (§10 rule 4;
- * the surrounding summary blocks carry the `context_fetch` affordance). Kept
+ * the surrounding summary blocks carry the `fetch` affordance). Kept
  * compact: it is charged against the per-unit budget once per elided run, so a
  * verbose marker would crowd out the content it is annotating.
  */

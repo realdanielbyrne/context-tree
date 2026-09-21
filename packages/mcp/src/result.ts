@@ -37,7 +37,7 @@ export function parseArgs<T>(schema: ZodType<T>, input: unknown): ToolOutcome<T>
 
 /**
  * Resolves a node id the model supplied. The message names the id and the
- * argument it came from, and points at `context_search`, because the model's
+ * argument it came from, and points at `search`, because the model's
  * only route back to a valid id is a search over summaries (§9).
  */
 export function requireNode(ctx: ToolContext, field: string, id: NodeId): ToolOutcome<TreeNode> {
@@ -45,7 +45,7 @@ export function requireNode(ctx: ToolContext, field: string, id: NodeId): ToolOu
   if (node !== null) return ok(node);
   return fail(
     'unknown_node',
-    `${field} ${JSON.stringify(id)} is not a node in this task tree. Node ids change when the tree is rebuilt — call context_search to get current ones.`,
+    `${field} ${JSON.stringify(id)} is not a node in this task tree. Node ids change when the tree is rebuilt — call search to get current ones.`,
   );
 }
 

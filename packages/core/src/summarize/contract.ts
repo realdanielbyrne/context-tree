@@ -110,7 +110,7 @@ function asJsonObject(raw: string): Record<string, unknown> | null {
  * artifacts from the model; files, symbols and node ids from the tree.
  *
  * The split is not defensive tidying — it is D9. Spans are the coordinates
- * `context_fetch` resolves, so they may only ever come from tree-sitter's
+ * `fetch` resolves, so they may only ever come from tree-sitter's
  * output, never from the summarizer's reply.
  */
 export function summaryMetaFrom(

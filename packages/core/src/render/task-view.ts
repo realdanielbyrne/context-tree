@@ -150,7 +150,7 @@ function metaBullets(meta: SummaryMeta): string[] {
   if (meta.artifacts.length > 0) bullets.push(bulletList('artifacts', meta.artifacts.map(formatArtifact)));
   if (meta.open_questions.length > 0) bullets.push(bulletList('open questions', meta.open_questions.map(oneLine)));
   if (meta.decisions.length > 0) bullets.push(bulletList('decisions', meta.decisions.map(oneLine)));
-  // The fetch targets: what `context_fetch` should be called with (§9).
+  // The fetch targets: what `fetch` should be called with (§9).
   if (meta.node_ids.length > 0) bullets.push(`- covers: ${meta.node_ids.map(inlineCode).join(', ')}`);
   return bullets;
 }

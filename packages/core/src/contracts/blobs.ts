@@ -11,7 +11,7 @@ export interface BlobStore {
   put(content: string | Uint8Array): BlobRef;
   get(ref: BlobRef): Uint8Array;
   getText(ref: BlobRef): string;
-  /** Reads at most `maxBytes` from the head of a blob — for `context_peek`. */
+  /** Reads at most `maxBytes` from the head of a blob — for `peek`. */
   getTextPrefix(ref: BlobRef, maxBytes: number): string;
   has(ref: BlobRef): boolean;
   size(ref: BlobRef): number;

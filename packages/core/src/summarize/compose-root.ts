@@ -88,7 +88,7 @@ export function composeRootSummary(
   const folded = rootKeep >= covered.length ? [] : covered.slice(0, covered.length - rootKeep);
   const lines = keep.map(({ summary }) => `- ${headline(summary.text)}`);
   // Fold line first, at the oldest members' position — creation order holds
-  // (D5 rule 1). Endpoints AND titles: a bare count gives context_search no
+  // (D5 rule 1). Endpoints AND titles: a bare count gives search no
   // vocabulary to match on, which is this design's one named failure mode.
   const oldest = folded[0];
   const newest = folded[folded.length - 1];
@@ -98,7 +98,7 @@ export function composeRootSummary(
       : [
           `- branches 1..${folded.length} (${folded.length} folded: ${oldest.id}..${newest.id}) ` +
             `— "${headline(oldest.summary.text)}" .. "${headline(newest.summary.text)}" ` +
-            `— call context_search or context_fetch to recall`,
+            `— call search or fetch to recall`,
         ];
   const open = [...new Set(keep.flatMap(({ summary }) => summary.meta.open_questions))];
   const text = [root.title, ...foldLine, ...lines, ...(open.length > 0 ? [`open: ${open.join('; ')}`] : [])].join(

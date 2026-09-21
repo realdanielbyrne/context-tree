@@ -182,7 +182,7 @@ describe('AnthropicProvider', () => {
         content: [
           { type: 'text', text: 'fetching ' },
           { type: 'text', text: 'now' },
-          { type: 'tool_use', id: 'tu_1', name: 'context_fetch', input: { node_id: 'n1' } },
+          { type: 'tool_use', id: 'tu_1', name: 'fetch', input: { node_id: 'n1' } },
         ],
       }),
     );
@@ -192,7 +192,7 @@ describe('AnthropicProvider', () => {
     expect(result.text).toBe('fetching now');
     expect(result.stopReason).toBe('tool_use');
     expect(result.toolCalls).toEqual([
-      { id: 'tu_1', name: 'context_fetch', input: { node_id: 'n1' } },
+      { id: 'tu_1', name: 'fetch', input: { node_id: 'n1' } },
     ]);
   });
 
@@ -263,7 +263,7 @@ describe('OpenRouterProvider', () => {
         {
           message: {
             content: null,
-            tool_calls: [{ id: 't1', function: { name: 'context_search', arguments: '{"query":"x"}' } }],
+            tool_calls: [{ id: 't1', function: { name: 'search', arguments: '{"query":"x"}' } }],
           },
           finish_reason: 'tool_calls',
         },
@@ -273,7 +273,7 @@ describe('OpenRouterProvider', () => {
 
     const result = await new OpenRouterProvider({ client: stub }).complete(request());
     expect(result.text).toBe('');
-    expect(result.toolCalls).toEqual([{ id: 't1', name: 'context_search', input: { query: 'x' } }]);
+    expect(result.toolCalls).toEqual([{ id: 't1', name: 'search', input: { query: 'x' } }]);
   });
 
   it('reasoning text is never returned as the answer — the caller asked for an answer', async () => {
@@ -395,7 +395,7 @@ describe('OpenRouterProvider', () => {
           message: {
             content: null,
             tool_calls: [
-              { id: 'call_1', function: { name: 'context_peek', arguments: '{"node_id":"n2"}' } },
+              { id: 'call_1', function: { name: 'peek', arguments: '{"node_id":"n2"}' } },
             ],
           },
           finish_reason: 'tool_calls',
@@ -410,7 +410,7 @@ describe('OpenRouterProvider', () => {
     expect(stub.sent[0]?.response_format).toEqual({ type: 'json_object' });
     expect(result.text).toBe('');
     expect(result.toolCalls).toEqual([
-      { id: 'call_1', name: 'context_peek', input: { node_id: 'n2' } },
+      { id: 'call_1', name: 'peek', input: { node_id: 'n2' } },
     ]);
   });
 

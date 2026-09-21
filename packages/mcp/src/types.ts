@@ -18,7 +18,7 @@ export interface ToolContext {
   handle: TaskStore;
   retriever: TreeRetriever;
   /**
-   * §9.1 fan-out. Absent means tree-only retrieval — `context_search` still
+   * §9.1 fan-out. Absent means tree-only retrieval — `search` still
    * answers, which is the degradation §18's last row requires.
    */
   registry?: ProviderRegistry;

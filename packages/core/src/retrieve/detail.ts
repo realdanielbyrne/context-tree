@@ -1,5 +1,5 @@
 /**
- * L0 -> text for `context_fetch depth:"full"` and `context_peek` (§9).
+ * L0 -> text for `fetch depth:"full"` and `peek` (§9).
  *
  * L1 stores coordinates, not content (§6): a node's content IS its `seq` range
  * over L0, with payloads behind L2 refs. So "the branch's raw detail" is a
@@ -47,7 +47,7 @@ export function mergeSpans(spans: readonly SeqSpan[]): SeqSpan[] {
 }
 
 /**
- * Intersects each span with `[from ?? -inf, to ?? +inf]` — `context_fetch`'s
+ * Intersects each span with `[from ?? -inf, to ?? +inf]` — `fetch`'s
  * `from`/`to` (§9, R10). A span that lands entirely outside the range is
  * dropped rather than emitted empty, so an out-of-range request reads as "no
  * span here" instead of a zero-length one a caller has to special-case.
@@ -70,7 +70,7 @@ export function clampSpans(spans: readonly SeqSpan[], from?: number, to?: number
 
 /**
  * The event's primary L2 payload, or null when it carries none. Used by
- * `context_peek`, which wants one cheap excerpt rather than every blob an
+ * `peek`, which wants one cheap excerpt rather than every blob an
  * event references.
  */
 export function payloadRef(event: TraceEvent): BlobRef | null {
@@ -90,7 +90,7 @@ function renderEvent(event: TraceEvent, blobs: BlobStore): string {
     // Same rule as Zone C's renderer (`assemble/format.ts`, v5.9b): when a
     // post-state blob is present the args are capped, because a write's content
     // would otherwise appear twice in one payload — once JSON-escaped here and
-    // once raw below. This renderer was missing the cap, so `context_fetch`
+    // once raw below. This renderer was missing the cap, so `fetch`
     // results carried the duplicate that Zone C had stopped carrying: measured
     // on the frozen store, 6 of 754 events duplicate byte-for-byte that way,
     // and it inflates exactly the branches that already tokenize larger than
@@ -140,7 +140,7 @@ export function renderSpans(trace: TraceLog, blobs: BlobStore, spans: readonly S
 }
 
 /**
- * `context_fetch depth:"index"` (§9, R10): one row per event — `seq · type ·
+ * `fetch depth:"index"` (§9, R10): one row per event — `seq · type ·
  * tool · path · bytes` — from L0 plus an L2 *stat*, never L2 text. This is
  * what keeps `index` a hermetic, D15-compliant peek at a branch's shape: it
  * lets a model decide WHERE to range-fetch without ever paying for, or

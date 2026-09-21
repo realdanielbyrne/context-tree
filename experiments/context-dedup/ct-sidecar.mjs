@@ -14,7 +14,7 @@
  *      stays an append-only prefix. `packages/mcp/dist/bin.js` alone serves a store someone
  *      built earlier; in a SWE-bench cell the only history is the one being produced now.
  *   2. PUBLISH the message index (opencode message id -> L0 seq range) into the session,
- *      which is what lets `context_verdicts` name host messages.
+ *      which is what lets `verdicts` name host messages.
  *   3. SERVE the tool registry (D22) twice over one session: MCP stdio to the agent, and
  *      loopback HTTP to the plugin (`oc-plugin/`), which holds the eviction POLICY.
  *
@@ -234,7 +234,7 @@ export function g0Decisions(messages, foldText) {
 
 /**
  * The HTTP calls, as the evidence the gates read. One `assemble` row per turn — written
- * when `context_verdicts` answers, carrying that turn's `context_evict` if there was one —
+ * when `verdicts` answers, carrying that turn's `evict` if there was one —
  * so a turn with no evict call is visibly a turn where the policy did not fire.
  */
 function makeCallLog() {
@@ -245,12 +245,12 @@ function makeCallLog() {
       return;
     }
     const data = outcome.data;
-    if (tool === 'context_evict') {
+    if (tool === 'evict') {
       lastEvict = { turn: data.turn, window: input.window_tokens, reserve: input.reserve_tokens ?? 0, evicted: data.evicted, fired: data.fired, live_before: data.live_tokens_before, live_after: data.live_tokens_after, ms };
       record({ event: 'evict', ...lastEvict });
       return;
     }
-    if (tool !== 'context_verdicts') {
+    if (tool !== 'verdicts') {
       record({ event: 'tool', tool, ms });
       return;
     }
@@ -294,7 +294,7 @@ async function main() {
   const handle = openTaskStore(config);
   const retriever = new TreeRetriever({ store: handle.store, blobs: handle.blobs, trace: handle.trace });
   const session = createSession(pipeline);
-  const tools = G0_DROP_FIRST ? withHandlers({ context_verdicts: g0Verdicts }) : TOOLS;
+  const tools = G0_DROP_FIRST ? withHandlers({ verdicts: g0Verdicts }) : TOOLS;
   const contract = process.env.CT_CONTRACT || 'v1';
   const options = { config, handle, retriever, mode: config.mode, session, tools, contract };
   const ctx = toolContext(options);

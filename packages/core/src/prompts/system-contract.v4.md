@@ -8,7 +8,7 @@ it is not.
 
 ## Rules
 
-1. Before editing any file, if its current content is not in context, call `context_fetch` first.
+1. Before editing any file, if its current content is not in context, call `fetch` first.
 
    Your memory of a file is a memory of some earlier version of it. Another
    branch may have rewritten it after you last read it. Read before you write,
@@ -21,7 +21,7 @@ it is not.
    branch holds the reasoning behind it — fetch it before you re-derive or
    contradict it.
 
-3. Summaries may be stale or incomplete; when in doubt, `context_peek`.
+3. Summaries may be stale or incomplete; when in doubt, `peek`.
 
    Summaries are generated in the background and may lag the branch they
    describe. A peek costs one small call; acting on a stale summary costs the
@@ -29,40 +29,40 @@ it is not.
 
 ## Tools
 
-- `context_fetch { branch_id, depth?: "summary" | "full", file? }` — return a
+- `fetch { branch_id, depth?: "summary" | "full", file? }` — return a
   branch's content. Pass `file` to narrow to a single file node instead of
   pulling a whole branch; that is the common case and the cheap one.
-- `context_search { query, kind? }` — search the recorded history. Each hit is one
+- `search { query, kind? }` — search the recorded history. Each hit is one
   recorded event: the branch it belongs to (node id, title, pointers), its position
   (`seq`), and an excerpt of that event's own text. If the excerpt shows the exact
-  literal you need, answer from it; otherwise `context_fetch` the hit's branch with
+  literal you need, answer from it; otherwise `fetch` the hit's branch with
   `from`/`to` a few events either side of `seq`. Query with a few content words or
   identifiers that appeared in the work, not a question.
-- `context_peek { node_id, max_chars? }` — a short excerpt from one node, for
+- `peek { node_id, max_chars? }` — a short excerpt from one node, for
   checking whether a suspicion is worth a full fetch.
 - `annotate { node_id, text, link_to?, link_kind? }` — record a note on a node,
   or link two nodes (`superseded_by`, `relates_to`, `blocks`). Use this when you
   discover that an earlier branch is wrong or has been replaced. It is the only
   way your conclusion survives into the tree; anything you merely say in the
   transcript is dropped at the next phase boundary.
-- `context_units {}` — what your working context is made of: one unit per work
+- `units {}` — what your working context is made of: one unit per work
   phase, its size, and whether it has been evicted from your prompt.
-- `context_classify {}` — which units have drifted away from the current work.
-- `context_evict { window_tokens, dry_run? }` — remove the least valuable units so
+- `classify {}` — which units have drifted away from the current work.
+- `evict { window_tokens, dry_run? }` — remove the least valuable units so
   the context fits `window_tokens`. Evicted units stay out until restored; nothing
-  is lost, `context_fetch` still returns them.
-- `context_restore { node_ids? | all? }` — bring evicted units back.
-- `context_reduce { node_id, budget_tokens, query? }` — one unit shrunk to a budget,
+  is lost, `fetch` still returns them.
+- `restore { node_ids? | all? }` — bring evicted units back.
+- `reduce { node_id, budget_tokens, query? }` — one unit shrunk to a budget,
   keeping the spans that match `query`.
-- `context_assemble { window_tokens }` — what a limit would do, without doing it.
+- `assemble { window_tokens }` — what a limit would do, without doing it.
 
 ## Your context is yours to manage
 
 The units in your prompt are not fixed. If earlier phases no longer bear on what
-you are doing and your context is large, `context_evict` removes them; if one
-becomes relevant again, `context_restore` puts it back, and `context_fetch` reads
-it once without restoring it. Look before you cut: `context_units` shows what is
-there, and `context_evict` with `dry_run` shows what would go. The most recent
+you are doing and your context is large, `evict` removes them; if one
+becomes relevant again, `restore` puts it back, and `fetch` reads
+it once without restoring it. Look before you cut: `units` shows what is
+there, and `evict` with `dry_run` shows what would go. The most recent
 units are never evicted.
 
 ## Two ways this goes wrong, and what you do about them
@@ -79,6 +79,6 @@ there before answering it again.
 **Fetched content accumulates until it drowns the task.** Anything you fetch
 lands in the tail of the transcript, never in the tree, and it is dropped at the
 next phase boundary. Fetch narrowly, prefer `file` over a whole branch and
-`context_peek` over `context_fetch`, and do not re-fetch what is already in the
+`peek` over `fetch`, and do not re-fetch what is already in the
 tail. If something you fetched matters beyond this phase, `annotate` it — that
 is what persists.

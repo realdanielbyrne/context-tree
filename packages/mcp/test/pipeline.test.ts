@@ -68,7 +68,7 @@ function unwrap<T>(outcome: ToolOutcome<T>): T {
   return outcome.data;
 }
 
-describe('context_units / context_classify', () => {
+describe('units / classify', () => {
   it('lists one unit per phase, sized in heuristic tokens, with the recency anchor marked', async () => {
     const { ctx } = seed();
     const data = unwrap(await contextUnits(ctx, {}));
@@ -89,7 +89,7 @@ describe('context_units / context_classify', () => {
   });
 });
 
-describe('context_evict / context_restore', () => {
+describe('evict / restore', () => {
   it('does nothing while the live units fit', async () => {
     const { ctx } = seed();
     const data = unwrap(await contextEvict(ctx, { window_tokens: 1_000_000 }));
@@ -142,7 +142,7 @@ describe('context_evict / context_restore', () => {
   });
 });
 
-describe('context_reduce / context_assemble', () => {
+describe('reduce / assemble', () => {
   it('reduces one unit to a budget without changing anything', async () => {
     const { ctx } = seed();
     const unit = unwrap(await contextUnits(ctx, {})).units[2]!;
@@ -167,7 +167,7 @@ describe('context_reduce / context_assemble', () => {
   });
 });
 
-describe('context_verdicts', () => {
+describe('verdicts', () => {
   const messages = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `m${String(i)}`, tokens: 100, hasTools: i > 0 }));
 
   it('keeps everything until an adapter publishes a message index, and says so', async () => {
@@ -251,15 +251,15 @@ describe('HTTP transport', () => {
     const { call } = await api(ctx);
     const { json } = await call('');
     expect(json.tools.map((t: { name: string }) => t.name).sort()).toEqual(TOOLS.map((t) => t.name).sort());
-    const evict = json.tools.find((t: { name: string }) => t.name === 'context_evict');
+    const evict = json.tools.find((t: { name: string }) => t.name === 'evict');
     expect(evict.input_schema.required).toContain('window_tokens');
   });
 
   it('shares ONE session with direct (MCP-side) handler calls', async () => {
     const { ctx } = seed();
     const { call } = await api(ctx);
-    const total = (await call('context_units')).json.data.total_tokens;
-    const evicted = (await call('context_evict', { window_tokens: total / 2 })).json.data.evicted;
+    const total = (await call('units')).json.data.total_tokens;
+    const evicted = (await call('evict', { window_tokens: total / 2 })).json.data.evicted;
     expect(evicted.length).toBeGreaterThan(0);
     // Seen from the other transport's side of the same context:
     expect(unwrap(await contextUnits(ctx, {})).units.filter((u) => u.evicted).map((u) => u.node_id).sort()).toEqual([...evicted].sort());
@@ -268,18 +268,18 @@ describe('HTTP transport', () => {
   it('answers a bad input as a structured outcome, an unknown tool as 404, a bad token as 403', async () => {
     const { ctx } = seed();
     const open = await api(ctx);
-    expect((await open.call('context_evict', {})).json).toMatchObject({ ok: false, error: { code: 'invalid_input' } });
+    expect((await open.call('evict', {})).json).toMatchObject({ ok: false, error: { code: 'invalid_input' } });
     expect((await open.call('nope', {})).status).toBe(404);
     const locked = await api(ctx, { token: 's3cret' });
-    expect((await locked.call('context_units', {})).status).toBe(403);
-    expect((await locked.call('context_units', {}, { authorization: 'Bearer s3cret' })).status).toBe(200);
+    expect((await locked.call('units', {})).status).toBe(403);
+    expect((await locked.call('units', {}, { authorization: 'Bearer s3cret' })).status).toBe(200);
   });
 
   it('a stage is swapped behind its name', async () => {
     const { ctx } = seed();
-    const tools = withHandlers({ context_classify: async () => ({ ok: true, data: { swapped: true } }) });
+    const tools = withHandlers({ classify: async () => ({ ok: true, data: { swapped: true } }) });
     const { call } = await api(ctx, { tools });
-    expect((await call('context_classify')).json).toEqual({ ok: true, data: { swapped: true } });
+    expect((await call('classify')).json).toEqual({ ok: true, data: { swapped: true } });
     expect(() => withHandlers({ nope: async () => ({ ok: true, data: null }) })).toThrow(/no such tool/);
   });
 });

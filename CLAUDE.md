@@ -70,7 +70,7 @@ Consequences to hold onto while coding:
    (system + tool schemas, frozen) → Zone B (root + branch summaries in
    **creation order**) → Zone C (active branch detail, rewritten each phase).
    Zone B is never relevance-ordered — reordering the prefix is the cache
-   killer; relevance is expressed by expansion in Zone C. `context_fetch`
+   killer; relevance is expressed by expansion in Zone C. `fetch`
    results append *after* Zone C so the cached prefix is untouched.
 
 ## Component notes worth knowing before you edit
@@ -87,15 +87,15 @@ Consequences to hold onto while coding:
   in `meta_json` (files+spans, symbols, tests, ticket/PR ids, open questions) —
   that metadata is the mitigation for the model not knowing what it doesn't know.
 - **Tool surface (§9, D22)**: every pipeline stage is a tool in one registry
-  (`packages/mcp/src/tools/index.ts` `TOOLS`) — retrieval (`context_fetch`,
-  `context_search`, `context_peek`, `annotate`) and the stages (`context_units`,
-  `context_classify`, `context_evict`, `context_restore`, `context_reduce`,
-  `context_assemble`, host-only `context_verdicts`). The MCP server (agents) and the
+  (`packages/mcp/src/tools/index.ts` `TOOLS`) — retrieval (`fetch`,
+  `search`, `peek`, `annotate`) and the stages (`units`,
+  `classify`, `evict`, `restore`, `reduce`,
+  `assemble`, host-only `verdicts`). The MCP server (agents) and the
   loopback HTTP API (host plugins) serve that same table over one session. The set is
   frozen *within a session* (D5); it is not capped. Eviction is sticky session state, so
   a policy is the sequence of calls a caller makes. The system-prompt contract lives in
   versioned files under `src/prompts/` so a learned policy can replace it later (§14).
-- **Retrieval providers (§9.1)**: `context_search`/`context_fetch` are facades
+- **Retrieval providers (§9.1)**: `search`/`fetch` are facades
   over a `RetrievalProvider` interface (graft, Serena, Augment, vector, grep).
   Merge order is fixed and deterministic: structural → fuzzy → grep, except
   `mode: "exhaustive"` where grep is authoritative. `VectorProvider` and

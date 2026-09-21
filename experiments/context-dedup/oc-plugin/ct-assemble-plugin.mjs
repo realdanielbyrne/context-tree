@@ -20,8 +20,8 @@
  * The plugin holds the POLICY and nothing else. The pipeline is tools served over loopback
  * HTTP by `@context-tree/mcp` (D22), running in the sidecar because it needs Node (SQLite,
  * tree-sitter) and this is opencode's bun runtime. Each turn the plugin calls
- * `context_evict` if — and only if — its policy says so (`policy.mjs`), then
- * `context_verdicts` to learn what that means for the host's messages. A fault in either
+ * `evict` if — and only if — its policy says so (`policy.mjs`), then
+ * `verdicts` to learn what that means for the host's messages. A fault in either
  * call leaves the prompt untouched rather than taking down the host we are measuring.
  *
  * It registers exactly ONE hook. A plugin registering only `chat.params` hung opencode
@@ -112,9 +112,9 @@ export const server = async () => {
         const call = evictCallFor(POLICY, turn, beforeTokens);
         if (call) {
           const { floor, ...args } = call;
-          evict = { floor, window: args.window_tokens, ...(await callTool('context_evict', args, deadline)) };
+          evict = { floor, window: args.window_tokens, ...(await callTool('evict', args, deadline)) };
         }
-        verdicts = await callTool('context_verdicts', {
+        verdicts = await callTool('verdicts', {
           messages: sized, protect_tail: POLICY.protectTail, summaries: POLICY.summaries, ceiling_tokens: ceilingOf(POLICY), turn,
         }, deadline);
       } catch (error) {

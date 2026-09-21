@@ -38,9 +38,9 @@ const PROMPT_VERSIONS: Readonly<Record<PromptName, string>> = Object.freeze({
  * the golden test in `test/prompts.test.ts` enforces that pairing.
  */
 export const TOOL_CONTRACT_RULES: readonly string[] = Object.freeze([
-  'Before editing any file, if its current content is not in context, call `context_fetch` first.',
+  'Before editing any file, if its current content is not in context, call `fetch` first.',
   'Branch summaries list the files and artifacts each phase touched. If a summary mentions something you need, fetch that branch.',
-  'Summaries may be stale or incomplete; when in doubt, `context_peek`.',
+  'Summaries may be stale or incomplete; when in doubt, `peek`.',
 ]);
 
 const cache = new Map<PromptName, string>();

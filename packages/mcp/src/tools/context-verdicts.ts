@@ -1,12 +1,12 @@
 /**
- * `context_verdicts` — the HOST-facing end of the pipeline: given the host's own
+ * `verdicts` — the HOST-facing end of the pipeline: given the host's own
  * message list, which messages stay, which drop, which fold to a summary.
  *
  * It SELECTS whole messages and never re-renders them. A host keeps a tool call and
  * its result in one message, so a whole-message verdict cannot orphan a result —
  * re-rendering a transcript from the tree is what invalidated the deleted in-repo
  * harness (D20). It reads the session's evicted set and decides nothing itself: the
- * eviction POLICY is `context_evict`, and when to call it is the host's.
+ * eviction POLICY is `evict`, and when to call it is the host's.
  *
  * HTTP only. Its input is the host's message array, which an agent never holds.
  */
@@ -17,7 +17,7 @@ import { advanceTurn, sessionOf } from '../session.js';
 import type { ToolContext, ToolOutcome } from '../types.js';
 import { turnArg } from './pipeline-args.js';
 
-export const CONTEXT_VERDICTS = 'context_verdicts';
+export const CONTEXT_VERDICTS = 'verdicts';
 
 export const CONTEXT_VERDICTS_DESCRIPTION =
   'For a host plugin: map the evicted units onto the host\'s message list and return keep / drop / fold ' +

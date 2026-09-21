@@ -11,7 +11,7 @@ what it solves at the full window, at materially lower achieved peak.
 - **Unit** — one segmenter *phase* (a run of same-kind work: diagnosis, implementation,
   verification…). Units are what the pipeline classifies, evicts and reduces. A unit is not a
   message and has no size bound: on the first gate cell, one `diagnosis` unit covered turns 2–31.
-- **Anchor (`U18_ANCHOR` → `CT_CT_ANCHOR` → `context_evict.anchor`)** — the recency anchor `A`:
+- **Anchor (`U18_ANCHOR` → `CT_CT_ANCHOR` → `evict.anchor`)** — the recency anchor `A`:
   the **last A units** in creation order are never eligible for eviction
   (`packages/core/src/assemble/flex.ts`, package default 4, marked PROVISIONAL — "a read-loop
   guard, never swept"). With `n ≤ A` units nothing can be evicted at any W. Runs here default to **3**.
@@ -38,10 +38,10 @@ what it solves at the full window, at materially lower achieved peak.
   and starts the server. No pipeline logic. Reads the *pipeline* knobs.
 - **Plugin** — `oc-plugin/ct-assemble-plugin.mjs`: runs inside opencode at
   `experimental.chat.messages.transform`, the only point where the prompt can be edited. Each turn
-  it calls `context_evict` **if its policy says so**, then `context_verdicts`, and applies the
+  it calls `evict` **if its policy says so**, then `verdicts`, and applies the
   per-message keep/drop in place. Reads the *policy* knobs. **The arm is that call sequence.**
-- **Sticky eviction** — a unit evicted stays out until `context_restore`. A turn with no
-  `context_evict` call leaves the prompt as it was.
+- **Sticky eviction** — a unit evicted stays out until `restore`. A turn with no
+  `evict` call leaves the prompt as it was.
 
 ## Run it
 
@@ -71,7 +71,7 @@ recorded knobs differ — so settings cannot pool by accident.
 | `U18_PRIORITY_HALFLIFE` / `U18_EVICT_HEADROOM` | 4 / 0 | sidecar | priority decay (turns); extra tokens freed when eviction fires |
 | `U18_DRIFT_K` / `U18_DRIFT_TAU` | 5 / 1 | sidecar | drift classifier window and threshold |
 | `U18_RRF_K`, `U18_CHUNK_SIZE` / `_OVERLAP` | 60, 800 / 100 | sidecar | retrieval / reduce parameters |
-| `U18_SOFT_TARGET_FRAC`, `U18_REDUCER` | 0.375, chunk | sidecar | reduce-on-overflow (affects `context_assemble`/`context_reduce` only — see Known limits) |
+| `U18_SOFT_TARGET_FRAC`, `U18_REDUCER` | 0.375, chunk | sidecar | reduce-on-overflow (affects `assemble`/`reduce` only — see Known limits) |
 | `U18_NEUTRAL_PHASES` | other | sidecar | phases that never open a unit: **decides unit granularity**; `none` = every tool change opens one |
 | `U18_CONTRACT` | v1 | sidecar | system-contract version; `v4` tells the agent about the pipeline tools |
 
@@ -101,7 +101,7 @@ GPU mid-cell.
 | arm | driver env | what it is |
 |---|---|---|
 | `off` | `CT_ARM=off` | the handoff's control: host compaction at 119,040, no plugin, no MCP tools |
-| `soft` | `CT_ARM=ct CT_CT_TRIGGER=soft CT_CT_WINDOW=W` | the treatment: the plugin calls `context_evict {window_tokens: W, reserve_tokens: 20,192}` **every turn**. Eviction fires when live unit tokens (raw, `HeuristicTokenizer`) exceed `W − 20,192` |
+| `soft` | `CT_ARM=ct CT_CT_TRIGGER=soft CT_CT_WINDOW=W` | the treatment: the plugin calls `evict {window_tokens: W, reserve_tokens: 20,192}` **every turn**. Eviction fires when live unit tokens (raw, `HeuristicTokenizer`) exceed `W − 20,192` |
 | `hard` | `CT_ARM=ct CT_CT_TRIGGER=hard` | plumbing-matched control: same tools, plugin, `--pure` dropped, host compaction off — but the evict call is made at the real window (151,040) |
 
 `soft` vs `off` is the **primary** comparison, as the handoff specifies. **`hard` is an addition
@@ -112,7 +112,7 @@ attribute a difference, not to decide the verdict: `soft` vs `hard` isolates evi
 `off` isolates the plumbing. `U18_ARMS="off soft"` drops it and saves a third of the GPU time, at
 the cost of an unattributable result. Every knob is set explicitly on every ct cell; summaries are
 off (U20), cadence is unused (U19). In every ct arm the agent can itself call the pipeline tools
-over MCP (D22) — an agent-made `context_evict` in `hard` would make the control evict, so such
+over MCP (D22) — an agent-made `evict` in `hard` would make the control evict, so such
 calls are counted per arm (`agent_evict_calls`).
 
 Arm order rotates per wave so no arm always runs first.
@@ -212,7 +212,7 @@ rotation no longer balances time for them.
   that same unknown.
 - **Eviction budgets on RAW unit size.** `assembleFlex` can shrink an oversized unit in its own
   rendering (reduce-on-overflow) or fold it to a summary, but a host message carrying tool parts is
-  keep-or-drop, so neither reaches the prompt. `context_evict` therefore counts units whole. The
+  keep-or-drop, so neither reaches the prompt. `evict` therefore counts units whole. The
   consequence is the first gate's failure mode: **a single unit larger than the budget, while it
   is inside the anchor, cannot be bounded by any W or A.** Unit granularity
   (`U18_NEUTRAL_PHASES`) is the lever; expressing a reduction as a prompt edit is an open design

@@ -54,9 +54,9 @@ function toolResult(fields: Omit<TraceEventInput<ToolResultEvent>, 'type' | 'ts'
 }
 
 interface BlobCalls {
-  /** Capped reads — what `context_peek` must use. */
+  /** Capped reads — what `peek` must use. */
   prefix: Array<{ ref: BlobRef; maxBytes: number }>;
-  /** Whole-blob reads — what `context_peek` must never do. */
+  /** Whole-blob reads — what `peek` must never do. */
   full: BlobRef[];
 }
 
@@ -402,7 +402,7 @@ describe('TreeRetriever.beamSearch — the L3-absent fallback (§9)', () => {
   });
 });
 
-describe('TreeRetriever.fetchBranch — context_fetch', () => {
+describe('TreeRetriever.fetchBranch — fetch', () => {
   it('defaults to depth full (R9), because a summary can never contain a literal the paraphrase dropped', () => {
     const f = fixture();
     const retriever = new TreeRetriever({ store: f.store, blobs: f.blobs, trace: f.trace });
@@ -559,7 +559,7 @@ describe('TreeRetriever.fetchBranch — context_fetch', () => {
   });
 });
 
-describe('TreeRetriever.peek — context_peek', () => {
+describe('TreeRetriever.peek — peek', () => {
   it('caps the excerpt at maxChars and never pages in the whole blob, because suspicion costs one small call (§9)', () => {
     const f = fixture();
     const retriever = new TreeRetriever({ store: f.store, blobs: f.blobs, trace: f.trace });
@@ -679,7 +679,7 @@ describe('TreeRetriever.embedSummaries — L3 is disposable (D8)', () => {
 
 describe('the edit-argument cap holds in the retrieval renderer too (2026-09-02)', () => {
   it("caps a write's args when a post-state blob is present, so the content is not rendered twice", () => {
-    // Zone C stopped rendering this duplicate in v5.9b; `context_fetch` kept
+    // Zone C stopped rendering this duplicate in v5.9b; `fetch` kept
     // rendering it, so the same content came back once JSON-escaped in the args
     // and once raw below — in exactly the payload a model reads to recover a
     // fact. Measured on the frozen transplant store: 6 of 754 events duplicate

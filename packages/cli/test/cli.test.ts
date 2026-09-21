@@ -551,7 +551,7 @@ describe('summarize', () => {
 /**
  * A provider that satisfies the §8 content contract: it echoes back every node
  * id the prompt named, which is what `contractViolation` requires of a real
- * summary (a summary that omits a child branch hides it from `context_fetch`).
+ * summary (a summary that omits a child branch hides it from `fetch`).
  */
 function contractProvider(): MockProvider {
   return new MockProvider({

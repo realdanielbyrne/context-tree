@@ -1,5 +1,5 @@
 /**
- * `context_reduce` — reduce-on-overflow as a call. One unit, shrunk to a budget by
+ * `reduce` — reduce-on-overflow as a call. One unit, shrunk to a budget by
  * the named reducer. It returns text and changes nothing: what a caller does with a
  * reduced unit (show it, fold a message to it) is the caller's decision.
  */
@@ -9,15 +9,15 @@ import { failFrom, ok, parseArgs, requireNode } from '../result.js';
 import { sessionOf, sessionUnits } from '../session.js';
 import type { ToolContext, ToolOutcome } from '../types.js';
 
-export const CONTEXT_REDUCE = 'context_reduce';
+export const CONTEXT_REDUCE = 'reduce';
 
 export const CONTEXT_REDUCE_DESCRIPTION =
   'Shrink one unit to budget_tokens: "chunk" keeps the spans most relevant to query and marks the gaps, ' +
   '"summarize" returns its summary. Reach for it when a single phase is too large to keep whole but you ' +
-  'still need its substance, and a full context_fetch would cost more than you want to spend.';
+  'still need its substance, and a full fetch would cost more than you want to spend.';
 
 const shape = {
-  node_id: z.string().min(1).describe('The unit to reduce, from context_units or a context_search hit.'),
+  node_id: z.string().min(1).describe('The unit to reduce, from units or a search hit.'),
   budget_tokens: z.number().positive().describe('Target size in heuristic tokens.'),
   reducer: z.enum(['chunk', 'summarize']).optional(),
   query: z.string().optional().describe('Ranks the spans "chunk" keeps. Omit to keep the leading spans.'),
@@ -44,7 +44,7 @@ export async function contextReduce(ctx: ToolContext, input: unknown): Promise<T
     const { units } = await sessionUnits(ctx);
     const unit = units.find((u) => u.node.id === found.data.id);
     if (unit === undefined) {
-      return { ok: false, error: { code: 'unknown_node', message: `node_id ${JSON.stringify(args.node_id)} is not a unit (a work phase). context_units lists them.` } };
+      return { ok: false, error: { code: 'unknown_node', message: `node_id ${JSON.stringify(args.node_id)} is not a unit (a work phase). units lists them.` } };
     }
     const p = session.pipeline;
     const reducer = args.reducer ?? p.reducer;

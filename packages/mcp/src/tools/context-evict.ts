@@ -1,11 +1,11 @@
 /**
- * `context_evict` / `context_restore` — stage 2, and the only tools that change
+ * `evict` / `restore` — stage 2, and the only tools that change
  * what the next prompt contains.
  *
- * Eviction is STICKY. `context_evict` runs the settled policy (`assembleFlex`: D-EV
+ * Eviction is STICKY. `evict` runs the settled policy (`assembleFlex`: D-EV
  * score, recency anchor, fire only when the limit binds) over the units still live
  * and adds what it removes to the session's evicted set; nothing comes back until
- * `context_restore`.
+ * `restore`.
  *
  * It budgets on RAW unit size, with reduce-on-overflow and summary folding switched
  * off. The assembler can shrink a unit in its own rendering, but a host's messages
@@ -23,12 +23,12 @@ import { advanceTurn, sessionOf, sessionUnits } from '../session.js';
 import type { ToolContext, ToolOutcome } from '../types.js';
 import { budgetShape, flexOptions, turnArg } from './pipeline-args.js';
 
-export const CONTEXT_EVICT = 'context_evict';
-export const CONTEXT_RESTORE = 'context_restore';
+export const CONTEXT_EVICT = 'evict';
+export const CONTEXT_RESTORE = 'restore';
 
 export const CONTEXT_EVICT_DESCRIPTION =
   'Remove the least valuable units from your working context so it fits window_tokens. Units stay ' +
-  'evicted until context_restore; their content is never lost and context_fetch still returns it. Reach ' +
+  'evicted until restore; their content is never lost and fetch still returns it. Reach ' +
   'for it when your context is large and earlier phases no longer bear on what you are doing. Use ' +
   'dry_run to see what would go without removing it.';
 
