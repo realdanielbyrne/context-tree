@@ -32,6 +32,7 @@ import {
   type TreeNode,
 } from '@context-tree/core';
 import { PIPELINE_DEFAULTS, type PipelineParams } from './params.js';
+import { stubOf } from './stub.js';
 import type { ToolContext } from './types.js';
 
 /** A unit as every stage sees it — the same object for classification, retention and retrieval. */
@@ -50,6 +51,8 @@ export interface SessionUnit {
   readonly drift: DriftResult;
   /** Sized by what the host sends (`hostContent`), so it is the number a host plugin gets for the same message. */
   readonly tokens: number;
+  /** Its size as a stub (`stub.ts`); equal to `tokens` when stubbing would save nothing. */
+  readonly stubTokens: number;
   /** `splitText(raw)` under the session's chunk options — the sub-unit retrieval ranks and reduction keeps. */
   readonly chunks: number;
 }
@@ -68,6 +71,8 @@ export interface Session {
   readonly classifier: DriftClassifier;
   readonly assembly: Map<string, Disposition>;
   readonly evicted: Set<string>;
+  /** Evicted to a stub: still visible, cut to its residue. A unit in `evicted` is gone whatever this says. */
+  readonly stubbed: Set<string>;
   /** The last query `assemble` was given; ranks what a reduction keeps when decisions are rendered later. */
   query: string | undefined;
   /** unit id -> the turn the agent last touched a file that unit wrote. */
@@ -84,6 +89,7 @@ export function createSession(params: PipelineParams = PIPELINE_DEFAULTS): Sessi
     classifier: new DriftClassifier(),
     assembly: new Map(),
     evicted: new Set(),
+    stubbed: new Set(),
     query: undefined,
     referenced: new Map(),
     scannedSeq: 0,
@@ -175,7 +181,8 @@ export async function sessionUnits(ctx: ToolContext): Promise<Snapshot> {
     const slice = events.slice(span.startSeq - 1, span.endSeq);
     const hasTools = slice.some((e) => e.type === 'tool_call');
     const tokens = slice.flatMap((e) => hostContent(e, blobs)).reduce((n, text) => n + session.tokenizer.count(text), 0);
-    return { ...span, hasTools, flex, drift: mapped.drift[i]!, tokens, chunks: splitText(flex.raw, chunkOptions).length };
+    const stubTokens = Math.min(tokens, stubOf(slice, blobs, session.tokenizer, span.id).tokens);
+    return { ...span, hasTools, flex, drift: mapped.drift[i]!, tokens, stubTokens, chunks: splitText(flex.raw, chunkOptions).length };
   });
   session.snapshot = { lastSeq, units, corpus: mapped.corpus };
   return session.snapshot;
@@ -183,9 +190,17 @@ export async function sessionUnits(ctx: ToolContext): Promise<Snapshot> {
 
 const EVICTED: Disposition = Object.freeze({ kind: 'drop', why: 'evicted' });
 
-/** What a unit finally is: eviction overrules assembly; an unruled unit is kept raw. */
-export const dispositionOf = (session: Session, unitId: string): Disposition =>
-  session.evicted.has(unitId) ? EVICTED : (session.assembly.get(unitId) ?? KEEP);
+/**
+ * What a unit finally is. Eviction overrules assembly, and the smaller form wins: gone, then
+ * a fold (or covered by one), then a stub, then a reduction; an unruled unit is kept raw.
+ */
+export function dispositionOf(session: Session, unit: Pick<SessionUnit, 'id' | 'stubTokens'>): Disposition {
+  if (session.evicted.has(unit.id)) return EVICTED;
+  const assembled = session.assembly.get(unit.id);
+  if (assembled?.kind === 'fold' || assembled?.kind === 'drop') return assembled;
+  if (session.stubbed.has(unit.id)) return { kind: 'stub', tokens: unit.stubTokens };
+  return assembled ?? KEEP;
+}
 
 export interface UnitView {
   id: string;

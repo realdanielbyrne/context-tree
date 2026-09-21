@@ -8,9 +8,9 @@
  */
 import { z } from 'zod';
 import { resolveReducer } from '@context-tree/core';
-import { sessionOf } from '../session.js';
+import { sessionOf, sessionUnits } from '../session.js';
 import type { NodeId, NodeKind, PhaseType, SeqSpan, SummaryMeta } from '@context-tree/core';
-import { failFrom, ok, parseArgs, requireNode } from '../result.js';
+import { fail, failFrom, ok, parseArgs, requireNode } from '../result.js';
 import { recordRetrieval } from '../observe.js';
 import type { ToolContext, ToolOutcome } from '../types.js';
 
@@ -36,7 +36,12 @@ export const CONTEXT_FETCH_DESCRIPTION =
   'stored tree and never invalidates the cached prompt prefix.';
 
 const shape = {
-  branch_id: z.string().min(1).describe('Node id of the branch to read, as returned by search.'),
+  branch_id: z.string().min(1).optional().describe('Node id of the branch to read, as returned by search or named in a folded phase. Give this or `unit`.'),
+  unit: z
+    .string()
+    .min(1)
+    .optional()
+    .describe('A unit id exactly as an `[evicted …]` tag gives it, e.g. "turn:31": returns that one turn in full. Give this or `branch_id`.'),
   depth: z
     .enum(['summary', 'index', 'full'])
     .optional()
@@ -105,15 +110,21 @@ export async function contextFetch(ctx: ToolContext, input: unknown): Promise<To
   if (!parsed.ok) return parsed;
   const args = parsed.data;
 
-  const branch = requireNode(ctx, 'branch_id', args.branch_id);
-  if (!branch.ok) return branch;
+  if ((args.branch_id === undefined) === (args.unit === undefined)) return fail('invalid_input', 'give exactly one of branch_id or unit');
 
   try {
-    const fetched = ctx.retriever.fetchBranch(args.branch_id, {
+    // A unit is a span of one phase, so it resolves to that branch narrowed to the unit's events.
+    const unit = args.unit === undefined ? undefined : (await sessionUnits(ctx)).units.find((u) => u.id === args.unit);
+    if (args.unit !== undefined && unit === undefined) return fail('unknown_node', `no unit "${args.unit}" — ids are listed by the units tool`);
+    const branchId = unit?.phase.id ?? (args.branch_id as string);
+    const branch = requireNode(ctx, 'branch_id', branchId);
+    if (!branch.ok) return branch;
+
+    const fetched = ctx.retriever.fetchBranch(branchId, {
       depth: args.depth ?? 'full',
       file: args.file,
-      from: args.from,
-      to: args.to,
+      from: unit?.startSeq ?? args.from,
+      to: unit?.endSeq ?? args.to,
     });
     const data: ContextFetchData = {
       branch_id: fetched.nodeId,

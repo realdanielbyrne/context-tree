@@ -54,7 +54,7 @@ export async function contextUnits(ctx: ToolContext, input: unknown): Promise<To
     const { units, lastSeq } = await sessionUnits(ctx);
     const pinned = pinnedIds(units.filter((u) => !session.evicted.has(u.id)));
     const rows = units.map((u, order): UnitRow => {
-      const disposition = dispositionOf(session, u.id);
+      const disposition = dispositionOf(session, u);
       return {
         ...viewOf(u), order, tokens: u.tokens, current_tokens: tokensUnder(u, disposition), state: disposition.kind,
         chunks: u.chunks, wrote: u.flex.wrote, last_referenced_turn: u.flex.lastReferencedTurn, pinned: pinned.has(u.id),

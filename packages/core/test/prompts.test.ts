@@ -449,3 +449,13 @@ describe('golden render', () => {
     `);
   });
 });
+
+describe('system-contract v5: a prompt with tags in it', () => {
+  it('shows the two tag forms exactly as the pipeline writes them, and gives no orders', () => {
+    const v5 = systemContract('v5');
+    expect(v5).toContain('fetch {"unit":"turn:31"}');
+    expect(v5).toContain('[folded phase · ');
+    expect(v5).toContain('[evicted · N tokens · began: ');
+    expect(v5).not.toMatch(/\b(must|never|always|do not)\b/i);
+  });
+});

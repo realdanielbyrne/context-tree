@@ -125,6 +125,20 @@ export function hostContent(event: TraceEvent, blobs: BlobStore): string[] {
   }
 }
 
+const FIRST_LINE_CHARS = 100;
+
+/**
+ * What replaces an evicted tool output. It DESCRIBES and never instructs: what was here,
+ * how large, how it began, and the one call that returns it. A reference that names its
+ * content beat a length-matched placebo (T12b); "stop re-reading" nudges were ignored 33
+ * times out of 33 (`reports/metrics/coding-harness/report-readloop.md`).
+ */
+export function evictedTag(output: string, tokens: number, unitId: string): string {
+  const first = output.split('\n').find((line) => line.trim().length > 0)?.trim() ?? '';
+  const shown = first.length > FIRST_LINE_CHARS ? `${first.slice(0, safeCut(first, FIRST_LINE_CHARS))}…` : first;
+  return `[evicted · ${String(tokens)} tokens · began: ${JSON.stringify(shown)} · recall: fetch {"unit":"${unitId}"}]`;
+}
+
 export function renderEvent(event: TraceEvent, blobs: BlobStore): string {
   switch (event.type) {
     case 'user_message':

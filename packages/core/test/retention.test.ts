@@ -43,6 +43,19 @@ describe('planRetention — removal only, over units sized as assembled', () => 
     expect(plan.tokensAfter).toBeLessThanOrEqual(1000);
   });
 
+  it('with residues, removal is two steps: stub the worst, drop only if the stubs do not fit', () => {
+    const units = [0, 1, 2, 3].map((i) => ({ ...unit(i, 400), residueTokens: 50 }));
+    const gentle = planRetention(units, params());
+    expect(gentle).toMatchObject({ stubbed: ['u0', 'u1'], dropped: [] });
+    expect(gentle.tokensAfter).toBe(900);
+
+    const harsh = planRetention(units.map((u) => ({ ...u, residueTokens: 300 })), params());
+    expect(harsh.dropped.length).toBeGreaterThan(0);
+    expect(harsh.tokensAfter).toBeLessThanOrEqual(1000);
+    // A residue that saves nothing is no residue: that unit can only be dropped.
+    expect(planRetention(units.map((u) => ({ ...u, residueTokens: 400 })), params())).toMatchObject({ stubbed: [], dropped: ['u0', 'u1'] });
+  });
+
   it('protection yields only when the budget cannot otherwise be met', () => {
     const anchored = { protection: 1 };
     // Unprotected units can pay: the protected one survives even though it is oldest.

@@ -172,6 +172,50 @@ describe('evict — takes the assembly as input, and may overrule it', () => {
     expect(unwrap(await contextEvict(ctx, { window_tokens: total / 2 })).fired).toBe(false);
   });
 
+  it("evict_mode 'stub' cuts a unit to a visible residue before anything is dropped", async () => {
+    const ctx = seed();
+    const total = unwrap(await contextUnits(ctx, {})).tokens_raw;
+    const data = unwrap(await contextEvict(ctx, { window_tokens: total / 2, evict_mode: 'stub', messages: messages(9) }));
+    expect(data.stubbed.length).toBeGreaterThan(0);
+    expect(data.evicted).toEqual([]);
+    expect(data.tokens_after).toBeLessThanOrEqual(total / 2);
+
+    const stub = data.decisions!.find((d) => d.action === 'stub') as { unit: string; outputs: { index: number; text: string }[] };
+    expect(stub.outputs).toHaveLength(1);
+    expect(stub.outputs[0]!.text).toMatch(new RegExp(`^\\[evicted · \\d+ tokens · began: "turn\\d+word0 .*recall: fetch \\{"unit":"${stub.unit}"\\}\\]$`));
+    const row = unwrap(await contextUnits(ctx, {})).units.find((u) => u.id === stub.unit)!;
+    expect(row.state).toBe('stub');
+    expect(row.current_tokens).toBeLessThan(row.tokens / 10);
+
+    // The id in the tag works in one call, and returns what the tag replaced.
+    const back = unwrap(await contextFetch(ctx, { unit: stub.unit }));
+    expect(back.text).toContain('word399');
+    // Sticky, and written once: the same stub text on the next turn, so the cached prefix holds.
+    const again = unwrap(await contextEvict(ctx, { window_tokens: total / 2, evict_mode: 'stub', messages: messages(9) }));
+    expect(again.fired).toBe(false);
+    expect(again.decisions!.find((d) => d.id === (stub as unknown as { id: string }).id)).toEqual(stub);
+  });
+
+  it('stubs that still do not fit are dropped, worst first; restore brings a stub back whole', async () => {
+    const ctx = seed();
+    const data = unwrap(await contextEvict(ctx, { window_tokens: 1400, evict_mode: 'stub' }));
+    expect(data.evicted.length).toBeGreaterThan(0);
+    expect(data.stubbed.length).toBeGreaterThan(0);
+    expect(data).toMatchObject({ over_budget: false });
+    expect(data.tokens_after).toBeLessThanOrEqual(1400);
+    const gentle = seed();
+    const total = unwrap(await contextUnits(gentle, {})).tokens_raw;
+    const { stubbed } = unwrap(await contextEvict(gentle, { window_tokens: total / 2, evict_mode: 'stub' }));
+    expect(unwrap(await contextRestore(gentle, { ids: [stubbed[0]!] })).restored).toEqual([stubbed[0]]);
+    expect(unwrap(await contextUnits(gentle, {})).units.find((u) => u.id === stubbed[0])!.state).toBe('keep');
+  });
+
+  it('fetch takes exactly one of branch_id or unit', async () => {
+    const ctx = seed();
+    expect((await contextFetch(ctx, {})).ok).toBe(false);
+    expect((await contextFetch(ctx, { unit: 'turn:999' })).ok).toBe(false);
+  });
+
   it('soft protection yields when nothing else can pay; hard does not', async () => {
     const soft = seed();
     const total = unwrap(await contextUnits(soft, {})).tokens_raw;
@@ -263,7 +307,9 @@ describe('folding a phase to its summary', () => {
   it('the first TEXT-ONLY message of the phase carries the summary; its other messages go', async () => {
     const data = unwrap(await contextAssemble(folding(true), { window_tokens: 100_000, messages: host(true) }));
     const by = Object.fromEntries(data.decisions!.map((d) => [d.id, d]));
-    expect(by['m2']).toMatchObject({ action: 'fold', text: 'Read a.ts; the bug is in price().' });
+    // Headline form by default: one sentence and the call that brings the phase back.
+    expect(by['m2']).toMatchObject({ action: 'fold' });
+    expect((by['m2'] as { text: string }).text).toMatch(/^\[folded phase · Read a\.ts; the bug is in price\(\)\. · recall: search, or fetch \{"branch_id":"n_[^"]+"\}\]$/);
     expect([by['m1']!.action, by['m3']!.action]).toEqual(['drop', 'drop']);
     expect([by['m0']!.action, by['m4']!.action, by['m5']!.action]).toEqual(['keep', 'keep', 'keep']);
     expect(data.actions).toMatchObject({ fold: 1, drop: 2 });

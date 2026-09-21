@@ -9,12 +9,15 @@
  */
 import { deriveTurns, resolveReducer, type NodeId, type TraceEvent } from '@context-tree/core';
 import { dispositionOf, sessionOf, sessionUnits } from '../session.js';
+import { stubOf } from '../stub.js';
 import type { ToolContext } from '../types.js';
 
 export type Decision =
   | { id: string; action: 'keep' }
   | { id: string; action: 'drop'; unit: string }
   | { id: string; action: 'fold'; unit: string; text: string }
+  /** The message stays, without its reasoning; `outputs` are the tags that replace tool outputs. */
+  | { id: string; action: 'stub'; unit: string; outputs: { index: number; text: string }[] }
   /** `index` counts the message's tool parts, in order. */
   | { id: string; action: 'reduce'; unit: string; outputs: { index: number; text: string }[] };
 
@@ -57,7 +60,7 @@ export async function decisionsFor(
   const located = messages.map((message) => {
     const turn = turnOf.get(message.id);
     const unit = turn === undefined ? undefined : units.find((u) => u.startSeq <= turn.startSeq && turn.startSeq <= u.endSeq);
-    return { message, turn, unit, disposition: unit === undefined ? undefined : dispositionOf(session, unit.id) };
+    return { message, turn, unit, disposition: unit === undefined ? undefined : dispositionOf(session, unit) };
   });
 
   return located.map(({ message, turn, unit, disposition }): Decision => {
@@ -75,6 +78,8 @@ export async function decisionsFor(
       // holds unless the host's view of the message differs, in which case it is left alone.
       case 'fold':
         return message.hasTools === true ? keep : { id: message.id, action: 'fold', unit: unit.id, text: disposition.text };
+      case 'stub':
+        return { id: message.id, action: 'stub', unit: unit.id, outputs: [...stubOf(events.slice(turn.startSeq - 1, turn.endSeq), ctx.handle.blobs, session.tokenizer, unit.id).outputs] };
       case 'drop':
         return { id: message.id, action: 'drop', unit: unit.id };
     }
@@ -85,6 +90,7 @@ export const countActions = (decisions: readonly Decision[]): Record<Decision['a
   keep: decisions.filter((d) => d.action === 'keep').length,
   drop: decisions.filter((d) => d.action === 'drop').length,
   fold: decisions.filter((d) => d.action === 'fold').length,
+  stub: decisions.filter((d) => d.action === 'stub').length,
   reduce: decisions.filter((d) => d.action === 'reduce').length,
 });
 

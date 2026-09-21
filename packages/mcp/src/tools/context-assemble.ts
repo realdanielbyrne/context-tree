@@ -8,7 +8,7 @@
  * prefix is not rewritten by a unit flipping back to raw.
  */
 import { z } from 'zod';
-import { perUnitBudget, representUnits, tokensUnder, type AssembleUnit, type Disposition } from '@context-tree/core';
+import { foldLine, perUnitBudget, representUnits, tokensUnder, type AssembleUnit, type Disposition } from '@context-tree/core';
 import { stageArgsShape, withOverrides } from '../params.js';
 import { fail, failFrom, ok, parseArgs } from '../result.js';
 import { advanceTurn, dispositionOf, sessionOf, sessionUnits, viewOf, type SessionUnit, type UnitView } from '../session.js';
@@ -79,7 +79,8 @@ export async function contextAssemble(ctx: ToolContext, input: unknown): Promise
     const geometry = { windowTokens: args.window_tokens, reserveTokens: args.reserve_tokens ?? 0, anchor: params.anchor, softTargetFrac: params.softTargetFrac };
     const { dispositions: ruled, unfoldable } = representUnits(
       live.map((u): AssembleUnit => {
-        const summary = ctx.handle.store.currentSummary(u.phase.id)?.text;
+        const stored = ctx.handle.store.currentSummary(u.phase.id);
+        const summary = stored === null ? undefined : foldLine(stored, params.summaryRender);
         return {
           id: u.id, tokens: u.tokens, raw: u.flex.raw, pinned: pinned.has(u.id), textOnly: !u.hasTools,
           group: { id: u.phase.id, closed: u.phase.status !== 'open', ...(summary !== undefined ? { summary } : {}) },
@@ -100,7 +101,7 @@ export async function contextAssemble(ctx: ToolContext, input: unknown): Promise
     }
 
     const rows = live.map((u): AssembledUnit => {
-      const disposition = dispositionOf(session, u.id);
+      const disposition = dispositionOf(session, u);
       return { ...viewOf(u), tokens: u.tokens, assembled_tokens: tokensUnder(u, disposition), representation: disposition.kind };
     });
     const decisions = args.messages !== undefined ? await decisionsFor(ctx, args.messages) : undefined;

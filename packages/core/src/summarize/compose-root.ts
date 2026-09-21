@@ -32,10 +32,28 @@ const HEADLINE_MAX_CHARS = 200;
 export const ROOT_KEEP_DEFAULT = 40;
 
 /** First line (or sentence) of a leaf summary, capped — the branch's one-line index entry. */
-function headline(text: string): string {
+export function headline(text: string): string {
   const firstLine = text.split('\n', 1)[0] ?? '';
   const firstSentence = /^.*?[.!?](?=\s|$)/.exec(firstLine)?.[0] ?? firstLine;
   return firstSentence.slice(0, HEADLINE_MAX_CHARS);
+}
+
+const FOLD_LINE_FILES = 6;
+
+/**
+ * A folded phase as the prompt shows it: what it did in one sentence, the files it touched,
+ * and the call that brings it back. The form with evidence behind it — a headline with an id
+ * and a recall line recovered every planted fact (15/15, `reports/metrics/loop8-interim.md`),
+ * while longer summaries cost tokens for no gain and removed the reason to fetch.
+ */
+export function foldLine(summary: NodeSummary, render: 'headline' | 'full' = 'headline'): string {
+  const files = [...new Set(summary.meta.files.map((f) => f.path))];
+  const shown = files.slice(0, FOLD_LINE_FILES).join(', ') + (files.length > FOLD_LINE_FILES ? `, +${String(files.length - FOLD_LINE_FILES)}` : '');
+  return [
+    `[folded phase · ${render === 'full' ? summary.text : headline(summary.text)}`,
+    ...(files.length > 0 ? [`files: ${shown}`] : []),
+    `recall: search, or fetch {"branch_id":"${summary.node_id}"}]`,
+  ].join(' · ');
 }
 
 function mergedMeta(children: readonly NodeSummary[]): SummaryMeta {

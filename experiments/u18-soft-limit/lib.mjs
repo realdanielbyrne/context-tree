@@ -65,7 +65,7 @@ const POLICY_KNOBS = [
   { ct: 'CT_CT_HEAD_TOKENS', def: '12000', describe: 'Allowance for what the plugin cannot see (system block, tool schemas).' },
   { ct: 'CT_ASSEMBLE_MS', def: '8000', describe: 'Per-turn budget before the plugin fails open.' },
   { ct: 'CT_CT_NEUTRAL_PHASES', def: 'other', text: true, describe: 'Phases that never open a new phase; `none` for the literal rule. Matters to folding, and to `unit: phase`.' },
-  { ct: 'CT_CONTRACT', def: 'v1', oneOf: ['v1', 'v2', 'v3', 'v4'], describe: 'System-contract version shipped to the agent.' },
+  { ct: 'CT_CONTRACT', def: 'v1', oneOf: ['v1', 'v2', 'v3', 'v4', 'v5'], describe: 'System-contract version shipped to the agent.' },
 ];
 
 const fromRegistry = (spec) => ({

@@ -20,6 +20,12 @@ export type Disposition =
   | { readonly kind: 'keep' }
   | { readonly kind: 'reduce'; readonly tokens: number; readonly text: string }
   | { readonly kind: 'fold'; readonly tokens: number; readonly text: string }
+  /**
+   * Evicted, but still visible: the unit keeps its own text and its tool calls, loses its
+   * reasoning, and each tool output becomes a tag naming what it was and how to recall it.
+   * Eviction's first step; `drop` is its last.
+   */
+  | { readonly kind: 'stub'; readonly tokens: number }
   /** `covered`: a sibling's fold stands in for it. `evicted`: the removal ruling took it. */
   | { readonly kind: 'drop'; readonly why: 'covered' | 'evicted' };
 
@@ -60,7 +66,8 @@ export const tokensUnder = (unit: { readonly tokens: number }, disposition: Disp
   switch (disposition.kind) {
     case 'keep': return unit.tokens;
     case 'reduce':
-    case 'fold': return disposition.tokens;
+    case 'fold':
+    case 'stub': return disposition.tokens;
     case 'drop': return 0;
   }
 };

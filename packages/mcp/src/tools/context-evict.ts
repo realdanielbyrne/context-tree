@@ -21,7 +21,7 @@ export const CONTEXT_EVICT = 'evict';
 export const CONTEXT_RESTORE = 'restore';
 
 export const CONTEXT_EVICT_DESCRIPTION =
-  'Remove the least valuable units so what assemble produced fits window_tokens. Recent units are ' +
+  'Remove the least valuable units so what assemble produced fits window_tokens (evict_mode stub: cut them to a visible stub first). Recent units are ' +
   'protected by a bonus that yields only if nothing else can pay. Removed units stay out until restore; ' +
   'nothing is lost and fetch still returns them. Reach for it when your context is large and earlier ' +
   'work no longer bears on what you are doing. dry_run shows what would go.';
@@ -58,12 +58,16 @@ export interface ContextEvictData {
   applied: boolean;
   /** False when the assembly already fit: nothing was decided. */
   fired: boolean;
+  /** Removed outright. */
   evicted: string[];
+  /** Cut to a stub this call: still visible, recallable by the id in its tags. */
+  stubbed: string[];
   tokens_before: number;
   tokens_after: number;
   /** True when the pinned units alone exceed the budget: no policy can fix that overflow. */
   over_budget: boolean;
   evicted_total: number;
+  stubbed_total: number;
   decisions?: Decision[];
   actions?: Record<Decision['action'], number>;
 }
@@ -104,7 +108,9 @@ export async function contextEvict(ctx: ToolContext, input: unknown): Promise<To
     const plan = planRetention(
       live.map((u, i): RetentionUnit => ({
         id: u.id,
-        tokens: inline.get(u.id) ?? tokensUnder(u, dispositionOf(session, u.id)),
+        tokens: inline.get(u.id) ?? tokensUnder(u, dispositionOf(session, u)),
+        // Only a unit still at full size has a cheaper visible form left to fall back to.
+        ...(params.evictMode === 'stub' && dispositionOf(session, u).kind === 'keep' ? { residueTokens: u.stubTokens } : {}),
         signals: signals[i]!,
         pinned: pinned.has(u.id),
         protection: protectionAt(live.length - 1 - i, params),
@@ -120,17 +126,22 @@ export async function contextEvict(ctx: ToolContext, input: unknown): Promise<To
     );
 
     const applied = args.dry_run !== true;
-    if (applied) for (const id of plan.dropped) session.evicted.add(id);
+    if (applied) {
+      for (const id of plan.stubbed) session.stubbed.add(id);
+      for (const id of plan.dropped) session.evicted.add(id);
+    }
     const decisions = args.messages !== undefined ? await decisionsFor(ctx, args.messages) : undefined;
     return ok({
       turn,
       applied,
       fired: plan.fired,
       evicted: [...plan.dropped],
+      stubbed: [...plan.stubbed],
       tokens_before: plan.tokensBefore,
       tokens_after: plan.tokensAfter,
       over_budget: plan.overBudget,
       evicted_total: session.evicted.size,
+      stubbed_total: session.stubbed.size,
       ...(decisions !== undefined ? { decisions, actions: countActions(decisions) } : {}),
     });
   } catch (error) {
@@ -149,11 +160,12 @@ export async function contextRestore(ctx: ToolContext, input: unknown): Promise<
   const args = parsed.data;
   if (args.all !== true && (args.ids === undefined || args.ids.length === 0)) return fail('invalid_input', 'give ids, or all: true');
   const session = sessionOf(ctx);
-  const targets = args.all === true ? [...new Set([...session.evicted, ...session.assembly.keys()])] : (args.ids ?? []);
+  const targets = args.all === true ? [...new Set([...session.evicted, ...session.stubbed, ...session.assembly.keys()])] : (args.ids ?? []);
   const restored = targets.filter((id) => {
     const wasEvicted = session.evicted.delete(id);
+    const wasStubbed = session.stubbed.delete(id);
     const wasAssembled = session.assembly.delete(id);
-    return wasEvicted || wasAssembled;
+    return wasEvicted || wasStubbed || wasAssembled;
   });
   return ok({ restored, evicted_total: session.evicted.size });
 }
