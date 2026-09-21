@@ -58,23 +58,23 @@ tells it when to reach for them. Retrieval:
 | `peek` | `{node_id, max_chars?}` | A cheap excerpt for relevance checking — suspicion costs one small call, not a full expansion. |
 | `annotate` | `{node_id, text, link_to?, link_kind?}` | Write side: adds a lateral link and/or a note. A review-phase discovery can mark an implementation branch `superseded_by` a later one. |
 
-The pipeline itself is tools too, so an agent can manage its own context and a host
-plugin can drive each stage — or skip one — instead of calling a black box:
+The pipeline itself is tools too, so an agent can manage its own context and a host plugin can
+drive each stage — or skip one — instead of calling a black box. Every stage works over the same
+units: a unit is one message of the session.
 
 | Tool | Behavior |
 |---|---|
-| `units` | The units in the session (one per work phase): size, evicted?, protected by the recency anchor? |
+| `units` | The units, their size, and what has been ruled about each: raw, reduced, folded, removed. |
 | `classify` | Which units have drifted away from the current work. |
-| `evict` | `{window_tokens, anchor?, weights?, dry_run?, …}` — evict the least valuable units to fit. Sticky until restored; nothing is lost. |
-| `restore` | `{node_ids? \| all?}` — bring evicted units back. |
-| `reduce` | `{node_id, budget_tokens, reducer?, query?}` — one unit shrunk to a budget. |
-| `assemble` | What a limit would do to the prompt, without doing it. |
-| `verdicts` | HTTP only, for host plugins: keep / drop / fold per host message. |
+| `assemble` | `{window_tokens, query?, …}` — how each unit is *represented*: raw, reduced to a per-unit budget, or folded to its phase summary. Removes nothing. |
+| `evict` | `{window_tokens, dry_run?, …}` — what is *removed*, given the assembly. Optional, and may overrule it. Recent units are protected by a bonus that yields only when nothing else can pay. |
+| `restore` | `{ids? \| all?}` — undo rulings. Nothing is ever lost; `fetch` still returns a removed unit. |
 
-Both transports serve one registry over one session: MCP stdio for the agent, and
-`context-tree-mcp --http <port>` (`GET /v1/tools`, `POST /v1/tools/<name>`) for a
-plugin that sits in the prompt path. Server defaults for every tunable come from
-`CT_CT_*` environment variables; each is also a tool argument.
+Rulings are sticky until restored. Both transports serve one registry over one session: MCP stdio
+for the agent, and `context-tree-mcp --http <port>` (`GET /v1/tools`, `POST /v1/tools/<name>`) for a
+plugin in the prompt path, where either stage returns per-message decisions when given the host's
+`messages`. Every tunable is a server default (`CT_CT_*`) and a tool argument, from one registry:
+`GET /v1/params`. The algorithm is specified in [`reports/algorithm.md`](reports/algorithm.md).
 
 ## Configuration
 

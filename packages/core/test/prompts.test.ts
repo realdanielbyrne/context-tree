@@ -160,7 +160,7 @@ describe('system-contract v4: the pipeline tools', () => {
   it('is v1 plus the pipeline tools — nothing in v1 is reworded, so the two differ only by the addition', () => {
     const v1 = systemContract('v1');
     const v4 = systemContract('v4');
-    for (const tool of ['units', 'classify', 'evict', 'restore', 'reduce', 'assemble']) {
+    for (const tool of ['units', 'classify', 'assemble', 'evict', 'restore']) {
       expect(v4).toContain(`\`${tool} `);
       expect(v1).not.toContain(tool);
     }

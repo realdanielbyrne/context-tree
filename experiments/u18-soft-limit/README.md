@@ -8,40 +8,22 @@ what it solves at the full window, at materially lower achieved peak.
 
 ## Terms
 
-- **Unit** — one segmenter *phase* (a run of same-kind work: diagnosis, implementation,
-  verification…). Units are what the pipeline classifies, evicts and reduces. A unit is not a
-  message and has no size bound: on the first gate cell, one `diagnosis` unit covered turns 2–31.
-- **Anchor (`U18_ANCHOR` → `CT_CT_ANCHOR` → `evict.anchor`)** — the recency anchor `A`:
-  the **last A units** in creation order are never eligible for eviction
-  (`packages/core/src/assemble/flex.ts`, package default 4, marked PROVISIONAL — "a read-loop
-  guard, never swept"). With `n ≤ A` units nothing can be evicted at any W. Runs here default to **3**.
-- **Token heuristic** — a token count computed by arithmetic, not by the served model's
-  tokenizer. This arm uses **two**, and they disagree with each other as well as with the server:
-  1. *plugin estimate* — `ceil(chars/4)` over each host message's text, tool input and tool output
-     (`oc-plugin/ct-assemble-plugin.mjs`). Produces `total`, `kept_tokens` and the ceiling test.
-  2. *`HeuristicTokenizer`* `heuristic-v1` (`packages/core/src/tokens`) — a run scan (Latin word
-     run `ceil(n/4)`, punctuation run 1, newline 1, space 0) over each unit's L0 text. **W is
-     compared against this one**, so it decides evictions.
-  On the first gate cell the same session measured 139,151 by (1) and 89,545 by (2).
-- **Served tokens** — what the provider reports for a step (`input + cache.read`). Includes the
-  head (system block + tool schemas) that neither heuristic sees.
-- **Served-per-heuristic ratio** — per turn, `(served − step-one served) / kept_tokens`. A
-  **measurement, not a constant**: it is an estimate (served minus a head assumed constant) of an
-  estimate (chars/4); it was ~1.28 at one point on the G0 cell and ran 1.14 → 1.19 *within* the
-  first gate cell (median 1.15, range 0.89–1.20). It plausibly moves with content mix — code vs
-  prose vs JSON tool input — which is unmeasured. Reported per cell as a distribution
-  (`lib.mjs servedPerHeuristic`); never used as a conversion factor.
-- **Server / tools** — `@context-tree/mcp` (D22): every pipeline stage is a tool in one registry,
-  served to the agent over MCP and to the plugin over loopback HTTP, sharing one session.
-- **Sidecar (host adapter)** — `experiments/context-dedup/ct-sidecar.mjs`: one Node process per
-  run, inside the sandbox. Follows opencode's session db into L0, publishes the message index,
-  and starts the server. No pipeline logic. Reads the *pipeline* knobs.
+The algorithm's own terms — **unit**, **turn**, **phase**, **chunk**, **anchor**, **assemble**,
+**evict**, **pinned**, the **heuristic tokenizer** and why the served-per-heuristic ratio is a
+measurement and never a constant — are defined once, in [`reports/algorithm.md`](../../reports/algorithm.md).
+Only what is specific to this harness is defined here:
+
+- **Sidecar (host adapter)** — `experiments/context-dedup/ct-sidecar.mjs`: one Node process per run,
+  inside the sandbox. It follows opencode's session db into L0 (stamping each event with its message
+  id, which is what makes a unit a host message) and serves the `@context-tree/mcp` tools. No
+  pipeline logic.
 - **Plugin** — `oc-plugin/ct-assemble-plugin.mjs`: runs inside opencode at
-  `experimental.chat.messages.transform`, the only point where the prompt can be edited. Each turn
-  it calls `evict` **if its policy says so**, then `verdicts`, and applies the
-  per-message keep/drop in place. Reads the *policy* knobs. **The arm is that call sequence.**
-- **Sticky eviction** — a unit evicted stays out until `restore`. A turn with no
-  `evict` call leaves the prompt as it was.
+  `experimental.chat.messages.transform`, the only point where the prompt can be edited. A
+  treatment turn calls `assemble`, then `evict` **if its policy fires**, and applies the returned
+  per-message decisions in place. **The arm is that call sequence.**
+- **Plugin estimate** — the plugin's own `ceil(chars/4)` size of the message array, measured after
+  the edit (`kept_tokens`). A third number beside the heuristic W is compared against and the served
+  count; on the first gate cell one session read 139,151 by it and 89,545 by the heuristic.
 
 ## Run it
 
@@ -53,30 +35,19 @@ U18_WINDOW=75520 experiments/u18-soft-limit/run.sh   # a sweep point; off/hard w
 U18_ANCHOR=1 U18_W_DORMANCY=2 experiments/u18-soft-limit/run.sh gate
 ```
 
-**Every value that still needs a sweep is a `U18_*` knob** (`lib.mjs KNOBS`, defaults = the
-package constants except the anchor). A value that does not parse is refused before anything
-runs. Each arm's tag carries a hash of the knobs it depends on
-(`u18-soft-W50347-A3-c8d080`, `u18-hard-A3-2d739f`), the full set is written to
-`reports/metrics/u18-soft-limit/configs/<tag>.json`, and the analysis refuses a cell whose
-recorded knobs differ — so settings cannot pool by accident.
+**Every value that still needs a sweep is a `U18_*` knob**, and the list is not restated here:
+the pipeline half *is* the package's parameter registry (`packages/mcp/src/params.ts`), so a
+parameter added there is a knob here with no edit; the policy half is `POLICY_KNOBS` in `lib.mjs`.
+`run.sh config` prints every knob resolved, with each arm's tag. A value that does not parse is
+refused before anything runs. U18 departs from the package defaults in exactly one place —
+`U18_ANCHOR=3` (package: 4) — and holds `CT_CT_SUMMARIES=0` fixed (that is U20). Each arm's tag
+carries a hash of the knobs it depends on, the full set is written to
+`reports/metrics/u18-soft-limit/configs/<tag>.json`, and the analysis refuses a cell whose recorded
+knobs differ — so settings cannot pool by accident.
 
-| knob | default | read by | what it is |
-|---|---|---|---|
-| `U18_WINDOW` | 50347 | plugin | the soft limit, heuristic tokens — the swept variable |
-| `U18_ANCHOR` | **3** | sidecar | last A units never evictable (package default 4) |
-| `U18_REPLY_RESERVE` / `U18_HEAD_TOKENS` | 8192 / 12000 | plugin | held back from W: the reply, and the head the plugin cannot see |
-| `U18_PROTECT_TAIL` | 6 | plugin | trailing host messages never dropped |
-| `U18_ASSEMBLE_MS` | 8000 | plugin | per-turn budget before the plugin fails open |
-| `U18_W_PRIORITY` / `_RECENCY` / `_REFRECENCY` / `_DORMANCY` | 2 / 1 / 0.5 / 1 | sidecar | eviction score weights |
-| `U18_PRIORITY_HALFLIFE` / `U18_EVICT_HEADROOM` | 4 / 0 | sidecar | priority decay (turns); extra tokens freed when eviction fires |
-| `U18_DRIFT_K` / `U18_DRIFT_TAU` | 5 / 1 | sidecar | drift classifier window and threshold |
-| `U18_RRF_K`, `U18_CHUNK_SIZE` / `_OVERLAP` | 60, 800 / 100 | sidecar | retrieval / reduce parameters |
-| `U18_SOFT_TARGET_FRAC`, `U18_REDUCER` | 0.375, chunk | sidecar | reduce-on-overflow (affects `assemble`/`reduce` only — see Known limits) |
-| `U18_NEUTRAL_PHASES` | other | sidecar | phases that never open a unit: **decides unit granularity**; `none` = every tool change opens one |
-| `U18_CONTRACT` | v1 | sidecar | system-contract version; `v4` tells the agent about the pipeline tools |
-
-Not knobs: the model, the sandbox, the prompt, repeats, the timeout, summaries (U20), the
-trigger (it *is* the arm).
+The knobs most likely to be swept: `U18_WINDOW`, `U18_UNIT` (`turn` | `phase`), `U18_ANCHOR`,
+`U18_PROTECTION` (`soft` | `hard`), `U18_SOFT_TARGET_FRAC` (whether `assemble` reduces at all),
+`U18_TOPK` with `U18_W_RELEVANCE`.
 
 Re-running resumes: a wave runs only the cells still owed. A cell is owed again only when the
 **instrument** failed — killed from outside, no model step at all, or a provider that never
@@ -101,8 +72,8 @@ GPU mid-cell.
 | arm | driver env | what it is |
 |---|---|---|
 | `off` | `CT_ARM=off` | the handoff's control: host compaction at 119,040, no plugin, no MCP tools |
-| `soft` | `CT_ARM=ct CT_CT_TRIGGER=soft CT_CT_WINDOW=W` | the treatment: the plugin calls `evict {window_tokens: W, reserve_tokens: 20,192}` **every turn**. Eviction fires when live unit tokens (raw, `HeuristicTokenizer`) exceed `W − 20,192` |
-| `hard` | `CT_ARM=ct CT_CT_TRIGGER=hard` | plumbing-matched control: same tools, plugin, `--pure` dropped, host compaction off — but the evict call is made at the real window (151,040) |
+| `soft` | `CT_ARM=ct CT_CT_TRIGGER=soft CT_CT_WINDOW=W` | the treatment: every turn the plugin calls `assemble` then `evict`, both at `{window_tokens: W, reserve_tokens: 20,192}`. Eviction fires when the assembled units exceed `W − 20,192` heuristic tokens |
+| `hard` | `CT_ARM=ct CT_CT_TRIGGER=hard` | plumbing-matched control: same tools, plugin, `--pure` dropped, host compaction off — but both calls are made at the real window (151,040) |
 
 `soft` vs `off` is the **primary** comparison, as the handoff specifies. **`hard` is an addition
 to the handoff's U18 arm list** (it is U19's `hard` arm, so those cells are re-usable there). The
@@ -129,9 +100,9 @@ Arm order rotates per wave so no arm always runs first.
    baseline repeats (117,951–118,801, each *capped by a host compaction*, so true demand is higher)
    and is solved 3/3.
    - `soft` PASS: integrity clean, run valid, units evicted > 0, zero rejected tool-bearing
-     requests on the relay's wire record, no fail-open turn, slowest assembly ≤ 4,000 ms (the
-     plugin fails open at 8,000 and that budget cannot be forwarded into the sandbox), no
-     over-ceiling turn, and a **real peak ≤ 1.3 × W**. "Below the control's peak" would be vacuous:
+     requests on the relay's wire record, no fail-open turn, slowest turn ≤ 4,000 ms of the
+     plugin's 8,000 ms budget, no over-ceiling turn, no ruling the pinned units alone defeated,
+     and a **real peak ≤ 1.3 × W**. "Below the control's peak" would be vacuous:
      117K passes it.
    - `hard` PASS: the same without the eviction and peak clauses. It exists because the arm has
      never run live and its ceiling is denominated in heuristic tokens (see Known limits): with
@@ -140,8 +111,8 @@ Arm order rotates per wave so no arm always runs first.
    attempt's run dir is kept. After a FAIL, another attempt needs `U18_REGATE=1`. A PASS is void
    once a commit touches `experiments/context-dedup`, `packages` or this directory. Gate cells are
    never pooled. Read the attempt's `mcp/ct-mcp.jsonl` by hand before trusting a PASS. The record
-   carries `first_eviction_turn`, `max_kept_before/after_first_eviction` and the
-   `served_per_heuristic` distribution — what explains a limit that was or was not held.
+   carries `first_edit_turn`, `max_kept_before/after_first_edit`, `max_unit_tokens_after_ruling`
+   and the `served_per_heuristic` distribution — what explains a limit that was or was not held.
 
 ## Outcomes
 
@@ -210,13 +181,11 @@ rotation no longer balances time for them.
   real window, and `hard` may overflow before it ever evicts — which is why `hard` has its own gate
   cell. The gate's `real peak ≤ 1.3 × W` compares served tokens to a heuristic W and is loose by
   that same unknown.
-- **Eviction budgets on RAW unit size.** `assembleFlex` can shrink an oversized unit in its own
-  rendering (reduce-on-overflow) or fold it to a summary, but a host message carrying tool parts is
-  keep-or-drop, so neither reaches the prompt. `evict` therefore counts units whole. The
-  consequence is the first gate's failure mode: **a single unit larger than the budget, while it
-  is inside the anchor, cannot be bounded by any W or A.** Unit granularity
-  (`U18_NEUTRAL_PHASES`) is the lever; expressing a reduction as a prompt edit is an open design
-  question, not something this experiment does.
+- **At this W, `assemble` reduces nothing.** The per-unit budget is `(f·W − reserve) ÷ (A + 1)`;
+  at W = 50,347 with a 20,192 reserve and `f` = 0.375 it is 0. The `soft` arm at the default knobs is
+  therefore eviction over raw turns. `U18_SOFT_TARGET_FRAC` turns reduction on; that is a different
+  treatment and gets a different tag.
+- **In-place output reduction is unproven on the wire** until G0's third case passes.
 - Eviction edits the prompt prefix, which forces a re-prefill on this hybrid (recurrent-state)
   model. `soft` turns may be slower, so under intention-to-treat a timeout at 7,200 s makes
   "accuracy" partly a measure of speed. Timeouts are reported per arm.
@@ -241,3 +210,8 @@ driver's convention), verdicts in `reports/metrics/u18-soft-limit/`. Write the r
   evictable until turn 39, when 30 messages dropped at once (87,478 → 9,003). Replayed offline
   through the D22 tools the same session ends at 23 units, the first of 45,535 tokens; A=3 moves
   the first eviction two turns earlier and does not change the peak. No wave ran.
+- **2026-09-20, offline replay of that same session, turn by turn, after D23** (no GPU; assemble →
+  evict at W=50,347, A=3). `unit=turn`: 103 units, largest 12,442; live tokens inside the 30,155
+  budget on **102/102** turns; first eviction at turn 9; slowest turn 15 ms. `unit=phase`: 23
+  units, largest 45,535; over budget on **94/102** turns, peak 64,343. The granularity, not the
+  anchor, was the defect. A replay is not a gate: the live gate still has to be run.

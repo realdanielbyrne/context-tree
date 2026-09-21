@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { KNOBS, armKnobs, resolveKnobs, servedPerHeuristic, tagBase, analyze as analyzeRaw, cellProblems, foreignLibraryReads, gateVerdict, instrumentFailure, signFlipP, wireStats, MODEL, RULES, SERVED_WINDOW } from './lib.mjs';
+import { KNOBS, U18_DEFAULTS, U18_FIXED, armKnobs, resolveKnobs, servedPerHeuristic, tagBase, analyze as analyzeRaw, cellProblems, foreignLibraryReads, gateVerdict, instrumentFailure, signFlipP, wireStats, MODEL, RULES, SERVED_WINDOW } from './lib.mjs';
 
 // The fixture's control solves 27/30; the A/A rung is exercised on its own below.
 const analyze = (o) => analyzeRaw({ historicalSolved: 27, ...o });
@@ -103,7 +103,7 @@ test('cellProblems catches the silent arm failures', () => {
 
 test('gate: soft must evict, keep the wire clean, and hold the real peak near W', () => {
   const wire = { present: true, requests: 80, ok: 80, rejected: 0, peak_bytes: 1 };
-  const side = { max_ms: 900, over_ceiling_turns: 0 };
+  const side = { max_ms: 900, over_ceiling_turns: 0, over_budget_rulings: 0 };
   const good = cell('soft', 'g', 0, { peak: 60000, fired: true });
   const v = (c, w = wire, s2 = side, arm = 'soft') => gateVerdict(c, w, s2, { arm, window: W }).pass;
   assert.equal(v(good), true);
@@ -113,6 +113,7 @@ test('gate: soft must evict, keep the wire clean, and hold the real peak near W'
   assert.equal(v(cell('soft', 'g', 0, { peak: Math.round(W * RULES.gatePeakFactor) + 1, fired: true })), false);
   assert.equal(v(cell('soft', 'g', 0, { peak: Math.round(W * RULES.gatePeakFactor), fired: true })), true);
   assert.equal(v(good, wire, { ...side, max_ms: RULES.gateMaxAssembleMs + 1 }), false);
+  assert.equal(v(good, wire, { ...side, over_budget_rulings: 1 }), false, 'a ruling the pinned units defeated');
   assert.equal(v(cell('hard', 'g', 0, { peak: 140000 }), wire, side, 'hard'), true, 'hard need not evict');
 });
 
@@ -190,22 +191,26 @@ test('signFlipP is exact and one-sided', () => {
   assert.equal(signFlipP([-2, 1]), 2 / 4);
 });
 
-test('every knob defaults to the package constant, except the anchor', async () => {
-  const { PIPELINE_DEFAULTS } = await import(new URL('../../packages/mcp/dist/index.js', import.meta.url).href);
+test('the pipeline knobs ARE the package registry; only the stated departures differ', async () => {
+  const { PIPELINE_PARAMS, PIPELINE_DEFAULTS } = await import(new URL('../../packages/mcp/dist/index.js', import.meta.url).href);
   const k = resolveKnobs({});
-  const p = PIPELINE_DEFAULTS;
-  assert.equal(k.CT_CT_ANCHOR, '3');
-  assert.equal(p.anchor, 4, 'the package default is still 4; U18 runs at 3 on purpose');
-  assert.deepEqual(
-    [k.CT_CT_W_PRIORITY, k.CT_CT_W_RECENCY, k.CT_CT_W_REFRECENCY, k.CT_CT_W_DORMANCY, k.CT_CT_PRIORITY_HALFLIFE, k.CT_CT_EVICT_HEADROOM, k.CT_CT_SOFT_TARGET_FRAC, k.CT_CT_DRIFT_K, k.CT_CT_DRIFT_TAU, k.CT_CT_RRF_K, k.CT_CT_CHUNK_SIZE, k.CT_CT_CHUNK_OVERLAP, k.CT_CT_PROTECT_TAIL].map(Number),
-    [p.weights.priority, p.weights.recency, p.weights.refRecency, p.weights.dormancy, p.priorityHalfLife, p.evictHeadroomTokens, p.softTargetFrac, p.driftK, p.driftTau, p.rrfK, p.chunkSize, p.chunkOverlap, p.protectTail],
-  );
-  assert.equal(k.CT_CT_REDUCER, p.reducer);
+  for (const spec of PIPELINE_PARAMS) {
+    if (spec.env in U18_FIXED) { assert.ok(!KNOBS.some((x) => x.ct === spec.env), `${spec.env} is fixed, not a knob`); continue; }
+    const knob = KNOBS.find((x) => x.ct === spec.env);
+    assert.ok(knob, `${spec.env} is a knob with no edit here`);
+    const packageDefault = spec.kind === 'bool' ? (spec.default ? '1' : '0') : String(spec.default);
+    assert.equal(k[spec.env], U18_DEFAULTS[spec.env] ?? packageDefault, spec.env);
+  }
+  assert.deepEqual(U18_DEFAULTS, { CT_CT_ANCHOR: '3' });
+  assert.equal(PIPELINE_DEFAULTS.anchor, 4, 'the package default is still 4; U18 runs at 3 on purpose');
   assert.equal(new Set(KNOBS.map((x) => x.ct)).size, KNOBS.length);
+  assert.equal(new Set(KNOBS.map((x) => x.name)).size, KNOBS.length);
+  // top_k was deleted once; it is a knob again, and so is what makes it matter.
+  assert.deepEqual(['TOPK', 'W_RELEVANCE', 'UNIT', 'PROTECTION'].filter((n) => !KNOBS.some((x) => x.name === n)), []);
 });
 
 test('a knob that does not parse is refused, and so is a window that cannot work', () => {
-  for (const bad of [{ U18_ANCHOR: '2.5' }, { U18_ANCHOR: 'three' }, { U18_W_DORMANCY: '-1' }, { U18_REDUCER: 'magic' }, { U18_DRIFT_K: '0' }, { U18_SOFT_TARGET_FRAC: '1.5' }, { U18_WINDOW: '20000' }, { U18_WINDOW: '151040' }, { U18_HARD_WINDOW: '262144' }]) {
+  for (const bad of [{ U18_ANCHOR: '2.5' }, { U18_ANCHOR: 'three' }, { U18_W_DORMANCY: '-1' }, { U18_REDUCER: 'magic' }, { U18_DRIFT_K: '0' }, { U18_SOFT_TARGET_FRAC: '1.5' }, { U18_UNIT: 'message' }, { U18_PRIORITY_HALFLIFE: '0' }, { U18_WINDOW: '20000' }, { U18_WINDOW: '151040' }, { U18_HARD_WINDOW: '262144' }]) {
     assert.throws(() => resolveKnobs(bad), RangeError, JSON.stringify(bad));
   }
   assert.equal(resolveKnobs({ U18_ANCHOR: '0', U18_NEUTRAL_PHASES: 'none' }).CT_CT_ANCHOR, '0');

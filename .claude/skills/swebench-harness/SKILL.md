@@ -51,36 +51,32 @@ Run selection and endpoint:
 | `CT_SANDBOX` | on | `0` disables it — and silently disables the `mcp`/`ct` arms with it |
 
 Context-tree arms (`CT_ARM=ct` only; `off`/`mcp` ignore them). The arm has two halves in two
-processes (D22): the **plugin** holds the POLICY — it calls the `@context-tree/mcp` tool
-`evict` when its trigger says so, then `verdicts` — and the **sidecar** (a host
-adapter, no pipeline logic) holds the PIPELINE defaults of those tools. Eviction is sticky.
+processes. The **plugin** holds the POLICY: a treatment turn calls the `@context-tree/mcp` tool
+`assemble` (how each unit is represented) and then `evict` only when its trigger fires; `evict`
+takes the assembly as input and may overrule it. The **sidecar** is a host adapter with no pipeline
+logic; it holds the tools' server defaults. Rulings are sticky. Spec: `reports/algorithm.md`.
 
 Policy (plugin, `oc-plugin/policy.mjs`):
 
 | Var | Default | Meaning |
 |---|---|---|
 | `CT_ARM` | `off` | `off` (control) \| `mcp` (tools only) \| `ct` (tools + assembly plugin) |
-| `CT_CT_TRIGGER` | `soft` | `off` \| `hard` \| `soft` \| `cadence` |
-| `CT_CT_WINDOW` | `50347` | the soft limit, in **absolute tokens** — the swept variable, not a fraction of the served window. Check it can fire before using it (references/running.md) |
+| `CT_CT_TRIGGER` | `soft` | `off` \| `hard` \| `soft` \| `cadence` — WHEN `evict` is called |
+| `CT_CT_WINDOW` | `50347` | the soft limit, in **heuristic** tokens — the swept variable. Check it can fire (references/running.md) |
 | `CT_CT_HARD_WINDOW` | `151040` | the model's real context |
 | `CT_CT_CADENCE_N` | `5` | fire every Nth turn under `cadence` |
-| `CT_CT_SUMMARIES` | `0` | `1` folds evicted units to summaries instead of dropping |
 | `CT_CT_REPLY_RESERVE` / `CT_CT_HEAD_TOKENS` | `8192` / `12000` | held back from the window: the reply, and the head the plugin cannot see |
-| `CT_CT_PROTECT_TAIL` | `6` | trailing host messages never dropped |
-| `CT_ASSEMBLE_MS` | `8000` | per-turn budget before the plugin fails open |
-| `CT_ASSEMBLE_PORT` | `8899` | the loopback HTTP tool API (`POST /v1/tools/<name>`) |
+| `CT_ASSEMBLE_MS` / `CT_ASSEMBLE_PORT` | `8000` / `8899` | per-turn budget before the plugin fails open; the loopback tool API |
 
-Pipeline (sidecar → `pipelineFromEnv`; all PROVISIONAL in core, unset = package default):
+Pipeline (sidecar): **not listed here.** Unit granularity, protection, anchor, summaries, reducer,
+top-k, every score weight, half-life, headroom, drift, RRF and chunking are one registry —
+`packages/mcp/src/params.ts` — and the driver forwards and checks whatever that registry holds:
 
-| Var | Default | Meaning |
-|---|---|---|
-| `CT_CT_ANCHOR` | `4` | the last A **units (phases)** are never evictable — eviction cannot start before unit A+1 exists |
-| `CT_CT_W_PRIORITY` / `_RECENCY` / `_REFRECENCY` / `_DORMANCY` | `2` / `1` / `0.5` / `1` | eviction score weights |
-| `CT_CT_PRIORITY_HALFLIFE` / `CT_CT_EVICT_HEADROOM` | `4` / `0` | decay in turns; extra tokens freed when eviction fires |
-| `CT_CT_DRIFT_K` / `CT_CT_DRIFT_TAU` | `5` / `1` | drift classifier |
-| `CT_CT_RRF_K`, `CT_CT_CHUNK_SIZE` / `_OVERLAP`, `CT_CT_SOFT_TARGET_FRAC`, `CT_CT_REDUCER` | `60`, `800`/`100`, `0.375`, `chunk` | retrieval and reduce-on-overflow |
-| `CT_CT_NEUTRAL_PHASES` | config (`other`) | comma list or `none`: decides unit granularity |
-| `CT_CONTRACT` | `v1` | contract shipped to the agent; `v4` describes the pipeline tools |
+```bash
+node -e "import('./packages/mcp/dist/index.js').then(m => console.table(m.describeParams().map(({env, default: d, stages, describe}) => ({env, default: d, stages: stages.join('+'), describe}))))"
+```
+
+Sidecar-only: `CT_CT_NEUTRAL_PHASES` (phase granularity) and `CT_CONTRACT` (`v4` tells the agent about the pipeline tools).
 
 `CT_WINDOW` / `CT_OUTPUT_CAP` are a **different mechanism**: they re-declare `limit.context` so
 *opencode's* compaction binds earlier. They do not exercise context-tree. Don't confuse the two.
@@ -109,10 +105,14 @@ Each of these produces a run that completes, grades, and reports nothing wrong.
   `HeuristicTokenizer` over unit text; `kept_tokens` and the ceiling are the plugin's chars/4. The
   same session measured 89,545 and 139,151. Neither is served tokens, and the served/heuristic
   ratio is a per-turn measurement that drifts (1.14→1.19 within one cell), never a constant.
-- **Eviction is per UNIT and budgets on RAW size.** One unit bigger than the budget, while inside
-  the anchor, cannot be bounded by any window — U18's first gate failed exactly this way (a
-  30-turn `diagnosis` unit of ~80K). Check `first_eviction_turn` and
-  `max_kept_before_first_eviction` in the gate record before blaming W.
+- **Unit granularity decides whether a limit can be held at all.** With `CT_CT_UNIT=phase` one
+  unit can be a 30-turn, ~80K `diagnosis` phase; U18's first gate failed exactly that way. The
+  default is now `turn` (one host message): replayed offline, that same session stayed inside its
+  budget on 102/102 turns against 8/102 for phase units. Check `first_edit_turn` and
+  `max_kept_before_first_edit` in a gate record before blaming W.
+- **Reduce-on-overflow is inert at small W.** The per-unit budget is `(f·W − reserve)/(A+1)`; at
+  W=50,347 with a 20,192 reserve and `f`=0.375 it is 0, so `assemble` reduces nothing. Raise
+  `CT_CT_SOFT_TARGET_FRAC` if the arm is meant to reduce.
 - **`swebench-endpoint.mjs`'s `LOCAL_MODEL` is hardcoded to the Q8 model**, not Swift. `auto` will
   never choose Swift — that is why every Swift baseline is explicitly pinned.
 - **A mistyped knob is refused at start-up**, deliberately: `CT_CT_WINDOW=50k` reads as `NaN`, which

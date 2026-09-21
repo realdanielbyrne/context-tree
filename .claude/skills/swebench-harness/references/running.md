@@ -98,12 +98,12 @@ node experiments/context-dedup/swebench-opencode.mjs
 # today's shipped default CT_CT_TRIGGER=hard
 ```
 
-The trigger is **whether the plugin calls `evict` this turn, and at what window**
-(`oc-plugin/policy.mjs`): `off` → never, `hard` → every turn at the real context, `soft` → every
-turn at `CT_CT_WINDOW`, `cadence` → every Nth turn at `CT_CT_WINDOW`. Eviction is sticky, so an off
-turn leaves the prompt as it was. Nothing in `packages/` changes between arms; every stage is a
-`@context-tree/mcp` tool the plugin reaches over loopback HTTP and the agent over MCP (D22). To try
-a different algorithm, swap one tool's handler (`withHandlers`) — G0 does exactly this.
+A treatment turn is `assemble` then an optional `evict` (`oc-plugin/policy.mjs`). The trigger is
+**whether `evict` is called this turn, and at what window**: `off` → the control, which calls
+nothing; `hard` → every turn at the real context; `soft` → every turn at `CT_CT_WINDOW`; `cadence` →
+every Nth turn at `CT_CT_WINDOW` (assembly still runs every turn). Rulings are sticky, so an off turn
+leaves the prompt as it was. Nothing in `packages/` changes between arms. To try a different
+algorithm, swap one tool's handler (`withHandlers`) — G0 does exactly this.
 
 ### Choosing `CT_CT_WINDOW` — sweep to parity, don't compute a fraction
 
@@ -134,8 +134,9 @@ Median uncapped peak is ~45.6K (Swift) and ~61.9K (Q8): the pool's pressure, not
 is what limits this experiment.
 
 In `ct` arms host compaction is turned off (`compaction.auto: false`) so context-tree is the only
-reducer. That makes a genuine overflow a **hard session error**, so the sidecar enforces a ceiling
-below the real context.
+reducer. That makes a genuine overflow a **hard session error**, so under EVERY arm the plugin calls
+`evict` at the real window once the host prompt alone would overflow it, and logs that as the floor
+(`evict_floor`), not as the arm.
 
 Keep the prompt identical across arms. The point is to test the MCP tool, not the wording.
 
@@ -146,8 +147,8 @@ artifacts a sandboxed run already writes, under `/mnt/data/ctx-swebench/opencode
 
 | Path | What it holds |
 |---|---|
-| `mcp/ct-plugin.jsonl` | what the plugin did to the message array, per turn |
-| `mcp/ct-mcp.jsonl` | the sidecar's side: `ready` (pipeline defaults), `ingest`, one `evict` row per `evict` call, one `assemble` row per turn (written when `verdicts` answers), `assemble_error` |
+| `mcp/ct-plugin.jsonl` | per turn, measured AFTER the edit: messages dropped / folded / reduced, `kept_tokens`, which calls were made, `ms` |
+| `mcp/ct-mcp.jsonl` | the sidecar's side: `ready` (the registry's resolved values), `ingest`, one `assemble` row and one `evict` row per call, `assemble_error` |
 | `export.json` | the full session as opencode stored it; `parts[].type === "compaction"` marks a host compaction |
 | `events.jsonl`, `prompt.txt`, `workspace/` | the event stream, the exact prompt, the edited tree |
 | `wire.jsonl` | **what actually went upstream**: one row per provider request with `bytes`, `sha256` and needle `counts` (`role` = messages). Written by the relay, outside the sandbox, downstream of the plugin — the only artifact an inert arm cannot fake |
@@ -168,7 +169,8 @@ committing hours.
 
   Two runs on one instance. A random marker goes in the task statement; the control must keep it on
   every hook-mediated request, while `CT_G0_DROP_FIRST=1` **folds** that message to a second marker
-  and **splices** the assistant message after it, from three messages on. The claim is two-sided: the
+  **splices** the assistant message after it, and — from five messages on — **replaces one tool
+  output in place** with a third marker (the edit every reduction makes), from three messages on. The claim is two-sided: the
   original marker must leave the wire *and* the replacement must arrive on it — removal alone could be
   opencode's own doing.
 

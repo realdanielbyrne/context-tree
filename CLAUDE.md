@@ -86,15 +86,14 @@ Consequences to hold onto while coding:
   never blocks on it. Every summary must carry structured rehydration pointers
   in `meta_json` (files+spans, symbols, tests, ticket/PR ids, open questions) —
   that metadata is the mitigation for the model not knowing what it doesn't know.
-- **Tool surface (§9, D22)**: every pipeline stage is a tool in one registry
-  (`packages/mcp/src/tools/index.ts` `TOOLS`) — retrieval (`fetch`,
-  `search`, `peek`, `annotate`) and the stages (`units`,
-  `classify`, `evict`, `restore`, `reduce`,
-  `assemble`, host-only `verdicts`). The MCP server (agents) and the
-  loopback HTTP API (host plugins) serve that same table over one session. The set is
-  frozen *within a session* (D5); it is not capped. Eviction is sticky session state, so
-  a policy is the sequence of calls a caller makes. The system-prompt contract lives in
-  versioned files under `src/prompts/` so a learned policy can replace it later (§14).
+- **Tool surface (§9, D22, D23)**: every pipeline stage is a tool in one registry
+  (`packages/mcp/src/tools/index.ts` `TOOLS`), served to agents over MCP and to host plugins
+  over loopback HTTP, on one session: `fetch`, `search`, `peek`, `annotate`, `units`,
+  `classify`, `assemble`, `evict`, `restore`. The set is frozen *within a session* (D5), not
+  capped. **`assemble` represents and never removes; `evict` is optional, takes the assembly
+  as input and may overrule it** — keep their rules in separate code. Every stage works on the
+  same unit (a turn = one host message). Every tunable is one row in
+  `packages/mcp/src/params.ts`; never restate that list. Spec: `reports/algorithm.md`.
 - **Retrieval providers (§9.1)**: `search`/`fetch` are facades
   over a `RetrievalProvider` interface (graft, Serena, Augment, vector, grep).
   Merge order is fixed and deterministic: structural → fuzzy → grep, except

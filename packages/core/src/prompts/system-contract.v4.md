@@ -45,25 +45,24 @@ it is not.
   discover that an earlier branch is wrong or has been replaced. It is the only
   way your conclusion survives into the tree; anything you merely say in the
   transcript is dropped at the next phase boundary.
-- `units {}` — what your working context is made of: one unit per work
-  phase, its size, and whether it has been evicted from your prompt.
+- `units {}` — what your working context is made of: one unit per message, its
+  size, and what has been ruled about it (raw, reduced, folded, removed).
 - `classify {}` — which units have drifted away from the current work.
-- `evict { window_tokens, dry_run? }` — remove the least valuable units so
-  the context fits `window_tokens`. Evicted units stay out until restored; nothing
-  is lost, `fetch` still returns them.
-- `restore { node_ids? | all? }` — bring evicted units back.
-- `reduce { node_id, budget_tokens, query? }` — one unit shrunk to a budget,
-  keeping the spans that match `query`.
-- `assemble { window_tokens }` — what a limit would do, without doing it.
+- `assemble { window_tokens, query? }` — shrink oversized units in place, keeping
+  the spans that match `query`. Removes nothing.
+- `evict { window_tokens, dry_run? }` — remove the least valuable units so the
+  context fits `window_tokens`. Nothing is lost; `fetch` still returns them.
+- `restore { ids? | all? }` — undo rulings: a removed unit comes back, a reduced
+  one returns to raw.
 
 ## Your context is yours to manage
 
-The units in your prompt are not fixed. If earlier phases no longer bear on what
-you are doing and your context is large, `evict` removes them; if one
-becomes relevant again, `restore` puts it back, and `fetch` reads
-it once without restoring it. Look before you cut: `units` shows what is
-there, and `evict` with `dry_run` shows what would go. The most recent
-units are never evicted.
+The units in your prompt are not fixed. If single units have grown large,
+`assemble` shrinks them without losing any; if earlier work no longer bears on
+what you are doing, `evict` removes it; if it becomes relevant again, `restore`
+puts it back, and `fetch` reads it once without restoring it. Look before you
+cut: `units` shows what is there, and `evict` with `dry_run` shows what would go.
+The task statement and your newest message are never touched.
 
 ## Two ways this goes wrong, and what you do about them
 

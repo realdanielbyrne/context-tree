@@ -107,25 +107,11 @@ Anthropic nor OpenRouter exposes an embedding endpoint — so `search`
 runs entirely on the lexical beam-search fallback. A Voyage key is the drop-in;
 config already supports it.
 
-## Provisional parameters (added 2026-09-20)
+## Provisional parameters
 
-None of these has been swept. Each is a server default (`CT_CT_*`, read by
-`packages/mcp` `pipelineFromEnv`) **and** an argument on the tool that uses it, so an
-experiment varies it without a rebuild. "Defined in" is where the default constant lives.
-
-| Parameter | Default | Defined in | Env | Tool argument |
-|---|---|---|---|---|
-| Recency anchor `A` (last A units never evictable) | 4 | `core/assemble/flex.ts` | `CT_CT_ANCHOR` | `evict.anchor` |
-| Eviction weights priority / recency / refRecency / dormancy | 2 / 1 / 0.5 / 1 | `core/assemble/eviction.ts` | `CT_CT_W_*` | `evict.weights` |
-| Priority half-life (turns) | 4 | `core/assemble/flex.ts` | `CT_CT_PRIORITY_HALFLIFE` | `half_life` |
-| Evict headroom (tokens) | 0 | `core/assemble/flex.ts` | `CT_CT_EVICT_HEADROOM` | `headroom_tokens` |
-| Soft-target fraction (sizes reduce-on-overflow) | 0.375 | `core/assemble/flex.ts` | `CT_CT_SOFT_TARGET_FRAC` | `assemble.soft_target_frac` |
-| Reducer | `chunk` | `core/assemble/reduce.ts` | `CT_CT_REDUCER` | `reducer` |
-| Drift window `K` / threshold `τ` | 5 / 1 | `core/classify/drift.ts` | `CT_CT_DRIFT_K` / `_TAU` | server default only |
-| RRF `k` | 60 | `core/retrieve/rrf.ts` | `CT_CT_RRF_K` | server default only |
-| Chunk size / overlap | 800 / 100 | `core/retrieve/chunk.ts` | `CT_CT_CHUNK_SIZE` / `_OVERLAP` | server default only |
-| Protected tail (host messages never dropped) | 6 | `mcp/session.ts` | `CT_CT_PROTECT_TAIL` | `verdicts.protect_tail` |
-| Neutral phases (decides unit granularity) | `other` | `core/config.ts` | config `neutralPhases` | — |
+Not listed here. Every tunable is one row in `packages/mcp/src/params.ts` (`PIPELINE_PARAMS`:
+environment name, bounds, default, which stage reads it, description), served at `GET /v1/params`;
+what each one *means* is in `reports/algorithm.md` § Parameters. None has been swept.
 
 Stale above, as of this date: `eval-resumption` and `cli eval` were deleted (D20); the
-decision record runs to D22; test and line counts are from 2026-08-31.
+decision record runs to D23; test and line counts are from 2026-08-31.

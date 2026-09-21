@@ -38,40 +38,47 @@ export const RULES = Object.freeze({
 });
 
 /**
- * EVERY value that still needs a sweep is a knob: `U18_<NAME>` on the command line, handed
- * to the driver as the `CT_*` variable beside it. `half` says which process reads it —
- * `policy` is the plugin (when to evict, at what window), `pipeline` is the sidecar (server
- * defaults of the @context-tree/mcp tools). Defaults are the package's own, spelled out so
- * an upstream change cannot move this experiment — except the anchor, set to 3 on
- * 2026-09-20. `lib.test.mjs` asserts the rest still match the package.
+ * EVERY value that still needs a sweep is a knob: `U18_<NAME>` on the command line, handed to
+ * the driver as the `CT_*` variable beside it.
  *
- * Not knobs, deliberately: the model, the sandbox, the prompt, repeats, the timeout,
- * summaries (U20) and the trigger itself (it IS the arm).
+ * The PIPELINE half is not written here. It is `@context-tree/mcp`'s parameter registry
+ * (`PIPELINE_PARAMS`), read from the build the sidecar will run — so a parameter added to the
+ * package is a knob here with no edit, and its bounds are the package's. What IS written here
+ * is what the package does not own: the plugin's policy knobs, the two sidecar-only settings,
+ * and this experiment's deliberate departures from the package defaults.
+ *
+ * Not knobs, deliberately: the model, the sandbox, the prompt, repeats, the timeout, and the
+ * trigger itself (it IS the arm).
  */
-export const KNOBS = Object.freeze([
-  { name: 'WINDOW', ct: 'CT_CT_WINDOW', def: '50347', half: 'policy', arms: ['soft'], note: 'the soft limit, in heuristic tokens — the swept variable' },
-  { name: 'HARD_WINDOW', ct: 'CT_CT_HARD_WINDOW', def: '151040', half: 'policy', note: 'the real context; also sets the overflow ceiling' },
-  { name: 'REPLY_RESERVE', ct: 'CT_CT_REPLY_RESERVE', def: '8192', half: 'policy', note: 'held back from the window for the reply' },
-  { name: 'HEAD_TOKENS', ct: 'CT_CT_HEAD_TOKENS', def: '12000', half: 'policy', note: 'allowance for what the plugin cannot see (system block, tool schemas)' },
-  { name: 'PROTECT_TAIL', ct: 'CT_CT_PROTECT_TAIL', def: '6', half: 'policy', note: 'trailing host messages never dropped' },
-  { name: 'ASSEMBLE_MS', ct: 'CT_ASSEMBLE_MS', def: '8000', half: 'policy', note: 'per-turn budget before the plugin fails open' },
-  { name: 'ANCHOR', ct: 'CT_CT_ANCHOR', def: '3', half: 'pipeline', int: true, note: 'recency anchor A: the last A units (phases) are never evictable' },
-  { name: 'W_PRIORITY', ct: 'CT_CT_W_PRIORITY', def: '2', half: 'pipeline', note: 'eviction score weight' },
-  { name: 'W_RECENCY', ct: 'CT_CT_W_RECENCY', def: '1', half: 'pipeline', note: 'eviction score weight' },
-  { name: 'W_REFRECENCY', ct: 'CT_CT_W_REFRECENCY', def: '0.5', half: 'pipeline', note: 'eviction score weight' },
-  { name: 'W_DORMANCY', ct: 'CT_CT_W_DORMANCY', def: '1', half: 'pipeline', note: 'eviction score weight (subtracted)' },
-  { name: 'PRIORITY_HALFLIFE', ct: 'CT_CT_PRIORITY_HALFLIFE', def: '4', half: 'pipeline', positive: true, note: 'priority decay half-life, turns' },
-  { name: 'EVICT_HEADROOM', ct: 'CT_CT_EVICT_HEADROOM', def: '0', half: 'pipeline', note: 'extra tokens freed when eviction fires' },
-  { name: 'SOFT_TARGET_FRAC', ct: 'CT_CT_SOFT_TARGET_FRAC', def: '0.375', half: 'pipeline', max: 1, note: 'sizes reduce-on-overflow (assemble only)' },
-  { name: 'REDUCER', ct: 'CT_CT_REDUCER', def: 'chunk', half: 'pipeline', oneOf: ['chunk', 'summarize'], note: 'reduce-on-overflow reducer' },
-  { name: 'DRIFT_K', ct: 'CT_CT_DRIFT_K', def: '5', half: 'pipeline', int: true, positive: true, note: 'drift classifier recent-window, units' },
-  { name: 'DRIFT_TAU', ct: 'CT_CT_DRIFT_TAU', def: '1', half: 'pipeline', note: 'topic-shift threshold on z-drift' },
-  { name: 'RRF_K', ct: 'CT_CT_RRF_K', def: '60', half: 'pipeline', positive: true, note: 'rank-fusion constant' },
-  { name: 'CHUNK_SIZE', ct: 'CT_CT_CHUNK_SIZE', def: '800', half: 'pipeline', positive: true, note: 'retrieval/reduce chunk size, chars' },
-  { name: 'CHUNK_OVERLAP', ct: 'CT_CT_CHUNK_OVERLAP', def: '100', half: 'pipeline', note: 'chunk overlap, chars' },
-  { name: 'NEUTRAL_PHASES', ct: 'CT_CT_NEUTRAL_PHASES', def: 'other', half: 'pipeline', text: true, note: 'phases that never open a unit — decides unit granularity; `none` for the literal rule' },
-  { name: 'CONTRACT', ct: 'CT_CONTRACT', def: 'v1', half: 'pipeline', oneOf: ['v1', 'v2', 'v3', 'v4'], note: 'system-contract version shipped to the agent' },
-]);
+const { PIPELINE_PARAMS } = await import(new URL('../../packages/mcp/dist/index.js', import.meta.url).href);
+
+/** Registry parameters U18 holds fixed because they are another hypothesis's variable (U20). `run.sh` sets them. */
+export const U18_FIXED = Object.freeze({ CT_CT_SUMMARIES: '0' });
+
+/** Where U18 runs away from the package default, and since when. */
+export const U18_DEFAULTS = Object.freeze({ CT_CT_ANCHOR: '3' /* 2026-09-20; package default 4 */ });
+
+const POLICY_KNOBS = [
+  { ct: 'CT_CT_WINDOW', def: '50347', arms: ['soft'], describe: 'The soft limit, in heuristic tokens — the swept variable.' },
+  { ct: 'CT_CT_HARD_WINDOW', def: '151040', describe: 'The real context; also sets the overflow ceiling.' },
+  { ct: 'CT_CT_REPLY_RESERVE', def: '8192', describe: 'Held back from the window for the reply.' },
+  { ct: 'CT_CT_HEAD_TOKENS', def: '12000', describe: 'Allowance for what the plugin cannot see (system block, tool schemas).' },
+  { ct: 'CT_ASSEMBLE_MS', def: '8000', describe: 'Per-turn budget before the plugin fails open.' },
+  { ct: 'CT_CT_NEUTRAL_PHASES', def: 'other', text: true, describe: 'Phases that never open a new phase; `none` for the literal rule. Matters to folding, and to `unit: phase`.' },
+  { ct: 'CT_CONTRACT', def: 'v1', oneOf: ['v1', 'v2', 'v3', 'v4'], describe: 'System-contract version shipped to the agent.' },
+];
+
+const fromRegistry = (spec) => ({
+  ct: spec.env,
+  def: spec.kind === 'bool' ? (spec.default ? '1' : '0') : String(spec.default),
+  describe: spec.describe,
+  ...(spec.kind === 'enum' ? { oneOf: spec.values } : spec.kind === 'bool' ? { oneOf: ['0', '1'] } : { int: spec.kind === 'int', min: spec.min, exclusiveMin: spec.exclusiveMin === true, max: spec.max }),
+});
+
+export const KNOBS = Object.freeze(
+  [...POLICY_KNOBS.map((k) => ({ ...k, half: 'policy' })), ...PIPELINE_PARAMS.filter((spec) => !(spec.env in U18_FIXED)).map((spec) => ({ ...fromRegistry(spec), half: 'pipeline' }))]
+    .map((k) => ({ ...k, name: k.ct.replace(/^CT_(CT_)?/, ''), def: U18_DEFAULTS[k.ct] ?? k.def })),
+);
 
 /** The resolved knob set, as `CT_*` -> string. Throws on anything that does not parse. */
 export function resolveKnobs(env = process.env) {
@@ -82,7 +89,8 @@ export function resolveKnobs(env = process.env) {
     if (k.oneOf) { if (!k.oneOf.includes(value)) problems.push(`U18_${k.name} must be ${k.oneOf.join('|')}, got "${value}"`); }
     else if (!k.text) {
       const n = Number(value);
-      if (!Number.isFinite(n) || n < 0 || (k.positive && n <= 0) || (k.int && !Number.isInteger(n)) || (k.max !== undefined && n > k.max)) problems.push(`U18_${k.name} is not a valid value: "${value}"`);
+      const min = k.min ?? 0;
+      if (!Number.isFinite(n) || (k.exclusiveMin ? n <= min : n < min) || (k.int && !Number.isInteger(n)) || (k.max !== undefined && n > k.max)) problems.push(`U18_${k.name} is not a valid value: "${value}"`);
     }
     out[k.ct] = value;
   }
@@ -244,23 +252,32 @@ export function servedPerHeuristic(rows, served) {
   return { aligned: true, turns: ratios.length, min: r2(Math.min(...ratios)), median: r2(median(ratios)), max: r2(Math.max(...ratios)), first_quartile_median: r2(median(ratios.slice(0, q))), last_quartile_median: r2(median(ratios.slice(-q))) };
 }
 
-/** What the sidecar's call log says about one cell. */
+/**
+ * What one ct cell's own logs say. The PLUGIN's rows are per turn and measured after the edit
+ * (what was actually sent, in the plugin's chars/4); the SIDECAR's `evict` rows are the ruling
+ * (in unit tokens, the heuristic W is compared against).
+ */
 export function sidecarStats(runDir) {
-  const rows = readJsonl(join(runDir, 'mcp', 'ct-mcp.jsonl')).filter((r) => r.event === 'assemble');
-  const first = rows.findIndex((r) => (r.evicted?.length ?? 0) > 0);
+  const turns = readJsonl(join(runDir, 'mcp', 'ct-plugin.jsonl')).filter((r) => r.turn !== undefined && !r.error);
+  const calls = readJsonl(join(runDir, 'mcp', 'ct-mcp.jsonl'));
+  const evicts = calls.filter((r) => r.event === 'evict');
+  const assembles = calls.filter((r) => r.event === 'assemble');
+  const first = turns.findIndex((r) => (r.dropped ?? 0) + (r.folded ?? 0) + (r.reduced ?? 0) > 0);
   const kept = (rs) => rs.reduce((m, r) => Math.max(m, r.kept_tokens ?? 0), 0);
   return {
-    assemble_rows: rows.length, evict_calls: rows.filter((r) => r.evict_called).length,
-    max_ms: rows.reduce((m, r) => Math.max(m, r.ms ?? 0), 0),
-    over_ceiling_turns: rows.filter((r) => r.over_ceiling).length, escalations: rows.reduce((n, r) => n + (r.escalations ?? 0), 0),
-    unindexed_turns: rows.filter((r) => r.indexed === false).length,
-    // The two numbers that explain a limit that was or was not held: how big the prompt got
-    // before anything was evictable, and how big it stayed afterwards.
-    first_eviction_turn: first >= 0 ? rows[first].turn : null,
-    max_kept_before_first_eviction: kept(first >= 0 ? rows.slice(0, first) : rows),
-    max_kept_after_first_eviction: first >= 0 ? kept(rows.slice(first)) : null,
-    max_total_heuristic: rows.reduce((m, r) => Math.max(m, r.total ?? 0), 0),
-    served_per_heuristic: servedPerHeuristic(rows, servedPerStep(runDir)),
+    plugin_turns: turns.length, assemble_calls: assembles.length, evict_calls: evicts.length,
+    max_ms: turns.reduce((m, r) => Math.max(m, r.ms ?? 0), 0),
+    over_ceiling_turns: turns.filter((r) => r.over_ceiling).length,
+    floor_evictions: turns.filter((r) => r.evict_floor).length,
+    // A ruling that could not meet its budget: only the pinned units were left to pay.
+    over_budget_rulings: evicts.filter((r) => r.over_budget).length,
+    reduced_units: assembles.reduce((m, r) => Math.max(m, r.reduced ?? 0), 0),
+    // The numbers that explain a limit that was or was not held.
+    first_edit_turn: first >= 0 ? turns[first].turn : null,
+    max_kept_before_first_edit: kept(first >= 0 ? turns.slice(0, first) : turns),
+    max_kept_after_first_edit: first >= 0 ? kept(turns.slice(first)) : null,
+    max_unit_tokens_after_ruling: evicts.reduce((m, r) => Math.max(m, r.tokens_after ?? 0), 0),
+    served_per_heuristic: servedPerHeuristic(turns, servedPerStep(runDir)),
   };
 }
 
@@ -279,6 +296,7 @@ export function gateVerdict(cell, wire, sidecar, { arm, window, knobs = null }) 
   if ((cell.ct?.plugin_errors ?? 0) + (cell.ct?.assemble_errors ?? 0) > 0) reasons.push('G1: a plugin or assembly turn failed open');
   if (sidecar.max_ms > RULES.gateMaxAssembleMs) reasons.push(`G1: slowest assembly ${sidecar.max_ms} ms > ${RULES.gateMaxAssembleMs} (the plugin fails open at 8,000)`);
   if (sidecar.over_ceiling_turns > 0) reasons.push(`${sidecar.over_ceiling_turns} turn(s) left the prompt over the ceiling`);
+  if (sidecar.over_budget_rulings > 0) reasons.push(`G2: ${sidecar.over_budget_rulings} ruling(s) could not meet the budget — the pinned units alone exceeded it`);
   if (arm === 'soft') {
     if (!engaged(cell)) reasons.push('G2: nothing evicted — the mechanism did not fire');
     const limit = Math.round(window * RULES.gatePeakFactor);
