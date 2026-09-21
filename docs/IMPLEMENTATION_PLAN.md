@@ -73,6 +73,8 @@ segmentation algorithm can change without data migration.
 
 | D21 | A shell-shaped tool is phased by its **command**, not by its name: `ToolCallEvent.command` (the head of the command, 512 chars) plus an ordered `toolPhaseByCommand` rule list consulted before `toolPhase`, first match wins, no match falls back to the name map (added in implementation, 2026-09-17) | §7's name-only map assumed one tool per phase, which no real agent harness has. On the sandboxed SWE-bench baseline (30 runs, local 27B) `bash` was 665 of 1,247 tool calls and everything shell-shaped mapped to `other`, so **54% of the trace landed in the neutral bucket** and the tree could not see a diagnose/implement/verify cycle it had just executed: test runs (39% of bash calls) and read-only inspection (29%) were invisible as phases. Applying the rules across the same 30 traces takes segmentation from 144 phases to 258. Stays inside D1: the rules are a fixed, ordered regex list over a field already in L0, so the pass is still deterministic, O(n) in events, zero LLM, and bit-identical across runs — it is not content clustering. `command` is written to L0 (not read from `args_blob`) so D15 hermeticity and D8 rebuildability are untouched. Ambiguous commands (`python repro.py`, `cd`, mutation) stay `other` rather than guess an intent the text cannot settle |
 
+| D22 | **Every pipeline stage is a tool, served from one registry over two transports.** `packages/mcp` `TOOLS` lists retrieval (`context_fetch/search/peek`, `annotate`) *and* the stages that used to be reachable only inside a host adapter's single `/assemble` call: `context_units`, `context_classify`, `context_evict`, `context_restore`, `context_reduce`, `context_assemble`, plus the host-facing `context_verdicts`. The MCP server (agents) and the loopback HTTP API (host plugins, `POST /v1/tools/<name>`) iterate the same table over one `ToolContext` and one session. Eviction is **sticky** session state; an eviction *policy* is the sequence of calls a caller makes (cadence = not calling `context_evict` on off turns). Every PROVISIONAL constant the stages use is a server default (`CT_CT_*`) and a tool argument. Supersedes the "exactly four tools" wording: D5 requires the tool set to be **frozen within a session**, not small | A pipeline reachable only as one opaque call cannot be driven by the agent, cannot have a stage swapped or skipped, and turns every policy experiment into a code change in the adapter. The first live soft-limit gate (U18, 2026-09-18) failed for reasons that were invisible from outside that call. Builds on D14 (middleware mode owns assembly + eviction). HTTP for plugins because they sit in the prompt path: no MCP framing, no model turn |
+
 ## 4. Prior art and reference implementations
 
 | Paper | arXiv | Take from it | Sample code |
@@ -302,9 +304,12 @@ answers questions, enrichment decorates — never the reverse.**
 
 ## 9. Retrieval and tool API (D7) — the MCP server
 
-`@context-tree/mcp` exposes three tools over stdio MCP. These are the *only*
-way a hosted model interacts with the tree — no fine-tuning, tool schemas +
-system-prompt discipline only (validated by MemGPT on untrained models).
+`@context-tree/mcp` serves one tool registry (D22) two ways: to agents over stdio
+MCP, and to host plugins over loopback HTTP (`POST /v1/tools/<name>`). Tools are
+the *only* way a hosted model interacts with the tree — no fine-tuning, tool
+schemas + system-prompt discipline only (validated by MemGPT on untrained models).
+
+Retrieval tools:
 
 | Tool | Signature | Behavior |
 |------|-----------|----------|
@@ -317,6 +322,19 @@ Plus one write-side tool:
 | Tool | Signature | Behavior |
 |------|-----------|----------|
 | `annotate` | `{node_id, text, link_to?: node_id, link_kind?}` | Adds a `node_links` edge and/or a note. This is the v1 seed of A-MEM-style memory evolution (a review-phase discovery can mark the implementation branch `superseded_by` a later branch) |
+
+Pipeline tools (D22) — each wraps a function `packages/core` already exports, so a
+stage can be called, skipped or replaced by name:
+
+| Tool | Wraps | Behavior |
+|------|-------|----------|
+| `context_units` | `mapFlexUnits` | The units (one per phase): size in heuristic tokens, evicted?, anchored? |
+| `context_classify` | `DriftClassifier` | Per-unit drift, z-drift, dormancy. Computed once per trace state, so repeat calls do not double-count |
+| `context_evict` | `assembleFlex` eviction | Evict to `window_tokens`; **sticky** until restored; budgets on RAW size because host messages are keep-or-drop; `dry_run` |
+| `context_restore` | session | Un-evict by id or all |
+| `context_reduce` | `reduceChunk` / `reduceSummarize` | One unit shrunk to a budget; returns text, changes nothing |
+| `context_assemble` | `assembleFlex` | The composed layout report (raw / summary / evicted / reduced / tail); stateless |
+| `context_verdicts` | — | HTTP only: maps evicted units onto a host's message list → keep / drop / fold per message. Selects whole messages, never re-renders (D20) |
 
 System-prompt contract shipped by the package (the "prompting not training"
 surface, kept in one versioned file so a future learned policy can replace it):

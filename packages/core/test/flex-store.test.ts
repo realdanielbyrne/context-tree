@@ -45,7 +45,7 @@ describe('mapFlexUnits — lexical-only (no embedder)', () => {
   });
 
   it('empty entries → empty units and corpus', async () => {
-    expect(await mapFlexUnits([])).toEqual({ units: [], corpus: [] });
+    expect(await mapFlexUnits([])).toEqual({ units: [], corpus: [], drift: [] });
   });
 });
 

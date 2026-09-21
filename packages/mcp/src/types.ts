@@ -1,5 +1,5 @@
 /**
- * Shared shapes for the four §9 tool handlers.
+ * Shared shapes for the §9 tool handlers.
  *
  * The handlers are plain functions over an explicit context rather than
  * closures the server owns, because §11's eval harness "implements its own
@@ -7,6 +7,7 @@
  * exposes — otherwise the eval measures a surface the agent never sees.
  */
 import type { ContextTreeConfig, ProviderRegistry, TaskStore, TreeRetriever } from '@context-tree/core';
+import type { Session } from './session.js';
 
 /** §9.2 / D14. Mode A (`tool-backend`) is the v1 default (§19 Q5). */
 export type OperatingMode = ContextTreeConfig['mode'];
@@ -27,6 +28,12 @@ export interface ToolContext {
    * so there is one source of truth in normal use.
    */
   mode?: OperatingMode;
+  /**
+   * Pipeline state shared by every tool and BOTH transports (`session.ts`). Created
+   * on first use; a host adapter that feeds L0 live supplies its own so it can
+   * publish the message index into it.
+   */
+  session?: Session;
 }
 
 /**

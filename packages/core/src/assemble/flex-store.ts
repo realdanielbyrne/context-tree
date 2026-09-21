@@ -18,7 +18,7 @@ import { extractFingerprints } from '../retrieve/lexical.js';
 import { embedInBatches } from '../models/embeddings.js';
 import type { SummaryEmbedder } from '../retrieve/types.js';
 import type { EnsembleUnit } from '../retrieve/ensemble.js';
-import { DriftClassifier, type ClassifyUnit } from '../classify/index.js';
+import { DriftClassifier, type ClassifyUnit, type DriftResult } from '../classify/index.js';
 import type { FlexHead, FlexUnit } from './flex.js';
 
 /** One unit's already-extracted text, before signal computation. */
@@ -41,6 +41,8 @@ export interface MapFlexOptions {
   classifier?: DriftClassifier;
   /** Drift recent-window size (units). Defaults to the classifier's `DRIFT_K`. */
   k?: number;
+  /** Topic-shift threshold on z-drift. Defaults to the classifier's `DRIFT_TAU`. */
+  tau?: number;
 }
 
 /**
@@ -52,7 +54,7 @@ export interface MapFlexOptions {
 export async function mapFlexUnits(
   entries: readonly FlexEntry[],
   options: MapFlexOptions = {},
-): Promise<{ units: FlexUnit[]; corpus: EnsembleUnit[] }> {
+): Promise<{ units: FlexUnit[]; corpus: EnsembleUnit[]; drift: DriftResult[] }> {
   const fingerprints = entries.map((e) =>
     extractFingerprints(`${e.rawText}\n${e.summaryText ?? ''}`),
   );
@@ -68,7 +70,7 @@ export async function mapFlexUnits(
     });
   }
   const classifier = options.classifier ?? new DriftClassifier();
-  const drift = classifier.classify(classifyUnits, options.k);
+  const drift = classifier.classify(classifyUnits, options.k, options.tau);
 
   const units: FlexUnit[] = entries.map((e, i) => ({
     nodeId: e.nodeId,
@@ -81,7 +83,7 @@ export async function mapFlexUnits(
     ...(e.summaryText !== undefined ? { summary: e.summaryText } : {}),
   }));
   const corpus: EnsembleUnit[] = entries.map((e) => ({ id: e.nodeId, text: e.rawText }));
-  return { units, corpus };
+  return { units, corpus, drift };
 }
 
 export interface FlexSourceDeps {

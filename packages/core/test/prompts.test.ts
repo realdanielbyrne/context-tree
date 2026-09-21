@@ -156,6 +156,19 @@ describe('systemContract version selector (loop9-item3 step 1: the Zone A trim)'
   });
 });
 
+describe('system-contract v4: the pipeline tools', () => {
+  it('is v1 plus the pipeline tools — nothing in v1 is reworded, so the two differ only by the addition', () => {
+    const v1 = systemContract('v1');
+    const v4 = systemContract('v4');
+    for (const tool of ['context_units', 'context_classify', 'context_evict', 'context_restore', 'context_reduce', 'context_assemble']) {
+      expect(v4).toContain(`\`${tool} `);
+      expect(v1).not.toContain(tool);
+    }
+    const added = v4.slice(v4.indexOf('- `context_units'), v4.indexOf('\n## Two ways this goes wrong'));
+    expect(v4.replace(added, '')).toBe(v1);
+  });
+});
+
 describe('system-contract v3 (loop9b item 2, R10/R11): what a summary cannot carry', () => {
   it('is registered alongside v2 (loop9-item3) without replacing it — the two arms select different files', () => {
     expect(SYSTEM_CONTRACT_VERSIONS).toContain('v1');

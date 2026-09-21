@@ -568,12 +568,11 @@ describe('e2e: summaries -> prompt (§10)', () => {
     const fixture = await summarized();
     const { prompt, src } = await flexPrompt(fixture);
 
-    // Head: the versioned contract + the closed four-tool set + all user prompts,
+    // Head: the versioned contract + the session's frozen tool set + all user prompts,
     // byte-stable (anything per-turn here defeats caching forever, D5).
     expect(prompt.system).toContain(systemContract());
     expect(prompt.system).toContain(TOOL_SCHEMAS_TEXT);
     expect(blocksIn(prompt, 'head').length).toBeGreaterThan(0);
-    expect(TOOL_NAMES).toHaveLength(4);
 
     // Flex buffer: one block per phase unit, in CREATION order (never relevance).
     const flex = blocksIn(prompt, 'flex');

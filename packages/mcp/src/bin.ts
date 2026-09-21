@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * stdio entry point.
+ * stdio entry point; `--http <port>` (or CT_HTTP_PORT) also serves the same tools,
+ * on the same session, over loopback HTTP.
  *
  * stdout IS the transport: one stray `console.log` frames as garbage and
  * corrupts the session, so every diagnostic here goes to stderr and nothing in
@@ -8,7 +9,9 @@
  */
 import { TreeRetriever, loadConfig, openTaskStore, type TaskStore } from '@context-tree/core';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { createServer } from './server.js';
+import { createHttpApi } from './http.js';
+import { createServer, toolContext } from './server.js';
+import { createSession, pipelineFromEnv } from './session.js';
 
 function log(message: string): void {
   process.stderr.write(`context-tree-mcp: ${message}\n`);
@@ -26,7 +29,19 @@ async function main(): Promise<void> {
    * `TreeRetriever` and calls `createServer`.
    */
   const retriever = new TreeRetriever({ store: handle.store, blobs: handle.blobs, trace: handle.trace });
-  const server = createServer({ config, handle, retriever, mode: config.mode });
+  const options = { config, handle, retriever, mode: config.mode, session: createSession(pipelineFromEnv()) };
+  const ctx = toolContext(options);
+  const server = createServer(options, ctx);
+
+  const flag = process.argv.indexOf('--http');
+  const httpPort = flag >= 0 ? process.argv[flag + 1] : process.env['CT_HTTP_PORT'];
+  if (httpPort !== undefined && httpPort !== '') {
+    const port = Number(httpPort);
+    if (!Number.isInteger(port) || port < 0) throw new RangeError(`--http needs a port, got "${httpPort}"`);
+    const token = process.env['CT_HTTP_TOKEN'];
+    const api = await createHttpApi({ ctx, port, ...(token !== undefined ? { token } : {}) });
+    log(`http api on 127.0.0.1:${String(api.port)}`);
+  }
 
   let closing = false;
   const shutdown = (signal: string): void => {

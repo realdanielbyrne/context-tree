@@ -100,9 +100,11 @@ export function renderTemplate(
  * Contract variants selectable independently of `SYSTEM_CONTRACT_VERSION`
  * (which names the file `loadPrompt('system-contract')` reads by default).
  * `v2` is `v1` minus the "Two ways this goes wrong" section.
+ * `v4` is `v1` plus the pipeline tools (units / classify / evict / restore / reduce /
+ * assemble) and when to reach for them.
  * `v1` stays the default.
  */
-export const SYSTEM_CONTRACT_VERSIONS = ['v1', 'v2', 'v3'] as const;
+export const SYSTEM_CONTRACT_VERSIONS = ['v1', 'v2', 'v3', 'v4'] as const;
 export type SystemContractVersion = (typeof SYSTEM_CONTRACT_VERSIONS)[number];
 
 const systemContractCache = new Map<SystemContractVersion, string>();

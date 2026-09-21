@@ -51,7 +51,7 @@ packages/core/src/
   providers/   §9.1 graft / Serena / Augment / grep + deterministic merge
   render/      L4  markdown views
 
-packages/mcp/   §9  the four tools over stdio
+packages/mcp/   §9  the tool registry (retrieval + pipeline stages), MCP stdio + loopback HTTP (D22)
 packages/cli/   init | import | rebuild | render | eval
 eval/           §15 resumption benchmark, arms A–D
 ```

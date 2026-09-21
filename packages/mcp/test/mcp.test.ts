@@ -1,6 +1,6 @@
 /**
  * §9 tool-surface tests. Every case here protects a rule the plan states:
- * the four-tool set (Zone A is frozen, D5), the mode gate on L0 writes
+ * a tool set that is one registry (Zone A is frozen per session, D5), the mode gate on L0 writes
  * (D14 / ruling C9), the "unknown id is a normal model mistake" failure design,
  * and §9.1's fixed structural-before-fuzzy merge order.
  *
@@ -27,6 +27,7 @@ import {
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import {
+  TOOLS,
   ANNOTATE,
   CONTEXT_FETCH,
   CONTEXT_PEEK,
@@ -665,14 +666,18 @@ async function connect(fixture: Fixture): Promise<{ client: Client; close: () =>
 }
 
 describe('registered surface', () => {
-  it('exposes exactly the four §9 tools — Zone A is frozen, so the set is closed (D5)', async () => {
+  it('serves the registry, and only its agent-callable rows — one table, no second list to drift', async () => {
     const fixture = seed();
     const { client, close } = await connect(fixture);
     try {
       const { tools } = await client.listTools();
-      expect(tools.map((tool) => tool.name).sort()).toEqual([...TOOL_NAMES].sort());
-      expect(TOOL_NAMES).toHaveLength(4);
-      expect([...TOOL_NAMES].sort()).toEqual([ANNOTATE, CONTEXT_FETCH, CONTEXT_PEEK, CONTEXT_SEARCH].sort());
+      const onMcp = TOOLS.filter((tool) => tool.transports.includes('mcp')).map((tool) => tool.name);
+      expect(tools.map((tool) => tool.name).sort()).toEqual([...onMcp].sort());
+      expect([...TOOL_NAMES].sort()).toEqual(TOOLS.map((tool) => tool.name).sort());
+      // The retrieval tools are still there; the pipeline stages are now beside them.
+      for (const name of [ANNOTATE, CONTEXT_FETCH, CONTEXT_PEEK, CONTEXT_SEARCH, 'context_evict', 'context_classify']) expect(onMcp).toContain(name);
+      // Takes the host's message array, which an agent never holds.
+      expect(onMcp).not.toContain('context_verdicts');
     } finally {
       await close();
     }
@@ -757,12 +762,13 @@ describe('registered surface', () => {
 });
 
 describe('the eval-harness integration point (§11)', () => {
-  it('HANDLERS covers exactly the registered tool set, or the eval scores a surface the agent never sees', async () => {
+  it('HANDLERS covers every registered tool, or a caller scores a surface the agent never sees', async () => {
     const fixture = seed();
     const { client, close } = await connect(fixture);
     try {
       const { tools } = await client.listTools();
-      expect(Object.keys(HANDLERS).sort()).toEqual(tools.map((tool) => tool.name).sort());
+      for (const tool of tools) expect(Object.keys(HANDLERS)).toContain(tool.name);
+      expect(Object.keys(HANDLERS).sort()).toEqual(TOOLS.map((tool) => tool.name).sort());
     } finally {
       await close();
     }
