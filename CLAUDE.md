@@ -9,7 +9,7 @@ Limit code comments and let the code speak for itself. Limit excessive expositio
 ## Plan and decisions
 
 `docs/IMPLEMENTATION_PLAN.md` carries the design and a decision record
-(§3, D1–D24) with rationale and citations. **Do not silently deviate from a D-numbered
+(§3, D1–D25) with rationale and citations. **Do not silently deviate from a D-numbered
 decision.** If implementation reveals a decision is wrong, say so, propose the
 change, and update the plan's decision row — don't just write different code.
 §19 lists deliberately open questions; those are yours to decide (with a stated
@@ -91,7 +91,8 @@ Consequences to hold onto while coding:
   over loopback HTTP, on one session: `fetch`, `search`, `peek`, `annotate`, `units`,
   `classify`, `assemble`, `evict`, `restore`. The set is frozen *within a session* (D5), not
   capped. **`assemble` represents and never removes; `evict` is optional, takes the assembly
-  as input and may overrule it** — keep their rules in separate code. Every stage works on the
+  as input and may overrule it** — keep their rules in separate code. `evict` removes in two
+  steps when `evictMode: stub` (D25): a visible stub with a recall id first, a drop last. Every stage works on the
   same unit (a turn = one host message). Every tunable is one row in
   `packages/mcp/src/params.ts`; never restate that list. Spec: `reports/algorithm.md`.
 - **Retrieval providers (§9.1)**: `search`/`fetch` are facades

@@ -51,7 +51,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = process.env.CT_REPO_ROOT ?? join(HERE, '..', '..');
 const dist = (pkg) => pathToFileURL(join(REPO, 'packages', pkg, 'dist', 'index.js')).href;
 
-const { TreeRetriever, ingest, openTaskStore, resolveConfig } = await import(dist('core'));
+const { OpenRouterProvider, Summarizer, TreeRetriever, ingest, openTaskStore, resolveConfig } = await import(dist('core'));
 const { TOOLS, countActions, createHttpApi, createServer, createSession, pipelineFromEnv, toolContext, withHandlers } = await import(dist('mcp'));
 const { mapOpencodeExport } = await import(dist('cli'));
 
@@ -250,6 +250,31 @@ function logCall({ tool, ok, ms, input, outcome }) {
   }
 }
 
+/**
+ * SUMMARIES, when the arm asks for them. A closed phase is summarized ONCE, in the background,
+ * by the model the agent itself runs on, reached through the sandbox relay. `assemble` folds a
+ * phase only once its summary exists (D11: the assembler never waits on the summarizer), so a
+ * slow or failed summary costs a fold, never a turn.
+ */
+export function makeSummaries(handle, { provider, model, maxTokens }) {
+  const summarizer = new Summarizer({
+    store: handle.store, trace: handle.trace, blobs: handle.blobs, provider,
+    leafModel: model, rootModel: model, concurrency: 1, maxSummaryTokens: maxTokens,
+  });
+  const asked = new Set();
+  let reported = 0;
+  return function tick() {
+    for (const phase of handle.store.byKind('phase')) {
+      if (phase.status === 'open' || phase.status === 'superseded' || asked.has(phase.id) || handle.store.currentSummary(phase.id) !== null) continue;
+      asked.add(phase.id);
+      summarizer.scheduleSummarize(phase.id);
+    }
+    const outcomes = summarizer.backgroundOutcomes();
+    for (const o of outcomes.slice(reported)) record({ event: 'summary', node: o.nodeId, status: o.status, ...(o.error ? { error: String(o.error.message).slice(0, 300) } : {}) });
+    reported = outcomes.length;
+  };
+}
+
 /** The G0 gate swaps ONE stage behind its name; the transports and the plugin are untouched. */
 const g0Assemble = async (_ctx, input) => ({
   ok: true,
@@ -291,6 +316,15 @@ async function main() {
   }
 
   const follow = makeFollower(handle);
+  const summaryModel = process.env.CT_SUMMARY_MODEL || '';
+  const summaries = pipeline.summaries && !G0_DROP_FIRST && summaryModel && process.env.CT_SUMMARY_BASE_URL
+    ? makeSummaries(handle, {
+        // The relay injects the real key; nothing secret is in the sandbox.
+        provider: new OpenRouterProvider({ apiKey: 'sandboxed', baseURL: process.env.CT_SUMMARY_BASE_URL, timeoutMs: 300_000, sdkMaxRetries: 0 }),
+        model: summaryModel, maxTokens: Number(process.env.CT_SUMMARY_MAX_TOKENS || 4096),
+      })
+    : null;
+  if (pipeline.summaries && !summaries && !G0_DROP_FIRST) record({ event: 'summary_unavailable', reason: 'CT_SUMMARY_BASE_URL / CT_SUMMARY_MODEL not set: no phase will ever fold' });
   let db = null;
   const openDb = () => {
     if (db || !existsSync(DB)) return db;
@@ -305,6 +339,7 @@ async function main() {
       if (!handleDb) return;
       const result = follow(handleDb);
       if (result.appended > 0) record({ event: 'ingest', ...result });
+      summaries?.();
     } catch (error) {
       record({ event: 'ingest_error', error: String(error?.message ?? error) });
     }

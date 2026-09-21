@@ -101,6 +101,13 @@ Each of these produces a run that completes, grades, and reports nothing wrong.
 - **`@opencode-ai/plugin` fails to install in the sandbox** (`background dependency install failed`,
   ECONNREFUSED — there is no network). It is a detached fork whose result is ignored, so it does
   **not** block plugin loading. Expect the WARN in every sandboxed run and do not chase it.
+- **An arm that evicts silently never gets a recall.** In 21 ct cells the agent called a recall
+  tool once: a spliced-out message leaves nothing to act on, and contract v1 describes summaries the
+  prompt never shows. `CT_CT_EVICT_MODE=stub` + `CT_CONTRACT=v5` leave a tag with an id that works
+  in one call (`fetch {"unit":"turn:31"}`); `CT_CT_SUMMARIES=1` needs the sidecar's background
+  summarizer, which runs on the same local model through the relay (`CT_SUMMARY_*`, set by the
+  sandbox). Check `cell.mcp.tools` before saying anything about recall, and count cells whose last
+  step finished `length` (the 32,000-token output cap) — U18's `soft` losses were those.
 - **Tokens in this arm are HEURISTIC — one heuristic, on both sides.** Sidecar unit sizes, W, the
   ceiling and the plugin's `kept_tokens` are all core's `HeuristicTokenizer` over what the host
   sends (`hostContent` / `oc-plugin/size.mjs`). It is not the served tokenizer: one cell measured

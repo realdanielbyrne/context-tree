@@ -115,6 +115,11 @@ export function sandboxConfig(cfg, model, env = process.env, { window = 0, mcp =
           CT_MCP_DB: mcp.db,
           CT_MCP_LOG: mcp.log,
           ...(mcp.pollMs ? { CT_MCP_POLL_MS: String(mcp.pollMs) } : {}),
+          // Where the sidecar's summarizer finds a model: the same relay and the same weights the
+          // agent uses, so no second key and no second route leaves the sandbox. Used only when
+          // the arm turns summaries on.
+          CT_SUMMARY_BASE_URL: inner.options.baseURL,
+          CT_SUMMARY_MODEL: rest.join('/'),
           ...(mcp.env ?? {}),
         },
       },

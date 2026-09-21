@@ -76,6 +76,48 @@ GPU mid-cell.
 | `off` | `CT_ARM=off` | the handoff's control: host compaction at 119,040, no plugin, no MCP tools |
 | `soft` | `CT_ARM=ct CT_CT_TRIGGER=soft CT_CT_WINDOW=W` | the treatment: every turn the plugin calls `assemble` then `evict`, both at `{window_tokens: W, reserve_tokens: 20,192}`. Eviction fires when the assembled units exceed `W − 20,192` heuristic tokens |
 | `hard` | `CT_ARM=ct CT_CT_TRIGGER=hard` | plumbing-matched control: same tools, plugin, `--pure` dropped, host compaction off — but both calls are made at the real window (151,040) |
+| `stub` | `soft` + `CT_CT_EVICT_MODE=stub CT_CONTRACT=v5` | **eviction the agent can see.** An evicted turn keeps its own text and its tool calls, loses its reasoning, and each tool output becomes `[evicted · N tokens · began: "…" · recall: fetch {"unit":"turn:31"}]`. Dropped outright only if the stubs themselves do not fit. No summaries. Contract v5 describes the tags |
+| `summary` | `stub` + `CT_CT_SUMMARIES=1` | `stub`, and a closed phase outside the anchor folds to `[folded phase · <one sentence> · files: … · recall: search, or fetch {"branch_id":"n_…"}]`. Summaries are written in the background by the same local model through the sandbox relay; the full 2–6 sentence summary stays one `fetch` away (`CT_CT_SUMMARY_RENDER=headline`) |
+
+The table is `lib.mjs ARMS`; each arm adds one thing to the one before it
+(`soft` → `stub` → `summary`).
+
+### Why `stub` and `summary` exist (added 2026-09-21, after wave 0, before any cell of either ran)
+
+`soft` evicts **silently**: a dropped message is spliced out, nothing marks the gap, and contract
+v1 tells the agent to fetch "the branch a summary mentions" in a prompt that has no summaries and
+no ids. Across all 21 ct cells then on record (wave 0 and five gate cells) the agent called a recall
+tool **once**. It re-explored with `read`/`grep` instead, and both of `soft`'s wave-0 losses ended
+with a step that ran into the 32,000-token output cap (0 control cells ended that way). So `soft`
+tests *eviction without recall*, and says nothing about recall.
+
+The two arms apply what earlier experiments here found, and avoid what they found not to work:
+
+| used | evidence |
+|---|---|
+| a stub naming ids + "call search or fetch to recall" | 15/15 runs recovered every planted fact in one call (`reports/metrics/loop8-interim.md`) |
+| a reference that says WHAT it was (path, first line) | beat a length-matched placebo +27.8pp, p=0.006; recall unharmed at 1/10 the tokens (`report-anchor-replay.md`) |
+| recall in ONE call | hits that answer without a second call: 15/25 vs 6/25 (`window-regime-and-retrieval-unit-report.md`) |
+| the agent's own narrative kept | runs without a ledger of completed steps stalled; with one, 9× re-verify → done in 5 turns (`context-tree-eval-harness-validation.md`) |
+| headline-sized summaries | one sentence + pointers vs verbose: 4/59 vs 4/60 at −80% tokens; verbose cost score; a visible paragraph removed the trigger to fetch (`ds-star-tree-tail-iter1-report.md`, `tuning-branch-depth.md`) |
+
+| avoided | evidence |
+|---|---|
+| behavioural nudges ("you already read this") | fired 33×, ignored 33× (`report-readloop.md`) |
+| a "stronger" contract, forced `depth:full` | 0/9, 0/27 (`ds-star-live-verification-report.md`) |
+| more summary prose, hit keywords | +32% tokens, no change (`ds-star-delivery-pass-report.md`) |
+| ids that may not resolve | retrieval with an unreachable answer stalled 52% of runs vs 0% |
+
+Summary SIZE is not swept here: the prior is null, and an arm costs 30 cells. `headline` is the
+registered setting; `U18_SUMMARY_RENDER=full` exists for the follow-up and changes the tag.
+
+**Registered for these arms before they ran.** The verdict ladder below is unchanged and stays
+`soft` vs `off`. Two secondary outcomes are reported for every ct arm: **recall-tool calls by the
+agent** (`fetch`/`search`/`peek` over MCP — the plugin's own HTTP calls are not counted) and
+**cells that ended on an output-cap step**. A recall arm in which the agent recalled in fewer than
+**3** cells is reported as **RECALL NOT EXERCISED**: its solve rate is then evidence about visible
+eviction, not about recall. Each recall arm is compared with `off` and with `soft` by the same
+paired sign-flip test.
 
 `soft` vs `off` is the **primary** comparison, as the handoff specifies. **`hard` is an addition
 to the handoff's U18 arm list** (it is U19's `hard` arm, so those cells are re-usable there). The
@@ -92,7 +134,9 @@ Arm order rotates per wave so no arm always runs first.
 
 ## Gates (in order; a failure stops the run)
 
-0. **G0 must be re-run** (`node experiments/context-dedup/g0-mutation-visibility.mjs`, ~20 min):
+0. **G0 has four cases**: fold, splice, in-place output reduction, and — for `stub` — a message
+   with its reasoning parts removed and an output replaced by a tag, each with its own marker.
+   **G0 must be re-run** (`node experiments/context-dedup/g0-mutation-visibility.mjs`, ~20 min):
    the seam it vouches for — plugin → sidecar → prompt — was rebuilt on 2026-09-20 (D22).
 1. **Preflight** — tools, clean tree (result files excepted; the pool file is *not* excepted),
    server holds this build, variant and window, `opencode.json` agrees, packages built, unit
@@ -106,6 +150,11 @@ Arm order rotates per wave so no arm always runs first.
      plugin's 8,000 ms budget, no over-ceiling turn, no ruling the pinned units alone defeated,
      and a **real peak ≤ 1.3 × W**. "Below the control's peak" would be vacuous:
      117K passes it.
+   - **Every ct arm: the cell must run ≥ 20 steps.** On 2026-09-21 a `hard` gate cell whose first
+     reply ran into the output cap ended after one step and PASSED — nothing had gone wrong,
+     because nothing had happened.
+   - `stub` PASS: as `soft`, and at least one message was stubbed. `summary` PASS: as `stub`,
+     and at least one phase was folded (so the background summarizer reached the model in time).
    - `hard` PASS: the same without the eviction and peak clauses. It exists because the arm has
      never run live and its ceiling is denominated in heuristic tokens (see Known limits): with
      host compaction off, a problem that fills the window may be a hard session error.
@@ -187,7 +236,8 @@ rotation no longer balances time for them.
   at W = 50,347 with a 20,192 reserve and `f` = 0.375 it is 0. The `soft` arm at the default knobs is
   therefore eviction over raw turns. `U18_SOFT_TARGET_FRAC` turns reduction on; that is a different
   treatment and gets a different tag.
-- **In-place output reduction is unproven on the wire** until G0's third case passes.
+- **The stub edit is unproven on the wire** until G0's fourth case passes (in-place output reduction passed on 2026-09-20).
+- **The summarizer shares the GPU with the agent.** `summary` cells run slower, summaries arrive late or not at all on short problems, and a phase whose summary fails the output contract never folds (logged as `summary` rows in `ct-mcp.jsonl`). Wall time is therefore not comparable across arms.
 - Eviction edits the prompt prefix, which forces a re-prefill on this hybrid (recurrent-state)
   model. `soft` turns may be slower, so under intention-to-treat a timeout at 7,200 s makes
   "accuracy" partly a measure of speed. Timeouts are reported per arm.
@@ -217,3 +267,16 @@ driver's convention), verdicts in `reports/metrics/u18-soft-limit/`. Write the r
   budget on **102/102** turns; first eviction at turn 9; slowest turn 15 ms. `unit=phase`: 23
   units, largest 45,535; over budget on **94/102** turns, peak 64,343. The granularity, not the
   anchor, was the defect. A replay is not a gate: the live gate still has to be run.
+- **2026-09-20/21, gates after D23 and D24.** Attempt 1 at `1ed9c90` FAILED (served peak 67,855 >
+  65,451): L0 omitted reasoning, a third of what the host sends, so the sidecar budgeted a prompt
+  a third smaller than the real one (D24). Attempt 2 at `0406d2b` PASSED (peak 52,455, solved).
+  At `29795af` both sides moved to one sizing metric; `soft` PASSED (46,606) and `hard` PASSED
+  **vacuously** — one step, output cap — which is why the 20-step clause exists.
+- **2026-09-21, wave 0 (commit `29795af`), then stopped.** `off` 6/10, `soft` 5/10, `hard` 6/9
+  (its last cell was in flight when the runner was stopped). `soft` evicted on 5 of 10 cells.
+  Recall-tool calls by the agent: `soft` 0, `hard` 1. Cells ending on an output-cap step: `off` 0,
+  `soft` 2 — and those two are exactly the problems `soft` lost against `off`
+  (pytest-8399, django-11138). Waves 1–2 were not run: the arms were evicting silently.
+- **2026-09-21, offline replay of `soft` wave-0 django-11138 under `stub`** (no GPU): 27 units
+  stubbed, every tag's `fetch {unit}` resolves, no stub text changes after it is first written,
+  the first outright drop moves from turn 5 to turn 19, plugin and sidecar sizes agree exactly.

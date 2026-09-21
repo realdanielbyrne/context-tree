@@ -120,6 +120,20 @@ the head so the head caches.
 **3 — Evict (removal; optional; input = the assembly).** Units are sized **as assembled**, so a
 unit the assembler reduced competes at its reduced size, and any unit the assembler kept, reduced or
 folded can still be removed here. The ejector never chooses a representation.
+- **Removal has two steps (D25), `evictMode: stub`.** A unit is first cut to a **stub** — what a
+  host can still show of it: the message, its own text and its tool calls with their inputs stay;
+  its reasoning goes; each tool output becomes a tag,
+  `[evicted · N tokens · began: "<first line>" · recall: fetch {"unit":"turn:31"}]`. It is **dropped**
+  only when the stubs themselves do not fit. Everything starts at its cheapest visible form, the
+  best-scored units are restored to full size while they fit, and the worst-scored stubs are
+  dropped if even those overflow; a stub is sized at its residue, so the budget holds. `evictMode:
+  drop` (the default) is the single-step rule below, unchanged. The tag and a folded phase's line
+  (`[folded phase · <headline> · files: … · recall: search, or fetch {"branch_id":"n_…"}]`,
+  `summaryRender`) are the only marker formats, built in `assemble/format.ts` and
+  `summarize/compose-root.ts`; both **describe and never instruct**, a stub's text never changes
+  once written (D5), and its id resolves in one call (`fetch {unit}`). Why: silent eviction was
+  never followed by a recall (U18 wave 0), nudges and stronger contracts have failed every time
+  they were tried here, and a reference that names its content is the form with evidence.
 - **Eviction — what / when / how much.** *When:* eviction fires only when the buffer exceeds the
   **hard limit** `window − replyReserve`; never below it. *What:* above the limit, evict the
   **lowest-scoring** units first (the dormant, low-priority, old ones). *How much:* just enough to fit,
