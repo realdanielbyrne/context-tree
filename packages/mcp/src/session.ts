@@ -1,170 +1,89 @@
 /**
- * Per-task state the pipeline tools share, and the defaults they fall back to.
+ * Per-task state shared by every tool and both transports.
  *
- * The stages are tools (`tools/`), and tools are plain functions of a context,
- * so whatever must survive from one call to the next lives here: the turn
- * clock, the classifier's causal statistics, which units the agent came back
- * to, and — the one piece of real state — WHICH UNITS ARE EVICTED. Eviction is
- * sticky: a unit stays out until `restore` brings it back. A policy that
- * simply does not call `evict` this turn therefore leaves the prompt
- * exactly as it was, instead of re-admitting everything and rewriting the cached
- * prefix.
+ * The real state is two rulings, kept apart because two stages make them: the ASSEMBLY
+ * (how `assemble` represents each unit) and the EVICTED set (what `evict` removed, which
+ * overrules the assembly). Both are sticky — a unit stays as ruled until `restore` — so a
+ * turn on which a policy makes no ruling leaves the prompt exactly as it was, instead of
+ * re-admitting everything and rewriting the cached prefix.
+ *
+ * Units are built ONCE per state of the trace. The drift classifier folds each call's
+ * observations into its running statistics, so re-classifying an unchanged trace (an
+ * agent calling `classify` twice, or `units` then `evict`) would count one observation
+ * twice and shift every later z-score.
  */
 import {
-  DEFAULT_ANCHOR,
-  DEFAULT_CHUNK_OVERLAP,
-  DEFAULT_CHUNK_SIZE,
-  DEFAULT_EVICTION_WEIGHTS,
-  DEFAULT_PRIORITY_HALFLIFE,
-  DEFAULT_REDUCER,
-  DEFAULT_RRF_K,
-  DEFAULT_SOFT_TARGET_FRAC,
-  DRIFT_K,
-  DRIFT_TAU,
   DriftClassifier,
   HeuristicTokenizer,
+  KEEP,
+  deriveTurns,
   mapFlexUnits,
-  readNodeText,
+  renderEvent,
+  splitText,
+  type Disposition,
   type DriftResult,
   type EnsembleUnit,
-  type EvictionWeights,
   type FlexUnit,
   type NodeId,
-  type ReducerName,
+  type PhaseType,
   type Tokenizer,
+  type TraceEvent,
   type TreeNode,
 } from '@context-tree/core';
+import { PIPELINE_DEFAULTS, type PipelineParams } from './params.js';
 import type { ToolContext } from './types.js';
 
-/**
- * Every value here is PROVISIONAL in core — hand-set or borrowed, not swept — which
- * is why each is a parameter: a default for the server, and an argument on the tool
- * that uses it.
- */
-export interface PipelineDefaults {
-  /** Recency anchor `A`: the last A units are never evictable. */
-  anchor: number;
-  weights: EvictionWeights;
-  priorityHalfLife: number;
-  /** Extra tokens freed beyond the limit when eviction fires. */
-  evictHeadroomTokens: number;
-  /** Sizes the reduce-on-overflow per-unit budget; no longer an eviction trigger. */
-  softTargetFrac: number;
-  reducer: ReducerName;
-  driftK: number;
-  driftTau: number;
-  rrfK: number;
-  chunkSize: number;
-  chunkOverlap: number;
-  /** Trailing host messages `verdicts` never drops. */
-  protectTail: number;
-}
-
-export const PIPELINE_DEFAULTS: Readonly<PipelineDefaults> = Object.freeze({
-  anchor: DEFAULT_ANCHOR,
-  weights: DEFAULT_EVICTION_WEIGHTS,
-  priorityHalfLife: DEFAULT_PRIORITY_HALFLIFE,
-  evictHeadroomTokens: 0,
-  softTargetFrac: DEFAULT_SOFT_TARGET_FRAC,
-  reducer: DEFAULT_REDUCER,
-  driftK: DRIFT_K,
-  driftTau: DRIFT_TAU,
-  rrfK: DEFAULT_RRF_K,
-  chunkSize: DEFAULT_CHUNK_SIZE,
-  chunkOverlap: DEFAULT_CHUNK_OVERLAP,
-  protectTail: 6,
-});
-
-const ENV_NUMBERS: Readonly<Record<string, (d: PipelineDefaults, v: number) => void>> = Object.freeze({
-  CT_CT_ANCHOR: (d, v) => { d.anchor = v; },
-  CT_CT_PRIORITY_HALFLIFE: (d, v) => { d.priorityHalfLife = v; },
-  CT_CT_EVICT_HEADROOM: (d, v) => { d.evictHeadroomTokens = v; },
-  CT_CT_SOFT_TARGET_FRAC: (d, v) => { d.softTargetFrac = v; },
-  CT_CT_DRIFT_K: (d, v) => { d.driftK = v; },
-  CT_CT_DRIFT_TAU: (d, v) => { d.driftTau = v; },
-  CT_CT_RRF_K: (d, v) => { d.rrfK = v; },
-  CT_CT_CHUNK_SIZE: (d, v) => { d.chunkSize = v; },
-  CT_CT_CHUNK_OVERLAP: (d, v) => { d.chunkOverlap = v; },
-  CT_CT_PROTECT_TAIL: (d, v) => { d.protectTail = v; },
-  CT_CT_W_PRIORITY: (d, v) => { d.weights = { ...d.weights, priority: v }; },
-  CT_CT_W_RECENCY: (d, v) => { d.weights = { ...d.weights, recency: v }; },
-  CT_CT_W_REFRECENCY: (d, v) => { d.weights = { ...d.weights, refRecency: v }; },
-  CT_CT_W_DORMANCY: (d, v) => { d.weights = { ...d.weights, dormancy: v }; },
-});
-
-export const PIPELINE_ENV_KEYS: readonly string[] = Object.freeze([...Object.keys(ENV_NUMBERS), 'CT_CT_REDUCER']);
-
-/**
- * Server defaults from the environment. A value that does not parse is an ERROR,
- * never a silent fall-back: `CT_CT_ANCHOR=three` reading as the default would run an
- * experiment under a setting nobody asked for, with nothing logged.
- */
-export function pipelineFromEnv(env: Readonly<Record<string, string | undefined>> = process.env): PipelineDefaults {
-  const out: PipelineDefaults = { ...PIPELINE_DEFAULTS, weights: { ...PIPELINE_DEFAULTS.weights } };
-  const problems: string[] = [];
-  for (const [key, set] of Object.entries(ENV_NUMBERS)) {
-    const raw = env[key];
-    if (raw === undefined || raw === '') continue;
-    const value = Number(raw);
-    if (!Number.isFinite(value) || value < 0) problems.push(`${key} must be a non-negative number, got "${raw}"`);
-    else set(out, value);
-  }
-  const reducer = env['CT_CT_REDUCER'];
-  if (reducer !== undefined && reducer !== '') {
-    if (reducer === 'chunk' || reducer === 'summarize') out.reducer = reducer;
-    else problems.push(`CT_CT_REDUCER must be chunk|summarize, got "${reducer}"`);
-  }
-  if (!Number.isInteger(out.anchor)) problems.push(`CT_CT_ANCHOR must be an integer, got ${String(out.anchor)}`);
-  if (!Number.isInteger(out.protectTail) || out.protectTail < 1) problems.push(`CT_CT_PROTECT_TAIL must be an integer >= 1, got ${String(out.protectTail)}`);
-  if (out.softTargetFrac > 1) problems.push(`CT_CT_SOFT_TARGET_FRAC must be in [0, 1], got ${String(out.softTargetFrac)}`);
-  if (out.priorityHalfLife <= 0) problems.push('CT_CT_PRIORITY_HALFLIFE must be > 0');
-  if (problems.length > 0) throw new RangeError(`pipeline misconfigured: ${problems.join('; ')}`);
-  return out;
-}
-
-/** One unit as the tools see it: the node, its text, and this turn's classification. */
+/** A unit as every stage sees it — the same object for classification, retention and retrieval. */
 export interface SessionUnit {
-  node: TreeNode;
-  unit: FlexUnit;
-  drift: DriftResult;
-  tokens: number;
+  /** A turn id (`turn:<seq>`) or, in `unit: 'phase'` mode, the phase node's id. */
+  readonly id: string;
+  readonly phase: TreeNode;
+  readonly startSeq: number;
+  readonly endSeq: number;
+  /** The host's id for the message this turn is, when the importer recorded it. */
+  readonly hostId: string | null;
+  /** Opens with the user speaking. The first such unit is the task statement. */
+  readonly fromUser: boolean;
+  readonly flex: FlexUnit;
+  readonly drift: DriftResult;
+  readonly tokens: number;
+  /** `splitText(raw)` under the session's chunk options — the sub-unit retrieval ranks and reduction keeps. */
+  readonly chunks: number;
 }
 
 interface Snapshot {
-  lastSeq: number;
-  units: SessionUnit[];
-  corpus: EnsembleUnit[];
+  readonly lastSeq: number;
+  readonly units: readonly SessionUnit[];
+  readonly corpus: readonly EnsembleUnit[];
 }
 
 export interface Session {
-  /** The host's turn clock. Tools that take a `turn` argument move it forward, never back. */
+  /** The host's turn clock. Tools that take a `turn` move it forward, never back. */
   turn: number;
-  readonly classifier: DriftClassifier;
+  readonly params: PipelineParams;
   readonly tokenizer: Tokenizer;
-  readonly pipeline: PipelineDefaults;
-  /** nodeId -> the turn the agent last came back to a file that unit wrote. */
-  readonly referenced: Map<NodeId, number>;
+  readonly classifier: DriftClassifier;
+  readonly assembly: Map<string, Disposition>;
+  readonly evicted: Set<string>;
+  /** The last query `assemble` was given; ranks what a reduction keeps when decisions are rendered later. */
+  query: string | undefined;
+  /** unit id -> the turn the agent last touched a file that unit wrote. */
+  readonly referenced: Map<string, number>;
   scannedSeq: number;
-  readonly evicted: Set<NodeId>;
-  /**
-   * Host message id -> the L0 seq range it produced. Supplied by whatever feeds L0
-   * from a live host; `null` means no adapter is attached and `verdicts` has
-   * nothing to map.
-   */
-  messageIndex: ReadonlyMap<string, { start: number; end: number }> | null;
   snapshot: Snapshot | null;
 }
 
-export function createSession(pipeline: PipelineDefaults = PIPELINE_DEFAULTS): Session {
+export function createSession(params: PipelineParams = PIPELINE_DEFAULTS): Session {
   return {
     turn: 0,
-    classifier: new DriftClassifier(),
+    params,
     tokenizer: new HeuristicTokenizer(),
-    pipeline,
+    classifier: new DriftClassifier(),
+    assembly: new Map(),
+    evicted: new Set(),
+    query: undefined,
     referenced: new Map(),
     scannedSeq: 0,
-    evicted: new Set(),
-    messageIndex: null,
     snapshot: null,
   };
 }
@@ -179,70 +98,102 @@ export function advanceTurn(session: Session, turn: number | undefined): number 
   return session.turn;
 }
 
-/**
- * A unit that wrote a file is "referenced" again when a LATER tool call touches that
- * path. Incremental on purpose: re-scanning from seq 1 each turn would stamp the
- * current turn on every unit that ever touched a file — a "wrote a file" flag, not an
- * observation of the agent coming back to something.
- */
-function trackReferences(ctx: ToolContext, session: Session): void {
-  const { store, trace } = ctx.handle;
-  const last = trace.lastSeq();
-  if (last <= session.scannedSeq) return;
-  const owner = new Map<string, NodeId>();
-  for (const node of store.nodesInCreationOrder()) {
-    const path = node.kind === 'file' ? (node.meta_json as { path?: string }).path : undefined;
-    if (path !== undefined && node.parent_id !== null) owner.set(path, node.parent_id);
-  }
-  for (const event of trace.read({ from: session.scannedSeq + 1, to: last })) {
-    if (event.type !== 'tool_call' || event.path === undefined) continue;
-    const unit = owner.get(event.path);
-    if (unit !== undefined) session.referenced.set(unit, session.turn);
-  }
-  session.scannedSeq = last;
+interface Span {
+  readonly id: string;
+  readonly phase: TreeNode;
+  readonly startSeq: number;
+  readonly endSeq: number;
+  readonly hostId: string | null;
+  readonly fromUser: boolean;
+}
+
+function phaseSpans(phases: readonly TreeNode[], events: readonly TraceEvent[], lastSeq: number): Span[] {
+  return phases.flatMap((phase) => {
+    if (phase.span_start_seq === null) return [];
+    const startSeq = phase.span_start_seq;
+    const endSeq = phase.status === 'open' ? lastSeq : (phase.span_end_seq ?? startSeq);
+    return [{ id: phase.id, phase, startSeq, endSeq, hostId: null, fromUser: events[startSeq - 1]?.type === 'user_message' }];
+  });
+}
+
+function turnSpans(phases: readonly TreeNode[], events: readonly TraceEvent[], lastSeq: number): Span[] {
+  const owners = phaseSpans(phases, events, lastSeq);
+  return deriveTurns(events).flatMap((turn) => {
+    const owner = owners.find((p) => p.startSeq <= turn.startSeq && turn.startSeq <= p.endSeq);
+    if (owner === undefined) return [];
+    return [{ id: turn.id, phase: owner.phase, startSeq: turn.startSeq, endSeq: turn.endSeq, hostId: turn.hostId ?? null, fromUser: turn.fromUser }];
+  });
 }
 
 /**
- * The units, classified ONCE per state of the trace. The classifier folds each
- * call's drifts into its running statistics, so re-classifying an unchanged trace —
- * an agent calling `classify` twice, or `units` then
- * `evict` — would count the same observation again and shift every later
- * z-score.
+ * A unit that wrote a file is "referenced" again when a LATER call touches that path.
+ * Incremental: re-scanning from seq 1 would stamp the current turn on every unit that
+ * ever wrote a file, which is a flag, not an observation of the agent coming back.
  */
-export async function sessionUnits(ctx: ToolContext): Promise<{ units: SessionUnit[]; corpus: EnsembleUnit[] }> {
+function trackReferences(session: Session, spans: readonly Span[], events: readonly TraceEvent[], fileTools: readonly string[]): void {
+  const writer = new Map<string, string>();
+  for (const event of events) {
+    if (event.type !== 'tool_call' || event.path === undefined) continue;
+    const span = spans.find((s) => s.startSeq <= event.seq && event.seq <= s.endSeq);
+    if (span === undefined) continue;
+    const previous = writer.get(event.path);
+    if (event.seq > session.scannedSeq && previous !== undefined && previous !== span.id) session.referenced.set(previous, session.turn);
+    if (fileTools.includes(event.tool)) writer.set(event.path, span.id);
+  }
+  session.scannedSeq = events.at(-1)?.seq ?? session.scannedSeq;
+}
+
+export async function sessionUnits(ctx: ToolContext): Promise<Snapshot> {
   const session = sessionOf(ctx);
   const { store, trace, blobs } = ctx.handle;
   const lastSeq = trace.lastSeq();
   if (session.snapshot?.lastSeq === lastSeq) return session.snapshot;
 
-  trackReferences(ctx, session);
+  const events = lastSeq >= 1 ? [...trace.read({ from: 1, to: lastSeq })] : [];
   const phases = store.nodesInCreationOrder().filter((n) => n.kind === 'phase' && n.status !== 'superseded');
-  const entries = phases.map((node, order) => {
-    const summary = store.currentSummary(node.id);
-    const wrote =
-      store.descendants(node.id).some((d) => d.kind === 'file') || (node.meta_json.spans?.length ?? 0) > 0;
+  const spans = session.params.unit === 'turn' ? turnSpans(phases, events, lastSeq) : phaseSpans(phases, events, lastSeq);
+  trackReferences(session, spans, events, ctx.config.fileTools);
+
+  const entries = spans.map((span, order) => {
+    const slice = events.slice(span.startSeq - 1, span.endSeq);
     return {
-      nodeId: node.id,
+      nodeId: span.id as NodeId,
       order,
-      rawText: readNodeText(node, trace, blobs),
-      ...(summary !== null ? { summaryText: summary.text } : {}),
-      wrote,
-      // Never referenced -> 0, in the SAME clock as `turn`. Falling back to the unit's
-      // creation index would mix a unit count into a turn count.
-      lastReferencedTurn: session.referenced.get(node.id) ?? 0,
+      rawText: slice.map((event) => renderEvent(event, blobs)).join('\n'),
+      wrote: slice.some((e) => e.type === 'tool_call' && e.path !== undefined && ctx.config.fileTools.includes(e.tool)),
+      // Never referenced -> 0, in the SAME clock as `turn`; a creation index here would mix units into turns.
+      lastReferencedTurn: session.referenced.get(span.id) ?? 0,
     };
   });
-  const mapped = await mapFlexUnits(entries, {
-    classifier: session.classifier,
-    k: session.pipeline.driftK,
-    tau: session.pipeline.driftTau,
+  const mapped = await mapFlexUnits(entries, { classifier: session.classifier, k: session.params.driftK, tau: session.params.driftTau });
+  const chunkOptions = { chunkSize: session.params.chunkSize, chunkOverlap: session.params.chunkOverlap };
+  const units = spans.map((span, i): SessionUnit => {
+    const flex = mapped.units[i]!;
+    return { ...span, flex, drift: mapped.drift[i]!, tokens: session.tokenizer.count(flex.raw), chunks: splitText(flex.raw, chunkOptions).length };
   });
-  const units = mapped.units.map((unit, i) => ({
-    node: phases[i]!,
-    unit,
-    drift: mapped.drift[i]!,
-    tokens: session.tokenizer.count(unit.raw),
-  }));
   session.snapshot = { lastSeq, units, corpus: mapped.corpus };
   return session.snapshot;
 }
+
+const EVICTED: Disposition = Object.freeze({ kind: 'drop', why: 'evicted' });
+
+/** What a unit finally is: eviction overrules assembly; an unruled unit is kept raw. */
+export const dispositionOf = (session: Session, unitId: string): Disposition =>
+  session.evicted.has(unitId) ? EVICTED : (session.assembly.get(unitId) ?? KEEP);
+
+export interface UnitView {
+  id: string;
+  phase_id: NodeId;
+  phase_type: PhaseType | null;
+  from_seq: number;
+  to_seq: number;
+}
+
+/** How a tool names a unit to a caller: enough to `fetch` it (`branch_id` + `from`/`to`) or `restore` it (`id`). */
+export const viewOf = (unit: SessionUnit): UnitView => ({
+  id: unit.id,
+  phase_id: unit.phase.id,
+  phase_type: unit.phase.phase_type,
+  from_seq: unit.startSeq,
+  to_seq: unit.endSeq,
+});

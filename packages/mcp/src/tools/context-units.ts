@@ -1,80 +1,70 @@
 /**
- * `units` — what the pipeline is working over. A UNIT is one segmenter
- * phase: the thing the classifier scores, eviction removes and the reducer shrinks.
- * Everything else in the pipeline is opaque without this listing.
+ * `units` — what the pipeline is working over, and what has been ruled about each.
+ * A unit is a TURN (one host message) by default, or a whole phase; every stage —
+ * classification, assembly, eviction, retrieval — operates on this same list.
  */
 import { z } from 'zod';
-import type { NodeId, PhaseType } from '@context-tree/core';
-import { failFrom, ok } from '../result.js';
-import { advanceTurn, sessionOf, sessionUnits } from '../session.js';
+import { tokensUnder, type Disposition } from '@context-tree/core';
+import { failFrom, ok, parseArgs } from '../result.js';
+import { advanceTurn, dispositionOf, sessionOf, sessionUnits, viewOf, type UnitView } from '../session.js';
 import type { ToolContext, ToolOutcome } from '../types.js';
+import { pinnedIds } from './context-assemble.js';
 import { turnArg } from './pipeline-args.js';
 
 export const CONTEXT_UNITS = 'units';
 
 export const CONTEXT_UNITS_DESCRIPTION =
-  'List the units of this session in creation order — one per work phase — with their size in heuristic ' +
-  'tokens, whether each is currently evicted from the prompt, and whether the recency anchor protects it. ' +
-  'Reach for it when you need to know what is still in your context and what has been removed, before ' +
-  'deciding to fetch, evict or restore something.';
+  'List the units of this session in creation order — one per message you exchanged — with their size in ' +
+  'heuristic tokens and what has been ruled about each: kept raw, reduced, folded to a summary, or removed. ' +
+  'Reach for it when you need to know what is still in your context before deciding to fetch, evict or ' +
+  'restore. A unit is read with fetch { branch_id: phase_id, from: from_seq, to: to_seq }.';
 
 const shape = { turn: turnArg };
 export const contextUnitsSchema = z.object(shape);
 export const contextUnitsInputShape = shape;
 
-export interface UnitRow {
-  node_id: NodeId;
-  title: string;
-  phase_type: PhaseType | null;
+export interface UnitRow extends UnitView {
   order: number;
-  status: string;
-  /** HEURISTIC tokens (core `HeuristicTokenizer`), not the served tokenizer's count. */
+  /** HEURISTIC tokens of the raw unit — not the served tokenizer's count. */
   tokens: number;
-  has_summary: boolean;
+  current_tokens: number;
+  state: Disposition['kind'];
+  chunks: number;
   wrote: boolean;
   last_referenced_turn: number;
-  evicted: boolean;
-  /** Inside the last `anchor` LIVE units, so not evictable at the server's default anchor. */
-  anchored: boolean;
+  /** Removing it would break the request itself; no ruling touches it. */
+  pinned: boolean;
 }
 
 export interface ContextUnitsData {
   turn: number;
   last_seq: number;
-  anchor: number;
-  total_tokens: number;
-  live_tokens: number;
+  unit: 'turn' | 'phase';
+  tokens_raw: number;
+  tokens_current: number;
   units: UnitRow[];
 }
 
 export async function contextUnits(ctx: ToolContext, input: unknown): Promise<ToolOutcome<ContextUnitsData>> {
-  const parsed = contextUnitsSchema.safeParse(input ?? {});
-  if (!parsed.success) return { ok: false, error: { code: 'invalid_input', message: parsed.error.message } };
+  const parsed = parseArgs(contextUnitsSchema, input ?? {});
+  if (!parsed.ok) return parsed;
   try {
     const session = sessionOf(ctx);
     const turn = advanceTurn(session, parsed.data.turn);
-    const { units } = await sessionUnits(ctx);
-    const live = units.filter((u) => !session.evicted.has(u.node.id));
-    const anchored = new Set(live.slice(Math.max(0, live.length - session.pipeline.anchor)).map((u) => u.node.id));
+    const { units, lastSeq } = await sessionUnits(ctx);
+    const pinned = pinnedIds(units.filter((u) => !session.evicted.has(u.id)));
+    const rows = units.map((u, order): UnitRow => {
+      const disposition = dispositionOf(session, u.id);
+      return {
+        ...viewOf(u), order, tokens: u.tokens, current_tokens: tokensUnder(u, disposition), state: disposition.kind,
+        chunks: u.chunks, wrote: u.flex.wrote, last_referenced_turn: u.flex.lastReferencedTurn, pinned: pinned.has(u.id),
+      };
+    });
     return ok({
-      turn,
-      last_seq: ctx.handle.trace.lastSeq(),
-      anchor: session.pipeline.anchor,
-      total_tokens: units.reduce((n, u) => n + u.tokens, 0),
-      live_tokens: live.reduce((n, u) => n + u.tokens, 0),
-      units: units.map((u) => ({
-        node_id: u.node.id,
-        title: u.node.title,
-        phase_type: u.node.phase_type,
-        order: u.unit.order,
-        status: u.node.status,
-        tokens: u.tokens,
-        has_summary: u.unit.summary !== undefined,
-        wrote: u.unit.wrote,
-        last_referenced_turn: u.unit.lastReferencedTurn,
-        evicted: session.evicted.has(u.node.id),
-        anchored: anchored.has(u.node.id),
-      })),
+      turn, last_seq: lastSeq, unit: session.params.unit,
+      tokens_raw: rows.reduce((n, r) => n + r.tokens, 0),
+      tokens_current: rows.reduce((n, r) => n + r.current_tokens, 0),
+      units: rows,
     });
   } catch (error) {
     return failFrom(error);

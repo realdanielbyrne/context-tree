@@ -7,6 +7,8 @@
  * inclusive L0 `seq` range.
  */
 import { z } from 'zod';
+import { resolveReducer } from '@context-tree/core';
+import { sessionOf } from '../session.js';
 import type { NodeId, NodeKind, PhaseType, SeqSpan, SummaryMeta } from '@context-tree/core';
 import { failFrom, ok, parseArgs, requireNode } from '../result.js';
 import { recordRetrieval } from '../observe.js';
@@ -58,6 +60,12 @@ const shape = {
     .int()
     .optional()
     .describe("Inclusive L0 event number to end at (depth 'full'/'index' only). Clamped to the branch's own span."),
+  budget_tokens: z
+    .number()
+    .positive()
+    .optional()
+    .describe("Shrink a 'full' read to this many heuristic tokens, keeping the spans that match `query` and marking the gaps."),
+  query: z.string().optional().describe('Ranks the spans `budget_tokens` keeps. Omit to keep the leading spans.'),
 };
 
 export const contextFetchSchema = z.object(shape);
@@ -80,6 +88,16 @@ export interface ContextFetchData {
   spans: SeqSpan[];
   events: number;
   text: string;
+}
+
+/** The same reducer assembly uses, so a budgeted read and a reduced unit keep the same spans. */
+function withinBudget(ctx: ToolContext, text: string, depth: string, budgetTokens: number | undefined, query: string | undefined): string {
+  if (budgetTokens === undefined || depth !== 'full') return text;
+  const { params, tokenizer } = sessionOf(ctx);
+  return resolveReducer(params.reducer === 'none' ? 'chunk' : params.reducer)({ raw: text }, {
+    budgetTokens, tokenizer, ...(query !== undefined ? { query } : {}),
+    chunkOptions: { chunkSize: params.chunkSize, chunkOverlap: params.chunkOverlap }, rrfK: params.rrfK,
+  });
 }
 
 export async function contextFetch(ctx: ToolContext, input: unknown): Promise<ToolOutcome<ContextFetchData>> {
@@ -109,7 +127,7 @@ export async function contextFetch(ctx: ToolContext, input: unknown): Promise<To
       nodes: fetched.nodes,
       spans: fetched.spans,
       events: fetched.events,
-      text: fetched.text,
+      text: withinBudget(ctx, fetched.text, fetched.depth, args.budget_tokens, args.query),
     };
     recordRetrieval(ctx, CONTEXT_FETCH, args, data);
     return ok(data);

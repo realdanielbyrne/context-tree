@@ -3,6 +3,7 @@
  * prompt path and cannot afford MCP framing or a model turn per call.
  *
  *   GET  /v1/tools          the registry: name, description, JSON schema, transports
+ *   GET  /v1/params         the parameter registry, with this server's current values
  *   POST /v1/tools/<name>   body = the tool's input; answers the handler's ToolOutcome
  *
  * Same handlers, same context, same session as the MCP server in this process — a
@@ -13,6 +14,8 @@
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { z } from 'zod';
+import { describeParams } from './params.js';
+import { sessionOf } from './session.js';
 import { TOOLS, type ToolSpec } from './tools/index.js';
 import type { ToolContext, ToolOutcome } from './types.js';
 
@@ -51,6 +54,10 @@ export function createHttpApi(options: HttpApiOptions): Promise<HttpApi> {
       send(res, 200, {
         tools: tools.map((t) => ({ name: t.name, title: t.title, description: t.description, transports: t.transports, input_schema: z.toJSONSchema(z.object(t.inputShape)) })),
       });
+      return;
+    }
+    if (req.method === 'GET' && url.pathname === '/v1/params') {
+      send(res, 200, { params: describeParams(sessionOf(options.ctx).params) });
       return;
     }
     const match = /^\/v1\/tools\/([A-Za-z0-9_-]+)$/.exec(url.pathname);

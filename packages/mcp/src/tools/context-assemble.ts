@@ -1,83 +1,110 @@
 /**
- * `assemble` — the whole pipeline in one call, for a caller that wants the
- * composed answer rather than the stages: classify, evict, reduce and lay out, plus
- * the retrieval tail. STATELESS — it reports what the assembler would build over the
- * live units and changes nothing; `evict` is the call that commits.
+ * `assemble` — HOW each unit is represented: raw, reduced to the per-unit budget, or
+ * folded to its phase's summary. It removes nothing. `evict` runs after it, takes this
+ * result as its input, and may overrule it.
+ *
+ * Representations are sticky: a unit once reduced or folded stays that way until
+ * `restore`, so re-assembling each turn only ever adds to the ruling and the cached
+ * prefix is not rewritten by a unit flipping back to raw.
  */
 import { z } from 'zod';
-import { assembleFlex, ensembleRetrieve, type NodeId } from '@context-tree/core';
+import { perUnitBudget, representUnits, tokensUnder, type AssembleUnit, type Disposition } from '@context-tree/core';
+import { stageArgsShape, withOverrides } from '../params.js';
 import { fail, failFrom, ok, parseArgs } from '../result.js';
-import { advanceTurn, sessionOf, sessionUnits } from '../session.js';
+import { advanceTurn, dispositionOf, sessionOf, sessionUnits, viewOf, type SessionUnit, type UnitView } from '../session.js';
 import type { ToolContext, ToolOutcome } from '../types.js';
-import { budgetShape, flexOptions, layoutShape, turnArg } from './pipeline-args.js';
+import { budgetOf, messagesArg, turnArg, windowShape } from './pipeline-args.js';
+import { countActions, decisionsFor, type Decision } from './render.js';
 
 export const CONTEXT_ASSEMBLE = 'assemble';
 
 export const CONTEXT_ASSEMBLE_DESCRIPTION =
-  'Report the prompt the assembler would build for window_tokens: which units stay raw, which fold to ' +
-  'summaries, which are evicted or reduced, what retrieval appends, and the token budget of each zone. ' +
-  'Changes nothing. Reach for it when you want to see the consequence of a limit before committing to it ' +
-  'with evict.';
+  'Decide how each unit of your context is represented for window_tokens: kept raw, reduced to the ' +
+  'per-unit budget (the spans matching query survive), or folded to its phase summary. Removes nothing — ' +
+  'evict does that, afterwards, and may overrule this. Reach for it when single units have grown large ' +
+  'and you want them smaller without losing any of them.';
 
 const shape = {
-  ...budgetShape,
-  ...layoutShape,
-  top_k: z.number().int().nonnegative().optional().describe('Retrieval hits appended as the tail (needs query). Default 0.'),
-  include_text: z.boolean().optional().describe('Return block text as well as sizes.'),
+  ...windowShape,
+  query: z.string().optional().describe('The current task or question; ranks the spans a reduction keeps.'),
+  messages: messagesArg,
   turn: turnArg,
+  ...stageArgsShape('assemble'),
 };
 export const contextAssembleSchema = z.object(shape);
 export const contextAssembleInputShape = shape;
 
+export type Representation = Disposition['kind'];
+
+export interface AssembledUnit extends UnitView {
+  tokens: number;
+  assembled_tokens: number;
+  representation: Representation;
+}
+
 export interface ContextAssembleData {
   turn: number;
-  budgets: { head: number; flex: number; tail: number; total: number; window: number; over_window: boolean };
-  evicted: NodeId[];
-  reduced: NodeId[];
-  cache_breakpoints: string[];
-  blocks: { zone: string; id: string; node_id: NodeId | null; tokens: number; text?: string }[];
+  per_unit_budget: number;
+  tokens_raw: number;
+  tokens_assembled: number;
+  /** The assembly. Pass it to `evict` as `assembly`, or let `evict` read the session's copy. */
+  units: AssembledUnit[];
+  decisions?: Decision[];
+  actions?: Record<Decision['action'], number>;
+}
+
+/** Units whose loss breaks the REQUEST, not the policy: the task statement (a chat template rejects a prompt with no user message) and the newest message. */
+export function pinnedIds(units: readonly SessionUnit[]): ReadonlySet<string> {
+  const taskStatement = units.find((u) => u.fromUser);
+  const newest = units.at(-1);
+  return new Set([taskStatement?.id, newest?.id].filter((id): id is string => id !== undefined));
 }
 
 export async function contextAssemble(ctx: ToolContext, input: unknown): Promise<ToolOutcome<ContextAssembleData>> {
   const parsed = parseArgs(contextAssembleSchema, input);
   if (!parsed.ok) return parsed;
   const args = parsed.data;
-  if ((args.reserve_tokens ?? 0) >= args.window_tokens) {
-    return fail('invalid_input', `reserve_tokens (${String(args.reserve_tokens)}) leaves no room in window_tokens (${String(args.window_tokens)})`);
-  }
+  if (budgetOf(args) === null) return fail('invalid_input', 'reserve_tokens leaves no room in window_tokens');
   try {
     const session = sessionOf(ctx);
     const turn = advanceTurn(session, args.turn);
-    const { units, corpus } = await sessionUnits(ctx);
-    const live = units.filter((u) => !session.evicted.has(u.node.id));
-    const liveIds = new Set<string>(live.map((u) => u.node.id));
-    let tail: { id: string; text: string }[] = [];
-    if (args.query !== undefined && (args.top_k ?? 0) > 0) {
-      const hits = await ensembleRetrieve(args.query, corpus.filter((c) => liveIds.has(c.id)), undefined, {
-        topK: args.top_k,
-        rrfK: session.pipeline.rrfK,
-        chunk: { chunkSize: session.pipeline.chunkSize, chunkOverlap: session.pipeline.chunkOverlap },
-      });
-      tail = hits.map((h) => ({ id: h.unitId, text: h.excerpt }));
+    const params = withOverrides(session.params, 'assemble', args);
+    if (args.query !== undefined) session.query = args.query;
+
+    const { units } = await sessionUnits(ctx);
+    const live = units.filter((u) => !session.evicted.has(u.id));
+    const pinned = pinnedIds(live);
+    const geometry = { windowTokens: args.window_tokens, reserveTokens: args.reserve_tokens ?? 0, anchor: params.anchor, softTargetFrac: params.softTargetFrac };
+    const ruled = representUnits(
+      live.map((u): AssembleUnit => {
+        const summary = ctx.handle.store.currentSummary(u.phase.id)?.text;
+        return {
+          id: u.id, tokens: u.tokens, raw: u.flex.raw, pinned: pinned.has(u.id),
+          group: { id: u.phase.id, closed: u.phase.status !== 'open', ...(summary !== undefined ? { summary } : {}) },
+        };
+      }),
+      {
+        ...geometry, summaries: params.summaries, reducer: params.reducer === 'none' ? null : params.reducer, tokenizer: session.tokenizer,
+        ...(session.query !== undefined ? { query: session.query } : {}),
+        chunkOptions: { chunkSize: session.params.chunkSize, chunkOverlap: session.params.chunkOverlap }, rrfK: session.params.rrfK,
+      },
+    );
+    for (const [id, disposition] of ruled) {
+      if (disposition.kind !== 'keep' && !session.assembly.has(id)) session.assembly.set(id, disposition);
     }
-    const prompt = assembleFlex({ system: '', userPrompts: [] }, live.map((u) => u.unit), session.tokenizer, {
-      ...flexOptions(session, args),
-      tail,
+
+    const rows = live.map((u): AssembledUnit => {
+      const disposition = dispositionOf(session, u.id);
+      return { ...viewOf(u), tokens: u.tokens, assembled_tokens: tokensUnder(u, disposition), representation: disposition.kind };
     });
-    const b = prompt.budgets;
+    const decisions = args.messages !== undefined ? await decisionsFor(ctx, args.messages) : undefined;
     return ok({
       turn,
-      budgets: { head: b.head, flex: b.flex, tail: b.tail, total: b.total, window: args.window_tokens, over_window: b.overWindow },
-      evicted: b.evicted,
-      reduced: b.reduced,
-      cache_breakpoints: prompt.cacheBreakpoints,
-      blocks: prompt.blocks.map((block) => ({
-        zone: block.zone,
-        id: block.id,
-        node_id: block.nodeId ?? null,
-        tokens: block.tokens,
-        ...(args.include_text === true ? { text: block.text } : {}),
-      })),
+      per_unit_budget: perUnitBudget(geometry),
+      tokens_raw: rows.reduce((n, r) => n + r.tokens, 0),
+      tokens_assembled: rows.reduce((n, r) => n + r.assembled_tokens, 0),
+      units: rows,
+      ...(decisions !== undefined ? { decisions, actions: countActions(decisions) } : {}),
     });
   } catch (error) {
     return failFrom(error);

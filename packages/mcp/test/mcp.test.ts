@@ -675,9 +675,8 @@ describe('registered surface', () => {
       expect(tools.map((tool) => tool.name).sort()).toEqual([...onMcp].sort());
       expect([...TOOL_NAMES].sort()).toEqual(TOOLS.map((tool) => tool.name).sort());
       // The retrieval tools are still there; the pipeline stages are now beside them.
-      for (const name of [ANNOTATE, CONTEXT_FETCH, CONTEXT_PEEK, CONTEXT_SEARCH, 'evict', 'classify']) expect(onMcp).toContain(name);
-      // Takes the host's message array, which an agent never holds.
-      expect(onMcp).not.toContain('verdicts');
+      for (const name of [ANNOTATE, CONTEXT_FETCH, CONTEXT_PEEK, CONTEXT_SEARCH, 'units', 'classify', 'assemble', 'evict', 'restore']) expect(onMcp).toContain(name);
+      expect(onMcp).toHaveLength(TOOLS.length);
     } finally {
       await close();
     }

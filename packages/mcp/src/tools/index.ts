@@ -20,9 +20,7 @@ import {
   contextRestore,
   contextRestoreInputShape,
 } from './context-evict.js';
-import { CONTEXT_REDUCE, CONTEXT_REDUCE_DESCRIPTION, contextReduce, contextReduceInputShape } from './context-reduce.js';
 import { CONTEXT_UNITS, CONTEXT_UNITS_DESCRIPTION, contextUnits, contextUnitsInputShape } from './context-units.js';
-import { CONTEXT_VERDICTS, CONTEXT_VERDICTS_DESCRIPTION, contextVerdicts, contextVerdictsInputShape } from './context-verdicts.js';
 import { ANNOTATE_DESCRIPTION, annotateInputShape } from './annotate.js';
 import { CONTEXT_FETCH_DESCRIPTION, contextFetchInputShape } from './context-fetch.js';
 import { CONTEXT_PEEK_DESCRIPTION, contextPeekInputShape } from './context-peek.js';
@@ -71,10 +69,9 @@ export {
 export * from './context-assemble.js';
 export * from './context-classify.js';
 export * from './context-evict.js';
-export * from './context-reduce.js';
 export * from './context-units.js';
-export * from './context-verdicts.js';
-export { budgetShape, layoutShape, turnArg, type BudgetArgs } from './pipeline-args.js';
+export * from './render.js';
+export { budgetOf, messagesArg, turnArg, windowShape } from './pipeline-args.js';
 
 export type Transport = 'mcp' | 'http';
 
@@ -97,7 +94,7 @@ export interface ToolSpec {
   description: string;
   inputShape: ZodRawShape;
   handler: ToolHandler;
-  /** Where it is served. Everything is on HTTP; a tool an agent cannot supply input for is not on MCP. */
+  /** Where it is served. */
   transports: readonly Transport[];
   annotations: (ctx: ToolContext) => ToolAnnotations;
 }
@@ -127,15 +124,13 @@ export const TOOLS: readonly ToolSpec[] = Object.freeze([
   { name: CONTEXT_UNITS, title: 'List context units', description: CONTEXT_UNITS_DESCRIPTION, inputShape: contextUnitsInputShape, handler: contextUnits, transports: BOTH, annotations: readOnly },
   { name: CONTEXT_CLASSIFY, title: 'Classify units for drift', description: CONTEXT_CLASSIFY_DESCRIPTION, inputShape: contextClassifyInputShape, handler: contextClassify, transports: BOTH, annotations: readOnly },
   { name: CONTEXT_EVICT, title: 'Evict units', description: CONTEXT_EVICT_DESCRIPTION, inputShape: contextEvictInputShape, handler: contextEvict, transports: BOTH, annotations: sessionWrite },
-  { name: CONTEXT_RESTORE, title: 'Restore evicted units', description: CONTEXT_RESTORE_DESCRIPTION, inputShape: contextRestoreInputShape, handler: contextRestore, transports: BOTH, annotations: sessionWrite },
-  { name: CONTEXT_REDUCE, title: 'Reduce a unit', description: CONTEXT_REDUCE_DESCRIPTION, inputShape: contextReduceInputShape, handler: contextReduce, transports: BOTH, annotations: readOnly },
-  { name: CONTEXT_ASSEMBLE, title: 'Assemble a prompt report', description: CONTEXT_ASSEMBLE_DESCRIPTION, inputShape: contextAssembleInputShape, handler: contextAssemble, transports: BOTH, annotations: readOnly },
-  { name: CONTEXT_VERDICTS, title: 'Per-message verdicts', description: CONTEXT_VERDICTS_DESCRIPTION, inputShape: contextVerdictsInputShape, handler: contextVerdicts, transports: ['http'], annotations: readOnly },
+  { name: CONTEXT_RESTORE, title: 'Undo rulings on units', description: CONTEXT_RESTORE_DESCRIPTION, inputShape: contextRestoreInputShape, handler: contextRestore, transports: BOTH, annotations: sessionWrite },
+  { name: CONTEXT_ASSEMBLE, title: 'Assemble unit representations', description: CONTEXT_ASSEMBLE_DESCRIPTION, inputShape: contextAssembleInputShape, handler: contextAssemble, transports: BOTH, annotations: sessionWrite },
 ]);
 
 export const TOOL_NAMES = [
   CONTEXT_FETCH, CONTEXT_SEARCH, CONTEXT_PEEK, ANNOTATE,
-  CONTEXT_UNITS, CONTEXT_CLASSIFY, CONTEXT_EVICT, CONTEXT_RESTORE, CONTEXT_REDUCE, CONTEXT_ASSEMBLE, CONTEXT_VERDICTS,
+  CONTEXT_UNITS, CONTEXT_CLASSIFY, CONTEXT_ASSEMBLE, CONTEXT_EVICT, CONTEXT_RESTORE,
 ] as const;
 
 export type ToolName = (typeof TOOL_NAMES)[number];

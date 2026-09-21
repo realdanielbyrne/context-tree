@@ -11,7 +11,8 @@ import { TreeRetriever, loadConfig, openTaskStore, type TaskStore } from '@conte
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { createHttpApi } from './http.js';
 import { createServer, toolContext } from './server.js';
-import { createSession, pipelineFromEnv } from './session.js';
+import { pipelineFromEnv } from './params.js';
+import { createSession } from './session.js';
 
 function log(message: string): void {
   process.stderr.write(`context-tree-mcp: ${message}\n`);

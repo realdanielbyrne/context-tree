@@ -7,6 +7,7 @@
  */
 export {
   assembleFlex,
+  unitSignals,
   toMessages,
   toCompletionRequest,
   DEFAULT_SOFT_TARGET_FRAC,
@@ -39,11 +40,16 @@ export {
   type EvictionPlan,
 } from './eviction.js';
 export {
-  planRetention,
+  representUnits,
+  perUnitBudget,
   tokensUnder,
   KEEP,
-  DROP,
   type Disposition,
+  type AssembleUnit,
+  type AssembleParams,
+} from './represent.js';
+export {
+  planRetention,
   type ProtectionMode,
   type RetentionUnit,
   type RetentionParams,

@@ -10,15 +10,25 @@ export { CONTRACT_PROMPT, SERVER_NAME, SERVER_VERSION, createServer, toolContext
 export { createHttpApi, type HttpApi, type HttpApiOptions } from './http.js';
 export {
   PIPELINE_DEFAULTS,
-  PIPELINE_ENV_KEYS,
+  PIPELINE_PARAMS,
+  describeParams,
+  pipelineFromEnv,
+  stageArgsShape,
+  withOverrides,
+  type ParamSpec,
+  type PipelineParams,
+  type Stage,
+} from './params.js';
+export {
   advanceTurn,
   createSession,
-  pipelineFromEnv,
+  dispositionOf,
   sessionOf,
   sessionUnits,
-  type PipelineDefaults,
+  viewOf,
   type Session,
   type SessionUnit,
+  type UnitView,
 } from './session.js';
 export * from './tools/index.js';
 export { fail, failFrom, ok, parseArgs, requireNode, toCallToolResult } from './result.js';
