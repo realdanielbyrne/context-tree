@@ -7,7 +7,7 @@
 # that never answered (lib.mjs `instrumentFailure`), criteria that cannot see the grade.
 #
 #   experiments/u18-soft-limit/run.sh                 # all: preflight → gate → waves → analyze
-#   experiments/u18-soft-limit/run.sh config|preflight|gate|waves|analyze
+#   experiments/u18-soft-limit/run.sh config|preflight|gate [arm...]|waves|analyze
 #
 #   U18_ARMS="off soft hard"  off = host control, soft = silent eviction at W, hard = plumbing-matched control;
 #                             stub = soft + evicted turns stay visible as stubs with a recall id (contract v5),
@@ -46,6 +46,7 @@ SERVER="http://127.0.0.1:8888"
 # What a gate PASS vouches for: a commit touching any of these after the PASS voids it.
 HARNESS_PATHS=(experiments/context-dedup packages experiments/u18-soft-limit)
 STAGE="${1:-all}"
+GATE_ARMS="${*:2}"
 
 die() { echo "u18: $*" >&2; exit 1; }
 say() { echo "u18: $*" >&2; }
@@ -174,7 +175,8 @@ gate_one() { # arm
   node "$HERE/analyze.mjs" gate "$arm" "$tag" || die "gate $arm FAILED — no wave runs on a failed gate"
 }
 
-gate() { for arm in $ARMS; do if [[ "$arm" != off ]]; then gate_one "$arm"; fi; done; }
+# `run.sh gate stub summary` gates only the arms named; with none named, every ct arm in U18_ARMS.
+gate() { for arm in ${GATE_ARMS:-$ARMS}; do if [[ "$arm" != off ]]; then gate_one "$arm"; fi; done; }
 
 waves() {
   local arm status head
