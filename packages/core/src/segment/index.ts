@@ -5,3 +5,4 @@
  */
 export { segment, type SegmentOptions } from './segment.js';
 export { TASK_KEY, fileKey, phaseKey } from './keys.js';
+export { deriveTurns, turnIdAt, type Turn } from './turns.js';

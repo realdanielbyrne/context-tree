@@ -38,6 +38,17 @@ export {
   type EvictionCandidate,
   type EvictionPlan,
 } from './eviction.js';
+export {
+  planRetention,
+  tokensUnder,
+  KEEP,
+  DROP,
+  type Disposition,
+  type ProtectionMode,
+  type RetentionUnit,
+  type RetentionParams,
+  type RetentionPlan,
+} from './retention.js';
 export { replyAllowance, replyHeadroom, REPLY_WINDOW_FRACTION } from './budgets.js';
 export {
   reduceChunk,

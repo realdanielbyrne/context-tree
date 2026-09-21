@@ -71,6 +71,8 @@ export function mapOpencodeExport(
     }
 
     const ts = epochMsToIso(info.time, msg.time);
+    // One opencode message is one turn; its id is the only boundary a text-less message leaves.
+    const turn = typeof info.id === 'string' && info.id.length > 0 ? { turn_id: info.id } : {};
 
     const parts = msg.parts;
     if (!Array.isArray(parts)) {
@@ -102,8 +104,8 @@ export function mapOpencodeExport(
       const blob = put(text);
       const event: TraceEventInput<UserMessageEvent> | TraceEventInput<AssistantMessageEvent> =
         role === 'user'
-          ? { seq: messageSeq, type: 'user_message', ts, blob }
-          : { seq: messageSeq, type: 'assistant_message', ts, blob };
+          ? { seq: messageSeq, type: 'user_message', ts, blob, ...turn }
+          : { seq: messageSeq, type: 'assistant_message', ts, blob, ...turn };
       events.push(event);
     }
 
@@ -123,6 +125,7 @@ export function mapOpencodeExport(
         type: 'tool_call',
         ts,
         tool: toolName,
+        ...turn,
       };
 
       const path = firstString(input, ['filePath', 'file_path', 'path']);
@@ -149,6 +152,7 @@ export function mapOpencodeExport(
             type: 'tool_result',
             ts: resultTs(state, ts),
             call_seq: callSeq,
+            ...turn,
           };
           if (output.length > 0) resultEvent.output_blob = put(output);
           if (status === 'error') {

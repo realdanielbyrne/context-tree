@@ -18,6 +18,12 @@ export interface TraceEventBase {
   type: TraceEventType;
   /** ISO-8601 UTC. Supplied by the caller so replay is deterministic. */
   ts: string;
+  /**
+   * The host message this event came from. One host message is one TURN — the unit
+   * the pipeline retains or drops — and a message with tool parts but no text emits no
+   * message event, so without this the boundary cannot be recovered from L0.
+   */
+  turn_id?: string;
 }
 
 export interface UserMessageEvent extends TraceEventBase {

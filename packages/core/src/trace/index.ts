@@ -52,12 +52,12 @@ const TRACE_EVENT_TYPES: readonly TraceEventType[] = [
  * makes the M0 "round-trips hash-identical" acceptance testable at all.
  */
 const FIELD_ORDER: Readonly<Record<TraceEventType, readonly string[]>> = {
-  user_message: ['seq', 'type', 'ts', 'blob'],
-  assistant_message: ['seq', 'type', 'ts', 'blob'],
-  tool_call: ['seq', 'type', 'ts', 'tool', 'command', 'path', 'blob', 'args_blob', 'parent_seq'],
-  tool_result: ['seq', 'type', 'ts', 'call_seq', 'output_blob', 'truncated', 'error'],
-  segment_boundary: ['seq', 'type', 'ts', 'from', 'to'],
-  manual_annotation: ['seq', 'type', 'ts', 'node_id', 'blob', 'link_to', 'link_kind'],
+  user_message: ['seq', 'type', 'ts', 'blob', 'turn_id'],
+  assistant_message: ['seq', 'type', 'ts', 'blob', 'turn_id'],
+  tool_call: ['seq', 'type', 'ts', 'tool', 'command', 'path', 'blob', 'args_blob', 'parent_seq', 'turn_id'],
+  tool_result: ['seq', 'type', 'ts', 'call_seq', 'output_blob', 'truncated', 'error', 'turn_id'],
+  segment_boundary: ['seq', 'type', 'ts', 'from', 'to', 'turn_id'],
+  manual_annotation: ['seq', 'type', 'ts', 'node_id', 'blob', 'link_to', 'link_kind', 'turn_id'],
 };
 
 function isTraceEventType(value: unknown): value is TraceEventType {
