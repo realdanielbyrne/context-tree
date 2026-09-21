@@ -53,6 +53,16 @@ describe('planRetention — removal only, over units sized as assembled', () => 
     expect(planRetention(all, params({ protection: 'hard' }))).toMatchObject({ dropped: [], overBudget: true });
   });
 
+  it('soft protection is GRADED: on the weights\' own scale an anchored unit can be outscored; a bonus above their sum yields only last', () => {
+    const worst: EvictionSignals = { priority: 0, recency: 0, refRecency: 0, dormancy: 1 };
+    const best: EvictionSignals = { priority: 5, recency: 9, refRecency: 0, dormancy: 0 };
+    const units = [unit(0, 600, { protection: 0.6, signals: worst }), unit(1, 600, { signals: best }), unit(2, 100, { signals: { ...best, recency: 1, priority: 1 } })];
+    // The anchored unit is worst on every signal; the unprotected one is best on every signal.
+    expect(planRetention(units, params({ protectionBonus: 2 })).dropped).toEqual(['u0']);
+    expect(planRetention(units, params({ protectionBonus: 10 })).dropped).toEqual(['u1']);
+    expect(planRetention(units, params({ protectionBonus: 2, protection: 'hard' })).dropped).toEqual(['u1']);
+  });
+
   it('never removes a pinned unit, and says so when the pins alone overflow', () => {
     const plan = planRetention([unit(0, 900, { pinned: true }), unit(1, 900, { pinned: true }), unit(2, 300)], params());
     expect(plan.dropped).toEqual(['u2']);
@@ -80,7 +90,7 @@ describe('representUnits — assembly chooses a representation and removes nothi
   const words = (n: number, tag: string): string => Array.from({ length: n }, (_, i) => `${tag}w${String(i)}`).join(' ');
   const au = (i: number, n: number, extra: Partial<AssembleUnit> = {}): AssembleUnit => {
     const raw = words(n, `u${String(i)}`);
-    return { id: `u${String(i)}`, raw, tokens: tokenizer.count(raw), pinned: false, ...extra };
+    return { id: `u${String(i)}`, raw, tokens: tokenizer.count(raw), pinned: false, textOnly: true, ...extra };
   };
   const ap = (extra: Partial<AssembleParams> = {}): AssembleParams => ({
     windowTokens: 8000, reserveTokens: 0, anchor: 1, softTargetFrac: 0.5, summaries: false, reducer: 'chunk', tokenizer, ...extra,
@@ -89,30 +99,40 @@ describe('representUnits — assembly chooses a representation and removes nothi
   it('reduces a unit over the per-unit budget to it, and leaves the rest raw', () => {
     expect(perUnitBudget(ap())).toBe(2000);
     const units = [au(0, 3000), au(1, 100), au(2, 100)];
-    const out = representUnits(units, ap());
+    const out = representUnits(units, ap()).dispositions;
     expect([...out.values()].map((d) => d.kind)).toEqual(['reduce', 'keep', 'keep']);
     expect(tokensUnder(units[0]!, out.get('u0')!)).toBeLessThanOrEqual(2000);
-    expect(representUnits(units, ap({ reducer: null })).get('u0')?.kind).toBe('keep');
+    expect(representUnits(units, ap({ reducer: null })).dispositions.get('u0')?.kind).toBe('keep');
   });
 
-  it('folds a closed phase outside the anchor: one unit carries the summary, its siblings are covered', () => {
+  it('folds a closed phase outside the anchor: its first TEXT-ONLY unit carries the summary, its siblings are covered', () => {
     const closed = { id: 'p1', closed: true, summary: 'what phase one did' };
     const open = { id: 'p2', closed: false, summary: 'unfinished' };
-    const units = [au(0, 50, { group: closed }), au(1, 50, { group: closed }), au(2, 50, { group: open }), au(3, 50, { group: open })];
-    const out = representUnits(units, ap({ summaries: true }));
-    expect(out.get('u0')).toMatchObject({ kind: 'fold', text: 'what phase one did' });
-    expect(out.get('u1')).toEqual({ kind: 'drop', why: 'covered' });
+    const units = [au(0, 50, { group: closed, textOnly: false }), au(1, 50, { group: closed }), au(2, 50, { group: open }), au(3, 50, { group: open })];
+    const { dispositions: out, unfoldable } = representUnits(units, ap({ summaries: true }));
+    // u0 carries a tool call, so it cannot become a summary; u1 can.
+    expect(out.get('u0')).toEqual({ kind: 'drop', why: 'covered' });
+    expect(out.get('u1')).toMatchObject({ kind: 'fold', text: 'what phase one did' });
     expect(out.get('u2')?.kind).toBe('keep');
+    expect(unfoldable).toEqual([]);
     // Summaries off, or a member inside the anchor: the phase stays raw.
-    expect([...representUnits(units, ap()).values()].every((d) => d.kind === 'keep')).toBe(true);
-    expect(representUnits(units.slice(0, 2), ap({ summaries: true })).get('u0')?.kind).toBe('keep');
+    expect([...representUnits(units, ap()).dispositions.values()].every((d) => d.kind === 'keep')).toBe(true);
+    expect(representUnits(units.slice(0, 2), ap({ summaries: true })).dispositions.get('u1')?.kind).toBe('keep');
     // A pinned member stays raw and out of the fold; the rest of its phase still folds.
-    const pinnedFirst = representUnits([au(0, 50, { group: closed, pinned: true }), ...units.slice(1)], ap({ summaries: true }));
+    const pinnedFirst = representUnits([au(0, 50, { group: closed, pinned: true }), ...units.slice(1)], ap({ summaries: true })).dispositions;
     expect([pinnedFirst.get('u0')?.kind, pinnedFirst.get('u1')?.kind]).toEqual(['keep', 'fold']);
   });
 
+  it('a phase with no text-only unit is NOT folded — it stays as it is and is reported, never dropped to nothing', () => {
+    const closed = { id: 'p1', closed: true, summary: 's' };
+    const units = [au(0, 50, { group: closed, textOnly: false }), au(1, 50, { group: closed, textOnly: false }), au(2, 50), au(3, 50)];
+    const { dispositions, unfoldable } = representUnits(units, ap({ summaries: true }));
+    expect([...dispositions.values()].every((d) => d.kind === 'keep')).toBe(true);
+    expect(unfoldable).toEqual(['p1']);
+  });
+
   it('never reduces a pinned unit', () => {
-    expect(representUnits([au(0, 3000, { pinned: true }), au(1, 10)], ap()).get('u0')?.kind).toBe('keep');
+    expect(representUnits([au(0, 3000, { pinned: true }), au(1, 10)], ap()).dispositions.get('u0')?.kind).toBe('keep');
   });
 });
 
@@ -146,6 +166,19 @@ describe('deriveTurns', () => {
     const turns = deriveTurns(events);
     expect(turns.map((t) => [t.startSeq, t.endSeq])).toEqual([[1, 1], [2, 4], [5, 7]]);
     expect(deriveTurns(events)).toEqual(turns);
+  });
+
+  it('an unstamped event inside a stamped turn joins it — one host message is never two turns', () => {
+    // Middleware mode: the server appends its own retrieval events while a host message is running.
+    const turns = deriveTurns([
+      ev(1, { type: 'assistant_message', blob: 'b', turn_id: 'X' }),
+      ev(2, { type: 'tool_call', tool: 'search' }),
+      ev(3, { type: 'tool_result', call_seq: 2 }),
+      ev(4, { type: 'tool_call', tool: 'read', turn_id: 'X' }),
+      ev(5, { type: 'tool_result', call_seq: 4, turn_id: 'X' }),
+      ev(6, { type: 'assistant_message', blob: 'b', turn_id: 'Y' }),
+    ]);
+    expect(turns.map((t) => [t.hostId, t.startSeq, t.endSeq])).toEqual([['X', 1, 5], ['Y', 6, 6]]);
   });
 
   it('covers every event exactly once, in order', () => {

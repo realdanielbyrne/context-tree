@@ -4,8 +4,9 @@
  *
  * Two rules, both from the spec (`reports/algorithm.md`):
  *   fold     a CLOSED phase that lies wholly outside the recency anchor and has a summary
- *            is represented by that summary: its first unit carries the text, the rest
- *            are covered by it.
+ *            is represented by that summary: its first TEXT-ONLY unit carries the text, the
+ *            rest are covered by it. A phase with no such unit cannot be folded and stays as
+ *            it is — reported, never silently dropped to nothing.
  *   reduce   a raw unit larger than the per-unit budget `b` is shrunk to `b`
  *            (reduce-on-overflow). `b = (f·W − reserve) ÷ (A + 1)`.
  *
@@ -29,6 +30,11 @@ export interface AssembleUnit {
   readonly tokens: number;
   readonly raw: string;
   readonly pinned: boolean;
+  /**
+   * Has no tool call. Only such a unit can CARRY a fold: a host keeps a call and its result
+   * in one message, so a message with tool parts is keep-or-drop and cannot become a summary.
+   */
+  readonly textOnly: boolean;
   /** Groups units for folding; a unit with no `group` is never folded. */
   readonly group?: { readonly id: string; readonly closed: boolean; readonly summary?: string };
 }
@@ -59,7 +65,14 @@ export const tokensUnder = (unit: { readonly tokens: number }, disposition: Disp
   }
 };
 
-export function representUnits(units: readonly AssembleUnit[], params: AssembleParams): Map<string, Disposition> {
+export interface Assembly {
+  readonly dispositions: Map<string, Disposition>;
+  /** Groups that qualified for a fold but have no text-only unit to carry it. */
+  readonly unfoldable: readonly string[];
+}
+
+export function representUnits(units: readonly AssembleUnit[], params: AssembleParams): Assembly {
+  const unfoldable: string[] = [];
   const out = new Map<string, Disposition>(units.map((u) => [u.id, KEEP]));
   const anchorFrom = Math.max(0, units.length - params.anchor);
 
@@ -71,11 +84,16 @@ export function representUnits(units: readonly AssembleUnit[], params: AssembleP
       const group = units[members[0]!]!.group!;
       const foldable = group.closed && group.summary !== undefined && members.every((i) => i < anchorFrom);
       if (!foldable) continue;
-      members.forEach((i, n) => {
-        out.set(units[i]!.id, n === 0
+      const carrier = members.find((i) => units[i]!.textOnly);
+      if (carrier === undefined) {
+        unfoldable.push(group.id);
+        continue;
+      }
+      for (const i of members) {
+        out.set(units[i]!.id, i === carrier
           ? { kind: 'fold', tokens: params.tokenizer.count(group.summary!), text: group.summary! }
           : { kind: 'drop', why: 'covered' });
-      });
+      }
     }
   }
 
@@ -92,5 +110,5 @@ export function representUnits(units: readonly AssembleUnit[], params: AssembleP
       if (tokens < unit.tokens) out.set(unit.id, { kind: 'reduce', tokens, text });
     }
   }
-  return out;
+  return { dispositions: out, unfoldable };
 }

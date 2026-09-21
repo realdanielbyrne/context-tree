@@ -166,7 +166,7 @@ describe('evict — takes the assembly as input, and may overrule it', () => {
   it('soft protection yields when nothing else can pay; hard does not', async () => {
     const soft = seed();
     const total = unwrap(await contextUnits(soft, {})).tokens_raw;
-    const tight = { window_tokens: total / 4, anchor: 8 };
+    const tight = { window_tokens: total / 4, anchor: 8, protection_bonus: 100 };
     expect(unwrap(await contextEvict(soft, tight)).tokens_after).toBeLessThanOrEqual(total / 4);
     const hard = unwrap(await contextEvict(seed(), { ...tight, protection: 'hard' }));
     expect(hard).toMatchObject({ evicted: [], over_budget: true });
@@ -260,10 +260,38 @@ describe('folding a phase to its summary', () => {
     expect(data.actions).toMatchObject({ fold: 1, drop: 2 });
   });
 
-  it('a phase with no text-only message loses its summary and says so exactly once', async () => {
+  it('a phase with no text-only message is not folded: every message stays, and assemble says why', async () => {
     const data = unwrap(await contextAssemble(folding(false), { window_tokens: 100_000, messages: host(false) }));
-    expect(data.actions).toMatchObject({ fold: 0, drop: 2 });
-    expect(data.decisions!.filter((d) => d.action === 'drop' && d.foldWanted === true)).toHaveLength(1);
+    expect(data.actions).toMatchObject({ fold: 0, drop: 0 });
+    expect(data.unfoldable_phases).toHaveLength(1);
+    expect(data.tokens_assembled).toBe(data.tokens_raw);
+  });
+
+  it('what assemble reports is what gets rendered: the fold\'s tokens belong to the message that carries it', async () => {
+    const data = unwrap(await contextAssemble(folding(true), { window_tokens: 100_000, messages: host(true) }));
+    const carrierUnit = data.units.find((u) => u.representation === 'fold')!;
+    expect(data.decisions!.find((d) => d.action === 'fold')).toMatchObject({ unit: carrierUnit.id });
+  });
+
+  it('a summary that arrives AFTER its units were reduced still folds them (summarization is async)', async () => {
+    const ctx = seed(0, 0, { summaries: true, anchor: 1 });
+    const { trace, blobs, store } = ctx.handle;
+    const big = Array.from({ length: 3000 }, (_, w) => `diagword${String(w)}`).join(' ');
+    trace.append({ type: 'assistant_message', ts: TS, blob: blobs.put(big), turn_id: 'm1' });
+    for (const [tool, id] of [['Edit', 'm2'], ['Edit', 'm3']] as const) {
+      const c = trace.append({ type: 'tool_call', ts: TS, tool, path: 'src/a.ts', blob: blobs.put('x'), turn_id: id });
+      trace.append({ type: 'tool_result', ts: TS, call_seq: c.seq, output_blob: blobs.put('ok'), turn_id: id });
+    }
+    ingest({ handle: ctx.handle });
+    const first = unwrap(await contextAssemble(ctx, { window_tokens: 20_000 }));
+    const reduced = first.units.find((u) => u.representation === 'reduce')!;
+    expect(reduced).toBeDefined();
+
+    const phase = store.getNode(reduced.phase_id)!;
+    expect(phase.status).not.toBe('open');
+    store.putSummary({ node_id: phase.id, model: 'test', text: 'diagnosed it', meta: { files: [], symbols: [], tests: [], artifacts: [], open_questions: [], decisions: [], node_ids: [] } });
+    const second = unwrap(await contextAssemble(ctx, { window_tokens: 20_000 }));
+    expect(second.units.find((u) => u.id === reduced.id)?.representation).toBe('fold');
   });
 });
 
@@ -285,6 +313,10 @@ describe('the parameter registry', () => {
     }
     const bad = await contextEvict(seed(), { window_tokens: 1000, anchor: -1 });
     expect(bad.ok ? '' : bad.error.code).toBe('invalid_input');
+    // The message names the actual violation, not a generic one.
+    expect(bad.ok ? '' : bad.error.message).toMatch(/anchor: must be >= 0/);
+    const fractional = await contextEvict(seed(), { window_tokens: 1000, anchor: 2.5 });
+    expect(fractional.ok ? '' : fractional.error.message).toMatch(/must be an integer/);
     // A stage takes only the parameters it reads.
     expect(Object.keys((TOOLS.find((t) => t.name === 'assemble')!).inputShape)).toEqual(expect.arrayContaining(['anchor', 'reducer', 'soft_target_frac', 'summaries']));
     expect(Object.keys((TOOLS.find((t) => t.name === 'assemble')!).inputShape)).not.toContain('w_relevance');

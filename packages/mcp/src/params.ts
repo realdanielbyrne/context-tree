@@ -62,8 +62,8 @@ export const PIPELINE_PARAMS = [
     describe: 'soft: the recency anchor is a score bonus that yields when the budget cannot otherwise be met. hard: anchored units are never touched.' },
   { key: 'anchor', env: 'CT_CT_ANCHOR', stages: ['assemble', 'evict'], kind: 'int', min: 0, default: DEFAULT_ANCHOR,
     describe: 'Recency anchor A: the last A units are protected, most strongly the newest.' },
-  { key: 'protectionBonus', env: 'CT_CT_PROTECTION_BONUS', stages: ['evict'], kind: 'number', min: 0, default: 10,
-    describe: 'Score added to a fully protected unit under soft protection.' },
+  { key: 'protectionBonus', env: 'CT_CT_PROTECTION_BONUS', stages: ['evict'], kind: 'number', min: 0, default: W.priority,
+    describe: 'Score added to the newest unit under soft protection, halving with distance. On the same scale as the weights, so an anchored unit can be outscored; a value above their sum makes the anchor yield only last.' },
   { key: 'summaries', env: 'CT_CT_SUMMARIES', stages: ['assemble'], kind: 'bool', default: false,
     describe: 'Assembly represents a closed phase outside the anchor by its summary, when it has one.' },
   { key: 'softTargetFrac', env: 'CT_CT_SOFT_TARGET_FRAC', stages: ['assemble'], kind: 'number', min: 0, max: 1, default: DEFAULT_SOFT_TARGET_FRAC,
@@ -152,7 +152,11 @@ function schemaOf(spec: ParamSpec): ZodType {
     case 'bool': return z.boolean();
     case 'enum': return z.enum(spec.values as [string, ...string[]]);
     case 'int':
-    case 'number': return z.number().refine((v) => problemWith(spec, v) === null, { message: problemWith(spec, Number.NaN) ?? 'out of range' });
+    case 'number':
+      return z.number().superRefine((value, ctx) => {
+        const problem = problemWith(spec, value);
+        if (problem !== null) ctx.addIssue({ code: 'custom', message: problem });
+      });
   }
 }
 

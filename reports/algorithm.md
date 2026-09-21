@@ -109,9 +109,13 @@ append-only) followed by a **creation-order flex buffer** of units, with a **cac
 the head so the head caches.
 - **Representation:** units are **raw** by default. A **closed** phase lying wholly outside the
   **recency anchor** (the last `A` units) that has a latched summary is represented by that
-  **summary** — carried by one of its turns, the rest covered by it (pinned turns stay raw and out of
-  the fold). A raw unit over the per-unit budget is **reduced** (below). A representation, once
+  **summary** — carried by its first **text-only** turn (a turn with tool calls is a host message
+  that can only be kept or dropped, never rewritten to a summary), the rest covered by it; pinned
+  turns stay raw and out of the fold. A phase with no text-only turn is **not folded** — it stays as
+  it is and is reported — rather than vanishing with no summary to stand for it. A raw unit over the per-unit budget is **reduced** (below). A representation, once
   ruled, is sticky: a unit does not flip back to raw on a roomier turn, which would rewrite the prefix.
+  The one way forward is a fold superseding an earlier reduction, because summaries arrive
+  asynchronously and may land after a unit was already reduced.
 
 **3 — Evict (removal; optional; input = the assembly).** Units are sized **as assembled**, so a
 unit the assembler reduced competes at its reduced size, and any unit the assembler kept, reduced or
@@ -150,8 +154,10 @@ folded can still be removed here. The ejector never chooses a representation.
   parameter, not a constant: at weight > 0 a unit's rank among the top-`k` hits for the current query
   enters the score.
   - **Protection is a score, not a wall.** The recency anchor is a **bonus** added to a unit's
-    score — full for the newest unit, halving with distance — so an anchored unit is removed only when
-    the budget cannot be met without it. `protection = hard` restores the absolute anchor (under which
+    score — full for the newest unit, halving with distance. It is on the **same scale as the
+    weights** (default: equal to the priority weight), so it is one signal among the others and a
+    stale anchored unit can be outscored by valuable older work; set above the weights' sum, the
+    anchor yields only after everything else has. `protection = hard` restores the absolute anchor (under which
     this is the original packing exactly). Only the two pinned units are absolute.
 - **Reduce-on-overflow (part of stage 2, stated here with its budget).** A **raw** unit larger than the **per-unit budget** `b` — the floor's raw space
   shared across the raw slots, `b = (f − reply reserve) ÷ (A + 1)` (the active phase plus the `A`

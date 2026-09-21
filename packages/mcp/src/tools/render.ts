@@ -13,7 +13,7 @@ import type { ToolContext } from '../types.js';
 
 export type Decision =
   | { id: string; action: 'keep' }
-  | { id: string; action: 'drop'; unit: string; foldWanted?: true }
+  | { id: string; action: 'drop'; unit: string }
   | { id: string; action: 'fold'; unit: string; text: string }
   /** `index` counts the message's tool parts, in order. */
   | { id: string; action: 'reduce'; unit: string; outputs: { index: number; text: string }[] };
@@ -60,18 +60,6 @@ export async function decisionsFor(
     return { message, turn, unit, disposition: unit === undefined ? undefined : dispositionOf(session, unit.id) };
   });
 
-  // A folded phase is carried by ONE message: the first of its messages that has no tool
-  // parts (a call and its result must travel together, so such a message is keep-or-drop).
-  // A phase with no such message loses its summary, and says so once rather than silently.
-  const summaryOf = new Map<string, string>();
-  for (const { unit, disposition } of located) if (unit !== undefined && disposition?.kind === 'fold') summaryOf.set(unit.phase.id, disposition.text);
-  const carrier = new Map<string, string>();
-  for (const { message, unit, disposition } of located) {
-    const inFold = unit !== undefined && summaryOf.has(unit.phase.id) && (disposition?.kind === 'fold' || disposition?.kind === 'drop');
-    if (inFold && message.hasTools !== true && !carrier.has(unit.phase.id)) carrier.set(unit.phase.id, message.id);
-  }
-  const refusalReported = new Set<string>();
-
   return located.map(({ message, turn, unit, disposition }): Decision => {
     const keep: Decision = { id: message.id, action: 'keep' };
     // Not ingested yet: nothing is known about it, so nothing is done to it.
@@ -83,15 +71,12 @@ export async function decisionsFor(
         const outputs = reducedOutputs(ctx, events.slice(turn.startSeq - 1, turn.endSeq), disposition.tokens / Math.max(1, unit.tokens));
         return outputs.length > 0 ? { id: message.id, action: 'reduce', unit: unit.id, outputs } : keep;
       }
+      // Assembly chose a text-only unit to carry the summary, and a turn IS a message — so this
+      // holds unless the host's view of the message differs, in which case it is left alone.
       case 'fold':
-      case 'drop': {
-        const phase = unit.phase.id;
-        const summary = summaryOf.get(phase);
-        if (summary !== undefined && carrier.get(phase) === message.id) return { id: message.id, action: 'fold', unit: unit.id, text: summary };
-        const refused = summary !== undefined && !carrier.has(phase) && !refusalReported.has(phase);
-        if (refused) refusalReported.add(phase);
-        return { id: message.id, action: 'drop', unit: unit.id, ...(refused ? { foldWanted: true as const } : {}) };
-      }
+        return message.hasTools === true ? keep : { id: message.id, action: 'fold', unit: unit.id, text: disposition.text };
+      case 'drop':
+        return { id: message.id, action: 'drop', unit: unit.id };
     }
   });
 }

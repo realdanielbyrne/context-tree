@@ -44,6 +44,7 @@ export interface SessionUnit {
   readonly hostId: string | null;
   /** Opens with the user speaking. The first such unit is the task statement. */
   readonly fromUser: boolean;
+  readonly hasTools: boolean;
   readonly flex: FlexUnit;
   readonly drift: DriftResult;
   readonly tokens: number;
@@ -169,7 +170,8 @@ export async function sessionUnits(ctx: ToolContext): Promise<Snapshot> {
   const chunkOptions = { chunkSize: session.params.chunkSize, chunkOverlap: session.params.chunkOverlap };
   const units = spans.map((span, i): SessionUnit => {
     const flex = mapped.units[i]!;
-    return { ...span, flex, drift: mapped.drift[i]!, tokens: session.tokenizer.count(flex.raw), chunks: splitText(flex.raw, chunkOptions).length };
+    const hasTools = events.slice(span.startSeq - 1, span.endSeq).some((e) => e.type === 'tool_call');
+    return { ...span, hasTools, flex, drift: mapped.drift[i]!, tokens: session.tokenizer.count(flex.raw), chunks: splitText(flex.raw, chunkOptions).length };
   });
   session.snapshot = { lastSeq, units, corpus: mapped.corpus };
   return session.snapshot;

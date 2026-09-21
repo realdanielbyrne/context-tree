@@ -30,7 +30,6 @@ export function policyFromEnv(env = process.env) {
     softWindow: num(env, 'CT_CT_WINDOW', 50_347),
     hardWindow: num(env, 'CT_CT_HARD_WINDOW', 151_040),
     cadenceN: num(env, 'CT_CT_CADENCE_N', 5),
-    summaries: env.CT_CT_SUMMARIES === '1',
     replyReserve: num(env, 'CT_CT_REPLY_RESERVE', 8192),
     /** What the plugin cannot see: opencode's system block, tool schemas and skills. */
     headTokens: num(env, 'CT_CT_HEAD_TOKENS', 12_000),

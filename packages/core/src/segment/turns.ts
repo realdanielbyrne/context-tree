@@ -66,9 +66,12 @@ export function deriveTurns(events: Iterable<TraceEvent>): Turn[] {
 
   for (const event of events) {
     const stamped = event.turn_id;
+    // An UNSTAMPED event inside a stamped turn belongs to it: in middleware mode the server
+    // appends its own retrieval events while a host message is still running, and splitting
+    // there would yield two turns claiming one host message.
     const continues: boolean =
       open !== null &&
-      (stamped !== undefined || open.hostId !== undefined ? stamped === open.hostId : continuesUnstamped(open, event));
+      (stamped !== undefined ? stamped === open.hostId : open.hostId !== undefined || continuesUnstamped(open, event));
     if (!continues) {
       close();
       open = {

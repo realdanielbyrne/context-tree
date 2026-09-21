@@ -49,6 +49,8 @@ export interface ContextAssembleData {
   tokens_assembled: number;
   /** The assembly. Pass it to `evict` as `assembly`, or let `evict` read the session's copy. */
   units: AssembledUnit[];
+  /** Phases that qualified for a fold but have no text-only unit to carry the summary; they stay as they are. */
+  unfoldable_phases: string[];
   decisions?: Decision[];
   actions?: Record<Decision['action'], number>;
 }
@@ -75,11 +77,11 @@ export async function contextAssemble(ctx: ToolContext, input: unknown): Promise
     const live = units.filter((u) => !session.evicted.has(u.id));
     const pinned = pinnedIds(live);
     const geometry = { windowTokens: args.window_tokens, reserveTokens: args.reserve_tokens ?? 0, anchor: params.anchor, softTargetFrac: params.softTargetFrac };
-    const ruled = representUnits(
+    const { dispositions: ruled, unfoldable } = representUnits(
       live.map((u): AssembleUnit => {
         const summary = ctx.handle.store.currentSummary(u.phase.id)?.text;
         return {
-          id: u.id, tokens: u.tokens, raw: u.flex.raw, pinned: pinned.has(u.id),
+          id: u.id, tokens: u.tokens, raw: u.flex.raw, pinned: pinned.has(u.id), textOnly: !u.hasTools,
           group: { id: u.phase.id, closed: u.phase.status !== 'open', ...(summary !== undefined ? { summary } : {}) },
         };
       }),
@@ -89,8 +91,12 @@ export async function contextAssemble(ctx: ToolContext, input: unknown): Promise
         chunkOptions: { chunkSize: session.params.chunkSize, chunkOverlap: session.params.chunkOverlap }, rrfK: session.params.rrfK,
       },
     );
+    // Sticky, with one way forward: a unit never returns to raw here, but a phase whose summary
+    // arrives AFTER its units were reduced (summarization is async) still folds.
     for (const [id, disposition] of ruled) {
-      if (disposition.kind !== 'keep' && !session.assembly.has(id)) session.assembly.set(id, disposition);
+      const prior = session.assembly.get(id)?.kind;
+      const supersedes = disposition.kind === 'fold' || disposition.kind === 'drop';
+      if (disposition.kind !== 'keep' && (prior === undefined || (prior === 'reduce' && supersedes))) session.assembly.set(id, disposition);
     }
 
     const rows = live.map((u): AssembledUnit => {
@@ -104,6 +110,7 @@ export async function contextAssemble(ctx: ToolContext, input: unknown): Promise
       tokens_raw: rows.reduce((n, r) => n + r.tokens, 0),
       tokens_assembled: rows.reduce((n, r) => n + r.assembled_tokens, 0),
       units: rows,
+      unfoldable_phases: [...unfoldable],
       ...(decisions !== undefined ? { decisions, actions: countActions(decisions) } : {}),
     });
   } catch (error) {

@@ -47,6 +47,7 @@ export {
   type Disposition,
   type AssembleUnit,
   type AssembleParams,
+  type Assembly,
 } from './represent.js';
 export {
   planRetention,
