@@ -6,6 +6,7 @@
  * Every threshold below is stated in README.md with its rationale and was fixed BEFORE any
  * arm ran. Change one and the README's decision record has to change with it.
  */
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -35,6 +36,80 @@ export const RULES = Object.freeze({
   /** Gate: slowest assembly turn, against the plugin's 8,000 ms fail-open budget. */
   gateMaxAssembleMs: 4000,
 });
+
+/**
+ * EVERY value that still needs a sweep is a knob: `U18_<NAME>` on the command line, handed
+ * to the driver as the `CT_*` variable beside it. `half` says which process reads it —
+ * `policy` is the plugin (when to evict, at what window), `pipeline` is the sidecar (server
+ * defaults of the @context-tree/mcp tools). Defaults are the package's own, spelled out so
+ * an upstream change cannot move this experiment — except the anchor, set to 3 on
+ * 2026-09-20. `lib.test.mjs` asserts the rest still match the package.
+ *
+ * Not knobs, deliberately: the model, the sandbox, the prompt, repeats, the timeout,
+ * summaries (U20) and the trigger itself (it IS the arm).
+ */
+export const KNOBS = Object.freeze([
+  { name: 'WINDOW', ct: 'CT_CT_WINDOW', def: '50347', half: 'policy', arms: ['soft'], note: 'the soft limit, in heuristic tokens — the swept variable' },
+  { name: 'HARD_WINDOW', ct: 'CT_CT_HARD_WINDOW', def: '151040', half: 'policy', note: 'the real context; also sets the overflow ceiling' },
+  { name: 'REPLY_RESERVE', ct: 'CT_CT_REPLY_RESERVE', def: '8192', half: 'policy', note: 'held back from the window for the reply' },
+  { name: 'HEAD_TOKENS', ct: 'CT_CT_HEAD_TOKENS', def: '12000', half: 'policy', note: 'allowance for what the plugin cannot see (system block, tool schemas)' },
+  { name: 'PROTECT_TAIL', ct: 'CT_CT_PROTECT_TAIL', def: '6', half: 'policy', note: 'trailing host messages never dropped' },
+  { name: 'ASSEMBLE_MS', ct: 'CT_ASSEMBLE_MS', def: '8000', half: 'policy', note: 'per-turn budget before the plugin fails open' },
+  { name: 'ANCHOR', ct: 'CT_CT_ANCHOR', def: '3', half: 'pipeline', int: true, note: 'recency anchor A: the last A units (phases) are never evictable' },
+  { name: 'W_PRIORITY', ct: 'CT_CT_W_PRIORITY', def: '2', half: 'pipeline', note: 'eviction score weight' },
+  { name: 'W_RECENCY', ct: 'CT_CT_W_RECENCY', def: '1', half: 'pipeline', note: 'eviction score weight' },
+  { name: 'W_REFRECENCY', ct: 'CT_CT_W_REFRECENCY', def: '0.5', half: 'pipeline', note: 'eviction score weight' },
+  { name: 'W_DORMANCY', ct: 'CT_CT_W_DORMANCY', def: '1', half: 'pipeline', note: 'eviction score weight (subtracted)' },
+  { name: 'PRIORITY_HALFLIFE', ct: 'CT_CT_PRIORITY_HALFLIFE', def: '4', half: 'pipeline', positive: true, note: 'priority decay half-life, turns' },
+  { name: 'EVICT_HEADROOM', ct: 'CT_CT_EVICT_HEADROOM', def: '0', half: 'pipeline', note: 'extra tokens freed when eviction fires' },
+  { name: 'SOFT_TARGET_FRAC', ct: 'CT_CT_SOFT_TARGET_FRAC', def: '0.375', half: 'pipeline', max: 1, note: 'sizes reduce-on-overflow (context_assemble only)' },
+  { name: 'REDUCER', ct: 'CT_CT_REDUCER', def: 'chunk', half: 'pipeline', oneOf: ['chunk', 'summarize'], note: 'reduce-on-overflow reducer' },
+  { name: 'DRIFT_K', ct: 'CT_CT_DRIFT_K', def: '5', half: 'pipeline', int: true, positive: true, note: 'drift classifier recent-window, units' },
+  { name: 'DRIFT_TAU', ct: 'CT_CT_DRIFT_TAU', def: '1', half: 'pipeline', note: 'topic-shift threshold on z-drift' },
+  { name: 'RRF_K', ct: 'CT_CT_RRF_K', def: '60', half: 'pipeline', positive: true, note: 'rank-fusion constant' },
+  { name: 'CHUNK_SIZE', ct: 'CT_CT_CHUNK_SIZE', def: '800', half: 'pipeline', positive: true, note: 'retrieval/reduce chunk size, chars' },
+  { name: 'CHUNK_OVERLAP', ct: 'CT_CT_CHUNK_OVERLAP', def: '100', half: 'pipeline', note: 'chunk overlap, chars' },
+  { name: 'NEUTRAL_PHASES', ct: 'CT_CT_NEUTRAL_PHASES', def: 'other', half: 'pipeline', text: true, note: 'phases that never open a unit — decides unit granularity; `none` for the literal rule' },
+  { name: 'CONTRACT', ct: 'CT_CONTRACT', def: 'v1', half: 'pipeline', oneOf: ['v1', 'v2', 'v3', 'v4'], note: 'system-contract version shipped to the agent' },
+]);
+
+/** The resolved knob set, as `CT_*` -> string. Throws on anything that does not parse. */
+export function resolveKnobs(env = process.env) {
+  const out = {}, problems = [];
+  for (const k of KNOBS) {
+    const raw = env[`U18_${k.name}`];
+    const value = raw === undefined || raw === '' ? k.def : String(raw);
+    if (k.oneOf) { if (!k.oneOf.includes(value)) problems.push(`U18_${k.name} must be ${k.oneOf.join('|')}, got "${value}"`); }
+    else if (!k.text) {
+      const n = Number(value);
+      if (!Number.isFinite(n) || n < 0 || (k.positive && n <= 0) || (k.int && !Number.isInteger(n)) || (k.max !== undefined && n > k.max)) problems.push(`U18_${k.name} is not a valid value: "${value}"`);
+    }
+    out[k.ct] = value;
+  }
+  const w = Number(out.CT_CT_WINDOW), hard = Number(out.CT_CT_HARD_WINDOW), held = Number(out.CT_CT_REPLY_RESERVE) + Number(out.CT_CT_HEAD_TOKENS);
+  if (hard !== SERVED_WINDOW) problems.push(`U18_HARD_WINDOW must be the served window ${SERVED_WINDOW}`);
+  if (!(w < hard)) problems.push(`U18_WINDOW ${w} is not below the served window`);
+  if (!(w > held)) problems.push(`U18_WINDOW ${w} leaves no room above reserve + head (${held})`);
+  if (problems.length) throw new RangeError(problems.join('; '));
+  return out;
+}
+
+/** The `CT_*` knobs an arm depends on: `hard` never reads the soft window, `off` reads none. */
+export function armKnobs(arm, knobs) {
+  if (arm === 'off') return {};
+  return Object.fromEntries(KNOBS.filter((k) => !k.arms || k.arms.includes(arm)).map((k) => [k.ct, knobs[k.ct]]));
+}
+
+/**
+ * Tags carry a hash of every knob the arm depends on, so cells run under different settings
+ * can never pool by accident — the readable parts (W, A) are for people, the hash is the key.
+ */
+export function tagBase(arm, knobs) {
+  if (arm === 'off') return 'u18-off';
+  const mine = armKnobs(arm, knobs);
+  const hash = createHash('sha256').update(JSON.stringify(Object.entries(mine).sort())).digest('hex').slice(0, 6);
+  return arm === 'soft' ? `u18-soft-W${knobs.CT_CT_WINDOW}-A${knobs.CT_CT_ANCHOR}-${hash}` : `u18-hard-A${knobs.CT_CT_ANCHOR}-${hash}`;
+}
 
 const PREFLIGHT_MUST_INCLUDE = [/^no outbound network$/, /^no DNS$/, /^hidden .*\/dataset$/, /^hidden .*\/repos$/, /^imports from workspace$/];
 const LIBRARY_OF = Object.freeze({
@@ -99,7 +174,7 @@ export function instrumentFailure(cell, wire = null) {
  * that escaped the sandbox, ran on other weights, or carried an arm the sidecar never booted
  * cannot be averaged away.
  */
-export function cellProblems(cell, { arm, window, foreignReads = [] }) {
+export function cellProblems(cell, { arm, window, knobs = null, foreignReads = [] }) {
   const out = [];
   if (cell.model !== MODEL) out.push(`model ${cell.model}`);
   if (cell.endpoint !== 'local') out.push(`endpoint ${cell.endpoint}`);
@@ -126,6 +201,10 @@ export function cellProblems(cell, { arm, window, foreignReads = [] }) {
     if (ct.arm_effective?.trigger !== arm) out.push(`trigger ${ct.arm_effective?.trigger}, expected ${arm}`);
     if (arm === 'soft' && ct.arm_effective?.softWindow !== window) out.push(`soft window ${ct.arm_effective?.softWindow}, expected ${window}`);
     if (ct.arm_effective?.summaries) out.push('summaries ON (that is U20)');
+    // The cell must have run under exactly the config this analysis is reading.
+    for (const [key, want] of Object.entries(knobs ? armKnobs(arm, knobs) : {})) {
+      if (ct[key] !== want) out.push(`${key} ran as ${JSON.stringify(ct[key])}, this config says ${JSON.stringify(want)}`);
+    }
     if (!(ct.plugin_turns > 0)) out.push('zero plugin turns');
     const errorTurns = (ct.plugin_errors ?? 0) + (ct.assemble_errors ?? 0);
     if (ct.plugin_turns > 0 && errorTurns / ct.plugin_turns > RULES.maxPluginErrorShare) out.push(`${errorTurns} error turns of ${ct.plugin_turns}: the arm mostly failed open`);
@@ -138,18 +217,50 @@ export const engaged = (cell) => !!cell.ct?.fired && (cell.ct?.evicted_units ?? 
 const solved = (cell) => !!cell.scored && !!cell.pass && cell.grade_valid !== false;
 function compactions(cell) { return cell.export_part_types?.compaction ?? 0; }
 
-/** Slowest assembly, and the heuristic-vs-real token ratio, from the sidecar's own log. */
-export function sidecarStats(runDir, cell) {
+/** Served prompt tokens per model step, in order, from opencode's event stream. */
+export function servedPerStep(runDir) {
+  return readJsonl(join(runDir, 'events.jsonl')).filter((e) => e.type === 'step_finish')
+    .map((e) => (e.part?.tokens?.input ?? 0) + (e.part?.tokens?.cache?.read ?? 0));
+}
+
+/**
+ * SERVED tokens per HEURISTIC token, measured turn by turn.
+ *
+ * "Heuristic" = computed by arithmetic rather than by the served tokenizer: here the
+ * plugin's `ceil(chars/4)` per message (`kept_tokens`). "Served" = what the provider
+ * reports for that step, minus step one's prompt (the head the plugin cannot see, assumed
+ * constant). So this is an estimate of an estimate, and it is NOT a constant: it differs
+ * by problem and drifts within a run, plausibly with the content mix. Reported as a
+ * distribution, never folded into a single conversion factor. Row n joins step n; when the
+ * counts differ the join is not trusted and the ratio is null.
+ */
+export function servedPerHeuristic(rows, served) {
+  if (!rows.length || rows.length !== served.length) return { aligned: false, turns: 0 };
+  const head = served[0];
+  const ratios = rows.map((r, i) => ((r.kept_tokens ?? 0) >= 2000 ? (served[i] - head) / r.kept_tokens : null)).filter((x) => x !== null && x > 0);
+  if (!ratios.length) return { aligned: true, turns: 0 };
+  const q = Math.max(1, Math.floor(ratios.length / 4));
+  const r2 = (x) => +x.toFixed(2);
+  return { aligned: true, turns: ratios.length, min: r2(Math.min(...ratios)), median: r2(median(ratios)), max: r2(Math.max(...ratios)), first_quartile_median: r2(median(ratios.slice(0, q))), last_quartile_median: r2(median(ratios.slice(-q))) };
+}
+
+/** What the sidecar's call log says about one cell. */
+export function sidecarStats(runDir) {
   const rows = readJsonl(join(runDir, 'mcp', 'ct-mcp.jsonl')).filter((r) => r.event === 'assemble');
-  const maxTotal = rows.reduce((m, r) => Math.max(m, r.total ?? 0), 0);
-  const real = (cell.peak_prompt_tokens ?? 0) - (cell.first_step_prompt_tokens ?? 0);
+  const first = rows.findIndex((r) => (r.evicted?.length ?? 0) > 0);
+  const kept = (rs) => rs.reduce((m, r) => Math.max(m, r.kept_tokens ?? 0), 0);
   return {
-    assemble_rows: rows.length, max_ms: rows.reduce((m, r) => Math.max(m, r.ms ?? 0), 0),
+    assemble_rows: rows.length, evict_calls: rows.filter((r) => r.evict_called).length,
+    max_ms: rows.reduce((m, r) => Math.max(m, r.ms ?? 0), 0),
     over_ceiling_turns: rows.filter((r) => r.over_ceiling).length, escalations: rows.reduce((n, r) => n + (r.escalations ?? 0), 0),
-    max_kept_heuristic: rows.reduce((m, r) => Math.max(m, r.kept_tokens ?? 0), 0), max_total_heuristic: maxTotal,
-    // Rough: real growth since step one over the largest heuristic message total. W is
-    // denominated in the heuristic; this says what it is worth in served tokens.
-    real_per_heuristic_token: maxTotal > 0 && real > 0 ? +(real / maxTotal).toFixed(2) : null,
+    unindexed_turns: rows.filter((r) => r.indexed === false).length,
+    // The two numbers that explain a limit that was or was not held: how big the prompt got
+    // before anything was evictable, and how big it stayed afterwards.
+    first_eviction_turn: first >= 0 ? rows[first].turn : null,
+    max_kept_before_first_eviction: kept(first >= 0 ? rows.slice(0, first) : rows),
+    max_kept_after_first_eviction: first >= 0 ? kept(rows.slice(first)) : null,
+    max_total_heuristic: rows.reduce((m, r) => Math.max(m, r.total ?? 0), 0),
+    served_per_heuristic: servedPerHeuristic(rows, servedPerStep(runDir)),
   };
 }
 
@@ -158,8 +269,8 @@ export function sidecarStats(runDir, cell) {
  * NOT merely below the control's, which host compaction caps at ~119K. `hard`: the arm must
  * survive a problem that fills the window with host compaction off.
  */
-export function gateVerdict(cell, wire, sidecar, { arm, window }) {
-  const reasons = [...cellProblems(cell, { arm, window })];
+export function gateVerdict(cell, wire, sidecar, { arm, window, knobs = null }) {
+  const reasons = [...cellProblems(cell, { arm, window, knobs })];
   const broken = instrumentFailure(cell, wire);
   if (broken) reasons.push(`instrument failure: ${broken}`);
   if (!cell.run_valid) reasons.push(`run not valid: ${cell.exit_outcome} ${cell.error ?? ''}`.trim());
@@ -215,6 +326,9 @@ function armSummary(cells) {
     median_peak: median(peaks(cells)), max_peak: peaks(cells).length ? Math.max(...peaks(cells)) : null,
     compacted_cells: cells.filter((c) => compactions(c) > 0).length,
     engaged_cells: cells.filter(engaged).length,
+    // The agent can call the pipeline tools itself (D22). In `hard` that would make the
+    // plumbing control evict, so it is counted where it can be seen.
+    agent_evict_calls: cells.reduce((n, c) => n + Object.entries(c.mcp?.tools ?? {}).filter(([t]) => /context_(evict|restore)$/.test(t)).reduce((m, [, k]) => m + k, 0), 0),
     plugin_error_turns: cells.reduce((n, c) => n + (c.ct?.plugin_errors ?? 0) + (c.ct?.assemble_errors ?? 0), 0), plugin_turns: turns,
   };
 }
@@ -271,10 +385,10 @@ function compare(treatment, control, opts) {
  *
  * `arms` holds cells that are NOT instrument failures; `owed` lists the ones that were.
  */
-export function analyze({ arms, window, instances = null, owed = [], historical = null, historicalSolved = HISTORICAL_SOLVED, wire = () => ({ peak_bytes: null }), foreignReads = () => [] }) {
+export function analyze({ arms, window, knobs = null, instances = null, owed = [], historical = null, historicalSolved = HISTORICAL_SOLVED, wire = () => ({ peak_bytes: null }), foreignReads = () => [] }) {
   const { off, soft, hard = null } = arms;
   const present = Object.entries(arms).filter(([, cells]) => cells);
-  const integrity = present.flatMap(([arm, cells]) => cells.flatMap((c) => cellProblems(c, { arm, window, foreignReads: foreignReads(c) }).map((p) => `${arm} ${c.instance}__r${c.repeat}: ${p}`)));
+  const integrity = present.flatMap(([arm, cells]) => cells.flatMap((c) => cellProblems(c, { arm, window, knobs, foreignReads: foreignReads(c) }).map((p) => `${arm} ${c.instance}__r${c.repeat}: ${p}`)));
   const expected = PROBLEMS * REPEATS;
   const incomplete = [...owed.map((o) => `owed again: ${o}`), ...present.flatMap(([arm, cells]) => {
     const keys = new Set(cells.map((c) => `${c.instance}__r${c.repeat}`));

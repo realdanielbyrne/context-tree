@@ -50,7 +50,12 @@ Run selection and endpoint:
 | `CT_RUN_TIMEOUT_S` | `3600` | **always set 7200.** 3600 once killed an already-solved run |
 | `CT_SANDBOX` | on | `0` disables it — and silently disables the `mcp`/`ct` arms with it |
 
-Context-tree arms (`CT_ARM=ct` only; `off`/`mcp` ignore them):
+Context-tree arms (`CT_ARM=ct` only; `off`/`mcp` ignore them). The arm has two halves in two
+processes (D22): the **plugin** holds the POLICY — it calls the `@context-tree/mcp` tool
+`context_evict` when its trigger says so, then `context_verdicts` — and the **sidecar** (a host
+adapter, no pipeline logic) holds the PIPELINE defaults of those tools. Eviction is sticky.
+
+Policy (plugin, `oc-plugin/policy.mjs`):
 
 | Var | Default | Meaning |
 |---|---|---|
@@ -60,9 +65,22 @@ Context-tree arms (`CT_ARM=ct` only; `off`/`mcp` ignore them):
 | `CT_CT_HARD_WINDOW` | `151040` | the model's real context |
 | `CT_CT_CADENCE_N` | `5` | fire every Nth turn under `cadence` |
 | `CT_CT_SUMMARIES` | `0` | `1` folds evicted units to summaries instead of dropping |
-| `CT_CT_ANCHOR` / `CT_CT_TOPK` / `CT_CT_PROTECT_TAIL` | `4` / `5` / `6` | never-evicted units, retrieval hits, protected trailing messages |
-| `CT_CT_REPLY_RESERVE` | `8192` | headroom left for the reply |
-| `CT_ASSEMBLE_PORT` | `8899` | loopback assembly endpoint |
+| `CT_CT_REPLY_RESERVE` / `CT_CT_HEAD_TOKENS` | `8192` / `12000` | held back from the window: the reply, and the head the plugin cannot see |
+| `CT_CT_PROTECT_TAIL` | `6` | trailing host messages never dropped |
+| `CT_ASSEMBLE_MS` | `8000` | per-turn budget before the plugin fails open |
+| `CT_ASSEMBLE_PORT` | `8899` | the loopback HTTP tool API (`POST /v1/tools/<name>`) |
+
+Pipeline (sidecar → `pipelineFromEnv`; all PROVISIONAL in core, unset = package default):
+
+| Var | Default | Meaning |
+|---|---|---|
+| `CT_CT_ANCHOR` | `4` | the last A **units (phases)** are never evictable — eviction cannot start before unit A+1 exists |
+| `CT_CT_W_PRIORITY` / `_RECENCY` / `_REFRECENCY` / `_DORMANCY` | `2` / `1` / `0.5` / `1` | eviction score weights |
+| `CT_CT_PRIORITY_HALFLIFE` / `CT_CT_EVICT_HEADROOM` | `4` / `0` | decay in turns; extra tokens freed when eviction fires |
+| `CT_CT_DRIFT_K` / `CT_CT_DRIFT_TAU` | `5` / `1` | drift classifier |
+| `CT_CT_RRF_K`, `CT_CT_CHUNK_SIZE` / `_OVERLAP`, `CT_CT_SOFT_TARGET_FRAC`, `CT_CT_REDUCER` | `60`, `800`/`100`, `0.375`, `chunk` | retrieval and reduce-on-overflow |
+| `CT_CT_NEUTRAL_PHASES` | config (`other`) | comma list or `none`: decides unit granularity |
+| `CT_CONTRACT` | `v1` | contract shipped to the agent; `v4` describes the pipeline tools |
 
 `CT_WINDOW` / `CT_OUTPUT_CAP` are a **different mechanism**: they re-declare `limit.context` so
 *opencode's* compaction binds earlier. They do not exercise context-tree. Don't confuse the two.
@@ -87,13 +105,22 @@ Each of these produces a run that completes, grades, and reports nothing wrong.
 - **`@opencode-ai/plugin` fails to install in the sandbox** (`background dependency install failed`,
   ECONNREFUSED — there is no network). It is a detached fork whose result is ignored, so it does
   **not** block plugin loading. Expect the WARN in every sandboxed run and do not chase it.
-- **`CT_CT_HEAD_TOKENS` cannot be set from the shell** for a sandboxed run. The sidecar reads it
-  (default 12,000) but the runner's forwarded key set omits it and `sandboxEnv` is a whitelist.
+- **Tokens in this arm are HEURISTIC, in two different heuristics.** W is compared against core's
+  `HeuristicTokenizer` over unit text; `kept_tokens` and the ceiling are the plugin's chars/4. The
+  same session measured 89,545 and 139,151. Neither is served tokens, and the served/heuristic
+  ratio is a per-turn measurement that drifts (1.14→1.19 within one cell), never a constant.
+- **Eviction is per UNIT and budgets on RAW size.** One unit bigger than the budget, while inside
+  the anchor, cannot be bounded by any window — U18's first gate failed exactly this way (a
+  30-turn `diagnosis` unit of ~80K). Check `first_eviction_turn` and
+  `max_kept_before_first_eviction` in the gate record before blaming W.
 - **`swebench-endpoint.mjs`'s `LOCAL_MODEL` is hardcoded to the Q8 model**, not Swift. `auto` will
   never choose Swift — that is why every Swift baseline is explicitly pinned.
 - **A mistyped knob is refused at start-up**, deliberately: `CT_CT_WINDOW=50k` reads as `NaN`, which
   the keep-everything path would swallow with nothing logged. Trust the refusal; don't work around it.
-- **The arm knobs travel five hops to reach the sidecar, and a break anywhere is silent.** For the
+- **The arm knobs travel to TWO processes, and a break on either path is silent.** Policy rides
+  opencode's process env to the plugin; pipeline rides the MCP `environment` block to the sidecar.
+  `ct.arm_agrees` compares what was asked against the plugin's `loaded` row and the sidecar's
+  `ready` row together. History: For the
   whole of this arm's life `openSandbox` dropped `mcp.env`, so no `CT_CT_*` ever arrived and the
   sidecar booted on its own defaults — `CT_CT_TRIGGER=off`, which never evicts — while the cell
   recorded the arm that was asked for. Fixed, and the cell now carries the sidecar's own account:

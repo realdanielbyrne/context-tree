@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { analyze as analyzeRaw, cellProblems, foreignLibraryReads, gateVerdict, instrumentFailure, signFlipP, wireStats, MODEL, RULES, SERVED_WINDOW } from './lib.mjs';
+import { KNOBS, armKnobs, resolveKnobs, servedPerHeuristic, tagBase, analyze as analyzeRaw, cellProblems, foreignLibraryReads, gateVerdict, instrumentFailure, signFlipP, wireStats, MODEL, RULES, SERVED_WINDOW } from './lib.mjs';
 
 // The fixture's control solves 27/30; the A/A rung is exercised on its own below.
 const analyze = (o) => analyzeRaw({ historicalSolved: 27, ...o });
@@ -188,4 +188,54 @@ test('signFlipP is exact and one-sided', () => {
   assert.equal(signFlipP([-1, -1, -1]), 1 / 8);
   assert.equal(signFlipP([1, 1, 1]), 1);
   assert.equal(signFlipP([-2, 1]), 2 / 4);
+});
+
+test('every knob defaults to the package constant, except the anchor', async () => {
+  const { PIPELINE_DEFAULTS } = await import(new URL('../../packages/mcp/dist/index.js', import.meta.url).href);
+  const k = resolveKnobs({});
+  const p = PIPELINE_DEFAULTS;
+  assert.equal(k.CT_CT_ANCHOR, '3');
+  assert.equal(p.anchor, 4, 'the package default is still 4; U18 runs at 3 on purpose');
+  assert.deepEqual(
+    [k.CT_CT_W_PRIORITY, k.CT_CT_W_RECENCY, k.CT_CT_W_REFRECENCY, k.CT_CT_W_DORMANCY, k.CT_CT_PRIORITY_HALFLIFE, k.CT_CT_EVICT_HEADROOM, k.CT_CT_SOFT_TARGET_FRAC, k.CT_CT_DRIFT_K, k.CT_CT_DRIFT_TAU, k.CT_CT_RRF_K, k.CT_CT_CHUNK_SIZE, k.CT_CT_CHUNK_OVERLAP, k.CT_CT_PROTECT_TAIL].map(Number),
+    [p.weights.priority, p.weights.recency, p.weights.refRecency, p.weights.dormancy, p.priorityHalfLife, p.evictHeadroomTokens, p.softTargetFrac, p.driftK, p.driftTau, p.rrfK, p.chunkSize, p.chunkOverlap, p.protectTail],
+  );
+  assert.equal(k.CT_CT_REDUCER, p.reducer);
+  assert.equal(new Set(KNOBS.map((x) => x.ct)).size, KNOBS.length);
+});
+
+test('a knob that does not parse is refused, and so is a window that cannot work', () => {
+  for (const bad of [{ U18_ANCHOR: '2.5' }, { U18_ANCHOR: 'three' }, { U18_W_DORMANCY: '-1' }, { U18_REDUCER: 'magic' }, { U18_DRIFT_K: '0' }, { U18_SOFT_TARGET_FRAC: '1.5' }, { U18_WINDOW: '20000' }, { U18_WINDOW: '151040' }, { U18_HARD_WINDOW: '262144' }]) {
+    assert.throws(() => resolveKnobs(bad), RangeError, JSON.stringify(bad));
+  }
+  assert.equal(resolveKnobs({ U18_ANCHOR: '0', U18_NEUTRAL_PHASES: 'none' }).CT_CT_ANCHOR, '0');
+});
+
+test('tags separate every setting an arm depends on, and nothing it does not', () => {
+  const base = resolveKnobs({});
+  assert.match(tagBase('soft', base), /^u18-soft-W50347-A3-[0-9a-f]{6}$/);
+  assert.equal(tagBase('off', base), 'u18-off');
+  const tags = (env) => ['soft', 'hard'].map((a) => tagBase(a, resolveKnobs(env)));
+  const [soft, hard] = tags({});
+  assert.notEqual(tags({ U18_ANCHOR: '4' })[0], soft);
+  assert.notEqual(tags({ U18_W_DORMANCY: '2' })[1], hard, 'a weight moves the hard arm too');
+  // The soft window is not something `hard` reads: a W sweep re-uses its cells.
+  assert.deepEqual(tags({ U18_WINDOW: '75520' }).map((t, i) => t === [soft, hard][i]), [false, true]);
+  assert.equal(armKnobs('hard', base).CT_CT_WINDOW, undefined);
+});
+
+test('a cell that ran under another config is an integrity problem', () => {
+  const knobs = resolveKnobs({});
+  const c = cell('soft', 'p0', 0, { peak: 1, fired: true });
+  Object.assign(c.ct, armKnobs('soft', knobs));
+  assert.deepEqual(cellProblems(c, { arm: 'soft', window: W, knobs }), []);
+  c.ct.CT_CT_ANCHOR = '4';
+  assert.match(cellProblems(c, { arm: 'soft', window: W, knobs })[0], /CT_CT_ANCHOR ran as "4"/);
+});
+
+test('served-per-heuristic is a per-turn distribution, and null when the join cannot be trusted', () => {
+  const rows = [{ kept_tokens: 900 }, { kept_tokens: 10_000 }, { kept_tokens: 20_000 }, { kept_tokens: 40_000 }, { kept_tokens: 40_000 }];
+  const served = [11_000, 22_000, 35_000, 59_000, 63_000];
+  assert.deepEqual(servedPerHeuristic(rows, served), { aligned: true, turns: 4, min: 1.1, median: 1.2, max: 1.3, first_quartile_median: 1.1, last_quartile_median: 1.3 });
+  assert.deepEqual(servedPerHeuristic(rows, served.slice(1)), { aligned: false, turns: 0 });
 });
