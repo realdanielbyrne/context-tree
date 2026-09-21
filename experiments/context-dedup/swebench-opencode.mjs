@@ -84,6 +84,8 @@ const G0_FOLD_MARKER = process.env.CT_G0_FOLD_MARKER || '';
 const G0_FOLD_TEXT = G0_FOLD_MARKER ? `Continue the task. Harness marker: ${G0_FOLD_MARKER}` : '';
 const G0_REDUCE_MARKER = process.env.CT_G0_REDUCE_MARKER || '';
 const G0_REDUCE_TEXT = G0_REDUCE_MARKER ? `[output reduced] Harness marker: ${G0_REDUCE_MARKER}` : '';
+const G0_STUB_MARKER = process.env.CT_G0_STUB_MARKER || '';
+const G0_STUB_TEXT = G0_STUB_MARKER ? `[evicted] Harness marker: ${G0_STUB_MARKER}` : '';
 const G0_DROP_FIRST = process.env.CT_G0_DROP_FIRST === '1';
 /**
  * The arm, in two halves that travel to two processes. POLICY (when to evict, at what
@@ -118,7 +120,7 @@ const POLICY_ENV = Object.freeze(Object.fromEntries(Object.entries(POLICY_KEYS).
 const PIPELINE_ENV = Object.freeze(fromEnv([...PIPELINE_REGISTRY.map(([env]) => env), ...SIDECAR_ONLY_KEYS]));
 const ASSEMBLE_PORT = process.env.CT_ASSEMBLE_PORT || '8899';
 const ASSEMBLE_MS = process.env.CT_ASSEMBLE_MS || '8000';
-const G0_EXTRA = G0_DROP_FIRST ? { CT_G0_DROP_FIRST: '1', CT_G0_FOLD_TEXT: G0_FOLD_TEXT, CT_G0_REDUCE_TEXT: G0_REDUCE_TEXT } : {};
+const G0_EXTRA = G0_DROP_FIRST ? { CT_G0_DROP_FIRST: '1', CT_G0_FOLD_TEXT: G0_FOLD_TEXT, CT_G0_REDUCE_TEXT: G0_REDUCE_TEXT, CT_G0_STUB_TEXT: G0_STUB_TEXT } : {};
 // Recorded, not just forwarded: a gate cell has to be unmistakable in the results file.
 const CT_OPTIONS = Object.freeze({ ...POLICY_ENV, ...PIPELINE_ENV, CT_ASSEMBLE_PORT: ASSEMBLE_PORT, CT_ASSEMBLE_MS: ASSEMBLE_MS, ...G0_EXTRA });
 /** What the SIDECAR needs. The policy never goes there: it cannot evict by itself. */
@@ -328,13 +330,15 @@ function assembleActivity(runDir) {
         messages_dropped: turns.reduce((n, r) => n + (r.dropped ?? 0), 0),
         messages_folded: turns.reduce((n, r) => n + (r.folded ?? 0), 0),
         messages_reduced: turns.reduce((n, r) => n + (r.reduced ?? 0), 0),
+        messages_stubbed: turns.reduce((n, r) => n + (r.stubbed ?? 0), 0),
+        stubbed_units: rows.filter((r) => r.event === 'evict').reduce((n, r) => n + (r.stubbed?.length ?? 0), 0),
         reduced_units: Math.max(0, ...rows.filter((r) => r.event === 'assemble').map((r) => r.reduced ?? 0)),
         assemble_calls: sidecar.length,
         assemble_errors: sidecar.filter((r) => r.event === 'assemble_error').length,
         evicted_units: rows.filter((r) => r.event === 'evict').reduce((n, r) => n + (r.evicted?.length ?? 0), 0),
         evict_calls: rows.filter((r) => r.event === 'evict').length,
         floor_evictions: turns.filter((r) => r.evict_floor).length,
-        fired: turns.some((r) => (r.dropped ?? 0) > 0 || (r.folded ?? 0) > 0 || (r.reduced ?? 0) > 0),
+        fired: turns.some((r) => (r.dropped ?? 0) > 0 || (r.folded ?? 0) > 0 || (r.reduced ?? 0) > 0 || (r.stubbed ?? 0) > 0),
     };
 }
 
@@ -450,6 +454,7 @@ async function runOne(task, repeat) {
                     ...(G0_MARKER ? { g0: G0_MARKER } : {}),
                     ...(G0_FOLD_MARKER ? { g0fold: G0_FOLD_MARKER } : {}),
                     ...(G0_REDUCE_MARKER ? { g0reduce: G0_REDUCE_MARKER } : {}),
+                    ...(G0_STUB_MARKER ? { g0stub: G0_STUB_MARKER } : {}),
                 },
                 marker: {
                     ...(sel.marker !== null && sel.marker !== undefined ? { [LEASE_MARKER]: sel.marker } : {}),

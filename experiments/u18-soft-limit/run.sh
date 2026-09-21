@@ -9,7 +9,9 @@
 #   experiments/u18-soft-limit/run.sh                 # all: preflight → gate → waves → analyze
 #   experiments/u18-soft-limit/run.sh config|preflight|gate|waves|analyze
 #
-#   U18_ARMS="off soft hard"  off = host control, soft = treatment, hard = plumbing-matched control
+#   U18_ARMS="off soft hard"  off = host control, soft = silent eviction at W, hard = plumbing-matched control;
+#                             stub = soft + evicted turns stay visible as stubs with a recall id (contract v5),
+#                             summary = stub + closed phases fold to a headline summary. The table is lib.mjs ARMS.
 #   U18_WINDOW=50347          the soft limit, in HEURISTIC tokens (the swept variable)
 #   U18_ANCHOR=3              recency anchor: the last A units (phases) are never evictable
 #   U18_<KNOB>=...            every other value that still needs a sweep — eviction weights,
@@ -48,7 +50,7 @@ STAGE="${1:-all}"
 die() { echo "u18: $*" >&2; exit 1; }
 say() { echo "u18: $*" >&2; }
 
-for a in $ARMS; do [[ "$a" =~ ^(off|soft|hard)$ ]] || die "unknown arm '$a'"; done
+for a in $ARMS; do [[ "$a" =~ ^(off|soft|hard|stub|summary)$ ]] || die "unknown arm '$a' (lib.mjs ARMS)"; done
 [[ " $ARMS " == *" off "* && " $ARMS " == *" soft "* ]] || die "U18 needs at least the off and soft arms"
 [[ "${CT_SANDBOX:-1}" != 0 ]] || die "CT_SANDBOX=0 refused: an unsandboxed agent can read the gold patch, and the ct arm silently degrades to its control"
 
@@ -92,7 +94,8 @@ drive() { # arm tag repeat instances
   local -a armenv=(CT_ARM=off)
   if [[ "$arm" != off ]]; then
     mapfile -t knobs < <(node "$HERE/analyze.mjs" env "$arm")
-    armenv=(CT_ARM=ct CT_CT_TRIGGER="$arm" CT_CT_SUMMARIES=0 CT_CT_CADENCE_N=5 CT_ASSEMBLE_PORT=8899 "${knobs[@]}")
+    # The arm table (lib.mjs ARMS) owns the trigger and anything an arm sets; later entries win.
+    armenv=(CT_ARM=ct CT_CT_TRIGGER="$(node "$HERE/analyze.mjs" trigger "$arm")" CT_CT_SUMMARIES=0 CT_CT_CADENCE_N=5 CT_ASSEMBLE_PORT=8899 "${knobs[@]}")
   fi
   assert_served
   jq -nc --arg tag "$tag" --arg arm "$arm" --arg ids "$ids" --arg commit "$(git rev-parse HEAD)" \

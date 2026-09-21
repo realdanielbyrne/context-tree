@@ -106,6 +106,7 @@ function readArm(tag, since) {
   const marked = (r) => (r.counts?.g0 ?? 0);
   const replaced = (r) => (r.counts?.g0fold ?? 0);
   const reducedOn = (r) => (r.counts?.g0reduce ?? 0);
+  const stubbedOn = (r) => (r.counts?.g0stub ?? 0);
 
   // The edit happens BEFORE the request leaves, so every mediated request from the first
   // reported edit onward must already show it. An existential "some request lacked the
@@ -113,6 +114,8 @@ function readArm(tag, since) {
   const edits = plugin.filter((r) => (r.dropped ?? 0) > 0 || (r.folded ?? 0) > 0);
   const drops = plugin.filter((r) => (r.dropped ?? 0) > 0);
   const reduces = plugin.filter((r) => (r.reduced ?? 0) > 0);
+  const stubs = plugin.filter((r) => (r.stubbed ?? 0) > 0);
+  const afterStub = stubs.length > 0 ? conv.filter((r) => String(r.ts) >= String(stubs[0].ts)) : [];
   const afterReduce = reduces.length > 0 ? conv.filter((r) => String(r.ts) >= String(reduces[0].ts)) : [];
   const firstEditTs = edits.length > 0 ? String(edits[0].ts) : null;
   const after = firstEditTs ? conv.filter((r) => String(r.ts) >= firstEditTs) : [];
@@ -149,6 +152,11 @@ function readArm(tag, since) {
     after_first_reduce: afterReduce.length,
     after_all_reduced: afterReduce.length > 0 && afterReduce.every((r) => reducedOn(r) >= 1),
     reduce_seen: conv.filter((r) => reducedOn(r) >= 1).length,
+    // The edit `evictMode: 'stub'` makes: reasoning parts removed and an output tagged, on one message.
+    stub_turns: stubs.length,
+    after_first_stub: afterStub.length,
+    after_all_stubbed: afterStub.length > 0 && afterStub.every((r) => stubbedOn(r) >= 1),
+    stub_seen: conv.filter((r) => stubbedOn(r) >= 1).length,
     drop_turns: drops.length,
     // The sidecar's own account of taking the gate path, so "the flag never arrived" is not
     // reported as "the splice was discarded" — two defects, one symptom.
@@ -185,6 +193,7 @@ export function gradeG0({ control, treatment }) {
     voids.push('treatment: the sidecar never entered the gate path — CT_G0_DROP_FIRST did not reach it, so nothing was asked to edit');
   }
   if (control.reduce_seen > 0) voids.push(`control: the reduced-output text appeared on ${control.reduce_seen} requests without any edit; it is not unique to the plugin`);
+  if (control.stub_seen > 0) voids.push(`control: the stub tag's text appeared on ${control.stub_seen} requests without any edit; it is not unique to the plugin`);
   if (control.replacement_seen > 0) {
     voids.push(`control: the replacement text appeared on ${control.replacement_seen} requests without any edit; it is not unique to the plugin`);
   }
@@ -201,6 +210,9 @@ export function gradeG0({ control, treatment }) {
   if (treatment.reduce_turns === 0) reasons.push('treatment never reduced: no plugin turn reports an edited tool output');
   else if (treatment.after_first_reduce === 0) reasons.push('treatment made no mediated request after its first reduction: the run ended too early to observe one');
   else if (!treatment.after_all_reduced) reasons.push("treatment's reduced tool output never reached the provider: an in-place output edit is not what gets serialized");
+  if (treatment.stub_turns === 0) reasons.push('treatment never stubbed: no plugin turn reports a message cut to a stub');
+  else if (treatment.after_first_stub === 0) reasons.push('treatment made no mediated request after its first stub: the run ended too early to observe one');
+  else if (!treatment.after_all_stubbed) reasons.push("treatment's stub tag never reached the provider: a message with its reasoning removed and an output tagged is not what gets serialized");
   // ORDERED, not existential. "Some request lacked the marker" is satisfied by a subagent
   // session or a retry; "every request after the first edit lacked it, and every request
   // before it carried it" is satisfied only by the edit.
@@ -223,7 +235,7 @@ export function gradeG0({ control, treatment }) {
   };
 }
 
-function run({ tag, drop, marker, foldMarker, reduceMarker }) {
+function run({ tag, drop, marker, foldMarker, reduceMarker, stubMarker }) {
   const env = {
     ...process.env,
     CT_ARM: 'ct',
@@ -231,6 +243,7 @@ function run({ tag, drop, marker, foldMarker, reduceMarker }) {
     CT_G0_MARKER: marker,
     CT_G0_FOLD_MARKER: foldMarker,
     CT_G0_REDUCE_MARKER: reduceMarker,
+    CT_G0_STUB_MARKER: stubMarker,
     CT_TAG: tag,
     CT_INSTANCES: INSTANCE,
     CT_REPEATS: '1',
@@ -263,18 +276,20 @@ function main() {
   let marker;
   let foldMarker;
   let reduceMarker;
+  let stubMarker;
   let since;
   if (only === 'grade') {
     if (!existsSync(markerFile)) throw new Error(`no ${markerFile}: nothing to grade`);
-    ({ marker, foldMarker, reduceMarker, at: since } = JSON.parse(readFileSync(markerFile, 'utf8')));
+    ({ marker, foldMarker, reduceMarker, stubMarker, at: since } = JSON.parse(readFileSync(markerFile, 'utf8')));
   } else {
     marker = `CTG0-${randomBytes(12).toString('hex')}`;
     foldMarker = `CTG0FOLD-${randomBytes(12).toString('hex')}`;
     reduceMarker = `CTG0REDUCE-${randomBytes(12).toString('hex')}`;
+    stubMarker = `CTG0STUB-${randomBytes(12).toString('hex')}`;
     since = new Date().toISOString();
     mkdirSync(OUTDIR, { recursive: true });
-    writeFileSync(markerFile, JSON.stringify({ marker, foldMarker, reduceMarker, instance: INSTANCE, at: since }, null, 2));
-    for (const arm of ARMS) run({ ...arm, marker, foldMarker, reduceMarker });
+    writeFileSync(markerFile, JSON.stringify({ marker, foldMarker, reduceMarker, stubMarker, instance: INSTANCE, at: since }, null, 2));
+    for (const arm of ARMS) run({ ...arm, marker, foldMarker, reduceMarker, stubMarker });
   }
 
   const control = readArm(ARMS[0].tag, since);
@@ -283,7 +298,7 @@ function main() {
   const report = {
     gate: 'G0 mutation visibility',
     question: 'does an in-place splice at experimental.chat.messages.transform reach the provider?',
-    marker, fold_marker: foldMarker, reduce_marker: reduceMarker, instance: INSTANCE, model: MODEL, at: new Date().toISOString(),
+    marker, fold_marker: foldMarker, reduce_marker: reduceMarker, stub_marker: stubMarker, instance: INSTANCE, model: MODEL, at: new Date().toISOString(),
     control, treatment, ...verdict,
   };
   writeFileSync(join(OUTDIR, 'g0-mutation-visibility.json'), `${JSON.stringify(report, null, 2)}\n`);

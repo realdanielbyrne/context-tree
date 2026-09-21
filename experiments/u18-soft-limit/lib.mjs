@@ -33,6 +33,10 @@ export const RULES = Object.freeze({
   maxPluginErrorShare: 0.10,
   /** Gate: the soft cell's real peak may exceed the nominal W by this factor (W is heuristic tokens). */
   gatePeakFactor: 1.3,
+  /** Gate: a cell this short never filled anything, so it shows nothing about an arm (a one-step cell once passed `hard`). */
+  gateMinSteps: 20,
+  /** A recall arm whose agent called a recall tool in fewer cells than this did not exercise recall. */
+  minRecallCells: 3,
   /** Gate: slowest assembly turn, against the plugin's 8,000 ms fail-open budget. */
   gateMaxAssembleMs: 4000,
 });
@@ -52,14 +56,47 @@ export const RULES = Object.freeze({
  */
 const { PIPELINE_PARAMS } = await import(new URL('../../packages/mcp/dist/index.js', import.meta.url).href);
 
-/** Registry parameters U18 holds fixed because they are another hypothesis's variable (U20). `run.sh` sets them. */
+/**
+ * THE ARMS. Each is a trigger plus what it SETS on top of the shared knobs, and each adds one
+ * thing to the one before it:
+ *
+ *   off      the host alone
+ *   hard     the plumbing, evicting only at the real window        — plumbing-matched control
+ *   soft     evicts at W, SILENTLY: a dropped message leaves nothing behind
+ *   stub     soft + an evicted turn stays visible as a stub with a recall id, and the contract
+ *            (v5) describes those tags. No summaries.
+ *   summary  stub + closed phases fold to a headline summary with a recall id (U20)
+ *
+ * `soft` exists unchanged because its cells were run before the other two were designed: in 21
+ * ct cells the agent never once called a recall tool, which is what `stub` and `summary` address.
+ */
+export const ARMS = Object.freeze({
+  off: { trigger: null, set: {} },
+  hard: { trigger: 'hard', set: {} },
+  soft: { trigger: 'soft', set: {} },
+  stub: { trigger: 'soft', set: { CT_CT_EVICT_MODE: 'stub', CT_CONTRACT: 'v5' } },
+  summary: { trigger: 'soft', set: { CT_CT_EVICT_MODE: 'stub', CT_CONTRACT: 'v5', CT_CT_SUMMARIES: '1' } },
+});
+export const CT_ARMS = Object.freeze(Object.keys(ARMS).filter((a) => ARMS[a].trigger !== null));
+/** Arms whose purpose is that the agent can get evicted content back. */
+export const RECALL_ARMS = Object.freeze(['stub', 'summary']);
+
+/** Set per arm (`ARMS`), never from the command line: summaries are an arm, not a knob. `run.sh` defaults it to 0. */
 export const U18_FIXED = Object.freeze({ CT_CT_SUMMARIES: '0' });
+
+/**
+ * Parameters added to the package AFTER cells had been recorded. At its package default such a
+ * knob is left out of the tag hash and may be absent from an older cell's record — otherwise
+ * adding a parameter upstream would orphan every wave already run under the old hash.
+ */
+const LATE_KNOBS = Object.freeze(['CT_CT_EVICT_MODE', 'CT_CT_SUMMARY_RENDER']);
+const atLateDefault = (ct, value) => LATE_KNOBS.includes(ct) && value === KNOBS.find((k) => k.ct === ct)?.def;
 
 /** Where U18 runs away from the package default, and since when. */
 export const U18_DEFAULTS = Object.freeze({ CT_CT_ANCHOR: '3' /* 2026-09-20; package default 4 */ });
 
 const POLICY_KNOBS = [
-  { ct: 'CT_CT_WINDOW', def: '50347', arms: ['soft'], describe: 'The soft limit, in heuristic tokens — the swept variable.' },
+  { ct: 'CT_CT_WINDOW', def: '50347', triggers: ['soft'], describe: 'The soft limit, in heuristic tokens — the swept variable.' },
   { ct: 'CT_CT_HARD_WINDOW', def: '151040', describe: 'The real context; also sets the overflow ceiling.' },
   { ct: 'CT_CT_REPLY_RESERVE', def: '8192', describe: 'Held back from the window for the reply.' },
   { ct: 'CT_CT_HEAD_TOKENS', def: '12000', describe: 'Allowance for what the plugin cannot see (system block, tool schemas).' },
@@ -104,8 +141,10 @@ export function resolveKnobs(env = process.env) {
 
 /** The `CT_*` knobs an arm depends on: `hard` never reads the soft window, `off` reads none. */
 export function armKnobs(arm, knobs) {
-  if (arm === 'off') return {};
-  return Object.fromEntries(KNOBS.filter((k) => !k.arms || k.arms.includes(arm)).map((k) => [k.ct, knobs[k.ct]]));
+  const def = ARMS[arm];
+  if (!def) throw new RangeError(`unknown arm "${arm}": ${Object.keys(ARMS).join('|')}`);
+  if (def.trigger === null) return {};
+  return { ...Object.fromEntries(KNOBS.filter((k) => !k.triggers || k.triggers.includes(def.trigger)).map((k) => [k.ct, knobs[k.ct]])), ...def.set };
 }
 
 /**
@@ -114,9 +153,9 @@ export function armKnobs(arm, knobs) {
  */
 export function tagBase(arm, knobs) {
   if (arm === 'off') return 'u18-off';
-  const mine = armKnobs(arm, knobs);
-  const hash = createHash('sha256').update(JSON.stringify(Object.entries(mine).sort())).digest('hex').slice(0, 6);
-  return arm === 'soft' ? `u18-soft-W${knobs.CT_CT_WINDOW}-A${knobs.CT_CT_ANCHOR}-${hash}` : `u18-hard-A${knobs.CT_CT_ANCHOR}-${hash}`;
+  const mine = Object.entries(armKnobs(arm, knobs)).filter(([ct, value]) => !atLateDefault(ct, value));
+  const hash = createHash('sha256').update(JSON.stringify(mine.sort())).digest('hex').slice(0, 6);
+  return `u18-${arm}-${ARMS[arm].trigger === 'soft' ? `W${knobs.CT_CT_WINDOW}-` : ''}A${knobs.CT_CT_ANCHOR}-${hash}`;
 }
 
 const PREFLIGHT_MUST_INCLUDE = [/^no outbound network$/, /^no DNS$/, /^hidden .*\/dataset$/, /^hidden .*\/repos$/, /^imports from workspace$/];
@@ -206,11 +245,13 @@ export function cellProblems(cell, { arm, window, knobs = null, foreignReads = [
     const ct = cell.ct ?? {};
     if (!ct.plugin_loaded || !ct.plugin_registered) out.push('plugin never loaded/registered');
     if (!ct.arm_agrees) out.push(`sidecar arm disagrees: ${(ct.arm_disagreements ?? []).join('; ')}`);
-    if (ct.arm_effective?.trigger !== arm) out.push(`trigger ${ct.arm_effective?.trigger}, expected ${arm}`);
-    if (arm === 'soft' && ct.arm_effective?.softWindow !== window) out.push(`soft window ${ct.arm_effective?.softWindow}, expected ${window}`);
-    if (ct.arm_effective?.summaries) out.push('summaries ON (that is U20)');
+    const { trigger, set } = ARMS[arm];
+    if (ct.arm_effective?.trigger !== trigger) out.push(`trigger ${ct.arm_effective?.trigger}, expected ${trigger}`);
+    if (trigger === 'soft' && ct.arm_effective?.softWindow !== window) out.push(`soft window ${ct.arm_effective?.softWindow}, expected ${window}`);
+    if (Boolean(ct.arm_effective?.summaries) !== (set.CT_CT_SUMMARIES === '1')) out.push(`summaries ${ct.arm_effective?.summaries ? 'ON' : 'off'}: not what the ${arm} arm is`);
     // The cell must have run under exactly the config this analysis is reading.
     for (const [key, want] of Object.entries(knobs ? armKnobs(arm, knobs) : {})) {
+      if (ct[key] === undefined && atLateDefault(key, want)) continue;
       if (ct[key] !== want) out.push(`${key} ran as ${JSON.stringify(ct[key])}, this config says ${JSON.stringify(want)}`);
     }
     if (!(ct.plugin_turns > 0)) out.push('zero plugin turns');
@@ -221,7 +262,17 @@ export function cellProblems(cell, { arm, window, knobs = null, foreignReads = [
   return out;
 }
 
-export const engaged = (cell) => !!cell.ct?.fired && (cell.ct?.evicted_units ?? 0) > 0;
+export const engaged = (cell) => !!cell.ct?.fired && (cell.ct?.evicted_units ?? 0) + (cell.ct?.stubbed_units ?? 0) > 0;
+
+const RECALL_TOOL = /^context-tree_(fetch|search|peek)$/;
+/** How many times the AGENT called a recall tool. The plugin's own calls go over HTTP and are not counted here. */
+export const recallCalls = (cell) => Object.entries(cell.mcp?.tools ?? {}).filter(([t]) => RECALL_TOOL.test(t)).reduce((n, [, k]) => n + k, 0);
+
+/** How a session ended, from opencode's event stream: `length` is a step that ran into the output cap. */
+export function finishReasons(runDir) {
+  const reasons = readJsonl(join(runDir, 'events.jsonl')).filter((e) => e.type === 'step_finish').map((e) => e.part?.reason ?? null);
+  return { last: reasons.at(-1) ?? null, length_steps: reasons.filter((r) => r === 'length').length };
+}
 const solved = (cell) => !!cell.scored && !!cell.pass && cell.grade_valid !== false;
 function compactions(cell) { return cell.export_part_types?.compaction ?? 0; }
 
@@ -297,7 +348,10 @@ export function gateVerdict(cell, wire, sidecar, { arm, window, knobs = null }) 
   if (sidecar.max_ms > RULES.gateMaxAssembleMs) reasons.push(`G1: slowest assembly ${sidecar.max_ms} ms > ${RULES.gateMaxAssembleMs} (the plugin fails open at 8,000)`);
   if (sidecar.over_ceiling_turns > 0) reasons.push(`${sidecar.over_ceiling_turns} turn(s) left the prompt over the ceiling`);
   if (sidecar.over_budget_rulings > 0) reasons.push(`G2: ${sidecar.over_budget_rulings} ruling(s) could not meet the budget — the pinned units alone exceeded it`);
-  if (arm === 'soft') {
+  if ((cell.steps ?? 0) < RULES.gateMinSteps) reasons.push(`the cell ran ${cell.steps ?? 0} step(s) (< ${RULES.gateMinSteps}): too short to show anything about the arm`);
+  if (ARMS[arm].set.CT_CT_EVICT_MODE === 'stub' && !((cell.ct?.messages_stubbed ?? 0) > 0)) reasons.push('G2: no message was ever stubbed — the arm ran as silent eviction');
+  if (ARMS[arm].set.CT_CT_SUMMARIES === '1' && !((cell.ct?.messages_folded ?? 0) > 0)) reasons.push('G2: no phase was ever folded to a summary — the arm ran as `stub`');
+  if (ARMS[arm].trigger === 'soft') {
     if (!engaged(cell)) reasons.push('G2: nothing evicted — the mechanism did not fire');
     const limit = Math.round(window * RULES.gatePeakFactor);
     if (!(cell.peak_prompt_tokens <= limit)) reasons.push(`G2: real peak ${cell.peak_prompt_tokens} > ${limit} (W × ${RULES.gatePeakFactor}): evictions are logged but the limit is not held`);
@@ -330,7 +384,7 @@ function byProblem(cells) {
 
 const peaks = (cells) => cells.map((c) => c.peak_prompt_tokens).filter((x) => Number.isFinite(x) && x > 0);
 
-function armSummary(cells) {
+function armSummary(cells, finish = () => null) {
   const unscored = cells.filter((c) => !c.scored);
   const turns = cells.reduce((n, c) => n + (c.ct?.plugin_turns ?? 0), 0);
   return {
@@ -344,6 +398,11 @@ function armSummary(cells) {
     median_peak: median(peaks(cells)), max_peak: peaks(cells).length ? Math.max(...peaks(cells)) : null,
     compacted_cells: cells.filter((c) => compactions(c) > 0).length,
     engaged_cells: cells.filter(engaged).length,
+    // Secondary outcomes, registered before the recall arms ran: did the agent ever reach for what
+    // was evicted, and did a session end by running into the output cap.
+    recall_tool_calls: cells.reduce((n, c) => n + recallCalls(c), 0),
+    cells_with_recall: cells.filter((c) => recallCalls(c) > 0).length,
+    cells_ended_at_output_cap: cells.filter((c) => finish(c)?.last === 'length').length,
     // The agent can call the pipeline tools itself (D22). In `hard` that would make the
     // plumbing control evict, so it is counted where it can be seen.
     agent_evict_calls: cells.reduce((n, c) => n + Object.entries(c.mcp?.tools ?? {}).filter(([t]) => /^context-tree_(evict|restore)$/.test(t)).reduce((m, [, k]) => m + k, 0), 0),
@@ -403,7 +462,7 @@ function compare(treatment, control, opts) {
  *
  * `arms` holds cells that are NOT instrument failures; `owed` lists the ones that were.
  */
-export function analyze({ arms, window, knobs = null, instances = null, owed = [], historical = null, historicalSolved = HISTORICAL_SOLVED, wire = () => ({ peak_bytes: null }), foreignReads = () => [] }) {
+export function analyze({ arms, window, knobs = null, instances = null, owed = [], historical = null, historicalSolved = HISTORICAL_SOLVED, wire = () => ({ peak_bytes: null }), foreignReads = () => [], finish = () => null }) {
   const { off, soft, hard = null } = arms;
   const present = Object.entries(arms).filter(([, cells]) => cells);
   const integrity = present.flatMap(([arm, cells]) => cells.flatMap((c) => cellProblems(c, { arm, window, knobs, foreignReads: foreignReads(c) }).map((p) => `${arm} ${c.instance}__r${c.repeat}: ${p}`)));
@@ -420,7 +479,7 @@ export function analyze({ arms, window, knobs = null, instances = null, owed = [
     return out;
   })];
 
-  const summary = Object.fromEntries(present.map(([arm, cells]) => [arm, armSummary(cells)]));
+  const summary = Object.fromEntries(present.map(([arm, cells]) => [arm, armSummary(cells, finish)]));
   const primary = compare(soft, off, { window, wire });
   const attribution = hard ? { soft_vs_hard: compare(soft, hard, { window, wire }), hard_vs_off: compare(hard, off, { window, wire }) } : null;
   const unscoredCounts = present.map(([, cells]) => cells.filter((c) => !c.scored).length);
@@ -452,9 +511,19 @@ export function analyze({ arms, window, knobs = null, instances = null, owed = [
     [verdict, why] = ['HELD_NOT_MATERIAL', `accuracy held (Δ ${primary.delta_solved_itt}) but ${peakNote} > ${RULES.materialPeakRatio}`];
   }
 
+  // The recall arms answer a different question from the ladder above, which stays soft-vs-off as
+  // registered: does making eviction VISIBLE and RECALLABLE change what silent eviction did? An
+  // arm whose agent never recalled anything says nothing about recall, whatever it scored.
+  const recall = Object.fromEntries(RECALL_ARMS.filter((arm) => arms[arm]).map((arm) => [arm, {
+    exercised: summary[arm].cells_with_recall >= RULES.minRecallCells,
+    note: summary[arm].cells_with_recall >= RULES.minRecallCells ? null : `the agent called a recall tool in ${summary[arm].cells_with_recall} cell(s) (< ${RULES.minRecallCells}): RECALL NOT EXERCISED — this arm's solve rate is evidence about visible eviction, not about recall`,
+    vs_off: compare(arms[arm], off, { window, wire }),
+    vs_soft: compare(arms[arm], soft, { window, wire }),
+  }]));
+
   return {
     verdict, why, window, rules: RULES, integrity_problems: integrity, incomplete,
-    arms: summary, primary_soft_vs_off: primary, attribution,
+    arms: summary, primary_soft_vs_off: primary, attribution, recall,
     // Same arm, same weights, a day apart: the measured A/A spread the ±2 margin rests on.
     a_a_noise: historical ? {
       historical_solved: historical.filter(solved).length, fresh_off_solved: summary.off.solved,

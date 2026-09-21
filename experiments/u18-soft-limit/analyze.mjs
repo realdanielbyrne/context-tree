@@ -18,7 +18,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { analyze, armKnobs, foreignLibraryReads, gateVerdict, instrumentFailure, resolveKnobs, sidecarStats, tagBase as tagBaseOf, wireStats } from './lib.mjs';
+import { ARMS, CT_ARMS, analyze, armKnobs, finishReasons, foreignLibraryReads, gateVerdict, instrumentFailure, resolveKnobs, sidecarStats, tagBase as tagBaseOf, wireStats } from './lib.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = join(HERE, '..', '..');
@@ -92,7 +92,7 @@ function gate(arm, tag) {
 
 function report() {
   const arms = {}, sources = {}, commits = {}, owed = [], superseded = [];
-  for (const arm of ['off', 'soft', 'hard']) {
+  for (const arm of Object.keys(ARMS)) {
     const a = armCells(arm);
     if (!a.files.length) continue;
     arms[arm] = a.usable; sources[arm] = a.files; Object.assign(commits, a.commits);
@@ -110,9 +110,9 @@ function report() {
     dirty_tree_runs: existsSync(runLog) ? readFileSync(runLog, 'utf8').split('\n').filter((l) => l.includes('"dirty":true')).length : null,
     // Cells re-run because the INSTRUMENT failed, with the reason. Outcome-blind by construction.
     instrument_failures_rerun: superseded,
-    gates: { soft: readGate('soft').attempts.map(({ tag, pass, commit }) => ({ tag, pass, commit })), hard: readGate('hard').attempts.map(({ tag, pass, commit }) => ({ tag, pass, commit })) },
-    config: KNOBS, tags: Object.fromEntries(['off', 'soft', 'hard'].map((a) => [a, tagBase(a)])),
-    ...analyze({ arms, window: WINDOW, knobs: KNOBS, instances: instances(), owed, historical, wire, foreignReads: (c) => foreignLibraryReads(c.run_dir, c.repo) }),
+    gates: Object.fromEntries(CT_ARMS.map((arm) => [arm, readGate(arm).attempts.map(({ tag, pass, commit }) => ({ tag, pass, commit }))])),
+    config: KNOBS, tags: Object.fromEntries(Object.keys(ARMS).map((a) => [a, tagBase(a)])),
+    ...analyze({ arms, window: WINDOW, knobs: KNOBS, instances: instances(), owed, historical, wire, foreignReads: (c) => foreignLibraryReads(c.run_dir, c.repo), finish: (c) => finishReasons(c.run_dir) }),
   };
 }
 
@@ -121,12 +121,13 @@ function main() {
   if (mode === 'config') {
     // The full knob set behind each hash, so a tag can always be read back.
     mkdirSync(join(OUT, 'configs'), { recursive: true });
-    for (const arm of ['soft', 'hard']) writeFileSync(join(OUT, 'configs', `${tagBase(arm)}.json`), `${JSON.stringify({ arm, tag: tagBase(arm), knobs: armKnobs(arm, KNOBS) }, null, 2)}\n`);
+    for (const arm of CT_ARMS) writeFileSync(join(OUT, 'configs', `${tagBase(arm)}.json`), `${JSON.stringify({ arm, tag: tagBase(arm), knobs: armKnobs(arm, KNOBS) }, null, 2)}\n`);
     for (const [k, v] of Object.entries(KNOBS)) console.log(`  ${k}=${v}`);
-    for (const arm of ['off', 'soft', 'hard']) console.log(`  tag ${arm}: ${tagBase(arm)}`);
+    for (const arm of Object.keys(ARMS)) console.log(`  tag ${arm}: ${tagBase(arm)}`);
     return;
   }
   if (mode === 'env') { process.stdout.write(Object.entries(armKnobs(rest[0], KNOBS)).map(([k, v]) => `${k}=${v}`).join('\n')); return; }
+  if (mode === 'trigger') { process.stdout.write(ARMS[rest[0]]?.trigger ?? 'off'); return; }
   if (mode === 'tag') { process.stdout.write(tagBase(rest[0])); return; }
   if (mode === 'missing') { process.stdout.write(missing(rest[0], Number(rest[1])).join(',')); return; }
   if (mode === 'gate-status') { const last = readGate(rest[0]).attempts.at(-1); process.stdout.write(last ? `${last.pass ? 'PASS' : 'FAIL'} ${last.commit ?? ''}` : 'NONE'); return; }
@@ -142,6 +143,8 @@ function main() {
     writeFileSync(path, `${JSON.stringify(r, null, 2)}\n`);
     console.log(`U18 @ ${tagBase('soft')}: ${r.verdict} — ${r.why}`);
     for (const [arm, s] of Object.entries(r.arms)) console.log(`  ${arm.padEnd(5)} solved ${s.solved}/${s.cells}  median peak ${s.median_peak}  max ${s.max_peak}  compacted ${s.compacted_cells}  engaged ${s.engaged_cells}  unscored ${s.unscored.length} (timeouts ${s.timeouts})  agent evict calls ${s.agent_evict_calls}  error turns ${s.plugin_error_turns}/${s.plugin_turns}`);
+    for (const [arm, s] of Object.entries(r.arms)) if (arm !== 'off') console.log(`  ${arm.padEnd(7)} recall-tool calls ${s.recall_tool_calls} in ${s.cells_with_recall} cell(s)  ended at the output cap ${s.cells_ended_at_output_cap}`);
+    for (const [arm, x] of Object.entries(r.recall)) console.log(`  ${arm.padEnd(7)} vs off Δ ${x.vs_off.delta_solved_itt}  vs soft Δ ${x.vs_soft.delta_solved_itt}${x.note ? `  — ${x.note}` : ''}`);
     for (const row of r.primary_soft_vs_off.rows) console.log(`  ${row.instance.padEnd(36)} off ${row.control_solved}/3 soft ${row.treatment_solved}/3  peak ${row.control_peak} → ${row.treatment_peak} (${row.peak_ratio})${row.binding ? ' binding' : ''} engaged ${row.treatment_engaged_cells}/3`);
     if (r.a_a_noise) console.log(`  A/A: this off arm ${r.a_a_noise.fresh_off_solved}, historical ${r.a_a_noise.historical_solved}`);
     for (const line of [...r.integrity_problems, ...(r.mixed_commits ? [r.mixed_commits] : [])]) console.log(`  ! ${line}`);

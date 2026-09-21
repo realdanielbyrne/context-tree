@@ -28,6 +28,7 @@ export function applyDecisions(messages, decisions) {
   let dropped = 0;
   let folded = 0;
   let reduced = 0;
+  let stubbed = 0;
   for (let i = messages.length - 1; i >= 0; i -= 1) {
     const id = messages[i]?.info?.id;
     if (typeof id !== 'string') continue;
@@ -49,12 +50,17 @@ export function applyDecisions(messages, decisions) {
       folded += 1;
       continue;
     }
-    if (decision.action === 'reduce' && Array.isArray(decision.outputs)) {
+    // `stub` is `reduce` plus the reasoning removed: the message, its text and its tool calls
+    // stay — the agent's own record of what it did — and each listed output becomes a tag.
+    const stub = decision.action === 'stub';
+    if ((stub || decision.action === 'reduce') && Array.isArray(decision.outputs)) {
       const message = messages[i];
       const byToolIndex = new Map(decision.outputs.map((o) => [o.index, o.text]));
       let toolIndex = -1;
       let touched = false;
-      const parts = (message.parts ?? []).map((part) => {
+      const kept = (message.parts ?? []).filter((part) => !(stub && part.type === 'reasoning'));
+      if (kept.length !== (message.parts ?? []).length) touched = true;
+      const parts = kept.map((part) => {
         if (part.type !== 'tool') return part;
         toolIndex += 1;
         const text = byToolIndex.get(toolIndex);
@@ -63,9 +69,12 @@ export function applyDecisions(messages, decisions) {
         return { ...part, state: { ...part.state, output: text } };
       });
       if (!touched) continue;
-      messages[i] = { ...message, parts };
-      reduced += 1;
+      // Nothing but reasoning: there is no residue to show, and an empty message is not a message.
+      if (!parts.some((part) => part.type === 'text' || part.type === 'tool')) messages.splice(i, 1);
+      else messages[i] = { ...message, parts };
+      if (stub) stubbed += 1;
+      else reduced += 1;
     }
   }
-  return { dropped, folded, reduced };
+  return { dropped, folded, reduced, stubbed };
 }

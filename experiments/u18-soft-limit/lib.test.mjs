@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { KNOBS, U18_DEFAULTS, U18_FIXED, armKnobs, resolveKnobs, servedPerHeuristic, tagBase, analyze as analyzeRaw, cellProblems, foreignLibraryReads, gateVerdict, instrumentFailure, signFlipP, wireStats, MODEL, RULES, SERVED_WINDOW } from './lib.mjs';
+import { ARMS, recallCalls, KNOBS, U18_DEFAULTS, U18_FIXED, armKnobs, resolveKnobs, servedPerHeuristic, tagBase, analyze as analyzeRaw, cellProblems, foreignLibraryReads, gateVerdict, instrumentFailure, signFlipP, wireStats, MODEL, RULES, SERVED_WINDOW } from './lib.mjs';
 
 // The fixture's control solves 27/30; the A/A rung is exercised on its own below.
 const analyze = (o) => analyzeRaw({ historicalSolved: 27, ...o });
@@ -243,4 +243,73 @@ test('served-per-heuristic is a per-turn distribution, and null when the join ca
   const served = [11_000, 22_000, 35_000, 59_000, 63_000];
   assert.deepEqual(servedPerHeuristic(rows, served), { aligned: true, turns: 4, min: 1.1, median: 1.2, max: 1.3, first_quartile_median: 1.1, last_quartile_median: 1.3 });
   assert.deepEqual(servedPerHeuristic(rows, served.slice(1)), { aligned: false, turns: 0 });
+});
+
+/** A recall-arm cell: soft trigger, stubs applied, optionally the agent's own recall calls. */
+function recallCell(arm, instance, repeat, { pass = true, recalls = 0, over = {} } = {}) {
+  const base = cell('soft', instance, repeat, { pass, peak: 45000, fired: true });
+  return {
+    ...base, mcp: { tools: recalls ? { 'context-tree_fetch': recalls } : {} },
+    ct: { ...base.ct, messages_stubbed: 9, stubbed_units: 9, messages_folded: arm === 'summary' ? 2 : 0, arm_effective: { trigger: 'soft', softWindow: W, summaries: arm === 'summary' } },
+    ...over,
+  };
+}
+
+test('the arms are a ladder: each sets one thing more, and recorded tags do not move', () => {
+  const knobs = resolveKnobs({});
+  assert.deepEqual(ARMS.soft.set, {});
+  assert.equal(armKnobs('stub', knobs).CT_CT_EVICT_MODE, 'stub');
+  assert.equal(armKnobs('stub', knobs).CT_CONTRACT, 'v5');
+  assert.equal(armKnobs('stub', knobs).CT_CT_SUMMARIES, undefined);
+  assert.equal(armKnobs('summary', knobs).CT_CT_SUMMARIES, '1');
+  assert.equal(armKnobs('soft', knobs).CT_CT_EVICT_MODE, 'drop');
+  assert.throws(() => armKnobs('nope', knobs), /unknown arm/);
+  // Waves were recorded under these two tags before evictMode and summaryRender existed.
+  assert.equal(tagBase('soft', knobs), 'u18-soft-W50347-A3-0b6139');
+  assert.equal(tagBase('hard', knobs), 'u18-hard-A3-3b1020');
+  assert.equal(new Set(['soft', 'hard', 'stub', 'summary'].map((a) => tagBase(a, knobs))).size, 4);
+  // ...but a late knob moved OFF its default is part of the key like any other.
+  assert.notEqual(tagBase('soft', resolveKnobs({ U18_EVICT_MODE: 'stub' })), 'u18-soft-W50347-A3-0b6139');
+});
+
+test('an older cell that never recorded a late knob is not an integrity problem; a wrong value is', () => {
+  const knobs = resolveKnobs({});
+  const recorded = Object.fromEntries(Object.entries(armKnobs('soft', knobs)).filter(([k]) => k !== 'CT_CT_EVICT_MODE' && k !== 'CT_CT_SUMMARY_RENDER'));
+  const old = cell('soft', 'p0', 0, { peak: 45000, fired: true });
+  assert.deepEqual(cellProblems({ ...old, ct: { ...old.ct, ...recorded } }, { arm: 'soft', window: W, knobs }), []);
+  assert.match(cellProblems({ ...old, ct: { ...old.ct, ...recorded, CT_CT_EVICT_MODE: 'stub' } }, { arm: 'soft', window: W, knobs }).join(' '), /CT_CT_EVICT_MODE ran as/);
+  // Summaries belong to exactly one arm.
+  assert.match(cellProblems(recallCell('summary', 'p0', 0), { arm: 'stub', window: W }).join(' '), /summaries ON/);
+  assert.match(cellProblems(recallCell('stub', 'p0', 0), { arm: 'summary', window: W }).join(' '), /summaries off/);
+});
+
+test('gate: a cell too short to show anything fails, and a recall arm must have done what it is', () => {
+  const wire = { present: true, requests: 80, ok: 80, rejected: 0, peak_bytes: 1 };
+  const side = { max_ms: 900, over_ceiling_turns: 0, over_budget_rulings: 0 };
+  const verdict = (c, arm) => gateVerdict(c, wire, side, { arm, window: W });
+  // The cell that once passed `hard`: one step, nothing evicted, nothing wrong — and nothing shown.
+  assert.match(verdict(cell('hard', 'g', 0, { peak: 13059, over: { steps: 1 } }), 'hard').reasons.join(' '), /too short/);
+  assert.equal(verdict(recallCell('stub', 'g', 0), 'stub').pass, true);
+  assert.match(verdict(recallCell('stub', 'g', 0, { over: {} , }), 'summary').reasons.join(' '), /summaries off/);
+  const silent = recallCell('stub', 'g', 0);
+  assert.match(verdict({ ...silent, ct: { ...silent.ct, messages_stubbed: 0 } }, 'stub').reasons.join(' '), /no message was ever stubbed/);
+  const unfolded = recallCell('summary', 'g', 0);
+  assert.match(verdict({ ...unfolded, ct: { ...unfolded.ct, messages_folded: 0 } }, 'summary').reasons.join(' '), /no phase was ever folded/);
+});
+
+test('a recall arm whose agent never recalled says nothing about recall', () => {
+  const base = arms();
+  const stub = (recalls) => IDS.flatMap((id, i) => [0, 1, 2].map((r) => recallCell('stub', id, r, { pass: id !== 'p9', recalls: i < recalls && r === 0 ? 2 : 0 })));
+  const quiet = analyze({ arms: { ...base, stub: stub(0) }, window: W });
+  assert.equal(quiet.recall.stub.exercised, false);
+  assert.match(quiet.recall.stub.note, /RECALL NOT EXERCISED/);
+  assert.equal(quiet.arms.stub.recall_tool_calls, 0);
+  const used = analyze({ arms: { ...base, stub: stub(RULES.minRecallCells) }, window: W, finish: (c) => ({ last: c.arm === 'ct' && c.instance === 'p0' ? 'length' : 'stop' }) });
+  assert.equal(used.recall.stub.exercised, true);
+  assert.equal(used.arms.stub.recall_tool_calls, 2 * RULES.minRecallCells);
+  assert.equal(used.recall.stub.vs_soft.delta_solved_itt, 0);
+  assert.ok(used.arms.stub.cells_ended_at_output_cap > 0);
+  // The registered ladder is untouched by the extra arm.
+  assert.equal(used.verdict, analyze({ arms: base, window: W }).verdict);
+  assert.equal(recallCalls({ mcp: { tools: { 'context-tree_evict': 3, 'context-tree_search': 1 } } }), 1);
 });

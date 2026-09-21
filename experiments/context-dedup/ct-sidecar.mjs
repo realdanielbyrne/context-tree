@@ -70,6 +70,7 @@ const LOG = process.env.CT_MCP_LOG;
 const G0_DROP_FIRST = process.env.CT_G0_DROP_FIRST === '1';
 const G0_FOLD_TEXT = process.env.CT_G0_FOLD_TEXT || '';
 const G0_REDUCE_TEXT = process.env.CT_G0_REDUCE_TEXT || '';
+const G0_STUB_TEXT = process.env.CT_G0_STUB_TEXT || '';
 
 const log = (message) => process.stderr.write(`ct-sidecar: ${message}\n`);
 const record = (row) => {
@@ -207,6 +208,9 @@ export function makeFollower(handle) {
  *   REDUCE the first tool output past messages[1], from five messages on — the edit every
  *         reduction makes. Two-sided like the fold: text that exists nowhere but the
  *         replacement must arrive on the wire.
+ *   STUB  the NEXT tool-carrying message after that one, from six messages on — what
+ *         `evictMode: 'stub'` does: reasoning parts removed and an output replaced by a tag,
+ *         on the same message. The tag's text must arrive, and the request must be accepted.
  *   SPLICE messages[1] from four messages on — an assistant message, which carries its own
  *         tool calls and results together and so can never orphan a result.
  *
@@ -214,7 +218,7 @@ export function makeFollower(handle) {
  * and there is nothing to edit that would leave a request worth sending. Those early turns
  * are the within-run control — the original marker must be on the wire there.
  */
-export function g0Decisions(messages, foldText, reduceText = '') {
+export function g0Decisions(messages, foldText, reduceText = '', stubText = '') {
   const decisions = messages.map((m) => ({ id: m.id, action: 'keep' }));
   if (messages.length < 3 || !foldText) return decisions;
   decisions[0] = { id: messages[0].id, action: 'fold', text: foldText, g0: true };
@@ -223,6 +227,8 @@ export function g0Decisions(messages, foldText, reduceText = '') {
   // replaced. The call and its result stay paired, so the request stays well-formed.
   const target = reduceText && messages.length >= 5 ? messages.findIndex((m, i) => i >= 2 && m.hasTools) : -1;
   if (target >= 0) decisions[target] = { id: messages[target].id, action: 'reduce', outputs: [{ index: 0, text: reduceText }], g0: true };
+  const next = stubText && target >= 0 && messages.length >= 6 ? messages.findIndex((m, i) => i > target && m.hasTools) : -1;
+  if (next >= 0) decisions[next] = { id: messages[next].id, action: 'stub', outputs: [{ index: 0, text: stubText }], g0: true };
   return decisions;
 }
 
@@ -238,7 +244,7 @@ function logCall({ tool, ok, ms, input, outcome }) {
     const by = (kind) => (data.units ?? []).filter((u) => u.representation === kind).length;
     record({ event: 'assemble', turn: data.turn, window: input.window_tokens, per_unit_budget: data.per_unit_budget, units: data.units?.length ?? 0, tokens_raw: data.tokens_raw, tokens_assembled: data.tokens_assembled, reduced: by('reduce'), folded: by('fold'), actions, ms, ...(G0_DROP_FIRST ? { g0: 'drop_first' } : {}) });
   } else if (tool === 'evict') {
-    record({ event: 'evict', turn: data.turn, window: input.window_tokens, reserve: input.reserve_tokens ?? 0, fired: data.fired, evicted: data.evicted, evicted_total: data.evicted_total, tokens_before: data.tokens_before, tokens_after: data.tokens_after, over_budget: data.over_budget, actions, ms });
+    record({ event: 'evict', turn: data.turn, window: input.window_tokens, reserve: input.reserve_tokens ?? 0, fired: data.fired, evicted: data.evicted, evicted_total: data.evicted_total, stubbed: data.stubbed, stubbed_total: data.stubbed_total, tokens_before: data.tokens_before, tokens_after: data.tokens_after, over_budget: data.over_budget, actions, ms });
   } else {
     record({ event: 'tool', tool, ms });
   }
@@ -247,7 +253,7 @@ function logCall({ tool, ok, ms, input, outcome }) {
 /** The G0 gate swaps ONE stage behind its name; the transports and the plugin are untouched. */
 const g0Assemble = async (_ctx, input) => ({
   ok: true,
-  data: { turn: input?.turn ?? 0, per_unit_budget: 0, tokens_raw: 0, tokens_assembled: 0, units: [], decisions: g0Decisions(input?.messages ?? [], G0_FOLD_TEXT, G0_REDUCE_TEXT) },
+  data: { turn: input?.turn ?? 0, per_unit_budget: 0, tokens_raw: 0, tokens_assembled: 0, units: [], decisions: g0Decisions(input?.messages ?? [], G0_FOLD_TEXT, G0_REDUCE_TEXT, G0_STUB_TEXT) },
 });
 
 function neutralPhasesFromEnv() {

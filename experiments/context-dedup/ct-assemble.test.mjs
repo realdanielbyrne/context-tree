@@ -133,7 +133,7 @@ test('a reduction swaps tool OUTPUT text in place — the part, its call and its
   const host = { info: { id: 'b', role: 'assistant' }, parts: [{ type: 'text', text: 'looking' }, tool('AAAA'.repeat(100)), tool('BBBB'.repeat(100))] };
   const live = [{ info: { id: 'a', role: 'user' }, parts: [{ type: 'text', text: 'task' }] }, host];
   const result = applyDecisions(live, [{ id: 'b', action: 'reduce', outputs: [{ index: 1, text: 'B…' }] }]);
-  assert.deepEqual(result, { dropped: 0, folded: 0, reduced: 1 });
+  assert.deepEqual(result, { dropped: 0, folded: 0, reduced: 1, stubbed: 0 });
   assert.equal(live.length, 2);
   assert.deepEqual(live[1].parts.map((p) => p.state?.output ?? p.text), ['looking', 'AAAA'.repeat(100), 'B…']);
   assert.deepEqual(live[1].parts[2].state.input, { filePath: 'a' }, 'the call is untouched');
@@ -145,7 +145,7 @@ test('a reduction swaps tool OUTPUT text in place — the part, its call and its
 test('a reduction that names no existing tool output changes nothing and counts nothing', () => {
   const live = [{ info: { id: 'b', role: 'assistant' }, parts: [{ type: 'text', text: 'no tools here' }] }];
   const before = live[0];
-  assert.deepEqual(applyDecisions(live, [{ id: 'b', action: 'reduce', outputs: [{ index: 0, text: 'x' }] }]), { dropped: 0, folded: 0, reduced: 0 });
+  assert.deepEqual(applyDecisions(live, [{ id: 'b', action: 'reduce', outputs: [{ index: 0, text: 'x' }] }]), { dropped: 0, folded: 0, reduced: 0, stubbed: 0 });
   assert.equal(live[0], before);
 });
 
@@ -205,4 +205,24 @@ test('summaries, numbers and phase lists are compared after casting, not as stri
   const asked = { CT_CT_SUMMARIES: '1', CT_CT_DRIFT_K: '5', CT_CT_NEUTRAL_PHASES: 'none' };
   assert.deepEqual(armDisagreements(asked, { summaries: true, driftK: 5, neutralPhases: '' }), []);
   assert.equal(armDisagreements(asked, { summaries: false, driftK: 5, neutralPhases: 'other' }).length, 2);
+});
+
+test('a stub keeps the message, its text and its calls; the reasoning goes and the output becomes the tag', () => {
+  const tool = { type: 'tool', tool: 'read', state: { input: { filePath: 'a.py' }, output: 'long output' } };
+  const original = { info: { id: 'b' }, parts: [{ type: 'reasoning', text: 'thinking…' }, { type: 'text', text: 'Let me read a.py' }, tool] };
+  const live = [{ info: { id: 'a' }, parts: [{ type: 'text', text: 'task' }] }, original];
+  const result = applyDecisions(live, [{ id: 'b', action: 'stub', outputs: [{ index: 0, text: '[evicted · recall: fetch {"unit":"turn:2"}]' }] }]);
+  assert.deepEqual(result, { dropped: 0, folded: 0, reduced: 0, stubbed: 1 });
+  assert.deepEqual(live[1].parts.map((p) => p.type), ['text', 'tool']);
+  assert.equal(live[1].parts[1].state.output, '[evicted · recall: fetch {"unit":"turn:2"}]');
+  assert.deepEqual(live[1].parts[1].state.input, { filePath: 'a.py' });
+  // The host's own object is what the session store and the grading export hold.
+  assert.equal(original.parts.length, 3);
+  assert.equal(tool.state.output, 'long output');
+});
+
+test('a stub of a message that is nothing but reasoning removes it: an empty message is not a message', () => {
+  const live = [{ info: { id: 'a' }, parts: [{ type: 'text', text: 'task' }] }, { info: { id: 'b' }, parts: [{ type: 'reasoning', text: 'hm' }] }];
+  assert.deepEqual(applyDecisions(live, [{ id: 'b', action: 'stub', outputs: [] }]), { dropped: 0, folded: 0, reduced: 0, stubbed: 1 });
+  assert.equal(live.length, 1);
 });

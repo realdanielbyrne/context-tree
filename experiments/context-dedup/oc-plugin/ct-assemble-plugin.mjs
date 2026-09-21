@@ -132,9 +132,9 @@ export const server = async () => {
       const keptTokens = sizeOf(messages);
       log({
         turn, before, after: messages.length, before_tokens: beforeTokens, kept_tokens: keptTokens,
-        dropped: applied.dropped, folded: applied.folded, reduced: applied.reduced, decisions: decisions.length,
+        dropped: applied.dropped, folded: applied.folded, reduced: applied.reduced, stubbed: applied.stubbed, decisions: decisions.length,
         assembled: assembled !== null, evict_called: evicted !== null, evict_window: evicted?.window ?? null, evict_floor: evicted?.floor ?? false,
-        evicted_now: evicted?.evicted?.length ?? 0, evicted_total: evicted?.evicted_total ?? null,
+        evicted_now: evicted?.evicted?.length ?? 0, evicted_total: evicted?.evicted_total ?? null, stubbed_total: evicted?.stubbed_total ?? null,
         over_ceiling: keptTokens > ceilingOf(POLICY), ms: Date.now() - started,
       });
     },
