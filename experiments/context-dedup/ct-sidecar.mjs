@@ -1,57 +1,48 @@
 #!/usr/bin/env node
 /**
- * The context-tree sidecar: one Node process per run that owns the pipeline
- * `packages/` ships but never calls on a live turn.
+ * The opencode HOST ADAPTER: one Node process per run. It contains no pipeline logic.
  *
- * It does two jobs for one session:
+ * It does the one thing `@context-tree/mcp` cannot do for itself — feed L0 from a LIVE
+ * opencode session — and then starts the package's server on that store:
  *
- *   1. MCP server (U5). `@context-tree/mcp` over a store fed from the LIVE
- *      opencode session. `packages/mcp/dist/bin.js` serves a store someone built
- *      earlier; in a SWE-bench cell the only history is the one the agent is
- *      producing right now, so a plain server answers every `context_search` with
- *      nothing and the arm is byte-identical to its control — which is how the
- *      flapsim run came back VOID.
- *   2. Assembly (U18/U19/U20). An HTTP endpoint the opencode plugin calls on every
- *      turn: it runs drift → eviction → retrieval → `assembleFlex` over the tree and
- *      answers with a keep/drop/fold verdict PER MESSAGE.
+ *   1. FOLLOW. opencode 1.18.31 keeps sessions in SQLite
+ *      (`$XDG_DATA_HOME/opencode/opencode.db`, tables `message` and `part`, each row a JSON
+ *      `data` column plus its ids) — the shapes `opencode export` prints, so
+ *      `mapOpencodeExport` reads them unchanged. The db is polled read-only rather than
+ *      shelling out to `opencode export`, which makes a model call at start-up and would
+ *      take a slot from the run it is measuring. Only SETTLED parts are ingested, so L0
+ *      stays an append-only prefix. `packages/mcp/dist/bin.js` alone serves a store someone
+ *      built earlier; in a SWE-bench cell the only history is the one being produced now.
+ *   2. PUBLISH the message index (opencode message id -> L0 seq range) into the session,
+ *      which is what lets `context_verdicts` name host messages.
+ *   3. SERVE the tool registry (D22) twice over one session: MCP stdio to the agent, and
+ *      loopback HTTP to the plugin (`oc-plugin/`), which holds the eviction POLICY.
  *
- * Why the work is here and not in the plugin: the plugin runs inside opencode's bun
- * runtime, and this half needs Node with `better-sqlite3` and tree-sitter. The plugin
- * stays thin so a fault in the pipeline cannot take down the host being measured.
- *
- * Why verdicts are per whole message: opencode keeps a tool call and its result in the
- * same message, so dropping at that granularity can never orphan a result. Re-rendering
- * the transcript from the tree is what invalidated the deleted in-repo harness (D20) —
- * this selects, it never re-renders.
- *
- * Where the history comes from: opencode 1.18.31 keeps sessions in SQLite
- * (`$XDG_DATA_HOME/opencode/opencode.db`, tables `message` and `part`, each row a JSON
- * `data` column plus its ids). Those are the shapes `opencode export` prints, so
- * `mapOpencodeExport` reads them unchanged. We poll the db read-only rather than
- * shelling out to `opencode export`, which makes a model call at start-up and would
- * take a slot from the run it is measuring. Only SETTLED parts are ingested, so L0 stays
- * an append-only prefix.
+ * Why a separate process from the plugin: the plugin runs inside opencode's bun runtime,
+ * and the pipeline needs Node with `better-sqlite3` and tree-sitter. A fault here cannot
+ * take down the host being measured.
  *
  * stdout is the MCP transport: everything diagnostic goes to stderr.
  *
  *   CT_MCP_ROOT        context-tree store root   (required)
  *   CT_MCP_DB          opencode.db to follow     (default $XDG_DATA_HOME/opencode/opencode.db)
  *   CT_MCP_POLL_MS                               (default 1500)
- *   CT_MCP_LOG         jsonl: ingest ticks, assembly decisions, the fire-gate record
- *   CT_ASSEMBLE_PORT   0 disables the endpoint   (default 8899, loopback only)
- *   CT_CT_TRIGGER      off | hard | soft | cadence           (default off)
- *   CT_CT_WINDOW       the soft limit in tokens               (default 50347)
- *   CT_CT_HARD_WINDOW  the model's real context               (default 151040)
- *   CT_CT_CADENCE_N    fire every Nth turn in `cadence`       (default 5)
- *   CT_CT_SUMMARIES    1 to fold to summaries instead of dropping
- *   CT_CT_ANCHOR       units never evicted                    (default 4)
- *   CT_CT_REPLY_RESERVE                                       (default 8192)
- *   CT_CT_TOPK         retrieval hits appended as the tail    (default 5)
- *   CT_CT_PROTECT_TAIL messages at the end never dropped      (default 6)
+ *   CT_MCP_LOG         jsonl: ingest ticks, every tool call made over HTTP, the fire-gate record
+ *   CT_ASSEMBLE_PORT   the HTTP tool API's port; 0 disables it   (default 8899, loopback only)
+ *   CT_ASSEMBLE_TOKEN  bearer token for that API
+ *   CT_CONTRACT        system-contract version shipped as MCP instructions (default v1)
+ *   CT_CT_NEUTRAL_PHASES  comma list, or `none` — decides unit granularity (default: config)
+ *   CT_CT_ANCHOR, CT_CT_W_*, CT_CT_PRIORITY_HALFLIFE, CT_CT_EVICT_HEADROOM,
+ *   CT_CT_SOFT_TARGET_FRAC, CT_CT_REDUCER, CT_CT_DRIFT_K, CT_CT_DRIFT_TAU, CT_CT_RRF_K,
+ *   CT_CT_CHUNK_SIZE, CT_CT_CHUNK_OVERLAP, CT_CT_PROTECT_TAIL
+ *                      server defaults for the pipeline tools (`pipelineFromEnv`); a value
+ *                      that does not parse stops the process.
  *   CT_G0_DROP_FIRST   1 = the G0 gate, not an arm (see below)
+ *
+ * The eviction trigger, its windows and the cadence are NOT here. They are the plugin's
+ * (`oc-plugin/policy.mjs`): a policy is the sequence of calls a caller makes.
  */
 import { existsSync, appendFileSync, mkdirSync } from 'node:fs';
-import http from 'node:http';
 import { dirname, join } from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -63,11 +54,8 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = process.env.CT_REPO_ROOT ?? join(HERE, '..', '..');
 const dist = (pkg) => pathToFileURL(join(REPO, 'packages', pkg, 'dist', 'index.js')).href;
 
-const {
-  DriftClassifier, HeuristicTokenizer, TreeRetriever, assembleFlex, ensembleRetrieve,
-  ingest, mapFlexUnits, openTaskStore, readNodeText, resolveConfig,
-} = await import(dist('core'));
-const { createServer } = await import(dist('mcp'));
+const { TreeRetriever, ingest, openTaskStore, resolveConfig } = await import(dist('core'));
+const { TOOLS, createHttpApi, createServer, createSession, pipelineFromEnv, toolContext, withHandlers } = await import(dist('mcp'));
 const { mapOpencodeExport } = await import(dist('cli'));
 
 const requireFromCore = createRequire(join(REPO, 'packages', 'core', 'dist', 'index.js'));
@@ -84,49 +72,6 @@ const DB = process.env.CT_MCP_DB
 const LOG = process.env.CT_MCP_LOG;
 const G0_DROP_FIRST = process.env.CT_G0_DROP_FIRST === '1';
 const G0_FOLD_TEXT = process.env.CT_G0_FOLD_TEXT || '';
-
-export const ARM = Object.freeze({
-  trigger: process.env.CT_CT_TRIGGER || 'off',
-  softWindow: Number(process.env.CT_CT_WINDOW ?? 50_347),
-  hardWindow: Number(process.env.CT_CT_HARD_WINDOW ?? 151_040),
-  cadenceN: Number(process.env.CT_CT_CADENCE_N ?? 5),
-  summaries: process.env.CT_CT_SUMMARIES === '1',
-  anchor: Number(process.env.CT_CT_ANCHOR ?? 4),
-  replyReserve: Number(process.env.CT_CT_REPLY_RESERVE ?? 8192),
-  /** What the plugin cannot see: opencode's system block, tool schemas and skills. */
-  headTokens: Number(process.env.CT_CT_HEAD_TOKENS ?? 12_000),
-  topK: Number(process.env.CT_CT_TOPK ?? 5),
-  protectTail: Number(process.env.CT_CT_PROTECT_TAIL ?? 6),
-});
-
-/**
- * A mistyped knob must stop the run, not quietly turn the arm into its control.
- * `CT_CT_WINDOW=50k` reads as NaN, which `windowForTurn` passes through and the
- * keep-everything path swallows; a NaN reserve makes `evictableTotal > NaN` false, so
- * NOTHING is ever evicted and no error is recorded anywhere.
- */
-export function validateArm(arm = ARM) {
-  const problems = [];
-  const triggers = ['off', 'hard', 'soft', 'cadence'];
-  if (!triggers.includes(arm.trigger)) problems.push(`CT_CT_TRIGGER must be one of ${triggers.join('|')}, got "${arm.trigger}"`);
-  const positive = {
-    CT_CT_WINDOW: arm.softWindow, CT_CT_HARD_WINDOW: arm.hardWindow, CT_CT_CADENCE_N: arm.cadenceN,
-    CT_CT_ANCHOR: arm.anchor, CT_CT_TOPK: arm.topK, CT_CT_PROTECT_TAIL: arm.protectTail,
-  };
-  for (const [name, value] of Object.entries(positive)) {
-    if (!Number.isFinite(value) || value <= 0) problems.push(`${name} must be a positive number, got ${value}`);
-  }
-  for (const [name, value] of [['CT_CT_REPLY_RESERVE', arm.replyReserve], ['CT_CT_HEAD_TOKENS', arm.headTokens]]) {
-    if (!Number.isFinite(value) || value < 0) problems.push(`${name} must be a non-negative number, got ${value}`);
-  }
-  if (Number.isFinite(arm.softWindow) && Number.isFinite(arm.hardWindow) && arm.softWindow > arm.hardWindow) {
-    problems.push(`CT_CT_WINDOW (${arm.softWindow}) exceeds CT_CT_HARD_WINDOW (${arm.hardWindow})`);
-  }
-  if (arm.replyReserve + arm.headTokens >= arm.softWindow) {
-    problems.push(`reserve + head (${arm.replyReserve + arm.headTokens}) leaves no room in CT_CT_WINDOW (${arm.softWindow})`);
-  }
-  return problems;
-}
 
 const log = (message) => process.stderr.write(`ct-sidecar: ${message}\n`);
 const record = (row) => {
@@ -214,7 +159,7 @@ function readSession(db, sessionId = null) {
  * ranges line up with the whole-document mapping. The sum is asserted against that
  * mapping; a mismatch disables the index rather than returning wrong ranges.
  */
-export function makeFollower(handle, { onIndex, session = null } = {}) {
+export function makeFollower(handle, { onIndex } = {}) {
   const done = new Set();
   const index = new Map();
   let sessionId = null;
@@ -249,75 +194,8 @@ export function makeFollower(handle, { onIndex, session = null } = {}) {
     appendedTotal += appended;
     onIndex?.(new Map(index));
     const stats = ingest({ handle });
-    // The units the assembler reasons over changed, so any cached rendering of them is stale.
-    if (session) session.textCache.clear();
     return { appended, total: appendedTotal, messages: done.size, nodes: stats.stats.nodes, phases: stats.stats.phases };
   };
-}
-
-/**
- * The arm, as one number. `assembleFlex` evicts only when unit tokens exceed
- * `window − replyReserve`, so the trigger IS the window we hand it:
- *
- *   off      never evict (the control)
- *   hard     the model's real context — today's shipped default
- *   soft     a limit context-tree imposes, well below the real one (U18)
- *   cadence  that same soft limit, but only every Nth turn (U19)
- */
-export function windowForTurn({ trigger, turn, softWindow, hardWindow, cadenceN }) {
-  if (trigger === 'hard') return hardWindow;
-  if (trigger === 'soft') return softWindow;
-  if (trigger === 'cadence') return turn > 0 && turn % cadenceN === 0 ? softWindow : Number.POSITIVE_INFINITY;
-  return Number.POSITIVE_INFINITY;
-}
-
-/**
- * Turn evicted UNITS into per-message verdicts.
- *
- * Protected, in order of precedence: a message with no L0 range yet (not ingested, so
- * nothing is known about it), the first message (the task statement), and the last
- * `protectTail` messages (the live working set). Everything else is droppable when its
- * seq range overlaps an evicted unit.
- *
- * `fold` replaces a message's content with the unit's summary and is offered only for a
- * text-only message: a message carrying tool parts is keep-or-drop, so a call and its
- * result always travel together.
- */
-export function planDecisions({ messages, index, evicted, protectTail, summaries }) {
-  const spans = evicted.filter((u) => u.start !== null && u.start !== undefined);
-  const overlaps = (range) => spans.find((u) => range.start <= u.end && range.end >= u.start);
-  const lastIndex = messages.length - 1;
-  const folded = new Set();
-  const wanted = new Set();
-  const decisions = [];
-
-  for (let i = 0; i < messages.length; i += 1) {
-    const message = messages[i];
-    const range = index?.get(message.id);
-    const protectedHere = i === 0 || i > lastIndex - protectTail;
-    if (!range || protectedHere) {
-      decisions.push({ id: message.id, action: 'keep' });
-      continue;
-    }
-    const unit = overlaps(range);
-    if (!unit) {
-      decisions.push({ id: message.id, action: 'keep' });
-      continue;
-    }
-    const wantsFold = summaries && unit.summary && !folded.has(unit.nodeId);
-    if (wantsFold && !message.hasTools) {
-      folded.add(unit.nodeId);
-      decisions.push({ id: message.id, action: 'fold', text: unit.summary });
-      continue;
-    }
-    // A fold the message shape cannot take is recorded ONCE PER UNIT, not swallowed: in a
-    // SWE-bench run nearly every assistant message carries tool parts, so a summaries arm
-    // that never finds a text-only message is its own control and must say so.
-    const firstMiss = wantsFold && !wanted.has(unit.nodeId);
-    if (firstMiss) wanted.add(unit.nodeId);
-    decisions.push({ id: message.id, action: 'drop', unit: unit.nodeId, ...(firstMiss ? { foldWanted: true } : {}) });
-  }
-  return decisions;
 }
 
 /**
@@ -354,221 +232,56 @@ export function g0Decisions(messages, foldText) {
   return decisions;
 }
 
-/** The per-session state the package has nowhere to put (see U2: `lastReferencedTurn`). */
-function makeSession() {
-  return {
-    classifier: new DriftClassifier(),
-    tokenizer: new HeuristicTokenizer(),
-    turn: 0,
-    // nodeId -> the turn the agent last came back to material that unit produced.
-    // `buildFlexSource` hardwires this to creation order, which makes reference-recency
-    // a second name for positional recency; the whole point of holding it here is that
-    // it is a real observation instead.
-    referenced: new Map(),
-    seqIndex: null,
-    // Reference tracking is incremental: re-scanning from seq 1 each turn would stamp
-    // the CURRENT turn on every unit that ever touched a file, which is a "wrote a file"
-    // flag, not an observation of the agent coming back to something.
-    scannedSeq: 0,
-    // `readNodeText` re-reads trace.jsonl per node per call; the units only change when
-    // the follower appends, which is when this is cleared.
-    textCache: new Map(),
-  };
-}
-
-/** Units for the assembler, with reference-recency taken from what the agent actually revisited. */
-function entriesFor(handle, session) {
-  const { store, trace, blobs } = handle;
-  const phases = store.nodesInCreationOrder().filter((n) => n.kind === 'phase' && n.status !== 'superseded');
-  return phases.map((node, order) => {
-    const summary = store.currentSummary(node.id);
-    const wrote =
-      store.descendants(node.id).some((d) => d.kind === 'file') || (node.meta_json.spans?.length ?? 0) > 0;
-    let rawText = session.textCache.get(node.id);
-    if (rawText === undefined) {
-      rawText = readNodeText(node, trace, blobs);
-      session.textCache.set(node.id, rawText);
-    }
-    return {
-      node,
-      entry: {
-        nodeId: node.id,
-        order,
-        rawText,
-        ...(summary !== null ? { summaryText: summary.text } : {}),
-        wrote,
-        // Never referenced: fall back to when it was created, in the SAME clock as
-        // `currentTurn` below — mixing a unit index with a turn count makes the decay
-        // term and reference-recency meaningless.
-        lastReferencedTurn: session.referenced.get(node.id) ?? 0,
-      },
-    };
-  });
-}
-
 /**
- * Mark units the agent has come back to: a unit that wrote a file is "referenced"
- * again when a later tool call touches that same path.
+ * The HTTP calls, as the evidence the gates read. One `assemble` row per turn — written
+ * when `context_verdicts` answers, carrying that turn's `context_evict` if there was one —
+ * so a turn with no evict call is visibly a turn where the policy did not fire.
  */
-function trackReferences(handle, session) {
-  const { store, trace } = handle;
-  const owner = new Map();
-  for (const node of store.nodesInCreationOrder()) {
-    // A file node is keyed by `meta_json.path` (§7) and hangs under the phase that touched it.
-    const path = node.kind === 'file' ? node.meta_json?.path : undefined;
-    if (!path || !node.parent_id) continue;
-    owner.set(path, node.parent_id);
-  }
-  const last = trace.lastSeq();
-  if (last <= session.scannedSeq) return;
-  for (const event of trace.read({ from: session.scannedSeq + 1, to: last })) {
-    if (event.type !== 'tool_call' || !event.path) continue;
-    const unit = owner.get(event.path);
-    // A unit is referenced again only by a call that arrived SINCE the last scan, and it
-    // keeps the turn it was seen on.
-    if (unit) session.referenced.set(unit, session.turn);
-  }
-  session.scannedSeq = last;
-}
-
-async function assembleForTurn({ handle, session, messages, query }) {
-  session.turn += 1;
-  const total = messages.reduce((n, m) => n + (m.tokens ?? 0), 0);
-
-  // The gate short-circuits the pipeline on purpose: it is testing the seam, not the policy.
-  if (G0_DROP_FIRST) {
-    const decisions = g0Decisions(messages, G0_FOLD_TEXT);
-    return { turn: session.turn, g0: 'drop_first', window: null, total, evicted: [], decisions };
-  }
-
-  const window = windowForTurn({ ...ARM, turn: session.turn });
-
-  // The trigger says never evict AND the prompt fits the real context: nothing to do.
-  // When it does NOT fit we still assemble, at the real context as a ceiling — the plugin
-  // arms run with host compaction off, so an overflow is a hard session error and someone
-  // has to keep the prompt inside the window. That ceiling is not the arm; it is the
-  // floor under every arm, and a cell that hits it says so through `window`.
-  if (!Number.isFinite(window) && total <= ARM.hardWindow) {
-    return { turn: session.turn, window: null, evicted: [], decisions: messages.map((m) => ({ id: m.id, action: 'keep' })), total };
-  }
-
-  trackReferences(handle, session);
-  const pairs = entriesFor(handle, session);
-  const { units, corpus } = await mapFlexUnits(pairs.map((p) => p.entry), { classifier: session.classifier });
-
-  let tail = [];
-  if (query && corpus.length > 0) {
-    const hits = await ensembleRetrieve(query, corpus, undefined, { topK: ARM.topK });
-    tail = hits.map((h) => ({ id: h.unitId, text: h.excerpt }));
-  }
-
-  // The window has to cover what the assembler cannot see. The system prompt, tool
-  // schemas, skills and MCP instructions are assembled AFTER the plugin's hook, so they
-  // never appear in `messages` — opencode's fixed overhead alone is ~9,898 tokens.
-  // Protected messages are NOT charged here: their content is already inside the units
-  // being budgeted, so charging them too would shrink the real operating point far below
-  // the window the arm claims to be testing.
-  const effectiveWindow = Number.isFinite(window) ? window : ARM.hardWindow;
-  const replyReserve = Math.min(effectiveWindow - 1, ARM.replyReserve + ARM.headTokens);
-
-  const prompt = assembleFlex(
-    { system: '', userPrompts: [] },
-    units,
-    session.tokenizer,
-    { window: effectiveWindow, replyReserve, anchor: ARM.anchor, tail, currentTurn: session.turn },
-  );
-
-  const lastSeq = handle.trace.lastSeq();
-  const byNode = new Map(pairs.map((p) => [p.entry.nodeId, p]));
-  const evicted = prompt.budgets.evicted.map((nodeId) => {
-    const pair = byNode.get(nodeId);
-    return {
-      nodeId,
-      start: pair?.node.span_start_seq ?? null,
-      // An OPEN phase has no end yet, and `readNodeText` reads it to the end of the
-      // trace — so its span has to reach there too, or the assembler bills the whole
-      // tail while only one message is ever dropped for it.
-      end: pair?.node.span_end_seq ?? (pair?.node.status === 'open' ? lastSeq : pair?.node.span_start_seq) ?? null,
-      summary: pair?.entry.summaryText ?? null,
-    };
-  });
-
-  let protectTail = ARM.protectTail;
-  let decisions = planDecisions({ messages, index: session.seqIndex, evicted, protectTail, summaries: ARM.summaries });
-  const kept = (ds) => messages
-    .filter((m) => ds.find((d) => d.id === m.id)?.action !== 'drop')
-    .reduce((n, m) => n + (m.tokens ?? 0), 0);
-
-  // The ceiling has to HOLD, not merely be aimed at: with host compaction off, a prompt
-  // over the real context is a hard session error, and that would kill the arm in exactly
-  // the overflowing cells U18 is about while the control simply compacts. The protected
-  // tail is the part eviction cannot reach, so when it is what does not fit, it shrinks.
-  const ceiling = ARM.hardWindow - ARM.headTokens - ARM.replyReserve;
-  let escalations = 0;
-  while (kept(decisions) > ceiling && protectTail > 1) {
-    protectTail -= 1;
-    escalations += 1;
-    decisions = planDecisions({ messages, index: session.seqIndex, evicted, protectTail, summaries: ARM.summaries });
-  }
-  const keptTokens = kept(decisions);
-
-  return {
-    turn: session.turn, window: effectiveWindow, total, units: units.length,
-    evicted: evicted.map((e) => e.nodeId), tail: tail.length,
-    kept_tokens: keptTokens, ceiling, over_ceiling: keptTokens > ceiling, escalations, protect_tail: protectTail,
-    decisions,
+function makeCallLog() {
+  let lastEvict = null;
+  return ({ tool, ok, ms, input, outcome }) => {
+    if (!ok) {
+      record({ event: 'assemble_error', tool, ms, error: `${outcome.error?.code}: ${outcome.error?.message}`.slice(0, 800) });
+      return;
+    }
+    const data = outcome.data;
+    if (tool === 'context_evict') {
+      lastEvict = { turn: data.turn, window: input.window_tokens, reserve: input.reserve_tokens ?? 0, evicted: data.evicted, fired: data.fired, live_before: data.live_tokens_before, live_after: data.live_tokens_after, ms };
+      record({ event: 'evict', ...lastEvict });
+      return;
+    }
+    if (tool !== 'context_verdicts') {
+      record({ event: 'tool', tool, ms });
+      return;
+    }
+    const evict = lastEvict?.turn === data.turn ? lastEvict : null;
+    record({
+      event: 'assemble', turn: data.turn, window: evict?.window ?? null, evict_called: evict !== null,
+      total: data.total_tokens, kept_tokens: data.kept_tokens, evicted: evict?.evicted ?? [], evicted_total: data.evicted_units,
+      live_unit_tokens: evict?.live_after ?? null, ceiling: input.ceiling_tokens ?? null, over_ceiling: data.over_ceiling,
+      escalations: data.escalations, protect_tail: data.protect_tail, indexed: data.indexed, ms: ms + (evict?.ms ?? 0),
+      dropped: data.decisions.filter((d) => d.action === 'drop').length,
+      folded: data.decisions.filter((d) => d.action === 'fold').length,
+      fold_unavailable: data.decisions.filter((d) => d.action === 'drop' && d.foldWanted).length,
+      ...(G0_DROP_FIRST ? { g0: 'drop_first' } : {}),
+    });
   };
 }
 
-function startAssembleServer({ port, handle, session, token }) {
-  if (!port) return null;
-  const server = http.createServer((req, res) => {
-    if (req.method !== 'POST' || !req.url.startsWith('/assemble')) {
-      res.writeHead(404).end('{}');
-      return;
-    }
-    // The agent shares this loopback and runs with `--auto`. A stray POST would advance
-    // the turn counter and shift the cadence phase, so callers prove they are the plugin.
-    if (token && req.headers['x-ct-token'] !== token) {
-      record({ event: 'assemble_rejected', reason: 'bad-token' });
-      res.writeHead(403).end('{}');
-      return;
-    }
-    const chunks = [];
-    req.on('data', (c) => chunks.push(c));
-    req.on('end', async () => {
-      let out;
-      const started = Date.now();
-      try {
-        const body = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
-        if (!Array.isArray(body.messages) || body.messages.length === 0) {
-          record({ event: 'assemble_rejected', reason: 'no-messages' });
-          res.writeHead(400).end(JSON.stringify({ decisions: [] }));
-          return;
-        }
-        out = await assembleForTurn({ handle, session, messages: body.messages, query: body.query ?? '' });
-        record({
-          event: 'assemble', ...out, decisions: undefined, ms: Date.now() - started,
-          dropped: out.decisions.filter((d) => d.action === 'drop').length,
-          folded: out.decisions.filter((d) => d.action === 'fold').length,
-          fold_unavailable: out.decisions.filter((d) => d.action === 'drop' && d.foldWanted).length,
-        });
-      } catch (error) {
-        // Fail OPEN: a broken arm must leave the prompt untouched, not break the run.
-        record({ event: 'assemble_error', ms: Date.now() - started, error: String(error?.stack ?? error).slice(0, 800) });
-        out = { decisions: [], error: String(error?.message ?? error) };
-      }
-      res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(out));
-    });
-  });
-  // An EADDRINUSE here would otherwise raise an uncaught 'error' and take the process
-  // down, losing the MCP tools as well as assembly for the rest of the run.
-  server.on('error', (error) => {
-    record({ event: 'assemble_server_error', error: String(error?.message ?? error) });
-    log(`assemble server error: ${error?.message ?? error}`);
-  });
-  server.listen(port, '127.0.0.1');
-  return server;
+/** The G0 gate swaps ONE stage behind its name; the transports and the plugin are untouched. */
+const g0Verdicts = async (_ctx, input) => {
+  const messages = input?.messages ?? [];
+  const total = messages.reduce((n, m) => n + (m.tokens ?? 0), 0);
+  return {
+    ok: true,
+    data: { turn: input?.turn ?? 0, indexed: true, total_tokens: total, kept_tokens: total, protect_tail: 0, escalations: 0, over_ceiling: false, evicted_units: 0, decisions: g0Decisions(messages, G0_FOLD_TEXT) },
+  };
+};
+
+function neutralPhasesFromEnv() {
+  const raw = process.env.CT_CT_NEUTRAL_PHASES;
+  if (raw === undefined || raw === '') return {};
+  return { neutralPhases: raw === 'none' ? [] : raw.split(',').map((p) => p.trim()).filter(Boolean) };
 }
 
 async function main() {
@@ -576,19 +289,30 @@ async function main() {
   mkdirSync(dirname(ROOT), { recursive: true });
   if (LOG) mkdirSync(dirname(LOG), { recursive: true });
 
-  const problems = validateArm();
-  if (problems.length > 0) throw new Error(`arm misconfigured: ${problems.join('; ')}`);
-
-  const config = resolveConfig({ root: ROOT, taskTitle: 'swebench task' }, dirname(ROOT));
+  const pipeline = pipelineFromEnv();
+  const config = resolveConfig({ root: ROOT, taskTitle: 'swebench task', ...neutralPhasesFromEnv() }, dirname(ROOT));
   const handle = openTaskStore(config);
   const retriever = new TreeRetriever({ store: handle.store, blobs: handle.blobs, trace: handle.trace });
-  const server = createServer({ config, handle, retriever, mode: config.mode });
-  const session = makeSession();
+  const session = createSession(pipeline);
+  const tools = G0_DROP_FIRST ? withHandlers({ context_verdicts: g0Verdicts }) : TOOLS;
+  const contract = process.env.CT_CONTRACT || 'v1';
+  const options = { config, handle, retriever, mode: config.mode, session, tools, contract };
+  const ctx = toolContext(options);
+  const server = createServer(options, ctx);
 
   const port = Number(process.env.CT_ASSEMBLE_PORT ?? 8899);
-  const assembleServer = startAssembleServer({ port, handle, session, token: process.env.CT_ASSEMBLE_TOKEN || '' });
+  let api = null;
+  if (port) {
+    try {
+      api = await createHttpApi({ ctx, tools, port, token: process.env.CT_ASSEMBLE_TOKEN || '', onCall: makeCallLog() });
+    } catch (error) {
+      // EADDRINUSE must not take the process down: the agent would lose the MCP tools too.
+      record({ event: 'assemble_server_error', error: String(error?.message ?? error) });
+      log(`http api error: ${error?.message ?? error}`);
+    }
+  }
 
-  const follow = makeFollower(handle, { session, onIndex: (index) => { session.seqIndex = index; } });
+  const follow = makeFollower(handle, { onIndex: (index) => { session.messageIndex = index; } });
   let db = null;
   const openDb = () => {
     if (db || !existsSync(DB)) return db;
@@ -614,7 +338,7 @@ async function main() {
     if (closing) return;
     closing = true;
     clearInterval(timer);
-    assembleServer?.close();
+    void api?.close();
     record({ event: 'shutdown', signal, turns: session.turn });
     void server.close().finally(() => {
       try {
@@ -630,8 +354,8 @@ async function main() {
   process.on('SIGTERM', () => shutdown('SIGTERM'));
 
   await server.connect(new StdioServerTransport());
-  record({ event: 'ready', root: ROOT, db: DB, poll_ms: POLL_MS, assemble_port: port, arm: ARM, g0_drop_first: G0_DROP_FIRST });
-  log(`ready (root=${ROOT}, db=${DB}, poll=${POLL_MS}ms, assemble=${port || 'off'}, trigger=${ARM.trigger})`);
+  record({ event: 'ready', root: ROOT, db: DB, poll_ms: POLL_MS, http_port: api?.port ?? null, pipeline, neutral_phases: config.neutralPhases, contract, tools: tools.map((t) => t.name), g0_drop_first: G0_DROP_FIRST });
+  log(`ready (root=${ROOT}, db=${DB}, poll=${POLL_MS}ms, http=${api?.port ?? 'off'}, anchor=${pipeline.anchor})`);
 }
 
 const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];

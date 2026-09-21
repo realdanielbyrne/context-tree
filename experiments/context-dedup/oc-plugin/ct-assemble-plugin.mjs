@@ -17,10 +17,12 @@
  *      with `compaction.auto: false`, so that second call does not happen; if it ever
  *      does, the turn counter would double-count.
  *
- * The plugin is deliberately thin. It runs inside opencode's bun runtime, while the
- * pipeline it serves (SQLite store, tree-sitter, `assembleFlex`) needs Node — so the
- * decision is made by the sidecar over loopback, and a fault there leaves the prompt
- * untouched rather than taking down the host we are measuring.
+ * The plugin holds the POLICY and nothing else. The pipeline is tools served over loopback
+ * HTTP by `@context-tree/mcp` (D22), running in the sidecar because it needs Node (SQLite,
+ * tree-sitter) and this is opencode's bun runtime. Each turn the plugin calls
+ * `context_evict` if — and only if — its policy says so (`policy.mjs`), then
+ * `context_verdicts` to learn what that means for the host's messages. A fault in either
+ * call leaves the prompt untouched rather than taking down the host we are measuring.
  *
  * It registers exactly ONE hook. A plugin registering only `chat.params` hung opencode
  * at init in this repo's own run (`oc-runner.mjs:27-29`, cause undiagnosed).
@@ -29,15 +31,17 @@
  * plugin factory, so a second export aborts the load and registers no hooks at all —
  * the helper lives in `apply-decisions.mjs` for that reason.
  *
- *   CT_ASSEMBLE_URL    sidecar endpoint       (default http://127.0.0.1:8899/assemble)
- *   CT_ASSEMBLE_MS     per-turn timeout       (default 8000)
+ *   CT_TOOLS_URL       the tool API's base    (default http://127.0.0.1:8899/v1/tools)
+ *   CT_ASSEMBLE_MS     per-turn budget, shared by both calls (default 8000)
+ *   CT_CT_*            the policy — see policy.mjs
  *   CT_ASSEMBLE_TOKEN  shared secret; the agent shares this loopback
  *   CT_PLUGIN_EVENTS   jsonl of what each turn did, for the fire gate
  */
 import { appendFileSync } from 'node:fs';
 import { applyDecisions } from './apply-decisions.mjs';
+import { ceilingOf, evictCallFor, policyFromEnv, validatePolicy } from './policy.mjs';
 
-const URL_ = process.env.CT_ASSEMBLE_URL || 'http://127.0.0.1:8899/assemble';
+const URL_ = process.env.CT_TOOLS_URL || 'http://127.0.0.1:8899/v1/tools';
 const TIMEOUT_MS = Number(process.env.CT_ASSEMBLE_MS || 8000);
 const TOKEN = process.env.CT_ASSEMBLE_TOKEN || '';
 const EVENTS = process.env.CT_PLUGIN_EVENTS || '';
@@ -65,20 +69,24 @@ const estimateTokens = (message) => {
 
 const hasTools = (message) => (message.parts ?? []).some((p) => p.type === 'tool');
 
-/** The turn's question, for retrieval: the newest user text in the array. */
-function queryOf(messages) {
-  for (let i = messages.length - 1; i >= 0; i -= 1) {
-    if (messages[i]?.info?.role !== 'user') continue;
-    const text = (messages[i].parts ?? []).filter((p) => p.type === 'text').map((p) => p.text).join('\n');
-    if (text.trim()) return text.slice(0, 2000);
-  }
-  return '';
-}
-
 // A plugin that fails to import registers no hooks and opencode says NOTHING about it —
 // no log line, no error — which is indistinguishable from a plugin that loaded and never
 // fired. One line at module scope tells the two apart afterwards.
-log({ event: 'loaded', url: URL_ });
+const POLICY = policyFromEnv();
+const PROBLEMS = validatePolicy(POLICY);
+log({ event: 'loaded', url: URL_, policy: POLICY, problems: PROBLEMS });
+
+async function callTool(name, body, deadline) {
+  const response = await fetch(`${URL_}/${name}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', ...(TOKEN ? { authorization: `Bearer ${TOKEN}` } : {}) },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(Math.max(1, deadline - Date.now())),
+  });
+  const outcome = await response.json();
+  if (!outcome?.ok) throw new Error(`${name}: ${outcome?.error?.code ?? response.status} ${outcome?.error?.message ?? ''}`.trim());
+  return outcome.data;
+}
 
 export const server = async () => {
   log({ event: 'registered' });
@@ -88,36 +96,40 @@ export const server = async () => {
       turn += 1;
       const messages = output?.messages;
       if (!Array.isArray(messages) || messages.length === 0) return;
+      // A mistyped knob is refused by the runner before anything starts; if one gets here
+      // anyway the arm does nothing and says so, rather than running on a NaN window.
+      if (PROBLEMS.length > 0) { log({ turn, error: `policy refused: ${PROBLEMS.join('; ')}`, applied: false }); return; }
 
-      const payload = {
-        query: queryOf(messages),
-        messages: messages.map((m) => ({
-          id: m?.info?.id, role: m?.info?.role, tokens: estimateTokens(m), hasTools: hasTools(m),
-        })),
-      };
+      const sized = messages.map((m) => ({ id: m?.info?.id, tokens: estimateTokens(m), hasTools: hasTools(m) }));
       const before = messages.length;
-      const beforeTokens = payload.messages.reduce((n, m) => n + m.tokens, 0);
+      const beforeTokens = sized.reduce((n, m) => n + m.tokens, 0);
+      const deadline = Date.now() + TIMEOUT_MS;
+      const started = Date.now();
 
-      let decisions = [];
+      let evict = null;
+      let verdicts;
       try {
-        const response = await fetch(URL_, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json', ...(TOKEN ? { 'x-ct-token': TOKEN } : {}) },
-          body: JSON.stringify(payload),
-          signal: AbortSignal.timeout(TIMEOUT_MS),
-        });
-        const body = await response.json();
-        decisions = Array.isArray(body.decisions) ? body.decisions : [];
+        const call = evictCallFor(POLICY, turn, beforeTokens);
+        if (call) {
+          const { floor, ...args } = call;
+          evict = { floor, window: args.window_tokens, ...(await callTool('context_evict', args, deadline)) };
+        }
+        verdicts = await callTool('context_verdicts', {
+          messages: sized, protect_tail: POLICY.protectTail, summaries: POLICY.summaries, ceiling_tokens: ceilingOf(POLICY), turn,
+        }, deadline);
       } catch (error) {
-        // Fail open: an unreachable or slow sidecar must leave the turn untouched.
-        log({ turn, error: String(error?.message ?? error), before, applied: false });
+        // Fail open: an unreachable or slow server must leave the turn untouched.
+        log({ turn, error: String(error?.message ?? error), before, applied: false, ms: Date.now() - started });
         return;
       }
 
-      const applied = applyDecisions(messages, decisions);
+      const applied = applyDecisions(messages, verdicts.decisions ?? []);
       log({
-        turn, before, after: messages.length, before_tokens: beforeTokens,
-        dropped: applied.dropped, folded: applied.folded, decisions: decisions.length,
+        turn, before, after: messages.length, before_tokens: beforeTokens, kept_tokens: verdicts.kept_tokens,
+        dropped: applied.dropped, folded: applied.folded, decisions: (verdicts.decisions ?? []).length,
+        evict_called: evict !== null, evict_window: evict?.window ?? null, evict_floor: evict?.floor ?? false,
+        evicted_now: evict?.evicted?.length ?? 0, evicted_total: verdicts.evicted_units,
+        indexed: verdicts.indexed, over_ceiling: verdicts.over_ceiling, escalations: verdicts.escalations, ms: Date.now() - started,
       });
     },
   };

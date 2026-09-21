@@ -6,28 +6,45 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { planDecisions, windowForTurn, validateArm, ARM } from './ct-sidecar.mjs';
+import { pathToFileURL } from 'node:url';
+import { ceilingOf, evictCallFor, policyFromEnv, validatePolicy } from './oc-plugin/policy.mjs';
 import { applyDecisions } from './oc-plugin/apply-decisions.mjs';
-import { armDisagreements } from './swebench-opencode.mjs';
+import { armDisagreements, effectiveArm } from './swebench-opencode.mjs';
+
+// The verdict planner moved into the package with the rest of the pipeline (D22); these
+// cases stay here because they are about opencode's message shape.
+const { planVerdicts } = await import(pathToFileURL(new URL('../../packages/mcp/dist/index.js', import.meta.url).pathname).href);
+const planDecisions = ({ messages, index, evicted, protectTail, summaries }) =>
+  planVerdicts(messages, index ?? null, evicted.filter((u) => u.start !== null && u.start !== undefined).map((u) => ({ summary: null, ...u })), protectTail, !!summaries);
 import * as plugin from './oc-plugin/ct-assemble-plugin.mjs';
 
 const SOFT = 50_347;
 const HARD = 151_040;
-const arm = (trigger, turn, cadenceN = 5) =>
-  windowForTurn({ trigger, turn, softWindow: SOFT, hardWindow: HARD, cadenceN });
+const policy = (trigger, cadenceN = 5) => policyFromEnv({ CT_CT_TRIGGER: trigger, CT_CT_WINDOW: String(SOFT), CT_CT_HARD_WINDOW: String(HARD), CT_CT_CADENCE_N: String(cadenceN) });
+const windowOf = (trigger, turn, hostTokens = 1000) => evictCallFor(policy(trigger), turn, hostTokens)?.window_tokens ?? null;
 
-test('the trigger IS the window handed to the assembler, one arm per setting', () => {
-  // `off` must never evict: assembleFlex keeps everything when the budget is infinite.
-  assert.equal(arm('off', 1), Number.POSITIVE_INFINITY);
-  assert.equal(arm('hard', 1), HARD);
-  assert.equal(arm('soft', 1), SOFT);
+test('the trigger is WHETHER the plugin calls context_evict, and at what window', () => {
+  // `off` makes no call at all: eviction is sticky, so no call leaves the prompt as it was.
+  assert.equal(windowOf('off', 1), null);
+  assert.equal(windowOf('hard', 1), HARD);
+  assert.equal(windowOf('soft', 1), SOFT);
+  // Reserve = reply + the head the plugin cannot see, and it rides on the call.
+  assert.equal(evictCallFor(policy('soft'), 7, 1000).reserve_tokens, 8192 + 12_000);
+  assert.equal(evictCallFor(policy('soft'), 7, 1000).turn, 7);
 });
 
-test('cadence fires on every Nth turn and leaves the others untouched (U19)', () => {
-  const fired = [1, 2, 3, 4, 5, 6, 9, 10].map((t) => arm('cadence', t));
-  assert.deepEqual(fired, [Infinity, Infinity, Infinity, Infinity, SOFT, Infinity, Infinity, SOFT]);
+test('cadence is the ABSENCE of the call on off turns (U19)', () => {
+  const fired = [0, 1, 2, 3, 4, 5, 6, 9, 10].map((t) => windowOf('cadence', t));
   // Turn 0 never fires: a cadence that evicts before there is history is not a cadence.
-  assert.equal(arm('cadence', 0), Number.POSITIVE_INFINITY);
+  assert.deepEqual(fired, [null, null, null, null, null, SOFT, null, null, SOFT]);
+});
+
+test('the floor fires under every arm when the host prompt alone would overflow, and says it is the floor', () => {
+  const over = ceilingOf(policy('off')) + 1;
+  assert.deepEqual(evictCallFor(policy('off'), 3, over), { window_tokens: HARD, reserve_tokens: 20_192, turn: 3, floor: true });
+  assert.equal(evictCallFor(policy('cadence'), 3, over).floor, true);
+  assert.equal(evictCallFor(policy('soft'), 3, over).floor, false, 'an arm that already fires is not the floor');
+  assert.equal(ceilingOf(policy('off')), HARD - 12_000 - 8192);
 });
 
 const msg = (id, extra = {}) => ({ id, role: 'assistant', tokens: 100, hasTools: false, ...extra });
@@ -125,8 +142,9 @@ test('dropping several messages removes exactly those, whatever their order in t
   assert.deepEqual(live.map((m) => m.info.id), ['b', 'd']);
 });
 
-test('the arm defaults to inert, so a misconfigured run cannot silently evict', () => {
-  assert.equal(ARM.trigger, 'off');
+test('the policy defaults to inert, so a run that loses its environment is the control', () => {
+  assert.equal(policyFromEnv({}).trigger, 'off');
+  assert.equal(evictCallFor(policyFromEnv({}), 5, 1000), null);
 });
 
 
@@ -156,17 +174,17 @@ test('the plugin registers the assembly hook and nothing that has hung opencode 
   assert.equal(hooks['chat.params'], undefined);
 });
 
-test('a misconfigured arm is refused rather than silently reduced to its control', () => {
-  const base = { ...ARM, trigger: 'soft' };
-  // `CT_CT_WINDOW=50k` -> NaN -> windowForTurn returns NaN -> the keep-everything path.
-  assert.ok(validateArm({ ...base, softWindow: Number('50k') }).some((p) => p.includes('CT_CT_WINDOW')));
-  // A NaN reserve makes `evictableTotal > NaN` false inside assembleFlex: nothing is ever
-  // evicted and nothing is ever logged.
-  assert.ok(validateArm({ ...base, replyReserve: Number('x') }).some((p) => p.includes('CT_CT_REPLY_RESERVE')));
-  assert.ok(validateArm({ ...base, cadenceN: 0 }).some((p) => p.includes('CT_CT_CADENCE_N')));
-  assert.ok(validateArm({ ...base, trigger: 'sofft' }).some((p) => p.includes('CT_CT_TRIGGER')));
-  assert.ok(validateArm({ ...base, softWindow: 200_000 }).some((p) => p.includes('exceeds')));
-  assert.deepEqual(validateArm(base), []);
+test('a misconfigured policy is refused rather than silently reduced to its control', () => {
+  const env = { CT_CT_TRIGGER: 'soft' };
+  const bad = (extra) => validatePolicy(policyFromEnv({ ...env, ...extra }));
+  // `CT_CT_WINDOW=50k` -> NaN -> a window that evicts nothing, with nothing logged.
+  assert.ok(bad({ CT_CT_WINDOW: '50k' }).some((p) => p.includes('CT_CT_WINDOW')));
+  assert.ok(bad({ CT_CT_REPLY_RESERVE: 'x' }).some((p) => p.includes('CT_CT_REPLY_RESERVE')));
+  assert.ok(bad({ CT_CT_HEAD_TOKENS: '-1' }).some((p) => p.includes('CT_CT_HEAD_TOKENS')));
+  assert.ok(bad({ CT_CT_CADENCE_N: '0' }).some((p) => p.includes('CT_CT_CADENCE_N')));
+  assert.ok(bad({ CT_CT_TRIGGER: 'sofft' }).some((p) => p.includes('CT_CT_TRIGGER')));
+  assert.ok(bad({ CT_CT_WINDOW: '200000' }).some((p) => p.includes('exceeds')));
+  assert.deepEqual(bad({}), []);
 });
 
 test('a fold the message shape cannot take is recorded, so a summaries arm cannot look inert by accident', () => {
@@ -211,25 +229,29 @@ test('the sidecar ingests a message only once it can gain no further events', ()
  * its own defaults (`trigger: off`, which never evicts) while the cell recorded the arm
  * that was asked for. The cell now carries the sidecar's own account of what it booted.
  */
-test('a sidecar booted on different settings than were asked for is reported, not recorded as the arm', () => {
-  const asked = { CT_CT_TRIGGER: 'soft', CT_CT_WINDOW: '50347', CT_CT_SUMMARIES: '0' };
-  const agreed = { trigger: 'soft', softWindow: 50_347, summaries: false };
-  assert.deepEqual(armDisagreements(asked, agreed), []);
+test('an arm that booted on different settings than were asked for is reported, not recorded as the arm', () => {
+  const asked = { CT_CT_TRIGGER: 'soft', CT_CT_WINDOW: '50347', CT_CT_SUMMARIES: '0', CT_CT_ANCHOR: '3', CT_CT_W_DORMANCY: '2' };
+  const ready = { pipeline: { anchor: 3, weights: { priority: 2, recency: 1, refRecency: 0.5, dormancy: 2 } }, neutral_phases: ['other'], contract: 'v1' };
+  const loaded = { policy: { trigger: 'soft', softWindow: 50_347, summaries: false } };
+  assert.deepEqual(armDisagreements(asked, effectiveArm(ready, loaded)), []);
 
-  // The exact failure G0 found: the env never arrived, so the sidecar defaulted to `off`.
-  const defaulted = { trigger: 'off', softWindow: 50_347, summaries: false };
-  const found = armDisagreements(asked, defaulted);
+  // The exact failure G0 found: the env never arrived, so the process ran its own defaults.
+  const found = armDisagreements(asked, effectiveArm(ready, { policy: { ...loaded.policy, trigger: 'off' } }));
   assert.equal(found.length, 1);
   assert.match(found[0], /CT_CT_TRIGGER: asked "soft", sidecar booted "off"/);
+  // The two halves travel separately, so each can go missing separately.
+  assert.match(armDisagreements(asked, effectiveArm({ ...ready, pipeline: { ...ready.pipeline, anchor: 4 } }, loaded))[0], /CT_CT_ANCHOR/);
 });
 
-test('a sidecar that never reported ready is a disagreement, not an agreement', () => {
+test('a sidecar that never reported ready, or a plugin that never loaded, is a disagreement', () => {
   // Absent evidence must never read as confirmation.
-  assert.deepEqual(armDisagreements({ CT_CT_TRIGGER: 'soft' }, undefined).length, 1);
+  assert.equal(effectiveArm(undefined, { policy: {} }), null);
+  assert.equal(effectiveArm({ pipeline: {} }, undefined), null);
+  assert.deepEqual(armDisagreements({ CT_CT_TRIGGER: 'soft' }, null).length, 1);
 });
 
-test('summaries and numeric knobs are compared after casting, not as strings', () => {
-  const asked = { CT_CT_SUMMARIES: '1', CT_CT_TOPK: '5' };
-  assert.deepEqual(armDisagreements(asked, { summaries: true, topK: 5 }), []);
-  assert.equal(armDisagreements(asked, { summaries: false, topK: 5 }).length, 1);
+test('summaries, numbers and phase lists are compared after casting, not as strings', () => {
+  const asked = { CT_CT_SUMMARIES: '1', CT_CT_DRIFT_K: '5', CT_CT_NEUTRAL_PHASES: 'none' };
+  assert.deepEqual(armDisagreements(asked, { summaries: true, driftK: 5, neutralPhases: '' }), []);
+  assert.equal(armDisagreements(asked, { summaries: false, driftK: 5, neutralPhases: 'other' }).length, 2);
 });
