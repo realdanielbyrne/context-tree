@@ -70,6 +70,7 @@ export {
 export {
   ARGS_CAP_WITH_BLOB,
   elision,
+  hostContent,
   renderEvent,
   renderLinksBlock,
   renderSummaryBlock,

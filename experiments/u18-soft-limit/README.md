@@ -21,9 +21,11 @@ Only what is specific to this harness is defined here:
   `experimental.chat.messages.transform`, the only point where the prompt can be edited. A
   treatment turn calls `assemble`, then `evict` **if its policy fires**, and applies the returned
   per-message decisions in place. **The arm is that call sequence.**
-- **Plugin estimate** — the plugin's own `ceil(chars/4)` size of the message array, measured after
-  the edit (`kept_tokens`). A third number beside the heuristic W is compared against and the served
-  count; on the first gate cell one session read 139,151 by it and 89,545 by the heuristic.
+- **Plugin estimate** — the size of the message array after the edit (`kept_tokens`), in the
+  **same tokenizer over the same content** as the sidecar's unit sizes (`oc-plugin/size.mjs`;
+  core `hostContent`). Replayed on the soft gate cell the two agree exactly on every turn. Until
+  2026-09-21 the plugin used `ceil(chars/4)` and the sidecar sized a debug rendering; they differed
+  by up to 1.5× on one session.
 
 ## Run it
 
@@ -174,12 +176,12 @@ rotation no longer balances time for them.
 ## Known limits
 
 - n = 30 per arm cannot show equivalence, only fail to find a ≥ 3-solve loss.
-- **W is nominal, in a unit nobody serves.** W is compared against `HeuristicTokenizer` unit
-  tokens; the ceiling and `kept_tokens` are the plugin's chars/4; the provider counts neither. See
-  Terms for the measured served-per-heuristic range and why no single factor is quoted. The
-  ceiling (`151,040 − head − reserve` = 130,848, chars/4) therefore does not provably protect the
-  real window, and `hard` may overflow before it ever evicts — which is why `hard` has its own gate
-  cell. The gate's `real peak ≤ 1.3 × W` compares served tokens to a heuristic W and is loose by
+- **W is nominal, in a unit nobody serves.** W, the ceiling and `kept_tokens` are all core
+  `HeuristicTokenizer` tokens over what the host sends; the provider counts something else. Over
+  the 25 unedited turns of the hard gate cell the provider served **0.92** tokens per heuristic
+  token (chars/4 on the same turns: 1.19), so the heuristic over-counts by about a tenth and a
+  limit is held slightly early. That is one cell's slope, not a conversion factor — see Terms.
+  `hard` keeps its own gate cell because the ceiling is still an estimate of the real window. The gate's `real peak ≤ 1.3 × W` compares served tokens to a heuristic W and is loose by
   that same unknown.
 - **At this W, `assemble` reduces nothing.** The per-unit budget is `(f·W − reserve) ÷ (A + 1)`;
   at W = 50,347 with a 20,192 reserve and `f` = 0.375 it is 0. The `soft` arm at the default knobs is

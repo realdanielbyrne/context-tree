@@ -40,6 +40,7 @@
  */
 import { appendFileSync } from 'node:fs';
 import { applyDecisions } from './apply-decisions.mjs';
+import { TOKENIZER_ID, sizeOf } from './size.mjs';
 import { assembleWindowFor, ceilingOf, evictCallFor, policyFromEnv, reserveOf, validatePolicy } from './policy.mjs';
 
 const URL_ = process.env.CT_TOOLS_URL || 'http://127.0.0.1:8899/v1/tools';
@@ -56,20 +57,7 @@ const log = (ev) => {
   }
 };
 
-/** ~4 chars per token — the host's own fallback, and good enough to rank messages. */
-const estimateTokens = (message) => {
-  let chars = 0;
-  for (const part of message.parts ?? []) {
-    if (typeof part.text === 'string') chars += part.text.length;
-    const state = part.state ?? {};
-    if (typeof state.output === 'string') chars += state.output.length;
-    if (state.input) chars += JSON.stringify(state.input).length;
-  }
-  return Math.ceil(chars / 4);
-};
-
 const hasTools = (message) => (message.parts ?? []).some((p) => p.type === 'tool');
-const sizeOf = (messages) => messages.reduce((n, m) => n + estimateTokens(m), 0);
 
 /** The turn's question — ranks what a reduction keeps: the newest user text in the array. */
 function queryOf(messages) {
@@ -86,7 +74,7 @@ function queryOf(messages) {
 // fired. One line at module scope tells the two apart afterwards.
 const POLICY = policyFromEnv();
 const PROBLEMS = validatePolicy(POLICY);
-log({ event: 'loaded', url: URL_, policy: POLICY, problems: PROBLEMS });
+log({ event: 'loaded', url: URL_, policy: POLICY, tokenizer: TOKENIZER_ID, problems: PROBLEMS });
 
 async function callTool(name, body, deadline) {
   const response = await fetch(`${URL_}/${name}`, {

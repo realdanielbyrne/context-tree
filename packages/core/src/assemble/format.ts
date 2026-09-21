@@ -103,6 +103,28 @@ export function renderLinksBlock(node: TreeNode, links: readonly NodeLink[]): st
  */
 export const ARGS_CAP_WITH_BLOB = 512;
 
+/**
+ * What a HOST sends for this event — the strings a unit is SIZED by. Not `renderEvent`:
+ * that adds `### …` headers and repeats a write's content from its post-state blob, none of
+ * which a host puts in the prompt, and a unit sized by it cannot be compared with the
+ * message array it stands for.
+ */
+export function hostContent(event: TraceEvent, blobs: BlobStore): string[] {
+  switch (event.type) {
+    case 'user_message':
+    case 'assistant_message':
+    case 'reasoning':
+      return [blobs.getText(event.blob)];
+    case 'tool_call':
+      return event.args_blob === undefined ? [] : [blobs.getText(event.args_blob)];
+    case 'tool_result':
+      return event.output_blob === undefined ? [] : [blobs.getText(event.output_blob)];
+    case 'segment_boundary':
+    case 'manual_annotation':
+      return [];
+  }
+}
+
 export function renderEvent(event: TraceEvent, blobs: BlobStore): string {
   switch (event.type) {
     case 'user_message':

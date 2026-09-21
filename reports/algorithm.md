@@ -230,7 +230,7 @@ registry cannot say is what each quantity *means*:
 | Reducer | chunk (keep the spans matching the query, mark the gaps) or summarize; default chunk |
 | Chunker, `RRF_K` | recursive character splitter; rank-fusion constant |
 | Reply reserve | the host-declared `Model.limit.output`, plus whatever the caller cannot see (system block, tool schemas) |
-| Tokenizer | **heuristic**: an arithmetic count (`HeuristicTokenizer`), not the served tokenizer. The served-per-heuristic ratio is a per-turn *measurement* that differs by problem and drifts within a run (observed 1.14 → 1.19 in one session, ~1.28 in another) — never a conversion constant |
+| Tokenizer | **heuristic, and one of them**: `HeuristicTokenizer` over what the host sends for a unit (`hostContent`: reasoning, text, tool input, tool output — not the rendering's headers). A host plugin sizes its message array the same way, so a window is ruled and checked in one unit. It is not the served tokenizer: measured 0.92 served tokens per heuristic token over one cell's unedited turns (`chars/4`, which the plugin used until 2026-09-21: 1.19). That ratio is a per-turn *measurement* that differs by problem and drifts within a run — never a conversion constant |
 | Embedding model, summarizer | small local encoder (MiniLM-class); cheap model, output versioned, must include rehydration pointers |
 
 ## Status

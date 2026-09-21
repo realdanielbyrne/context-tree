@@ -235,7 +235,7 @@ export function servedPerStep(runDir) {
  * SERVED tokens per HEURISTIC token, measured turn by turn.
  *
  * "Heuristic" = computed by arithmetic rather than by the served tokenizer: here the
- * plugin's `ceil(chars/4)` per message (`kept_tokens`). "Served" = what the provider
+ * plugin's `kept_tokens`, which is the sidecar's own tokenizer over the same content. "Served" = what the provider
  * reports for that step, minus step one's prompt (the head the plugin cannot see, assumed
  * constant). So this is an estimate of an estimate, and it is NOT a constant: it differs
  * by problem and drifts within a run, plausibly with the content mix. Reported as a
@@ -254,7 +254,7 @@ export function servedPerHeuristic(rows, served) {
 
 /**
  * What one ct cell's own logs say. The PLUGIN's rows are per turn and measured after the edit
- * (what was actually sent, in the plugin's chars/4); the SIDECAR's `evict` rows are the ruling
+ * (what was actually sent); the SIDECAR's `evict` rows are the ruling
  * (in unit tokens, the heuristic W is compared against).
  */
 export function sidecarStats(runDir) {

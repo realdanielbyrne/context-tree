@@ -101,10 +101,11 @@ Each of these produces a run that completes, grades, and reports nothing wrong.
 - **`@opencode-ai/plugin` fails to install in the sandbox** (`background dependency install failed`,
   ECONNREFUSED — there is no network). It is a detached fork whose result is ignored, so it does
   **not** block plugin loading. Expect the WARN in every sandboxed run and do not chase it.
-- **Tokens in this arm are HEURISTIC, in two different heuristics.** W is compared against core's
-  `HeuristicTokenizer` over unit text; `kept_tokens` and the ceiling are the plugin's chars/4. The
-  same session measured 89,545 and 139,151. Neither is served tokens, and the served/heuristic
-  ratio is a per-turn measurement that drifts (1.14→1.19 within one cell), never a constant.
+- **Tokens in this arm are HEURISTIC — one heuristic, on both sides.** Sidecar unit sizes, W, the
+  ceiling and the plugin's `kept_tokens` are all core's `HeuristicTokenizer` over what the host
+  sends (`hostContent` / `oc-plugin/size.mjs`). It is not the served tokenizer: one cell measured
+  0.92 served tokens per heuristic token (chars/4, used before 2026-09-21, measured 1.19). The
+  ratio is a per-turn measurement that drifts, never a constant.
 - **Unit granularity decides whether a limit can be held at all.** With `CT_CT_UNIT=phase` one
   unit can be a 30-turn, ~80K `diagnosis` phase; U18's first gate failed exactly that way. The
   default is now `turn` (one host message): replayed offline, that same session stayed inside its

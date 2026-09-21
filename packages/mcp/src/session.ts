@@ -17,6 +17,7 @@ import {
   HeuristicTokenizer,
   KEEP,
   deriveTurns,
+  hostContent,
   mapFlexUnits,
   renderEvent,
   splitText,
@@ -47,6 +48,7 @@ export interface SessionUnit {
   readonly hasTools: boolean;
   readonly flex: FlexUnit;
   readonly drift: DriftResult;
+  /** Sized by what the host sends (`hostContent`), so it is the number a host plugin gets for the same message. */
   readonly tokens: number;
   /** `splitText(raw)` under the session's chunk options — the sub-unit retrieval ranks and reduction keeps. */
   readonly chunks: number;
@@ -170,8 +172,10 @@ export async function sessionUnits(ctx: ToolContext): Promise<Snapshot> {
   const chunkOptions = { chunkSize: session.params.chunkSize, chunkOverlap: session.params.chunkOverlap };
   const units = spans.map((span, i): SessionUnit => {
     const flex = mapped.units[i]!;
-    const hasTools = events.slice(span.startSeq - 1, span.endSeq).some((e) => e.type === 'tool_call');
-    return { ...span, hasTools, flex, drift: mapped.drift[i]!, tokens: session.tokenizer.count(flex.raw), chunks: splitText(flex.raw, chunkOptions).length };
+    const slice = events.slice(span.startSeq - 1, span.endSeq);
+    const hasTools = slice.some((e) => e.type === 'tool_call');
+    const tokens = slice.flatMap((e) => hostContent(e, blobs)).reduce((n, text) => n + session.tokenizer.count(text), 0);
+    return { ...span, hasTools, flex, drift: mapped.drift[i]!, tokens, chunks: splitText(flex.raw, chunkOptions).length };
   });
   session.snapshot = { lastSeq, units, corpus: mapped.corpus };
   return session.snapshot;

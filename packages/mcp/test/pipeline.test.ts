@@ -9,7 +9,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { TreeRetriever, ingest, openTaskStore, resolveConfig, type TaskStore } from '@context-tree/core';
+import { HeuristicTokenizer, TreeRetriever, ingest, openTaskStore, resolveConfig, type TaskStore } from '@context-tree/core';
 import {
   PIPELINE_DEFAULTS,
   PIPELINE_PARAMS,
@@ -81,12 +81,21 @@ describe('units / classify — one unit list for every stage', () => {
     expect(data.tokens_current).toBe(data.tokens_raw);
   });
 
+  it('a unit is sized by what the host sends — not by the rendering, whose headers and post-state no host sends', async () => {
+    const data = unwrap(await contextUnits(seed(), {}));
+    const count = (text: string): number => new HeuristicTokenizer().count(text);
+    const body = (t: number): string => Array.from({ length: 400 }, (_, w) => `turn${String(t)}word${String(w)}`).join(' ');
+    expect(data.units[0]!.tokens).toBe(count('fix the bug'));
+    expect(data.units[1]!.tokens).toBe(count('{}') + count(body(0)));
+    // An Edit's post-state blob repeats its args; only the result is host content here.
+    expect(data.units[2]!.tokens).toBe(count(body(1)));
+  });
+
   it("unit: 'phase' is the coarse legacy granularity over the same trace", async () => {
     const turns = unwrap(await contextUnits(seed(), {}));
     const phases = unwrap(await contextUnits(seed(8, 400, { unit: 'phase' }), {}));
     expect(phases.units.length).toBeLessThan(turns.units.length);
-    // Same text either way; only the newlines joining events inside a unit differ.
-    expect(Math.abs(phases.tokens_raw - turns.tokens_raw)).toBeLessThan(turns.units.length);
+    expect(phases.tokens_raw).toBe(turns.tokens_raw);
   });
 
   it('classify names the same units, and asking twice does not count an observation twice', async () => {
