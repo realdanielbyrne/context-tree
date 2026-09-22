@@ -45,7 +45,7 @@ import { parseJsonLines, sessionIdOf, summarizeEvents, costAt, classifyExit, sum
 import { chooseEndpoint, acquireSlots, LEASE_MARKER, MAX_LOCAL_SLOTS } from './swebench-endpoint.mjs';
 import { openSandbox, exitFromSandbox, pythonHomeOf, MASKED, MASKED_LIBRARIES } from './swebench-sandbox.mjs';
 import { writeResults, gitSha, nowISO } from '../rung-1-live-probe/lib.mjs';
-import { policyFromEnv, validatePolicy } from './oc-plugin/policy.mjs';
+import { FOLD_KEYS, foldsAloneOf, policyFromEnv, validatePolicy } from './oc-plugin/policy.mjs';
 import { pathToFileURL } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -297,6 +297,11 @@ export function armDisagreements(requested, ready) {
         const want = cast(requested[key]);
         if (ready[field] !== want) out.push(`${key}: asked ${JSON.stringify(want)}, sidecar booted ${JSON.stringify(ready[field])}`);
     }
+    // Whether the plugin calls `fold` without evicting is read from registry rows on ITS env: the
+    // sidecar agreeing to them says nothing about the plugin having seen them.
+    if (ready.foldsAlone !== undefined && ready.foldsAlone !== foldsAloneOf(requested)) {
+        out.push(`${FOLD_KEYS.join('/')}: asked foldsAlone=${String(foldsAloneOf(requested))}, plugin booted ${String(ready.foldsAlone)}`);
+    }
     return out;
 }
 
@@ -473,7 +478,7 @@ async function runOne(task, repeat) {
                     ...(OUTPUT_CAP > 0 ? { OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX: String(OUTPUT_CAP) } : {}),
                     // The plugin runs inside opencode, so its settings ride on the process env.
                     ...(WANTS_PLUGIN ? {
-                        ...POLICY_ENV, CT_ASSEMBLE_MS: ASSEMBLE_MS, ...(G0_DROP_FIRST ? { CT_G0_DROP_FIRST: '1' } : {}),
+                        ...POLICY_ENV, ...fromEnv(FOLD_KEYS), CT_ASSEMBLE_MS: ASSEMBLE_MS, ...(G0_DROP_FIRST ? { CT_G0_DROP_FIRST: '1' } : {}),
                         CT_TOOLS_URL: `http://127.0.0.1:${ASSEMBLE_PORT}/v1/tools`,
                         CT_PLUGIN_EVENTS: join(runDir, 'mcp', 'ct-plugin.jsonl'),
                     } : {}),

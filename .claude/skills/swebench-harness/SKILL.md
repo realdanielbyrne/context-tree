@@ -140,6 +140,11 @@ Each of these produces a run that completes, grades, and reports nothing wrong.
   each empty. What cannot be masked is pip's vendored copy inside every venv
   (`site-packages/pip/_vendor/requests`) — search a run's `events.jsonl` for it
   (`experiments/u18-soft-limit/lib.mjs foreignLibraryReads`). Re-check when the pool changes.
+- **The plugin and the sidecar read different halves of the env.** The plugin gets `POLICY_KEYS`
+  plus the registry rows it also reads (`policy.mjs FOLD_KEYS`); everything else reaches only the
+  sidecar. A plugin decision that reads a new registry row must add that row to `FOLD_KEYS`, or the
+  sidecar is configured for a mechanism the plugin never invokes — the think gate of 2026-09-21 ran
+  as its control this way with `arm_agrees: true`. The cell now compares the plugin's `foldsAlone` too.
 - **An arm byte-identical to its control is void, not a null result.** Prove the mechanism fired
   (units dropped > 0) before reporting anything about it.
 

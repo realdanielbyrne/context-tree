@@ -19,7 +19,17 @@
  */
 export const TRIGGERS = Object.freeze(['off', 'hard', 'soft']);
 
+/**
+ * Registry rows the plugin's policy ALSO reads. They are the sidecar's, but whether the plugin
+ * calls `fold` at all is decided here, so a driver must put them on opencode's process env too —
+ * the think gate of 2026-09-21 ran as its control because only the sidecar had them.
+ */
+export const FOLD_KEYS = Object.freeze(['CT_CT_FOLD_TRIGGER', 'CT_CT_FOLD_REASONING_AFTER']);
+
 const num = (env, key, fallback) => (env[key] === undefined || env[key] === '' ? fallback : Number(env[key]));
+
+/** Folding that runs without eviction: the segmenter's own trigger, or the think rule. */
+export const foldsAloneOf = (env) => (env.CT_CT_FOLD_TRIGGER || 'none') !== 'none' || num(env, 'CT_CT_FOLD_REASONING_AFTER', 0) > 0;
 
 /** Defaults are INERT: a run that loses its environment is the control, never a silent arm. */
 export function policyFromEnv(env = process.env) {
@@ -30,8 +40,7 @@ export function policyFromEnv(env = process.env) {
     replyReserve: num(env, 'CT_CT_REPLY_RESERVE', 8192),
     /** What the plugin cannot see: opencode's system block, tool schemas and skills. */
     headTokens: num(env, 'CT_CT_HEAD_TOKENS', 12_000),
-    /** Folding that runs without eviction: the segmenter's own trigger, or the think rule. */
-    foldsAlone: (env.CT_CT_FOLD_TRIGGER || 'none') !== 'none' || num(env, 'CT_CT_FOLD_REASONING_AFTER', 0) > 0,
+    foldsAlone: foldsAloneOf(env),
     /** The G0 gate: every turn calls `assemble`, whose handler the sidecar has swapped for the gate's edits. */
     gate: env.CT_G0_DROP_FIRST === '1',
   });

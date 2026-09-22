@@ -209,6 +209,15 @@ test('booleans, numbers and phase lists are compared after casting, not as strin
   assert.equal(armDisagreements(asked, { foldSummaries: false, driftK: 5, neutralPhases: 'other' }).length, 2);
 });
 
+test('the plugin booting without the fold keys it reads is a disagreement, not a control', () => {
+  // The think gate of 2026-09-21: the sidecar had fold_reasoning_after=3, the plugin's env did not,
+  // and the cell ran byte-identical to the control with arm_agrees true.
+  const asked = { CT_CT_FOLD_REASONING_AFTER: '3', CT_CT_FOLD_TRIGGER: 'none' };
+  assert.match(armDisagreements(asked, { foldReasoningAfter: 3, foldTrigger: 'none', foldsAlone: false }).join(' '), /asked foldsAlone=true, plugin booted false/);
+  assert.deepEqual(armDisagreements(asked, { foldReasoningAfter: 3, foldTrigger: 'none', foldsAlone: true }), []);
+  assert.deepEqual(armDisagreements({ CT_CT_TRIGGER: 'soft' }, { trigger: 'soft', foldsAlone: false }), []);
+});
+
 test('a stub is edits: the reasoning part removed, the output tagged; text and the call stay', () => {
   const tool = { type: 'tool', tool: 'read', state: { input: { filePath: 'a.py' }, output: 'long output' } };
   const original = { info: { id: 'b' }, parts: [{ type: 'reasoning', text: 'thinking…' }, { type: 'text', text: 'Let me read a.py' }, tool] };
