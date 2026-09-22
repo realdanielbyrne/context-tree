@@ -20,7 +20,10 @@ import type {
   TreeOp,
 } from '../contracts/index.js';
 import { TASK_KEY, fileKey, fileTitle, phaseKey, phaseTitle } from './keys.js';
-import { segmentByText } from './text-fallback.js';
+import { DEFAULT_BOUNDARY } from '../contracts/segment.js';
+import { cutsOf, tilingCuts } from './boundary.js';
+import { segmentByCuts } from './text-fallback.js';
+import { deriveTurns } from './turns.js';
 
 export interface SegmentOptions extends SegmentConfig {
   /**
@@ -53,8 +56,19 @@ export function segment(
       stats: { events: 0, phases: 0, fileNodes: 0, unmappedTools: [], usedTextFallback: false },
     };
   }
+  const boundary = config.boundary ?? DEFAULT_BOUNDARY;
+  if (boundary.strategy !== 'toolPhase' && config.textOf !== undefined) {
+    // A text strategy cuts between BLOCKS (turns), never inside one.
+    const textOf = config.textOf;
+    const turns = deriveTurns(events);
+    const cuts = cutsOf(turns.map((t) => events.slice(t.startSeq - first.seq, t.endSeq - first.seq + 1).map(textOf).join('\n')), boundary);
+    const starts = new Set([...cuts].map((i) => turns[i]!.startSeq - first.seq));
+    return segmentByCuts(events, { taskTitle: config.taskTitle, starts, usedTextFallback: false });
+  }
   if (!events.some((event) => event.type === 'tool_call')) {
-    return segmentByText(events, { taskTitle: config.taskTitle, textOf: config.textOf });
+    // §7 unstructured-trace fallback: TextTiling over events, the classic constants.
+    const starts = config.textOf === undefined ? new Set<number>() : tilingCuts(events.map(config.textOf), { window: 3, threshold: 0.5, topK: 0 });
+    return segmentByCuts(events, { taskTitle: config.taskTitle, starts, usedTextFallback: true });
   }
 
   const ops: TreeOp[] = [];

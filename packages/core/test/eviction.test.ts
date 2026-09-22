@@ -117,3 +117,27 @@ describe('planEviction', () => {
     expect(plan.evict).toEqual([2]);
   });
 });
+
+describe('covariance (D26): historical co-activation with what is hot, at weight 0 unless asked', () => {
+  it('scores a block by pairing history with the hot set, never by present overlap', async () => {
+    const { covarianceScores } = await import('../src/segment/index.js');
+    const fp = (...xs: string[]) => new Set(xs);
+    // a.ts and b.ts were always touched together; c.ts never with either. The hot window is {b.ts}.
+    const blocks = [fp('a.ts', 'b.ts'), fp('c.ts'), fp('a.ts', 'b.ts'), fp('c.ts', 'd.ts'), fp('a.ts', 'b.ts'), fp('a.ts'), fp('c.ts'), fp('b.ts')];
+    const scores = covarianceScores(blocks, { k: 1, m: 0 });
+    // The block that holds only a.ts: not hot itself, but a.ts co-fired with the hot b.ts every time.
+    expect(scores[5]).toBeGreaterThan(0);
+    // c.ts never co-fired with b.ts.
+    expect(scores[6]).toBeLessThanOrEqual(0);
+    // The hot block itself scores by nothing: its features are removed from both sides.
+    expect(scores[7]).toBe(0);
+  });
+
+  it('is inert in the score until wCovariance is set', () => {
+    const base = [{ priority: 0, recency: 1, refRecency: 0, dormancy: 0, covariance: 1 }, { priority: 0, recency: 2, refRecency: 0, dormancy: 0, covariance: 0 }];
+    const off = scoreUnits(base, { priority: 0, recency: 1, refRecency: 0, dormancy: 0 });
+    expect(off[1]).toBeGreaterThan(off[0]!);
+    const on = scoreUnits(base, { priority: 0, recency: 1, refRecency: 0, dormancy: 0, covariance: 5 });
+    expect(on[0]).toBeGreaterThan(on[1]!);
+  });
+});

@@ -94,6 +94,7 @@ export function ingest(options: IngestOptions): IngestResult {
     toolPhaseByCommand: config.toolPhaseByCommand,
     neutralPhases: config.neutralPhases,
     fileTools: config.fileTools,
+    boundary: config.boundary,
     taskTitle: config.taskTitle,
     textOf: textResolver(blobs),
   });

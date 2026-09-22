@@ -448,3 +448,40 @@ describe('segment — degenerate input', () => {
     ]);
   });
 });
+
+describe('segment — boundary strategies (D26): where to cut is a selectable rule', () => {
+  const topics = ['alpha beta gamma delta', 'alpha beta gamma epsilon', 'alpha gamma delta zeta', 'omega psi chi phi', 'omega psi chi tau', 'psi chi phi rho', 'kappa lambda mu nu', 'kappa lambda mu xi', 'lambda mu nu pi'];
+  const events = build(topics.flatMap((_, i) => [assistant(), call('Read', `f${String(i)}.ts`), result()]));
+  const textOf = (event: TraceEvent): string => topics[Math.floor((event.seq - 1) / 3)]!;
+  const phases = (seg: Segmentation) => seg.ops.filter((op): op is Extract<TreeOp, { op: 'open' }> => op.op === 'open' && op.kind === 'phase');
+
+  it('the default strategy is the tool-phase state machine, unchanged', () => {
+    const before = segment(events, options({ textOf }));
+    const after = segment(events, options({ textOf, boundary: { strategy: 'toolPhase', window: 3, threshold: 0.5, topK: 0 } }));
+    expect(after).toEqual(before);
+    expect(before.stats.usedTextFallback).toBe(false);
+  });
+
+  it('drift cuts between blocks where the topic moves, single pass, deterministic', () => {
+    const seg = segment(events, options({ textOf, boundary: { strategy: 'drift', window: 3, threshold: 1, topK: 0 } }));
+    const starts = phases(seg).map((p) => p.start_seq);
+    // Blocks (turns) are 3 events each; a cut lands on a turn's first event, never inside one.
+    expect(starts.every((s) => (s - 1) % 3 === 0)).toBe(true);
+    expect(starts.length).toBeGreaterThan(1);
+    expect(segment(events, options({ textOf, boundary: { strategy: 'drift', window: 3, threshold: 1, topK: 0 } }))).toEqual(seg);
+    expect(phases(seg).every((p) => p.phase_type === 'other')).toBe(true);
+  });
+
+  it('topK keeps only the strongest cuts', () => {
+    const all = segment(events, options({ textOf, boundary: { strategy: 'drift', window: 2, threshold: 0.5, topK: 0 } }));
+    const one = segment(events, options({ textOf, boundary: { strategy: 'drift', window: 2, threshold: 0.5, topK: 1 } }));
+    expect(phases(one)).toHaveLength(2);
+    expect(phases(all).length).toBeGreaterThanOrEqual(phases(one).length);
+  });
+
+  it('tiling over blocks is the classic rule with its constants exposed', () => {
+    const seg = segment(events, options({ textOf, boundary: { strategy: 'tiling', window: 1, threshold: 0.5, topK: 0 } }));
+    expect(phases(seg).length).toBeGreaterThan(1);
+    expect(seg.stats.usedTextFallback).toBe(false);
+  });
+});

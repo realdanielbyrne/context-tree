@@ -20,6 +20,7 @@ import {
   DEFAULT_SOFT_TARGET_FRAC,
   DRIFT_K,
   DRIFT_TAU,
+  type BoundaryConfig,
 } from '@context-tree/core';
 
 /**
@@ -86,6 +87,16 @@ export const PIPELINE_PARAMS = [
     describe: 'Half-life, in turns, of priority and of anchor protection.' },
   { key: 'headroomTokens', env: 'CT_CT_EVICT_HEADROOM', stages: ['evict'], kind: 'int', min: 0, default: 0,
     describe: 'Extra tokens freed beyond the budget when a ruling fires, so it does not fire again next turn.' },
+  { key: 'boundary', env: 'CT_CT_BOUNDARY', stages: [], kind: 'enum', values: ['toolPhase', 'tiling', 'drift'], default: 'toolPhase',
+    describe: 'Where the transcript is cut into segments: the tool-phase state machine, TextTiling between blocks, or causal lexical drift.' },
+  { key: 'boundaryWindow', env: 'CT_CT_BOUNDARY_WINDOW', stages: [], kind: 'int', min: 1, default: 3, describe: 'Blocks per comparison window for tiling and drift.' },
+  { key: 'boundaryThreshold', env: 'CT_CT_BOUNDARY_THRESHOLD', stages: [], kind: 'number', min: 0, default: 0.5,
+    describe: 'tiling: cut below mean − t·sd of the gap similarities. drift: cut above a z-score of t.' },
+  { key: 'boundaryTopK', env: 'CT_CT_BOUNDARY_TOPK', stages: [], kind: 'int', min: 0, default: 0, describe: 'Keep only the K strongest cuts; 0 keeps every cut over the threshold.' },
+  { key: 'wCovariance', env: 'CT_CT_W_COVARIANCE', stages: ['evict'], kind: 'number', min: 0, default: 0,
+    describe: 'Score weight: historical co-activation of a block\'s identifiers with the hot window\'s. 0 (untested live, U3) skips it.' },
+  { key: 'covarianceK', env: 'CT_CT_COVARIANCE_K', stages: ['evict'], kind: 'int', min: 1, default: 5, describe: 'Covariance: blocks in the hot window.' },
+  { key: 'covarianceM', env: 'CT_CT_COVARIANCE_M', stages: ['evict'], kind: 'number', min: 0, default: 2, describe: 'Covariance: low-support shrinkage phi × a ÷ (a + m).' },
   { key: 'driftK', env: 'CT_CT_DRIFT_K', stages: [], kind: 'int', min: 1, default: DRIFT_K, describe: 'Drift classifier: size of the recent window, in units.' },
   { key: 'driftTau', env: 'CT_CT_DRIFT_TAU', stages: [], kind: 'number', min: 0, default: DRIFT_TAU, describe: 'Drift classifier: z-drift above which a unit is dormant.' },
   { key: 'rrfK', env: 'CT_CT_RRF_K', stages: [], kind: 'number', min: 0, exclusiveMin: true, default: DEFAULT_RRF_K, describe: 'Rank-fusion constant.' },
@@ -98,6 +109,10 @@ type Spec = (typeof PIPELINE_PARAMS)[number];
 type ValueOf<S> = S extends { kind: 'enum'; values: readonly (infer V)[] } ? V : S extends { kind: 'bool' } ? boolean : number;
 
 export type PipelineParams = { readonly [S in Spec as S['key']]: ValueOf<S> };
+
+/** The segmenter's cut rule, as `resolveConfig` takes it. */
+export const boundaryOf = (p: Pick<PipelineParams, 'boundary' | 'boundaryWindow' | 'boundaryThreshold' | 'boundaryTopK'>): BoundaryConfig =>
+  ({ strategy: p.boundary, window: p.boundaryWindow, threshold: p.boundaryThreshold, topK: p.boundaryTopK });
 
 export const PIPELINE_DEFAULTS = Object.freeze(
   Object.fromEntries(PIPELINE_PARAMS.map((p) => [p.key, p.default])),

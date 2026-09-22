@@ -8,7 +8,7 @@
  * WHEN it calls: every turn, every Nth, only above some size, or never.
  */
 import { z } from 'zod';
-import { ensembleRetrieve, planRetention, tokensUnder, unitSignals, type RetentionUnit } from '@context-tree/core';
+import { covarianceScores, ensembleRetrieve, planRetention, tokensUnder, unitSignals, type RetentionUnit } from '@context-tree/core';
 import { stageArgsShape, withOverrides, type PipelineParams } from '../params.js';
 import { fail, failFrom, ok, parseArgs } from '../result.js';
 import { advanceTurn, dispositionOf, sessionOf, sessionUnits, type Session, type SessionUnit } from '../session.js';
@@ -103,6 +103,9 @@ export async function contextEvict(ctx: ToolContext, input: unknown): Promise<To
     const inline = new Map((args.assembly ?? []).map((row) => [row.id, row.assembled_tokens]));
     const pinned = pinnedIds(live);
     const signals = unitSignals(live.map((u) => u.flex), turn, params.priorityHalfLife);
+    if (params.wCovariance > 0) {
+      covarianceScores(live.map((u) => u.flex.fingerprints), { k: params.covarianceK, m: params.covarianceM }).forEach((c, i) => { signals[i] = { ...signals[i]!, covariance: c }; });
+    }
     const relevance = await relevanceRanks(session, live, params, query);
 
     const plan = planRetention(
@@ -119,7 +122,7 @@ export async function contextEvict(ctx: ToolContext, input: unknown): Promise<To
       {
         budgetTokens,
         headroomTokens: params.headroomTokens,
-        weights: { priority: params.wPriority, recency: params.wRecency, refRecency: params.wRefRecency, dormancy: params.wDormancy, relevance: params.wRelevance },
+        weights: { priority: params.wPriority, recency: params.wRecency, refRecency: params.wRefRecency, dormancy: params.wDormancy, relevance: params.wRelevance, covariance: params.wCovariance },
         protection: params.protection,
         protectionBonus: params.protectionBonus,
       },

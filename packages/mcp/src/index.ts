@@ -11,6 +11,7 @@ export { createHttpApi, type HttpApi, type HttpApiOptions } from './http.js';
 export {
   PIPELINE_DEFAULTS,
   PIPELINE_PARAMS,
+  boundaryOf,
   describeParams,
   pipelineFromEnv,
   stageArgsShape,

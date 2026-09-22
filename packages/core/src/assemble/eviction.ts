@@ -27,6 +27,8 @@ export interface EvictionSignals {
   refRecency: number;
   /** The classifier's continuous topic-shift drift. Higher = more dormant = evict. */
   dormancy: number;
+  /** Historical co-activation with what is hot now (`segment/score.ts`). Higher = keep. Absent = 0. */
+  covariance?: number;
 }
 
 export interface EvictionWeights {
@@ -34,6 +36,8 @@ export interface EvictionWeights {
   recency: number;
   refRecency: number;
   dormancy: number;
+  /** Absent = 0: covariance never enters unless asked for. */
+  covariance?: number;
 }
 
 /**
@@ -80,12 +84,14 @@ export function scoreUnits(
   const recencyN = minMaxNormalize(signals.map((s) => s.recency));
   const refRecencyN = minMaxNormalize(signals.map((s) => s.refRecency));
   const dormancyN = minMaxNormalize(signals.map((s) => s.dormancy));
+  const covarianceN = minMaxNormalize(signals.map((s) => s.covariance ?? 0));
   return signals.map(
     (_, i) =>
       weights.priority * priorityN[i]! +
       weights.recency * recencyN[i]! +
       weights.refRecency * refRecencyN[i]! -
-      weights.dormancy * dormancyN[i]!,
+      weights.dormancy * dormancyN[i]! +
+      (weights.covariance ?? 0) * covarianceN[i]!,
   );
 }
 

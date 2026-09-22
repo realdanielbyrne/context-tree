@@ -89,7 +89,10 @@ export const U18_FIXED = Object.freeze({ CT_CT_SUMMARIES: '0' });
  * knob is left out of the tag hash and may be absent from an older cell's record — otherwise
  * adding a parameter upstream would orphan every wave already run under the old hash.
  */
-const LATE_KNOBS = Object.freeze(['CT_CT_EVICT_MODE', 'CT_CT_SUMMARY_RENDER']);
+const LATE_KNOBS = Object.freeze([
+  'CT_CT_EVICT_MODE', 'CT_CT_SUMMARY_RENDER',
+  'CT_CT_BOUNDARY', 'CT_CT_BOUNDARY_WINDOW', 'CT_CT_BOUNDARY_THRESHOLD', 'CT_CT_BOUNDARY_TOPK', 'CT_CT_W_COVARIANCE', 'CT_CT_COVARIANCE_K', 'CT_CT_COVARIANCE_M',
+]);
 const atLateDefault = (ct, value) => LATE_KNOBS.includes(ct) && value === KNOBS.find((k) => k.ct === ct)?.def;
 
 /** Where U18 runs away from the package default, and since when. */

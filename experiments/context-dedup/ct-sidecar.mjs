@@ -52,7 +52,7 @@ const REPO = process.env.CT_REPO_ROOT ?? join(HERE, '..', '..');
 const dist = (pkg) => pathToFileURL(join(REPO, 'packages', pkg, 'dist', 'index.js')).href;
 
 const { OpenRouterProvider, Summarizer, TreeRetriever, ingest, openTaskStore, resolveConfig } = await import(dist('core'));
-const { TOOLS, countActions, createHttpApi, createServer, createSession, pipelineFromEnv, toolContext, withHandlers } = await import(dist('mcp'));
+const { TOOLS, boundaryOf, countActions, createHttpApi, createServer, createSession, pipelineFromEnv, toolContext, withHandlers } = await import(dist('mcp'));
 const { mapOpencodeExport } = await import(dist('cli'));
 
 const requireFromCore = createRequire(join(REPO, 'packages', 'core', 'dist', 'index.js'));
@@ -293,7 +293,7 @@ async function main() {
   if (LOG) mkdirSync(dirname(LOG), { recursive: true });
 
   const pipeline = pipelineFromEnv();
-  const config = resolveConfig({ root: ROOT, taskTitle: 'swebench task', ...neutralPhasesFromEnv() }, dirname(ROOT));
+  const config = resolveConfig({ root: ROOT, taskTitle: 'swebench task', boundary: boundaryOf(pipeline), ...neutralPhasesFromEnv() }, dirname(ROOT));
   const handle = openTaskStore(config);
   const retriever = new TreeRetriever({ store: handle.store, blobs: handle.blobs, trace: handle.trace });
   const session = createSession(pipeline);
