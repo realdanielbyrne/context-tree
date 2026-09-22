@@ -41,6 +41,7 @@ import {
   type ContractExpectation,
 } from './contract.js';
 import { branchFacts, renderBranchDetail } from './detail.js';
+import { writeSummary, type Ledger } from '../segment/ledger.js';
 
 export interface SummarizerOptions {
   store: TreeStore;
@@ -102,6 +103,11 @@ export class Summarizer {
   private readonly maxSummaryTokens: number;
   private readonly temperature: number | undefined;
 
+  /** The ledger (D26) when this summarizer can reach L0 and L2; a store-only summarizer writes rows alone. */
+  private ledger(): Ledger | null {
+    return this.trace !== undefined && this.blobs !== undefined ? { trace: this.trace, blobs: this.blobs } : null;
+  }
+
   /** D11's queue: one promise chain, so background work never overlaps a caller's turn. */
   private queue: Promise<void> = Promise.resolve();
   private readonly background: SummarizeOutcome[] = [];
@@ -136,13 +142,13 @@ export class Summarizer {
     });
     const reply = await this.complete(this.leafModel, prompt, { childIds });
     return this.store.transaction(() => {
-      const summary = this.store.putSummary({
+      const summary = writeSummary(this.store, {
         node_id: nodeId,
         model: reply.model,
         text: reply.text,
         meta: summaryMetaFrom(reply.meta, facts, nodeIds),
         created_at: this.now(),
-      });
+      }, this.ledger(), 'summarizer:leaf');
       // `putSummary` clears the leaf's own mark; the span carriers beneath it
       // (D9 file nodes) are the same content, reaching the model inside this
       // leaf's detail, and `stalePlan` will never visit them. Clearing them here
@@ -178,13 +184,13 @@ export class Summarizer {
     const nodeIds = [rootId, ...childIds];
     const prompt = rootSummaryPrompt({ taskTitle: root.title, children: covered });
     const reply = await this.complete(this.rootModel, prompt, { childIds });
-    return this.store.putSummary({
+    return writeSummary(this.store, {
       node_id: rootId,
       model: reply.model,
       text: reply.text,
       meta: summaryMetaFrom(reply.meta, facts, nodeIds),
       created_at: this.now(),
-    });
+    }, this.ledger(), 'summarizer:root');
   }
 
   /** Every leaf in parallel under the cap, then the root (§8). */

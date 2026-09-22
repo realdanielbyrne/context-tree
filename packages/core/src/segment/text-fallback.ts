@@ -48,6 +48,7 @@ export function segmentByCuts(events: readonly TraceEvent[], options: TextSegmen
 
   for (let i = 0; i < events.length; i += 1) {
     const event = events[i]!;
+    if (event.type === 'fold' || event.type === 'unfold') continue;
     if (i > 0) ops.push({ op: 'extend', key: TASK_KEY, seq: event.seq });
 
     if (i === 0 || starts.has(i)) {

@@ -178,6 +178,10 @@ export function segment(
 
   for (let i = 0; i < events.length; i += 1) {
     const event = events[i]!;
+    // The ledger (D26) records what was SHOWN of the transcript; it is not the transcript.
+    // A fold event extends no segment, or a summary written today would widen the phase it
+    // describes and mark it stale again — a loop.
+    if (event.type === 'fold' || event.type === 'unfold') continue;
     if (i > 0) ops.push({ op: 'extend', key: TASK_KEY, seq: event.seq });
 
     switch (event.type) {

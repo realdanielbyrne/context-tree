@@ -88,6 +88,8 @@ export function payloadRef(event: TraceEvent): BlobRef | null {
     case 'tool_result':
       return event.output_blob ?? null;
     case 'segment_boundary':
+    case 'fold':
+    case 'unfold':
       return null;
   }
 }

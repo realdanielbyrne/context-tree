@@ -135,6 +135,10 @@ function renderEvent(event: TraceEvent, blobs: BlobStore | undefined): string {
     case 'reasoning':
     case 'manual_annotation':
       return `${head}\n${payload(blobs, event.blob)}`;
+    case 'fold':
+      return `${head} ${event.fold_id} ${event.kind} ${String(event.from_seq)}-${String(event.to_seq)}`;
+    case 'unfold':
+      return `${head} ${event.fold_id}`;
     case 'tool_call': {
       const path = event.path === undefined ? '' : ` path=${event.path}`;
       const lines = [`${head} ${event.tool}${path}`];

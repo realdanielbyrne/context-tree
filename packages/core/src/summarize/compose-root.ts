@@ -17,6 +17,7 @@
 import type { NodeId, NodeSummary, SummaryMeta, TreeStore } from '../contracts/index.js';
 import { summaryMetaFrom } from './contract.js';
 import { branchFacts } from './detail.js';
+import { writeSummary, type Ledger } from '../segment/ledger.js';
 
 /** The `model` stamped on composed root rows — an audit marker, not an LLM id. */
 export const DETERMINISTIC_ROOT_MODEL = 'deterministic-rollup-v1';
@@ -92,6 +93,7 @@ export function composeRootSummary(
   rootId: NodeId,
   now?: () => string,
   rootKeep: number = ROOT_KEEP_DEFAULT,
+  ledger: Ledger | null = null,
 ): NodeSummary | null {
   const root = store.getNode(rootId);
   if (root === null) throw new Error(`composeRootSummary: unknown node ${rootId}`);
@@ -125,7 +127,7 @@ export function composeRootSummary(
   if (text === store.currentSummary(rootId)?.text) return null;
 
   const childIds = covered.map(({ id }) => id); // ALL children — lossy in prompt, lossless on disk
-  return store.putSummary({
+  return writeSummary(store, {
     node_id: rootId,
     model: DETERMINISTIC_ROOT_MODEL,
     text,
@@ -134,5 +136,5 @@ export function composeRootSummary(
       ...childIds,
     ]),
     ...(now !== undefined ? { created_at: now() } : {}),
-  });
+  }, ledger, 'compose-root');
 }

@@ -49,6 +49,8 @@ function continuesUnstamped(open: OpenTurn, event: TraceEvent): boolean {
       return open.callSeqs.has(event.call_seq);
     case 'segment_boundary':
     case 'manual_annotation':
+    case 'fold':
+    case 'unfold':
       return true;
   }
 }

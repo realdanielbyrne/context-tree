@@ -12,7 +12,9 @@ export type TraceEventType =
   | 'tool_call'
   | 'tool_result'
   | 'segment_boundary'
-  | 'manual_annotation';
+  | 'manual_annotation'
+  | 'fold'
+  | 'unfold';
 
 export interface TraceEventBase {
   seq: Seq;
@@ -91,6 +93,33 @@ export interface ManualAnnotationEvent extends TraceEventBase {
   link_kind?: LinkKind;
 }
 
+/**
+ * THE LEDGER (D26). A fold is a stretch of the transcript shown in a shorter form: a
+ * `stub` over one block (summary-free), or a `summary` over a range of blocks. Both are
+ * appended here, so what the model was shown is replayable and a rebuild loses no summary.
+ * `node_id` names the segment whose span this range is, when it is one — then it IS that
+ * node's summary (`node_summaries` is derived from these events).
+ */
+export interface FoldEvent extends TraceEventBase {
+  type: 'fold';
+  fold_id: string;
+  kind: 'stub' | 'summary';
+  from_seq: Seq;
+  to_seq: Seq;
+  /** A stub's text; a summary's `{ text, meta }` JSON. */
+  blob: BlobRef;
+  node_id?: NodeId;
+  model?: string;
+  /** What asked for it: a policy name, a tool caller, a CLI command. */
+  trigger?: string;
+}
+
+/** Written by `restore`: the fold no longer shows. Its record stays. */
+export interface UnfoldEvent extends TraceEventBase {
+  type: 'unfold';
+  fold_id: string;
+}
+
 export type TraceEvent =
   | UserMessageEvent
   | AssistantMessageEvent
@@ -98,7 +127,9 @@ export type TraceEvent =
   | ToolCallEvent
   | ToolResultEvent
   | SegmentBoundaryEvent
-  | ManualAnnotationEvent;
+  | ManualAnnotationEvent
+  | FoldEvent
+  | UnfoldEvent;
 
 /**
  * A trace event before a `seq` has been assigned by the writer.

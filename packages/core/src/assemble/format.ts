@@ -121,6 +121,8 @@ export function hostContent(event: TraceEvent, blobs: BlobStore): string[] {
       return event.output_blob === undefined ? [] : [blobs.getText(event.output_blob)];
     case 'segment_boundary':
     case 'manual_annotation':
+    case 'fold':
+    case 'unfold':
       return [];
   }
 }
@@ -182,6 +184,10 @@ export function renderEvent(event: TraceEvent, blobs: BlobStore): string {
       return `### phase boundary ${event.from ?? 'none'} -> ${event.to} (seq ${event.seq})`;
     case 'manual_annotation':
       return `### annotation (seq ${event.seq})\n${blobs.getText(event.blob)}`;
+    case 'fold':
+      return `### fold ${event.fold_id} (${event.kind} over seq ${String(event.from_seq)}–${String(event.to_seq)})`;
+    case 'unfold':
+      return `### unfold ${event.fold_id}`;
   }
 }
 

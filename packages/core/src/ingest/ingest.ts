@@ -27,7 +27,7 @@ import type {
   TreeStore,
 } from '../contracts/index.js';
 import { DERIVED_LAYERS, storePaths, type StorePaths } from '../paths.js';
-import { segment } from '../segment/index.js';
+import { replaySummaries, segment } from '../segment/index.js';
 import { LineDiffHunker, TreeSitterSpanExtractor } from '../spans/index.js';
 import { isManualAnnotation } from '../trace/index.js';
 import { applySegmentation, SegmentationShrankError } from './apply.js';
@@ -77,6 +77,10 @@ export interface IngestStats {
    * dropped: silent loss is exactly the defect this replay exists to fix.
    */
   unresolvedAnnotations: number;
+  /** Summary folds derived from the ledger into `node_summaries` this pass (D26). */
+  summariesReplayed: number;
+  /** Summary folds naming a node this segmentation does not have. */
+  unresolvedSummaries: number;
 }
 
 export interface IngestResult {
@@ -124,7 +128,9 @@ export function ingest(options: IngestOptions): IngestResult {
     hunker: options.hunker ?? new LineDiffHunker(),
   });
   const notes = replayAnnotations(events, blobs, store);
-  markStaleForSummarizer(store, events.at(-1)?.seq ?? null);
+  // The ledger is the truth for summaries (D26): a rebuilt store gets every one back.
+  const ledger = replaySummaries(events, blobs, store);
+  markStaleForSummarizer(store, events.findLast((e) => e.type !== 'fold' && e.type !== 'unfold')?.seq ?? null);
 
   return {
     keyMap,
@@ -142,6 +148,8 @@ export function ingest(options: IngestOptions): IngestResult {
       annotations: notes.annotations,
       annotationLinks: notes.annotationLinks,
       unresolvedAnnotations: notes.unresolved,
+      summariesReplayed: ledger.summaries,
+      unresolvedSummaries: ledger.unresolved,
     },
   };
 }

@@ -677,8 +677,9 @@ describe('e2e: a fresh session resumes from the tree (M5 acceptance)', () => {
     expect(calls.length).toBeLessThanOrEqual(3);
 
     // §9: a read tool never mutates the tree. In Mode A (the v1 default) it
-    // does not even touch L0, so resuming twice cannot drift the trace.
-    expect(handle.trace.lastSeq()).toBe(20);
+    // does not even touch L0, so resuming twice cannot drift the trace. (L0 holds 20 content
+    // events plus the ledger's fold events for the summaries §8 wrote — D26.)
+    expect(handle.trace.lastSeq()).toBe(20 + handle.trace.all().filter((e) => e.type === 'fold').length);
     expect(handle.store.nodesInCreationOrder()).toHaveLength(10);
   });
 });
@@ -739,6 +740,7 @@ describe('e2e: rebuild (D8)', () => {
   it('reproduces the identical tree from L0 + L2 after the whole pipeline has run, which is why a shape change is a rebuild', async () => {
     const fixture = await summarized();
     const before = structure(fixture.handle.store);
+    const summaries = new Map(fixture.handle.store.nodesInCreationOrder().map((node) => [node.id, fixture.handle.store.currentSummary(node.id)?.text]));
     const traceHash = createHash('sha256').update(readFileSync(fixture.config.root + '/trace.jsonl')).digest('hex');
 
     // The db file is deleted, not truncated — the handle has to go first.
@@ -748,11 +750,15 @@ describe('e2e: rebuild (D8)', () => {
       expect(structure(rebuilt.handle.store)).toEqual(before);
       // L0 is never touched by a rebuild.
       expect(createHash('sha256').update(readFileSync(rebuilt.handle.paths.trace)).digest('hex')).toBe(traceHash);
-      // Summaries are model output, not a function of L0+L2: a rebuild drops
-      // them and hands §8 a full work queue rather than migrating stale rows (D3).
+      // Summaries are model output, not a function of L0+L2 — so they are IN L0, as fold
+      // events (D26): a rebuild replays the ledger and every summary comes back at the same
+      // version, with nothing left stale that was not stale before.
       const nodes = rebuilt.handle.store.nodesInCreationOrder();
-      expect(nodes.every((node) => node.current_summary_version === 0)).toBe(true);
-      expect(rebuilt.handle.store.staleNodes()).toHaveLength(nodes.length);
+      const summarized = nodes.filter((node) => node.current_summary_version > 0);
+      expect(summarized.length).toBeGreaterThan(0);
+      for (const node of summarized) {
+        expect(rebuilt.handle.store.currentSummary(node.id)?.text).toBe(summaries.get(node.id));
+      }
     } finally {
       rebuilt.handle.close();
     }
