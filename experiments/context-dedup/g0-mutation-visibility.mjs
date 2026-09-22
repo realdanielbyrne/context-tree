@@ -96,7 +96,29 @@ const mediated = (wire) => wire
   .filter((r) => (r.counts?.tools ?? 0) > 0 && r.status === 200)
   .sort((a, b) => String(a.ts).localeCompare(String(b.ts)));
 
-function readArm(tag, since) {
+/**
+ * Parts of the session OTHER than the user's task message that carry the marker: the agent
+ * quoted it, or recalled the task statement through a tool (`fetch` on the task node brings
+ * the original text back inside a tool output the gate never edits). From then on one copy
+ * rides on every request and the wire cannot say whether the fold reached the provider.
+ */
+function markerOutsideTask(runDir, marker) {
+  const path = join(runDir, 'export.json');
+  if (!marker || !existsSync(path)) return 0;
+  let out;
+  try { out = JSON.parse(readFileSync(path, 'utf8')); } catch { return 0; }
+  let n = 0;
+  for (const message of out.messages ?? []) {
+    if (message.info?.role === 'user') continue;
+    for (const part of message.parts ?? []) {
+      const texts = [part.text, part.state?.output, JSON.stringify(part.state?.input ?? null)];
+      if (texts.some((t) => typeof t === 'string' && t.includes(marker))) n += 1;
+    }
+  }
+  return n;
+}
+
+function readArm(tag, since, marker = '') {
   const runDir = join(RUNS_ROOT, tag, `${INSTANCE}__r0`);
   // Rows older than this gate's own marker belong to an earlier attempt in the same tag.
   const wire = readJsonl(join(runDir, 'wire.jsonl')).filter((r) => !since || String(r.ts) >= since);
@@ -141,6 +163,7 @@ function readArm(tag, since) {
     // More than one copy means the agent reproduced it; the marker then rides in a message
     // the gate never drops and the wire can no longer answer the question.
     echoed: conv.filter((r) => marked(r) >= 2).length,
+    recalled: markerOutsideTask(runDir, marker),
     before_first_drop: before.length,
     before_all_marked: before.length > 0 && before.every((r) => marked(r) >= 1),
     after_first_drop: after.length,
@@ -203,6 +226,7 @@ export function gradeG0({ control, treatment }) {
   // agent quoted back, or for an arm knob that never arrived.
   for (const side of [control, treatment]) {
     if (side.echoed > 0) voids.push(`${side.tag}: the agent reproduced the marker on ${side.echoed} requests, so its presence no longer identifies the task statement`);
+    else if ((side.recalled ?? 0) > 0 && side.drop_turns > 0 && !side.after_all_clean) voids.push(`${side.tag}: the agent recalled the task statement into ${side.recalled} tool or assistant parts (fetch on the task node), so the marker rides on later requests whatever the fold did`);
     if (side.plugin_loaded === false) voids.push(`${side.tag}: the plugin never imported — opencode registered no hooks and said nothing`);
     if (side.gaps > 0) voids.push(`${side.tag}: ${side.gaps} wire rows are missing (the relay numbers them); the record is incomplete`);
     if (side.rejected > 0) voids.push(`${side.tag}: the provider rejected ${side.rejected} requests; a refused prompt says nothing about what it would read`);
@@ -324,8 +348,8 @@ function main() {
     for (const arm of ARMS) run({ ...arm, marker, foldMarker, reduceMarker, stubMarker, thinkMarker, carrierMarker });
   }
 
-  const control = readArm(ARMS[0].tag, since);
-  const treatment = readArm(ARMS[1].tag, since);
+  const control = readArm(ARMS[0].tag, since, marker);
+  const treatment = readArm(ARMS[1].tag, since, marker);
   const verdict = gradeG0({ control, treatment });
   const report = {
     gate: 'G0 mutation visibility',

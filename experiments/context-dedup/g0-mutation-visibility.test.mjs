@@ -206,3 +206,13 @@ test('a stub turn is not a think turn: the think and carrier cases are dated fro
   const v = gradeG0({ control: control(), treatment: arm({ carrier_turns: 0, after_first_carrier: 0, after_all_carried: false }) });
   assert.match(v.reasons.join(' '), /never carried a summary/);
 });
+
+test('the task statement recalled through a tool voids the gate rather than failing it', () => {
+  // 2026-09-21: the agent called fetch on the task node; the original marker came back inside a
+  // tool output the gate never edits and rode on every later request beside the replacement.
+  const v = gradeG0({ control: control(), treatment: arm({ recalled: 1, after_all_clean: false, present: 16, missing: 6 }) });
+  assert.equal(v.pass, false);
+  assert.match(v.voids.join(' '), /recalled the task statement/);
+  // With a clean wire the recall changes nothing.
+  assert.deepEqual(gradeG0({ control: control(), treatment: arm({ recalled: 1 }) }).voids, []);
+});
