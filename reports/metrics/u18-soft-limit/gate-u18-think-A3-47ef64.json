@@ -1,0 +1,98 @@
+{
+  "arm": "think",
+  "attempts": [
+    {
+      "tag": "u18-think-A3-47ef64-gate-a1",
+      "pass": false,
+      "reasons": [
+        "G2: no reasoning part was ever folded — the arm ran as the control"
+      ],
+      "instance": "django__django-11138",
+      "commit": "ab2e9f50ddc6e0acdad55521a3c8b6ae394d016d",
+      "at": "2026-09-22T04:06:09.397Z",
+      "observed": {
+        "solved": false,
+        "exit_outcome": "ok",
+        "peak_prompt_tokens": 62567,
+        "first_step_prompt_tokens": 14612,
+        "evicted_units": 0,
+        "messages_dropped": 0,
+        "plugin_turns": 24,
+        "wire": {
+          "present": true,
+          "requests": 24,
+          "ok": 24,
+          "rejected": 0,
+          "peak_bytes": 224354
+        },
+        "sidecar": {
+          "plugin_turns": 24,
+          "assemble_calls": 0,
+          "evict_calls": 0,
+          "max_ms": 4,
+          "over_ceiling_turns": 0,
+          "floor_evictions": 0,
+          "over_budget_rulings": 0,
+          "reduced_units": 0,
+          "first_edit_turn": null,
+          "max_kept_before_first_edit": 51847,
+          "max_kept_after_first_edit": null,
+          "max_unit_tokens_after_ruling": 0,
+          "served_per_heuristic": {
+            "aligned": true,
+            "turns": 22,
+            "min": 0.79,
+            "median": 0.92,
+            "max": 0.93,
+            "first_quartile_median": 0.87,
+            "last_quartile_median": 0.92
+          }
+        }
+      }
+    }
+  ],
+  "config": {
+    "CT_CT_HARD_WINDOW": "151040",
+    "CT_CT_REPLY_RESERVE": "8192",
+    "CT_CT_HEAD_TOKENS": "12000",
+    "CT_ASSEMBLE_MS": "8000",
+    "CT_CT_NEUTRAL_PHASES": "other",
+    "CT_CONTRACT": "v5",
+    "CT_CT_UNIT": "turn",
+    "CT_CT_PROTECTION": "soft",
+    "CT_CT_ANCHOR": "3",
+    "CT_CT_PROTECTION_BONUS": "2",
+    "CT_CT_SOFT_TARGET_FRAC": "0.375",
+    "CT_CT_REDUCER": "chunk",
+    "CT_CT_FOLD_STUB_AT": "1",
+    "CT_CT_CADENCE_N": "5",
+    "CT_CT_FOLD_REASONING": "tail",
+    "CT_CT_FOLD_REASONING_TAIL": "120",
+    "CT_CT_FOLD_SUMMARIZE_AT": "0.02",
+    "CT_CT_FOLD_MIN_RUN": "3",
+    "CT_CT_SUMMARY_RATIO": "0.1",
+    "CT_CT_SUMMARY_MAX_TOKENS": "2048",
+    "CT_CT_TOPK": "5",
+    "CT_CT_W_PRIORITY": "2",
+    "CT_CT_W_RECENCY": "1",
+    "CT_CT_W_REFRECENCY": "0.5",
+    "CT_CT_W_DORMANCY": "1",
+    "CT_CT_W_RELEVANCE": "0",
+    "CT_CT_PRIORITY_HALFLIFE": "4",
+    "CT_CT_EVICT_HEADROOM": "0",
+    "CT_CT_BOUNDARY": "toolPhase",
+    "CT_CT_BOUNDARY_WINDOW": "3",
+    "CT_CT_BOUNDARY_THRESHOLD": "0.5",
+    "CT_CT_BOUNDARY_TOPK": "0",
+    "CT_CT_W_COVARIANCE": "0",
+    "CT_CT_COVARIANCE_K": "5",
+    "CT_CT_COVARIANCE_M": "2",
+    "CT_CT_DRIFT_K": "5",
+    "CT_CT_DRIFT_TAU": "1",
+    "CT_CT_RRF_K": "60",
+    "CT_CT_CHUNK_SIZE": "800",
+    "CT_CT_CHUNK_OVERLAP": "100",
+    "CT_CT_FOLD_REASONING_AFTER": "3"
+  },
+  "note": "gate cells are evidence about the harness, never pooled with a wave"
+}
