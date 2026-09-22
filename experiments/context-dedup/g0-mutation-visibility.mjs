@@ -107,14 +107,18 @@ function readArm(tag, since) {
   const replaced = (r) => (r.counts?.g0fold ?? 0);
   const reducedOn = (r) => (r.counts?.g0reduce ?? 0);
   const stubbedOn = (r) => (r.counts?.g0stub ?? 0);
+  const thoughtOn = (r) => (r.counts?.g0think ?? 0);
+  const carriedOn = (r) => (r.counts?.g0carrier ?? 0);
 
   // The edit happens BEFORE the request leaves, so every mediated request from the first
   // reported edit onward must already show it. An existential "some request lacked the
   // marker" would be satisfied by a subagent session or a retry.
-  const edits = plugin.filter((r) => (r.dropped ?? 0) > 0 || (r.folded ?? 0) > 0);
+  const edits = plugin.filter((r) => (r.dropped ?? 0) > 0 || (r.text_edited ?? 0) > 0);
   const drops = plugin.filter((r) => (r.dropped ?? 0) > 0);
-  const reduces = plugin.filter((r) => (r.reduced ?? 0) > 0);
-  const stubs = plugin.filter((r) => (r.stubbed ?? 0) > 0);
+  const reduces = plugin.filter((r) => (r.outputs_edited ?? 0) > 0);
+  const stubs = plugin.filter((r) => (r.parts_removed ?? 0) > 0 && (r.outputs_edited ?? 0) > 0);
+  const thinks = plugin.filter((r) => (r.reasoning_edited ?? 0) > 0);
+  const afterThink = thinks.length > 0 ? conv.filter((r) => String(r.ts) >= String(thinks[0].ts)) : [];
   const afterStub = stubs.length > 0 ? conv.filter((r) => String(r.ts) >= String(stubs[0].ts)) : [];
   const afterReduce = reduces.length > 0 ? conv.filter((r) => String(r.ts) >= String(reduces[0].ts)) : [];
   const firstEditTs = edits.length > 0 ? String(edits[0].ts) : null;
@@ -145,7 +149,7 @@ function readArm(tag, since) {
     plugin_loaded: plugin.some((r) => r.event === 'loaded'),
     plugin_turns: plugin.filter((r) => r.turn !== undefined).length,
     plugin_errors: plugin.filter((r) => r.error).length,
-    fold_turns: plugin.filter((r) => (r.folded ?? 0) > 0).length,
+    fold_turns: plugin.filter((r) => (r.text_edited ?? 0) > 0).length,
     // The edit every reduction makes: a tool OUTPUT replaced in place. Same two-sided,
     // ordered claim as the fold — text that exists only in the replacement must arrive.
     reduce_turns: reduces.length,
@@ -157,6 +161,14 @@ function readArm(tag, since) {
     after_first_stub: afterStub.length,
     after_all_stubbed: afterStub.length > 0 && afterStub.every((r) => stubbedOn(r) >= 1),
     stub_seen: conv.filter((r) => stubbedOn(r) >= 1).length,
+    // A reasoning part replaced in place (the think rule), and a summary riding in a reasoning part
+    // with the tool parts gone (a carrier): the two edits the fold arms add.
+    think_turns: thinks.length,
+    after_first_think: afterThink.length,
+    after_all_thought: afterThink.length > 0 && afterThink.every((r) => thoughtOn(r) >= 1),
+    think_seen: conv.filter((r) => thoughtOn(r) >= 1).length,
+    after_all_carried: afterThink.length > 0 && afterThink.every((r) => carriedOn(r) >= 1),
+    carrier_seen: conv.filter((r) => carriedOn(r) >= 1).length,
     drop_turns: drops.length,
     // The sidecar's own account of taking the gate path, so "the flag never arrived" is not
     // reported as "the splice was discarded" — two defects, one symptom.
@@ -193,6 +205,8 @@ export function gradeG0({ control, treatment }) {
     voids.push('treatment: the sidecar never entered the gate path — CT_G0_DROP_FIRST did not reach it, so nothing was asked to edit');
   }
   if (control.reduce_seen > 0) voids.push(`control: the reduced-output text appeared on ${control.reduce_seen} requests without any edit; it is not unique to the plugin`);
+  if (control.think_seen > 0) voids.push(`control: the think tag's text appeared on ${control.think_seen} requests without any edit; it is not unique to the plugin`);
+  if (control.carrier_seen > 0) voids.push(`control: the carrier text appeared on ${control.carrier_seen} requests without any edit; it is not unique to the plugin`);
   if (control.stub_seen > 0) voids.push(`control: the stub tag's text appeared on ${control.stub_seen} requests without any edit; it is not unique to the plugin`);
   if (control.replacement_seen > 0) {
     voids.push(`control: the replacement text appeared on ${control.replacement_seen} requests without any edit; it is not unique to the plugin`);
@@ -213,6 +227,10 @@ export function gradeG0({ control, treatment }) {
   if (treatment.stub_turns === 0) reasons.push('treatment never stubbed: no plugin turn reports a message cut to a stub');
   else if (treatment.after_first_stub === 0) reasons.push('treatment made no mediated request after its first stub: the run ended too early to observe one');
   else if (!treatment.after_all_stubbed) reasons.push("treatment's stub tag never reached the provider: a message with its reasoning removed and an output tagged is not what gets serialized");
+  if (treatment.think_turns === 0) reasons.push('treatment never replaced a reasoning part: no plugin turn reports one edited');
+  else if (treatment.after_first_think === 0) reasons.push('treatment made no mediated request after its first reasoning edit: the run ended too early to observe one');
+  else if (!treatment.after_all_thought) reasons.push("treatment's replaced reasoning never reached the provider: a reasoning part edited in place is not what gets serialized");
+  else if (!treatment.after_all_carried) reasons.push("treatment's carrier text never reached the provider: a summary in a reasoning part with the tool parts removed is not what gets serialized");
   // ORDERED, not existential. "Some request lacked the marker" is satisfied by a subagent
   // session or a retry; "every request after the first edit lacked it, and every request
   // before it carried it" is satisfied only by the edit.
@@ -235,7 +253,7 @@ export function gradeG0({ control, treatment }) {
   };
 }
 
-function run({ tag, drop, marker, foldMarker, reduceMarker, stubMarker }) {
+function run({ tag, drop, marker, foldMarker, reduceMarker, stubMarker, thinkMarker, carrierMarker }) {
   const env = {
     ...process.env,
     CT_ARM: 'ct',
@@ -244,6 +262,8 @@ function run({ tag, drop, marker, foldMarker, reduceMarker, stubMarker }) {
     CT_G0_FOLD_MARKER: foldMarker,
     CT_G0_REDUCE_MARKER: reduceMarker,
     CT_G0_STUB_MARKER: stubMarker,
+    CT_G0_THINK_MARKER: thinkMarker,
+    CT_G0_CARRIER_MARKER: carrierMarker,
     CT_TAG: tag,
     CT_INSTANCES: INSTANCE,
     CT_REPEATS: '1',
@@ -277,19 +297,23 @@ function main() {
   let foldMarker;
   let reduceMarker;
   let stubMarker;
+  let thinkMarker;
+  let carrierMarker;
   let since;
   if (only === 'grade') {
     if (!existsSync(markerFile)) throw new Error(`no ${markerFile}: nothing to grade`);
-    ({ marker, foldMarker, reduceMarker, stubMarker, at: since } = JSON.parse(readFileSync(markerFile, 'utf8')));
+    ({ marker, foldMarker, reduceMarker, stubMarker, thinkMarker, carrierMarker, at: since } = JSON.parse(readFileSync(markerFile, 'utf8')));
   } else {
     marker = `CTG0-${randomBytes(12).toString('hex')}`;
     foldMarker = `CTG0FOLD-${randomBytes(12).toString('hex')}`;
     reduceMarker = `CTG0REDUCE-${randomBytes(12).toString('hex')}`;
     stubMarker = `CTG0STUB-${randomBytes(12).toString('hex')}`;
+    thinkMarker = `CTG0THINK-${randomBytes(12).toString('hex')}`;
+    carrierMarker = `CTG0CARRIER-${randomBytes(12).toString('hex')}`;
     since = new Date().toISOString();
     mkdirSync(OUTDIR, { recursive: true });
-    writeFileSync(markerFile, JSON.stringify({ marker, foldMarker, reduceMarker, stubMarker, instance: INSTANCE, at: since }, null, 2));
-    for (const arm of ARMS) run({ ...arm, marker, foldMarker, reduceMarker, stubMarker });
+    writeFileSync(markerFile, JSON.stringify({ marker, foldMarker, reduceMarker, stubMarker, thinkMarker, carrierMarker, instance: INSTANCE, at: since }, null, 2));
+    for (const arm of ARMS) run({ ...arm, marker, foldMarker, reduceMarker, stubMarker, thinkMarker, carrierMarker });
   }
 
   const control = readArm(ARMS[0].tag, since);
@@ -298,7 +322,7 @@ function main() {
   const report = {
     gate: 'G0 mutation visibility',
     question: 'does an in-place splice at experimental.chat.messages.transform reach the provider?',
-    marker, fold_marker: foldMarker, reduce_marker: reduceMarker, stub_marker: stubMarker, instance: INSTANCE, model: MODEL, at: new Date().toISOString(),
+    marker, fold_marker: foldMarker, reduce_marker: reduceMarker, stub_marker: stubMarker, think_marker: thinkMarker, carrier_marker: carrierMarker, instance: INSTANCE, model: MODEL, at: new Date().toISOString(),
     control, treatment, ...verdict,
   };
   writeFileSync(join(OUTDIR, 'g0-mutation-visibility.json'), `${JSON.stringify(report, null, 2)}\n`);

@@ -250,7 +250,7 @@ function recallCell(arm, instance, repeat, { pass = true, recalls = 0, over = {}
   const base = cell('soft', instance, repeat, { pass, peak: 45000, fired: true });
   return {
     ...base, mcp: { tools: recalls ? { 'context-tree_fetch': recalls } : {} },
-    ct: { ...base.ct, messages_stubbed: 9, stubbed_units: 9, messages_folded: arm === 'summary' ? 2 : 0, arm_effective: { trigger: 'soft', softWindow: W, summaries: arm === 'summary' } },
+    ct: { ...base.ct, stubs_folded: 9, reasoning_edited: 4, summaries_written: arm === 'summary' ? 2 : 0, arm_effective: { trigger: 'soft', softWindow: W, foldSummaries: arm === 'summary' } },
     ...over,
   };
 }
@@ -258,43 +258,52 @@ function recallCell(arm, instance, repeat, { pass = true, recalls = 0, over = {}
 test('the arms are a ladder: each sets one thing more, and recorded tags do not move', () => {
   const knobs = resolveKnobs({});
   assert.deepEqual(ARMS.soft.set, {});
-  assert.equal(armKnobs('stub', knobs).CT_CT_EVICT_MODE, 'stub');
+  assert.equal(armKnobs('think', knobs).CT_CT_FOLD_REASONING_AFTER, '3');
+  assert.equal(armKnobs('think', knobs).CT_CT_FOLD_TRIGGER, undefined, 'think does not fold under pressure');
+  assert.equal(armKnobs('stub', knobs).CT_CT_FOLD_TRIGGER, 'pressure');
   assert.equal(armKnobs('stub', knobs).CT_CONTRACT, 'v5');
-  assert.equal(armKnobs('stub', knobs).CT_CT_SUMMARIES, undefined);
-  assert.equal(armKnobs('summary', knobs).CT_CT_SUMMARIES, '1');
-  assert.equal(armKnobs('soft', knobs).CT_CT_EVICT_MODE, 'drop');
+  assert.equal(armKnobs('stub', knobs).CT_CT_FOLD_SUMMARIES, undefined);
+  assert.equal(armKnobs('summary', knobs).CT_CT_FOLD_SUMMARIES, '1');
+  assert.equal(armKnobs('soft', knobs).CT_CT_FOLD_TRIGGER, undefined, 'what an arm IS is never a knob');
   assert.throws(() => armKnobs('nope', knobs), /unknown arm/);
-  // Waves were recorded under these two tags before evictMode and summaryRender existed.
+  // Waves were recorded under these two tags before the fold parameters existed.
   assert.equal(tagBase('soft', knobs), 'u18-soft-W50347-A3-0b6139');
   assert.equal(tagBase('hard', knobs), 'u18-hard-A3-3b1020');
-  assert.equal(new Set(['soft', 'hard', 'stub', 'summary'].map((a) => tagBase(a, knobs))).size, 4);
+  assert.equal(new Set(['soft', 'hard', 'think', 'stub', 'summary'].map((a) => tagBase(a, knobs))).size, 5);
   // ...but a late knob moved OFF its default is part of the key like any other.
-  assert.notEqual(tagBase('soft', resolveKnobs({ U18_EVICT_MODE: 'stub' })), 'u18-soft-W50347-A3-0b6139');
+  assert.notEqual(tagBase('soft', resolveKnobs({ U18_FOLD_STUB_AT: '0.5' })), 'u18-soft-W50347-A3-0b6139');
 });
 
 test('an older cell that never recorded a late knob is not an integrity problem; a wrong value is', () => {
   const knobs = resolveKnobs({});
-  const recorded = Object.fromEntries(Object.entries(armKnobs('soft', knobs)).filter(([k]) => k !== 'CT_CT_EVICT_MODE' && k !== 'CT_CT_SUMMARY_RENDER'));
+  const late = new Set(['CT_CT_FOLD_STUB_AT', 'CT_CT_CADENCE_N', 'CT_CT_FOLD_REASONING', 'CT_CT_FOLD_REASONING_TAIL', 'CT_CT_FOLD_SUMMARIZE_AT', 'CT_CT_FOLD_MIN_RUN', 'CT_CT_SUMMARY_RATIO', 'CT_CT_SUMMARY_MAX_TOKENS']);
+  const recorded = Object.fromEntries(Object.entries(armKnobs('soft', knobs)).filter(([k]) => !late.has(k) && !k.includes('BOUNDARY') && !k.includes('COVARIANCE')));
   const old = cell('soft', 'p0', 0, { peak: 45000, fired: true });
   assert.deepEqual(cellProblems({ ...old, ct: { ...old.ct, ...recorded } }, { arm: 'soft', window: W, knobs }), []);
-  assert.match(cellProblems({ ...old, ct: { ...old.ct, ...recorded, CT_CT_EVICT_MODE: 'stub' } }, { arm: 'soft', window: W, knobs }).join(' '), /CT_CT_EVICT_MODE ran as/);
+  assert.match(cellProblems({ ...old, ct: { ...old.ct, ...recorded, CT_CT_FOLD_STUB_AT: '0.5' } }, { arm: 'soft', window: W, knobs }).join(' '), /CT_CT_FOLD_STUB_AT ran as/);
   // Summaries belong to exactly one arm.
   assert.match(cellProblems(recallCell('summary', 'p0', 0), { arm: 'stub', window: W }).join(' '), /summaries ON/);
   assert.match(cellProblems(recallCell('stub', 'p0', 0), { arm: 'summary', window: W }).join(' '), /summaries off/);
 });
 
-test('gate: a cell too short to show anything fails, and a recall arm must have done what it is', () => {
+test('gate: a cell too short to show anything fails, and a fold arm must have done what it is', () => {
   const wire = { present: true, requests: 80, ok: 80, rejected: 0, peak_bytes: 1 };
   const side = { max_ms: 900, over_ceiling_turns: 0, over_budget_rulings: 0 };
   const verdict = (c, arm) => gateVerdict(c, wire, side, { arm, window: W });
   // The cell that once passed `hard`: one step, nothing evicted, nothing wrong — and nothing shown.
   assert.match(verdict(cell('hard', 'g', 0, { peak: 13059, over: { steps: 1 } }), 'hard').reasons.join(' '), /too short/);
   assert.equal(verdict(recallCell('stub', 'g', 0), 'stub').pass, true);
-  assert.match(verdict(recallCell('stub', 'g', 0, { over: {} , }), 'summary').reasons.join(' '), /summaries off/);
+  assert.match(verdict(recallCell('stub', 'g', 0), 'summary').reasons.join(' '), /summaries off/);
   const silent = recallCell('stub', 'g', 0);
-  assert.match(verdict({ ...silent, ct: { ...silent.ct, messages_stubbed: 0 } }, 'stub').reasons.join(' '), /no message was ever stubbed/);
-  const unfolded = recallCell('summary', 'g', 0);
-  assert.match(verdict({ ...unfolded, ct: { ...unfolded.ct, messages_folded: 0 } }, 'summary').reasons.join(' '), /no phase was ever folded/);
+  assert.match(verdict({ ...silent, ct: { ...silent.ct, stubs_folded: 0, fired: true, evicted_units: 3 } }, 'stub').reasons.join(' '), /no block was ever folded/);
+  const unwritten = recallCell('summary', 'g', 0);
+  assert.match(verdict({ ...unwritten, ct: { ...unwritten.ct, summaries_written: 0 } }, 'summary').reasons.join(' '), /no summary was ever written/);
+  // think: no eviction at all, so no evict clauses; it must have folded reasoning and given window back.
+  const think = { ...recallCell('think', 'g', 0), peak_prompt_tokens: 90_000 };
+  think.ct = { ...think.ct, arm_effective: { trigger: 'off', softWindow: W, foldSummaries: false }, fired: true, evicted_units: 0 };
+  assert.equal(verdict(think, 'think').pass, true);
+  assert.match(verdict({ ...think, ct: { ...think.ct, reasoning_edited: 0 } }, 'think').reasons.join(' '), /no reasoning part was ever folded/);
+  assert.match(verdict({ ...think, peak_prompt_tokens: 130_000 }, 'think').reasons.join(' '), /not below the control/);
 });
 
 test('a recall arm whose agent never recalled says nothing about recall', () => {

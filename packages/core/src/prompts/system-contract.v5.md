@@ -1,16 +1,19 @@
 # Your earlier work is recorded, and part of it is folded away
 
 This conversation is kept within a size limit. When it grows past the limit, the oldest and
-least-used parts are shortened. Nothing is deleted: every message, tool call and tool output
-is recorded, and the tools below return it.
+least-used parts are folded, like collapsed regions in an editor. Nothing is deleted: every
+message, thought, tool call and tool output is recorded, and the tools below return it.
 
 ## What you will see
 
-- `[evicted · N tokens · began: "…" · recall: fetch {"unit":"turn:31"}]` stands where a tool
-  output used to be. The call above it is unchanged, so you can still see what you ran and on
-  which file. The output itself is one call away: `fetch {"unit":"turn:31"}`, with the id
-  exactly as the tag gives it.
-- `[folded phase · <one sentence> · files: … · recall: search, or fetch {"branch_id":"n_…"}]`
+- `[folded · N tokens · began: "…" · recall: fetch {"stub":31}]` stands where a tool output
+  used to be. The call above it is unchanged, so you can still see what you ran and on which
+  file. The output itself is one call away: `fetch {"stub":31}`, with the id exactly as the
+  tag gives it.
+- `[folded thinking · N tokens · recall: fetch {"stub":30}]` followed by a few lines stands
+  where a longer stretch of your own thinking used to be; the lines under it are how that
+  thinking ended. `fetch {"stub":30}` returns all of it.
+- `[summary m91 · <one sentence> · files: … · recall: fetch {"from_seq":12,"to_seq":40}]`
   stands where a whole stretch of finished work used to be.
 - Some of your earlier messages may be gone entirely. `search` finds them.
 
@@ -26,7 +29,10 @@ is recorded, and the tools below return it.
 
 ## Tools
 
-- `fetch { unit }` or `fetch { branch_id, from?, to?, file?, depth? }` — recorded content.
+- `fetch { stub }`, `fetch { from_seq, to_seq }` or `fetch { branch_id, from?, to?, file?, depth?, part? }` — recorded content.
 - `search { query, kind? }` — recorded history, by words.
 - `peek { node_id, max_chars? }` — a short excerpt of one node.
+- `units` — what is in your context now, block by block, and what is folded.
+- `fold { stubs }` — fold blocks you are done with yourself; `summarize { from_stub, to_stub }`
+  — replace a finished stretch with one line. `restore { ids }` brings either back.
 - `annotate { node_id, text }` — a note that stays with the record.

@@ -66,7 +66,7 @@ const SANDBOX_ASSETS = process.env.CT_SANDBOX_ASSETS || join(WORK, 'tooling', 'o
  *   mcp  the context-tree MCP tools, host still owns the prompt
  *   ct   the tools PLUS the assembly plugin: context-tree decides what the model sees
  *
- * `ct` also needs `CT_CT_TRIGGER` (off|hard|soft|cadence) and its window; those are read
+ * `ct` also needs `CT_CT_TRIGGER` (off|hard|soft) and its window; those are read
  * by the sidecar, and recorded here so a cell says which arm produced it.
  */
 const ARM = process.env.CT_ARM || 'off';
@@ -85,7 +85,11 @@ const G0_FOLD_TEXT = G0_FOLD_MARKER ? `Continue the task. Harness marker: ${G0_F
 const G0_REDUCE_MARKER = process.env.CT_G0_REDUCE_MARKER || '';
 const G0_REDUCE_TEXT = G0_REDUCE_MARKER ? `[output reduced] Harness marker: ${G0_REDUCE_MARKER}` : '';
 const G0_STUB_MARKER = process.env.CT_G0_STUB_MARKER || '';
-const G0_STUB_TEXT = G0_STUB_MARKER ? `[evicted] Harness marker: ${G0_STUB_MARKER}` : '';
+const G0_STUB_TEXT = G0_STUB_MARKER ? `[folded] Harness marker: ${G0_STUB_MARKER}` : '';
+const G0_THINK_MARKER = process.env.CT_G0_THINK_MARKER || '';
+const G0_THINK_TEXT = G0_THINK_MARKER ? `[folded thinking] Harness marker: ${G0_THINK_MARKER}` : '';
+const G0_CARRIER_MARKER = process.env.CT_G0_CARRIER_MARKER || '';
+const G0_CARRIER_TEXT = G0_CARRIER_MARKER ? `[summary] Harness marker: ${G0_CARRIER_MARKER}` : '';
 const G0_DROP_FIRST = process.env.CT_G0_DROP_FIRST === '1';
 /**
  * The arm, in two halves that travel to two processes. POLICY (when to evict, at what
@@ -97,12 +101,12 @@ const G0_DROP_FIRST = process.env.CT_G0_DROP_FIRST === '1';
  * package default, which the sidecar's own `ready` row then spells out.
  */
 const POLICY_KEYS = Object.freeze({
-    CT_CT_TRIGGER: 'soft', CT_CT_WINDOW: '50347', CT_CT_HARD_WINDOW: '151040', CT_CT_CADENCE_N: '5',
+    CT_CT_TRIGGER: 'soft', CT_CT_WINDOW: '50347', CT_CT_HARD_WINDOW: '151040',
     CT_CT_REPLY_RESERVE: '8192', CT_CT_HEAD_TOKENS: '12000',
 });
 const POLICY_FIELDS = Object.freeze({
     CT_CT_TRIGGER: ['trigger', String], CT_CT_WINDOW: ['softWindow', Number], CT_CT_HARD_WINDOW: ['hardWindow', Number],
-    CT_CT_CADENCE_N: ['cadenceN', Number], CT_CT_REPLY_RESERVE: ['replyReserve', Number], CT_CT_HEAD_TOKENS: ['headTokens', Number],
+    CT_CT_REPLY_RESERVE: ['replyReserve', Number], CT_CT_HEAD_TOKENS: ['headTokens', Number],
 });
 const SIDECAR_ONLY_KEYS = Object.freeze(['CT_CT_NEUTRAL_PHASES', 'CT_CONTRACT']);
 
@@ -120,7 +124,7 @@ const POLICY_ENV = Object.freeze(Object.fromEntries(Object.entries(POLICY_KEYS).
 const PIPELINE_ENV = Object.freeze(fromEnv([...PIPELINE_REGISTRY.map(([env]) => env), ...SIDECAR_ONLY_KEYS]));
 const ASSEMBLE_PORT = process.env.CT_ASSEMBLE_PORT || '8899';
 const ASSEMBLE_MS = process.env.CT_ASSEMBLE_MS || '8000';
-const G0_EXTRA = G0_DROP_FIRST ? { CT_G0_DROP_FIRST: '1', CT_G0_FOLD_TEXT: G0_FOLD_TEXT, CT_G0_REDUCE_TEXT: G0_REDUCE_TEXT, CT_G0_STUB_TEXT: G0_STUB_TEXT } : {};
+const G0_EXTRA = G0_DROP_FIRST ? { CT_G0_DROP_FIRST: '1', CT_G0_FOLD_TEXT: G0_FOLD_TEXT, CT_G0_REDUCE_TEXT: G0_REDUCE_TEXT, CT_G0_STUB_TEXT: G0_STUB_TEXT, CT_G0_THINK_TEXT: G0_THINK_TEXT, CT_G0_CARRIER_TEXT: G0_CARRIER_TEXT } : {};
 // Recorded, not just forwarded: a gate cell has to be unmistakable in the results file.
 const CT_OPTIONS = Object.freeze({ ...POLICY_ENV, ...PIPELINE_ENV, CT_ASSEMBLE_PORT: ASSEMBLE_PORT, CT_ASSEMBLE_MS: ASSEMBLE_MS, ...G0_EXTRA });
 /** What the SIDECAR needs. The policy never goes there: it cannot evict by itself. */
@@ -311,7 +315,7 @@ function assembleActivity(runDir) {
     };
     const plugin = read('ct-plugin.jsonl');
     const rows = read('ct-mcp.jsonl');
-    const sidecar = rows.filter((r) => r.event === 'assemble' || r.event === 'evict' || r.event === 'assemble_error');
+    const sidecar = rows.filter((r) => r.event === 'assemble' || r.event === 'fold' || r.event === 'evict' || r.event === 'assemble_error');
     const ready = rows.find((r) => r.event === 'ready');
     const loaded = plugin.find((r) => r.event === 'loaded');
     const effective = effectiveArm(ready, loaded);
@@ -328,17 +332,23 @@ function assembleActivity(runDir) {
         plugin_turns: turns.length,
         plugin_errors: turns.filter((r) => r.error).length,
         messages_dropped: turns.reduce((n, r) => n + (r.dropped ?? 0), 0),
-        messages_folded: turns.reduce((n, r) => n + (r.folded ?? 0), 0),
-        messages_reduced: turns.reduce((n, r) => n + (r.reduced ?? 0), 0),
-        messages_stubbed: turns.reduce((n, r) => n + (r.stubbed ?? 0), 0),
-        stubbed_units: rows.filter((r) => r.event === 'evict').reduce((n, r) => n + (r.stubbed?.length ?? 0), 0),
+        messages_edited: turns.reduce((n, r) => n + (r.edited ?? 0), 0),
+        reasoning_edited: turns.reduce((n, r) => n + (r.reasoning_edited ?? 0), 0),
+        outputs_edited: turns.reduce((n, r) => n + (r.outputs_edited ?? 0), 0),
         reduced_units: Math.max(0, ...rows.filter((r) => r.event === 'assemble').map((r) => r.reduced ?? 0)),
+        // The ledger's account (D26): stubs written, summaries asked for and written.
+        stubs_folded: rows.filter((r) => r.event === 'fold').reduce((n, r) => n + (r.folded?.length ?? 0), 0),
+        fold_calls: rows.filter((r) => r.event === 'fold').length,
+        summary_requests: rows.filter((r) => r.event === 'assemble').reduce((n, r) => n + (r.summary_requests?.length ?? 0), 0),
+        summaries_written: rows.filter((r) => r.event === 'summary' && r.status === 'written').length,
+        summaries_rejected: rows.filter((r) => r.event === 'summary' && r.ok && r.status === 'rejected').length,
+        summary_errors: rows.filter((r) => r.event === 'summary' && !r.ok).length,
         assemble_calls: sidecar.length,
         assemble_errors: sidecar.filter((r) => r.event === 'assemble_error').length,
         evicted_units: rows.filter((r) => r.event === 'evict').reduce((n, r) => n + (r.evicted?.length ?? 0), 0),
         evict_calls: rows.filter((r) => r.event === 'evict').length,
         floor_evictions: turns.filter((r) => r.evict_floor).length,
-        fired: turns.some((r) => (r.dropped ?? 0) > 0 || (r.folded ?? 0) > 0 || (r.reduced ?? 0) > 0 || (r.stubbed ?? 0) > 0),
+        fired: turns.some((r) => (r.dropped ?? 0) > 0 || (r.edited ?? 0) > 0),
     };
 }
 
@@ -455,6 +465,8 @@ async function runOne(task, repeat) {
                     ...(G0_FOLD_MARKER ? { g0fold: G0_FOLD_MARKER } : {}),
                     ...(G0_REDUCE_MARKER ? { g0reduce: G0_REDUCE_MARKER } : {}),
                     ...(G0_STUB_MARKER ? { g0stub: G0_STUB_MARKER } : {}),
+                    ...(G0_THINK_MARKER ? { g0think: G0_THINK_MARKER } : {}),
+                    ...(G0_CARRIER_MARKER ? { g0carrier: G0_CARRIER_MARKER } : {}),
                 },
                 marker: {
                     ...(sel.marker !== null && sel.marker !== undefined ? { [LEASE_MARKER]: sel.marker } : {}),

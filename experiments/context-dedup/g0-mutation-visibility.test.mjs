@@ -26,16 +26,16 @@ test('the gate FOLDS the task statement rather than splicing it, so a user messa
   // Splicing it produced `500 Jinja Exception: No user query found in messages` — opencode's
   // loop has exactly one user message. A rejected request cannot answer the gate's question.
   const fired = g0Decisions(messages(3), FOLD);
-  assert.deepEqual(fired[0], { id: 'm0', action: 'fold', text: FOLD, g0: true });
+  assert.deepEqual(fired[0], { id: 'm0', action: 'edit', unit: 'g0', edits: [{ part: 'text', text: FOLD }], g0: true });
   assert.deepEqual(fired.slice(1).map((d) => d.action), ['keep', 'keep']);
 });
 
 test('the gate also splices an assistant message, which is what the arms actually do', () => {
   const fired = g0Decisions(messages(4), FOLD);
-  assert.equal(fired[0].action, 'fold');
+  assert.equal(fired[0].action, 'edit');
   // Index 1 is an assistant message: its tool calls and results travel together inside it,
   // so removing it can never orphan a result.
-  assert.deepEqual(fired[1], { id: 'm1', action: 'drop', g0: true });
+  assert.deepEqual(fired[1], { id: 'm1', action: 'drop', unit: 'g0', g0: true });
   assert.deepEqual(fired.slice(2).map((d) => d.action), ['keep', 'keep']);
 });
 
@@ -51,13 +51,15 @@ const arm = (over = {}) => ({
   plugin_loaded: true, plugin_turns: 4, plugin_errors: 0, fold_turns: 3, drop_turns: 3,
   reduce_turns: 2, after_first_reduce: 2, after_all_reduced: true, reduce_seen: 2,
   stub_turns: 2, after_first_stub: 2, after_all_stubbed: true, stub_seen: 2,
+  think_turns: 2, after_first_think: 2, after_all_thought: true, think_seen: 2, after_all_carried: true, carrier_seen: 2,
   sidecar_g0_rows: 3, sidecar_assembles: 4, ...over,
 });
 const control = (over = {}) => arm({
   tag: 'control', present: 4, missing: 0, fold_turns: 0, drop_turns: 0, sidecar_g0_rows: 0,
   before_first_drop: 4, after_first_drop: 0, after_all_clean: false, after_all_replaced: false,
   replacement_seen: 0, reduce_turns: 0, after_first_reduce: 0, after_all_reduced: false, reduce_seen: 0,
-  stub_turns: 0, after_first_stub: 0, after_all_stubbed: false, stub_seen: 0, ...over,
+  stub_turns: 0, after_first_stub: 0, after_all_stubbed: false, stub_seen: 0,
+  think_turns: 0, after_first_think: 0, after_all_thought: false, think_seen: 0, after_all_carried: false, carrier_seen: 0, ...over,
 });
 
 test('G0 passes only when the control holds the marker and the treatment loses it in order', () => {
@@ -181,9 +183,16 @@ test('an in-place output reduction that never reaches the wire fails the gate', 
   assert.match(gradeG0({ control: control({ stub_seen: 1 }), treatment: arm() }).voids.join(' '), /stub tag's text appeared/);
 });
 
-test('the gate reduces the first tool output past the spliced message, from five messages on', () => {
-  const messages = [0, 1, 2, 3, 4].map((i) => ({ id: `m${i}`, hasTools: i >= 3 }));
-  assert.deepEqual(g0Decisions(messages, 'FOLD', 'REDUCED')[3], { id: 'm3', action: 'reduce', outputs: [{ index: 0, text: 'REDUCED' }], g0: true });
-  assert.ok(g0Decisions(messages.slice(0, 4), 'FOLD', 'REDUCED').every((d) => d.action !== 'reduce'));
-  assert.ok(g0Decisions(messages, 'FOLD').every((d) => d.action !== 'reduce'));
+test('the gate makes every edit an arm makes, one per tool-bearing message, each with its own marker', () => {
+  const messages = [0, 1, 2, 3, 4, 5, 6, 7].map((i) => ({ id: `m${i}`, hasTools: i >= 3 }));
+  const all = g0Decisions(messages, 'FOLD', 'REDUCED', 'STUB', 'THINK', 'CARRIER');
+  const edit = (i) => all[i].edits;
+  assert.deepEqual(edit(3), [{ part: 'tool', index: 0, text: 'REDUCED' }]);
+  assert.deepEqual(edit(4), [{ part: 'reasoning', text: null }, { part: 'tool', index: 0, text: 'STUB' }]);
+  assert.deepEqual(edit(5), [{ part: 'reasoning', text: 'THINK' }]);
+  assert.deepEqual(edit(6), [{ part: 'reasoning', text: 'CARRIER' }, { part: 'tool', index: 0, text: null }]);
+  assert.equal(all[7].action, 'keep');
+  // Each case waits for enough messages, and never lands on a message without tools.
+  assert.ok(g0Decisions(messages.slice(0, 4), 'FOLD', 'REDUCED').every((d) => d.action !== 'edit' || d.id === 'm0'));
+  assert.ok(g0Decisions(messages, 'FOLD').slice(2).every((d) => d.action === 'keep'));
 });

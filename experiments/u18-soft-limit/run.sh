@@ -51,7 +51,7 @@ GATE_ARMS="${*:2}"
 die() { echo "u18: $*" >&2; exit 1; }
 say() { echo "u18: $*" >&2; }
 
-for a in $ARMS; do [[ "$a" =~ ^(off|soft|hard|stub|summary)$ ]] || die "unknown arm '$a' (lib.mjs ARMS)"; done
+for a in $ARMS; do [[ "$a" =~ ^(off|soft|hard|think|stub|summary)$ ]] || die "unknown arm '$a' (lib.mjs ARMS)"; done
 [[ " $ARMS " == *" off "* && " $ARMS " == *" soft "* ]] || die "U18 needs at least the off and soft arms"
 [[ "${CT_SANDBOX:-1}" != 0 ]] || die "CT_SANDBOX=0 refused: an unsandboxed agent can read the gold patch, and the ct arm silently degrades to its control"
 
@@ -96,7 +96,7 @@ drive() { # arm tag repeat instances
   if [[ "$arm" != off ]]; then
     mapfile -t knobs < <(node "$HERE/analyze.mjs" env "$arm")
     # The arm table (lib.mjs ARMS) owns the trigger and anything an arm sets; later entries win.
-    armenv=(CT_ARM=ct CT_CT_TRIGGER="$(node "$HERE/analyze.mjs" trigger "$arm")" CT_CT_SUMMARIES=0 CT_CT_CADENCE_N=5 CT_ASSEMBLE_PORT=8899 "${knobs[@]}")
+    armenv=(CT_ARM=ct CT_CT_TRIGGER="$(node "$HERE/analyze.mjs" trigger "$arm")" CT_ASSEMBLE_PORT=8899 "${knobs[@]}")
   fi
   assert_served
   jq -nc --arg tag "$tag" --arg arm "$arm" --arg ids "$ids" --arg commit "$(git rev-parse HEAD)" \

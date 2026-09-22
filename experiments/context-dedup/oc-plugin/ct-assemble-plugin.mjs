@@ -107,15 +107,16 @@ export const server = async () => {
       const started = Date.now();
 
       let assembled = null;
+      let folded = null;
       let evicted = null;
       try {
         const evictCall = evictCallFor(POLICY, turn, beforeTokens);
         const window = assembleWindowFor(POLICY);
         if (window !== null) {
-          assembled = await callTool('assemble', {
-            window_tokens: window, reserve_tokens: reserveOf(POLICY, window), query: queryOf(messages), turn,
-            ...(evictCall ? {} : { messages: sized }),
-          }, deadline);
+          // assemble -> fold -> evict: the last call carries `messages` and renders the decisions.
+          const geometry = { window_tokens: window, reserve_tokens: reserveOf(POLICY, window), turn };
+          assembled = await callTool('assemble', { ...geometry, query: queryOf(messages), ...(POLICY.gate ? { messages: sized } : {}) }, deadline);
+          if (!POLICY.gate) folded = await callTool('fold', { ...geometry, ...(evictCall ? {} : { messages: sized }) }, deadline);
         }
         if (evictCall) {
           const { floor, ...args } = evictCall;
@@ -127,14 +128,17 @@ export const server = async () => {
         return;
       }
 
-      const decisions = (evicted ?? assembled)?.decisions ?? [];
+      const decisions = (evicted ?? folded ?? assembled)?.decisions ?? [];
       const applied = applyDecisions(messages, decisions);
       const keptTokens = sizeOf(messages);
       log({
         turn, before, after: messages.length, before_tokens: beforeTokens, kept_tokens: keptTokens,
-        dropped: applied.dropped, folded: applied.folded, reduced: applied.reduced, stubbed: applied.stubbed, decisions: decisions.length,
-        assembled: assembled !== null, evict_called: evicted !== null, evict_window: evicted?.window ?? null, evict_floor: evicted?.floor ?? false,
-        evicted_now: evicted?.evicted?.length ?? 0, evicted_total: evicted?.evicted_total ?? null, stubbed_total: evicted?.stubbed_total ?? null,
+        dropped: applied.dropped, edited: applied.edited, reasoning_edited: applied.reasoning_edited, text_edited: applied.text_edited,
+        outputs_edited: applied.outputs_edited, parts_removed: applied.parts_removed, decisions: decisions.length,
+        assembled: assembled !== null, summary_requests: assembled?.summary_requests?.length ?? 0,
+        fold_called: folded !== null, folded_now: folded?.folded?.length ?? 0, folds_total: folded?.folds_total ?? null,
+        evict_called: evicted !== null, evict_window: evicted?.window ?? null, evict_floor: evicted?.floor ?? false,
+        evicted_now: evicted?.evicted?.length ?? 0, evicted_total: evicted?.evicted_total ?? null,
         over_ceiling: keptTokens > ceilingOf(POLICY), ms: Date.now() - started,
       });
     },

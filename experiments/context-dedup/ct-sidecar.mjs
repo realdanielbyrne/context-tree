@@ -51,8 +51,8 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = process.env.CT_REPO_ROOT ?? join(HERE, '..', '..');
 const dist = (pkg) => pathToFileURL(join(REPO, 'packages', pkg, 'dist', 'index.js')).href;
 
-const { OpenRouterProvider, Summarizer, TreeRetriever, ingest, openTaskStore, resolveConfig } = await import(dist('core'));
-const { TOOLS, boundaryOf, countActions, createHttpApi, createServer, createSession, pipelineFromEnv, toolContext, withHandlers } = await import(dist('mcp'));
+const { OpenRouterProvider, TreeRetriever, ingest, openTaskStore, resolveConfig } = await import(dist('core'));
+const { HANDLERS, TOOLS, boundaryOf, countActions, createHttpApi, createServer, createSession, pipelineFromEnv, toolContext, withHandlers } = await import(dist('mcp'));
 const { mapOpencodeExport } = await import(dist('cli'));
 
 const requireFromCore = createRequire(join(REPO, 'packages', 'core', 'dist', 'index.js'));
@@ -71,6 +71,8 @@ const G0_DROP_FIRST = process.env.CT_G0_DROP_FIRST === '1';
 const G0_FOLD_TEXT = process.env.CT_G0_FOLD_TEXT || '';
 const G0_REDUCE_TEXT = process.env.CT_G0_REDUCE_TEXT || '';
 const G0_STUB_TEXT = process.env.CT_G0_STUB_TEXT || '';
+const G0_THINK_TEXT = process.env.CT_G0_THINK_TEXT || '';
+const G0_CARRIER_TEXT = process.env.CT_G0_CARRIER_TEXT || '';
 
 const log = (message) => process.stderr.write(`ct-sidecar: ${message}\n`);
 const record = (row) => {
@@ -187,52 +189,51 @@ export function makeFollower(handle) {
 }
 
 /**
- * G0 — MUTATION VISIBILITY. A gate, not an arm, and deliberately not a policy.
- *
- * Every arm's evidence rests on one unproven claim: that an in-place edit in the plugin
- * survives into the bytes opencode sends. Nothing downstream of the plugin can check it —
- * the plugin's log records its intention, the sidecar's records its verdict, and both sit
- * upstream of the serializer. Only the relay's wire record is evidence.
- *
  * THE GATE MAY NOT BREAK THE REQUEST IT IS MEASURING. Dropping the task statement was the
  * obvious design and it is wrong: opencode's loop holds exactly ONE user message, so
  * splicing it out leaves system + assistant, and this chat template answers
  * `500 Jinja Exception: No user query found in messages`. A rejected prompt says nothing
  * about what the provider would have read, and the missing marker reads as success.
  *
- * So the gate makes both edits the arms make, on the same array, in the same turn:
+ * So the gate makes every edit the arms make, on the same array, in the same turn, each
+ * with its own marker so the wire says which one arrived:
  *
- *   FOLD  messages[0] -> a replacement carrying a SECOND marker. Two-sided and direct: the
- *         task statement's marker must vanish from the wire and the replacement's must
- *         appear. A user message survives, so the request stays well-formed.
- *   REDUCE the first tool output past messages[1], from five messages on — the edit every
- *         reduction makes. Two-sided like the fold: text that exists nowhere but the
- *         replacement must arrive on the wire.
- *   STUB  the NEXT tool-carrying message after that one, from six messages on — what
- *         `evictMode: 'stub'` does: reasoning parts removed and an output replaced by a tag,
- *         on the same message. The tag's text must arrive, and the request must be accepted.
- *   SPLICE messages[1] from four messages on — an assistant message, which carries its own
- *         tool calls and results together and so can never orphan a result.
+ *   FOLD     messages[0]'s text -> a replacement carrying the FOLD marker. Two-sided and
+ *            direct: the task statement's marker must vanish from the wire and the
+ *            replacement's must appear. A user message survives, so the request is well-formed.
+ *   SPLICE   messages[1] from four messages on — an assistant message, which carries its own
+ *            tool calls and results together and so can never orphan a result.
+ *   REDUCE   the first tool OUTPUT past messages[1], from five messages on — the edit every
+ *            reduction makes.
+ *   STUB     the NEXT tool-carrying message: reasoning parts removed and an output replaced
+ *            (the STUB marker) — a stubbed tool block.
+ *   THINK    the one after: its reasoning part replaced by the THINK marker, nothing else
+ *            touched — a folded reasoning block (`fold_reasoning_after`).
+ *   CARRIER  the one after that: its reasoning part replaced by the CARRIER marker and its
+ *            tool parts removed — a summary riding in a message's reasoning part.
  *
  * It does nothing before three messages: at turn one the array is the task statement alone,
  * and there is nothing to edit that would leave a request worth sending. Those early turns
  * are the within-run control — the original marker must be on the wire there.
  */
-export function g0Decisions(messages, foldText, reduceText = '', stubText = '') {
+export function g0Decisions(messages, foldText, reduceText = '', stubText = '', thinkText = '', carrierText = '') {
   const decisions = messages.map((m) => ({ id: m.id, action: 'keep' }));
   if (messages.length < 3 || !foldText) return decisions;
-  decisions[0] = { id: messages[0].id, action: 'fold', text: foldText, g0: true };
-  if (messages.length >= 4) decisions[1] = { id: messages[1].id, action: 'drop', g0: true };
-  // REDUCE: the first tool-carrying message past the spliced one has its first tool OUTPUT
-  // replaced. The call and its result stay paired, so the request stays well-formed.
-  const target = reduceText && messages.length >= 5 ? messages.findIndex((m, i) => i >= 2 && m.hasTools) : -1;
-  if (target >= 0) decisions[target] = { id: messages[target].id, action: 'reduce', outputs: [{ index: 0, text: reduceText }], g0: true };
-  const next = stubText && target >= 0 && messages.length >= 6 ? messages.findIndex((m, i) => i > target && m.hasTools) : -1;
-  if (next >= 0) decisions[next] = { id: messages[next].id, action: 'stub', outputs: [{ index: 0, text: stubText }], g0: true };
+  decisions[0] = { id: messages[0].id, action: 'edit', unit: 'g0', edits: [{ part: 'text', text: foldText }], g0: true };
+  if (messages.length >= 4) decisions[1] = { id: messages[1].id, action: 'drop', unit: 'g0', g0: true };
+  const toolBearing = [];
+  for (let i = 2; i < messages.length; i += 1) if (messages[i].hasTools) toolBearing.push(i);
+  const edit = (i, edits) => { decisions[i] = { id: messages[i].id, action: 'edit', unit: 'g0', edits, g0: true }; };
+  if (reduceText && messages.length >= 5 && toolBearing[0] !== undefined) edit(toolBearing[0], [{ part: 'tool', index: 0, text: reduceText }]);
+  if (stubText && messages.length >= 6 && toolBearing[1] !== undefined) edit(toolBearing[1], [{ part: 'reasoning', text: null }, { part: 'tool', index: 0, text: stubText }]);
+  if (thinkText && messages.length >= 7 && toolBearing[2] !== undefined) edit(toolBearing[2], [{ part: 'reasoning', text: thinkText }]);
+  if (carrierText && messages.length >= 8 && toolBearing[3] !== undefined) edit(toolBearing[3], [{ part: 'reasoning', text: carrierText }, { part: 'tool', index: 0, text: null }]);
   return decisions;
 }
 
 /** Every HTTP call, as the evidence the gates read: one row per `assemble`, one per `evict`. */
+let fulfilSummaries = null;
+
 function logCall({ tool, ok, ms, input, outcome }) {
   if (!ok) {
     record({ event: 'assemble_error', tool, ms, error: `${outcome.error?.code}: ${outcome.error?.message}`.slice(0, 800) });
@@ -242,43 +243,43 @@ function logCall({ tool, ok, ms, input, outcome }) {
   const actions = data.decisions ? countActions(data.decisions) : null;
   if (tool === 'assemble') {
     const by = (kind) => (data.units ?? []).filter((u) => u.representation === kind).length;
-    record({ event: 'assemble', turn: data.turn, window: input.window_tokens, per_unit_budget: data.per_unit_budget, units: data.units?.length ?? 0, tokens_raw: data.tokens_raw, tokens_assembled: data.tokens_assembled, reduced: by('reduce'), folded: by('fold'), actions, ms, ...(G0_DROP_FIRST ? { g0: 'drop_first' } : {}) });
+    record({ event: 'assemble', turn: data.turn, window: input.window_tokens, per_unit_budget: data.per_unit_budget, units: data.units?.length ?? 0, tokens_raw: data.tokens_raw, tokens_assembled: data.tokens_assembled, reduced: by('reduce'), summary_requests: data.summary_requests ?? [], actions, ms, ...(G0_DROP_FIRST ? { g0: 'drop_first' } : {}) });
+    fulfilSummaries?.(data.summary_requests);
+  } else if (tool === 'fold') {
+    record({ event: 'fold', turn: data.turn, window: input.window_tokens, fired: data.fired, folded: data.folded, folds_total: data.folds_total, tokens_before: data.tokens_before, tokens_after: data.tokens_after, actions, ms });
   } else if (tool === 'evict') {
-    record({ event: 'evict', turn: data.turn, window: input.window_tokens, reserve: input.reserve_tokens ?? 0, fired: data.fired, evicted: data.evicted, evicted_total: data.evicted_total, stubbed: data.stubbed, stubbed_total: data.stubbed_total, tokens_before: data.tokens_before, tokens_after: data.tokens_after, over_budget: data.over_budget, actions, ms });
+    record({ event: 'evict', turn: data.turn, window: input.window_tokens, reserve: input.reserve_tokens ?? 0, fired: data.fired, evicted: data.evicted, evicted_total: data.evicted_total, tokens_before: data.tokens_before, tokens_after: data.tokens_after, over_budget: data.over_budget, actions, ms });
   } else {
     record({ event: 'tool', tool, ms });
   }
 }
 
 /**
- * SUMMARIES, when the arm asks for them. A closed phase is summarized ONCE, in the background,
- * by the model the agent itself runs on, reached through the sandbox relay. `assemble` folds a
- * phase only once its summary exists (D11: the assembler never waits on the summarizer), so a
- * slow or failed summary costs a fold, never a turn.
+ * SUMMARIES ON REQUEST (D26). `assemble` reports the ranges it would like summarized; this
+ * fulfils them in the background, one at a time, through `summarize` — the same tool the
+ * agent can call — against the model the agent itself runs on, reached through the sandbox
+ * relay. `assemble` never waits (D11): a slow or failed summary costs a fold, never a turn.
  */
-export function makeSummaries(handle, { provider, model, maxTokens }) {
-  const summarizer = new Summarizer({
-    store: handle.store, trace: handle.trace, blobs: handle.blobs, provider,
-    leafModel: model, rootModel: model, concurrency: 1, maxSummaryTokens: maxTokens,
-  });
+export function makeSummaryFulfiller(ctx, summarize, { onDone }) {
   const asked = new Set();
-  let reported = 0;
-  return function tick() {
-    for (const phase of handle.store.byKind('phase')) {
-      if (phase.status === 'open' || phase.status === 'superseded' || asked.has(phase.id) || handle.store.currentSummary(phase.id) !== null) continue;
-      asked.add(phase.id);
-      summarizer.scheduleSummarize(phase.id);
+  let queue = Promise.resolve();
+  return function fulfil(requests) {
+    for (const r of requests ?? []) {
+      const key = `${r.from_seq}:${r.to_seq}`;
+      if (asked.has(key)) continue;
+      asked.add(key);
+      queue = queue
+        .then(() => summarize(ctx, { from_seq: r.from_seq, to_seq: r.to_seq, trigger: 'assemble' }))
+        .then((outcome) => onDone({ request: r, ok: outcome.ok, ...(outcome.ok ? outcome.data : { error: `${outcome.error?.code}: ${outcome.error?.message}` }) }))
+        .catch((error) => onDone({ request: r, ok: false, error: String(error?.message ?? error) }));
     }
-    const outcomes = summarizer.backgroundOutcomes();
-    for (const o of outcomes.slice(reported)) record({ event: 'summary', node: o.nodeId, status: o.status, ...(o.error ? { error: String(o.error.message).slice(0, 300) } : {}) });
-    reported = outcomes.length;
   };
 }
 
 /** The G0 gate swaps ONE stage behind its name; the transports and the plugin are untouched. */
 const g0Assemble = async (_ctx, input) => ({
   ok: true,
-  data: { turn: input?.turn ?? 0, per_unit_budget: 0, tokens_raw: 0, tokens_assembled: 0, units: [], decisions: g0Decisions(input?.messages ?? [], G0_FOLD_TEXT, G0_REDUCE_TEXT, G0_STUB_TEXT) },
+  data: { turn: input?.turn ?? 0, per_unit_budget: 0, tokens_raw: 0, tokens_assembled: 0, units: [], summary_requests: [], decisions: g0Decisions(input?.messages ?? [], G0_FOLD_TEXT, G0_REDUCE_TEXT, G0_STUB_TEXT, G0_THINK_TEXT, G0_CARRIER_TEXT) },
 });
 
 function neutralPhasesFromEnv() {
@@ -317,14 +318,13 @@ async function main() {
 
   const follow = makeFollower(handle);
   const summaryModel = process.env.CT_SUMMARY_MODEL || '';
-  const summaries = pipeline.summaries && !G0_DROP_FIRST && summaryModel && process.env.CT_SUMMARY_BASE_URL
-    ? makeSummaries(handle, {
-        // The relay injects the real key; nothing secret is in the sandbox.
-        provider: new OpenRouterProvider({ apiKey: 'sandboxed', baseURL: process.env.CT_SUMMARY_BASE_URL, timeoutMs: 300_000, sdkMaxRetries: 0 }),
-        model: summaryModel, maxTokens: Number(process.env.CT_SUMMARY_MAX_TOKENS || 4096),
-      })
-    : null;
-  if (pipeline.summaries && !summaries && !G0_DROP_FIRST) record({ event: 'summary_unavailable', reason: 'CT_SUMMARY_BASE_URL / CT_SUMMARY_MODEL not set: no phase will ever fold' });
+  if (summaryModel && process.env.CT_SUMMARY_BASE_URL) {
+    // The relay injects the real key; nothing secret is in the sandbox.
+    ctx.summarizer = { provider: new OpenRouterProvider({ apiKey: 'sandboxed', baseURL: process.env.CT_SUMMARY_BASE_URL, timeoutMs: 300_000, sdkMaxRetries: 0 }), model: summaryModel };
+    fulfilSummaries = makeSummaryFulfiller(ctx, HANDLERS.summarize, { onDone: (row) => record({ event: 'summary', ...row }) });
+  } else if (pipeline.foldSummaries && !G0_DROP_FIRST) {
+    record({ event: 'summary_unavailable', reason: 'CT_SUMMARY_BASE_URL / CT_SUMMARY_MODEL not set: no summary will ever be written' });
+  }
   let db = null;
   const openDb = () => {
     if (db || !existsSync(DB)) return db;
@@ -339,7 +339,6 @@ async function main() {
       if (!handleDb) return;
       const result = follow(handleDb);
       if (result.appended > 0) record({ event: 'ingest', ...result });
-      summaries?.();
     } catch (error) {
       record({ event: 'ingest_error', error: String(error?.message ?? error) });
     }

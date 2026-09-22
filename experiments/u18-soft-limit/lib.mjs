@@ -17,6 +17,9 @@ export const REPEATS = 3;
 /** The clean Swift-NVFP4 baseline this run's `off` arm is an A/A repeat of. */
 export const HISTORICAL_SOLVED = 19;
 
+/** The control's median served peak on the gate problem (baseline-swift-sbx-x3: 117,951–118,801; wave 0: 119,204). */
+export const HISTORICAL_GATE_PEAK = 118_000;
+
 export const RULES = Object.freeze({
   /** Soft cells that must have evicted for the arm to count as having run at all. */
   minEngagedCells: 8,
@@ -62,27 +65,33 @@ const { PIPELINE_PARAMS } = await import(new URL('../../packages/mcp/dist/index.
  *
  *   off      the host alone
  *   hard     the plumbing, evicting only at the real window        — plumbing-matched control
- *   soft     evicts at W, SILENTLY: a dropped message leaves nothing behind
- *   stub     soft + an evicted turn stays visible as a stub with a recall id, and the contract
- *            (v5) describes those tags. No summaries.
- *   summary  stub + closed phases fold to a headline summary with a recall id (U20)
+ *   soft     evicts at W, SILENTLY: a dropped message leaves nothing behind, nothing folds
+ *   think    NO eviction: the segmenter folds the reasoning of every turn older than the newest
+ *            K to its conclusion (D26) — how much window does thinking alone give back?
+ *   stub     soft + the segmenter folds blocks under pressure before anything is deleted: a
+ *            tool output becomes a tag with a recall id, thinking keeps its tail; contract v5
+ *            describes the tags. No summaries.
+ *   summary  stub + assemble asks for summaries over runs of folded blocks (U20)
  *
- * `soft` exists unchanged because its cells were run before the other two were designed: in 21
- * ct cells the agent never once called a recall tool, which is what `stub` and `summary` address.
+ * `soft` exists unchanged because its cells were run before the others were designed: in 21
+ * ct cells the agent never once called a recall tool, which is what the fold arms address.
  */
 export const ARMS = Object.freeze({
   off: { trigger: null, set: {} },
   hard: { trigger: 'hard', set: {} },
   soft: { trigger: 'soft', set: {} },
-  stub: { trigger: 'soft', set: { CT_CT_EVICT_MODE: 'stub', CT_CONTRACT: 'v5' } },
-  summary: { trigger: 'soft', set: { CT_CT_EVICT_MODE: 'stub', CT_CONTRACT: 'v5', CT_CT_SUMMARIES: '1' } },
+  think: { trigger: 'off', set: { CT_CT_FOLD_REASONING_AFTER: '3', CT_CONTRACT: 'v5' } },
+  stub: { trigger: 'soft', set: { CT_CT_FOLD_TRIGGER: 'pressure', CT_CONTRACT: 'v5' } },
+  summary: { trigger: 'soft', set: { CT_CT_FOLD_TRIGGER: 'pressure', CT_CONTRACT: 'v5', CT_CT_FOLD_SUMMARIES: '1' } },
 });
-export const CT_ARMS = Object.freeze(Object.keys(ARMS).filter((a) => ARMS[a].trigger !== null));
-/** Arms whose purpose is that the agent can get evicted content back. */
+export const CT_ARMS = Object.freeze(Object.keys(ARMS).filter((a) => a !== 'off'));
+/** Arms whose purpose is that the agent can get folded content back. */
 export const RECALL_ARMS = Object.freeze(['stub', 'summary']);
+/** Arms in which the segmenter folds. */
+export const FOLD_ARMS = Object.freeze(['think', 'stub', 'summary']);
 
-/** Set per arm (`ARMS`), never from the command line: summaries are an arm, not a knob. `run.sh` defaults it to 0. */
-export const U18_FIXED = Object.freeze({ CT_CT_SUMMARIES: '0' });
+/** Set per arm (`ARMS`), never from the command line: what an arm IS is not a knob. */
+export const U18_FIXED = Object.freeze({ CT_CT_FOLD_TRIGGER: 'none', CT_CT_FOLD_SUMMARIES: '0', CT_CT_FOLD_REASONING_AFTER: '0' });
 
 /**
  * Parameters added to the package AFTER cells had been recorded. At its package default such a
@@ -90,8 +99,8 @@ export const U18_FIXED = Object.freeze({ CT_CT_SUMMARIES: '0' });
  * adding a parameter upstream would orphan every wave already run under the old hash.
  */
 const LATE_KNOBS = Object.freeze([
-  'CT_CT_EVICT_MODE', 'CT_CT_SUMMARY_RENDER',
   'CT_CT_BOUNDARY', 'CT_CT_BOUNDARY_WINDOW', 'CT_CT_BOUNDARY_THRESHOLD', 'CT_CT_BOUNDARY_TOPK', 'CT_CT_W_COVARIANCE', 'CT_CT_COVARIANCE_K', 'CT_CT_COVARIANCE_M',
+  'CT_CT_FOLD_STUB_AT', 'CT_CT_CADENCE_N', 'CT_CT_FOLD_REASONING', 'CT_CT_FOLD_REASONING_TAIL', 'CT_CT_FOLD_SUMMARIZE_AT', 'CT_CT_FOLD_MIN_RUN', 'CT_CT_SUMMARY_RATIO', 'CT_CT_SUMMARY_MAX_TOKENS',
 ]);
 const atLateDefault = (ct, value) => LATE_KNOBS.includes(ct) && value === KNOBS.find((k) => k.ct === ct)?.def;
 
@@ -251,7 +260,7 @@ export function cellProblems(cell, { arm, window, knobs = null, foreignReads = [
     const { trigger, set } = ARMS[arm];
     if (ct.arm_effective?.trigger !== trigger) out.push(`trigger ${ct.arm_effective?.trigger}, expected ${trigger}`);
     if (trigger === 'soft' && ct.arm_effective?.softWindow !== window) out.push(`soft window ${ct.arm_effective?.softWindow}, expected ${window}`);
-    if (Boolean(ct.arm_effective?.summaries) !== (set.CT_CT_SUMMARIES === '1')) out.push(`summaries ${ct.arm_effective?.summaries ? 'ON' : 'off'}: not what the ${arm} arm is`);
+    if (Boolean(ct.arm_effective?.foldSummaries) !== (set.CT_CT_FOLD_SUMMARIES === '1')) out.push(`summaries ${ct.arm_effective?.foldSummaries ? 'ON' : 'off'}: not what the ${arm} arm is`);
     // The cell must have run under exactly the config this analysis is reading.
     for (const [key, want] of Object.entries(knobs ? armKnobs(arm, knobs) : {})) {
       if (ct[key] === undefined && atLateDefault(key, want)) continue;
@@ -265,7 +274,7 @@ export function cellProblems(cell, { arm, window, knobs = null, foreignReads = [
   return out;
 }
 
-export const engaged = (cell) => !!cell.ct?.fired && (cell.ct?.evicted_units ?? 0) + (cell.ct?.stubbed_units ?? 0) > 0;
+export const engaged = (cell) => !!cell.ct?.fired && (cell.ct?.evicted_units ?? 0) + (cell.ct?.stubs_folded ?? 0) > 0;
 
 const RECALL_TOOL = /^context-tree_(fetch|search|peek)$/;
 /** How many times the AGENT called a recall tool. The plugin's own calls go over HTTP and are not counted here. */
@@ -352,8 +361,13 @@ export function gateVerdict(cell, wire, sidecar, { arm, window, knobs = null }) 
   if (sidecar.over_ceiling_turns > 0) reasons.push(`${sidecar.over_ceiling_turns} turn(s) left the prompt over the ceiling`);
   if (sidecar.over_budget_rulings > 0) reasons.push(`G2: ${sidecar.over_budget_rulings} ruling(s) could not meet the budget — the pinned units alone exceeded it`);
   if ((cell.steps ?? 0) < RULES.gateMinSteps) reasons.push(`the cell ran ${cell.steps ?? 0} step(s) (< ${RULES.gateMinSteps}): too short to show anything about the arm`);
-  if (ARMS[arm].set.CT_CT_EVICT_MODE === 'stub' && !((cell.ct?.messages_stubbed ?? 0) > 0)) reasons.push('G2: no message was ever stubbed — the arm ran as silent eviction');
-  if (ARMS[arm].set.CT_CT_SUMMARIES === '1' && !((cell.ct?.messages_folded ?? 0) > 0)) reasons.push('G2: no phase was ever folded to a summary — the arm ran as `stub`');
+  const { set } = ARMS[arm];
+  if (set.CT_CT_FOLD_TRIGGER === 'pressure' && !((cell.ct?.stubs_folded ?? 0) > 0)) reasons.push('G2: no block was ever folded — the arm ran as silent eviction');
+  if (set.CT_CT_FOLD_SUMMARIES === '1' && !((cell.ct?.summaries_written ?? 0) > 0)) reasons.push('G2: no summary was ever written — the arm ran as `stub`');
+  if (Number(set.CT_CT_FOLD_REASONING_AFTER ?? 0) > 0) {
+    if (!((cell.ct?.reasoning_edited ?? 0) > 0)) reasons.push('G2: no reasoning part was ever folded — the arm ran as the control');
+    if (!(cell.peak_prompt_tokens < HISTORICAL_GATE_PEAK)) reasons.push(`G2: real peak ${cell.peak_prompt_tokens} is not below the control's on this problem (${HISTORICAL_GATE_PEAK}): folding thinking gave nothing back`);
+  }
   if (ARMS[arm].trigger === 'soft') {
     if (!engaged(cell)) reasons.push('G2: nothing evicted — the mechanism did not fire');
     const limit = Math.round(window * RULES.gatePeakFactor);
@@ -406,6 +420,12 @@ function armSummary(cells, finish = () => null) {
     recall_tool_calls: cells.reduce((n, c) => n + recallCalls(c), 0),
     cells_with_recall: cells.filter((c) => recallCalls(c) > 0).length,
     cells_ended_at_output_cap: cells.filter((c) => finish(c)?.last === 'length').length,
+    // The ledger's account (D26).
+    stubs_folded: cells.reduce((n, c) => n + (c.ct?.stubs_folded ?? 0), 0),
+    reasoning_parts_folded: cells.reduce((n, c) => n + (c.ct?.reasoning_edited ?? 0), 0),
+    summaries_requested: cells.reduce((n, c) => n + (c.ct?.summary_requests ?? 0), 0),
+    summaries_written: cells.reduce((n, c) => n + (c.ct?.summaries_written ?? 0), 0),
+    summaries_rejected: cells.reduce((n, c) => n + (c.ct?.summaries_rejected ?? 0), 0),
     // The agent can call the pipeline tools itself (D22). In `hard` that would make the
     // plumbing control evict, so it is counted where it can be seen.
     agent_evict_calls: cells.reduce((n, c) => n + Object.entries(c.mcp?.tools ?? {}).filter(([t]) => /^context-tree_(evict|restore)$/.test(t)).reduce((m, [, k]) => m + k, 0), 0),

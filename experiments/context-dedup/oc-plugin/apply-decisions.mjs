@@ -1,5 +1,5 @@
 /**
- * Applying the sidecar's verdicts to opencode's live message array.
+ * Applying the sidecar's decisions to opencode's live message array.
  *
  * This lives BESIDE the plugin, not inside it: opencode's loader calls EVERY export of
  * a plugin module as a plugin factory (`for (let X of Object.values($))` … `throw
@@ -11,12 +11,15 @@
 
 /**
  * Mutates `messages` in place — the hook discards a return value, so a new array would
- * be silently ignored. `drop` splices; `fold` and `reduce` REPLACE the element with a
- * shallow clone rather than editing the host's own message object, which the session
- * store and the export used for grading also reference.
+ * be silently ignored. `drop` splices. `edit` REPLACES the element with a shallow clone
+ * whose parts are edited, never the host's own message object, which the session store
+ * and the export used for grading also reference.
  *
- * `reduce` swaps the OUTPUT TEXT of the named tool parts and nothing else: the part, its
- * call and its result stay where they are, so a reduction can never orphan a result.
+ * An edit names parts, not the message (D26): `reasoning` / `text` apply to every part
+ * of that kind (the importer joins them into one block) — replaced by `text`, or removed
+ * when `text` is null; `tool` names the n-th tool part and replaces its OUTPUT, or removes
+ * the whole part (call and result together) when `text` is null. A message left with no
+ * text, reasoning or tool part is dropped: an empty message is not a message.
  */
 export function applyDecisions(messages, decisions) {
   const byId = new Map();
@@ -25,10 +28,7 @@ export function applyDecisions(messages, decisions) {
     // wrong message, including the task statement the sidecar explicitly protected.
     if (typeof decision?.id === 'string' && decision.id) byId.set(decision.id, decision);
   }
-  let dropped = 0;
-  let folded = 0;
-  let reduced = 0;
-  let stubbed = 0;
+  const counts = { dropped: 0, edited: 0, reasoning_edited: 0, text_edited: 0, outputs_edited: 0, parts_removed: 0 };
   for (let i = messages.length - 1; i >= 0; i -= 1) {
     const id = messages[i]?.info?.id;
     if (typeof id !== 'string') continue;
@@ -37,44 +37,51 @@ export function applyDecisions(messages, decisions) {
 
     if (decision.action === 'drop') {
       messages.splice(i, 1);
-      dropped += 1;
+      counts.dropped += 1;
       continue;
     }
-    if (decision.action === 'fold' && typeof decision.text === 'string') {
-      const message = messages[i];
-      const text = (message.parts ?? []).find((p) => p.type === 'text');
-      // Fold is offered only for a text-only message, so this cannot separate a tool
-      // call from its result.
-      if (!text) continue;
-      messages[i] = { ...message, parts: [{ ...text, text: decision.text }] };
-      folded += 1;
-      continue;
+    if (decision.action !== 'edit' || !Array.isArray(decision.edits)) continue;
+    const message = messages[i];
+    const byKind = { reasoning: null, text: null };
+    const byTool = new Map();
+    for (const edit of decision.edits) {
+      if (edit.part === 'tool' && Number.isInteger(edit.index)) byTool.set(edit.index, edit.text);
+      else if (edit.part === 'reasoning' || edit.part === 'text') byKind[edit.part] = { text: edit.text };
     }
-    // `stub` is `reduce` plus the reasoning removed: the message, its text and its tool calls
-    // stay — the agent's own record of what it did — and each listed output becomes a tag.
-    const stub = decision.action === 'stub';
-    if ((stub || decision.action === 'reduce') && Array.isArray(decision.outputs)) {
-      const message = messages[i];
-      const byToolIndex = new Map(decision.outputs.map((o) => [o.index, o.text]));
-      let toolIndex = -1;
-      let touched = false;
-      const kept = (message.parts ?? []).filter((part) => !(stub && part.type === 'reasoning'));
-      if (kept.length !== (message.parts ?? []).length) touched = true;
-      const parts = kept.map((part) => {
-        if (part.type !== 'tool') return part;
-        toolIndex += 1;
-        const text = byToolIndex.get(toolIndex);
-        if (typeof text !== 'string' || typeof part.state?.output !== 'string') return part;
+    let toolIndex = -1;
+    let touched = false;
+    const seen = { reasoning: false, text: false };
+    const parts = [];
+    for (const part of message.parts ?? []) {
+      if (part.type === 'reasoning' || part.type === 'text') {
+        const edit = byKind[part.type];
+        if (edit === null) { parts.push(part); continue; }
         touched = true;
-        return { ...part, state: { ...part.state, output: text } };
-      });
-      if (!touched) continue;
-      // Nothing but reasoning: there is no residue to show, and an empty message is not a message.
-      if (!parts.some((part) => part.type === 'text' || part.type === 'tool')) messages.splice(i, 1);
-      else messages[i] = { ...message, parts };
-      if (stub) stubbed += 1;
-      else reduced += 1;
+        if (part.type === 'reasoning') counts.reasoning_edited += 1; else counts.text_edited += 1;
+        if (edit.text === null) { counts.parts_removed += 1; continue; }
+        // The replacement goes in the first part of its kind; later ones go.
+        if (seen[part.type]) { counts.parts_removed += 1; continue; }
+        seen[part.type] = true;
+        parts.push({ ...part, text: edit.text });
+        continue;
+      }
+      if (part.type === 'tool') {
+        toolIndex += 1;
+        if (!byTool.has(toolIndex)) { parts.push(part); continue; }
+        const text = byTool.get(toolIndex);
+        touched = true;
+        if (text === null) { counts.parts_removed += 1; continue; }
+        if (typeof part.state?.output !== 'string') { parts.push(part); continue; }
+        counts.outputs_edited += 1;
+        parts.push({ ...part, state: { ...part.state, output: text } });
+        continue;
+      }
+      parts.push(part);
     }
+    if (!touched) continue;
+    counts.edited += 1;
+    if (!parts.some((part) => part.type === 'text' || part.type === 'tool' || part.type === 'reasoning')) messages.splice(i, 1);
+    else messages[i] = { ...message, parts };
   }
-  return { dropped, folded, reduced, stubbed };
+  return counts;
 }
