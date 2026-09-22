@@ -85,23 +85,24 @@ Remote sessions bill a separate titling call.
 ## Arms
 
 ```bash
-# U18 — soft window, no summaries. W is swept; 87381 is the anchor, not the answer.
-CT_ARM=ct CT_CT_TRIGGER=soft CT_CT_WINDOW=87381 CT_CT_SUMMARIES=0 \
+# U18 — soft window, no folds. W is swept; 87381 is the anchor, not the answer.
+CT_ARM=ct CT_CT_TRIGGER=soft CT_CT_WINDOW=87381 \
 CT_OPENCODE_MODEL=local/HuggingJoost/Swift-Qwen3.8-27B-NVFP4-GGUF \
 CT_LOCAL_EXCLUSIVE=1 CT_RUN_TIMEOUT_S=7200 CT_TAG=u18-soft-w0 \
 node experiments/context-dedup/swebench-opencode.mjs
 
-# U18 is packaged: experiments/u18-soft-limit/run.sh (gates, three arms, resume, verdict).
-# U19 — cadence          CT_CT_TRIGGER=cadence CT_CT_CADENCE_N=5
-# U20 — summaries        CT_CT_SUMMARIES=1 (on the winning trigger)
+# U18 is packaged: experiments/u18-soft-limit/run.sh (gates, six arms, resume, verdict).
+# U19 — cadence          CT_CT_FOLD_TRIGGER=cadence CT_CT_CADENCE_N=5 (the fold policy)
+# U20 — summaries        CT_CT_FOLD_SUMMARIES=1 (assemble asks, summarize writes)
+# think                  CT_CT_TRIGGER=off CT_CT_FOLD_REASONING_AFTER=3 (fold old thinking, evict nothing)
 # control                CT_ARM=off
 # today's shipped default CT_CT_TRIGGER=hard
 ```
 
-A treatment turn is `assemble` then an optional `evict` (`oc-plugin/policy.mjs`). The trigger is
-**whether `evict` is called this turn, and at what window**: `off` → the control, which calls
-nothing; `hard` → every turn at the real context; `soft` → every turn at `CT_CT_WINDOW`; `cadence` →
-every Nth turn at `CT_CT_WINDOW` (assembly still runs every turn). Rulings are sticky, so an off turn
+A treatment turn is `assemble`, then `fold`, then an optional `evict` (`oc-plugin/policy.mjs`). The
+trigger is **whether `evict` is called this turn, and at what window**: `off` → calls nothing unless
+folding is configured on its own; `hard` → every turn at the real context; `soft` → every turn at
+`CT_CT_WINDOW`. When a block folds is the segmenter's `CT_CT_FOLD_TRIGGER`. Rulings are sticky, so an off turn
 leaves the prompt as it was. Nothing in `packages/` changes between arms. To try a different
 algorithm, swap one tool's handler (`withHandlers`) — G0 does exactly this.
 

@@ -9,7 +9,7 @@ Limit code comments and let the code speak for itself. Limit excessive expositio
 ## Plan and decisions
 
 `docs/IMPLEMENTATION_PLAN.md` carries the design and a decision record
-(§3, D1–D25) with rationale and citations. **Do not silently deviate from a D-numbered
+(§3, D1–D26) with rationale and citations. **Do not silently deviate from a D-numbered
 decision.** If implementation reveals a decision is wrong, say so, propose the
 change, and update the plan's decision row — don't just write different code.
 §19 lists deliberately open questions; those are yours to decide (with a stated
@@ -75,10 +75,14 @@ Consequences to hold onto while coding:
 
 ## Component notes worth knowing before you edit
 
-- **Segmenter (§7)**: single O(n) pass, zero LLM calls, bit-identical across
-  runs. Phase boundaries come from `TOOL_PHASE` tool-name → phase mapping, which
-  is config-remappable (`context-tree.config.json`) because tool names differ per
-  harness. **Unknown tool → `other`, never a crash.**
+- **Segmenter (§7, D26)**: single O(n) pass, zero LLM calls, bit-identical across
+  runs. It owns three things, each a selectable strategy with its constants in the registry:
+  where the transcript is cut (`boundary`: the `TOOL_PHASE` tool-name → phase map by default —
+  config-remappable because tool names differ per harness; **unknown tool → `other`, never a
+  crash** — or TextTiling or causal drift), what a folded block shows (`segment/stubs.ts`), and
+  what makes a block fold (`segment/policy.ts`). Blocks (reasoning · text · call+result) are the
+  leaf segments and their ordinals the stub ids. Fold and unfold events are L0; they extend no
+  segment and mark nothing stale.
 - **Summarizer (§8)**: leaves in parallel on the cheap model (concurrency cap 8),
   root on the strong model. Append marks `stale_since_seq` on the leaf and
   cascades **up the ancestor path only** — siblings are never re-summarized.
@@ -86,13 +90,15 @@ Consequences to hold onto while coding:
   never blocks on it. Every summary must carry structured rehydration pointers
   in `meta_json` (files+spans, symbols, tests, ticket/PR ids, open questions) —
   that metadata is the mitigation for the model not knowing what it doesn't know.
-- **Tool surface (§9, D22, D23)**: every pipeline stage is a tool in one registry
+- **Tool surface (§9, D22, D23, D26)**: every pipeline stage is a tool in one registry
   (`packages/mcp/src/tools/index.ts` `TOOLS`), served to agents over MCP and to host plugins
   over loopback HTTP, on one session: `fetch`, `search`, `peek`, `annotate`, `units`,
-  `classify`, `assemble`, `evict`, `restore`. The set is frozen *within a session* (D5), not
-  capped. **`assemble` represents and never removes; `evict` is optional, takes the assembly
-  as input and may overrule it** — keep their rules in separate code. `evict` removes in two
-  steps when `evictMode: stub` (D25): a visible stub with a recall id first, a drop last. Every stage works on the
+  `classify`, `assemble`, `fold`, `evict`, `restore`, `summarize`. The set is frozen *within a
+  session* (D5), not capped. The pipeline is **`assemble → fold → evict`**: `assemble` represents
+  and never removes (and asks for summaries); `fold` is the segmenter's — stubs and summaries,
+  written to the L0 ledger, never overwritten; `evict` is optional, takes both as input, may
+  overrule them, deletes at the folded size and makes no fold — keep their rules in separate
+  code. `summarize` is the only writer of a summary. Every stage works on the
   same unit (a turn = one host message). Every tunable is one row in
   `packages/mcp/src/params.ts`; never restate that list. Spec: `reports/algorithm.md`.
 - **Retrieval providers (§9.1)**: `search`/`fetch` are facades

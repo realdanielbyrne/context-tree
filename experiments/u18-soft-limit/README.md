@@ -42,7 +42,8 @@ the pipeline half *is* the package's parameter registry (`packages/mcp/src/param
 parameter added there is a knob here with no edit; the policy half is `POLICY_KNOBS` in `lib.mjs`.
 `run.sh config` prints every knob resolved, with each arm's tag. A value that does not parse is
 refused before anything runs. U18 departs from the package defaults in exactly one place —
-`U18_ANCHOR=3` (package: 4) — and holds `CT_CT_SUMMARIES=0` fixed (that is U20). Each arm's tag
+`U18_ANCHOR=3` (package: 4) — and holds the three knobs that define an arm — `CT_CT_FOLD_TRIGGER`, `CT_CT_FOLD_SUMMARIES`,
+`CT_CT_FOLD_REASONING_AFTER` — out of the command line (`lib.mjs ARMS` sets them). Each arm's tag
 carries a hash of the knobs it depends on, the full set is written to
 `reports/metrics/u18-soft-limit/configs/<tag>.json`, and the analysis refuses a cell whose recorded
 knobs differ — so settings cannot pool by accident.
@@ -76,13 +77,14 @@ GPU mid-cell.
 | `off` | `CT_ARM=off` | the handoff's control: host compaction at 119,040, no plugin, no MCP tools |
 | `soft` | `CT_ARM=ct CT_CT_TRIGGER=soft CT_CT_WINDOW=W` | the treatment: every turn the plugin calls `assemble` then `evict`, both at `{window_tokens: W, reserve_tokens: 20,192}`. Eviction fires when the assembled units exceed `W − 20,192` heuristic tokens |
 | `hard` | `CT_ARM=ct CT_CT_TRIGGER=hard` | plumbing-matched control: same tools, plugin, `--pure` dropped, host compaction off — but both calls are made at the real window (151,040) |
-| `stub` | `soft` + `CT_CT_EVICT_MODE=stub CT_CONTRACT=v5` | **eviction the agent can see.** An evicted turn keeps its own text and its tool calls, loses its reasoning, and each tool output becomes `[evicted · N tokens · began: "…" · recall: fetch {"unit":"turn:31"}]`. Dropped outright only if the stubs themselves do not fit. No summaries. Contract v5 describes the tags |
-| `summary` | `stub` + `CT_CT_SUMMARIES=1` | `stub`, and a closed phase outside the anchor folds to `[folded phase · <one sentence> · files: … · recall: search, or fetch {"branch_id":"n_…"}]`. Summaries are written in the background by the same local model through the sandbox relay; the full 2–6 sentence summary stays one `fetch` away (`CT_CT_SUMMARY_RENDER=headline`) |
+| `think` | `CT_ARM=ct CT_CT_TRIGGER=off CT_CT_FOLD_REASONING_AFTER=3 CT_CONTRACT=v5` | **no eviction at all.** The segmenter folds the reasoning of every turn older than the newest 3 to its conclusion (`[folded thinking · N tokens · recall: fetch {"stub":30}]` + its last 120 tokens; to nothing when the model's own text follows it). Text, calls and outputs stay raw. How much window does thinking alone give back, at what cost? |
+| `stub` | `soft` + `CT_CT_FOLD_TRIGGER=pressure CT_CONTRACT=v5` | **folding before deletion.** Once the prompt passes the budget the segmenter folds the lowest-scored blocks — a tool output becomes `[folded · N tokens · began: "…" · recall: fetch {"stub":31}]`, thinking keeps its tail, text its first line — and `evict` deletes only what still does not fit, at the folded size. Every fold is an L0 event. No summaries. |
+| `summary` | `stub` + `CT_CT_FOLD_SUMMARIES=1` | `stub`, and `assemble` asks for a summary over any run of ≥ 3 folded blocks outside the anchor that holds > 25% of the budget (the segment containing it when it is all folded); the sidecar fulfils it through `summarize` on the same local model via the relay; it shows as `[summary m91 · <one sentence> · files: … · recall: fetch {"from_seq":…,"to_seq":…}]` and counts only if ≤ 10% of what it summarizes |
 
-The table is `lib.mjs ARMS`; each arm adds one thing to the one before it
-(`soft` → `stub` → `summary`).
+The table is `lib.mjs ARMS`; each arm is one step from its neighbour
+(`soft` → `think` / `stub` → `summary`). What an arm IS is set by the table, never from the command line.
 
-### Why `stub` and `summary` exist (added 2026-09-21, after wave 0, before any cell of either ran)
+### Why the fold arms exist (added 2026-09-21, after wave 0, before any cell of them ran)
 
 `soft` evicts **silently**: a dropped message is spliced out, nothing marks the gap, and contract
 v1 tells the agent to fetch "the branch a summary mentions" in a prompt that has no summaries and
@@ -112,12 +114,14 @@ Summary SIZE is not swept here: the prior is null, and an arm costs 30 cells. `h
 registered setting; `U18_SUMMARY_RENDER=full` exists for the follow-up and changes the tag.
 
 **Registered for these arms before they ran.** The verdict ladder below is unchanged and stays
-`soft` vs `off`. Two secondary outcomes are reported for every ct arm: **recall-tool calls by the
-agent** (`fetch`/`search`/`peek` over MCP — the plugin's own HTTP calls are not counted) and
-**cells that ended on an output-cap step**. A recall arm in which the agent recalled in fewer than
-**3** cells is reported as **RECALL NOT EXERCISED**: its solve rate is then evidence about visible
-eviction, not about recall. Each recall arm is compared with `off` and with `soft` by the same
-paired sign-flip test.
+`soft` vs `off`. Secondary outcomes are reported for every ct arm: **recall-tool calls by the
+agent** (`fetch`/`search`/`peek` over MCP — the plugin's own HTTP calls are not counted), **cells
+that ended on an output-cap step**, and the ledger's account — **blocks folded, reasoning parts
+folded, summaries requested / written / rejected**. A recall arm (`stub`, `summary`) in which the
+agent recalled in fewer than **3** cells is reported as **RECALL NOT EXERCISED**: its solve rate is
+then evidence about visible folding, not about recall. Each fold arm is compared with `off` and with
+`soft` by the same paired sign-flip test. `think` asks its own question — solves and peak against
+`off` with nothing evicted — and is read on those two numbers.
 
 `soft` vs `off` is the **primary** comparison, as the handoff specifies. **`hard` is an addition
 to the handoff's U18 arm list** (it is U19's `hard` arm, so those cells are re-usable there). The
@@ -153,8 +157,10 @@ Arm order rotates per wave so no arm always runs first.
    - **Every ct arm: the cell must run ≥ 20 steps.** On 2026-09-21 a `hard` gate cell whose first
      reply ran into the output cap ended after one step and PASSED — nothing had gone wrong,
      because nothing had happened.
-   - `stub` PASS: as `soft`, and at least one message was stubbed. `summary` PASS: as `stub`,
-     and at least one phase was folded (so the background summarizer reached the model in time).
+   - `stub` PASS: as `soft`, and at least one block was folded. `summary` PASS: as `stub`, and at
+     least one summary was written (so the request → relay → `summarize` path closed in time).
+     `think` PASS: integrity, ≥ 20 steps, at least one reasoning part folded, and a served peak
+     below the control's on this problem (118,000) — no eviction clauses, because it evicts nothing.
    - `hard` PASS: the same without the eviction and peak clauses. It exists because the arm has
      never run live and its ceiling is denominated in heuristic tokens (see Known limits): with
      host compaction off, a problem that fills the window may be a hard session error.
@@ -236,7 +242,7 @@ rotation no longer balances time for them.
   at W = 50,347 with a 20,192 reserve and `f` = 0.375 it is 0. The `soft` arm at the default knobs is
   therefore eviction over raw turns. `U18_SOFT_TARGET_FRAC` turns reduction on; that is a different
   treatment and gets a different tag.
-- **The stub edit is unproven on the wire** until G0's fourth case passes (in-place output reduction passed on 2026-09-20).
+- **Each edit kind is proven on the wire by G0 before an arm may use it**: text replaced, message spliced, tool output replaced, reasoning removed + output tagged, reasoning replaced in place, a summary in a reasoning part with the tool parts gone. Six markers, one gate.
 - **The summarizer shares the GPU with the agent.** `summary` cells run slower, summaries arrive late or not at all on short problems, and a phase whose summary fails the output contract never folds (logged as `summary` rows in `ct-mcp.jsonl`). Wall time is therefore not comparable across arms.
 - Eviction edits the prompt prefix, which forces a re-prefill on this hybrid (recurrent-state)
   model. `soft` turns may be slower, so under intention-to-treat a timeout at 7,200 s makes
@@ -280,3 +286,11 @@ driver's convention), verdicts in `reports/metrics/u18-soft-limit/`. Write the r
 - **2026-09-21, offline replay of `soft` wave-0 django-11138 under `stub`** (no GPU): 27 units
   stubbed, every tag's `fetch {unit}` resolves, no stub text changes after it is first written,
   the first outright drop moves from turn 5 to turn 19, plugin and sidecar sizes agree exactly.
+- **2026-09-21, redesign (D26) before any further GPU.** Two tools owned two versions of compression
+  and neither told the agent anything: the stub gate cell folded 129 units and deleted 125 of them;
+  the summary gate cell could never fold (no text-only carrier on opencode); reasoning — a third of
+  the prompt — was deleted with no tag and could not be searched. The segmenter now owns folding
+  (blocks on natural boundaries, stubs, summaries, one L0 ledger, selectable boundary / score / fold
+  policies), the pipeline is `assemble → fold → evict`, and the arms are `think` / `stub` /
+  `summary` as tabled. The `stub` and `summary` tags changed with their definitions; `soft` and
+  `hard` did not, and their wave-0 cells stand. G0 and the three fold-arm gates are owed.

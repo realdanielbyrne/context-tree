@@ -114,4 +114,4 @@ environment name, bounds, default, which stage reads it, description), served at
 what each one *means* is in `reports/algorithm.md` § Parameters. None has been swept.
 
 Stale above, as of this date: `eval-resumption` and `cli eval` were deleted (D20); the
-decision record runs to D25; test and line counts are from 2026-08-31.
+decision record runs to D26; test and line counts are from 2026-08-31.

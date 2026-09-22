@@ -61,10 +61,9 @@ Policy (plugin, `oc-plugin/policy.mjs`):
 | Var | Default | Meaning |
 |---|---|---|
 | `CT_ARM` | `off` | `off` (control) \| `mcp` (tools only) \| `ct` (tools + assembly plugin) |
-| `CT_CT_TRIGGER` | `soft` | `off` \| `hard` \| `soft` \| `cadence` — WHEN `evict` is called |
+| `CT_CT_TRIGGER` | `soft` | `off` \| `hard` \| `soft` — WHEN `evict` is called. Cadence is the fold policy's (`CT_CT_FOLD_TRIGGER=cadence`), not this |
 | `CT_CT_WINDOW` | `50347` | the soft limit, in **heuristic** tokens — the swept variable. Check it can fire (references/running.md) |
 | `CT_CT_HARD_WINDOW` | `151040` | the model's real context |
-| `CT_CT_CADENCE_N` | `5` | fire every Nth turn under `cadence` |
 | `CT_CT_REPLY_RESERVE` / `CT_CT_HEAD_TOKENS` | `8192` / `12000` | held back from the window: the reply, and the head the plugin cannot see |
 | `CT_ASSEMBLE_MS` / `CT_ASSEMBLE_PORT` | `8000` / `8899` | per-turn budget before the plugin fails open; the loopback tool API |
 
@@ -103,11 +102,12 @@ Each of these produces a run that completes, grades, and reports nothing wrong.
   **not** block plugin loading. Expect the WARN in every sandboxed run and do not chase it.
 - **An arm that evicts silently never gets a recall.** In 21 ct cells the agent called a recall
   tool once: a spliced-out message leaves nothing to act on, and contract v1 describes summaries the
-  prompt never shows. `CT_CT_EVICT_MODE=stub` + `CT_CONTRACT=v5` leave a tag with an id that works
-  in one call (`fetch {"unit":"turn:31"}`); `CT_CT_SUMMARIES=1` needs the sidecar's background
-  summarizer, which runs on the same local model through the relay (`CT_SUMMARY_*`, set by the
-  sandbox). Check `cell.mcp.tools` before saying anything about recall, and count cells whose last
-  step finished `length` (the 32,000-token output cap) — U18's `soft` losses were those.
+  prompt never shows. The fold arms (D26) leave tags with ids that work in one call
+  (`fetch {"stub":31}`): `CT_CT_FOLD_TRIGGER=pressure` + `CT_CONTRACT=v5`; `CT_CT_FOLD_SUMMARIES=1`
+  makes `assemble` ask for summaries, which the sidecar fulfils through `summarize` on the same local
+  model via the relay (`CT_SUMMARY_*`, set by the sandbox). A turn is `assemble → fold → evict`.
+  Check `cell.mcp.tools` before saying anything about recall, and count cells whose last step
+  finished `length` (the 32,000-token output cap) — U18's `soft` losses were those.
 - **Tokens in this arm are HEURISTIC — one heuristic, on both sides.** Sidecar unit sizes, W, the
   ceiling and the plugin's `kept_tokens` are all core's `HeuristicTokenizer` over what the host
   sends (`hostContent` / `oc-plugin/size.mjs`). It is not the served tokenizer: one cell measured

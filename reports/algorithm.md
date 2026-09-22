@@ -48,8 +48,9 @@ rebuildable; **L1 stores coordinates, not content** (a node names a `seq` range;
 
 ## Units and the tree
 
-- **One ladder of units, defined once and used by every stage** (decision D23):
-  `phase ─ turn ─ chunk`.
+- **One ladder of units, defined once and used by every stage** (decisions D23, D26):
+  `phase ─ turn ─ block ─ chunk`. A **segment** is any range of the transcript that may name a
+  parent segment: the tree is a coordinate system over L0, not a second store.
   - A **phase** is the segmenter's (stage 0) contiguous run of events under one tool-phase. It is
     the *grouping*: a closed phase becomes an L1 node with a `seq` range and, once latched, a
     versioned summary.
@@ -61,6 +62,10 @@ rebuildable; **L1 stores coordinates, not content** (a node names a `seq` range;
     nodes, so there is nothing to persist or migrate. `unit = phase` remains selectable and
     reproduces the coarse behaviour (a single phase can reach tens of thousands of tokens, and
     nothing smaller than a phase can then be removed).
+  - A **block** is a leaf segment on a natural boundary INSIDE a turn — the model's **reasoning**,
+    its **text**, or one **tool call with its result**. Block ordinals are the **stub ids**: the
+    universal index into the transcript, a pure function of L0, defined whether or not a block is
+    folded. A turn is what a host can edit; a block is what a fold covers (§ Folds).
   - A **chunk** is a splitter piece of a turn's text under the session's one set of chunk options
     — the single sub-unit: the chunk retrieval ranks is the chunk a reduction keeps.
   Two things are **pinned** — never reduced, folded or removed — because losing them breaks the
@@ -76,15 +81,23 @@ rebuildable; **L1 stores coordinates, not content** (a node names a `seq` range;
 
 Two scorers feed one decider, and retrieval serves on demand: the **classifier** scores
 query-independent state (has the topic shifted), the **retriever** scores query-dependent relevance
-(what matches this turn). Then two separate rulings, in order: the **assembler** decides how each
-unit is *represented*, and the **ejector** — optional, taking the assembly as its input, and free to
-overrule it — decides what is *removed*. Both are sticky until explicitly restored, so a turn on which
-no ruling is made leaves the prompt byte-for-byte as it was.
+(what matches this turn). Then three separate rulings, in order: the **assembler** decides how each
+unit is *represented* (and asks for summaries), the **segmenter** decides what is *folded* (§ Folds —
+written to the ledger), and the **ejector** — optional, taking both as its input, and free to overrule
+them — decides what is *removed*. All are sticky until explicitly restored, so a turn on which no ruling
+is made leaves the prompt byte-for-byte as it was. **fold → summarize → delete** is the compression
+ladder: as a stretch of the session becomes less relevant to what is being discussed now, it is more
+likely to be folded, then summarized and referenced, then deleted.
 
 **0 — Ingest.** Append each event to L0; store payloads in L2; cap edit-tool arguments (replace the
-argument blob with its L2 hash once the post-state blob exists). Segment L0 deterministically by
-**tool name → phase** via a config `TOOL_PHASE` map (unknown → `other`); a phase closes when the mapped
-phase changes, and the closed run becomes a node. Extract **fingerprints** by regex over raw event text
+argument blob with its L2 hash once the post-state blob exists). Segment L0 deterministically under a
+selectable **boundary strategy** (`boundary`, D26): `toolPhase` — **tool name → phase** via a config
+`TOOL_PHASE` map (unknown → `other`), a phase closing when the mapped phase changes; `tiling` — TextTiling
+between blocks (`boundaryWindow`, `boundaryThreshold` = mean − t·sd); `drift` — causal lexical topic
+shift against the previous `boundaryWindow` blocks, Welford z-scored, cut above `boundaryThreshold`;
+`boundaryTopK` keeps only the K strongest cuts. A host `segment_boundary` always wins. Embedding and
+kNN cuts (rung-0b) are not strategies here: D15 forbids embeddings on the ingest path. The closed run
+becomes a node. Extract **fingerprints** by regex over raw event text
 and tool arguments: file paths, `snake_case`/`camelCase`/`PascalCase`/`UPPER_SNAKE` identifiers, and
 backticked spans. Once the trace exceeds the window, **latch** (L0 only grows, so it never fits again)
 and summarize each closed phase on a **cheap model** into a new versioned `node_summaries` row; the
@@ -107,33 +120,53 @@ one per unit, cached in L3.
 **2 — Assemble (representation; removes nothing).** The prompt is a **frozen cached head** (system + steering + all user prompts,
 append-only) followed by a **creation-order flex buffer** of units, with a **cache breakpoint** after
 the head so the head caches.
-- **Representation:** units are **raw** by default. A **closed** phase lying wholly outside the
-  **recency anchor** (the last `A` units) that has a latched summary is represented by that
-  **summary** — carried by its first **text-only** turn (a turn with tool calls is a host message
-  that can only be kept or dropped, never rewritten to a summary), the rest covered by it; pinned
-  turns stay raw and out of the fold. A phase with no text-only turn is **not folded** — it stays as
-  it is and is reported — rather than vanishing with no summary to stand for it. A raw unit over the per-unit budget is **reduced** (below). A representation, once
-  ruled, is sticky: a unit does not flip back to raw on a roomier turn, which would rewrite the prefix.
-  The one way forward is a fold superseding an earlier reduction, because summaries arrive
-  asynchronously and may land after a unit was already reduced.
+- **Representation:** units are **raw** by default, sized at their FOLDED size (§ Folds). A raw unit
+  over the per-unit budget is **reduced** (below). A reduction, ruled, is sticky: a unit does not flip
+  back to raw on a roomier turn, which would rewrite the prefix. Assembly folds nothing.
+- **Summary requests (D26).** When `foldSummaries` is on and a run of at least `foldMinRun`
+  consecutive folded blocks outside the anchor holds more than `foldSummarizeAt` of the budget,
+  assembly asks for ONE summary over that run — widened to the segment that contains it when every
+  block of that segment is folded — and reports the request. It does not wait: a summary takes a model
+  call, and the caller (a host adapter, the agent) fulfils it through `summarize`; the next view shows
+  it. A range already under a summary is not asked for again.
 
-**3 — Evict (removal; optional; input = the assembly).** Units are sized **as assembled**, so a
-unit the assembler reduced competes at its reduced size, and any unit the assembler kept, reduced or
-folded can still be removed here. The ejector never chooses a representation.
-- **Removal has two steps (D25), `evictMode: stub`.** A unit is first cut to a **stub** — what a
-  host can still show of it: the message, its own text and its tool calls with their inputs stay;
-  its reasoning goes; each tool output becomes a tag,
-  `[evicted · N tokens · began: "<first line>" · recall: fetch {"unit":"turn:31"}]`. It is **dropped**
-  only when the stubs themselves do not fit. Everything starts at its cheapest visible form, the
-  best-scored units are restored to full size while they fit, and the worst-scored stubs are
-  dropped if even those overflow; a stub is sized at its residue, so the budget holds. `evictMode:
-  drop` (the default) is the single-step rule below, unchanged. The tag and a folded phase's line
-  (`[folded phase · <headline> · files: … · recall: search, or fetch {"branch_id":"n_…"}]`,
-  `summaryRender`) are the only marker formats, built in `assemble/format.ts` and
-  `summarize/compose-root.ts`; both **describe and never instruct**, a stub's text never changes
-  once written (D5), and its id resolves in one call (`fetch {unit}`). Why: silent eviction was
-  never followed by a recall (U18 wave 0), nudges and stronger contracts have failed every time
-  they were tried here, and a reference that names its content is the form with evidence.
+**2b — Fold (the segmenter; D26).** Folding is what the segmenter does to the segments it cut:
+show a block in a shorter form, written to the **ledger** — `fold` / `unfold` events in L0, so what
+the model was shown on any turn is replayable, a rebuild loses nothing, and a fold's text never
+changes once written (D5).
+- **A stub** is a summary-free fold of ONE block, like a collapsed region in an editor. A tool
+  block keeps its call and its input; the output becomes
+  `[folded · N tokens · began: "<first line>" · recall: fetch {"stub":31}]`. A reasoning block
+  **followed by the model's own text folds to nothing** — that text is its summary, at a measured
+  median 4.4% of the thinking it follows — and that text stays as its own block; a reasoning block
+  with no text after it keeps its **tail** under `[folded thinking · N tokens · recall: fetch
+  {"stub":30}]` (`foldReasoning: tail | drop | keep`, `foldReasoningTail`: the conclusion sits at
+  the end of a thinking block, the deliberation at the start). A text block folds to its first line.
+- **A summary** is a fold over 1..n stubs — an epoch of the session — written ONLY by `summarize`,
+  on request (§ Assemble): `[summary m91 · <one sentence> · files: … · recall: fetch
+  {"from_seq":12,"to_seq":40}]`, carried by the first text block in its range (else its first
+  reasoning block, else its first block), the rest of the range hidden. Ranges may **overlap**
+  (`1:65` and `40:85`); both show. A summary whose range is a segment's span IS that segment's
+  summary (`node_summaries` is derived from the ledger). A summary counts only if
+  `summary_tokens ≤ summaryRatio × tokens_summarized`; otherwise the stubs stand. A phase summary,
+  the root roll-up (the range over all blocks) and an ad hoc range are one thing.
+- **What makes a block fold is the research variable** (`foldTrigger`): `none` — nothing folds;
+  `pressure` — once the prompt exceeds `foldStubAt` × budget, the lowest-scored blocks fold until it
+  fits, reasoning before tool outputs before text within a turn, never inside the anchor or a
+  pinned turn; `cadence` — the pressure rule every `cadenceN` turns (DV3's cost lever). Independently,
+  `foldReasoningAfter = K` folds the reasoning of every turn older than the newest K — the cheapest
+  loss there is and a third of the prompt, so it is tested on its own (U18's `think` arm).
+- **Score** (shared with eviction): priority, recency, reference recency, dormancy, and — at weight
+  0 until U3 tests it — **contextual covariance** (`wCovariance`, `covarianceK`, `covarianceM`), the one
+  offline signal that survived deep dormancy. Every tag describes and never instructs: a reference
+  that names its content beat a placebo (T12b); nudges were ignored 33 of 33 times; stronger
+  contracts scored 0/9. Why folds exist at all: silent eviction was never followed by a recall (U18
+  wave 0: one recall call in 21 cells), and a third of the prompt — the reasoning — was being
+  counted, then deleted with no tag and no way to search it.
+
+**3 — Evict (removal; optional; input = the assembly and the folds).** Units are sized **as shown**
+— folded, reduced — so a folded unit is cheap to keep, and any unit can still be removed here. The
+ejector never chooses a representation and writes no fold.
 - **Eviction — what / when / how much.** *When:* eviction fires only when the buffer exceeds the
   **hard limit** `window − replyReserve`; never below it. *What:* above the limit, evict the
   **lowest-scoring** units first (the dormant, low-priority, old ones). *How much:* just enough to fit,
@@ -212,13 +245,14 @@ The pipeline runs as host hooks and never owns the agent loop:
 
 - **tool result** (`tool.execute.after` / PostToolUse): capture the result to L0; if it is raw and would
   overflow the per-unit budget, apply the reduce-on-overflow router. A curated retriever result is kept whole.
-- **prompt assembly** (`chat.messages.transform`): run classify → assemble → (optionally) evict, then
-  apply the rulings to the host's message array **in place**. The host is never re-rendered: a whole
-  message is dropped (a host keeps a call and its result in one message, so nothing is orphaned); a
-  folded phase's summary replaces the text of one text-only message; a reduction replaces a tool's
-  **output text** while the call and its result stay where they are. Because a turn *is* a host
-  message, the mapping is exact. When to call evict — every turn, every Nth, never — is the host's
-  policy, and is the whole difference between the trigger arms.
+- **prompt assembly** (`chat.messages.transform`): run classify → assemble → fold → (optionally)
+  evict, then apply the rulings to the host's message array **in place** as **part edits**. The host
+  is never re-rendered: a decision names a message and its parts — a reasoning or text part replaced
+  or removed, a tool part's **output** replaced or the part removed (the call and its result travel
+  together, so nothing is orphaned) — and a whole message is dropped only when it is evicted or
+  nothing is left of it. Because a turn *is* a host message and a block *is* a part, the mapping is
+  exact. When to call evict — every turn, never — is the host's policy; when a block folds is the
+  segmenter's (`foldTrigger`).
 - **frozen head** (system / tool-schema transform): the head is assembled after the message transform, so
   it is out of the eviction path by construction. Cache breakpoints are Anthropic-explicit; on a host
   without them the *layout stability* (principle 4) still yields prefix reuse.
