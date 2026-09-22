@@ -150,7 +150,7 @@ describe('the fold policy: nothing below the threshold; reasoning first; the thi
 
 describe('summarizeRange: one prompt for any range, accepted only when much smaller than what it summarizes', () => {
   const meta = { files: [], symbols: [], tests: [], artifacts: [], open_questions: [], decisions: [], node_ids: [] };
-  const provider = (text: string) => ({ id: 'fake', complete: async () => ({ text: JSON.stringify({ text, meta }), model: 'm', usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheWriteTokens: 0 }, toolCalls: [], stopReason: 'stop' }) });
+  const provider = (text: string) => ({ id: 'fake', complete: async () => ({ text: JSON.stringify({ text, meta }), model: 'm', usage: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 }, toolCalls: [], stopReason: 'stop' }) });
 
   it('writes a fold event (and the node\'s summary when the range is a node), rejects one over the ratio', async () => {
     const { handle, root } = fixture();

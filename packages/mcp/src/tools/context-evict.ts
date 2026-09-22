@@ -8,10 +8,10 @@
  * WHEN it calls: every turn, every Nth, only above some size, or never.
  */
 import { z } from 'zod';
-import { covarianceScores, ensembleRetrieve, planRetention, tokensUnder, unitSignals, type RetentionUnit } from '@context-tree/core';
+import { covarianceScores, ensembleRetrieve, planRetention, unitSignals, type RetentionUnit } from '@context-tree/core';
 import { stageArgsShape, withOverrides, type PipelineParams } from '../params.js';
 import { fail, failFrom, ok, parseArgs } from '../result.js';
-import { advanceTurn, dispositionOf, sessionOf, sessionUnits, type Session, type SessionUnit } from '../session.js';
+import { advanceTurn, sessionOf, sessionUnits, unitShownTokens, type Session, type SessionUnit } from '../session.js';
 import type { ToolContext, ToolOutcome } from '../types.js';
 import { pinnedIds } from './context-assemble.js';
 import { budgetOf, messagesArg, turnArg, windowShape } from './pipeline-args.js';
@@ -21,14 +21,14 @@ export const CONTEXT_EVICT = 'evict';
 export const CONTEXT_RESTORE = 'restore';
 
 export const CONTEXT_EVICT_DESCRIPTION =
-  'Remove the least valuable units so what assemble produced fits window_tokens (evict_mode stub: cut them to a visible stub first). Recent units are ' +
+  'Remove the least valuable units so what assemble produced fits window_tokens — at their folded size, so a folded unit is cheap to keep. Recent units are ' +
   'protected by a bonus that yields only if nothing else can pay. Removed units stay out until restore; ' +
   'nothing is lost and fetch still returns them. Reach for it when your context is large and earlier ' +
   'work no longer bears on what you are doing. dry_run shows what would go.';
 
 export const CONTEXT_RESTORE_DESCRIPTION =
-  'Undo rulings on units, by id or all at once: an evicted unit comes back, a reduced or folded one ' +
-  'returns to raw. Reach for it when work you set aside has become relevant again and you want it ' +
+  'Undo rulings, by id or all at once: an evicted unit comes back, a reduced one returns to raw, a fold ' +
+  '(stub or summary, by its id) unfolds. Reach for it when work you set aside has become relevant again and you want it ' +
   'present on every turn rather than fetched once.';
 
 const evictShape = {
@@ -47,7 +47,7 @@ export const contextEvictSchema = z.object(evictShape);
 export const contextEvictInputShape = evictShape;
 
 const restoreShape = {
-  ids: z.array(z.string().min(1)).optional().describe('Unit ids, from `units`.'),
+  ids: z.array(z.string().min(1)).optional().describe('Unit ids, or fold ids (s<seq> / m<seq>), from `units`.'),
   all: z.boolean().optional().describe('Undo every ruling.'),
 };
 export const contextRestoreSchema = z.object(restoreShape);
@@ -60,14 +60,11 @@ export interface ContextEvictData {
   fired: boolean;
   /** Removed outright. */
   evicted: string[];
-  /** Cut to a stub this call: still visible, recallable by the id in its tags. */
-  stubbed: string[];
   tokens_before: number;
   tokens_after: number;
   /** True when the pinned units alone exceed the budget: no policy can fix that overflow. */
   over_budget: boolean;
   evicted_total: number;
-  stubbed_total: number;
   decisions?: Decision[];
   actions?: Record<Decision['action'], number>;
 }
@@ -111,9 +108,7 @@ export async function contextEvict(ctx: ToolContext, input: unknown): Promise<To
     const plan = planRetention(
       live.map((u, i): RetentionUnit => ({
         id: u.id,
-        tokens: inline.get(u.id) ?? tokensUnder(u, dispositionOf(session, u)),
-        // Only a unit still at full size has a cheaper visible form left to fall back to.
-        ...(params.evictMode === 'stub' && dispositionOf(session, u).kind === 'keep' ? { residueTokens: u.stubTokens } : {}),
+        tokens: inline.get(u.id) ?? unitShownTokens(session, u),
         signals: signals[i]!,
         pinned: pinned.has(u.id),
         protection: protectionAt(live.length - 1 - i, params),
@@ -129,22 +124,17 @@ export async function contextEvict(ctx: ToolContext, input: unknown): Promise<To
     );
 
     const applied = args.dry_run !== true;
-    if (applied) {
-      for (const id of plan.stubbed) session.stubbed.add(id);
-      for (const id of plan.dropped) session.evicted.add(id);
-    }
+    if (applied) for (const id of plan.dropped) session.evicted.add(id);
     const decisions = args.messages !== undefined ? await decisionsFor(ctx, args.messages) : undefined;
     return ok({
       turn,
       applied,
       fired: plan.fired,
       evicted: [...plan.dropped],
-      stubbed: [...plan.stubbed],
       tokens_before: plan.tokensBefore,
       tokens_after: plan.tokensAfter,
       over_budget: plan.overBudget,
       evicted_total: session.evicted.size,
-      stubbed_total: session.stubbed.size,
       ...(decisions !== undefined ? { decisions, actions: countActions(decisions) } : {}),
     });
   } catch (error) {
@@ -163,12 +153,16 @@ export async function contextRestore(ctx: ToolContext, input: unknown): Promise<
   const args = parsed.data;
   if (args.all !== true && (args.ids === undefined || args.ids.length === 0)) return fail('invalid_input', 'give ids, or all: true');
   const session = sessionOf(ctx);
-  const targets = args.all === true ? [...new Set([...session.evicted, ...session.stubbed, ...session.assembly.keys()])] : (args.ids ?? []);
+  const snapshot = await sessionUnits(ctx);
+  const foldIds = new Set(snapshot.folds.map((f) => f.id));
+  const targets = args.all === true ? [...new Set([...session.evicted, ...session.assembly.keys(), ...foldIds])] : (args.ids ?? []);
   const restored = targets.filter((id) => {
     const wasEvicted = session.evicted.delete(id);
-    const wasStubbed = session.stubbed.delete(id);
     const wasAssembled = session.assembly.delete(id);
-    return wasEvicted || wasStubbed || wasAssembled;
+    // A fold is retired in the ledger (D26): its record stays, it just no longer shows.
+    const wasFolded = foldIds.has(id);
+    if (wasFolded) ctx.handle.trace.append({ type: 'unfold', ts: new Date().toISOString(), fold_id: id });
+    return wasEvicted || wasAssembled || wasFolded;
   });
   return ok({ restored, evicted_total: session.evicted.size });
 }

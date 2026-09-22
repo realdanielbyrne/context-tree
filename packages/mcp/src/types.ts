@@ -6,7 +6,7 @@
  * minimal tool-use loop" and must call the SAME handlers the MCP server
  * exposes — otherwise the eval measures a surface the agent never sees.
  */
-import type { ContextTreeConfig, ProviderRegistry, TaskStore, TreeRetriever } from '@context-tree/core';
+import type { ContextTreeConfig, ModelProvider, ProviderRegistry, TaskStore, TreeRetriever } from '@context-tree/core';
 import type { Session } from './session.js';
 
 /** §9.2 / D14. Mode A (`tool-backend`) is the v1 default (§19 Q5). */
@@ -34,6 +34,8 @@ export interface ToolContext {
    * publish the message index into it.
    */
   session?: Session;
+  /** What `summarize` writes with. Absent = no summaries can be made (the tool answers `unavailable`). */
+  summarizer?: { provider: ModelProvider; model: string };
 }
 
 /**

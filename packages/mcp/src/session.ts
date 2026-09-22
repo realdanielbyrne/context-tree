@@ -1,11 +1,12 @@
 /**
  * Per-task state shared by every tool and both transports.
  *
- * The real state is two rulings, kept apart because two stages make them: the ASSEMBLY
- * (how `assemble` represents each unit) and the EVICTED set (what `evict` removed, which
- * overrules the assembly). Both are sticky — a unit stays as ruled until `restore` — so a
- * turn on which a policy makes no ruling leaves the prompt exactly as it was, instead of
- * re-admitting everything and rewriting the cached prefix.
+ * The real state is three rulings, kept apart because three stages make them: the FOLDS
+ * (what the segmenter folded — read from the L0 ledger, D26), the ASSEMBLY (how `assemble`
+ * reduces a unit) and the EVICTED set (what `evict` removed, which overrules the rest). All
+ * are sticky — a unit stays as ruled until `restore` — so a turn on which a policy makes no
+ * ruling leaves the prompt exactly as it was, instead of re-admitting everything and
+ * rewriting the cached prefix.
  *
  * Units are built ONCE per state of the trace. The drift classifier folds each call's
  * observations into its running statistics, so re-classifying an unchanged trace (an
@@ -16,12 +17,21 @@ import {
   DriftClassifier,
   HeuristicTokenizer,
   KEEP,
+  blocksOf,
   deriveTurns,
+  foldView,
+  foldsFrom,
   hostContent,
   mapFlexUnits,
+  parseSummaryBlob,
   renderEvent,
   splitText,
+  stubOf,
+  type Block,
+  type BlockState,
   type Disposition,
+  type Fold,
+  type StubBlob,
   type DriftResult,
   type EnsembleUnit,
   type FlexUnit,
@@ -32,7 +42,7 @@ import {
   type TreeNode,
 } from '@context-tree/core';
 import { PIPELINE_DEFAULTS, type PipelineParams } from './params.js';
-import { stubOf } from './stub.js';
+import { summaryLine } from './tools/render-summary.js';
 import type { ToolContext } from './types.js';
 
 /** A unit as every stage sees it — the same object for classification, retention and retrieval. */
@@ -49,10 +59,12 @@ export interface SessionUnit {
   readonly hasTools: boolean;
   readonly flex: FlexUnit;
   readonly drift: DriftResult;
-  /** Sized by what the host sends (`hostContent`), so it is the number a host plugin gets for the same message. */
+  /** Sized by what the host sends (`hostContent`), raw, so it is the number a host plugin gets for the same message. */
   readonly tokens: number;
-  /** Its size as a stub (`stub.ts`); equal to `tokens` when stubbing would save nothing. */
-  readonly stubTokens: number;
+  /** What the host sends for it NOW, with its blocks folded as the ledger says. */
+  readonly shownTokens: number;
+  /** Its blocks, in order: the stub ids inside this unit. */
+  readonly blocks: readonly Block[];
   /** `splitText(raw)` under the session's chunk options — the sub-unit retrieval ranks and reduction keeps. */
   readonly chunks: number;
 }
@@ -61,6 +73,10 @@ interface Snapshot {
   readonly lastSeq: number;
   readonly units: readonly SessionUnit[];
   readonly corpus: readonly EnsembleUnit[];
+  readonly blocks: readonly Block[];
+  readonly folds: readonly Fold[];
+  /** stub id -> what the block shows. */
+  readonly view: ReadonlyMap<number, BlockState>;
 }
 
 export interface Session {
@@ -69,10 +85,9 @@ export interface Session {
   readonly params: PipelineParams;
   readonly tokenizer: Tokenizer;
   readonly classifier: DriftClassifier;
+  /** `reduce` rulings from `assemble`; folds live in the ledger, not here. */
   readonly assembly: Map<string, Disposition>;
   readonly evicted: Set<string>;
-  /** Evicted to a stub: still visible, cut to its residue. A unit in `evicted` is gone whatever this says. */
-  readonly stubbed: Set<string>;
   /** The last query `assemble` was given; ranks what a reduction keeps when decisions are rendered later. */
   query: string | undefined;
   /** unit id -> the turn the agent last touched a file that unit wrote. */
@@ -89,7 +104,6 @@ export function createSession(params: PipelineParams = PIPELINE_DEFAULTS): Sessi
     classifier: new DriftClassifier(),
     assembly: new Map(),
     evicted: new Set(),
-    stubbed: new Set(),
     query: undefined,
     referenced: new Map(),
     scannedSeq: 0,
@@ -176,30 +190,56 @@ export async function sessionUnits(ctx: ToolContext): Promise<Snapshot> {
   });
   const mapped = await mapFlexUnits(entries, { classifier: session.classifier, k: session.params.driftK, tau: session.params.driftTau });
   const chunkOptions = { chunkSize: session.params.chunkSize, chunkOverlap: session.params.chunkOverlap };
+
+  const blocks = blocksOf(events, blobs, session.tokenizer);
+  const folds = foldsFrom(events);
+  const view = foldView(blocks, folds, {
+    stub: (fold) => JSON.parse(blobs.getText(fold.blob)) as StubBlob,
+    summary: (fold) => {
+      const text = summaryLine(fold, parseSummaryBlob(blobs.getText(fold.blob)));
+      return { text, tokens: session.tokenizer.count(text) };
+    },
+  });
   const units = spans.map((span, i): SessionUnit => {
     const flex = mapped.units[i]!;
     const slice = events.slice(span.startSeq - 1, span.endSeq);
     const hasTools = slice.some((e) => e.type === 'tool_call');
     const tokens = slice.flatMap((e) => hostContent(e, blobs)).reduce((n, text) => n + session.tokenizer.count(text), 0);
-    const stubTokens = Math.min(tokens, stubOf(slice, blobs, session.tokenizer, span.id).tokens);
-    return { ...span, hasTools, flex, drift: mapped.drift[i]!, tokens, stubTokens, chunks: splitText(flex.raw, chunkOptions).length };
+    const own = blocks.filter((b) => span.startSeq <= b.fromSeq && b.toSeq <= span.endSeq);
+    const shownTokens = own.reduce((n, b) => n + (view.get(b.stub)?.tokens ?? b.tokens), 0);
+    return { ...span, hasTools, flex, drift: mapped.drift[i]!, tokens, shownTokens, blocks: own, chunks: splitText(flex.raw, chunkOptions).length };
   });
-  session.snapshot = { lastSeq, units, corpus: mapped.corpus };
+  session.snapshot = { lastSeq, units, corpus: mapped.corpus, blocks, folds, view };
   return session.snapshot;
+}
+
+/** The residue of a block if it were stubbed now, or null when it already is folded or could not shrink. */
+export function residueOf(ctx: ToolContext, snapshot: Snapshot, block: Block): number | null {
+  const session = sessionOf(ctx);
+  const state = snapshot.view.get(block.stub);
+  if (state === undefined || state.kind !== 'raw') return null;
+  const events = ctx.handle.trace.all();
+  const stub = stubOf(block, events, ctx.handle.blobs, session.tokenizer, { foldReasoning: session.params.foldReasoning, foldReasoningTail: session.params.foldReasoningTail });
+  return stub.parts.length === 0 ? null : stub.tokens;
 }
 
 const EVICTED: Disposition = Object.freeze({ kind: 'drop', why: 'evicted' });
 
 /**
- * What a unit finally is. Eviction overrules assembly, and the smaller form wins: gone, then
- * a fold (or covered by one), then a stub, then a reduction; an unruled unit is kept raw.
+ * A unit's ruling outside the ledger: gone, or reduced by assembly, or kept. Folds are read
+ * from the view per block, not from here.
  */
-export function dispositionOf(session: Session, unit: Pick<SessionUnit, 'id' | 'stubTokens'>): Disposition {
+export function dispositionOf(session: Session, unit: Pick<SessionUnit, 'id'>): Disposition {
   if (session.evicted.has(unit.id)) return EVICTED;
-  const assembled = session.assembly.get(unit.id);
-  if (assembled?.kind === 'fold' || assembled?.kind === 'drop') return assembled;
-  if (session.stubbed.has(unit.id)) return { kind: 'stub', tokens: unit.stubTokens };
-  return assembled ?? KEEP;
+  return session.assembly.get(unit.id) ?? KEEP;
+}
+
+/** Tokens the host sends for a unit under every ruling: 0 when evicted, else its folded size, or assembly's reduction if smaller. */
+export function unitShownTokens(session: Session, unit: SessionUnit): number {
+  const ruling = dispositionOf(session, unit);
+  if (ruling.kind === 'drop') return 0;
+  if (ruling.kind === 'reduce') return Math.min(ruling.tokens, unit.shownTokens);
+  return unit.shownTokens;
 }
 
 export interface UnitView {

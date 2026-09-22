@@ -21,6 +21,8 @@ import {
   contextRestoreInputShape,
 } from './context-evict.js';
 import { CONTEXT_UNITS, CONTEXT_UNITS_DESCRIPTION, contextUnits, contextUnitsInputShape } from './context-units.js';
+import { CONTEXT_FOLD, CONTEXT_FOLD_DESCRIPTION, contextFold, contextFoldInputShape } from './context-fold.js';
+import { CONTEXT_SUMMARIZE, CONTEXT_SUMMARIZE_DESCRIPTION, contextSummarize, contextSummarizeInputShape } from './context-summarize.js';
 import { ANNOTATE_DESCRIPTION, annotateInputShape } from './annotate.js';
 import { CONTEXT_FETCH_DESCRIPTION, contextFetchInputShape } from './context-fetch.js';
 import { CONTEXT_PEEK_DESCRIPTION, contextPeekInputShape } from './context-peek.js';
@@ -67,6 +69,8 @@ export {
 } from './context-search.js';
 
 export * from './context-assemble.js';
+export * from './context-fold.js';
+export * from './context-summarize.js';
 export * from './context-classify.js';
 export * from './context-evict.js';
 export * from './context-units.js';
@@ -126,11 +130,15 @@ export const TOOLS: readonly ToolSpec[] = Object.freeze([
   { name: CONTEXT_EVICT, title: 'Evict units', description: CONTEXT_EVICT_DESCRIPTION, inputShape: contextEvictInputShape, handler: contextEvict, transports: BOTH, annotations: sessionWrite },
   { name: CONTEXT_RESTORE, title: 'Undo rulings on units', description: CONTEXT_RESTORE_DESCRIPTION, inputShape: contextRestoreInputShape, handler: contextRestore, transports: BOTH, annotations: sessionWrite },
   { name: CONTEXT_ASSEMBLE, title: 'Assemble unit representations', description: CONTEXT_ASSEMBLE_DESCRIPTION, inputShape: contextAssembleInputShape, handler: contextAssemble, transports: BOTH, annotations: sessionWrite },
+  // Folds are L0 events (D26): written, never overwritten; `restore` retires one.
+  { name: CONTEXT_FOLD, title: 'Fold blocks', description: CONTEXT_FOLD_DESCRIPTION, inputShape: contextFoldInputShape, handler: contextFold, transports: BOTH, annotations: () => ({ readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false }) },
+  // Calls the model the context was given (the relay, in the harness) — an outside world.
+  { name: CONTEXT_SUMMARIZE, title: 'Summarize a range', description: CONTEXT_SUMMARIZE_DESCRIPTION, inputShape: contextSummarizeInputShape, handler: contextSummarize, transports: BOTH, annotations: () => ({ readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true }) },
 ]);
 
 export const TOOL_NAMES = [
   CONTEXT_FETCH, CONTEXT_SEARCH, CONTEXT_PEEK, ANNOTATE,
-  CONTEXT_UNITS, CONTEXT_CLASSIFY, CONTEXT_ASSEMBLE, CONTEXT_EVICT, CONTEXT_RESTORE,
+  CONTEXT_UNITS, CONTEXT_CLASSIFY, CONTEXT_ASSEMBLE, CONTEXT_FOLD, CONTEXT_EVICT, CONTEXT_RESTORE, CONTEXT_SUMMARIZE,
 ] as const;
 
 export type ToolName = (typeof TOOL_NAMES)[number];

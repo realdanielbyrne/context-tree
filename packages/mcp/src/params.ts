@@ -27,7 +27,7 @@ import {
  * Which stage reads the parameter — and therefore which tool takes it as an argument.
  * `[]` means fixed when the server starts, because it shapes the cached snapshot.
  */
-export type Stage = 'assemble' | 'evict';
+export type Stage = 'assemble' | 'fold' | 'evict' | 'summarize';
 
 interface Base {
   readonly key: string;
@@ -61,20 +61,34 @@ export const PIPELINE_PARAMS = [
     describe: 'What the pipeline retains or drops: a turn (one host message) or a whole phase.' },
   { key: 'protection', env: 'CT_CT_PROTECTION', stages: ['evict'], kind: 'enum', values: ['soft', 'hard'], default: 'soft',
     describe: 'soft: the recency anchor is a score bonus that yields when the budget cannot otherwise be met. hard: anchored units are never touched.' },
-  { key: 'anchor', env: 'CT_CT_ANCHOR', stages: ['assemble', 'evict'], kind: 'int', min: 0, default: DEFAULT_ANCHOR,
+  { key: 'anchor', env: 'CT_CT_ANCHOR', stages: ['assemble', 'fold', 'evict'], kind: 'int', min: 0, default: DEFAULT_ANCHOR,
     describe: 'Recency anchor A: the last A units are protected, most strongly the newest.' },
   { key: 'protectionBonus', env: 'CT_CT_PROTECTION_BONUS', stages: ['evict'], kind: 'number', min: 0, default: W.priority,
     describe: 'Score added to the newest unit under soft protection, halving with distance. On the same scale as the weights, so an anchored unit can be outscored; a value above their sum makes the anchor yield only last.' },
-  { key: 'summaries', env: 'CT_CT_SUMMARIES', stages: ['assemble'], kind: 'bool', default: false,
-    describe: 'Assembly represents a closed phase outside the anchor by its summary, when it has one.' },
-  { key: 'summaryRender', env: 'CT_CT_SUMMARY_RENDER', stages: ['assemble'], kind: 'enum', values: ['headline', 'full'], default: 'headline',
-    describe: 'What a folded phase shows: one sentence, its files and a recall id — or the whole stored summary. The full summary is always one fetch away.' },
   { key: 'softTargetFrac', env: 'CT_CT_SOFT_TARGET_FRAC', stages: ['assemble'], kind: 'number', min: 0, max: 1, default: DEFAULT_SOFT_TARGET_FRAC,
     describe: 'Sizes the per-unit budget b = (f·W − reserve) ÷ (A + 1); a raw unit over b is reduced to it.' },
   { key: 'reducer', env: 'CT_CT_REDUCER', stages: ['assemble'], kind: 'enum', values: ['chunk', 'summarize', 'none'], default: 'chunk',
     describe: 'How assembly shrinks a unit over the per-unit budget; none disables reduce-on-overflow.' },
-  { key: 'evictMode', env: 'CT_CT_EVICT_MODE', stages: ['evict'], kind: 'enum', values: ['drop', 'stub'], default: 'drop',
-    describe: 'drop: an evicted unit disappears. stub: it first keeps its own text and tool calls, loses its reasoning, and each output becomes a tag with a recall id; dropped only if the stubs do not fit.' },
+  { key: 'foldTrigger', env: 'CT_CT_FOLD_TRIGGER', stages: ['fold'], kind: 'enum', values: ['none', 'pressure', 'cadence'], default: 'none',
+    describe: 'What makes a block fold. none: nothing (eviction alone). pressure: over foldStubAt × budget, the lowest-scored blocks fold until it fits. cadence: the pressure rule, every cadenceN turns.' },
+  { key: 'foldStubAt', env: 'CT_CT_FOLD_STUB_AT', stages: ['fold'], kind: 'number', min: 0, default: 1,
+    describe: 'Blocks fold once the prompt exceeds this fraction of the budget.' },
+  { key: 'cadenceN', env: 'CT_CT_CADENCE_N', stages: ['fold'], kind: 'int', min: 1, default: 5, describe: 'foldTrigger cadence: act every Nth turn.' },
+  { key: 'foldReasoning', env: 'CT_CT_FOLD_REASONING', stages: ['fold'], kind: 'enum', values: ['keep', 'tail', 'drop'], default: 'tail',
+    describe: 'What a folded reasoning block shows: its last foldReasoningTail tokens under a tag, nothing, or all of it. One followed by the model\'s own text always folds to nothing — that text is its summary.' },
+  { key: 'foldReasoningTail', env: 'CT_CT_FOLD_REASONING_TAIL', stages: ['fold'], kind: 'int', min: 0, default: 120,
+    describe: 'Tokens of a reasoning block\'s end kept when it folds: the conclusion sits there.' },
+  { key: 'foldReasoningAfter', env: 'CT_CT_FOLD_REASONING_AFTER', stages: ['fold'], kind: 'int', min: 0, default: 0,
+    describe: 'Fold the reasoning of every turn older than the newest K, whatever the trigger. 0 = off. Thinking alone is a third of the prompt.' },
+  { key: 'foldSummaries', env: 'CT_CT_FOLD_SUMMARIES', stages: ['assemble'], kind: 'bool', default: false,
+    describe: 'assemble may request a summary over a run of folded blocks. Off: stubs are the only fold.' },
+  { key: 'foldSummarizeAt', env: 'CT_CT_FOLD_SUMMARIZE_AT', stages: ['assemble'], kind: 'number', min: 0, default: 0.25,
+    describe: 'assemble requests a summary once folded blocks outside the anchor hold more than this fraction of the budget.' },
+  { key: 'foldMinRun', env: 'CT_CT_FOLD_MIN_RUN', stages: ['assemble'], kind: 'int', min: 1, default: 3,
+    describe: 'A summary is requested over a run of at least this many consecutive folded blocks (the segment containing them, when it is all folded).' },
+  { key: 'summaryRatio', env: 'CT_CT_SUMMARY_RATIO', stages: ['summarize'], kind: 'number', min: 0, exclusiveMin: true, default: 0.1,
+    describe: 'A summary counts only if its tokens are at most this fraction of the tokens it summarizes; otherwise the stubs stand.' },
+  { key: 'summaryMaxTokens', env: 'CT_CT_SUMMARY_MAX_TOKENS', stages: ['summarize'], kind: 'int', min: 64, default: 2048, describe: 'Output cap for one summary call.' },
   { key: 'topK', env: 'CT_CT_TOPK', stages: ['evict'], kind: 'int', min: 0, default: 5,
     describe: 'Retrieval hits ranked for the current query; they count only when wRelevance > 0.' },
   { key: 'wPriority', env: 'CT_CT_W_PRIORITY', stages: ['evict'], kind: 'number', min: 0, default: W.priority, describe: 'Score weight: wrote a file / co-occurrence, decayed.' },
@@ -83,7 +97,7 @@ export const PIPELINE_PARAMS = [
   { key: 'wDormancy', env: 'CT_CT_W_DORMANCY', stages: ['evict'], kind: 'number', min: 0, default: W.dormancy, describe: 'Score weight (subtracted): topic drift from the recent work.' },
   { key: 'wRelevance', env: 'CT_CT_W_RELEVANCE', stages: ['evict'], kind: 'number', min: 0, default: 0,
     describe: 'Score weight: rank among the topK retrieval hits. 0 (the offline sweep\'s optimum) skips retrieval entirely.' },
-  { key: 'priorityHalfLife', env: 'CT_CT_PRIORITY_HALFLIFE', stages: ['evict'], kind: 'number', min: 0, exclusiveMin: true, default: DEFAULT_PRIORITY_HALFLIFE,
+  { key: 'priorityHalfLife', env: 'CT_CT_PRIORITY_HALFLIFE', stages: ['fold', 'evict'], kind: 'number', min: 0, exclusiveMin: true, default: DEFAULT_PRIORITY_HALFLIFE,
     describe: 'Half-life, in turns, of priority and of anchor protection.' },
   { key: 'headroomTokens', env: 'CT_CT_EVICT_HEADROOM', stages: ['evict'], kind: 'int', min: 0, default: 0,
     describe: 'Extra tokens freed beyond the budget when a ruling fires, so it does not fire again next turn.' },
@@ -111,6 +125,7 @@ type ValueOf<S> = S extends { kind: 'enum'; values: readonly (infer V)[] } ? V :
 export type PipelineParams = { readonly [S in Spec as S['key']]: ValueOf<S> };
 
 /** The segmenter's cut rule, as `resolveConfig` takes it. */
+
 export const boundaryOf = (p: Pick<PipelineParams, 'boundary' | 'boundaryWindow' | 'boundaryThreshold' | 'boundaryTopK'>): BoundaryConfig =>
   ({ strategy: p.boundary, window: p.boundaryWindow, threshold: p.boundaryThreshold, topK: p.boundaryTopK });
 

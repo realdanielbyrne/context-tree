@@ -2,8 +2,8 @@
  * THE FOLD VIEW — what the prompt shows of each block, given the ledger.
  *
  * A block is `raw`, a `stub` (its own shorter form), the `carrier` of a summary (the first
- * text block in the summary's range — else its first reasoning block — now holds the
- * summary's text), or `covered` (inside a shown summary's range, hidden). Precedence:
+ * text block in the summary's range — else its first reasoning block, else its first block —
+ * now holds the summary's text), or `covered` (inside a shown summary's range, hidden). Precedence:
  * summary over stub over raw. Two overlapping summaries both show, each through its own
  * carrier, and a block covered by either is hidden. Sizes come from here, so every later
  * stage budgets on the folded size and the budget and the prompt cannot disagree.
@@ -46,7 +46,10 @@ export function foldView(blocks: readonly Block[], folds: readonly Fold[], texts
     const inside = blocks.filter((b) => b.fromSeq >= fold.fromSeq && b.toSeq <= fold.toSeq);
     if (inside.length === 0) continue;
     const free = inside.filter((b) => !carriers.has(b.stub));
-    const carrier = free.find((b) => b.kind === 'text') ?? free.find((b) => b.kind === 'reasoning') ?? inside.find((b) => b.kind === 'text') ?? inside.find((b) => b.kind === 'reasoning');
+    // The first text block, else the first reasoning block, else the first block of any kind (a run
+    // of tool calls: the summary rides in the first output). A summary always shows somewhere.
+    const pick = (bs: readonly Block[]): Block | undefined => bs.find((b) => b.kind === 'text') ?? bs.find((b) => b.kind === 'reasoning') ?? bs[0];
+    const carrier = pick(free) ?? pick(inside);
     const { text, tokens } = texts.summary(fold);
     for (const b of inside) {
       if (b === carrier) {

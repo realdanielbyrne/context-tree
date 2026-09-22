@@ -37,11 +37,14 @@ export const CONTEXT_FETCH_DESCRIPTION =
 
 const shape = {
   branch_id: z.string().min(1).optional().describe('Node id of the branch to read, as returned by search or named in a folded phase. Give this or `unit`.'),
-  unit: z
-    .string()
-    .min(1)
+  stub: z
+    .number()
+    .int()
+    .positive()
     .optional()
-    .describe('A unit id exactly as an `[evicted …]` tag gives it, e.g. "turn:31": returns that one turn in full. Give this or `branch_id`.'),
+    .describe('A stub id exactly as a `[folded …]` tag gives it: returns that one block in full. Give this, or from_seq/to_seq, or branch_id.'),
+  from_seq: z.number().int().positive().optional().describe('With to_seq: an L0 range, as a `[summary …]` tag gives it.'),
+  to_seq: z.number().int().positive().optional(),
   depth: z
     .enum(['summary', 'index', 'full'])
     .optional()
@@ -120,21 +123,28 @@ export async function contextFetch(ctx: ToolContext, input: unknown): Promise<To
   if (!parsed.ok) return parsed;
   const args = parsed.data;
 
-  if ((args.branch_id === undefined) === (args.unit === undefined)) return fail('invalid_input', 'give exactly one of branch_id or unit');
+  const byRange = args.from_seq !== undefined && args.to_seq !== undefined;
+  const ways = [args.branch_id !== undefined, args.stub !== undefined, byRange].filter(Boolean).length;
+  if (ways !== 1) return fail('invalid_input', 'give exactly one of branch_id, stub, or from_seq + to_seq');
 
   try {
-    // A unit is a span of one phase, so it resolves to that branch narrowed to the unit's events.
-    const unit = args.unit === undefined ? undefined : (await sessionUnits(ctx)).units.find((u) => u.id === args.unit);
-    if (args.unit !== undefined && unit === undefined) return fail('unknown_node', `no unit "${args.unit}" — ids are listed by the units tool`);
-    const branchId = unit?.phase.id ?? (args.branch_id as string);
+    // A block or a range lies inside one phase's span, so it resolves to that branch narrowed to those events.
+    let range: { from: number; to: number } | undefined;
+    if (args.stub !== undefined) {
+      const block = (await sessionUnits(ctx)).blocks.find((b) => b.stub === args.stub);
+      if (block === undefined) return fail('unknown_node', `no stub ${String(args.stub)} — ids are listed by the units tool`);
+      range = { from: block.fromSeq, to: block.toSeq };
+    } else if (byRange) range = { from: args.from_seq as number, to: args.to_seq as number };
+    const owner = range === undefined ? undefined : ctx.handle.store.nodesInCreationOrder().find((n) => n.kind === 'phase' && n.span_start_seq !== null && n.span_start_seq <= range!.from && range!.to <= (n.span_end_seq ?? n.span_start_seq));
+    const branchId = owner?.id ?? (range === undefined ? (args.branch_id as string) : (ctx.handle.store.root()?.id as string));
     const branch = requireNode(ctx, 'branch_id', branchId);
     if (!branch.ok) return branch;
 
     const fetched = ctx.retriever.fetchBranch(branchId, {
       depth: args.depth ?? 'full',
       file: args.file,
-      from: unit?.startSeq ?? args.from,
-      to: unit?.endSeq ?? args.to,
+      from: range?.from ?? args.from,
+      to: range?.to ?? args.to,
       ...(args.part === undefined ? {} : { part: PART_EVENTS[args.part] }),
     });
     const data: ContextFetchData = {
