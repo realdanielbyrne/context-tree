@@ -6,7 +6,8 @@
  * ripgrep) live in `providers/`; the MCP package wires the two together, which
  * is why nothing here imports a provider implementation.
  */
-import type { NodeId, NodeKind, PhaseType, SeqSpan, SummaryMeta } from '../contracts/index.js';
+import type {
+  TraceEvent, NodeId, NodeKind, PhaseType, SeqSpan, SummaryMeta } from '../contracts/index.js';
 
 /**
  * Injected embedder — in production a partially applied `ModelProvider.embed`
@@ -142,6 +143,8 @@ export interface FetchBranchOptions {
    */
   from?: number;
   to?: number;
+  /** Read only events of these types — `['reasoning']` returns what the model thought and nothing else. */
+  part?: readonly TraceEvent['type'][];
   /**
    * When set, and the branch exceeds this token budget, narrow the result to a
    * band of events centered on the most relevant section (found by grepping

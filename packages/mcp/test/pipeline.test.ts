@@ -18,6 +18,8 @@ import {
   contextClassify,
   contextEvict,
   contextFetch,
+  contextPeek,
+  contextSearch,
   contextRestore,
   contextUnits,
   createHttpApi,
@@ -208,6 +210,22 @@ describe('evict — takes the assembly as input, and may overrule it', () => {
     const { stubbed } = unwrap(await contextEvict(gentle, { window_tokens: total / 2, evict_mode: 'stub' }));
     expect(unwrap(await contextRestore(gentle, { ids: [stubbed[0]!] })).restored).toEqual([stubbed[0]]);
     expect(unwrap(await contextUnits(gentle, {})).units.find((u) => u.id === stubbed[0])!.state).toBe('keep');
+  });
+
+  it('reasoning is content: search finds it, peek shows it, fetch returns it alone with part', async () => {
+    const ctx = seed(2, 50);
+    const { trace, blobs } = ctx.handle;
+    trace.append({ type: 'reasoning', ts: TS, blob: blobs.put('the fixture is stale because zebraquux moved'), turn_id: 'm3' });
+    trace.append({ type: 'assistant_message', ts: TS, blob: blobs.put('Stale fixture.'), turn_id: 'm3' });
+    ingest({ handle: ctx.handle });
+    const hits = unwrap(await contextSearch(ctx, { query: 'zebraquux' }));
+    expect(hits.hits.some((h) => (h.excerpt ?? '').includes('zebraquux'))).toBe(true);
+    const unit = unwrap(await contextUnits(ctx, {})).units.at(-1)!;
+    const only = unwrap(await contextFetch(ctx, { unit: unit.id, part: 'reasoning' }));
+    expect(only.text).toContain('zebraquux');
+    expect(only.text).not.toContain('Stale fixture.');
+    const peeked = unwrap(await contextPeek(ctx, { node_id: unit.phase_id, max_chars: 4000 }));
+    expect(peeked.text).toContain('zebraquux');
   });
 
   it('fetch takes exactly one of branch_id or unit', async () => {

@@ -10,6 +10,7 @@ import { ARGS_CAP_WITH_BLOB, elision, safeCut } from '../assemble/format.js';
 import {
   isAssistantMessage,
   isManualAnnotation,
+  isReasoning,
   isSegmentBoundary,
   isToolCall,
   isToolResult,
@@ -74,15 +75,26 @@ export function clampSpans(spans: readonly SeqSpan[], from?: number, to?: number
  * event references.
  */
 export function payloadRef(event: TraceEvent): BlobRef | null {
-  if (isUserMessage(event) || isAssistantMessage(event) || isManualAnnotation(event)) return event.blob;
-  if (isToolCall(event)) return event.blob ?? event.args_blob ?? null;
-  if (isToolResult(event)) return event.output_blob ?? null;
-  return null;
+  // Exhaustive: an event type this switch does not name is a type error, so the next one
+  // cannot vanish from `peek` and the index the way `reasoning` did.
+  switch (event.type) {
+    case 'user_message':
+    case 'assistant_message':
+    case 'reasoning':
+    case 'manual_annotation':
+      return event.blob;
+    case 'tool_call':
+      return event.blob ?? event.args_blob ?? null;
+    case 'tool_result':
+      return event.output_blob ?? null;
+    case 'segment_boundary':
+      return null;
+  }
 }
 
 function renderEvent(event: TraceEvent, blobs: BlobStore): string {
   const head = `[${event.seq}] ${event.type}`;
-  if (isUserMessage(event) || isAssistantMessage(event)) {
+  if (isUserMessage(event) || isAssistantMessage(event) || isReasoning(event)) {
     return `${head}\n${blobs.getText(event.blob)}`;
   }
   if (isToolCall(event)) {
@@ -129,10 +141,11 @@ function renderEvent(event: TraceEvent, blobs: BlobStore): string {
  * write-once and L1 points into it) — a derived layer pointing at content that
  * was never durably written is a corruption, not a degradable condition.
  */
-export function renderSpans(trace: TraceLog, blobs: BlobStore, spans: readonly SeqSpan[]): RenderedDetail {
+export function renderSpans(trace: TraceLog, blobs: BlobStore, spans: readonly SeqSpan[], part?: readonly TraceEvent['type'][]): RenderedDetail {
   const blocks: string[] = [];
   for (const span of spans) {
     for (const event of trace.read({ from: span.start, to: span.end })) {
+      if (part !== undefined && !part.includes(event.type)) continue;
       blocks.push(renderEvent(event, blobs));
     }
   }

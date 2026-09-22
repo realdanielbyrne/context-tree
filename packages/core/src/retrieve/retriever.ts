@@ -520,7 +520,7 @@ export class TreeRetriever {
       return result;
     }
 
-    const rendered = renderSpans(this.requireTrace("fetchBranch depth:'full'"), this.blobs, spans);
+    const rendered = renderSpans(this.requireTrace("fetchBranch depth:'full'"), this.blobs, spans, options.part);
     const result = { ...base, text: rendered.text, spans, events: rendered.events };
     this.observeFetch?.({
       nodeId: branch.id, depth, strategy, centerSeq: center.centerSeq,

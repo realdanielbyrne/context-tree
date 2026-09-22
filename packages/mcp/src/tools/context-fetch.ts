@@ -65,6 +65,10 @@ const shape = {
     .int()
     .optional()
     .describe("Inclusive L0 event number to end at (depth 'full'/'index' only). Clamped to the branch's own span."),
+  part: z
+    .enum(['reasoning', 'text', 'tools'])
+    .optional()
+    .describe("Read one kind of content only: 'reasoning' (what the model thought), 'text' (what it said), 'tools' (calls and results)."),
   budget_tokens: z
     .number()
     .positive()
@@ -72,6 +76,12 @@ const shape = {
     .describe("Shrink a 'full' read to this many heuristic tokens, keeping the spans that match `query` and marking the gaps."),
   query: z.string().optional().describe('Ranks the spans `budget_tokens` keeps. Omit to keep the leading spans.'),
 };
+
+const PART_EVENTS = {
+  reasoning: ['reasoning'],
+  text: ['user_message', 'assistant_message'],
+  tools: ['tool_call', 'tool_result'],
+} as const;
 
 export const contextFetchSchema = z.object(shape);
 export const contextFetchInputShape = shape;
@@ -125,6 +135,7 @@ export async function contextFetch(ctx: ToolContext, input: unknown): Promise<To
       file: args.file,
       from: unit?.startSeq ?? args.from,
       to: unit?.endSeq ?? args.to,
+      ...(args.part === undefined ? {} : { part: PART_EVENTS[args.part] }),
     });
     const data: ContextFetchData = {
       branch_id: fetched.nodeId,
