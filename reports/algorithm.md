@@ -124,8 +124,9 @@ the head so the head caches.
   over the per-unit budget is **reduced** (below). A reduction, ruled, is sticky: a unit does not flip
   back to raw on a roomier turn, which would rewrite the prefix. Assembly folds nothing.
 - **Summary requests (D26).** When `foldSummaries` is on and a run of at least `foldMinRun`
-  consecutive folded blocks outside the anchor holds more than `foldSummarizeAt` of the budget,
-  assembly asks for ONE summary over that run — widened to the segment that contains it when every
+  consecutive folded blocks outside the anchor stands for more than `foldSummarizeAt` of the budget
+  in raw tokens (what the summary would cover — not what the stubs take, which for an empty tool
+  output is more than the output), assembly asks for ONE summary over that run — widened to the segment that contains it when every
   block of that segment is folded — and reports the request. It does not wait: a summary takes a model
   call, and the caller (a host adapter, the agent) fulfils it through `summarize`; the next view shows
   it. A range already under a summary is not asked for again.

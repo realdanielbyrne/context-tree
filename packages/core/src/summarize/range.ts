@@ -32,6 +32,7 @@ export interface RangeSummaryOptions {
   readonly model: string;
   /** Accept only when summary tokens ≤ ratio × tokens summarized. */
   readonly ratio: number;
+  /** Output cap for the model call; 0 = none (a thinking model spends a small cap on reasoning and answers nothing). */
   readonly maxTokens: number;
   readonly now?: () => string;
 }
@@ -85,7 +86,9 @@ export async function summarizeRange(request: RangeSummaryRequest, options: Rang
     nodeIds: nodeId === null ? [] : [nodeId],
     detail,
   });
-  const reply = await options.provider.complete({ model: options.model, messages: [{ role: 'user', content: prompt }], maxTokens: options.maxTokens });
+  const reply = await options.provider.complete({
+    model: options.model, messages: [{ role: 'user', content: prompt }], ...(options.maxTokens > 0 ? { maxTokens: options.maxTokens } : {}),
+  });
   let parsed: { text: string; meta: SummaryMeta };
   try {
     parsed = parseSummaryReply(reply.text);

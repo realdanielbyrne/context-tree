@@ -304,4 +304,38 @@ driver's convention), verdicts in `reports/metrics/u18-soft-limit/`. Write the r
   summaries requested by `assemble` and written (81 blocks carried or covered), 24 units evicted,
   first eviction turn 125. Slowest turn 283 ms. `foldSummarizeAt` was lowered from 0.25 to 0.02
   after this replay showed a run of stubs never reaches a quarter of the budget (the largest run
-  was 1,685 tokens of 30,155).
+  was 1,685 tokens of 30,155) — and then re-based on the run's RAW tokens at 0.1 after the live
+  summary gate (below) asked for summaries of 700-token runs whose stubs were larger than the raw.
+- **2026-09-22, G0 and the fold-arm gates at `62633f9`.** G0 took four attempts to ask its
+  question: one VOID (no key in the runner's environment — 401 on every request), one false FAIL
+  (the think case was dated from the stub turn, whose removed reasoning part also raised
+  `reasoning_edited`; the counters are now `reasoning_replaced` / `tools_removed`), and two VOID
+  because the agent called `fetch` on the task node — the gate had folded the task statement AWAY
+  to a marker line, and the recalled text put the original marker back on the wire inside a tool
+  output. The gate now folds the task to the statement with the marker line swapped; a recall
+  through a tool is graded VOID. **PASS**: 24 of 24 post-edit requests, original gone, replacement
+  present, all six edit kinds. Then, on django-11138:
+  - **`think` attempt 1 — FAIL, ran as the control.** The sidecar had `fold_reasoning_after=3`; the
+    plugin, which decides whether `fold` is called at all, never received it: the driver forwarded
+    only the five policy keys to opencode's process env. `arm_agrees` was true because it compared
+    the sidecar's boot alone. Fixed (`policy.mjs FOLD_KEYS`; the cell now compares the plugin's
+    `foldsAlone` too).
+  - **`think` attempt 2 — FAIL on the step floor, mechanism fired.** 10 fold calls, reasoning parts
+    replaced from turn 8. At step 10 the model produced **29,614 output tokens of reasoning, no text,
+    no tool call**, finish `stop`, and the session ended with an empty diff (the control solved this
+    task 3/3 in 99–128 steps). One cell; whether folding older reasoning to a 120-token tail
+    provokes the overthinking the earlier experiments saw is the arm's first open question.
+  - **`stub` attempt 1 — PASS.** 117 steps, peak 52,939, 4 messages edited on the last turn; not solved.
+  - **`summary` attempt 1 — FAIL.** 226 blocks folded, 1,324 summary requests reported, 24 model
+    calls, **0 summaries written**: 17 calls returned no content at the 2,048-token cap (the Swift
+    thinking model spends a small cap on reasoning — the provider's own comment records this and the
+    harnesses had stopped setting caps; `summaryMaxTokens` is now 0 = none), and 7 were rejected by
+    the ratio (158 tokens for 700 summarized) because the request threshold was measured on the
+    stubs' size, not the raw tokens they stand for, and a stub of an empty tool output is larger
+    than the output (`foldSummarizeAt` is now on raw tokens, default 0.1). The cell also **looped**:
+    from about step 550 to the 7,200 s timeout the agent ran the identical `grep` command (empty
+    output) on every step, ~1,300 times, at a steady peak of 49,781 — under a soft limit the repeated
+    turns fold and evict as they age, so the prompt becomes a fixed point and a near-deterministic
+    model repeats itself. No earlier cell of any arm exceeded 156 steps. Both defects are fixed
+    offline; the `think` and `summary` gates are owed again, and the loop is now a thing to watch
+    for in every evicting arm (`steps` and the last tool call's repetition are in the cell).

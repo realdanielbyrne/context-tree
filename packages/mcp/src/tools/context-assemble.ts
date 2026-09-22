@@ -4,7 +4,9 @@
  * `evict` runs after both, takes this result as its input, and may overrule it.
  *
  * It is also where SUMMARIES ARE ASKED FOR (D26). When a run of folded blocks outside the
- * anchor holds more than `foldSummarizeAt` of the budget, assembly requests one summary over
+ * anchor stands for more than `foldSummarizeAt` of the budget in RAW tokens — what a summary
+ * would have to cover, not what the stubs take: a stub of an empty tool output is larger than
+ * the output, and no summary of such a run can be small — assembly requests one summary over
  * that run — the segment that contains it when the whole segment is folded, else the run —
  * and reports the request. It does not wait: a summary takes a model call, and the caller
  * (a host adapter, an agent) fulfils it through `summarize`; the next view shows it.
@@ -56,7 +58,10 @@ export interface SummaryRequest {
   to_stub: number;
   /** The segment whose span this is, when it is one. */
   node_id: string | null;
+  /** What the run's stubs take in the prompt now. */
   folded_tokens: number;
+  /** What the summary would cover. */
+  raw_tokens: number;
 }
 
 export interface ContextAssembleData {
@@ -104,7 +109,8 @@ function summaryRequests(ctx: ToolContext, live: readonly SessionUnit[], budgetT
   for (const r of runs) {
     if (r.length < params.foldMinRun) continue;
     const folded = r.reduce((n, b) => n + (snapshot.view.get(b.stub)?.tokens ?? 0), 0);
-    if (folded <= params.foldSummarizeAt * budgetTokens) continue;
+    const raw = r.reduce((n, b) => n + b.tokens, 0);
+    if (raw <= params.foldSummarizeAt * budgetTokens) continue;
     let fromSeq = r[0]!.fromSeq;
     let toSeq = r[r.length - 1]!.toSeq;
     let nodeId: string | null = null;
@@ -116,7 +122,7 @@ function summaryRequests(ctx: ToolContext, live: readonly SessionUnit[], budgetT
     }
     if (snapshot.folds.some((f) => f.kind === 'summary' && f.fromSeq <= fromSeq && toSeq <= f.toSeq)) continue;
     const inside = snapshot.blocks.filter((b) => fromSeq <= b.fromSeq && b.toSeq <= toSeq);
-    out.push({ from_seq: fromSeq, to_seq: toSeq, from_stub: inside[0]!.stub, to_stub: inside[inside.length - 1]!.stub, node_id: nodeId, folded_tokens: folded });
+    out.push({ from_seq: fromSeq, to_seq: toSeq, from_stub: inside[0]!.stub, to_stub: inside[inside.length - 1]!.stub, node_id: nodeId, folded_tokens: folded, raw_tokens: raw });
   }
   return out;
 }
