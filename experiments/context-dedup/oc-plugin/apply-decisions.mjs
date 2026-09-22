@@ -28,7 +28,10 @@ export function applyDecisions(messages, decisions) {
     // wrong message, including the task statement the sidecar explicitly protected.
     if (typeof decision?.id === 'string' && decision.id) byId.set(decision.id, decision);
   }
-  const counts = { dropped: 0, edited: 0, reasoning_edited: 0, text_edited: 0, outputs_edited: 0, parts_removed: 0 };
+  // `reasoning_edited` is a reasoning part replaced OR removed; `reasoning_replaced` only the former
+  // (the think rule and a carrier), `tools_removed` a whole tool part gone (a carrier) — the gate
+  // dates each edit kind from its own first turn, and a stub's removed reasoning is not a think.
+  const counts = { dropped: 0, edited: 0, reasoning_edited: 0, reasoning_replaced: 0, text_edited: 0, outputs_edited: 0, parts_removed: 0, tools_removed: 0 };
   for (let i = messages.length - 1; i >= 0; i -= 1) {
     const id = messages[i]?.info?.id;
     if (typeof id !== 'string') continue;
@@ -62,6 +65,7 @@ export function applyDecisions(messages, decisions) {
         // The replacement goes in the first part of its kind; later ones go.
         if (seen[part.type]) { counts.parts_removed += 1; continue; }
         seen[part.type] = true;
+        if (part.type === 'reasoning') counts.reasoning_replaced += 1;
         parts.push({ ...part, text: edit.text });
         continue;
       }
@@ -70,7 +74,7 @@ export function applyDecisions(messages, decisions) {
         if (!byTool.has(toolIndex)) { parts.push(part); continue; }
         const text = byTool.get(toolIndex);
         touched = true;
-        if (text === null) { counts.parts_removed += 1; continue; }
+        if (text === null) { counts.parts_removed += 1; counts.tools_removed += 1; continue; }
         if (typeof part.state?.output !== 'string') { parts.push(part); continue; }
         counts.outputs_edited += 1;
         parts.push({ ...part, state: { ...part.state, output: text } });

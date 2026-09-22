@@ -214,7 +214,7 @@ test('a stub is edits: the reasoning part removed, the output tagged; text and t
   const original = { info: { id: 'b' }, parts: [{ type: 'reasoning', text: 'thinking…' }, { type: 'text', text: 'Let me read a.py' }, tool] };
   const live = [{ info: { id: 'a' }, parts: [{ type: 'text', text: 'task' }] }, original];
   const result = applyDecisions(live, [{ id: 'b', action: 'edit', edits: [{ part: 'reasoning', text: null }, { part: 'tool', index: 0, text: '[folded · recall: fetch {"stub":3}]' }] }]);
-  assert.deepEqual(result, { dropped: 0, edited: 1, reasoning_edited: 1, text_edited: 0, outputs_edited: 1, parts_removed: 1 });
+  assert.deepEqual(result, { dropped: 0, edited: 1, reasoning_edited: 1, reasoning_replaced: 0, text_edited: 0, outputs_edited: 1, parts_removed: 1, tools_removed: 0 });
   assert.deepEqual(live[1].parts.map((p) => p.type), ['text', 'tool']);
   assert.equal(live[1].parts[1].state.output, '[folded · recall: fetch {"stub":3}]');
   assert.deepEqual(live[1].parts[1].state.input, { filePath: 'a.py' });
@@ -226,10 +226,12 @@ test('a stub is edits: the reasoning part removed, the output tagged; text and t
 test('a reasoning part is replaced in place (the think rule); a carrier replaces it and removes the tool parts', () => {
   const mk = () => ({ info: { id: 'b' }, parts: [{ type: 'reasoning', text: 'long thinking' }, { type: 'tool', tool: 'read', state: { input: {}, output: 'out' } }] });
   const think = [mk()];
-  applyDecisions(think, [{ id: 'b', action: 'edit', edits: [{ part: 'reasoning', text: '[folded thinking] tail' }] }]);
+  const thought = applyDecisions(think, [{ id: 'b', action: 'edit', edits: [{ part: 'reasoning', text: '[folded thinking] tail' }] }]);
   assert.deepEqual(think[0].parts.map((p) => p.text ?? p.state.output), ['[folded thinking] tail', 'out']);
+  assert.deepEqual([thought.reasoning_edited, thought.reasoning_replaced, thought.tools_removed], [1, 1, 0]);
   const carrier = [mk()];
-  applyDecisions(carrier, [{ id: 'b', action: 'edit', edits: [{ part: 'reasoning', text: '[summary m9 …]' }, { part: 'tool', index: 0, text: null }] }]);
+  const carried = applyDecisions(carrier, [{ id: 'b', action: 'edit', edits: [{ part: 'reasoning', text: '[summary m9 …]' }, { part: 'tool', index: 0, text: null }] }]);
+  assert.deepEqual([carried.reasoning_replaced, carried.tools_removed, carried.parts_removed], [1, 1, 1]);
   assert.deepEqual(carrier[0].parts.map((p) => p.type), ['reasoning']);
   assert.equal(carrier[0].parts[0].text, '[summary m9 …]');
 });

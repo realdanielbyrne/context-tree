@@ -133,8 +133,8 @@ export const server = async () => {
       const keptTokens = sizeOf(messages);
       log({
         turn, before, after: messages.length, before_tokens: beforeTokens, kept_tokens: keptTokens,
-        dropped: applied.dropped, edited: applied.edited, reasoning_edited: applied.reasoning_edited, text_edited: applied.text_edited,
-        outputs_edited: applied.outputs_edited, parts_removed: applied.parts_removed, decisions: decisions.length,
+        dropped: applied.dropped, edited: applied.edited, reasoning_edited: applied.reasoning_edited, reasoning_replaced: applied.reasoning_replaced, text_edited: applied.text_edited,
+        outputs_edited: applied.outputs_edited, parts_removed: applied.parts_removed, tools_removed: applied.tools_removed, decisions: decisions.length,
         assembled: assembled !== null, summary_requests: assembled?.summary_requests?.length ?? 0,
         fold_called: folded !== null, folded_now: folded?.folded?.length ?? 0, folds_total: folded?.folds_total ?? null,
         evict_called: evicted !== null, evict_window: evicted?.window ?? null, evict_floor: evicted?.floor ?? false,

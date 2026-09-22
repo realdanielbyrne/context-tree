@@ -51,7 +51,8 @@ const arm = (over = {}) => ({
   plugin_loaded: true, plugin_turns: 4, plugin_errors: 0, fold_turns: 3, drop_turns: 3,
   reduce_turns: 2, after_first_reduce: 2, after_all_reduced: true, reduce_seen: 2,
   stub_turns: 2, after_first_stub: 2, after_all_stubbed: true, stub_seen: 2,
-  think_turns: 2, after_first_think: 2, after_all_thought: true, think_seen: 2, after_all_carried: true, carrier_seen: 2,
+  think_turns: 2, after_first_think: 2, after_all_thought: true, think_seen: 2,
+  carrier_turns: 2, after_first_carrier: 2, after_all_carried: true, carrier_seen: 2,
   sidecar_g0_rows: 3, sidecar_assembles: 4, ...over,
 });
 const control = (over = {}) => arm({
@@ -59,7 +60,8 @@ const control = (over = {}) => arm({
   before_first_drop: 4, after_first_drop: 0, after_all_clean: false, after_all_replaced: false,
   replacement_seen: 0, reduce_turns: 0, after_first_reduce: 0, after_all_reduced: false, reduce_seen: 0,
   stub_turns: 0, after_first_stub: 0, after_all_stubbed: false, stub_seen: 0,
-  think_turns: 0, after_first_think: 0, after_all_thought: false, think_seen: 0, after_all_carried: false, carrier_seen: 0, ...over,
+  think_turns: 0, after_first_think: 0, after_all_thought: false, think_seen: 0,
+  carrier_turns: 0, after_first_carrier: 0, after_all_carried: false, carrier_seen: 0, ...over,
 });
 
 test('G0 passes only when the control holds the marker and the treatment loses it in order', () => {
@@ -195,4 +197,12 @@ test('the gate makes every edit an arm makes, one per tool-bearing message, each
   // Each case waits for enough messages, and never lands on a message without tools.
   assert.ok(g0Decisions(messages.slice(0, 4), 'FOLD', 'REDUCED').every((d) => d.action !== 'edit' || d.id === 'm0'));
   assert.ok(g0Decisions(messages, 'FOLD').slice(2).every((d) => d.action === 'keep'));
+});
+
+test('a stub turn is not a think turn: the think and carrier cases are dated from their own counters', () => {
+  // The live FAIL of 2026-09-21: the stub case removes a reasoning part one request before the think
+  // case replaces one, and dating "first think" from `reasoning_edited` put a marker-free request in its window.
+  assert.match(gradeG0({ control: control(), treatment: arm({ after_all_thought: false }) }).reasons.join(' '), /replaced reasoning never reached/);
+  const v = gradeG0({ control: control(), treatment: arm({ carrier_turns: 0, after_first_carrier: 0, after_all_carried: false }) });
+  assert.match(v.reasons.join(' '), /never carried a summary/);
 });

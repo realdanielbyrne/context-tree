@@ -117,8 +117,12 @@ function readArm(tag, since) {
   const drops = plugin.filter((r) => (r.dropped ?? 0) > 0);
   const reduces = plugin.filter((r) => (r.outputs_edited ?? 0) > 0);
   const stubs = plugin.filter((r) => (r.parts_removed ?? 0) > 0 && (r.outputs_edited ?? 0) > 0);
-  const thinks = plugin.filter((r) => (r.reasoning_edited ?? 0) > 0);
+  // A stub REMOVES a reasoning part and a carrier removes a tool part, so each kind is dated from
+  // its own counter, not from `reasoning_edited`, which the stub turn one request earlier also raises.
+  const thinks = plugin.filter((r) => (r.reasoning_replaced ?? 0) > 0);
+  const carriers = plugin.filter((r) => (r.tools_removed ?? 0) > 0);
   const afterThink = thinks.length > 0 ? conv.filter((r) => String(r.ts) >= String(thinks[0].ts)) : [];
+  const afterCarrier = carriers.length > 0 ? conv.filter((r) => String(r.ts) >= String(carriers[0].ts)) : [];
   const afterStub = stubs.length > 0 ? conv.filter((r) => String(r.ts) >= String(stubs[0].ts)) : [];
   const afterReduce = reduces.length > 0 ? conv.filter((r) => String(r.ts) >= String(reduces[0].ts)) : [];
   const firstEditTs = edits.length > 0 ? String(edits[0].ts) : null;
@@ -167,7 +171,9 @@ function readArm(tag, since) {
     after_first_think: afterThink.length,
     after_all_thought: afterThink.length > 0 && afterThink.every((r) => thoughtOn(r) >= 1),
     think_seen: conv.filter((r) => thoughtOn(r) >= 1).length,
-    after_all_carried: afterThink.length > 0 && afterThink.every((r) => carriedOn(r) >= 1),
+    carrier_turns: carriers.length,
+    after_first_carrier: afterCarrier.length,
+    after_all_carried: afterCarrier.length > 0 && afterCarrier.every((r) => carriedOn(r) >= 1),
     carrier_seen: conv.filter((r) => carriedOn(r) >= 1).length,
     drop_turns: drops.length,
     // The sidecar's own account of taking the gate path, so "the flag never arrived" is not
@@ -230,6 +236,8 @@ export function gradeG0({ control, treatment }) {
   if (treatment.think_turns === 0) reasons.push('treatment never replaced a reasoning part: no plugin turn reports one edited');
   else if (treatment.after_first_think === 0) reasons.push('treatment made no mediated request after its first reasoning edit: the run ended too early to observe one');
   else if (!treatment.after_all_thought) reasons.push("treatment's replaced reasoning never reached the provider: a reasoning part edited in place is not what gets serialized");
+  if (treatment.carrier_turns === 0) reasons.push('treatment never carried a summary: no plugin turn reports a tool part removed');
+  else if (treatment.after_first_carrier === 0) reasons.push('treatment made no mediated request after its first carrier edit: the run ended too early to observe one');
   else if (!treatment.after_all_carried) reasons.push("treatment's carrier text never reached the provider: a summary in a reasoning part with the tool parts removed is not what gets serialized");
   // ORDERED, not existential. "Some request lacked the marker" is satisfied by a subagent
   // session or a retry; "every request after the first edit lacked it, and every request
