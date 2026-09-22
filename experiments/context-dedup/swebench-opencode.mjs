@@ -81,6 +81,9 @@ const WANTS_PLUGIN = ARM === 'ct';
  */
 const G0_MARKER = process.env.CT_G0_MARKER || '';
 const G0_FOLD_MARKER = process.env.CT_G0_FOLD_MARKER || '';
+// The sidecar folds the task message to the task statement with the marker line swapped (it has
+// the statement once ingested); this is only what it shows before then. A fold that removed the
+// task made the agent recall it with `fetch`, which put the original marker back on the wire.
 const G0_FOLD_TEXT = G0_FOLD_MARKER ? `Continue the task. Harness marker: ${G0_FOLD_MARKER}` : '';
 const G0_REDUCE_MARKER = process.env.CT_G0_REDUCE_MARKER || '';
 const G0_REDUCE_TEXT = G0_REDUCE_MARKER ? `[output reduced] Harness marker: ${G0_REDUCE_MARKER}` : '';
@@ -124,7 +127,7 @@ const POLICY_ENV = Object.freeze(Object.fromEntries(Object.entries(POLICY_KEYS).
 const PIPELINE_ENV = Object.freeze(fromEnv([...PIPELINE_REGISTRY.map(([env]) => env), ...SIDECAR_ONLY_KEYS]));
 const ASSEMBLE_PORT = process.env.CT_ASSEMBLE_PORT || '8899';
 const ASSEMBLE_MS = process.env.CT_ASSEMBLE_MS || '8000';
-const G0_EXTRA = G0_DROP_FIRST ? { CT_G0_DROP_FIRST: '1', CT_G0_FOLD_TEXT: G0_FOLD_TEXT, CT_G0_REDUCE_TEXT: G0_REDUCE_TEXT, CT_G0_STUB_TEXT: G0_STUB_TEXT, CT_G0_THINK_TEXT: G0_THINK_TEXT, CT_G0_CARRIER_TEXT: G0_CARRIER_TEXT } : {};
+const G0_EXTRA = G0_DROP_FIRST ? { CT_G0_DROP_FIRST: '1', CT_G0_MARKER: G0_MARKER, CT_G0_FOLD_MARKER: G0_FOLD_MARKER, CT_G0_FOLD_TEXT: G0_FOLD_TEXT, CT_G0_REDUCE_TEXT: G0_REDUCE_TEXT, CT_G0_STUB_TEXT: G0_STUB_TEXT, CT_G0_THINK_TEXT: G0_THINK_TEXT, CT_G0_CARRIER_TEXT: G0_CARRIER_TEXT } : {};
 // Recorded, not just forwarded: a gate cell has to be unmistakable in the results file.
 const CT_OPTIONS = Object.freeze({ ...POLICY_ENV, ...PIPELINE_ENV, CT_ASSEMBLE_PORT: ASSEMBLE_PORT, CT_ASSEMBLE_MS: ASSEMBLE_MS, ...G0_EXTRA });
 /** What the SIDECAR needs. The policy never goes there: it cannot evict by itself. */

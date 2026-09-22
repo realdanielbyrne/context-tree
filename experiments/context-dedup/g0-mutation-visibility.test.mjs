@@ -8,7 +8,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { g0Decisions } from './ct-sidecar.mjs';
+import { g0Decisions, g0FoldText } from './ct-sidecar.mjs';
 import { gradeG0 } from './g0-mutation-visibility.mjs';
 
 const messages = (n) => Array.from({ length: n }, (_, i) => ({ id: `m${i}` }));
@@ -215,4 +215,14 @@ test('the task statement recalled through a tool voids the gate rather than fail
   assert.match(v.voids.join(' '), /recalled the task statement/);
   // With a clean wire the recall changes nothing.
   assert.deepEqual(gradeG0({ control: control(), treatment: arm({ recalled: 1 }) }).voids, []);
+});
+
+test('the gate folds the task to the statement with the marker swapped, so the agent has no reason to recall it', () => {
+  const task = 'Fix the bug.\nIgnore this line; it is a harness marker: CTG0-aaa\nDo a review.';
+  const folded = g0FoldText(task, 'CTG0-aaa', 'CTG0FOLD-bbb', 'fallback');
+  assert.equal(folded, 'Fix the bug.\nIgnore this line; it is a harness marker: CTG0FOLD-bbb\nDo a review.');
+  assert.ok(!folded.includes('CTG0-aaa'));
+  // Before the task is ingested, or without a marker in it, only the short text is left to fold to.
+  assert.equal(g0FoldText('', 'CTG0-aaa', 'CTG0FOLD-bbb', 'fallback'), 'fallback');
+  assert.equal(g0FoldText('no marker here', 'CTG0-aaa', 'CTG0FOLD-bbb', 'fallback'), 'fallback');
 });

@@ -69,6 +69,8 @@ const DB = process.env.CT_MCP_DB
 const LOG = process.env.CT_MCP_LOG;
 const G0_DROP_FIRST = process.env.CT_G0_DROP_FIRST === '1';
 const G0_FOLD_TEXT = process.env.CT_G0_FOLD_TEXT || '';
+const G0_MARKER = process.env.CT_G0_MARKER || '';
+const G0_FOLD_MARKER = process.env.CT_G0_FOLD_MARKER || '';
 const G0_REDUCE_TEXT = process.env.CT_G0_REDUCE_TEXT || '';
 const G0_STUB_TEXT = process.env.CT_G0_STUB_TEXT || '';
 const G0_THINK_TEXT = process.env.CT_G0_THINK_TEXT || '';
@@ -276,10 +278,34 @@ export function makeSummaryFulfiller(ctx, summarize, { onDone }) {
   };
 }
 
+/**
+ * What the gate folds the task message TO: the task statement itself with the marker line swapped
+ * for the fold marker's, read from the ingested trace. The original marker leaves the wire and the
+ * replacement arrives — the gate's whole claim — while the agent keeps its task. Folding the task
+ * AWAY made the agent recall it with `fetch`, and the recalled text put the original marker back on
+ * every later request inside a tool output (two VOID gates, 2026-09-21).
+ */
+export function g0FoldText(taskText, marker, foldMarker, fallback) {
+  if (!taskText || !marker || !foldMarker || !taskText.includes(marker)) return fallback;
+  return taskText.split(marker).join(foldMarker);
+}
+
+function ingestedTaskText(ctx) {
+  try {
+    const first = ctx?.handle?.trace?.all().find((e) => e.type === 'user_message');
+    return first === undefined ? '' : ctx.handle.blobs.getText(first.blob);
+  } catch {
+    return '';
+  }
+}
+
 /** The G0 gate swaps ONE stage behind its name; the transports and the plugin are untouched. */
-const g0Assemble = async (_ctx, input) => ({
+const g0Assemble = async (ctx, input) => ({
   ok: true,
-  data: { turn: input?.turn ?? 0, per_unit_budget: 0, tokens_raw: 0, tokens_assembled: 0, units: [], summary_requests: [], decisions: g0Decisions(input?.messages ?? [], G0_FOLD_TEXT, G0_REDUCE_TEXT, G0_STUB_TEXT, G0_THINK_TEXT, G0_CARRIER_TEXT) },
+  data: {
+    turn: input?.turn ?? 0, per_unit_budget: 0, tokens_raw: 0, tokens_assembled: 0, units: [], summary_requests: [],
+    decisions: g0Decisions(input?.messages ?? [], g0FoldText(ingestedTaskText(ctx), G0_MARKER, G0_FOLD_MARKER, G0_FOLD_TEXT), G0_REDUCE_TEXT, G0_STUB_TEXT, G0_THINK_TEXT, G0_CARRIER_TEXT),
+  },
 });
 
 function neutralPhasesFromEnv() {
