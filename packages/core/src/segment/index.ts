@@ -9,3 +9,7 @@ export { deriveTurns, turnIdAt, type Turn } from './turns.js';
 export { bagOf, bagCosine, cutsOf, driftCuts, tilingCuts, type Cuts } from './boundary.js';
 export { covarianceScores, type CovarianceParams } from './score.js';
 export { foldsFrom, parseSummaryBlob, replaySummaries, stubFoldId, summaryFoldId, writeSummary, type Fold, type Ledger } from './ledger.js';
+export { blocksOf, type Block, type BlockKind } from './blocks.js';
+export { outputTag, stubOf, tailOf, thinkingTag, type FoldReasoning, type Stub, type StubParams, type StubPart } from './stubs.js';
+export { foldView, shownTokens, type BlockState, type FoldTexts, type StubBlob } from './view.js';
+export { planFolds, type FoldCandidate, type FoldPlan, type FoldPolicyParams, type FoldTrigger } from './policy.js';

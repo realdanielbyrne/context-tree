@@ -20,3 +20,4 @@ export {
   summaryMetaFrom,
   type ContractExpectation,
 } from './contract.js';
+export { summarizeRange, type RangeSummaryOptions, type RangeSummaryOutcome, type RangeSummaryRequest } from './range.js';

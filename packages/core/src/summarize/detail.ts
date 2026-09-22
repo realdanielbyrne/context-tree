@@ -12,6 +12,7 @@
 import type {
   BlobRef,
   BlobStore,
+  Seq,
   SymbolSpan,
   TraceEvent,
   TraceLog,
@@ -75,6 +76,15 @@ export function branchFacts(store: TreeStore, node: TreeNode): BranchFacts {
 }
 
 /** The `{{detail}}` interpolation for the leaf prompt: coordinates first, then the L0 events they index. */
+/** A RANGE of L0 as the summarizer reads it — the detail behind a range summary (D26). */
+export function renderRangeDetail(from: Seq, to: Seq, sources: DetailSources): string {
+  const trace = sources.trace;
+  if (trace === undefined) return 'NOTE: no L0 trace log was supplied; nothing to summarize.';
+  const rendered: string[] = [];
+  for (const event of trace.read({ from, to })) rendered.push(renderEvent(event, sources.blobs));
+  return `EVENTS (L0 ${String(from)}..${String(to)}):\n${rendered.join('\n\n')}`;
+}
+
 export function renderBranchDetail(
   store: TreeStore,
   node: TreeNode,
@@ -132,9 +142,11 @@ function renderEvent(event: TraceEvent, blobs: BlobStore | undefined): string {
   switch (event.type) {
     case 'user_message':
     case 'assistant_message':
-    case 'reasoning':
     case 'manual_annotation':
       return `${head}\n${payload(blobs, event.blob)}`;
+    case 'reasoning':
+      // Head AND tail: the deliberation opens a thinking block, the conclusion closes it.
+      return `${head}\n${payloadHeadTail(blobs, event.blob)}`;
     case 'fold':
       return `${head} ${event.fold_id} ${event.kind} ${String(event.from_seq)}-${String(event.to_seq)}`;
     case 'unfold':
@@ -168,6 +180,15 @@ function renderEvent(event: TraceEvent, blobs: BlobStore | undefined): string {
     case 'segment_boundary':
       return `${head} ${event.from ?? 'none'} -> ${event.to}`;
   }
+}
+
+function payloadHeadTail(blobs: BlobStore | undefined, ref: BlobRef, maxBytes = BLOB_PREFIX_BYTES): string {
+  if (blobs === undefined) return `(payload ${ref.slice(0, 12)}; no blob store supplied)`;
+  const total = blobs.size(ref);
+  if (total <= maxBytes) return blobs.getText(ref);
+  const whole = blobs.getText(ref);
+  const half = Math.floor(maxBytes / 2);
+  return `${whole.slice(0, half)}\n… [${total - maxBytes} bytes elided from the middle of this thinking] …\n${whole.slice(-half)}`;
 }
 
 function payload(blobs: BlobStore | undefined, ref: BlobRef, maxBytes = BLOB_PREFIX_BYTES): string {
