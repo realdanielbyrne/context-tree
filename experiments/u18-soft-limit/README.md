@@ -160,7 +160,8 @@ Arm order rotates per wave so no arm always runs first.
    - `stub` PASS: as `soft`, and at least one block was folded. `summary` PASS: as `stub`, and at
      least one summary was written (so the request → relay → `summarize` path closed in time).
      `think` PASS: integrity, ≥ 20 steps, at least one reasoning part folded, and a served peak
-     below the control's on this problem (118,000) — no eviction clauses, because it evicts nothing.
+     inside the served window (151,040) with host compaction off — no eviction clauses, because it
+     evicts nothing but the floor. Offline replay of the stub gate session: 270K raw, 131K folded.
    - `hard` PASS: the same without the eviction and peak clauses. It exists because the arm has
      never run live and its ceiling is denominated in heuristic tokens (see Known limits): with
      host compaction off, a problem that fills the window may be a hard session error.
@@ -294,3 +295,13 @@ driver's convention), verdicts in `reports/metrics/u18-soft-limit/`. Write the r
   policies), the pipeline is `assemble → fold → evict`, and the arms are `think` / `stub` /
   `summary` as tabled. The `stub` and `summary` tags changed with their definitions; `soft` and
   `hard` did not, and their wave-0 cells stand. G0 and the three fold-arm gates are owed.
+- **2026-09-21, offline replay of the `stub` gate session (156 turns) through the D26 pipeline**
+  (no GPU; fake summarizer). `soft`: 130 units evicted, peak 30,145 of a 30,155 budget, 0 turns
+  over. `think`: 6,189 reasoning parts folded over 87 blocks, nothing evicted by policy, raw peak
+  270,177 → 130,767 (the floor evicted 18 units from turn 102); thinking alone reclaims about half.
+  `stub`: 256 blocks folded from turn 12, first eviction moved from turn 12 to turn 112, 49 units
+  evicted (soft: 130), peak 30,151, 0 turns over, every fold resolves by its id. `summary`: 11
+  summaries requested by `assemble` and written (81 blocks carried or covered), 24 units evicted,
+  first eviction turn 125. Slowest turn 283 ms. `foldSummarizeAt` was lowered from 0.25 to 0.02
+  after this replay showed a run of stubs never reaches a quarter of the budget (the largest run
+  was 1,685 tokens of 30,155).

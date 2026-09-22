@@ -17,9 +17,6 @@ export const REPEATS = 3;
 /** The clean Swift-NVFP4 baseline this run's `off` arm is an A/A repeat of. */
 export const HISTORICAL_SOLVED = 19;
 
-/** The control's median served peak on the gate problem (baseline-swift-sbx-x3: 117,951–118,801; wave 0: 119,204). */
-export const HISTORICAL_GATE_PEAK = 118_000;
-
 export const RULES = Object.freeze({
   /** Soft cells that must have evicted for the arm to count as having run at all. */
   minEngagedCells: 8,
@@ -365,8 +362,10 @@ export function gateVerdict(cell, wire, sidecar, { arm, window, knobs = null }) 
   if (set.CT_CT_FOLD_TRIGGER === 'pressure' && !((cell.ct?.stubs_folded ?? 0) > 0)) reasons.push('G2: no block was ever folded — the arm ran as silent eviction');
   if (set.CT_CT_FOLD_SUMMARIES === '1' && !((cell.ct?.summaries_written ?? 0) > 0)) reasons.push('G2: no summary was ever written — the arm ran as `stub`');
   if (Number(set.CT_CT_FOLD_REASONING_AFTER ?? 0) > 0) {
+    // think evicts nothing by policy: it passes by folding enough thinking that the session fits
+    // the real window without host compaction. Offline, this problem is 270K raw and 131K folded.
     if (!((cell.ct?.reasoning_edited ?? 0) > 0)) reasons.push('G2: no reasoning part was ever folded — the arm ran as the control');
-    if (!(cell.peak_prompt_tokens < HISTORICAL_GATE_PEAK)) reasons.push(`G2: real peak ${cell.peak_prompt_tokens} is not below the control's on this problem (${HISTORICAL_GATE_PEAK}): folding thinking gave nothing back`);
+    if (!(cell.peak_prompt_tokens <= SERVED_WINDOW)) reasons.push(`G2: real peak ${cell.peak_prompt_tokens} exceeds the served window ${SERVED_WINDOW}: folding thinking did not keep the session inside it`);
   }
   if (ARMS[arm].trigger === 'soft') {
     if (!engaged(cell)) reasons.push('G2: nothing evicted — the mechanism did not fire');

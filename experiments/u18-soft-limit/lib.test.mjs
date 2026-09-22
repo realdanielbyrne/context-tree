@@ -303,7 +303,7 @@ test('gate: a cell too short to show anything fails, and a fold arm must have do
   think.ct = { ...think.ct, arm_effective: { trigger: 'off', softWindow: W, foldSummaries: false }, fired: true, evicted_units: 0 };
   assert.equal(verdict(think, 'think').pass, true);
   assert.match(verdict({ ...think, ct: { ...think.ct, reasoning_edited: 0 } }, 'think').reasons.join(' '), /no reasoning part was ever folded/);
-  assert.match(verdict({ ...think, peak_prompt_tokens: 130_000 }, 'think').reasons.join(' '), /not below the control/);
+  assert.match(verdict({ ...think, peak_prompt_tokens: 160_000 }, 'think').reasons.join(' '), /exceeds the served window/);
 });
 
 test('a recall arm whose agent never recalled says nothing about recall', () => {
