@@ -8,16 +8,25 @@ import type { LinkKind, PhaseType } from './tree.js';
 export type TraceEventType =
   | 'user_message'
   | 'assistant_message'
+  | 'reasoning'
   | 'tool_call'
   | 'tool_result'
   | 'segment_boundary'
-  | 'manual_annotation';
+  | 'manual_annotation'
+  | 'fold'
+  | 'unfold';
 
 export interface TraceEventBase {
   seq: Seq;
   type: TraceEventType;
   /** ISO-8601 UTC. Supplied by the caller so replay is deterministic. */
   ts: string;
+  /**
+   * The host message this event came from. One host message is one TURN — the unit
+   * the pipeline retains or drops — and a message with tool parts but no text emits no
+   * message event, so without this the boundary cannot be recovered from L0.
+   */
+  turn_id?: string;
 }
 
 export interface UserMessageEvent extends TraceEventBase {
@@ -27,6 +36,16 @@ export interface UserMessageEvent extends TraceEventBase {
 
 export interface AssistantMessageEvent extends TraceEventBase {
   type: 'assistant_message';
+  blob: BlobRef;
+}
+
+/**
+ * The model's thinking for one host message. It segments nothing and carries no
+ * coordinates, but a host that replays it sends it on every turn, so a trace without it
+ * under-sizes the prompt (D24).
+ */
+export interface ReasoningEvent extends TraceEventBase {
+  type: 'reasoning';
   blob: BlobRef;
 }
 
@@ -74,13 +93,43 @@ export interface ManualAnnotationEvent extends TraceEventBase {
   link_kind?: LinkKind;
 }
 
+/**
+ * THE LEDGER (D26). A fold is a stretch of the transcript shown in a shorter form: a
+ * `stub` over one block (summary-free), or a `summary` over a range of blocks. Both are
+ * appended here, so what the model was shown is replayable and a rebuild loses no summary.
+ * `node_id` names the segment whose span this range is, when it is one — then it IS that
+ * node's summary (`node_summaries` is derived from these events).
+ */
+export interface FoldEvent extends TraceEventBase {
+  type: 'fold';
+  fold_id: string;
+  kind: 'stub' | 'summary';
+  from_seq: Seq;
+  to_seq: Seq;
+  /** A stub's text; a summary's `{ text, meta }` JSON. */
+  blob: BlobRef;
+  node_id?: NodeId;
+  model?: string;
+  /** What asked for it: a policy name, a tool caller, a CLI command. */
+  trigger?: string;
+}
+
+/** Written by `restore`: the fold no longer shows. Its record stays. */
+export interface UnfoldEvent extends TraceEventBase {
+  type: 'unfold';
+  fold_id: string;
+}
+
 export type TraceEvent =
   | UserMessageEvent
   | AssistantMessageEvent
+  | ReasoningEvent
   | ToolCallEvent
   | ToolResultEvent
   | SegmentBoundaryEvent
-  | ManualAnnotationEvent;
+  | ManualAnnotationEvent
+  | FoldEvent
+  | UnfoldEvent;
 
 /**
  * A trace event before a `seq` has been assigned by the writer.

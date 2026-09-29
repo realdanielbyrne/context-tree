@@ -114,7 +114,7 @@ export class FsBlobStore implements BlobStore {
     if (!existsSync(path)) throw new BlobMissingError(ref);
     const fd = openSync(path, 'r');
     try {
-      // §9 context_peek is "one small call, not a full expansion" — read via
+      // §9 peek is "one small call, not a full expansion" — read via
       // a file handle capped at maxBytes so a multi-MB tool output blob never
       // gets fully paged into memory just to preview it.
       const size = Math.min(maxBytes, statSync(path).size);

@@ -105,7 +105,7 @@ describe('the §9 system-prompt contract', () => {
 
   it('names all four MCP tools, since a tool the prompt never mentions is never called', () => {
     const contract = systemContract();
-    for (const tool of ['context_fetch', 'context_search', 'context_peek', 'annotate']) {
+    for (const tool of ['fetch', 'search', 'peek', 'annotate']) {
       expect(contract).toContain(tool);
     }
   });
@@ -153,6 +153,19 @@ describe('systemContract version selector (loop9-item3 step 1: the Zone A trim)'
     }
     expect(thrown).toBeInstanceOf(ContextTreeError);
     expect((thrown as Error).message).toMatch(/unknown system contract version: v9/);
+  });
+});
+
+describe('system-contract v4: the pipeline tools', () => {
+  it('is v1 plus the pipeline tools — nothing in v1 is reworded, so the two differ only by the addition', () => {
+    const v1 = systemContract('v1');
+    const v4 = systemContract('v4');
+    for (const tool of ['units', 'classify', 'assemble', 'evict', 'restore']) {
+      expect(v4).toContain(`\`${tool} `);
+      expect(v1).not.toContain(tool);
+    }
+    const added = v4.slice(v4.indexOf('- `units'), v4.indexOf('\n## Two ways this goes wrong'));
+    expect(v4.replace(added, '')).toBe(v1);
   });
 });
 
@@ -434,5 +447,16 @@ describe('golden render', () => {
       Ran 3 tests, all passed.
       "
     `);
+  });
+});
+
+describe('system-contract v5: a prompt with tags in it', () => {
+  it('shows the two tag forms exactly as the pipeline writes them, and gives no orders', () => {
+    const v5 = systemContract('v5');
+    expect(v5).toContain('fetch {"stub":31}');
+    expect(v5).toContain('[folded thinking · ');
+    expect(v5).toContain('[summary m91 · ');
+    expect(v5).toContain('[folded · N tokens · began: ');
+    expect(v5).not.toMatch(/\b(must|never|always|do not)\b/i);
   });
 });

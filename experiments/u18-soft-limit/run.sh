@@ -7,10 +7,18 @@
 # that never answered (lib.mjs `instrumentFailure`), criteria that cannot see the grade.
 #
 #   experiments/u18-soft-limit/run.sh                 # all: preflight → gate → waves → analyze
-#   experiments/u18-soft-limit/run.sh preflight|gate|waves|analyze
+#   experiments/u18-soft-limit/run.sh config|preflight|gate [arm...]|waves|analyze
 #
-#   U18_WINDOW=50347          the soft limit, nominal tokens (the swept variable)
-#   U18_ARMS="off soft hard"  off = host control, soft = treatment, hard = plumbing-matched control
+#   U18_ARMS="off soft hard"  off = host control, soft = silent eviction at W, hard = plumbing-matched control;
+#                             gravity = soft + gravity (D27): fold, unfold, summarize and delete by one pull,
+#                             gravity-adaptive = gravity with κ moved by what the model does. The table is lib.mjs ARMS.
+#   U18_WINDOW=50347          the soft limit, in HEURISTIC tokens (the swept variable)
+#   U18_ANCHOR=3              recency anchor: the last A units (phases) are never evictable
+#   U18_<KNOB>=...            every other value that still needs a sweep — eviction weights,
+#                             half-life, headroom, drift K/tau, RRF k, chunking, reserve, head
+#                             allowance, protected tail, neutral phases, contract. The table,
+#                             with defaults, is lib.mjs KNOBS; `run.sh config` prints it resolved.
+#                             Each arm's tag carries a hash of its knobs, so settings never pool.
 #   U18_LOAD_MODEL=1          load Swift-NVFP4 if the server holds something else (evicts it)
 #   U18_ALLOW_DIRTY=1         run from an uncommitted tree (recorded in run-log.jsonl)
 #   U18_REGATE=1              run another gate attempt: required after a FAIL, and after a
@@ -28,7 +36,6 @@ MODEL="local/$MODEL_ID"
 VARIANT="Swift-Qwen3.8-27B-NVFP4-Q8mix"
 SERVED=151040
 REPEATS=3
-WINDOW="${U18_WINDOW:-50347}"
 ARMS="${U18_ARMS:-off soft hard}"
 GATE_INSTANCE="django__django-11138"
 DRIVER="experiments/context-dedup/swebench-opencode.mjs"
@@ -39,13 +46,12 @@ SERVER="http://127.0.0.1:8888"
 # What a gate PASS vouches for: a commit touching any of these after the PASS voids it.
 HARNESS_PATHS=(experiments/context-dedup packages experiments/u18-soft-limit)
 STAGE="${1:-all}"
-export U18_WINDOW="$WINDOW"
+GATE_ARMS="${*:2}"
 
 die() { echo "u18: $*" >&2; exit 1; }
 say() { echo "u18: $*" >&2; }
 
-[[ "$WINDOW" =~ ^[0-9]+$ ]] || die "U18_WINDOW must be an integer token count, got '$WINDOW'"
-for a in $ARMS; do [[ "$a" =~ ^(off|soft|hard)$ ]] || die "unknown arm '$a'"; done
+for a in $ARMS; do [[ "$a" =~ ^(off|soft|hard|gravity|gravity-adaptive)$ ]] || die "unknown arm '$a' (lib.mjs ARMS)"; done
 [[ " $ARMS " == *" off "* && " $ARMS " == *" soft "* ]] || die "U18 needs at least the off and soft arms"
 [[ "${CT_SANDBOX:-1}" != 0 ]] || die "CT_SANDBOX=0 refused: an unsandboxed agent can read the gold patch, and the ct arm silently degrades to its control"
 
@@ -57,7 +63,7 @@ set -a; [[ -f .env ]] && . ./.env; set +a
 for name in $(compgen -e); do if [[ "$name" == CT_* ]]; then unset "$name"; fi; done
 
 # Two runners would take the same owed cell and leave a duplicate only a human can resolve.
-if [[ "$STAGE" != analyze ]]; then
+if [[ "$STAGE" != analyze && "$STAGE" != config ]]; then
   mkdir -p "$OUT"
   exec 9>"$RUNS/.u18.lock"
   flock -n 9 || die "another run.sh holds $RUNS/.u18.lock"
@@ -76,7 +82,11 @@ assert_served() {
 
 dirty() { [[ -n "$(git status --porcelain -- . ":!$PILOT/results-*.json" ":!$OUT")" ]]; }
 
-tag_base() { if [[ "$1" == soft ]]; then echo "u18-soft${WINDOW}"; else echo "u18-$1"; fi; }
+# The knobs are resolved and validated in ONE place (lib.mjs KNOBS); a bad value stops here.
+node "$HERE/analyze.mjs" config >/dev/null || die "bad U18_* knob (see above)"
+WINDOW="$(node "$HERE/analyze.mjs" env soft | sed -n 's/^CT_CT_WINDOW=//p')"
+
+tag_base() { node "$HERE/analyze.mjs" tag "$1"; }
 
 # One driver invocation. Arm knobs are spelled out in full for every ct arm — including the
 # ones left at their defaults — so a changed default upstream cannot move this experiment.
@@ -84,9 +94,9 @@ drive() { # arm tag repeat instances
   local arm="$1" tag="$2" repeat="$3" ids="$4"
   local -a armenv=(CT_ARM=off)
   if [[ "$arm" != off ]]; then
-    armenv=(CT_ARM=ct CT_CT_TRIGGER="$arm" CT_CT_WINDOW="$WINDOW" CT_CT_HARD_WINDOW="$SERVED"
-            CT_CT_SUMMARIES=0 CT_CT_CADENCE_N=5 CT_CT_ANCHOR=4 CT_CT_TOPK=5 CT_CT_PROTECT_TAIL=6
-            CT_CT_REPLY_RESERVE=8192 CT_ASSEMBLE_PORT=8899)
+    mapfile -t knobs < <(node "$HERE/analyze.mjs" env "$arm")
+    # The arm table (lib.mjs ARMS) owns the trigger and anything an arm sets; later entries win.
+    armenv=(CT_ARM=ct CT_CT_TRIGGER="$(node "$HERE/analyze.mjs" trigger "$arm")" CT_ASSEMBLE_PORT=8899 "${knobs[@]}")
   fi
   assert_served
   jq -nc --arg tag "$tag" --arg arm "$arm" --arg ids "$ids" --arg commit "$(git rev-parse HEAD)" \
@@ -125,8 +135,7 @@ preflight() {
   assert_served
   declared="$(jq -r --arg m "$MODEL_ID" '.provider.local.models[$m].limit.context' experiments/context-dedup/opencode.json)"
   [[ "$declared" == "$SERVED" ]] || die "opencode.json declares limit.context=$declared for $MODEL_ID, server serves $SERVED"
-  (( WINDOW < SERVED )) || die "U18_WINDOW=$WINDOW is not below the served window"
-  (( WINDOW > 8192 + 12000 )) || die "U18_WINDOW=$WINDOW leaves no room above reply reserve + head (20192)"
+  node "$HERE/analyze.mjs" config >&2
 
   say "building packages (the ct arm imports packages/*/dist)"
   pnpm run -s build >&2 || die "build failed"
@@ -137,6 +146,13 @@ preflight() {
   local g0="$PILOT/g0-mutation-visibility.json"
   [[ -f "$g0" && "$(jq -r '.pass' "$g0")" == true && "$(jq -r '.model' "$g0")" == "$MODEL" ]] \
     || die "G0 has no PASS on record for $MODEL: node experiments/context-dedup/g0-mutation-visibility.mjs"
+  # A PASS vouches for the plugin -> sidecar -> prompt seam AS IT WAS. Once a commit touches
+  # that seam the PASS is about other code, and every ct arm is unproven again.
+  local seam_changed g0_at
+  seam_changed="$(git log -1 --format=%ct -- experiments/context-dedup packages)"
+  g0_at="$(date -d "$(jq -r .at "$g0")" +%s)"
+  (( g0_at >= seam_changed )) \
+    || die "G0 PASS ($(jq -r .at "$g0")) predates the last change to the harness ($(git log -1 --format='%h %cI' -- experiments/context-dedup packages)). Re-run it (~20 min GPU): node experiments/context-dedup/g0-mutation-visibility.mjs"
   say "preflight ok — $MODEL_ID @ $SERVED, commit $(git rev-parse --short HEAD), G0 PASS $(jq -r .at "$g0")"
 }
 
@@ -159,7 +175,8 @@ gate_one() { # arm
   node "$HERE/analyze.mjs" gate "$arm" "$tag" || die "gate $arm FAILED — no wave runs on a failed gate"
 }
 
-gate() { for arm in $ARMS; do if [[ "$arm" != off ]]; then gate_one "$arm"; fi; done; }
+# `run.sh gate stub summary` gates only the arms named; with none named, every ct arm in U18_ARMS.
+gate() { for arm in ${GATE_ARMS:-$ARMS}; do if [[ "$arm" != off ]]; then gate_one "$arm"; fi; done; }
 
 waves() {
   local arm status head
@@ -191,10 +208,11 @@ waves() {
 analyze() { node "$HERE/analyze.mjs" report; }
 
 case "$STAGE" in
+  config) node "$HERE/analyze.mjs" config ;;
   preflight) preflight ;;
   gate) preflight; gate ;;
   waves) preflight; waves ;;
   analyze) analyze ;;
   all) preflight; gate; waves; analyze ;;
-  *) die "usage: run.sh [all|preflight|gate|waves|analyze]" ;;
+  *) die "usage: run.sh [all|config|preflight|gate|waves|analyze]" ;;
 esac

@@ -176,7 +176,7 @@ describe('§8 content contract over 5 golden branches (M3 acceptance)', () => {
     expect(summaries.get(branch)?.meta.node_ids).toEqual(nodeIdsOf(golden.store, branch));
   });
 
-  // D9: spans are coordinates `context_fetch` resolves, so they come from the
+  // D9: spans are coordinates `fetch` resolves, so they come from the
   // tree even when the reply offered its own.
   it.each(BRANCH_IDS)('%s: meta.files are the tree-sitter spans, never the reply\'s (D9)', (branch) => {
     const node = golden.store.getNode(branch) as TreeNode;

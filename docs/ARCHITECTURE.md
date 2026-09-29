@@ -51,7 +51,7 @@ packages/core/src/
   providers/   §9.1 graft / Serena / Augment / grep + deterministic merge
   render/      L4  markdown views
 
-packages/mcp/   §9  the four tools over stdio
+packages/mcp/   §9  the tool registry (retrieval + pipeline stages), MCP stdio + loopback HTTP (D22)
 packages/cli/   init | import | rebuild | render | eval
 eval/           §15 resumption benchmark, arms A–D
 ```
@@ -95,12 +95,12 @@ line spans rather than failing.
 ├──────────────────────────────────────────────┤ ← cache breakpoint
 │ Zone C  active branch full detail (mutable)  │ ← rewritten each phase
 ├──────────────────────────────────────────────┤
-│ tail    context_fetch results                │ ← prefix untouched
+│ tail    fetch results                │ ← prefix untouched
 └──────────────────────────────────────────────┘
 ```
 
 Zone B is **never relevance-ordered**. Relevance is expressed by *expansion in
-Zone C*; reordering the cached prefix is the cache killer. `context_fetch`
+Zone C*; reordering the cached prefix is the cache killer. `fetch`
 results append *after* Zone C for the same reason.
 
 The **cache assertion harness** (§17) is where D5 regressions surface, and

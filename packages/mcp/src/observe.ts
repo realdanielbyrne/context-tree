@@ -8,7 +8,7 @@
  * Mode B — `middleware`: "every retrieval (including proxied graft/grep calls)
  * lands in L0 as a normal `tool_call` event, so the segmenter indexes it into
  * the tree with zero new machinery". That is the whole implementation: an
- * ordinary call/result pair plus the ordinary ingestion pass. `context_fetch`
+ * ordinary call/result pair plus the ordinary ingestion pass. `fetch`
  * and friends are unmapped tool names, so §7 routes them to `other`, which is
  * neutral — retrieval history attaches to the open phase instead of splitting
  * it (§18: unknown tools never crash).

@@ -6,20 +6,62 @@ Source hypothesis: `reports/session-handoff.md` § U18.
 **Hypothesis.** At `W_soft = 50,347` tokens (1/3 of the 151,040 Swift-NVFP4 serves) the agent solves
 what it solves at the full window, at materially lower achieved peak.
 
+## Terms
+
+The algorithm's own terms — **unit**, **turn**, **phase**, **chunk**, **anchor**, **assemble**,
+**evict**, **pinned**, the **heuristic tokenizer** and why the served-per-heuristic ratio is a
+measurement and never a constant — are defined once, in [`reports/algorithm.md`](../../reports/algorithm.md).
+Only what is specific to this harness is defined here:
+
+- **Sidecar (host adapter)** — `experiments/context-dedup/ct-sidecar.mjs`: one Node process per run,
+  inside the sandbox. It follows opencode's session db into L0 (stamping each event with its message
+  id, which is what makes a unit a host message) and serves the `@context-tree/mcp` tools. No
+  pipeline logic.
+- **Plugin** — `oc-plugin/ct-assemble-plugin.mjs`: runs inside opencode at
+  `experimental.chat.messages.transform`, the only point where the prompt can be edited. A
+  treatment turn calls `assemble`, then `evict` **if its policy fires**, and applies the returned
+  per-message decisions in place. **The arm is that call sequence.**
+- **Plugin estimate** — the size of the message array after the edit (`kept_tokens`), in the
+  **same tokenizer over the same content** as the sidecar's unit sizes (`oc-plugin/size.mjs`;
+  core `hostContent`). Replayed on the soft gate cell the two agree exactly on every turn. Until
+  2026-09-21 the plugin used `ceil(chars/4)` and the sidecar sized a debug rendering; they differed
+  by up to 1.5× on one session.
+
 ## Run it
 
 ```bash
 experiments/u18-soft-limit/run.sh            # preflight → gate → waves → analyze; safe to re-run
 experiments/u18-soft-limit/run.sh analyze    # read what is on disk; runs nothing
+experiments/u18-soft-limit/run.sh config     # the resolved knobs and each arm's tag; runs nothing
 U18_WINDOW=75520 experiments/u18-soft-limit/run.sh   # a sweep point; off/hard waves are re-used
+U18_ANCHOR=1 U18_W_DORMANCY=2 experiments/u18-soft-limit/run.sh gate
 ```
+
+**Every value that still needs a sweep is a `U18_*` knob**, and the list is not restated here:
+the pipeline half *is* the package's parameter registry (`packages/mcp/src/params.ts`), so a
+parameter added there is a knob here with no edit; the policy half is `POLICY_KNOBS` in `lib.mjs`.
+`run.sh config` prints every knob resolved, with each arm's tag. A value that does not parse is
+refused before anything runs. U18 departs from the package defaults in exactly one place —
+`U18_ANCHOR=3` (package: 4). The gravity breakpoints and κ (`U18_G_FOLD`, `U18_G_UNFOLD`,
+`U18_G_SUMMARIZE`, `U18_G_UNSUMMARIZE`, `U18_G_DELETE`, `U18_GRAVITY_K`, …) are knobs like any other,
+but `soft` and `hard` pin every breakpoint to Infinity (`lib.mjs INERT`), so a sweep cannot perturb
+the controls; the mode (`fixed` / `adaptive`) is set by the arm. Each arm's tag
+carries a hash of the knobs it depends on, the full set is written to
+`reports/metrics/u18-soft-limit/configs/<tag>.json`, and the analysis refuses a cell whose recorded
+knobs differ — so settings cannot pool by accident.
+
+The knobs most likely to be swept: `U18_WINDOW`, `U18_UNIT` (`turn` | `phase`), `U18_ANCHOR`,
+`U18_PROTECTION` (`soft` | `hard`), `U18_SOFT_TARGET_FRAC` (whether `assemble` reduces at all),
+`U18_TOPK` with `U18_W_RELEVANCE`.
 
 Re-running resumes: a wave runs only the cells still owed. A cell is owed again only when the
 **instrument** failed — killed from outside, no model step at all, or a provider that never
 answered (`lib.mjs instrumentFailure`, standing rule 9). None of those criteria can see the grade.
 Every such re-run is listed in the analysis. A timeout or a session error is an *outcome* and stays. Budget ≈ 4.2 GPU-hours per
-arm (30 cells) plus ~30 min per gate cell; ≈ 13.5 h for the default three arms. The runner takes all
-four local slots (`CT_LOCAL_EXCLUSIVE=1`), so nothing else can use the model meanwhile.
+arm (30 cells) plus ~30 min per gate cell; ≈ 13.5 h for the default three arms, **run one cell at a
+time** — that figure is the serial total. Each cell holds all four local *leases*
+(`CT_LOCAL_EXCLUSIVE=1`): nothing extra is launched; it only stops another session from sharing the
+GPU mid-cell.
 
 ## Instrument (fixed, not knobs)
 
@@ -35,8 +77,54 @@ four local slots (`CT_LOCAL_EXCLUSIVE=1`), so nothing else can use the model mea
 | arm | driver env | what it is |
 |---|---|---|
 | `off` | `CT_ARM=off` | the handoff's control: host compaction at 119,040, no plugin, no MCP tools |
-| `soft` | `CT_ARM=ct CT_CT_TRIGGER=soft CT_CT_WINDOW=W` | the treatment. Eviction binds when unit tokens exceed `W − 8,192 − 12,000` |
-| `hard` | `CT_ARM=ct CT_CT_TRIGGER=hard` | plumbing-matched control: same MCP tools, plugin, `--pure` dropped, host compaction off — but evicts only at the real window |
+| `soft` | `CT_ARM=ct CT_CT_TRIGGER=soft CT_CT_WINDOW=W` | the treatment: every turn the plugin calls `assemble` then `evict`, both at `{window_tokens: W, reserve_tokens: 20,192}`. Eviction fires when the assembled units exceed `W − 20,192` heuristic tokens |
+| `hard` | `CT_ARM=ct CT_CT_TRIGGER=hard` | plumbing-matched control: same tools, plugin, `--pure` dropped, host compaction off — but both calls are made at the real window (151,040) |
+| `gravity` | `soft` + `CT_CT_GRAVITY_MODE=fixed CT_CONTRACT=v5` + the breakpoints | **gravity (D27).** Every block of every kind is pulled by `g = κ·M·m/d²` (irrelevance mass × the context's mass ÷ distance from the window squared). It folds at `gFold` — a tool output becomes `[folded · N tokens · began: "…" · recall: fetch {"stub":31}]`, thinking keeps its tail, text its first line — comes back below `gUnfold`, is asked to be summarized at `gSummarize` (the sidecar fulfils it through `summarize` on the same local model via the relay; counts only if ≤ 10% of what it summarizes), and a summary retires below `gUnsummarize`. `evict` deletes at `gDelete`, then fits the rest. Every fold and unfold is an L0 event |
+| `gravity-adaptive` | `gravity` with `CT_CT_GRAVITY_MODE=adaptive` | κ moves each turn: down when the model reaches for what it lacks (a recall call, the same call repeated, a read of something folded away) or folds churn; up after a turn that needed the fit guarantee |
+
+The table is `lib.mjs ARMS`; each arm is one step from its neighbour
+(`soft` → `gravity` → `gravity-adaptive`). What an arm IS is set by the table, never from the command
+line. The D26 arms `think`, `stub` and `summary` were retired on 2026-09-22 before any wave: each
+was a static trigger rule, replaced by gravity (see the record).
+
+### Why the fold arms exist (added 2026-09-21, after wave 0, before any cell of them ran; the arms are gravity's since D27)
+
+`soft` evicts **silently**: a dropped message is spliced out, nothing marks the gap, and contract
+v1 tells the agent to fetch "the branch a summary mentions" in a prompt that has no summaries and
+no ids. Across all 21 ct cells then on record (wave 0 and five gate cells) the agent called a recall
+tool **once**. It re-explored with `read`/`grep` instead, and both of `soft`'s wave-0 losses ended
+with a step that ran into the 32,000-token output cap (0 control cells ended that way). So `soft`
+tests *eviction without recall*, and says nothing about recall.
+
+The two arms apply what earlier experiments here found, and avoid what they found not to work:
+
+| used | evidence |
+|---|---|
+| a stub naming ids + "call search or fetch to recall" | 15/15 runs recovered every planted fact in one call (`reports/metrics/loop8-interim.md`) |
+| a reference that says WHAT it was (path, first line) | beat a length-matched placebo +27.8pp, p=0.006; recall unharmed at 1/10 the tokens (`report-anchor-replay.md`) |
+| recall in ONE call | hits that answer without a second call: 15/25 vs 6/25 (`window-regime-and-retrieval-unit-report.md`) |
+| the agent's own narrative kept | runs without a ledger of completed steps stalled; with one, 9× re-verify → done in 5 turns (`context-tree-eval-harness-validation.md`) |
+| headline-sized summaries | one sentence + pointers vs verbose: 4/59 vs 4/60 at −80% tokens; verbose cost score; a visible paragraph removed the trigger to fetch (`ds-star-tree-tail-iter1-report.md`, `tuning-branch-depth.md`) |
+
+| avoided | evidence |
+|---|---|
+| behavioural nudges ("you already read this") | fired 33×, ignored 33× (`report-readloop.md`) |
+| a "stronger" contract, forced `depth:full` | 0/9, 0/27 (`ds-star-live-verification-report.md`) |
+| more summary prose, hit keywords | +32% tokens, no change (`ds-star-delivery-pass-report.md`) |
+| ids that may not resolve | retrieval with an unreachable answer stalled 52% of runs vs 0% |
+
+Summary SIZE is not swept here: the prior is null, and an arm costs 30 cells. Summaries are
+headline-sized (one sentence + pointers).
+
+**Registered for these arms before they ran.** The verdict ladder below is unchanged and stays
+`soft` vs `off`. Secondary outcomes are reported for every ct arm: **recall-tool calls by the
+agent** (`fetch`/`search`/`peek` over MCP — the plugin's own HTTP calls are not counted), **cells
+that ended on an output-cap step**, and the ledger's account — **blocks folded, reasoning parts
+folded, blocks unfolded, summaries requested / written / rejected / retired, deletions by the pull,
+κ's range, and messages changed per turn** (the cache cost). A gravity arm in which the agent
+recalled in fewer than **3** cells is reported as **RECALL NOT EXERCISED**: its solve rate is then
+evidence about visible folding, not about recall. Each gravity arm is compared with `off` and with
+`soft` by the same paired sign-flip test.
 
 `soft` vs `off` is the **primary** comparison, as the handoff specifies. **`hard` is an addition
 to the handoff's U18 arm list** (it is U19's `hard` arm, so those cells are re-usable there). The
@@ -44,13 +132,19 @@ primary comparison is confounded: the two
 differ in tool schemas, the plugin, and host compaction as well as in eviction. `hard` exists to
 attribute a difference, not to decide the verdict: `soft` vs `hard` isolates eviction, `hard` vs
 `off` isolates the plumbing. `U18_ARMS="off soft"` drops it and saves a third of the GPU time, at
-the cost of an unattributable result. All `CT_CT_*` knobs are set explicitly on every ct cell;
-summaries are off (U20), cadence is unused (U19).
+the cost of an unattributable result. Every knob is set explicitly on every ct cell; summaries are
+off (U20), cadence is unused (U19). In every ct arm the agent can itself call the pipeline tools
+over MCP (D22) — an agent-made `evict` in `hard` would make the control evict, so such
+calls are counted per arm (`agent_evict_calls`).
 
 Arm order rotates per wave so no arm always runs first.
 
 ## Gates (in order; a failure stops the run)
 
+0. **G0 has four cases**: fold, splice, in-place output reduction, and — for `stub` — a message
+   with its reasoning parts removed and an output replaced by a tag, each with its own marker.
+   **G0 must be re-run** (`node experiments/context-dedup/g0-mutation-visibility.mjs`, ~20 min):
+   the seam it vouches for — plugin → sidecar → prompt — was rebuilt on 2026-09-20 (D22).
 1. **Preflight** — tools, clean tree (result files excepted; the pool file is *not* excepted),
    server holds this build, variant and window, `opencode.json` agrees, packages built, unit
    tests, G0 PASS on record for this model. The served model is re-checked before **every** driver
@@ -59,18 +153,24 @@ Arm order rotates per wave so no arm always runs first.
    baseline repeats (117,951–118,801, each *capped by a host compaction*, so true demand is higher)
    and is solved 3/3.
    - `soft` PASS: integrity clean, run valid, units evicted > 0, zero rejected tool-bearing
-     requests on the relay's wire record, no fail-open turn, slowest assembly ≤ 4,000 ms (the
-     plugin fails open at 8,000 and that budget cannot be forwarded into the sandbox), no
-     over-ceiling turn, and a **real peak ≤ 1.3 × W**. "Below the control's peak" would be vacuous:
+     requests on the relay's wire record, no fail-open turn, slowest turn ≤ 4,000 ms of the
+     plugin's 8,000 ms budget, no over-ceiling turn, no ruling the pinned units alone defeated,
+     and a **real peak ≤ 1.3 × W**. "Below the control's peak" would be vacuous:
      117K passes it.
+   - **Every ct arm: the cell must run ≥ 20 steps.** On 2026-09-21 a `hard` gate cell whose first
+     reply ran into the output cap ended after one step and PASSED — nothing had gone wrong,
+     because nothing had happened.
+   - `gravity` PASS: as `soft`, and at least one block was folded. `gravity-adaptive` PASS: as
+     `gravity`, and κ moved at least once.
    - `hard` PASS: the same without the eviction and peak clauses. It exists because the arm has
      never run live and its ceiling is denominated in heuristic tokens (see Known limits): with
      host compaction off, a problem that fills the window may be a hard session error.
    Each attempt has its own tag (`-gate-a<N>`) and is **appended** to the gate record; a failed
    attempt's run dir is kept. After a FAIL, another attempt needs `U18_REGATE=1`. A PASS is void
    once a commit touches `experiments/context-dedup`, `packages` or this directory. Gate cells are
-   never pooled. Read the attempt's `mcp/ct-mcp.jsonl` by hand before trusting a PASS; the record's
-   `real_per_heuristic_token` says what the nominal W is worth in served tokens.
+   never pooled. Read the attempt's `mcp/ct-mcp.jsonl` by hand before trusting a PASS. The record
+   carries `first_edit_turn`, `max_kept_before/after_first_edit`, `max_unit_tokens_after_ruling`
+   and the `served_per_heuristic` distribution — what explains a limit that was or was not held.
 
 ## Outcomes
 
@@ -132,13 +232,19 @@ rotation no longer balances time for them.
 ## Known limits
 
 - n = 30 per arm cannot show equivalence, only fail to find a ≥ 3-solve loss.
-- **W is nominal.** The sidecar budgets in heuristic tokens (chars/4 in the plugin, a second
-  heuristic over L0 text in the assembler). On the G0 control cell the plugin's 31,994 corresponded
-  to ~40,900 served tokens — **~1.28× low**. So the real operating point is above the number on the
-  arm, the sidecar's "ceiling" (130,848 heuristic) is ~167K served and does not protect the real
-  151,040 window, and `hard` may never evict before overflowing. The gates measure the ratio and
-  test both arms on a window-filling problem before any wave; the README's W is a label until then.
-- `CT_CT_HEAD_TOKENS` and the plugin's 8,000 ms budget cannot be forwarded into the sandbox.
+- **W is nominal, in a unit nobody serves.** W, the ceiling and `kept_tokens` are all core
+  `HeuristicTokenizer` tokens over what the host sends; the provider counts something else. Over
+  the 25 unedited turns of the hard gate cell the provider served **0.92** tokens per heuristic
+  token (chars/4 on the same turns: 1.19), so the heuristic over-counts by about a tenth and a
+  limit is held slightly early. That is one cell's slope, not a conversion factor — see Terms.
+  `hard` keeps its own gate cell because the ceiling is still an estimate of the real window. The gate's `real peak ≤ 1.3 × W` compares served tokens to a heuristic W and is loose by
+  that same unknown.
+- **At this W, `assemble` reduces nothing.** The per-unit budget is `(f·W − reserve) ÷ (A + 1)`;
+  at W = 50,347 with a 20,192 reserve and `f` = 0.375 it is 0. The `soft` arm at the default knobs is
+  therefore eviction over raw turns. `U18_SOFT_TARGET_FRAC` turns reduction on; that is a different
+  treatment and gets a different tag.
+- **Each edit kind is proven on the wire by G0 before an arm may use it**: text replaced, message spliced, tool output replaced, reasoning removed + output tagged, reasoning replaced in place, a summary in a reasoning part with the tool parts gone. Six markers, one gate.
+- **The summarizer shares the GPU with the agent.** `summary` cells run slower, summaries arrive late or not at all on short problems, and a phase whose summary fails the output contract never folds (logged as `summary` rows in `ct-mcp.jsonl`). Wall time is therefore not comparable across arms.
 - Eviction edits the prompt prefix, which forces a re-prefill on this hybrid (recurrent-state)
   model. `soft` turns may be slower, so under intention-to-treat a timeout at 7,200 s makes
   "accuracy" partly a measure of speed. Timeouts are reported per arm.
@@ -146,10 +252,125 @@ rotation no longer balances time for them.
 - `peak_prompt_tokens` in a ct arm carries ~1.8K of MCP tool schemas the control lacks (against
   the treatment), and the control's own peaks are capped at ~119K by host compaction (also against
   the treatment: the true ratio is lower than the measured one).
-- The top-K retrieval tail spends assembler budget; it injects nothing into the prompt. The agent
-  in a ct arm can call the four context-tree MCP tools; calls are counted per cell (`mcp`).
+- `CT_CT_TOPK` is gone: the retrieval tail never entered the eviction trigger, so it never
+  affected an arm. Agent calls to the context-tree tools are counted per cell (`mcp`).
 - The speculative drafter is not recorded per run; wall time is not an outcome here.
 
 Output: raw cells in `reports/metrics/swebench-pilot/results-swebench-opencode-u18-*.json` (the
 driver's convention), verdicts in `reports/metrics/u18-soft-limit/`. Write the report with the
 `experiment-report` skill.
+
+## Record
+
+- **2026-09-18, gate `soft` attempt 1 — FAIL** (W=50,347, A=4, pre-D22 harness, commit `2eec2cf`;
+  `gate-soft-W50347.json`). Served peak 107,440 against a 65,451 bound. 119 units evicted, no
+  rejected requests, slowest assembly 30 ms. Cause: one unit for turns 2–31 (read/grep →
+  `diagnosis`, bash neutral) reached ~80K before a fifth unit existed; with A=4 nothing was
+  evictable until turn 39, when 30 messages dropped at once (87,478 → 9,003). Replayed offline
+  through the D22 tools the same session ends at 23 units, the first of 45,535 tokens; A=3 moves
+  the first eviction two turns earlier and does not change the peak. No wave ran.
+- **2026-09-20, offline replay of that same session, turn by turn, after D23** (no GPU; assemble →
+  evict at W=50,347, A=3). `unit=turn`: 103 units, largest 12,442; live tokens inside the 30,155
+  budget on **102/102** turns; first eviction at turn 9; slowest turn 15 ms. `unit=phase`: 23
+  units, largest 45,535; over budget on **94/102** turns, peak 64,343. The granularity, not the
+  anchor, was the defect. A replay is not a gate: the live gate still has to be run.
+- **2026-09-20/21, gates after D23 and D24.** Attempt 1 at `1ed9c90` FAILED (served peak 67,855 >
+  65,451): L0 omitted reasoning, a third of what the host sends, so the sidecar budgeted a prompt
+  a third smaller than the real one (D24). Attempt 2 at `0406d2b` PASSED (peak 52,455, solved).
+  At `29795af` both sides moved to one sizing metric; `soft` PASSED (46,606) and `hard` PASSED
+  **vacuously** — one step, output cap — which is why the 20-step clause exists.
+- **2026-09-21, wave 0 (commit `29795af`), then stopped.** `off` 6/10, `soft` 5/10, `hard` 6/9
+  (its last cell was in flight when the runner was stopped). `soft` evicted on 5 of 10 cells.
+  Recall-tool calls by the agent: `soft` 0, `hard` 1. Cells ending on an output-cap step: `off` 0,
+  `soft` 2 — and those two are exactly the problems `soft` lost against `off`
+  (pytest-8399, django-11138). Waves 1–2 were not run: the arms were evicting silently.
+- **2026-09-21, offline replay of `soft` wave-0 django-11138 under `stub`** (no GPU): 27 units
+  stubbed, every tag's `fetch {unit}` resolves, no stub text changes after it is first written,
+  the first outright drop moves from turn 5 to turn 19, plugin and sidecar sizes agree exactly.
+- **2026-09-21, redesign (D26) before any further GPU.** Two tools owned two versions of compression
+  and neither told the agent anything: the stub gate cell folded 129 units and deleted 125 of them;
+  the summary gate cell could never fold (no text-only carrier on opencode); reasoning — a third of
+  the prompt — was deleted with no tag and could not be searched. The segmenter now owns folding
+  (blocks on natural boundaries, stubs, summaries, one L0 ledger, selectable boundary / score / fold
+  policies), the pipeline is `assemble → fold → evict`, and the arms are `think` / `stub` /
+  `summary` as tabled. The `stub` and `summary` tags changed with their definitions; `soft` and
+  `hard` did not, and their wave-0 cells stand. G0 and the three fold-arm gates are owed.
+- **2026-09-21, offline replay of the `stub` gate session (156 turns) through the D26 pipeline**
+  (no GPU; fake summarizer). `soft`: 130 units evicted, peak 30,145 of a 30,155 budget, 0 turns
+  over. `think`: 6,189 reasoning parts folded over 87 blocks, nothing evicted by policy, raw peak
+  270,177 → 130,767 (the floor evicted 18 units from turn 102); thinking alone reclaims about half.
+  `stub`: 256 blocks folded from turn 12, first eviction moved from turn 12 to turn 112, 49 units
+  evicted (soft: 130), peak 30,151, 0 turns over, every fold resolves by its id. `summary`: 11
+  summaries requested by `assemble` and written (81 blocks carried or covered), 24 units evicted,
+  first eviction turn 125. Slowest turn 283 ms. `foldSummarizeAt` was lowered from 0.25 to 0.02
+  after this replay showed a run of stubs never reaches a quarter of the budget (the largest run
+  was 1,685 tokens of 30,155) — and then re-based on the run's RAW tokens at 0.1 after the live
+  summary gate (below) asked for summaries of 700-token runs whose stubs were larger than the raw.
+- **2026-09-22, G0 and the fold-arm gates at `62633f9`.** G0 took four attempts to ask its
+  question: one VOID (no key in the runner's environment — 401 on every request), one false FAIL
+  (the think case was dated from the stub turn, whose removed reasoning part also raised
+  `reasoning_edited`; the counters are now `reasoning_replaced` / `tools_removed`), and two VOID
+  because the agent called `fetch` on the task node — the gate had folded the task statement AWAY
+  to a marker line, and the recalled text put the original marker back on the wire inside a tool
+  output. The gate now folds the task to the statement with the marker line swapped; a recall
+  through a tool is graded VOID. **PASS**: 24 of 24 post-edit requests, original gone, replacement
+  present, all six edit kinds. Then, on django-11138:
+  - **`think` attempt 1 — FAIL, ran as the control.** The sidecar had `fold_reasoning_after=3`; the
+    plugin, which decides whether `fold` is called at all, never received it: the driver forwarded
+    only the five policy keys to opencode's process env. `arm_agrees` was true because it compared
+    the sidecar's boot alone. Fixed (`policy.mjs FOLD_KEYS`; the cell now compares the plugin's
+    `foldsAlone` too).
+  - **`think` attempt 2 — FAIL on the step floor, mechanism fired.** 10 fold calls, reasoning parts
+    replaced from turn 8. At step 10 the model produced **29,614 output tokens of reasoning, no text,
+    no tool call**, finish `stop`, and the session ended with an empty diff (the control solved this
+    task 3/3 in 99–128 steps). One cell; whether folding older reasoning to a 120-token tail
+    provokes the overthinking the earlier experiments saw is the arm's first open question.
+  - **`stub` attempt 1 — PASS.** 117 steps, peak 52,939, 4 messages edited on the last turn; not solved.
+  - **`summary` attempt 1 — FAIL.** 226 blocks folded, 1,324 summary requests reported, 24 model
+    calls, **0 summaries written**: 17 calls returned no content at the 2,048-token cap (the Swift
+    thinking model spends a small cap on reasoning — the provider's own comment records this and the
+    harnesses had stopped setting caps; `summaryMaxTokens` is now 0 = none), and 7 were rejected by
+    the ratio (158 tokens for 700 summarized) because the request threshold was measured on the
+    stubs' size, not the raw tokens they stand for, and a stub of an empty tool output is larger
+    than the output (`foldSummarizeAt` is now on raw tokens, default 0.1). The cell also **looped**:
+    from about step 550 to the 7,200 s timeout the agent ran the identical `grep` command (empty
+    output) on every step, ~1,300 times, at a steady peak of 49,781 — under a soft limit the repeated
+    turns fold and evict as they age, so the prompt becomes a fixed point and a near-deterministic
+    model repeats itself. No earlier cell of any arm exceeded 156 steps. Both defects are fixed
+    offline; the `think` and `summary` gates are owed again, and the loop is now a thing to watch
+    for in every evicting arm (`steps` and the last tool call's repetition are in the cell).
+- **2026-09-22, D27 — gravity replaces the D26 trigger rules; offline replay (no GPU).** One pull
+  `g = κ·M·m/d²` for every block kind decides fold / unfold / summarize / retire-summary / delete by
+  breakpoints (`reports/algorithm.md` § Gravity). Arms now `off · hard · soft · gravity ·
+  gravity-adaptive`; `soft`/`hard` pin every breakpoint to Infinity and keep their tags.
+  `replay-gravity.mjs` replayed two recorded sessions (actions fixed; summaries answered by a stand-in
+  one-liner, synchronously — live, a real model can fail here, see the gate above);
+  `reports/metrics/u18-soft-limit/replay-gravity/{stub-gate-156,loop-800}.json`:
+
+  | session · setting | peak | first fold | first delete | folds / back | summaries written / rejected / retired | deleted | msgs changed |
+  |---|---|---|---|---|---|---|---|
+  | 156 turns · `soft` | 30,145 | — | 12 | 0 / 0 | — | 130 | 130 |
+  | 156 · `gravity` (fold 0.1, back 0.025, summarize 0.3, retire 0.025) | 29,954 | 10 | **none** | 279 / 3 | 99 / 2 / 0 | 0 | 354 |
+  | 156 · same, delete at 3 | 23,691 | 10 | 56 | 225 / 6 | 65 / 0 / 0 | 42 | 344 |
+  | 156 · fold 1, back 0.25 | 29,917 | 10 | none | 259 / 14 | 93 / 2 / 0 | 0 | 299 |
+  | 156 · `gravity-adaptive` | 30,013 | 10 | none | 265 / 22 | 91 / 2 / 1 | 0 | 385 |
+  | 800 turns of the loop session · `soft` | 30,155 | — | 12 | 0 / 0 | — | 602 | 602 |
+  | 800 · `gravity` | 30,155 | 3 | 189 | 245 / 19 | 68 / 0 / 1 | 591 | 916 |
+  | 800 · `gravity-adaptive` | 30,155 | 3 | 188 | 247 / 21 | 69 / 0 / 1 | 589 | 938 |
+
+  Read-outs. (1) With the summary rung on, the 156-turn session deletes **nothing** — summaries take
+  what the fit guarantee used to delete — at the cost of ~2.3 changed messages per turn vs 0.8 for
+  `soft` (the cache price). (2) A delete breakpoint below the window lowers the peak (the record says
+  success tracks achieved peak), so the arms keep `gDelete = Infinity`. (3) Higher fold breakpoints
+  bring more blocks back (3 → 14 unfolds) and let the context run fuller (median headroom 35% → 20%).
+  (4) While the prompt is over the budget `d` sits at its floor and every pull is huge, so the first
+  fold lands at turn ~10 whatever the breakpoint; breakpoints differentiate once there is room.
+  (5) The loop session's repeated turns end up deleted by the fit guarantee under every setting;
+  whether gravity breaks the loop needs the live agent. (6) Adaptive κ falls to its floor (0.1) on
+  both sessions: "a file call on a path folded away" fires on 93 of 156 turns (the agent re-reads
+  and edits the same few files), and only an overflow raises κ — which, with summaries absorbing
+  deletions, never happens. The arm therefore behaves as "fold only when forced". The replay also
+  found two defects, fixed: a tool block carrying a summary was sized without its call input (23
+  turns over budget by ≤ 133 tokens; host and sidecar now agree to the token on every traced turn),
+  and a rerun of the tests counted as a repeat (a repeat is now the same call with the same result).
+  Owed: G0 (packages changed) and the `gravity` / `gravity-adaptive` gates.

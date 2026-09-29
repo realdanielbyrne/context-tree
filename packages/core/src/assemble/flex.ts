@@ -47,7 +47,7 @@ import type {
 import {
   planEviction,
   DEFAULT_EVICTION_WEIGHTS,
-  type EvictionCandidate,
+  type EvictionCandidate, type EvictionSignals,
   type EvictionWeights,
 } from './eviction.js';
 import { resolveReducer, type Reducer, type ReducerName } from './reduce.js';
@@ -179,6 +179,19 @@ function coOccurrence(units: readonly FlexUnit[], i: number): number {
   return n;
 }
 
+/** The D-EV signals for each unit — shared by this layout and the retention ruling, so both score a unit identically. */
+export function unitSignals(units: readonly FlexUnit[], currentTurn: number, halfLife: number): EvictionSignals[] {
+  return units.map((u, i) => {
+    const decay = Math.pow(0.5, Math.max(0, currentTurn - u.lastReferencedTurn) / halfLife);
+    return {
+      priority: ((u.wrote ? 2 : 0) + coOccurrence(units, i)) * decay,
+      recency: u.order,
+      refRecency: -(currentTurn - u.lastReferencedTurn),
+      dormancy: u.dormancy,
+    };
+  });
+}
+
 /**
  * Assemble the flex prompt. Units MUST be supplied in creation order. Older units
  * fold to their summary (if present); the last `anchor` units + any that lack a
@@ -258,20 +271,13 @@ export function assembleFlex(
   const unitTokens = (i: number): number => tokenizer.count(unitText(i));
 
   // ── eviction: score every non-anchor unit; keep down to the floor `f` ───────
-  const candidates: EvictionCandidate[] = units.map((u, i) => {
-    const decay = Math.pow(0.5, Math.max(0, currentTurn - u.lastReferencedTurn) / halfLife);
-    return {
-      index: i,
-      tokens: unitTokens(i),
-      anchor: i >= anchorFrom,
-      signals: {
-        priority: ((u.wrote ? 2 : 0) + coOccurrence(units, i)) * decay,
-        recency: u.order,
-        refRecency: -(currentTurn - u.lastReferencedTurn),
-        dormancy: u.dormancy,
-      },
-    };
-  });
+  const signals = unitSignals(units, currentTurn, halfLife);
+  const candidates: EvictionCandidate[] = units.map((_, i) => ({
+    index: i,
+    tokens: unitTokens(i),
+    anchor: i >= anchorFrom,
+    signals: signals[i]!,
+  }));
   // EVICTION TRIGGER: the HARD limit, not the soft floor.
   //
   // Changed 2026-09-14 on live evidence. Task success tracks ACHIEVED PEAK — the

@@ -55,7 +55,22 @@ export interface CommandPhaseRule {
   phase: PhaseType;
 }
 
+/** Which rule cuts the transcript into segments, and its constants (`segment/boundary.ts`). */
+export interface BoundaryConfig {
+  strategy: 'toolPhase' | 'tiling' | 'drift';
+  /** Blocks per comparison window. */
+  window: number;
+  /** tiling: cut below mean − threshold·sd. drift: cut above a z of threshold. */
+  threshold: number;
+  /** Keep only the K strongest cuts; 0 keeps every cut over the threshold. */
+  topK: number;
+}
+
+export const DEFAULT_BOUNDARY: Readonly<BoundaryConfig> = Object.freeze({ strategy: 'toolPhase', window: 3, threshold: 0.5, topK: 0 });
+
 export interface SegmentConfig {
+  /** Absent = `DEFAULT_BOUNDARY`: the tool-phase state machine, with tiling for a trace that has no tool calls. */
+  boundary?: BoundaryConfig;
   /** Tool name -> phase. Config-remappable because names differ per harness. */
   toolPhase: Readonly<Record<string, PhaseType>>;
   /**

@@ -7,6 +7,7 @@
  */
 export {
   assembleFlex,
+  unitSignals,
   toMessages,
   toCompletionRequest,
   DEFAULT_SOFT_TARGET_FRAC,
@@ -38,6 +39,23 @@ export {
   type EvictionCandidate,
   type EvictionPlan,
 } from './eviction.js';
+export {
+  representUnits,
+  perUnitBudget,
+  tokensUnder,
+  KEEP,
+  type Disposition,
+  type AssembleUnit,
+  type AssembleParams,
+  type Assembly,
+} from './represent.js';
+export {
+  planRetention,
+  type ProtectionMode,
+  type RetentionUnit,
+  type RetentionParams,
+  type RetentionPlan,
+} from './retention.js';
 export { replyAllowance, replyHeadroom, REPLY_WINDOW_FRACTION } from './budgets.js';
 export {
   reduceChunk,
@@ -52,6 +70,8 @@ export {
 export {
   ARGS_CAP_WITH_BLOB,
   elision,
+  evictedTag,
+  hostContent,
   renderEvent,
   renderLinksBlock,
   renderSummaryBlock,

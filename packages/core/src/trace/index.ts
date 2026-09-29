@@ -25,7 +25,9 @@ import type { Seq } from '../contracts/ids.js';
 import { TraceIntegrityError } from '../contracts/errors.js';
 import type {
   AssistantMessageEvent,
+  FoldEvent,
   ManualAnnotationEvent,
+  ReasoningEvent,
   SegmentBoundaryEvent,
   ToolCallEvent,
   ToolResultEvent,
@@ -39,10 +41,13 @@ import type {
 const TRACE_EVENT_TYPES: readonly TraceEventType[] = [
   'user_message',
   'assistant_message',
+  'reasoning',
   'tool_call',
   'tool_result',
   'segment_boundary',
   'manual_annotation',
+  'fold',
+  'unfold',
 ];
 
 /**
@@ -52,12 +57,15 @@ const TRACE_EVENT_TYPES: readonly TraceEventType[] = [
  * makes the M0 "round-trips hash-identical" acceptance testable at all.
  */
 const FIELD_ORDER: Readonly<Record<TraceEventType, readonly string[]>> = {
-  user_message: ['seq', 'type', 'ts', 'blob'],
-  assistant_message: ['seq', 'type', 'ts', 'blob'],
-  tool_call: ['seq', 'type', 'ts', 'tool', 'command', 'path', 'blob', 'args_blob', 'parent_seq'],
-  tool_result: ['seq', 'type', 'ts', 'call_seq', 'output_blob', 'truncated', 'error'],
-  segment_boundary: ['seq', 'type', 'ts', 'from', 'to'],
-  manual_annotation: ['seq', 'type', 'ts', 'node_id', 'blob', 'link_to', 'link_kind'],
+  user_message: ['seq', 'type', 'ts', 'blob', 'turn_id'],
+  assistant_message: ['seq', 'type', 'ts', 'blob', 'turn_id'],
+  reasoning: ['seq', 'type', 'ts', 'blob', 'turn_id'],
+  tool_call: ['seq', 'type', 'ts', 'tool', 'command', 'path', 'blob', 'args_blob', 'parent_seq', 'turn_id'],
+  tool_result: ['seq', 'type', 'ts', 'call_seq', 'output_blob', 'truncated', 'error', 'turn_id'],
+  segment_boundary: ['seq', 'type', 'ts', 'from', 'to', 'turn_id'],
+  manual_annotation: ['seq', 'type', 'ts', 'node_id', 'blob', 'link_to', 'link_kind', 'turn_id'],
+  fold: ['seq', 'type', 'ts', 'fold_id', 'kind', 'from_seq', 'to_seq', 'blob', 'node_id', 'model', 'trigger', 'turn_id'],
+  unfold: ['seq', 'type', 'ts', 'fold_id', 'turn_id'],
 };
 
 function isTraceEventType(value: unknown): value is TraceEventType {
@@ -99,6 +107,7 @@ function assertValidShape(value: unknown): asserts value is TraceEvent {
   switch (type) {
     case 'user_message':
     case 'assistant_message':
+    case 'reasoning':
       requireString(rec, 'blob', type);
       break;
     case 'tool_call':
@@ -116,6 +125,16 @@ function assertValidShape(value: unknown): asserts value is TraceEvent {
     case 'manual_annotation':
       requireString(rec, 'blob', type);
       break;
+    case 'fold':
+      requireString(rec, 'fold_id', type);
+      requireString(rec, 'blob', type);
+      requireNumber(rec, 'from_seq', type);
+      requireNumber(rec, 'to_seq', type);
+      if (rec.kind !== 'stub' && rec.kind !== 'summary') throw new TraceIntegrityError('malformed trace event (fold): "kind" must be stub or summary');
+      break;
+    case 'unfold':
+      requireString(rec, 'fold_id', type);
+      break;
   }
 }
 
@@ -125,6 +144,12 @@ export function isUserMessage(event: TraceEvent): event is UserMessageEvent {
 }
 export function isAssistantMessage(event: TraceEvent): event is AssistantMessageEvent {
   return event.type === 'assistant_message';
+}
+export function isFold(event: TraceEvent): event is FoldEvent {
+  return event.type === 'fold';
+}
+export function isReasoning(event: TraceEvent): event is ReasoningEvent {
+  return event.type === 'reasoning';
 }
 export function isToolCall(event: TraceEvent): event is ToolCallEvent {
   return event.type === 'tool_call';

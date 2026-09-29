@@ -181,7 +181,7 @@ describe('composeRootSummary D17 fold', () => {
     expect(lines[1]).toBe(
       `- branches 1..2 (2 folded: ${fx.ids[0]}..${fx.ids[1]}) ` +
         '— "Step 1 did the thing." .. "Step 2 did the thing." ' +
-        '— call context_search or context_fetch to recall',
+        '— call search or fetch to recall',
     );
     expect(lines.slice(2, 5)).toEqual([
       '- Step 3 did the thing.',

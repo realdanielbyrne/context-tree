@@ -20,7 +20,8 @@
  * instance:
  *
  *   control    CT_ARM=ct, no edit        the marker must be on EVERY mediated request
- *   treatment  CT_G0_DROP_FIRST=1        the gate folds that message to a SECOND marker and
+ *   treatment  CT_G0_DROP_FIRST=1        the gate folds that message to a SECOND marker,
+ *                                        replaces one tool OUTPUT with a THIRD, and
  *                                        splices the assistant message after it
  *
  * The claim is two-sided, which is what makes it a proof rather than a coincidence: the
@@ -95,7 +96,29 @@ const mediated = (wire) => wire
   .filter((r) => (r.counts?.tools ?? 0) > 0 && r.status === 200)
   .sort((a, b) => String(a.ts).localeCompare(String(b.ts)));
 
-function readArm(tag, since) {
+/**
+ * Parts of the session OTHER than the user's task message that carry the marker: the agent
+ * quoted it, or recalled the task statement through a tool (`fetch` on the task node brings
+ * the original text back inside a tool output the gate never edits). From then on one copy
+ * rides on every request and the wire cannot say whether the fold reached the provider.
+ */
+function markerOutsideTask(runDir, marker) {
+  const path = join(runDir, 'export.json');
+  if (!marker || !existsSync(path)) return 0;
+  let out;
+  try { out = JSON.parse(readFileSync(path, 'utf8')); } catch { return 0; }
+  let n = 0;
+  for (const message of out.messages ?? []) {
+    if (message.info?.role === 'user') continue;
+    for (const part of message.parts ?? []) {
+      const texts = [part.text, part.state?.output, JSON.stringify(part.state?.input ?? null)];
+      if (texts.some((t) => typeof t === 'string' && t.includes(marker))) n += 1;
+    }
+  }
+  return n;
+}
+
+function readArm(tag, since, marker = '') {
   const runDir = join(RUNS_ROOT, tag, `${INSTANCE}__r0`);
   // Rows older than this gate's own marker belong to an earlier attempt in the same tag.
   const wire = readJsonl(join(runDir, 'wire.jsonl')).filter((r) => !since || String(r.ts) >= since);
@@ -104,12 +127,26 @@ function readArm(tag, since) {
   const conv = mediated(wire);
   const marked = (r) => (r.counts?.g0 ?? 0);
   const replaced = (r) => (r.counts?.g0fold ?? 0);
+  const reducedOn = (r) => (r.counts?.g0reduce ?? 0);
+  const stubbedOn = (r) => (r.counts?.g0stub ?? 0);
+  const thoughtOn = (r) => (r.counts?.g0think ?? 0);
+  const carriedOn = (r) => (r.counts?.g0carrier ?? 0);
 
   // The edit happens BEFORE the request leaves, so every mediated request from the first
   // reported edit onward must already show it. An existential "some request lacked the
   // marker" would be satisfied by a subagent session or a retry.
-  const edits = plugin.filter((r) => (r.dropped ?? 0) > 0 || (r.folded ?? 0) > 0);
+  const edits = plugin.filter((r) => (r.dropped ?? 0) > 0 || (r.text_edited ?? 0) > 0);
   const drops = plugin.filter((r) => (r.dropped ?? 0) > 0);
+  const reduces = plugin.filter((r) => (r.outputs_edited ?? 0) > 0);
+  const stubs = plugin.filter((r) => (r.parts_removed ?? 0) > 0 && (r.outputs_edited ?? 0) > 0);
+  // A stub REMOVES a reasoning part and a carrier removes a tool part, so each kind is dated from
+  // its own counter, not from `reasoning_edited`, which the stub turn one request earlier also raises.
+  const thinks = plugin.filter((r) => (r.reasoning_replaced ?? 0) > 0);
+  const carriers = plugin.filter((r) => (r.tools_removed ?? 0) > 0);
+  const afterThink = thinks.length > 0 ? conv.filter((r) => String(r.ts) >= String(thinks[0].ts)) : [];
+  const afterCarrier = carriers.length > 0 ? conv.filter((r) => String(r.ts) >= String(carriers[0].ts)) : [];
+  const afterStub = stubs.length > 0 ? conv.filter((r) => String(r.ts) >= String(stubs[0].ts)) : [];
+  const afterReduce = reduces.length > 0 ? conv.filter((r) => String(r.ts) >= String(reduces[0].ts)) : [];
   const firstEditTs = edits.length > 0 ? String(edits[0].ts) : null;
   const after = firstEditTs ? conv.filter((r) => String(r.ts) >= firstEditTs) : [];
   const before = firstEditTs ? conv.filter((r) => String(r.ts) < firstEditTs) : conv;
@@ -126,6 +163,7 @@ function readArm(tag, since) {
     // More than one copy means the agent reproduced it; the marker then rides in a message
     // the gate never drops and the wire can no longer answer the question.
     echoed: conv.filter((r) => marked(r) >= 2).length,
+    recalled: markerOutsideTask(runDir, marker),
     before_first_drop: before.length,
     before_all_marked: before.length > 0 && before.every((r) => marked(r) >= 1),
     after_first_drop: after.length,
@@ -138,7 +176,28 @@ function readArm(tag, since) {
     plugin_loaded: plugin.some((r) => r.event === 'loaded'),
     plugin_turns: plugin.filter((r) => r.turn !== undefined).length,
     plugin_errors: plugin.filter((r) => r.error).length,
-    fold_turns: plugin.filter((r) => (r.folded ?? 0) > 0).length,
+    fold_turns: plugin.filter((r) => (r.text_edited ?? 0) > 0).length,
+    // The edit every reduction makes: a tool OUTPUT replaced in place. Same two-sided,
+    // ordered claim as the fold — text that exists only in the replacement must arrive.
+    reduce_turns: reduces.length,
+    after_first_reduce: afterReduce.length,
+    after_all_reduced: afterReduce.length > 0 && afterReduce.every((r) => reducedOn(r) >= 1),
+    reduce_seen: conv.filter((r) => reducedOn(r) >= 1).length,
+    // The edit `evictMode: 'stub'` makes: reasoning parts removed and an output tagged, on one message.
+    stub_turns: stubs.length,
+    after_first_stub: afterStub.length,
+    after_all_stubbed: afterStub.length > 0 && afterStub.every((r) => stubbedOn(r) >= 1),
+    stub_seen: conv.filter((r) => stubbedOn(r) >= 1).length,
+    // A reasoning part replaced in place (the think rule), and a summary riding in a reasoning part
+    // with the tool parts gone (a carrier): the two edits the fold arms add.
+    think_turns: thinks.length,
+    after_first_think: afterThink.length,
+    after_all_thought: afterThink.length > 0 && afterThink.every((r) => thoughtOn(r) >= 1),
+    think_seen: conv.filter((r) => thoughtOn(r) >= 1).length,
+    carrier_turns: carriers.length,
+    after_first_carrier: afterCarrier.length,
+    after_all_carried: afterCarrier.length > 0 && afterCarrier.every((r) => carriedOn(r) >= 1),
+    carrier_seen: conv.filter((r) => carriedOn(r) >= 1).length,
     drop_turns: drops.length,
     // The sidecar's own account of taking the gate path, so "the flag never arrived" is not
     // reported as "the splice was discarded" — two defects, one symptom.
@@ -167,6 +226,7 @@ export function gradeG0({ control, treatment }) {
   // agent quoted back, or for an arm knob that never arrived.
   for (const side of [control, treatment]) {
     if (side.echoed > 0) voids.push(`${side.tag}: the agent reproduced the marker on ${side.echoed} requests, so its presence no longer identifies the task statement`);
+    else if ((side.recalled ?? 0) > 0 && side.drop_turns > 0 && !side.after_all_clean) voids.push(`${side.tag}: the agent recalled the task statement into ${side.recalled} tool or assistant parts (fetch on the task node), so the marker rides on later requests whatever the fold did`);
     if (side.plugin_loaded === false) voids.push(`${side.tag}: the plugin never imported — opencode registered no hooks and said nothing`);
     if (side.gaps > 0) voids.push(`${side.tag}: ${side.gaps} wire rows are missing (the relay numbers them); the record is incomplete`);
     if (side.rejected > 0) voids.push(`${side.tag}: the provider rejected ${side.rejected} requests; a refused prompt says nothing about what it would read`);
@@ -174,6 +234,10 @@ export function gradeG0({ control, treatment }) {
   if (treatment.fold_turns === 0 && treatment.drop_turns === 0 && treatment.sidecar_g0_rows === 0 && treatment.sidecar_assembles > 0) {
     voids.push('treatment: the sidecar never entered the gate path — CT_G0_DROP_FIRST did not reach it, so nothing was asked to edit');
   }
+  if (control.reduce_seen > 0) voids.push(`control: the reduced-output text appeared on ${control.reduce_seen} requests without any edit; it is not unique to the plugin`);
+  if (control.think_seen > 0) voids.push(`control: the think tag's text appeared on ${control.think_seen} requests without any edit; it is not unique to the plugin`);
+  if (control.carrier_seen > 0) voids.push(`control: the carrier text appeared on ${control.carrier_seen} requests without any edit; it is not unique to the plugin`);
+  if (control.stub_seen > 0) voids.push(`control: the stub tag's text appeared on ${control.stub_seen} requests without any edit; it is not unique to the plugin`);
   if (control.replacement_seen > 0) {
     voids.push(`control: the replacement text appeared on ${control.replacement_seen} requests without any edit; it is not unique to the plugin`);
   }
@@ -187,6 +251,18 @@ export function gradeG0({ control, treatment }) {
 
   if (treatment.fold_turns === 0) reasons.push('treatment never edited: no plugin turn reports a fold');
   if (treatment.drop_turns === 0) reasons.push('treatment never spliced: no plugin turn reports a drop');
+  if (treatment.reduce_turns === 0) reasons.push('treatment never reduced: no plugin turn reports an edited tool output');
+  else if (treatment.after_first_reduce === 0) reasons.push('treatment made no mediated request after its first reduction: the run ended too early to observe one');
+  else if (!treatment.after_all_reduced) reasons.push("treatment's reduced tool output never reached the provider: an in-place output edit is not what gets serialized");
+  if (treatment.stub_turns === 0) reasons.push('treatment never stubbed: no plugin turn reports a message cut to a stub');
+  else if (treatment.after_first_stub === 0) reasons.push('treatment made no mediated request after its first stub: the run ended too early to observe one');
+  else if (!treatment.after_all_stubbed) reasons.push("treatment's stub tag never reached the provider: a message with its reasoning removed and an output tagged is not what gets serialized");
+  if (treatment.think_turns === 0) reasons.push('treatment never replaced a reasoning part: no plugin turn reports one edited');
+  else if (treatment.after_first_think === 0) reasons.push('treatment made no mediated request after its first reasoning edit: the run ended too early to observe one');
+  else if (!treatment.after_all_thought) reasons.push("treatment's replaced reasoning never reached the provider: a reasoning part edited in place is not what gets serialized");
+  if (treatment.carrier_turns === 0) reasons.push('treatment never carried a summary: no plugin turn reports a tool part removed');
+  else if (treatment.after_first_carrier === 0) reasons.push('treatment made no mediated request after its first carrier edit: the run ended too early to observe one');
+  else if (!treatment.after_all_carried) reasons.push("treatment's carrier text never reached the provider: a summary in a reasoning part with the tool parts removed is not what gets serialized");
   // ORDERED, not existential. "Some request lacked the marker" is satisfied by a subagent
   // session or a retry; "every request after the first edit lacked it, and every request
   // before it carried it" is satisfied only by the edit.
@@ -209,13 +285,17 @@ export function gradeG0({ control, treatment }) {
   };
 }
 
-function run({ tag, drop, marker, foldMarker }) {
+function run({ tag, drop, marker, foldMarker, reduceMarker, stubMarker, thinkMarker, carrierMarker }) {
   const env = {
     ...process.env,
     CT_ARM: 'ct',
     CT_CT_TRIGGER: 'off',
     CT_G0_MARKER: marker,
     CT_G0_FOLD_MARKER: foldMarker,
+    CT_G0_REDUCE_MARKER: reduceMarker,
+    CT_G0_STUB_MARKER: stubMarker,
+    CT_G0_THINK_MARKER: thinkMarker,
+    CT_G0_CARRIER_MARKER: carrierMarker,
     CT_TAG: tag,
     CT_INSTANCES: INSTANCE,
     CT_REPEATS: '1',
@@ -247,26 +327,34 @@ function main() {
   const markerFile = join(OUTDIR, 'g0-marker.json');
   let marker;
   let foldMarker;
+  let reduceMarker;
+  let stubMarker;
+  let thinkMarker;
+  let carrierMarker;
   let since;
   if (only === 'grade') {
     if (!existsSync(markerFile)) throw new Error(`no ${markerFile}: nothing to grade`);
-    ({ marker, foldMarker, at: since } = JSON.parse(readFileSync(markerFile, 'utf8')));
+    ({ marker, foldMarker, reduceMarker, stubMarker, thinkMarker, carrierMarker, at: since } = JSON.parse(readFileSync(markerFile, 'utf8')));
   } else {
     marker = `CTG0-${randomBytes(12).toString('hex')}`;
     foldMarker = `CTG0FOLD-${randomBytes(12).toString('hex')}`;
+    reduceMarker = `CTG0REDUCE-${randomBytes(12).toString('hex')}`;
+    stubMarker = `CTG0STUB-${randomBytes(12).toString('hex')}`;
+    thinkMarker = `CTG0THINK-${randomBytes(12).toString('hex')}`;
+    carrierMarker = `CTG0CARRIER-${randomBytes(12).toString('hex')}`;
     since = new Date().toISOString();
     mkdirSync(OUTDIR, { recursive: true });
-    writeFileSync(markerFile, JSON.stringify({ marker, foldMarker, instance: INSTANCE, at: since }, null, 2));
-    for (const arm of ARMS) run({ ...arm, marker, foldMarker });
+    writeFileSync(markerFile, JSON.stringify({ marker, foldMarker, reduceMarker, stubMarker, thinkMarker, carrierMarker, instance: INSTANCE, at: since }, null, 2));
+    for (const arm of ARMS) run({ ...arm, marker, foldMarker, reduceMarker, stubMarker, thinkMarker, carrierMarker });
   }
 
-  const control = readArm(ARMS[0].tag, since);
-  const treatment = readArm(ARMS[1].tag, since);
+  const control = readArm(ARMS[0].tag, since, marker);
+  const treatment = readArm(ARMS[1].tag, since, marker);
   const verdict = gradeG0({ control, treatment });
   const report = {
     gate: 'G0 mutation visibility',
     question: 'does an in-place splice at experimental.chat.messages.transform reach the provider?',
-    marker, fold_marker: foldMarker, instance: INSTANCE, model: MODEL, at: new Date().toISOString(),
+    marker, fold_marker: foldMarker, reduce_marker: reduceMarker, stub_marker: stubMarker, think_marker: thinkMarker, carrier_marker: carrierMarker, instance: INSTANCE, model: MODEL, at: new Date().toISOString(),
     control, treatment, ...verdict,
   };
   writeFileSync(join(OUTDIR, 'g0-mutation-visibility.json'), `${JSON.stringify(report, null, 2)}\n`);

@@ -311,7 +311,7 @@ describe('ProviderRegistry — §9.1 fan-out', () => {
     expect(grepLast).toBe(graftLast);
   });
 
-  it('routes hydrate to the provider that produced the candidate, which is what makes context_fetch resolvable', async () => {
+  it('routes hydrate to the provider that produced the candidate, which is what makes fetch resolvable', async () => {
     const registry = new ProviderRegistry([new StubProvider('graft', 'structural'), new StubProvider('grep', 'fallback')]);
     const content = await registry.hydrate(hit('grep', 'fallback', 'x.ts', 1, 1));
     expect(content.text).toBe('grep hydrated x.ts');
@@ -712,7 +712,7 @@ describe('readFileSpan — shared hydration', () => {
     });
   });
 
-  it('refuses a candidate path that escapes the repo root, because a Candidate round-trips through the model before context_fetch', async () => {
+  it('refuses a candidate path that escapes the repo root, because a Candidate round-trips through the model before fetch', async () => {
     const root = mkdtempSync(join(tmpdir(), 'ct-hydrate-'));
     const escaping: Candidate = { path: '../../etc/passwd', score: 1, provider: 'grep', tier: 'fallback' };
     await expect(readFileSpan('grep', escaping, root)).rejects.toThrow(/outside the repo root/);

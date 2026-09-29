@@ -24,7 +24,7 @@ L1, L3, L4 are ALWAYS deterministic functions of L0 + L2.
 ```
 
 | Layer | What | Mutability |
-|---|---|---|
+| --- | --- | --- |
 | **L0** | `trace.jsonl` — append-only event log, monotonic `seq` | source of truth, never edited |
 | **L2** | `blobs/<first2>/<sha256>` | write-once |
 | **L1** | SQLite `nodes` / `node_summaries` / `node_links` | derived, **rebuilt, never migrated** |
@@ -41,7 +41,7 @@ the derived layers and rebuild — there is no L1 migration path, by design.
 packages/core   16 modules, ~10.0k lines   trace · blobs · store · segment · spans ·
                                            ingest · tokens · cache · prompts · models ·
                                            summarize · assemble · retrieve · providers · render
-packages/mcp    ~0.9k lines                the four tools over stdio
+packages/mcp                               the tool registry over stdio MCP + loopback HTTP (D22)
 packages/cli    ~1.6k lines                init · import · rebuild · render · summarize · tree · eval
 eval-resumption ~6.3k lines                §15 benchmark: arms A–D, 30 tasks, 37 fixtures
 ```
@@ -74,7 +74,7 @@ relevance is expressed by expansion in Zone C instead.
 ## What is verified, and how
 
 | Claim | Evidence |
-|---|---|
+| --- | --- |
 | **D5 caching works** | Live against Anthropic: call 1 wrote 4,039 tokens to cache, call 2 read 4,039 back, input 12 both times. Ships with a counterfactual — the same request without the breakpoint caches nothing. |
 | **M5 resumption** | End-to-end test drives the real pipeline and resumes in **2 tool calls** against a ≤3 bar; 3 of 4 needed facts came from Zone B with zero calls. |
 | **D1 determinism** | 400-event fixture segments in <5 ms, byte-identical across runs. |
@@ -103,13 +103,15 @@ $8.84 per seed (~$44 at §15's five seeds) and refuses to start against the
 default $5 cap with *"Nothing was sent."*
 
 **Open:** L3 embeddings are unbuildable with the current keys — neither
-Anthropic nor OpenRouter exposes an embedding endpoint — so `context_search`
+Anthropic nor OpenRouter exposes an embedding endpoint — so `search`
 runs entirely on the lexical beam-search fallback. A Voyage key is the drop-in;
 config already supports it.
 
-**Review is incomplete.** An 8-lens adversarial pass raised 32 findings; a spend
-limit killed 77 of 104 agents before verification finished, and two lenses never
-ran. One finding completed its full three-verifier gauntlet — the incremental
-path wedged the store on a segmentation shrink — and is fixed. **31 remain
-unverified: neither confirmed nor dismissed.** The four raised independently by
-multiple lenses are listed in the ledger and should be triaged before merge.
+## Provisional parameters
+
+Not listed here. Every tunable is one row in `packages/mcp/src/params.ts` (`PIPELINE_PARAMS`:
+environment name, bounds, default, which stage reads it, description), served at `GET /v1/params`;
+what each one *means* is in `reports/algorithm.md` § Parameters. None has been swept.
+
+Stale above, as of this date: `eval-resumption` and `cli eval` were deleted (D20); the
+decision record runs to D26; test and line counts are from 2026-08-31.

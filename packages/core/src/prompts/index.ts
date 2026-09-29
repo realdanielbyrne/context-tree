@@ -38,9 +38,9 @@ const PROMPT_VERSIONS: Readonly<Record<PromptName, string>> = Object.freeze({
  * the golden test in `test/prompts.test.ts` enforces that pairing.
  */
 export const TOOL_CONTRACT_RULES: readonly string[] = Object.freeze([
-  'Before editing any file, if its current content is not in context, call `context_fetch` first.',
+  'Before editing any file, if its current content is not in context, call `fetch` first.',
   'Branch summaries list the files and artifacts each phase touched. If a summary mentions something you need, fetch that branch.',
-  'Summaries may be stale or incomplete; when in doubt, `context_peek`.',
+  'Summaries may be stale or incomplete; when in doubt, `peek`.',
 ]);
 
 const cache = new Map<PromptName, string>();
@@ -100,9 +100,16 @@ export function renderTemplate(
  * Contract variants selectable independently of `SYSTEM_CONTRACT_VERSION`
  * (which names the file `loadPrompt('system-contract')` reads by default).
  * `v2` is `v1` minus the "Two ways this goes wrong" section.
+ * `v4` is `v1` plus the pipeline tools (units / classify / evict / restore / reduce /
+ * assemble) and when to reach for them.
+ * `v5` describes a prompt whose old turns are STUBBED or FOLDED (`evictMode: 'stub'`,
+ * `summaries`): what the tags look like and which call returns what they replaced. It states
+ * facts and gives no orders — stronger instructions and nudges have failed here every time
+ * they were tried. Written for an arm whose prompt has tags; v1 describes summaries that arm
+ * never shows.
  * `v1` stays the default.
  */
-export const SYSTEM_CONTRACT_VERSIONS = ['v1', 'v2', 'v3'] as const;
+export const SYSTEM_CONTRACT_VERSIONS = ['v1', 'v2', 'v3', 'v4', 'v5'] as const;
 export type SystemContractVersion = (typeof SYSTEM_CONTRACT_VERSIONS)[number];
 
 const systemContractCache = new Map<SystemContractVersion, string>();

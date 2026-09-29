@@ -1,0 +1,83 @@
+{
+  "arm": "stub",
+  "attempts": [
+    {
+      "tag": "u18-stub-W50347-A3-54dea7-gate-a1",
+      "pass": true,
+      "reasons": [],
+      "instance": "django__django-11138",
+      "commit": "ea03ef5a9e01c402284b5f53e031692a59e0e2cf",
+      "at": "2026-09-21T19:39:56.915Z",
+      "observed": {
+        "solved": true,
+        "exit_outcome": "ok",
+        "peak_prompt_tokens": 49773,
+        "first_step_prompt_tokens": 12861,
+        "evicted_units": 125,
+        "messages_dropped": 8764,
+        "plugin_turns": 156,
+        "wire": {
+          "present": true,
+          "requests": 156,
+          "ok": 156,
+          "rejected": 0,
+          "peak_bytes": 176973
+        },
+        "sidecar": {
+          "plugin_turns": 156,
+          "assemble_calls": 156,
+          "evict_calls": 156,
+          "max_ms": 166,
+          "over_ceiling_turns": 0,
+          "floor_evictions": 0,
+          "over_budget_rulings": 0,
+          "reduced_units": 0,
+          "first_edit_turn": 20,
+          "max_kept_before_first_edit": 37196,
+          "max_kept_after_first_edit": 39884,
+          "max_unit_tokens_after_ruling": 30155,
+          "served_per_heuristic": {
+            "aligned": true,
+            "turns": 153,
+            "min": 0.49,
+            "median": 0.9,
+            "max": 0.94,
+            "first_quartile_median": 0.91,
+            "last_quartile_median": 0.89
+          }
+        }
+      }
+    }
+  ],
+  "config": {
+    "CT_CT_WINDOW": "50347",
+    "CT_CT_HARD_WINDOW": "151040",
+    "CT_CT_REPLY_RESERVE": "8192",
+    "CT_CT_HEAD_TOKENS": "12000",
+    "CT_ASSEMBLE_MS": "8000",
+    "CT_CT_NEUTRAL_PHASES": "other",
+    "CT_CONTRACT": "v5",
+    "CT_CT_UNIT": "turn",
+    "CT_CT_PROTECTION": "soft",
+    "CT_CT_ANCHOR": "3",
+    "CT_CT_PROTECTION_BONUS": "2",
+    "CT_CT_SUMMARY_RENDER": "headline",
+    "CT_CT_SOFT_TARGET_FRAC": "0.375",
+    "CT_CT_REDUCER": "chunk",
+    "CT_CT_EVICT_MODE": "stub",
+    "CT_CT_TOPK": "5",
+    "CT_CT_W_PRIORITY": "2",
+    "CT_CT_W_RECENCY": "1",
+    "CT_CT_W_REFRECENCY": "0.5",
+    "CT_CT_W_DORMANCY": "1",
+    "CT_CT_W_RELEVANCE": "0",
+    "CT_CT_PRIORITY_HALFLIFE": "4",
+    "CT_CT_EVICT_HEADROOM": "0",
+    "CT_CT_DRIFT_K": "5",
+    "CT_CT_DRIFT_TAU": "1",
+    "CT_CT_RRF_K": "60",
+    "CT_CT_CHUNK_SIZE": "800",
+    "CT_CT_CHUNK_OVERLAP": "100"
+  },
+  "note": "gate cells are evidence about the harness, never pooled with a wave"
+}

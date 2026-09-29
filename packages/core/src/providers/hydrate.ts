@@ -3,7 +3,7 @@
  * coordinates (graft, Serena, grep, and Augment when it returns no snippet).
  *
  * One place, because one rule matters: a `Candidate` round-trips through the
- * model — `context_search` hands it out and `context_fetch` hands it back (§9) —
+ * model — `search` hands it out and `fetch` hands it back (§9) —
  * so its `path` is untrusted input and must be proven to live under the repo
  * root before anything opens it.
  */

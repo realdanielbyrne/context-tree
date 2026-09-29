@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, isAbsolute, resolve } from 'node:path';
 import { ConfigError } from './contracts/errors.js';
-import type { CommandPhaseRule } from './contracts/segment.js';
+import { DEFAULT_BOUNDARY, type BoundaryConfig, type CommandPhaseRule } from './contracts/segment.js';
 import { PHASE_TYPES, type PhaseType } from './contracts/tree.js';
 
 /**
@@ -134,13 +134,15 @@ export interface ContextTreeConfig {
   toolPhaseByCommand: CommandPhaseRule[];
   neutralPhases: PhaseType[];
   fileTools: string[];
+  /** Where the transcript is cut into segments (`segment/boundary.ts`). */
+  boundary: BoundaryConfig;
   languages: Record<string, string>;
   /** D17: max branch headlines the composed root renders; older members fold into one line. */
   rootKeep: number;
   summarize: { concurrency: number; maxSummaryTokens: number };
   /**
    * `limit`: the ranked branch pool. `eventHits` / `excerptChars`: how many EVENT hits
-   * `context_search` returns from that pool and how much of each event's text a hit
+   * `search` returns from that pool and how much of each event's text a hit
    * carries. The two defaults are the published claude.ai interface's (5 hits;
    * ~200-360-word chunks) and were measured, not derived, on one store — see
    * `reports/algorithm.md` Tier 2 before treating them as settled.
@@ -163,6 +165,7 @@ export const DEFAULT_CONFIG: ContextTreeConfig = {
   toolPhaseByCommand: [...DEFAULT_TOOL_PHASE_BY_COMMAND],
   neutralPhases: ['other'],
   fileTools: [...DEFAULT_FILE_TOOLS],
+  boundary: { ...DEFAULT_BOUNDARY },
   languages: { ...DEFAULT_LANGUAGES },
   rootKeep: 40,
   summarize: { concurrency: 8, maxSummaryTokens: 1_024 },
@@ -225,6 +228,7 @@ export function resolveConfig(
       ? partial.toolPhaseByCommand.map((r) => ({ ...r }))
       : [...DEFAULT_CONFIG.toolPhaseByCommand],
     neutralPhases: partial.neutralPhases ? [...partial.neutralPhases] : [...DEFAULT_CONFIG.neutralPhases],
+    boundary: { ...DEFAULT_BOUNDARY, ...(partial.boundary ?? {}) },
     fileTools: partial.fileTools ? [...partial.fileTools] : [...DEFAULT_CONFIG.fileTools],
   };
 

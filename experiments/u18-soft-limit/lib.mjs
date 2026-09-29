@@ -6,6 +6,7 @@
  * Every threshold below is stated in README.md with its rationale and was fixed BEFORE any
  * arm ran. Change one and the README's decision record has to change with it.
  */
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -32,9 +33,152 @@ export const RULES = Object.freeze({
   maxPluginErrorShare: 0.10,
   /** Gate: the soft cell's real peak may exceed the nominal W by this factor (W is heuristic tokens). */
   gatePeakFactor: 1.3,
+  /** Gate: a cell this short never filled anything, so it shows nothing about an arm (a one-step cell once passed `hard`). */
+  gateMinSteps: 20,
+  /** A recall arm whose agent called a recall tool in fewer cells than this did not exercise recall. */
+  minRecallCells: 3,
   /** Gate: slowest assembly turn, against the plugin's 8,000 ms fail-open budget. */
   gateMaxAssembleMs: 4000,
 });
+
+/**
+ * EVERY value that still needs a sweep is a knob: `U18_<NAME>` on the command line, handed to
+ * the driver as the `CT_*` variable beside it.
+ *
+ * The PIPELINE half is not written here. It is `@context-tree/mcp`'s parameter registry
+ * (`PIPELINE_PARAMS`), read from the build the sidecar will run — so a parameter added to the
+ * package is a knob here with no edit, and its bounds are the package's. What IS written here
+ * is what the package does not own: the plugin's policy knobs, the two sidecar-only settings,
+ * and this experiment's deliberate departures from the package defaults.
+ *
+ * Not knobs, deliberately: the model, the sandbox, the prompt, repeats, the timeout, and the
+ * trigger itself (it IS the arm).
+ */
+const { PIPELINE_PARAMS } = await import(new URL('../../packages/mcp/dist/index.js', import.meta.url).href);
+
+/**
+ * THE ARMS. Each is a trigger plus what it SETS on top of the shared knobs, and each adds one
+ * thing to the one before it:
+ *
+ *   off               the host alone
+ *   hard              the plumbing, evicting only at the real window        — plumbing-matched control
+ *   soft              evicts at W, SILENTLY: nothing folds (every gravity breakpoint at Infinity)
+ *   gravity           soft + gravity (D27): one pull g = κ·M·m/d² folds, unfolds, asks for
+ *                     summaries and deletes at breakpoints, κ fixed; contract v5 describes the tags
+ *   gravity-adaptive  gravity with κ moved by what the model does (recall, repeats, churn, overflow)
+ *
+ * The breakpoints and κ are KNOBS (swept, hashed into the tag); only the arms that fold read
+ * them — `soft` and `hard` pin every breakpoint to Infinity, so a sweep cannot perturb the
+ * controls. The retired `think` / `stub` / `summary` arms (D26 trigger rules) never ran a wave.
+ */
+export const INERT = Object.freeze({ CT_CT_G_FOLD: 'Infinity', CT_CT_G_UNFOLD: '0', CT_CT_G_SUMMARIZE: 'Infinity', CT_CT_G_UNSUMMARIZE: '0', CT_CT_G_DELETE: 'Infinity', CT_CT_GRAVITY_MODE: 'fixed' });
+export const ARMS = Object.freeze({
+  off: { trigger: null, set: {} },
+  hard: { trigger: 'hard', set: INERT },
+  soft: { trigger: 'soft', set: INERT },
+  gravity: { trigger: 'soft', set: { CT_CT_GRAVITY_MODE: 'fixed', CT_CONTRACT: 'v5' } },
+  'gravity-adaptive': { trigger: 'soft', set: { CT_CT_GRAVITY_MODE: 'adaptive', CT_CONTRACT: 'v5' } },
+});
+export const CT_ARMS = Object.freeze(Object.keys(ARMS).filter((a) => a !== 'off'));
+/** Arms whose purpose is that the agent can get folded content back. */
+export const RECALL_ARMS = Object.freeze(['gravity', 'gravity-adaptive']);
+/** Arms in which the segmenter folds. */
+export const FOLD_ARMS = Object.freeze(['gravity', 'gravity-adaptive']);
+
+/** Set per arm (`ARMS`), never from the command line: what an arm IS is not a knob. */
+export const U18_FIXED = Object.freeze({});
+
+/**
+ * Knobs the package no longer has, at the value the code still behaves as. They stay in the
+ * tag hash so the tags of cells recorded before their removal do not move.
+ */
+const RETIRED_KNOBS = Object.freeze({ CT_CT_EVICT_HEADROOM: '0' });
+
+/**
+ * Parameters added to the package AFTER cells had been recorded. At its package default such a
+ * knob is left out of the tag hash and may be absent from an older cell's record — otherwise
+ * adding a parameter upstream would orphan every wave already run under the old hash.
+ */
+const LATE_KNOBS = Object.freeze([
+  'CT_CT_BOUNDARY', 'CT_CT_BOUNDARY_WINDOW', 'CT_CT_BOUNDARY_THRESHOLD', 'CT_CT_BOUNDARY_TOPK', 'CT_CT_W_COVARIANCE', 'CT_CT_COVARIANCE_K', 'CT_CT_COVARIANCE_M',
+  'CT_CT_FOLD_REASONING', 'CT_CT_FOLD_REASONING_TAIL', 'CT_CT_SUMMARY_RATIO', 'CT_CT_SUMMARY_MAX_TOKENS',
+  'CT_CT_GRAVITY_K', 'CT_CT_GRAVITY_MODE', 'CT_CT_G_FOLD', 'CT_CT_G_UNFOLD', 'CT_CT_G_SUMMARIZE', 'CT_CT_G_UNSUMMARIZE', 'CT_CT_G_DELETE',
+  'CT_CT_GRAVITY_ETA', 'CT_CT_GRAVITY_K_MIN', 'CT_CT_GRAVITY_K_MAX', 'CT_CT_REPEAT_WINDOW',
+]);
+/** At the PACKAGE default (not U18's): a U18 default for a late knob must still move the tag of an arm that uses it. */
+const atLateDefault = (ct, value) => LATE_KNOBS.includes(ct) && value === KNOBS.find((k) => k.ct === ct)?.pkg;
+
+/** Where U18 runs away from the package default, and since when. */
+export const U18_DEFAULTS = Object.freeze({
+  CT_CT_ANCHOR: '3', // 2026-09-20; package default 4
+  // 2026-09-22, from the offline gravity replay (reports/metrics/u18-soft-limit/replay-gravity/): folding
+  // from turn ~10, no deletion below the budget in 156 turns with the summary rung on. The controls pin
+  // every breakpoint to Infinity (INERT), so these reach only the gravity arms.
+  CT_CT_G_FOLD: '0.1', CT_CT_G_UNFOLD: '0.025', CT_CT_G_SUMMARIZE: '0.3', CT_CT_G_UNSUMMARIZE: '0.025',
+});
+
+const POLICY_KNOBS = [
+  { ct: 'CT_CT_WINDOW', def: '50347', triggers: ['soft'], describe: 'The soft limit, in heuristic tokens — the swept variable.' },
+  { ct: 'CT_CT_HARD_WINDOW', def: '151040', describe: 'The real context; also sets the overflow ceiling.' },
+  { ct: 'CT_CT_REPLY_RESERVE', def: '8192', describe: 'Held back from the window for the reply.' },
+  { ct: 'CT_CT_HEAD_TOKENS', def: '12000', describe: 'Allowance for what the plugin cannot see (system block, tool schemas).' },
+  { ct: 'CT_ASSEMBLE_MS', def: '8000', describe: 'Per-turn budget before the plugin fails open.' },
+  { ct: 'CT_CT_NEUTRAL_PHASES', def: 'other', text: true, describe: 'Phases that never open a new phase; `none` for the literal rule. Matters to folding, and to `unit: phase`.' },
+  { ct: 'CT_CONTRACT', def: 'v1', oneOf: ['v1', 'v2', 'v3', 'v4', 'v5'], describe: 'System-contract version shipped to the agent.' },
+];
+
+const fromRegistry = (spec) => ({
+  ct: spec.env,
+  def: spec.kind === 'bool' ? (spec.default ? '1' : '0') : String(spec.default),
+  describe: spec.describe,
+  ...(spec.kind === 'enum' ? { oneOf: spec.values } : spec.kind === 'bool' ? { oneOf: ['0', '1'] } : { int: spec.kind === 'int', min: spec.min, exclusiveMin: spec.exclusiveMin === true, max: spec.max }),
+});
+
+export const KNOBS = Object.freeze(
+  [...POLICY_KNOBS.map((k) => ({ ...k, half: 'policy' })), ...PIPELINE_PARAMS.filter((spec) => !(spec.env in U18_FIXED)).map((spec) => ({ ...fromRegistry(spec), half: 'pipeline' }))]
+    .map((k) => ({ ...k, name: k.ct.replace(/^CT_(CT_)?/, ''), pkg: k.def, def: U18_DEFAULTS[k.ct] ?? k.def })),
+);
+
+/** The resolved knob set, as `CT_*` -> string. Throws on anything that does not parse. */
+export function resolveKnobs(env = process.env) {
+  const out = {}, problems = [];
+  for (const k of KNOBS) {
+    const raw = env[`U18_${k.name}`];
+    const value = raw === undefined || raw === '' ? k.def : String(raw);
+    if (k.oneOf) { if (!k.oneOf.includes(value)) problems.push(`U18_${k.name} must be ${k.oneOf.join('|')}, got "${value}"`); }
+    else if (!k.text) {
+      const n = Number(value);
+      const min = k.min ?? 0;
+      if (!(Number.isFinite(n) || (n === Infinity && k.max === undefined && !k.int)) || (k.exclusiveMin ? n <= min : n < min) || (k.int && !Number.isInteger(n)) || (k.max !== undefined && n > k.max)) problems.push(`U18_${k.name} is not a valid value: "${value}"`);
+    }
+    out[k.ct] = value;
+  }
+  const w = Number(out.CT_CT_WINDOW), hard = Number(out.CT_CT_HARD_WINDOW), held = Number(out.CT_CT_REPLY_RESERVE) + Number(out.CT_CT_HEAD_TOKENS);
+  if (hard !== SERVED_WINDOW) problems.push(`U18_HARD_WINDOW must be the served window ${SERVED_WINDOW}`);
+  if (!(w < hard)) problems.push(`U18_WINDOW ${w} is not below the served window`);
+  if (!(w > held)) problems.push(`U18_WINDOW ${w} leaves no room above reserve + head (${held})`);
+  if (problems.length) throw new RangeError(problems.join('; '));
+  return out;
+}
+
+/** The `CT_*` knobs an arm depends on: `hard` never reads the soft window, `off` reads none. */
+export function armKnobs(arm, knobs) {
+  const def = ARMS[arm];
+  if (!def) throw new RangeError(`unknown arm "${arm}": ${Object.keys(ARMS).join('|')}`);
+  if (def.trigger === null) return {};
+  return { ...Object.fromEntries(KNOBS.filter((k) => !k.triggers || k.triggers.includes(def.trigger)).map((k) => [k.ct, knobs[k.ct]])), ...def.set };
+}
+
+/**
+ * Tags carry a hash of every knob the arm depends on, so cells run under different settings
+ * can never pool by accident — the readable parts (W, A) are for people, the hash is the key.
+ */
+export function tagBase(arm, knobs) {
+  if (arm === 'off') return 'u18-off';
+  const mine = [...Object.entries(armKnobs(arm, knobs)).filter(([ct, value]) => !atLateDefault(ct, value)), ...Object.entries(RETIRED_KNOBS)];
+  const hash = createHash('sha256').update(JSON.stringify(mine.sort())).digest('hex').slice(0, 6);
+  return `u18-${arm}-${ARMS[arm].trigger === 'soft' ? `W${knobs.CT_CT_WINDOW}-` : ''}A${knobs.CT_CT_ANCHOR}-${hash}`;
+}
 
 const PREFLIGHT_MUST_INCLUDE = [/^no outbound network$/, /^no DNS$/, /^hidden .*\/dataset$/, /^hidden .*\/repos$/, /^imports from workspace$/];
 const LIBRARY_OF = Object.freeze({
@@ -99,7 +243,7 @@ export function instrumentFailure(cell, wire = null) {
  * that escaped the sandbox, ran on other weights, or carried an arm the sidecar never booted
  * cannot be averaged away.
  */
-export function cellProblems(cell, { arm, window, foreignReads = [] }) {
+export function cellProblems(cell, { arm, window, knobs = null, foreignReads = [] }) {
   const out = [];
   if (cell.model !== MODEL) out.push(`model ${cell.model}`);
   if (cell.endpoint !== 'local') out.push(`endpoint ${cell.endpoint}`);
@@ -123,9 +267,15 @@ export function cellProblems(cell, { arm, window, foreignReads = [] }) {
     const ct = cell.ct ?? {};
     if (!ct.plugin_loaded || !ct.plugin_registered) out.push('plugin never loaded/registered');
     if (!ct.arm_agrees) out.push(`sidecar arm disagrees: ${(ct.arm_disagreements ?? []).join('; ')}`);
-    if (ct.arm_effective?.trigger !== arm) out.push(`trigger ${ct.arm_effective?.trigger}, expected ${arm}`);
-    if (arm === 'soft' && ct.arm_effective?.softWindow !== window) out.push(`soft window ${ct.arm_effective?.softWindow}, expected ${window}`);
-    if (ct.arm_effective?.summaries) out.push('summaries ON (that is U20)');
+    const { trigger, set } = ARMS[arm];
+    if (ct.arm_effective?.trigger !== trigger) out.push(`trigger ${ct.arm_effective?.trigger}, expected ${trigger}`);
+    if (trigger === 'soft' && ct.arm_effective?.softWindow !== window) out.push(`soft window ${ct.arm_effective?.softWindow}, expected ${window}`);
+    if ((ct.arm_effective?.gravityMode ?? 'fixed') !== (set.CT_CT_GRAVITY_MODE ?? 'fixed')) out.push(`gravity ${ct.arm_effective?.gravityMode}: not what the ${arm} arm is`);
+    // The cell must have run under exactly the config this analysis is reading.
+    for (const [key, want] of Object.entries(knobs ? armKnobs(arm, knobs) : {})) {
+      if (ct[key] === undefined && atLateDefault(key, want)) continue;
+      if (ct[key] !== want) out.push(`${key} ran as ${JSON.stringify(ct[key])}, this config says ${JSON.stringify(want)}`);
+    }
     if (!(ct.plugin_turns > 0)) out.push('zero plugin turns');
     const errorTurns = (ct.plugin_errors ?? 0) + (ct.assemble_errors ?? 0);
     if (ct.plugin_turns > 0 && errorTurns / ct.plugin_turns > RULES.maxPluginErrorShare) out.push(`${errorTurns} error turns of ${ct.plugin_turns}: the arm mostly failed open`);
@@ -134,22 +284,73 @@ export function cellProblems(cell, { arm, window, foreignReads = [] }) {
   return out;
 }
 
-export const engaged = (cell) => !!cell.ct?.fired && (cell.ct?.evicted_units ?? 0) > 0;
+export const engaged = (cell) => !!cell.ct?.fired && (cell.ct?.evicted_units ?? 0) + (cell.ct?.stubs_folded ?? 0) > 0;
+
+const RECALL_TOOL = /^context-tree_(fetch|search|peek)$/;
+/** How many times the AGENT called a recall tool. The plugin's own calls go over HTTP and are not counted here. */
+export const recallCalls = (cell) => Object.entries(cell.mcp?.tools ?? {}).filter(([t]) => RECALL_TOOL.test(t)).reduce((n, [, k]) => n + k, 0);
+
+/** How a session ended, from opencode's event stream: `length` is a step that ran into the output cap. */
+export function finishReasons(runDir) {
+  const reasons = readJsonl(join(runDir, 'events.jsonl')).filter((e) => e.type === 'step_finish').map((e) => e.part?.reason ?? null);
+  return { last: reasons.at(-1) ?? null, length_steps: reasons.filter((r) => r === 'length').length };
+}
 const solved = (cell) => !!cell.scored && !!cell.pass && cell.grade_valid !== false;
 function compactions(cell) { return cell.export_part_types?.compaction ?? 0; }
 
-/** Slowest assembly, and the heuristic-vs-real token ratio, from the sidecar's own log. */
-export function sidecarStats(runDir, cell) {
-  const rows = readJsonl(join(runDir, 'mcp', 'ct-mcp.jsonl')).filter((r) => r.event === 'assemble');
-  const maxTotal = rows.reduce((m, r) => Math.max(m, r.total ?? 0), 0);
-  const real = (cell.peak_prompt_tokens ?? 0) - (cell.first_step_prompt_tokens ?? 0);
+/** Served prompt tokens per model step, in order, from opencode's event stream. */
+export function servedPerStep(runDir) {
+  return readJsonl(join(runDir, 'events.jsonl')).filter((e) => e.type === 'step_finish')
+    .map((e) => (e.part?.tokens?.input ?? 0) + (e.part?.tokens?.cache?.read ?? 0));
+}
+
+/**
+ * SERVED tokens per HEURISTIC token, measured turn by turn.
+ *
+ * "Heuristic" = computed by arithmetic rather than by the served tokenizer: here the
+ * plugin's `kept_tokens`, which is the sidecar's own tokenizer over the same content. "Served" = what the provider
+ * reports for that step, minus step one's prompt (the head the plugin cannot see, assumed
+ * constant). So this is an estimate of an estimate, and it is NOT a constant: it differs
+ * by problem and drifts within a run, plausibly with the content mix. Reported as a
+ * distribution, never folded into a single conversion factor. Row n joins step n; when the
+ * counts differ the join is not trusted and the ratio is null.
+ */
+export function servedPerHeuristic(rows, served) {
+  if (!rows.length || rows.length !== served.length) return { aligned: false, turns: 0 };
+  const head = served[0];
+  const ratios = rows.map((r, i) => ((r.kept_tokens ?? 0) >= 2000 ? (served[i] - head) / r.kept_tokens : null)).filter((x) => x !== null && x > 0);
+  if (!ratios.length) return { aligned: true, turns: 0 };
+  const q = Math.max(1, Math.floor(ratios.length / 4));
+  const r2 = (x) => +x.toFixed(2);
+  return { aligned: true, turns: ratios.length, min: r2(Math.min(...ratios)), median: r2(median(ratios)), max: r2(Math.max(...ratios)), first_quartile_median: r2(median(ratios.slice(0, q))), last_quartile_median: r2(median(ratios.slice(-q))) };
+}
+
+/**
+ * What one ct cell's own logs say. The PLUGIN's rows are per turn and measured after the edit
+ * (what was actually sent); the SIDECAR's `evict` rows are the ruling
+ * (in unit tokens, the heuristic W is compared against).
+ */
+export function sidecarStats(runDir) {
+  const turns = readJsonl(join(runDir, 'mcp', 'ct-plugin.jsonl')).filter((r) => r.turn !== undefined && !r.error);
+  const calls = readJsonl(join(runDir, 'mcp', 'ct-mcp.jsonl'));
+  const evicts = calls.filter((r) => r.event === 'evict');
+  const assembles = calls.filter((r) => r.event === 'assemble');
+  const first = turns.findIndex((r) => (r.dropped ?? 0) + (r.folded ?? 0) + (r.reduced ?? 0) > 0);
+  const kept = (rs) => rs.reduce((m, r) => Math.max(m, r.kept_tokens ?? 0), 0);
   return {
-    assemble_rows: rows.length, max_ms: rows.reduce((m, r) => Math.max(m, r.ms ?? 0), 0),
-    over_ceiling_turns: rows.filter((r) => r.over_ceiling).length, escalations: rows.reduce((n, r) => n + (r.escalations ?? 0), 0),
-    max_kept_heuristic: rows.reduce((m, r) => Math.max(m, r.kept_tokens ?? 0), 0), max_total_heuristic: maxTotal,
-    // Rough: real growth since step one over the largest heuristic message total. W is
-    // denominated in the heuristic; this says what it is worth in served tokens.
-    real_per_heuristic_token: maxTotal > 0 && real > 0 ? +(real / maxTotal).toFixed(2) : null,
+    plugin_turns: turns.length, assemble_calls: assembles.length, evict_calls: evicts.length,
+    max_ms: turns.reduce((m, r) => Math.max(m, r.ms ?? 0), 0),
+    over_ceiling_turns: turns.filter((r) => r.over_ceiling).length,
+    floor_evictions: turns.filter((r) => r.evict_floor).length,
+    // A ruling that could not meet its budget: only the pinned units were left to pay.
+    over_budget_rulings: evicts.filter((r) => r.over_budget).length,
+    reduced_units: assembles.reduce((m, r) => Math.max(m, r.reduced ?? 0), 0),
+    // The numbers that explain a limit that was or was not held.
+    first_edit_turn: first >= 0 ? turns[first].turn : null,
+    max_kept_before_first_edit: kept(first >= 0 ? turns.slice(0, first) : turns),
+    max_kept_after_first_edit: first >= 0 ? kept(turns.slice(first)) : null,
+    max_unit_tokens_after_ruling: evicts.reduce((m, r) => Math.max(m, r.tokens_after ?? 0), 0),
+    served_per_heuristic: servedPerHeuristic(turns, servedPerStep(runDir)),
   };
 }
 
@@ -158,8 +359,8 @@ export function sidecarStats(runDir, cell) {
  * NOT merely below the control's, which host compaction caps at ~119K. `hard`: the arm must
  * survive a problem that fills the window with host compaction off.
  */
-export function gateVerdict(cell, wire, sidecar, { arm, window }) {
-  const reasons = [...cellProblems(cell, { arm, window })];
+export function gateVerdict(cell, wire, sidecar, { arm, window, knobs = null }) {
+  const reasons = [...cellProblems(cell, { arm, window, knobs })];
   const broken = instrumentFailure(cell, wire);
   if (broken) reasons.push(`instrument failure: ${broken}`);
   if (!cell.run_valid) reasons.push(`run not valid: ${cell.exit_outcome} ${cell.error ?? ''}`.trim());
@@ -168,7 +369,14 @@ export function gateVerdict(cell, wire, sidecar, { arm, window }) {
   if ((cell.ct?.plugin_errors ?? 0) + (cell.ct?.assemble_errors ?? 0) > 0) reasons.push('G1: a plugin or assembly turn failed open');
   if (sidecar.max_ms > RULES.gateMaxAssembleMs) reasons.push(`G1: slowest assembly ${sidecar.max_ms} ms > ${RULES.gateMaxAssembleMs} (the plugin fails open at 8,000)`);
   if (sidecar.over_ceiling_turns > 0) reasons.push(`${sidecar.over_ceiling_turns} turn(s) left the prompt over the ceiling`);
-  if (arm === 'soft') {
+  if (sidecar.over_budget_rulings > 0) reasons.push(`G2: ${sidecar.over_budget_rulings} ruling(s) could not meet the budget — the pinned units alone exceeded it`);
+  if ((cell.steps ?? 0) < RULES.gateMinSteps) reasons.push(`the cell ran ${cell.steps ?? 0} step(s) (< ${RULES.gateMinSteps}): too short to show anything about the arm`);
+  const { set } = ARMS[arm];
+  if (FOLD_ARMS.includes(arm)) {
+    if (!((cell.ct?.stubs_folded ?? 0) > 0)) reasons.push('G2: no block was ever folded — gravity never reached g_fold, the arm ran as `soft`');
+    if (set.CT_CT_GRAVITY_MODE === 'adaptive' && !((cell.ct?.kappa_changes ?? 0) > 0)) reasons.push('G2: κ never moved — the arm ran as `gravity`');
+  }
+  if (ARMS[arm].trigger === 'soft') {
     if (!engaged(cell)) reasons.push('G2: nothing evicted — the mechanism did not fire');
     const limit = Math.round(window * RULES.gatePeakFactor);
     if (!(cell.peak_prompt_tokens <= limit)) reasons.push(`G2: real peak ${cell.peak_prompt_tokens} > ${limit} (W × ${RULES.gatePeakFactor}): evictions are logged but the limit is not held`);
@@ -201,7 +409,7 @@ function byProblem(cells) {
 
 const peaks = (cells) => cells.map((c) => c.peak_prompt_tokens).filter((x) => Number.isFinite(x) && x > 0);
 
-function armSummary(cells) {
+function armSummary(cells, finish = () => null) {
   const unscored = cells.filter((c) => !c.scored);
   const turns = cells.reduce((n, c) => n + (c.ct?.plugin_turns ?? 0), 0);
   return {
@@ -215,6 +423,20 @@ function armSummary(cells) {
     median_peak: median(peaks(cells)), max_peak: peaks(cells).length ? Math.max(...peaks(cells)) : null,
     compacted_cells: cells.filter((c) => compactions(c) > 0).length,
     engaged_cells: cells.filter(engaged).length,
+    // Secondary outcomes, registered before the recall arms ran: did the agent ever reach for what
+    // was evicted, and did a session end by running into the output cap.
+    recall_tool_calls: cells.reduce((n, c) => n + recallCalls(c), 0),
+    cells_with_recall: cells.filter((c) => recallCalls(c) > 0).length,
+    cells_ended_at_output_cap: cells.filter((c) => finish(c)?.last === 'length').length,
+    // The ledger's account (D26).
+    stubs_folded: cells.reduce((n, c) => n + (c.ct?.stubs_folded ?? 0), 0),
+    reasoning_parts_folded: cells.reduce((n, c) => n + (c.ct?.reasoning_edited ?? 0), 0),
+    summaries_requested: cells.reduce((n, c) => n + (c.ct?.summary_requests ?? 0), 0),
+    summaries_written: cells.reduce((n, c) => n + (c.ct?.summaries_written ?? 0), 0),
+    summaries_rejected: cells.reduce((n, c) => n + (c.ct?.summaries_rejected ?? 0), 0),
+    // The agent can call the pipeline tools itself (D22). In `hard` that would make the
+    // plumbing control evict, so it is counted where it can be seen.
+    agent_evict_calls: cells.reduce((n, c) => n + Object.entries(c.mcp?.tools ?? {}).filter(([t]) => /^context-tree_(evict|restore)$/.test(t)).reduce((m, [, k]) => m + k, 0), 0),
     plugin_error_turns: cells.reduce((n, c) => n + (c.ct?.plugin_errors ?? 0) + (c.ct?.assemble_errors ?? 0), 0), plugin_turns: turns,
   };
 }
@@ -271,10 +493,10 @@ function compare(treatment, control, opts) {
  *
  * `arms` holds cells that are NOT instrument failures; `owed` lists the ones that were.
  */
-export function analyze({ arms, window, instances = null, owed = [], historical = null, historicalSolved = HISTORICAL_SOLVED, wire = () => ({ peak_bytes: null }), foreignReads = () => [] }) {
+export function analyze({ arms, window, knobs = null, instances = null, owed = [], historical = null, historicalSolved = HISTORICAL_SOLVED, wire = () => ({ peak_bytes: null }), foreignReads = () => [], finish = () => null }) {
   const { off, soft, hard = null } = arms;
   const present = Object.entries(arms).filter(([, cells]) => cells);
-  const integrity = present.flatMap(([arm, cells]) => cells.flatMap((c) => cellProblems(c, { arm, window, foreignReads: foreignReads(c) }).map((p) => `${arm} ${c.instance}__r${c.repeat}: ${p}`)));
+  const integrity = present.flatMap(([arm, cells]) => cells.flatMap((c) => cellProblems(c, { arm, window, knobs, foreignReads: foreignReads(c) }).map((p) => `${arm} ${c.instance}__r${c.repeat}: ${p}`)));
   const expected = PROBLEMS * REPEATS;
   const incomplete = [...owed.map((o) => `owed again: ${o}`), ...present.flatMap(([arm, cells]) => {
     const keys = new Set(cells.map((c) => `${c.instance}__r${c.repeat}`));
@@ -288,7 +510,7 @@ export function analyze({ arms, window, instances = null, owed = [], historical 
     return out;
   })];
 
-  const summary = Object.fromEntries(present.map(([arm, cells]) => [arm, armSummary(cells)]));
+  const summary = Object.fromEntries(present.map(([arm, cells]) => [arm, armSummary(cells, finish)]));
   const primary = compare(soft, off, { window, wire });
   const attribution = hard ? { soft_vs_hard: compare(soft, hard, { window, wire }), hard_vs_off: compare(hard, off, { window, wire }) } : null;
   const unscoredCounts = present.map(([, cells]) => cells.filter((c) => !c.scored).length);
@@ -320,9 +542,19 @@ export function analyze({ arms, window, instances = null, owed = [], historical 
     [verdict, why] = ['HELD_NOT_MATERIAL', `accuracy held (Δ ${primary.delta_solved_itt}) but ${peakNote} > ${RULES.materialPeakRatio}`];
   }
 
+  // The recall arms answer a different question from the ladder above, which stays soft-vs-off as
+  // registered: does making eviction VISIBLE and RECALLABLE change what silent eviction did? An
+  // arm whose agent never recalled anything says nothing about recall, whatever it scored.
+  const recall = Object.fromEntries(RECALL_ARMS.filter((arm) => arms[arm]).map((arm) => [arm, {
+    exercised: summary[arm].cells_with_recall >= RULES.minRecallCells,
+    note: summary[arm].cells_with_recall >= RULES.minRecallCells ? null : `the agent called a recall tool in ${summary[arm].cells_with_recall} cell(s) (< ${RULES.minRecallCells}): RECALL NOT EXERCISED — this arm's solve rate is evidence about visible eviction, not about recall`,
+    vs_off: compare(arms[arm], off, { window, wire }),
+    vs_soft: compare(arms[arm], soft, { window, wire }),
+  }]));
+
   return {
     verdict, why, window, rules: RULES, integrity_problems: integrity, incomplete,
-    arms: summary, primary_soft_vs_off: primary, attribution,
+    arms: summary, primary_soft_vs_off: primary, attribution, recall,
     // Same arm, same weights, a day apart: the measured A/A spread the ±2 margin rests on.
     a_a_noise: historical ? {
       historical_solved: historical.filter(solved).length, fresh_off_solved: summary.off.solved,

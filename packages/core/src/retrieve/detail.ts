@@ -1,5 +1,5 @@
 /**
- * L0 -> text for `context_fetch depth:"full"` and `context_peek` (§9).
+ * L0 -> text for `fetch depth:"full"` and `peek` (§9).
  *
  * L1 stores coordinates, not content (§6): a node's content IS its `seq` range
  * over L0, with payloads behind L2 refs. So "the branch's raw detail" is a
@@ -10,6 +10,7 @@ import { ARGS_CAP_WITH_BLOB, elision, safeCut } from '../assemble/format.js';
 import {
   isAssistantMessage,
   isManualAnnotation,
+  isReasoning,
   isSegmentBoundary,
   isToolCall,
   isToolResult,
@@ -47,7 +48,7 @@ export function mergeSpans(spans: readonly SeqSpan[]): SeqSpan[] {
 }
 
 /**
- * Intersects each span with `[from ?? -inf, to ?? +inf]` — `context_fetch`'s
+ * Intersects each span with `[from ?? -inf, to ?? +inf]` — `fetch`'s
  * `from`/`to` (§9, R10). A span that lands entirely outside the range is
  * dropped rather than emitted empty, so an out-of-range request reads as "no
  * span here" instead of a zero-length one a caller has to special-case.
@@ -70,19 +71,32 @@ export function clampSpans(spans: readonly SeqSpan[], from?: number, to?: number
 
 /**
  * The event's primary L2 payload, or null when it carries none. Used by
- * `context_peek`, which wants one cheap excerpt rather than every blob an
+ * `peek`, which wants one cheap excerpt rather than every blob an
  * event references.
  */
 export function payloadRef(event: TraceEvent): BlobRef | null {
-  if (isUserMessage(event) || isAssistantMessage(event) || isManualAnnotation(event)) return event.blob;
-  if (isToolCall(event)) return event.blob ?? event.args_blob ?? null;
-  if (isToolResult(event)) return event.output_blob ?? null;
-  return null;
+  // Exhaustive: an event type this switch does not name is a type error, so the next one
+  // cannot vanish from `peek` and the index the way `reasoning` did.
+  switch (event.type) {
+    case 'user_message':
+    case 'assistant_message':
+    case 'reasoning':
+    case 'manual_annotation':
+      return event.blob;
+    case 'tool_call':
+      return event.blob ?? event.args_blob ?? null;
+    case 'tool_result':
+      return event.output_blob ?? null;
+    case 'segment_boundary':
+    case 'fold':
+    case 'unfold':
+      return null;
+  }
 }
 
 function renderEvent(event: TraceEvent, blobs: BlobStore): string {
   const head = `[${event.seq}] ${event.type}`;
-  if (isUserMessage(event) || isAssistantMessage(event)) {
+  if (isUserMessage(event) || isAssistantMessage(event) || isReasoning(event)) {
     return `${head}\n${blobs.getText(event.blob)}`;
   }
   if (isToolCall(event)) {
@@ -90,7 +104,7 @@ function renderEvent(event: TraceEvent, blobs: BlobStore): string {
     // Same rule as Zone C's renderer (`assemble/format.ts`, v5.9b): when a
     // post-state blob is present the args are capped, because a write's content
     // would otherwise appear twice in one payload — once JSON-escaped here and
-    // once raw below. This renderer was missing the cap, so `context_fetch`
+    // once raw below. This renderer was missing the cap, so `fetch`
     // results carried the duplicate that Zone C had stopped carrying: measured
     // on the frozen store, 6 of 754 events duplicate byte-for-byte that way,
     // and it inflates exactly the branches that already tokenize larger than
@@ -129,10 +143,11 @@ function renderEvent(event: TraceEvent, blobs: BlobStore): string {
  * write-once and L1 points into it) — a derived layer pointing at content that
  * was never durably written is a corruption, not a degradable condition.
  */
-export function renderSpans(trace: TraceLog, blobs: BlobStore, spans: readonly SeqSpan[]): RenderedDetail {
+export function renderSpans(trace: TraceLog, blobs: BlobStore, spans: readonly SeqSpan[], part?: readonly TraceEvent['type'][]): RenderedDetail {
   const blocks: string[] = [];
   for (const span of spans) {
     for (const event of trace.read({ from: span.start, to: span.end })) {
+      if (part !== undefined && !part.includes(event.type)) continue;
       blocks.push(renderEvent(event, blobs));
     }
   }
@@ -140,7 +155,7 @@ export function renderSpans(trace: TraceLog, blobs: BlobStore, spans: readonly S
 }
 
 /**
- * `context_fetch depth:"index"` (§9, R10): one row per event — `seq · type ·
+ * `fetch depth:"index"` (§9, R10): one row per event — `seq · type ·
  * tool · path · bytes` — from L0 plus an L2 *stat*, never L2 text. This is
  * what keeps `index` a hermetic, D15-compliant peek at a branch's shape: it
  * lets a model decide WHERE to range-fetch without ever paying for, or

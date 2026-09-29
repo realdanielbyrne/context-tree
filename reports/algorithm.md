@@ -21,9 +21,10 @@ conditions, rejected alternatives, parameter audit, and development history live
 2. **A hardcoded value is a defect** unless shown to hold across models and harnesses. Derive every
    parameter from the host's declared limits; a value fitted on one host is a defect until re-derived.
 3. **Err toward MORE context.** Eviction is conservative: dropping context that turns out to be needed
-   costs the *task*; keeping extra costs *tokens* — not symmetric. This shapes the ejector: **topic
-   shift decides *what* is eligible to evict; the soft-target floor decides *when* eviction fires and
-   *how much*** — never prune below the floor, and uncertain relevance stays.
+   costs the *task*; keeping extra costs *tokens* — not symmetric. This shapes the whole ladder:
+   **irrelevance decides *what* is pulled; distance from the window decides *how hard*** (§ Gravity)
+   — nothing is deleted below the budget unless its pull reaches the delete breakpoint, and uncertain
+   relevance stays.
 4. **Nothing reorders a cached prefix.** Prefix-keyed caches invalidate everything after the first
    changed byte, so the design rewards a *stable layout*, not a minimal payload. The working buffer only
    appends and evicts in place; it never re-mixes (a freely re-mixed buffer is cache-death).
@@ -48,12 +49,29 @@ rebuildable; **L1 stores coordinates, not content** (a node names a `seq` range;
 
 ## Units and the tree
 
-- **A unit is a closed phase-node** *(design decision — override if you want turn- or event-level units)*.
-  The segmenter (stage 0) cuts L0 into **phases**: a contiguous run of events under one tool-phase; a
-  closed phase becomes a node with a `seq` range and, once latched, a versioned summary. **This
-  phase-node is the unit** the classifier, buffer, and ejector operate on. Two things live outside that
-  buffer: the **frozen head** (system + steering + all user prompts) and the **active (still-open)
-  phase**, which is always kept raw.
+- **One ladder of units, defined once and used by every stage** (decisions D23, D26):
+  `phase ─ turn ─ block ─ chunk`. A **segment** is any range of the transcript that may name a
+  parent segment: the tree is a coordinate system over L0, not a second store.
+  - A **phase** is the segmenter's (stage 0) contiguous run of events under one tool-phase. It is
+    the *grouping*: a closed phase becomes an L1 node with a `seq` range and, once latched, a
+    versioned summary.
+  - A **turn** is **one host message** — its reasoning (D24: the host replays it, so the unit is
+    sized with it), its text, and every tool call it issued with their results. **The turn is the unit** the classifier, the assembler, the ejector and retrieval all
+    operate on, because it is the only boundary a host can act on exactly. Importers stamp each L0
+    event with its host message id (`turn_id`); a trace without it derives turns by a deterministic
+    fallback (a message event plus the calls it issued). Turns are a pure function of L0 — not L1
+    nodes, so there is nothing to persist or migrate. `unit = phase` remains selectable and
+    reproduces the coarse behaviour (a single phase can reach tens of thousands of tokens, and
+    nothing smaller than a phase can then be removed).
+  - A **block** is a leaf segment on a natural boundary INSIDE a turn — the model's **reasoning**,
+    its **text**, or one **tool call with its result**. Block ordinals are the **stub ids**: the
+    universal index into the transcript, a pure function of L0, defined whether or not a block is
+    folded. A turn is what a host can edit; a block is what a fold covers (§ Folds).
+  - A **chunk** is a splitter piece of a turn's text under the session's one set of chunk options
+    — the single sub-unit: the chunk retrieval ranks is the chunk a reduction keeps.
+  Two things are **pinned** — never reduced, folded or removed — because losing them breaks the
+  request rather than the policy: the **task statement** (a chat template rejects a prompt with no
+  user message) and the **newest message**.
 - **The tree is shallow — one root over the phase-leaves; there is no deep nesting.** The root is
   composed deterministically from the leaves' **headlines** (keyword fingerprints — file paths,
   identifiers, symbols) in creation order: the newest few phases keep their full representation, older
@@ -64,12 +82,24 @@ rebuildable; **L1 stores coordinates, not content** (a node names a `seq` range;
 
 Two scorers feed one decider, and retrieval serves on demand: the **classifier** scores
 query-independent state (has the topic shifted), the **retriever** scores query-dependent relevance
-(what matches this turn), and the **assembler/ejector** decides what to keep, cache-stable, to a floor.
+(what matches this turn). Then three separate rulings, in order: the **assembler** decides how each
+unit is *represented*, the **segmenter** decides what is *folded* and what comes back (§ Folds —
+written to the ledger — and asks for summaries), and the **ejector** — optional, taking both as its
+input, and free to overrule them — decides what is *removed*. A ruling holds until it is reversed,
+so a turn on which no ruling is made leaves the prompt byte-for-byte as it was. **fold → summarize →
+delete** is the compression ladder, and all three are breakpoints on ONE pull (§ Gravity, D27): the
+less relevant a block is and the nearer the prompt is to the window, the harder it is pulled down the
+ladder — and when the pull falls, a fold or a summary is released and the block comes back.
 
 **0 — Ingest.** Append each event to L0; store payloads in L2; cap edit-tool arguments (replace the
-argument blob with its L2 hash once the post-state blob exists). Segment L0 deterministically by
-**tool name → phase** via a config `TOOL_PHASE` map (unknown → `other`); a phase closes when the mapped
-phase changes, and the closed run becomes a node. Extract **fingerprints** by regex over raw event text
+argument blob with its L2 hash once the post-state blob exists). Segment L0 deterministically under a
+selectable **boundary strategy** (`boundary`, D26): `toolPhase` — **tool name → phase** via a config
+`TOOL_PHASE` map (unknown → `other`), a phase closing when the mapped phase changes; `tiling` — TextTiling
+between blocks (`boundaryWindow`, `boundaryThreshold` = mean − t·sd); `drift` — causal lexical topic
+shift against the previous `boundaryWindow` blocks, Welford z-scored, cut above `boundaryThreshold`;
+`boundaryTopK` keeps only the K strongest cuts. A host `segment_boundary` always wins. Embedding and
+kNN cuts (rung-0b) are not strategies here: D15 forbids embeddings on the ingest path. The closed run
+becomes a node. Extract **fingerprints** by regex over raw event text
 and tool arguments: file paths, `snake_case`/`camelCase`/`PascalCase`/`UPPER_SNAKE` identifiers, and
 backticked spans. Once the trace exceeds the window, **latch** (L0 only grows, so it never fits again)
 and summarize each closed phase on a **cheap model** into a new versioned `node_summaries` row; the
@@ -89,16 +119,73 @@ threshold `τ = 1` (one SD above the running mean — err toward keeping), but e
 magnitude, not the boolean. Embeddings are a small local encoder (MiniLM-class),
 one per unit, cached in L3.
 
-**2 — Assemble + eject.** The prompt is a **frozen cached head** (system + steering + all user prompts,
+**2 — Assemble (representation; removes nothing).** The prompt is a **frozen cached head** (system + steering + all user prompts,
 append-only) followed by a **creation-order flex buffer** of units, with a **cache breakpoint** after
 the head so the head caches.
-- **Representation (default):** the **active phase** and the **recency anchor** (the last `A` units,
-  default A=4, covering the current sub-task) are kept **raw**; an older closed+latched unit defaults to
-  its **summary**; reduce-on-overflow may demote further to `retrieved-span` / `ref` / `drop`.
-- **Eviction — what / when / how much.** *When:* eviction fires only when the buffer exceeds the
-  **hard limit** `window − replyReserve`; never below it. *What:* above the limit, evict the
-  **lowest-scoring** units first (the dormant, low-priority, old ones). *How much:* just enough to fit,
-  plus an optional `evictHeadroomTokens` (default 0) so eviction need not fire again next turn.
+- **Representation:** units are **raw** by default, sized at their FOLDED size (§ Folds). A raw unit
+  over the per-unit budget is **reduced** (below). A reduction, ruled, is sticky: a unit does not flip
+  back to raw on a roomier turn, which would rewrite the prefix. Assembly folds nothing and asks for
+  no summaries (both are the segmenter's, § Gravity).
+
+**2b — Fold (the segmenter; D26).** Folding is what the segmenter does to the segments it cut:
+show a block in a shorter form, written to the **ledger** — `fold` / `unfold` events in L0, so what
+the model was shown on any turn is replayable, a rebuild loses nothing, and a fold's text never
+changes once written (D5).
+- **A stub** is a summary-free fold of ONE block, like a collapsed region in an editor. A tool
+  block keeps its call and its input; the output becomes
+  `[folded · N tokens · began: "<first line>" · recall: fetch {"stub":31}]`. A reasoning block
+  **followed by the model's own text folds to nothing** — that text is its summary, at a measured
+  median 4.4% of the thinking it follows — and that text stays as its own block; a reasoning block
+  with no text after it keeps its **tail** under `[folded thinking · N tokens · recall: fetch
+  {"stub":30}]` (`foldReasoning: tail | drop | keep`, `foldReasoningTail`: the conclusion sits at
+  the end of a thinking block, the deliberation at the start). A text block folds to its first line.
+- **A summary** is a fold over 1..n stubs — an epoch of the session — written ONLY by `summarize`,
+  on request (§ Gravity): `[summary m91 · <one sentence> · files: … · recall: fetch
+  {"from_seq":12,"to_seq":40}]`, carried by the first text block in its range (else its first
+  reasoning block, else its first block), the rest of the range hidden. Ranges may **overlap**
+  (`1:65` and `40:85`); both show. A summary whose range is a segment's span IS that segment's
+  summary (`node_summaries` is derived from the ledger). A summary counts only if
+  `summary_tokens ≤ summaryRatio × tokens_summarized`; otherwise the stubs stand. A phase summary,
+  the root roll-up (the range over all blocks) and an ad hoc range are one thing.
+- **Gravity (D27) — when a block folds, is summarized, is deleted, or comes back.** One pull, the same
+  for every kind of block:
+  ```
+  B = window − reserve        d = max(ε, (B − live) / B)          distance from the window
+  e(u) = 1 − scoreN(u)        irrelevance ∈ [0,1], min-max over live units; pinned → 0
+  m(b) = e(unit) · raw(b) / B                                       a block's irrelevance mass
+  M = Σ m over live blocks                                          the context's mass
+  g(b) = κ · M · m(b) / d²                                          the pull
+  ```
+  | rung | goes at | comes back below | applied by |
+  |---|---|---|---|
+  | fold (a stub, ledgered) | `gFold` | `gUnfold`, if it would stay below with its raw form back in | `fold` |
+  | summarize (a run of ≥ 2 consecutive folded blocks, widened to its segment when all of it is folded) | `gSummarize` → a `summary_request` the host fulfils through `summarize` | `gUnsummarize` (every covered block) → the summary's fold ends | `fold` |
+  | delete (a unit, by its whole mass `e·raw(u)/B`) | `gDelete`, then the fit guarantee | never — deletion stays until `restore` | `evict` |
+
+  Each rung recomputes `live` after the one before, so the well is self-limiting: a fold widens `d`
+  and every other pull falls. The order of pulls is the order of masses (`d` is shared), so a rung is
+  one sort. Unfolds run first. κ is `fixed` (swept; against fixed breakpoints only `g/κ` matters) or
+  `adaptive`: `κ ← κ·exp(η·(overflow − starvation − thrash))`, bounded — *starvation* is a recall call,
+  the same tool call repeated within `repeatWindow` turns, or a file call on a path whose earlier call
+  is folded away; *thrash* is a fold and unfold of one block within that window; *overflow* is a turn
+  that needed the fit guarantee. Every fold and unfold rewrites the cached prompt after it (D5); the
+  per-turn count of changed messages is the mechanism's cost and the gap between each breakpoint and
+  its way back is the knob that trades it. Package defaults are inert (every breakpoint Infinity).
+- **Score** (shared with eviction): priority, recency, reference recency, dormancy, and — at weight
+  0 until U3 tests it — **contextual covariance** (`wCovariance`, `covarianceK`, `covarianceM`), the one
+  offline signal that survived deep dormancy. Every tag describes and never instructs: a reference
+  that names its content beat a placebo (T12b); nudges were ignored 33 of 33 times; stronger
+  contracts scored 0/9. Why folds exist at all: silent eviction was never followed by a recall (U18
+  wave 0: one recall call in 21 cells), and a third of the prompt — the reasoning — was being
+  counted, then deleted with no tag and no way to search it.
+
+**3 — Evict (removal; optional; input = the assembly and the folds).** Units are sized **as shown**
+— folded, reduced — so a folded unit is cheap to keep, and any unit can still be removed here. The
+ejector never chooses a representation and writes no fold.
+- **Eviction — what / when / how much (D27).** Two steps. The **delete rung**: a unit goes once its
+  pull reaches `gDelete` (Infinity by default), most pulled first. Then the **fit guarantee**: if the
+  rest still exceeds the budget `window − reserve`, evict the **lowest-scoring** units first (the
+  dormant, low-priority, old ones), just enough to fit.
   Score each non-pinned,
   > **Resolved 2026-09-14 (was OPEN).** The trigger was a soft-target floor `f = 0.375·W`. Live evidence
   > retired it: task success tracks **achieved peak** — the tokens actually present at call time — at
@@ -124,10 +211,17 @@ the head so the head caches.
     the offline-derived D-EV defaults; the dormancy term is the classifier's contribution and least
     tuned.)*
 
-  Relevance (the retriever's query-match) is weighted **0** here — it is an *admission* signal, not an
-  eviction one (on non-monotonic history it drops exactly the unit that returns). Never drop the open
-  topic, the recency anchor, or the pinned head.
-- **Reduce-on-overflow.** A **raw** unit larger than the **per-unit budget** `b` — the floor's raw space
+  Relevance (the retriever's query-match) is weighted **0** by default — it is an *admission* signal,
+  not an eviction one (on non-monotonic history it drops exactly the unit that returns). It is a
+  parameter, not a constant: at weight > 0 a unit's rank among the top-`k` hits for the current query
+  enters the score.
+  - **Protection is a score, not a wall.** The recency anchor is a **bonus** added to a unit's
+    score — full for the newest unit, halving with distance. It is on the **same scale as the
+    weights** (default: equal to the priority weight), so it is one signal among the others and a
+    stale anchored unit can be outscored by valuable older work; set above the weights' sum, the
+    anchor yields only after everything else has. `protection = hard` restores the absolute anchor (under which
+    this is the original packing exactly). Only the two pinned units are absolute.
+- **Reduce-on-overflow (part of stage 2, stated here with its budget).** A **raw** unit larger than the **per-unit budget** `b` — the floor's raw space
   shared across the raw slots, `b = (f − reply reserve) ÷ (A + 1)` (the active phase plus the `A`
   anchor units are the units kept raw, so no single raw unit may claim more than its share of the floor)
   — is shrunk by a **query-aware
@@ -137,7 +231,7 @@ the head so the head caches.
   re-fetchable; `drop` only for a unit both dormant and low-priority. Applies to **raw content only**; a
   **curated retriever result is retained whole**, never re-chunked. Nothing reorders the cached prefix.
 
-**3 — Retrieve on demand.** The corpus is the L0 units chunked by a recursive character splitter
+**4 — Retrieve on demand.** The corpus is the L0 units chunked by a recursive character splitter
 (~800/100 overlap). Fan out **BM25 + vector (kNN over the same chunks, MiniLM-class embeddings)** and
 fuse by **RRF**: `rrf(u) = Σ_r 1/(RRF_K + rank_r(u))`, `RRF_K = 60` — overlapping coverage fuses; a
 single-coverage query routes to the sole coverer. Return the best-matching **whole units**; the fetched
@@ -166,34 +260,42 @@ The pipeline runs as host hooks and never owns the agent loop:
 
 - **tool result** (`tool.execute.after` / PostToolUse): capture the result to L0; if it is raw and would
   overflow the per-unit budget, apply the reduce-on-overflow router. A curated retriever result is kept whole.
-- **prompt assembly** (`chat.messages.transform`): run classify + assemble/eject on the message array
-  before the model call; append retrieved results after the buffer.
+- **prompt assembly** (`chat.messages.transform`): run classify → assemble → fold → (optionally)
+  evict, then apply the rulings to the host's message array **in place** as **part edits**. The host
+  is never re-rendered: a decision names a message and its parts — a reasoning or text part replaced
+  or removed, a tool part's **output** replaced or the part removed (the call and its result travel
+  together, so nothing is orphaned) — and a whole message is dropped only when it is evicted or
+  nothing is left of it. Because a turn *is* a host message and a block *is* a part, the mapping is
+  exact. When to call evict — every turn, never — is the host's policy; when a block folds, is
+  summarized or comes back is the segmenter's (gravity, D27).
 - **frozen head** (system / tool-schema transform): the head is assembled after the message transform, so
   it is out of the eviction path by construction. Cache breakpoints are Anthropic-explicit; on a host
   without them the *layout stability* (principle 4) still yields prefix reuse.
 
 ## Parameters
 
-Derived from the host's limits, not guessed:
+Derived from the host's limits, not guessed. **The list, defaults, bounds and environment names are
+not restated here**: they are one registry in code — `packages/mcp/src/params.ts` `PIPELINE_PARAMS`,
+served at `GET /v1/params` — from which the tool arguments, validation and the experiment harness's
+knobs all derive. Every default there is PROVISIONAL (hand-set or borrowed, never swept). What the
+registry cannot say is what each quantity *means*:
 
-| Parameter | Value / derivation |
+| Parameter | Meaning / derivation |
 |---|---|
-| Window `W` | host-supplied |
-| Unit | a closed phase-node (segmenter output) |
-| Soft target `f` | 25–50% of `W`, as a floor below which eviction does not fire |
-| Recency anchor `A` | 4 most-recent units, always raw / never evicted |
-| Recent window `K` (drift) | last 5 units |
-| Drift threshold `τ` (coarse "dormant") | z-drift > 1 — one SD above the session's running mean (conservative) |
+| Window `W` | host-supplied, per call. Compared against **heuristic** tokens (below), never served tokens |
+| Unit | a turn (one host message), or a whole phase |
+| Recency anchor `A` | the last `A` units carry a protection bonus; also sizes `b` |
+| Soft target `f` | a fraction of `W`. **Not an eviction trigger** (resolved 2026-09-14); it only sizes `b` |
+| Per-unit budget `b` | `(f·W − reserve) ÷ (A + 1)`; a raw unit over `b` is reduced to it. **Degenerate when `f·W ≤ reserve`** — at W = 50,347 with a 20,192 reserve and `f` = 0.375, `b` = 0 and reduce-on-overflow never fires |
+| Drift `K`, `τ` | recent window in units; z-drift above which a unit is coarsely dormant |
 | Signal normalization | per-turn min-max across candidate units, before weighting |
-| Per-unit budget `b` | `(f − reply reserve) ÷ (A + 1)` — the floor's raw space shared across the active phase + the `A` anchor units; a raw unit over `b` triggers reduce-on-overflow |
-| Eviction weights | priority 2, recency 1, reference-recency 0.5, dormancy −1, relevance 0 — a *linear* mix |
-| Reduce-on-overflow | a unit is reduced once it exceeds its per-unit budget; router picks chunk (detail) vs summarize (gist), default chunk |
-| Embedding model | small local encoder, MiniLM-class (dim ~384) |
-| Chunker | recursive character splitter (~800 / 100 overlap) |
-| `RRF_K` | 60 |
-| Summarizer | cheap model; output versioned; must include rehydration pointers |
-| Reply reserve | the host-declared `Model.limit.output`, not a fitted fraction of `W` |
-| Tokenizer | the host's; fallback ≈ chars ÷ 4 |
+| Eviction weights | a *linear* mix of priority, recency, reference-recency, −dormancy, and relevance (default 0); `1 −` its min-max is the irrelevance `e` gravity reads |
+| Gravity (D27) | `g = κ·M·m/d²`; breakpoints `gFold`/`gUnfold`, `gSummarize`/`gUnsummarize`, `gDelete`; κ `fixed` or `adaptive`. Defaults inert (Infinity). **Not yet measured live**: the breakpoints and κ are what U18's `gravity` arms sweep |
+| Reducer | chunk (keep the spans matching the query, mark the gaps) or summarize; default chunk |
+| Chunker, `RRF_K` | recursive character splitter; rank-fusion constant |
+| Reply reserve | the host-declared `Model.limit.output`, plus whatever the caller cannot see (system block, tool schemas) |
+| Tokenizer | **heuristic, and one of them**: `HeuristicTokenizer` over what the host sends for a unit (`hostContent`: reasoning, text, tool input, tool output — not the rendering's headers). A host plugin sizes its message array the same way, so a window is ruled and checked in one unit. It is not the served tokenizer: measured 0.92 served tokens per heuristic token over one cell's unedited turns (`chars/4`, which the plugin used until 2026-09-21: 1.19). That ratio is a per-turn *measurement* that differs by problem and drifts within a run — never a conversion constant |
+| Embedding model, summarizer | small local encoder (MiniLM-class); cheap model, output versioned, must include rehydration pointers |
 
 ## Status
 

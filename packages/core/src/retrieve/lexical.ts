@@ -8,7 +8,7 @@
  * Deterministic lexical scoring for the §9 beam-search fallback.
  *
  * §9 mandates a fallback for "L3 is absent", and L3 is absent for most of CI:
- * a hard dependency on an embedding key would make `context_search` useless
+ * a hard dependency on an embedding key would make `search` useless
  * offline. So scoring here is IDF-weighted term overlap over summary text —
  * no embeddings, no network, no state — which keeps the beam path a pure
  * function of L1 and therefore bit-identical across runs (D8).

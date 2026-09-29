@@ -173,7 +173,7 @@ describe('renderTask', () => {
     expect(block).toContain('url https://example.test/spec');
     expect(block).toContain('is banker-rounding the right default?');
     expect(block).toContain('round half-up at the line-item level');
-    // meta.node_ids are the `context_fetch` targets (§9).
+    // meta.node_ids are the `fetch` targets (§9).
     expect(block).toContain(`- covers: \`${f1.id}\``);
   });
 

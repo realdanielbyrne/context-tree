@@ -1,0 +1,278 @@
+{
+  "manifest": {
+    "run_id": "swebench-opencode-u18-soft50347-gate-a1",
+    "date": "2026-09-19T04:21:17.593Z",
+    "commit": "16a2164aa35d1508d9592c7fae9106db41cb0a4a",
+    "vehicle": "opencode",
+    "opencode_version": "1.18.31",
+    "model": "local/HuggingJoost/Swift-Qwen3.8-27B-NVFP4-GGUF",
+    "models_used": [
+      "local/HuggingJoost/Swift-Qwen3.8-27B-NVFP4-GGUF"
+    ],
+    "endpoint_policy": "pinned: local/HuggingJoost/Swift-Qwen3.8-27B-NVFP4-GGUF",
+    "endpoints_used": {
+      "local": 1,
+      "openrouter": 0
+    },
+    "invocation": "opencode run --pure -m <model> --format json --dir <ws> --auto <prompt> < /dev/null; per-run XDG dirs; export with same XDG env",
+    "config": "experiments/context-dedup/opencode.json (no credential in file)",
+    "model_configs": {
+      "local/HuggingJoost/Swift-Qwen3.8-27B-NVFP4-GGUF": {
+        "configured": true,
+        "limit_output": 32000,
+        "limit_context": 151040,
+        "options": null
+      }
+    },
+    "host_defaults": "thinking ON on every endpoint (host default), no tool-output clip, no cap, no eviction, no middleware",
+    "sandbox": "bwrap: no network (model relay only), no dataset/repos/wscache/other runs/operator home; per-run preflight in each cell",
+    "arm": "ct: context-tree owns assembly at opencode's experimental.chat.messages.transform (trigger soft, window 50347, cadence 5, summaries 0); host compaction OFF; per-cell `ct` records whether it fired",
+    "window": "the model's own declared context",
+    "run_timeout_s": 7200,
+    "instances": [
+      "django__django-11138"
+    ],
+    "selection_file": "selection-v2.json",
+    "grading": "ab-tasks/swebench.mjs gradeDetail after opencode exits: restore test-patch files, apply test patch, run the instance runner over F2P + calibrated P2P; void grades and errored runs excluded from rates",
+    "prices_per_million_usd": {
+      "local/HuggingJoost/Swift-Qwen3.8-27B-NVFP4-GGUF": null
+    }
+  },
+  "cells": [
+    {
+      "instance": "django__django-11138",
+      "repeat": 0,
+      "repo": "django/django",
+      "difficulty": "1-4 hours",
+      "stratum": "H",
+      "vehicle": "opencode",
+      "opencode_version": "1.18.31",
+      "model": "local/HuggingJoost/Swift-Qwen3.8-27B-NVFP4-GGUF",
+      "model_config": {
+        "configured": true,
+        "limit_output": 32000,
+        "limit_context": 151040,
+        "options": null
+      },
+      "endpoint": "local",
+      "arm": "ct",
+      "window": null,
+      "output_cap": null,
+      "ct": {
+        "CT_CT_TRIGGER": "soft",
+        "CT_CT_WINDOW": "50347",
+        "CT_CT_HARD_WINDOW": "151040",
+        "CT_CT_CADENCE_N": "5",
+        "CT_CT_SUMMARIES": "0",
+        "CT_CT_ANCHOR": "4",
+        "CT_CT_REPLY_RESERVE": "8192",
+        "CT_CT_TOPK": "5",
+        "CT_CT_PROTECT_TAIL": "6",
+        "CT_ASSEMBLE_PORT": "8899",
+        "arm_effective": {
+          "trigger": "soft",
+          "softWindow": 50347,
+          "hardWindow": 151040,
+          "cadenceN": 5,
+          "summaries": false,
+          "anchor": 4,
+          "replyReserve": 8192,
+          "headTokens": 12000,
+          "topK": 5,
+          "protectTail": 6
+        },
+        "arm_agrees": true,
+        "arm_disagreements": [],
+        "plugin_loaded": true,
+        "plugin_registered": true,
+        "plugin_turns": 102,
+        "plugin_errors": 0,
+        "messages_dropped": 2448,
+        "messages_folded": 0,
+        "assemble_calls": 102,
+        "assemble_errors": 0,
+        "evicted_units": 119,
+        "fired": true
+      },
+      "mcp": {
+        "server_ready": true,
+        "ingest_ticks": 100,
+        "events_ingested": 262,
+        "server_errors": 0,
+        "tool_calls": 2,
+        "tools": {
+          "context-tree_context_search": 2
+        }
+      },
+      "sandbox": {
+        "enabled": true,
+        "tool": "bubblewrap 0.11.0",
+        "network": "none; model relay 127.0.0.1:8888 -> http://127.0.0.1:8888/v1",
+        "masked": [
+          "/home",
+          "/mnt",
+          "/media",
+          "/srv",
+          "/var/tmp",
+          "/run/user",
+          "/snap",
+          "/opt",
+          "/usr/lib/python3/dist-packages",
+          "/usr/local/lib"
+        ],
+        "visible": [
+          "/home/.ct-sandbox/ct (ro: 12 paths)",
+          "/mnt/data/ctx-swebench/opencode-runs/u18-soft50347-gate-a1/django__django-11138__r0/mcp",
+          "/mnt/data/ctx-swebench/venvs/django__django__3.0__py3.6",
+          "/mnt/data/ctx-swebench/pythons/py3.6",
+          "/mnt/data/ctx-swebench/opencode-runs/u18-soft50347-gate-a1/django__django-11138__r0/sandbox/opencode.json",
+          "/mnt/data/ctx-swebench/opencode-runs/u18-soft50347-gate-a1/django__django-11138__r0/xdg",
+          "/mnt/data/ctx-swebench/opencode-runs/u18-soft50347-gate-a1/django__django-11138__r0/workspace"
+        ],
+        "config": "/mnt/data/ctx-swebench/opencode-runs/u18-soft50347-gate-a1/django__django-11138__r0/sandbox/opencode.json",
+        "preflight": {
+          "hidden /mnt/data/ctx-swebench/dataset": true,
+          "hidden /mnt/data/ctx-swebench/repos": true,
+          "hidden /mnt/data/ctx-swebench/wscache": true,
+          "hidden /mnt/data/ctx-swebench/runs": true,
+          "hidden /mnt/data/ctx-swebench/locks": true,
+          "hidden /home/realdanielbyrne": true,
+          "hidden /home/realdanielbyrne/GitHub/context-tree": true,
+          "only  in /tmp": true,
+          "only .ct-sandbox,agent in /home": true,
+          "only u18-soft50347-gate-a1 in /mnt/data/ctx-swebench/opencode-runs": true,
+          "only django__django-11138__r0 in /mnt/data/ctx-swebench/opencode-runs/u18-soft50347-gate-a1": true,
+          "only mcp,sandbox,workspace,xdg in /mnt/data/ctx-swebench/opencode-runs/u18-soft50347-gate-a1/django__django-11138__r0": true,
+          "only  in /snap": true,
+          "only  in /opt": true,
+          "only  in /usr/lib/python3/dist-packages": true,
+          "only  in /usr/local/lib": true,
+          "only data in /mnt": true,
+          "only ctx-swebench in /mnt/data": true,
+          "only opencode-runs,venvs,pythons in /mnt/data/ctx-swebench": true,
+          "only django__django__3.0__py3.6 in /mnt/data/ctx-swebench/venvs": true,
+          "only py3.6 in /mnt/data/ctx-swebench/pythons": true,
+          "workspace writable": true,
+          "imports from workspace": true,
+          "no outbound network": true,
+          "no DNS": true
+        },
+        "mcp": {
+          "script": "/home/.ct-sandbox/ct/experiments/context-dedup/ct-sidecar.mjs",
+          "store": "/mnt/data/ctx-swebench/opencode-runs/u18-soft50347-gate-a1/django__django-11138__r0/mcp/store",
+          "log": "/mnt/data/ctx-swebench/opencode-runs/u18-soft50347-gate-a1/django__django-11138__r0/mcp/ct-mcp.jsonl",
+          "db": "/mnt/data/ctx-swebench/opencode-runs/u18-soft50347-gate-a1/django__django-11138__r0/xdg/data/opencode/opencode.db"
+        },
+        "window": null,
+        "wire": "/mnt/data/ctx-swebench/opencode-runs/u18-soft50347-gate-a1/django__django-11138__r0/wire.jsonl",
+        "wire_needles": [
+          "role",
+          "tools"
+        ]
+      },
+      "endpoint_selection": {
+        "request": "local/HuggingJoost/Swift-Qwen3.8-27B-NVFP4-GGUF",
+        "exclusive": true,
+        "reason": "pinned by CT_OPENCODE_MODEL; holds local slot 0,1,2,3",
+        "signals": {
+          "pinned": true,
+          "slots": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        "decided_at": "2026-09-19T03:52:08.980Z"
+      },
+      "pass": false,
+      "f2p_pass": false,
+      "p2p_pass": true,
+      "grade_stage": "ok",
+      "grade_valid": true,
+      "f2p_failures": [
+        "test_query_convert_timezones (timezones.tests.NewDatabaseTests) [FAILED]"
+      ],
+      "p2p_failures": [],
+      "p2p_graded_n": 73,
+      "p2p_dataset_n": 73,
+      "run_valid": true,
+      "scored": true,
+      "exit_code": 0,
+      "signal": null,
+      "timed_out": false,
+      "wall_seconds": 1746,
+      "exit_outcome": "ok",
+      "killed_externally": false,
+      "other_opencode_runs_at_start": 0,
+      "other_opencode_runs_peak": 1,
+      "ended_at": "2026-09-19T04:21:15.695Z",
+      "last_event_type": "step_finish",
+      "error": null,
+      "steps": 102,
+      "tool_calls": 114,
+      "tools_by_name": {
+        "bash": 53,
+        "grep": 7,
+        "read": 29,
+        "context-tree_context_search": 2,
+        "edit": 22,
+        "write": 1
+      },
+      "tool_errors": 0,
+      "files_edited": [
+        "/mnt/data/ctx-swebench/opencode-runs/u18-soft50347-gate-a1/django__django-11138__r0/workspace/django/db/models/functions/datetime.py",
+        "/mnt/data/ctx-swebench/opencode-runs/u18-soft50347-gate-a1/django__django-11138__r0/workspace/django/db/backends/mysql/operations.py",
+        "/mnt/data/ctx-swebench/opencode-runs/u18-soft50347-gate-a1/django__django-11138__r0/workspace/django/db/backends/oracle/operations.py",
+        "/tmp/opencode/sanity_check.py"
+      ],
+      "files_read": [
+        "/mnt/data/ctx-swebench/opencode-runs/u18-soft50347-gate-a1/django__django-11138__r0/workspace/django/db/backends/mysql/operations.py",
+        "/mnt/data/ctx-swebench/opencode-runs/u18-soft50347-gate-a1/django__django-11138__r0/workspace/django/db/backends/sqlite3/operations.py",
+        "/mnt/data/ctx-swebench/opencode-runs/u18-soft50347-gate-a1/django__django-11138__r0/workspace/django/db/models/functions/datetime.py",
+        "/mnt/data/ctx-swebench/opencode-runs/u18-soft50347-gate-a1/django__django-11138__r0/workspace/django/db/backends/base/base.py",
+        "/mnt/data/ctx-swebench/opencode-runs/u18-soft50347-gate-a1/django__django-11138__r0/workspace/django/db/backends/oracle/operations.py",
+        "/mnt/data/ctx-swebench/opencode-runs/u18-soft50347-gate-a1/django__django-11138__r0/workspace/django/db/backends/postgresql/operations.py",
+        "/mnt/data/ctx-swebench/opencode-runs/u18-soft50347-gate-a1/django__django-11138__r0/workspace/django/db/backends/sqlite3/base.py",
+        "/mnt/data/ctx-swebench/opencode-runs/u18-soft50347-gate-a1/django__django-11138__r0/workspace/tests/db_functions/datetime/test_extract_trunc.py",
+        "/mnt/data/ctx-swebench/opencode-runs/u18-soft50347-gate-a1/django__django-11138__r0/workspace/django/test/signals.py",
+        "/mnt/data/ctx-swebench/opencode-runs/u18-soft50347-gate-a1/django__django-11138__r0/workspace/docs/ref/settings.txt",
+        "/mnt/data/ctx-swebench/opencode-runs/u18-soft50347-gate-a1/django__django-11138__r0/workspace/django/db/models/lookups.py",
+        "/mnt/data/ctx-swebench/opencode-runs/u18-soft50347-gate-a1/django__django-11138__r0/workspace/tests/timezones/tests.py",
+        "/mnt/data/ctx-swebench/opencode-runs/u18-soft50347-gate-a1/django__django-11138__r0/workspace/docs/ref/databases.txt",
+        "/mnt/data/ctx-swebench/opencode-runs/u18-soft50347-gate-a1/django__django-11138__r0/workspace/django/utils/timezone.py",
+        "/mnt/data/ctx-swebench/opencode-runs/u18-soft50347-gate-a1/django__django-11138__r0/workspace/django/db/backends/utils.py"
+      ],
+      "reads": 29,
+      "diff_empty": false,
+      "agent_diff": "diff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/django__django-11138/django/db/backends/mysql/operations.py /mnt/data/ctx-swebench/opencode-runs/u18-soft50347-gate-a1/django__django-11138__r0/workspace/django/db/backends/mysql/operations.py\n--- /mnt/data/ctx-swebench/wscache/django__django-11138/django/db/backends/mysql/operations.py\t2019-04-07 19:02:20.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/u18-soft50347-gate-a1/django__django-11138__r0/workspace/django/db/backends/mysql/operations.py\t2026-09-18 23:14:43.590082288 -0500\n@@ -69,8 +69,8 @@\n             return \"DATE(%s)\" % (field_name)\n \n     def _convert_field_to_tz(self, field_name, tzname):\n-        if settings.USE_TZ:\n-            field_name = \"CONVERT_TZ(%s, 'UTC', '%s')\" % (field_name, tzname)\n+        if settings.USE_TZ and self.connection.timezone_name != tzname:\n+            field_name = \"CONVERT_TZ(%s, '%s', '%s')\" % (field_name, self.connection.timezone_name, tzname)\n         return field_name\n \n     def datetime_cast_date_sql(self, field_name, tzname):\ndiff -ru -x __pycache__ -x '*.pyc' -x .ct-cache-ok -x .pytest_cache /mnt/data/ctx-swebench/wscache/django__django-11138/django/db/backends/oracle/operations.py /mnt/data/ctx-swebench/opencode-runs/u18-soft50347-gate-a1/django__django-11138__r0/workspace/django/db/backends/oracle/operations.py\n--- /mnt/data/ctx-swebench/wscache/django__django-11138/django/db/backends/oracle/operations.py\t2019-04-07 19:02:20.000000000 -0500\n+++ /mnt/data/ctx-swebench/opencode-runs/u18-soft50347-gate-a1/django__django-11138__r0/workspace/django/db/backends/oracle/operations.py\t2026-09-18 23:15:15.433271774 -0500\n@@ -101,7 +101,15 @@\n             raise ValueError(\"Invalid time zone name: %s\" % tzname)\n         # Convert from UTC to local time, returning TIMESTAMP WITH TIME ZONE\n         # and cast it back to TIMESTAMP to strip the TIME ZONE details.\n-        return \"CAST((FROM_TZ(%s, '0:00') AT TIME ZONE '%s') AS TIMESTAMP)\" % (field_name, tzname)\n+        if self.connection.timezone_name == 'UTC':\n+            return \"CAST((FROM_TZ(%s, '0:00') AT TIME ZONE '%s') AS TIMESTAMP)\" % (field_name, tzname)\n+        # The field is stored in a non-UTC time zone; interpret it as such.\n+        db_tz = self.connection.timezone_name\n+        if not self._tzname_re.match(db_tz):\n+            raise ValueError(\"Invalid time zone name: %s\" % db_tz)\n+        if db_tz == tzname:\n+            return field_name\n+        return \"CAST((%s AT TIME ZONE '%s' AT TIME ZONE '%s') AS TIMESTAMP)\" % (field_name, db_tz, tzname)\n \n     def datetime_cast_date_sql(self, field_name, tzname):\n         field_name = self._convert_field_to_tz(field_name, tzname)\n",
+      "tokens": {
+        "input": 656332,
+        "output": 94794,
+        "reasoning": 0,
+        "cache_read": 4968247,
+        "cache_write": 0
+      },
+      "peak_prompt_tokens": 107440,
+      "first_step_prompt_tokens": 10965,
+      "cost_reported": 0,
+      "cost_list_price": null,
+      "events": 351,
+      "events_unparseable": 0,
+      "session_id": "ses_f4833ea9effeCaNs5QkpPzXUss",
+      "export_ok": true,
+      "export_part_types": {
+        "text": 34,
+        "step-start": 102,
+        "reasoning": 102,
+        "tool": 114,
+        "step-finish": 102
+      },
+      "export_bytes": 1134443,
+      "events_complete": true,
+      "events_missing_steps": 0,
+      "events_missing_tool_calls": 0,
+      "run_dir": "/mnt/data/ctx-swebench/opencode-runs/u18-soft50347-gate-a1/django__django-11138__r0"
+    }
+  ]
+}

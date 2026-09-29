@@ -1,5 +1,9 @@
 /**
- * The §9 MCP surface: four tools plus the system-prompt contract.
+ * The MCP transport over the tool registry, plus the system-prompt contract.
+ *
+ * Every pipeline stage is a tool (`tools/index.ts` TOOLS) and this file serves that
+ * table; `http.ts` serves the same table to host plugins. Neither knows what any
+ * tool does.
  *
  * The contract ships with the tools deliberately. There is no fine-tuning
  * anywhere (D7) — the tool schemas and this text ARE the policy, and a host
@@ -8,26 +12,10 @@
  * hosts inject automatically) and as a named prompt a host can pull explicitly.
  */
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { systemContract, type ContextTreeConfig, type ProviderRegistry, type TaskStore, type TreeRetriever } from '@context-tree/core';
+import { systemContract, type SystemContractVersion, type ContextTreeConfig, type ProviderRegistry, type TaskStore, type TreeRetriever } from '@context-tree/core';
 import { toCallToolResult } from './result.js';
-import {
-  ANNOTATE,
-  ANNOTATE_DESCRIPTION,
-  CONTEXT_FETCH,
-  CONTEXT_FETCH_DESCRIPTION,
-  CONTEXT_PEEK,
-  CONTEXT_PEEK_DESCRIPTION,
-  CONTEXT_SEARCH,
-  CONTEXT_SEARCH_DESCRIPTION,
-  annotate,
-  annotateInputShape,
-  contextFetch,
-  contextFetchInputShape,
-  contextPeek,
-  contextPeekInputShape,
-  contextSearch,
-  contextSearchInputShape,
-} from './tools/index.js';
+import { createSession, type Session } from './session.js';
+import { TOOLS, type ToolSpec } from './tools/index.js';
 import type { OperatingMode, ToolContext } from './types.js';
 
 export const SERVER_NAME = 'context-tree';
@@ -44,84 +32,41 @@ export interface CreateServerOptions {
   registry?: ProviderRegistry;
   /** Defaults to `config.mode` — D14's gate has one source of truth. */
   mode?: OperatingMode;
+  /** Pipeline state. Pass the SAME session to `createHttpApi` so both transports share it. */
+  session?: Session;
+  /** The registry to serve. Defaults to `TOOLS`; `withHandlers` swaps a stage. */
+  tools?: readonly ToolSpec[];
+  /** Which contract text ships as `instructions`. `v4` describes the pipeline tools; default `v1`. */
+  contract?: SystemContractVersion;
 }
 
-export function createServer(options: CreateServerOptions): McpServer {
-  const mode: OperatingMode = options.mode ?? options.config.mode;
-  const ctx: ToolContext = {
+export function toolContext(options: CreateServerOptions): ToolContext {
+  return {
     config: options.config,
     handle: options.handle,
     retriever: options.retriever,
     registry: options.registry,
-    mode,
+    mode: options.mode ?? options.config.mode,
+    session: options.session ?? createSession(),
   };
+}
+
+export function createServer(options: CreateServerOptions, shared?: ToolContext): McpServer {
+  const ctx = shared ?? toolContext(options);
 
   const server = new McpServer(
     { name: SERVER_NAME, version: SERVER_VERSION },
-    { instructions: systemContract() },
+    { instructions: systemContract(options.contract) },
   );
 
-  /**
-   * Mode A's read tools touch nothing; Mode B appends a `tool_call` +
-   * `tool_result` pair to L0 per retrieval (D14). The hint has to follow the
-   * mode or it is a lie a host may cache on.
-   */
-  const readOnly = mode === 'tool-backend';
-
-  server.registerTool(
-    CONTEXT_FETCH,
-    {
-      title: 'Fetch a branch',
-      description: CONTEXT_FETCH_DESCRIPTION,
-      inputSchema: contextFetchInputShape,
-      annotations: { readOnlyHint: readOnly, idempotentHint: true, openWorldHint: false },
-    },
-    async (args) => toCallToolResult(await contextFetch(ctx, args)),
-  );
-
-  server.registerTool(
-    CONTEXT_SEARCH,
-    {
-      title: 'Search branch summaries',
-      description: CONTEXT_SEARCH_DESCRIPTION,
-      inputSchema: contextSearchInputShape,
-      annotations: {
-        readOnlyHint: readOnly,
-        idempotentHint: true,
-        // §9.1 providers shell out to graft/ripgrep and call the Augment API.
-        openWorldHint: options.registry !== undefined,
-      },
-    },
-    async (args) => toCallToolResult(await contextSearch(ctx, args)),
-  );
-
-  server.registerTool(
-    CONTEXT_PEEK,
-    {
-      title: 'Peek at a node',
-      description: CONTEXT_PEEK_DESCRIPTION,
-      inputSchema: contextPeekInputShape,
-      annotations: { readOnlyHint: readOnly, idempotentHint: true, openWorldHint: false },
-    },
-    async (args) => toCallToolResult(await contextPeek(ctx, args)),
-  );
-
-  server.registerTool(
-    ANNOTATE,
-    {
-      title: 'Annotate a node',
-      description: ANNOTATE_DESCRIPTION,
-      inputSchema: annotateInputShape,
-      annotations: {
-        readOnlyHint: false,
-        // Summaries are versioned and never overwritten (D3); a note appends.
-        destructiveHint: false,
-        idempotentHint: false,
-        openWorldHint: false,
-      },
-    },
-    async (args) => toCallToolResult(await annotate(ctx, args)),
-  );
+  for (const tool of options.tools ?? TOOLS) {
+    if (!tool.transports.includes('mcp')) continue;
+    server.registerTool(
+      tool.name,
+      { title: tool.title, description: tool.description, inputSchema: tool.inputShape, annotations: tool.annotations(ctx) },
+      async (args: unknown) => toCallToolResult(await tool.handler(ctx, args)),
+    );
+  }
 
   server.registerPrompt(
     CONTRACT_PROMPT,
@@ -131,7 +76,7 @@ export function createServer(options: CreateServerOptions): McpServer {
         'The §9 system-prompt contract: read-before-edit, follow summary metadata, peek when in doubt. Install it alongside the tools.',
     },
     () => ({
-      messages: [{ role: 'user', content: { type: 'text', text: systemContract() } }],
+      messages: [{ role: 'user', content: { type: 'text', text: systemContract(options.contract) } }],
     }),
   );
 

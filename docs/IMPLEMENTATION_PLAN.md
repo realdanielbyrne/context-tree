@@ -19,7 +19,7 @@ semantically-segmented branches**, each headed by an **LLM summary**, such that:
 1. The **active branch** is expanded in full in the prompt; other branches appear
    as summaries only.
 2. Summaries carry **rehydration pointers** (node IDs, file spans) so the model
-   can call `context_fetch` to pull a non-active branch's detail on demand.
+   can call `fetch` to pull a non-active branch's detail on demand.
 3. Prompt assembly is **prefix-stable** (cache-friendly): summaries in the cached
    prefix; mutable detail always at the tail.
 4. Updates are **incremental**: appending a turn touches one leaf; only summaries
@@ -62,16 +62,24 @@ segmentation algorithm can change without data migration.
 | D10 | Typed node kinds (task/phase/file/turn) + lateral `node_links` | MIRIX: typed memory > flat (arXiv:2507.07957); links fix pure-tree blindness (A-MEM) |
 | D11 | Background summarization of closed branches ("sleep-time compute") | 5× test-compute reduction, +13–18% acc; SWE case study; arXiv:2504.13171 |
 | D12 | TypeScript/npm monorepo; MCP server surface | Frontier tool-calling works untrained; MCP is the standard agent-tool interface |
-| D13 | Pluggable retrieval backends: `context_search` fans out to graft / Serena / Augment Context Engine / local vectors / ripgrep; structural (graph) hits rank above fuzzy (semantic) hits | Graph = ground truth, similarity = recall assistant (design review); graft's ask-vs-grep split maps directly to ranked-vs-exhaustive |
+| D13 | Pluggable retrieval backends: `search` fans out to graft / Serena / Augment Context Engine / local vectors / ripgrep; structural (graph) hits rank above fuzzy (semantic) hits | Graph = ground truth, similarity = recall assistant (design review); graft's ask-vs-grep split maps directly to ranked-vs-exhaustive |
 | D14 | Optional **middleware mode**: context-tree can be the agent's *only* code-semantics tool surface, proxying/fanning out provider calls and owning assembly + eviction | One stable tool set in Zone A instead of a dozen host tools → larger frozen cache prefix; centralized eviction; every retrieval event is an L0 `tool_call` row, so D1 indexes it into the tree unchanged |
 | D15 | Ingestion stays **hermetic**: the mandatory pipeline (segmenter, spans, store) uses only L0 + L2 + tree-sitter — no graft-like semantic search. Cross-file semantic enrichment is an optional post-pass: provenance-stamped, non-blocking, discardable | Rebuild determinism (D8): tree must not depend on external index state (graft graph drifts, APIs change). Latency: ingestion is ms-scale inline; `graft ask` is seconds-scale query-shaped. Symbol spans within edited files (the semantic work ingestion needs) are covered locally by tree-sitter (D9) |
 | D16 | Node ids are a **deterministic function of the segmentation NodeKey**, not random ULIDs (added in implementation, 2026-08-31) | D8 requires L1 to be a function of L0+L2. With random ids, `rebuild()` mints new ones, so any L0 event referencing a node id (`manual_annotation`, §6) cannot be resolved after a rebuild — annotations and `node_links` were silently dropped. Deterministic ids make rebuild a genuine replay. Id keeps the `n_` + 26-char shape and encodes kind rank first so creation order (D5 / Zone B) still sorts a phase ahead of the file node sharing its start seq |
-| D17 | Root composition is a pure, byte-stable function of current child summaries — task title, the newest `rootKeep` (default 40) headlines verbatim, older members collapsed into one count + id-range + title-range fold line, merged open questions over the kept window. All member ids stay in `meta.node_ids`. Fold applies only to direct children of the task root (phase nodes) — never `file`/`turn` nodes, never across a task-root boundary. Zero LLM by default; an LLM digest of the folded members is permitted only as an optional, non-blocking upgrade (added in implementation, 2026-09-01) | Codifies the `deterministic-rollup-v1` precedent (implemented 2026-08, never recorded): the strong-model root call was mostly redundant with the verbatim leaf summaries already in Zone B. The cap is the boundedness fix: the uncapped headline list grew ~50-125 tok per closed branch, so the root block alone overflowed the 8k Zone B budget at n≈70-160 and grew forever after (root is exempt from rule-4 dropping). Capping makes the whole prompt O(1) in branch count. Grouping is `slice()` over creation order — deterministic from L0, no clock, no randomness, no LLM (D8). Lossy in prompt, lossless on disk: folded members keep their own D3-versioned `node_summaries` rows and remain reachable via `context_search` / `context_fetch` |
-| D18 | No rendered meta list (`files`, `symbols`, `tests`, `artifacts`, `decisions`, `open questions`, `fetchable nodes`) prints more than 40 values; overflow renders `+M more` (added in implementation, 2026-09-01) | The root block's `decisions` / `open_questions` / `fetchable nodes` are merges over *every* child, so capping only the headline list (D17) leaves a second ~50 tok/branch growth term. Rendering is capped, `SummaryMeta` is not — the full list stays in L1 for `context_fetch` |
+| D17 | Root composition is a pure, byte-stable function of current child summaries — task title, the newest `rootKeep` (default 40) headlines verbatim, older members collapsed into one count + id-range + title-range fold line, merged open questions over the kept window. All member ids stay in `meta.node_ids`. Fold applies only to direct children of the task root (phase nodes) — never `file`/`turn` nodes, never across a task-root boundary. Zero LLM by default; an LLM digest of the folded members is permitted only as an optional, non-blocking upgrade (added in implementation, 2026-09-01) | Codifies the `deterministic-rollup-v1` precedent (implemented 2026-08, never recorded): the strong-model root call was mostly redundant with the verbatim leaf summaries already in Zone B. The cap is the boundedness fix: the uncapped headline list grew ~50-125 tok per closed branch, so the root block alone overflowed the 8k Zone B budget at n≈70-160 and grew forever after (root is exempt from rule-4 dropping). Capping makes the whole prompt O(1) in branch count. Grouping is `slice()` over creation order — deterministic from L0, no clock, no randomness, no LLM (D8). Lossy in prompt, lossless on disk: folded members keep their own D3-versioned `node_summaries` rows and remain reachable via `search` / `fetch` |
+| D18 | No rendered meta list (`files`, `symbols`, `tests`, `artifacts`, `decisions`, `open questions`, `fetchable nodes`) prints more than 40 values; overflow renders `+M more` (added in implementation, 2026-09-01) | The root block's `decisions` / `open_questions` / `fetchable nodes` are merges over *every* child, so capping only the headline list (D17) leaves a second ~50 tok/branch growth term. Rendering is capped, `SummaryMeta` is not — the full list stays in L1 for `fetch` |
 | D19 | ~~Eval budgets are a function of the target window W~~ — **superseded by D20**. The budget derivation and the harness it served are deleted; the budget fractions (.05/.10/.20/.20/.35/.10) remain correct as assembler defaults, not harness exports. D17's `rootKeep` derivation from W remains in force. | Original rationale still valid for the fractions; the harness-specific claim ("Zero code change — the harness derives and exports `EVAL_LAZY_TOKENS`; `eval/src/loop.ts` is untouched") is void — see D20 |
 | D20 | The bespoke evaluation harness (`eval/`, `eval-resumption/`, `packages/cli/src/commands/eval.ts`) is **deleted**. `ChatMessage` (`packages/core/src/contracts/models.ts:9`) has no `tool_calls` field and no `'tool'` role, so the harness stripped the model's own tool calls from history and replayed results as `role: 'user'` text — every arm comparison taken with it was invalid. Evaluation now means running tasks in an external host (opencode) with and without the MCP server attached: same harness, same model, one variable. §15 is superseded by this host-with-MCP-vs-without design. §17's product-side testing (`packages/core/test/`) is unaffected (added 2026-09-09) | Fixing `ChatMessage` to carry tool calls would deepen a reimplementation of something mature agent harnesses already do correctly. A real 645-call Claude Code session reaches 32% of a 1M window; the generated scenarios peaked near 4.5%. The harness was measuring an artifact of its own replay, not the product |
 
 | D21 | A shell-shaped tool is phased by its **command**, not by its name: `ToolCallEvent.command` (the head of the command, 512 chars) plus an ordered `toolPhaseByCommand` rule list consulted before `toolPhase`, first match wins, no match falls back to the name map (added in implementation, 2026-09-17) | §7's name-only map assumed one tool per phase, which no real agent harness has. On the sandboxed SWE-bench baseline (30 runs, local 27B) `bash` was 665 of 1,247 tool calls and everything shell-shaped mapped to `other`, so **54% of the trace landed in the neutral bucket** and the tree could not see a diagnose/implement/verify cycle it had just executed: test runs (39% of bash calls) and read-only inspection (29%) were invisible as phases. Applying the rules across the same 30 traces takes segmentation from 144 phases to 258. Stays inside D1: the rules are a fixed, ordered regex list over a field already in L0, so the pass is still deterministic, O(n) in events, zero LLM, and bit-identical across runs — it is not content clustering. `command` is written to L0 (not read from `args_blob`) so D15 hermeticity and D8 rebuildability are untouched. Ambiguous commands (`python repro.py`, `cd`, mutation) stay `other` rather than guess an intent the text cannot settle |
+
+| D22 | **Every pipeline stage is a tool, served from one registry over two transports.** `packages/mcp` `TOOLS` lists retrieval (`fetch/search/peek`, `annotate`) *and* the stages that used to be reachable only inside a host adapter's single `/assemble` call: `units`, `classify`, `assemble`, `evict`, `restore` (9 tools; `reduce` and `verdicts` were folded away by D23). The MCP server (agents) and the loopback HTTP API (host plugins, `POST /v1/tools/<name>`) iterate the same table over one `ToolContext` and one session. Eviction is **sticky** session state; an eviction *policy* is the sequence of calls a caller makes (cadence = not calling `evict` on off turns). Every PROVISIONAL constant the stages use is a server default (`CT_CT_*`) and a tool argument. Tool names are **bare verbs** (`fetch`, `search`, `peek`, `annotate`, `units`, `classify`, `assemble`, `evict`, `restore`; renamed 2026-09-20 from `context_*`): every host already namespaces them by server (`context-tree_evict`, `mcp__context-tree__evict`), so the prefix was paid for twice in every prompt. Supersedes the "exactly four tools" wording: D5 requires the tool set to be **frozen within a session**, not small | A pipeline reachable only as one opaque call cannot be driven by the agent, cannot have a stage swapped or skipped, and turns every policy experiment into a code change in the adapter. The first live soft-limit gate (U18, 2026-09-18) failed for reasons that were invisible from outside that call. Builds on D14 (middleware mode owns assembly + eviction). HTTP for plugins because they sit in the prompt path: no MCP framing, no model turn |
+
+| D23 | **One unit ladder, two separate rulings, one parameter registry.** (1) The pipeline unit is a **turn — one host message** — recorded in L0 as an additive `turn_id` and derived by a pure function (`segment/turns.ts`; deterministic fallback for unstamped traces; not an L1 node). Phases group turns and carry summaries; a chunk is the one sub-unit. `unit = phase` stays selectable. (2) **Assembly and eviction are separate stages with separate rules**: `assemble` chooses a representation (raw / reduced to the per-unit budget / folded to the phase summary) and removes nothing; `evict` is optional, takes the assembly as its input, sizes units *as assembled*, and may overrule it. Both are sticky. Anchor protection is a decaying **score bonus** on the weights' own scale (`protection = soft`), not a wall; only the task statement and the newest message are pinned. Rendering onto host messages adds no rules, and a reduction edits a tool's output text in place (D20: never re-render). (3) Every tunable is one row in `packages/mcp/src/params.ts`; types, validation, tool arguments, `GET /v1/params` and the harness's knobs derive from it. **Spec: `reports/algorithm.md`** — mechanics are stated there, once | D22 exposed that the stages disagreed on what they operate on and on who decides: eviction rulings lived in the host adapter, reduction never reached the prompt, units and host messages only overlapped, protection was absolute, and one phase could hold 80K tokens (the first U18 gate failed on exactly that). Offline replay of that cell: turn units held a 30,155-token budget on 102/102 turns; phase units were over it on 94/102 |
+| D24 | **Reasoning is an L0 event.** A seventh event type, `reasoning` (`blob`, `turn_id`), carries the model's thinking for one host message; both importers emit it ahead of the message's text. It segments nothing, carries no coordinates and opens no phase. | The importers dropped thinking as "scratch space", which held while L0 only had to say *where work happened*. D23 made the pipeline *size* the prompt from L0, and opencode replays reasoning to the model every turn: in the U18 gate cell (2026-09-20) reasoning was ~46K of ~133K heuristic tokens, the sidecar held its 30,155 budget on every turn by its own count, and the served peak still overshot (67,855 > 65,451). A trace that omits what the host sends cannot budget it. Additive: old traces rebuild unchanged. |
+| D25 | **(Superseded by D26 the next day.)** Stubs were placed inside `evict` as a keep → stub → drop ladder. Kept for the record: the evidence in its rationale is what D26 builds on. | Silent eviction was never followed by a recall (U18 wave 0, 2026-09-21: one recall call in 21 ct cells); id + recall line 15/15 (loop8); a reference naming its content +27.8pp over a placebo (T12b); nudges ignored 33/33; stronger contracts 0/9; headline summaries indistinguishable from verbose at −80% tokens. In these sessions text is 2% of tokens, tool output 64%, reasoning 35%. |
+| D26 | **The segmenter owns folding: segments, stubs, summaries, one ledger.** A *segment* is a range of the transcript that may name a parent (the tree is a coordinate system over L0, not a store). Its leaves are *blocks* on natural boundaries inside a turn — reasoning, text, one tool call with its result — whose ordinals are the *stub ids*. A *stub* is a summary-free fold of one block; a *summary* is a fold over 1..n stubs, any `from:to` range, overlapping allowed, written ONLY by `summarize` on request (`assemble` asks; the agent or a host fulfils). Both are `fold` events in L0 — the ledger; `node_summaries` is derived from it, so a phase summary IS a range summary and a rebuild loses none (amends D3's store, keeps D2/D4/D11/D17's meaning). Where to cut (`boundary`: toolPhase · tiling · drift · topK), how relevant a block still is (the score, + contextual covariance at weight 0), and what makes a block fold (`foldTrigger`: none · pressure · cadence; `foldReasoningAfter`) are selectable strategies seeded from the experiments. Reasoning is content: searched, fetched (`part`), and folded visibly — to nothing when the model's own text follows it, else to its tail. The pipeline is `assemble → fold → evict`; evict deletes at the folded size and makes no fold. Decisions reach a host as part edits. Spec: `reports/algorithm.md` § Folds. | Two tools owned two different versions of compression (D23's fold-in-assemble never fired on opencode — no text-only carrier; D25's stubs in evict were deleted 125 of 129 times); summaries were written eagerly for every phase; reasoning — 35% of the prompt — was counted then deleted without a tag and could not be searched. A stub and a summary are the same thing at two scales, so one module owns both, and the segmenter is that module's progenitor. Measured: a reasoning block followed by the model's own text is summarized by it at a median 4.4% (50 of 156 messages); the rest end in a tool call, so the tail is the only conclusion. Prior boundary experiments (rung-0b, online-segmentation) and relevance experiments (covariance-eviction, DV3 cadence) become one knob each. |
+| D27 | **Gravity: one pull decides when anything folds, is summarized, is deleted, or comes back.** For every live block, whatever its kind: `g = κ · M · m / d²`, where `m = e · raw / B` is the block's irrelevance mass (`e` = 1 − the retention score, min-max over live units, 0 when pinned; `raw` its host-sized tokens; `B` = window − reserve), `M` = Σ m over live blocks (the context's mass), and `d = max(ε, (B − live)/B)` the distance from the window. Fold, summarize and delete are **breakpoints** on `g` (`gFold`, `gSummarize`, `gDelete`); fold and summary each have a lower breakpoint for the way back (`gUnfold`, `gUnsummarize`): a folded block whose pull falls below it — it regained relevance, or a deletion elsewhere widened `d` — is unfolded (an `unfold` event) and the host sends it raw again, unless its return would put it straight back over the line. Each rung recomputes `live`, so the well is self-limiting. `evict` = the delete rung, then the fit guarantee (the existing score-priority packing) so the prompt never exceeds `B`. κ is `fixed` (swept) or `adaptive`: `κ ← κ·exp(η·(overflow − starvation − thrash))`, starvation = a recall call, the same tool call repeated within `repeatWindow` turns, or a file call on a path folded away; thrash = a fold and unfold of one block within that window; overflow = a turn that needed the fit guarantee; bounded `[κmin, κmax]`, read from L0, no model call. What a fold SHOWS stays per kind (D26 stubs); WHEN is kind-blind. Supersedes D26's `foldTrigger` / `foldReasoningAfter` and `assemble`'s summary requests (now `fold`'s), and D23's separate trigger rules (the tools stay separate; they read one pull). Amends D5: a fold's text still never changes, but a fold may END — every fold or unfold rewrites the cached prompt after it, and the count is logged per turn as the mechanism's cost. Amends the 2026-09-14 trigger resolution: deletion below the budget happens only at `gDelete` (Infinity by default), folding is graded. Package defaults are inert (every breakpoint Infinity): `soft` is unchanged, byte for byte on replay. | The static rules each failed live: `foldReasoningAfter = 3` was chosen for symmetry with the anchor, not measured, and its gate cell ended in a 29,614-token reasoning run; the summary rung measured its threshold on stub sizes and asked for unsummarizable 700-token runs; the stub gate cell folded 129 units and deleted 125. Nothing in the record ever ran a graded trigger; the fraction-of-window floor retired on 2026-09-14 constrained *deletion* only ('a fixed fraction is the wrong shape'), and the hysteresis simulation (`reports/metrics/attention-policy-continuation/journal.md`) favours ejecting rarely and deeply — which the inverse-square well and the gap between each breakpoint and its way back produce. D-EV1 found no interaction among signals; a distance multiplier on their combination was never tested. Offline replay: `reports/metrics/u18-soft-limit/replay-gravity/`. |
 
 ## 4. Prior art and reference implementations
 
@@ -125,9 +133,9 @@ agent events ───▶│ L0 trace.jsonl (append-only)   L2 blobs/ (hash)   �
         ┌────────────────┼──────────────────────┐
         ▼                ▼                      ▼
   MCP server        CLI reporter         eval harness
-  (context_fetch,   (tree print/dump)    (resumption tasks)
-   context_search,
-   context_peek)
+  (fetch,   (tree print/dump)    (resumption tasks)
+   search,
+   peek)
 ```
 
 Rebuild rule: L1, L3, L4 are **always** deterministic functions of L0 + L2.
@@ -149,8 +157,8 @@ source of truth for every derived layer.
 {"seq":53,"type":"user_message","blob":"c1d0…"}
 ```
 
-`type` ∈ {`user_message`, `assistant_message`, `tool_call`, `tool_result`,
-`segment_boundary`, `manual_annotation`}. Large payloads live in L2 and are
+`type` ∈ {`user_message`, `assistant_message`, `reasoning` (D24), `tool_call`,
+`tool_result`, `segment_boundary`, `manual_annotation`, `fold`, `unfold` (D26 — the ledger; D27 — a fold may end)}. Large payloads live in L2 and are
 referenced by content hash.
 
 ### L2 — Content store (`blobs/<first2>/<hash>`)
@@ -302,15 +310,18 @@ answers questions, enrichment decorates — never the reverse.**
 
 ## 9. Retrieval and tool API (D7) — the MCP server
 
-`@context-tree/mcp` exposes three tools over stdio MCP. These are the *only*
-way a hosted model interacts with the tree — no fine-tuning, tool schemas +
-system-prompt discipline only (validated by MemGPT on untrained models).
+`@context-tree/mcp` serves one tool registry (D22) two ways: to agents over stdio
+MCP, and to host plugins over loopback HTTP (`POST /v1/tools/<name>`). Tools are
+the *only* way a hosted model interacts with the tree — no fine-tuning, tool
+schemas + system-prompt discipline only (validated by MemGPT on untrained models).
+
+Retrieval tools:
 
 | Tool | Signature | Behavior |
 |------|-----------|----------|
-| `context_fetch` | `{branch_id: string, depth?: "summary"\|"full", file?: string}` | Returns branch content. `file` narrows to one file node (common case: testing phase needs one file from implementation). Result is appended to the host transcript's tail — never mutates the stored tree or the cache prefix |
-| `context_search` | `{query: string, kind?: NodeKind}` | Collapsed-tree retrieval (RAPTOR): embed query, search node-summary vectors (L3), return ranked summaries + node IDs. Falls back to top-down beam search over summary text if L3 is absent |
-| `context_peek` | `{node_id: string, max_chars?: number}` | Cheap excerpt for relevance checking — "suspicion costs one small call, not a full expansion" |
+| `fetch` | `{branch_id: string, depth?: "summary"\|"full", file?: string}` | Returns branch content. `file` narrows to one file node (common case: testing phase needs one file from implementation). Result is appended to the host transcript's tail — never mutates the stored tree or the cache prefix |
+| `search` | `{query: string, kind?: NodeKind}` | Collapsed-tree retrieval (RAPTOR): embed query, search node-summary vectors (L3), return ranked summaries + node IDs. Falls back to top-down beam search over summary text if L3 is absent |
+| `peek` | `{node_id: string, max_chars?: number}` | Cheap excerpt for relevance checking — "suspicion costs one small call, not a full expansion" |
 
 Plus one write-side tool:
 
@@ -318,13 +329,17 @@ Plus one write-side tool:
 |------|-----------|----------|
 | `annotate` | `{node_id, text, link_to?: node_id, link_kind?}` | Adds a `node_links` edge and/or a note. This is the v1 seed of A-MEM-style memory evolution (a review-phase discovery can mark the implementation branch `superseded_by` a later branch) |
 
+Pipeline tools (D22, D23): `units`, `classify`, `assemble`, then the optional `evict` (which takes
+the assembly as input and may overrule it), and `restore`. Their mechanics are specified once, in
+`reports/algorithm.md`; their parameters once, in `packages/mcp/src/params.ts` (`GET /v1/params`).
+
 System-prompt contract shipped by the package (the "prompting not training"
 surface, kept in one versioned file so a future learned policy can replace it):
 1. "Before editing any file, if its current content is not in context, call
-   `context_fetch` first" (read-before-edit discipline).
+   `fetch` first" (read-before-edit discipline).
 2. "Branch summaries list the files/artifacts each phase touched. If a summary
    mentions something you need, fetch that branch."
-3. "Summaries may be stale or incomplete; when in doubt, `context_peek`."
+3. "Summaries may be stale or incomplete; when in doubt, `peek`."
 
 Failure mode design (from design review):
 - **Unknown-unknowns** (model can't ask for what it doesn't know exists) →
@@ -336,7 +351,7 @@ Failure mode design (from design review):
 
 ### 9.1 Retrieval backends (D13) — graft, Serena, Augment, vectors, grep
 
-`context_search` and `context_fetch` are **facades over pluggable providers**
+`search` and `fetch` are **facades over pluggable providers**
 (live in `packages/core/src/providers/`). Context-tree does not reimplement
 code semantics — it orchestrates the tools that already do this:
 
@@ -363,7 +378,7 @@ interface RetrievalProvider {
 3. Grep last — unless `mode: "exhaustive"`, in which case grep is authoritative
    (mirrors graft's own `ask` vs `grep` distinction: ranked-top-N vs complete).
 Dedup by `(path, span)`; survivors become candidates the agent resolves via
-`context_fetch`. Provider provenance is recorded in each tool result so the
+`fetch`. Provider provenance is recorded in each tool result so the
 eval harness can measure which tier actually contributed.
 
 ### 9.2 Middleware role (D14) — two operating modes
@@ -412,7 +427,7 @@ Rules:
 2. Phase transition = Zone C rewrite: previous phase's detail collapses into
    its (already-generated, backgrounded) summary, which is inserted into Zone
    B. Cost is proportional to summaries + new branch, not history length.
-3. `context_fetch` results are appended after Zone C — cache-prefix untouched.
+3. `fetch` results are appended after Zone C — cache-prefix untouched.
 4. Budget: Zone B ≤ ~8k tokens. Two caps hold it there as branch count grows
    without bound: the root block renders at most `rootKeep` (default 40) newest
    branch headlines, older members collapsing into **one** deterministic fold
@@ -527,7 +542,7 @@ Baselines, same frontier model in all arms:
 
 Metrics: task success rate, tool-call count, input tokens (cache-read vs
 cache-write split), p50/p95 latency, cost/task, organization quality
-(stale-summary incidents; `context_peek` precision). Grading: script checkers +
+(stale-summary incidents; `peek` precision). Grading: script checkers +
 LLM-as-judge (strong model, rubric at `eval/rubric.md`). n≥5 seeds per task.
 
 v1 success criteria: D ≥ A − 5 pts on success rate, ≥50% lower input-token cost
@@ -547,7 +562,7 @@ output cap and prompt budget rather than merely being "a summary".
 Questions are extracted, not written. Answer literals are the ones occurring
 **exactly once** across all of L0, stratified `head` (outside truncation's keep
 window K), `tail` (inside it), and `deep` (absent from every stored summary, so
-only a `context_search` → `context_fetch` hop into raw L0 reaches it), plus an
+only a `search` → `fetch` hop into raw L0 reaches it), plus an
 exploratory `spanning` stratum (n=3, two literals in two different branches)
 pre-registered as exploratory so it cannot be promoted post-hoc. A third model
 family paraphrases each span into a vocabulary-free question and never grades
@@ -641,7 +656,7 @@ per-PR spend via the cost meter.
 ## 19. Open questions (for the implementing agent)
 
 1. Embedding model default (local vs API) — decide in M6; L3 must stay disposable.
-2. Should `context_search` search raw turns or summaries only? Start summaries-only.
+2. Should `search` search raw turns or summaries only? Start summaries-only.
    **Decided 2026-09-04:** the ranking stays over summaries (fingerprint-enriched, grep
    re-ranked), but the HIT is a raw event — the best-matching events across the ranked
    branches, each with its `seq` and a ~1,000-char excerpt (`retrieval.eventHits`,
@@ -659,7 +674,7 @@ per-PR spend via the cost meter.
    shows a tier is dead weight for coding tasks, drop it rather than tune it.
 7. If a marathon recall probe shows the D17 fold line is too thin a hook, does
    Zone B need a real intermediate tier? Default: no — first try a stronger
-   `context_search` prior, then a bounded deterministic digest *inside* the
+   `search` prior, then a bounded deterministic digest *inside* the
    existing fold line. The pre-designed escalation, if a tier is genuinely
    earned, is the base-k cover: closed branches render as the maximal
    k^L-aligned complete groups of their count, each group one deterministic

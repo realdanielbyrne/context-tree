@@ -6,96 +6,54 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { planDecisions, windowForTurn, validateArm, ARM } from './ct-sidecar.mjs';
+import { TRIGGERS, assembleWindowFor, ceilingOf, evictCallFor, policyFromEnv, reserveOf, validatePolicy } from './oc-plugin/policy.mjs';
 import { applyDecisions } from './oc-plugin/apply-decisions.mjs';
-import { armDisagreements } from './swebench-opencode.mjs';
+import { armDisagreements, effectiveArm } from './swebench-opencode.mjs';
+
 import * as plugin from './oc-plugin/ct-assemble-plugin.mjs';
 
 const SOFT = 50_347;
 const HARD = 151_040;
-const arm = (trigger, turn, cadenceN = 5) =>
-  windowForTurn({ trigger, turn, softWindow: SOFT, hardWindow: HARD, cadenceN });
+const policy = (trigger, cadenceN = 5) => policyFromEnv({ CT_CT_TRIGGER: trigger, CT_CT_WINDOW: String(SOFT), CT_CT_HARD_WINDOW: String(HARD), CT_CT_CADENCE_N: String(cadenceN) });
+const windowOf = (trigger, turn, hostTokens = 1000) => evictCallFor(policy(trigger), turn, hostTokens)?.window_tokens ?? null;
 
-test('the trigger IS the window handed to the assembler, one arm per setting', () => {
-  // `off` must never evict: assembleFlex keeps everything when the budget is infinite.
-  assert.equal(arm('off', 1), Number.POSITIVE_INFINITY);
-  assert.equal(arm('hard', 1), HARD);
-  assert.equal(arm('soft', 1), SOFT);
+test('the trigger is WHETHER the plugin calls evict, and at what window', () => {
+  // `off` makes no call at all: eviction is sticky, so no call leaves the prompt as it was.
+  assert.equal(windowOf('off', 1), null);
+  assert.equal(windowOf('hard', 1), HARD);
+  assert.equal(windowOf('soft', 1), SOFT);
+  // Reserve = reply + the head the plugin cannot see, and it rides on the call.
+  assert.equal(evictCallFor(policy('soft'), 7, 1000).reserve_tokens, 8192 + 12_000);
+  assert.equal(evictCallFor(policy('soft'), 7, 1000).turn, 7);
 });
 
-test('cadence fires on every Nth turn and leaves the others untouched (U19)', () => {
-  const fired = [1, 2, 3, 4, 5, 6, 9, 10].map((t) => arm('cadence', t));
-  assert.deepEqual(fired, [Infinity, Infinity, Infinity, Infinity, SOFT, Infinity, Infinity, SOFT]);
-  // Turn 0 never fires: a cadence that evicts before there is history is not a cadence.
-  assert.equal(arm('cadence', 0), Number.POSITIVE_INFINITY);
+test('cadence left the plugin: it is the fold policy\'s (CT_CT_FOLD_TRIGGER), and the plugin does not know it', () => {
+  assert.equal(TRIGGERS.includes('cadence'), false);
+  assert.ok(validatePolicy(policyFromEnv({ CT_CT_TRIGGER: 'cadence' })).some((p) => p.includes('CT_CT_TRIGGER')));
 });
 
-const msg = (id, extra = {}) => ({ id, role: 'assistant', tokens: 100, hasTools: false, ...extra });
-const messages = [msg('m1'), msg('m2'), msg('m3'), msg('m4'), msg('m5'), msg('m6')];
-const index = new Map([
-  ['m1', { start: 1, end: 2 }], ['m2', { start: 3, end: 6 }], ['m3', { start: 7, end: 9 }],
-  ['m4', { start: 10, end: 12 }], ['m5', { start: 13, end: 15 }], ['m6', { start: 16, end: 18 }],
-]);
-const action = (decisions, id) => decisions.find((d) => d.id === id)?.action;
-
-test('a message is dropped only when its L0 range overlaps an evicted unit', () => {
-  const decisions = planDecisions({
-    messages, index, evicted: [{ nodeId: 'n1', start: 3, end: 9, summary: null }],
-    protectTail: 2, summaries: false,
-  });
-  assert.equal(action(decisions, 'm2'), 'drop');
-  assert.equal(action(decisions, 'm3'), 'drop');
-  assert.equal(action(decisions, 'm4'), 'keep', 'outside the evicted span');
+test('the floor fires under every arm when the host prompt alone would overflow, and says it is the floor', () => {
+  const over = ceilingOf(policy('off')) + 1;
+  assert.deepEqual(evictCallFor(policy('off'), 3, over), { window_tokens: HARD, reserve_tokens: 20_192, turn: 3, floor: true });
+  assert.equal(evictCallFor(policy('cadence'), 3, over).floor, true);
+  assert.equal(evictCallFor(policy('soft'), 3, over).floor, false, 'an arm that already fires is not the floor');
+  assert.equal(ceilingOf(policy('off')), HARD - 12_000 - 8192);
 });
 
-test('the task statement and the working tail are never dropped, whatever the assembler says', () => {
-  const decisions = planDecisions({
-    messages, index, evicted: [{ nodeId: 'n1', start: 1, end: 18, summary: null }],
-    protectTail: 2, summaries: false,
-  });
-  assert.equal(action(decisions, 'm1'), 'keep', 'first message is the task statement');
-  assert.equal(action(decisions, 'm5'), 'keep', 'protected tail');
-  assert.equal(action(decisions, 'm6'), 'keep', 'protected tail');
-  assert.deepEqual(['m2', 'm3', 'm4'].map((id) => action(decisions, id)), ['drop', 'drop', 'drop']);
+test('a treatment turn assembles at the arm\'s own window; the control assembles nothing', () => {
+  assert.equal(assembleWindowFor(policy('off')), null);
+  assert.equal(assembleWindowFor(policy('soft')), SOFT);
+  assert.equal(assembleWindowFor(policy('hard')), HARD);
+  // Gravity's breakpoints are the sidecar's (D27): they never make the control call anything.
+  assert.equal(assembleWindowFor(policyFromEnv({ CT_CT_TRIGGER: 'off', CT_CT_G_FOLD: '0.1' })), null);
+  assert.equal(reserveOf(policy('soft'), SOFT), 20_192);
+  assert.equal(reserveOf(policy('soft'), 100), 99, 'a reserve can never swallow the window');
 });
 
-test('a message with no L0 range yet is kept, because nothing is known about it', () => {
-  const partial = new Map(index);
-  partial.delete('m3');
-  const decisions = planDecisions({
-    messages, index: partial, evicted: [{ nodeId: 'n1', start: 1, end: 18, summary: null }],
-    protectTail: 1, summaries: false,
-  });
-  assert.equal(action(decisions, 'm3'), 'keep');
-});
-
-test('with no index at all every message is kept — an un-indexed run must not evict blind', () => {
-  const decisions = planDecisions({
-    messages, index: null, evicted: [{ nodeId: 'n1', start: 1, end: 18, summary: null }],
-    protectTail: 1, summaries: false,
-  });
-  assert.ok(decisions.every((d) => d.action === 'keep'));
-});
-
-test('summaries fold the unit once and drop the rest; a tool-carrying message is never folded', () => {
-  const withTools = [msg('m1'), msg('m2', { hasTools: true }), msg('m3'), msg('m4'), msg('m5'), msg('m6')];
-  const decisions = planDecisions({
-    messages: withTools, index, evicted: [{ nodeId: 'n1', start: 3, end: 9, summary: 'gist of n1' }],
-    protectTail: 2, summaries: true,
-  });
-  // m2 carries a tool call and its result, so it is keep-or-drop only: folding it to text
-  // would separate the call from the result.
-  assert.equal(action(decisions, 'm2'), 'drop');
-  assert.equal(action(decisions, 'm3'), 'fold');
-  assert.equal(decisions.find((d) => d.id === 'm3').text, 'gist of n1');
-});
-
-test('one unit folds into exactly one message, so a summary is never repeated', () => {
-  const decisions = planDecisions({
-    messages, index, evicted: [{ nodeId: 'n1', start: 1, end: 15, summary: 'gist' }],
-    protectTail: 1, summaries: true,
-  });
-  assert.equal(decisions.filter((d) => d.action === 'fold').length, 1);
+test('the G0 gate assembles every turn and never evicts, whatever the trigger says', () => {
+  const gate = policyFromEnv({ CT_G0_DROP_FIRST: '1', CT_CT_TRIGGER: 'soft' });
+  assert.equal(assembleWindowFor(gate), HARD);
+  assert.equal(evictCallFor(gate, 5, 10_000_000), null);
 });
 
 test('applyDecisions mutates the array in place, because the hook discards a return value', () => {
@@ -111,12 +69,13 @@ test('applyDecisions mutates the array in place, because the hook discards a ret
   assert.equal(result.dropped, 1);
 });
 
-test('a fold rewrites the text part in place and leaves exactly one part', () => {
+test('a text edit rewrites the first text part in place and removes the rest', () => {
   const live = [{ info: { id: 'a' }, parts: [{ type: 'text', text: 'long original' }, { type: 'text', text: 'more' }] }];
-  const result = applyDecisions(live, [{ id: 'a', action: 'fold', text: 'gist' }]);
+  const result = applyDecisions(live, [{ id: 'a', action: 'edit', edits: [{ part: 'text', text: 'gist' }] }]);
   assert.equal(live[0].parts.length, 1);
   assert.equal(live[0].parts[0].text, 'gist');
-  assert.equal(result.folded, 1);
+  assert.equal(result.edited, 1);
+  assert.equal(result.text_edited, 2);
 });
 
 test('dropping several messages removes exactly those, whatever their order in the decision list', () => {
@@ -125,8 +84,9 @@ test('dropping several messages removes exactly those, whatever their order in t
   assert.deepEqual(live.map((m) => m.info.id), ['b', 'd']);
 });
 
-test('the arm defaults to inert, so a misconfigured run cannot silently evict', () => {
-  assert.equal(ARM.trigger, 'off');
+test('the policy defaults to inert, so a run that loses its environment is the control', () => {
+  assert.equal(policyFromEnv({}).trigger, 'off');
+  assert.equal(evictCallFor(policyFromEnv({}), 5, 1000), null);
 });
 
 
@@ -156,34 +116,43 @@ test('the plugin registers the assembly hook and nothing that has hung opencode 
   assert.equal(hooks['chat.params'], undefined);
 });
 
-test('a misconfigured arm is refused rather than silently reduced to its control', () => {
-  const base = { ...ARM, trigger: 'soft' };
-  // `CT_CT_WINDOW=50k` -> NaN -> windowForTurn returns NaN -> the keep-everything path.
-  assert.ok(validateArm({ ...base, softWindow: Number('50k') }).some((p) => p.includes('CT_CT_WINDOW')));
-  // A NaN reserve makes `evictableTotal > NaN` false inside assembleFlex: nothing is ever
-  // evicted and nothing is ever logged.
-  assert.ok(validateArm({ ...base, replyReserve: Number('x') }).some((p) => p.includes('CT_CT_REPLY_RESERVE')));
-  assert.ok(validateArm({ ...base, cadenceN: 0 }).some((p) => p.includes('CT_CT_CADENCE_N')));
-  assert.ok(validateArm({ ...base, trigger: 'sofft' }).some((p) => p.includes('CT_CT_TRIGGER')));
-  assert.ok(validateArm({ ...base, softWindow: 200_000 }).some((p) => p.includes('exceeds')));
-  assert.deepEqual(validateArm(base), []);
+test('a misconfigured policy is refused rather than silently reduced to its control', () => {
+  const env = { CT_CT_TRIGGER: 'soft' };
+  const bad = (extra) => validatePolicy(policyFromEnv({ ...env, ...extra }));
+  // `CT_CT_WINDOW=50k` -> NaN -> a window that evicts nothing, with nothing logged.
+  assert.ok(bad({ CT_CT_WINDOW: '50k' }).some((p) => p.includes('CT_CT_WINDOW')));
+  assert.ok(bad({ CT_CT_REPLY_RESERVE: 'x' }).some((p) => p.includes('CT_CT_REPLY_RESERVE')));
+  assert.ok(bad({ CT_CT_HEAD_TOKENS: '-1' }).some((p) => p.includes('CT_CT_HEAD_TOKENS')));
+  assert.ok(bad({ CT_CT_TRIGGER: 'sofft' }).some((p) => p.includes('CT_CT_TRIGGER')));
+  assert.ok(bad({ CT_CT_WINDOW: '200000' }).some((p) => p.includes('exceeds')));
+  assert.deepEqual(bad({}), []);
 });
 
-test('a fold the message shape cannot take is recorded, so a summaries arm cannot look inert by accident', () => {
-  const toolOnly = [msg('m1'), msg('m2', { hasTools: true }), msg('m3', { hasTools: true }), msg('m4')];
-  const decisions = planDecisions({
-    messages: toolOnly, index, evicted: [{ nodeId: 'n1', start: 3, end: 9, summary: 'gist' }],
-    protectTail: 1, summaries: true,
-  });
-  const wanted = decisions.filter((d) => d.foldWanted);
-  assert.equal(wanted.length, 1, 'the unit wanted a fold and no message could take one');
-  assert.equal(wanted[0].action, 'drop');
+test('a tool edit swaps the n-th tool part\'s OUTPUT in place — the part, its call and its result stay put', () => {
+  const tool = (output) => ({ type: 'tool', tool: 'read', state: { status: 'completed', input: { filePath: 'a' }, output } });
+  const host = { info: { id: 'b', role: 'assistant' }, parts: [{ type: 'text', text: 'looking' }, tool('AAAA'.repeat(100)), tool('BBBB'.repeat(100))] };
+  const live = [{ info: { id: 'a', role: 'user' }, parts: [{ type: 'text', text: 'task' }] }, host];
+  const result = applyDecisions(live, [{ id: 'b', action: 'edit', edits: [{ part: 'tool', index: 1, text: 'B…' }] }]);
+  assert.equal(result.outputs_edited, 1);
+  assert.equal(live.length, 2);
+  assert.deepEqual(live[1].parts.map((p) => p.state?.output ?? p.text), ['looking', 'AAAA'.repeat(100), 'B…']);
+  assert.deepEqual(live[1].parts[2].state.input, { filePath: 'a' }, 'the call is untouched');
+  // The host's own objects are what the session store and the graded export reference.
+  assert.equal(host.parts[2].state.output, 'BBBB'.repeat(100));
+  assert.notEqual(live[1], host);
 });
 
-test('the plugin never mutates the host message object it folds, only the array slot', () => {
+test('an edit that names no existing part changes nothing and counts nothing', () => {
+  const live = [{ info: { id: 'b', role: 'assistant' }, parts: [{ type: 'text', text: 'no tools here' }] }];
+  const before = live[0];
+  assert.equal(applyDecisions(live, [{ id: 'b', action: 'edit', edits: [{ part: 'tool', index: 0, text: 'x' }] }]).edited, 0);
+  assert.equal(live[0], before);
+});
+
+test('the plugin never mutates the host message object it edits, only the array slot', () => {
   const original = { info: { id: 'a' }, parts: [{ type: 'text', text: 'original' }] };
   const live = [original];
-  applyDecisions(live, [{ id: 'a', action: 'fold', text: 'gist' }]);
+  applyDecisions(live, [{ id: 'a', action: 'edit', edits: [{ part: 'text', text: 'gist' }] }]);
   assert.equal(original.parts[0].text, 'original', 'the session store holds this object too');
   assert.equal(live[0].parts[0].text, 'gist');
 });
@@ -211,25 +180,62 @@ test('the sidecar ingests a message only once it can gain no further events', ()
  * its own defaults (`trigger: off`, which never evicts) while the cell recorded the arm
  * that was asked for. The cell now carries the sidecar's own account of what it booted.
  */
-test('a sidecar booted on different settings than were asked for is reported, not recorded as the arm', () => {
-  const asked = { CT_CT_TRIGGER: 'soft', CT_CT_WINDOW: '50347', CT_CT_SUMMARIES: '0' };
-  const agreed = { trigger: 'soft', softWindow: 50_347, summaries: false };
-  assert.deepEqual(armDisagreements(asked, agreed), []);
+test('an arm that booted on different settings than were asked for is reported, not recorded as the arm', () => {
+  const asked = { CT_CT_TRIGGER: 'soft', CT_CT_WINDOW: '50347', CT_CT_SUMMARIES: '0', CT_CT_ANCHOR: '3', CT_CT_W_DORMANCY: '2' };
+  const ready = { pipeline: { anchor: 3, wDormancy: 2 }, neutral_phases: ['other'], contract: 'v1' };
+  const loaded = { policy: { trigger: 'soft', softWindow: 50_347, summaries: false } };
+  assert.deepEqual(armDisagreements(asked, effectiveArm(ready, loaded)), []);
 
-  // The exact failure G0 found: the env never arrived, so the sidecar defaulted to `off`.
-  const defaulted = { trigger: 'off', softWindow: 50_347, summaries: false };
-  const found = armDisagreements(asked, defaulted);
+  // The exact failure G0 found: the env never arrived, so the process ran its own defaults.
+  const found = armDisagreements(asked, effectiveArm(ready, { policy: { ...loaded.policy, trigger: 'off' } }));
   assert.equal(found.length, 1);
   assert.match(found[0], /CT_CT_TRIGGER: asked "soft", sidecar booted "off"/);
+  // The two halves travel separately, so each can go missing separately.
+  assert.match(armDisagreements(asked, effectiveArm({ ...ready, pipeline: { ...ready.pipeline, anchor: 4 } }, loaded))[0], /CT_CT_ANCHOR/);
 });
 
-test('a sidecar that never reported ready is a disagreement, not an agreement', () => {
+test('a sidecar that never reported ready, or a plugin that never loaded, is a disagreement', () => {
   // Absent evidence must never read as confirmation.
-  assert.deepEqual(armDisagreements({ CT_CT_TRIGGER: 'soft' }, undefined).length, 1);
+  assert.equal(effectiveArm(undefined, { policy: {} }), null);
+  assert.equal(effectiveArm({ pipeline: {} }, undefined), null);
+  assert.deepEqual(armDisagreements({ CT_CT_TRIGGER: 'soft' }, null).length, 1);
 });
 
-test('summaries and numeric knobs are compared after casting, not as strings', () => {
-  const asked = { CT_CT_SUMMARIES: '1', CT_CT_TOPK: '5' };
-  assert.deepEqual(armDisagreements(asked, { summaries: true, topK: 5 }), []);
-  assert.equal(armDisagreements(asked, { summaries: false, topK: 5 }).length, 1);
+test('booleans, numbers and phase lists are compared after casting, not as strings', () => {
+  const asked = { CT_CT_G_FOLD: 'Infinity', CT_CT_DRIFT_K: '5', CT_CT_NEUTRAL_PHASES: 'none' };
+  assert.deepEqual(armDisagreements(asked, { gFold: Number.POSITIVE_INFINITY, driftK: 5, neutralPhases: '' }), []);
+  assert.equal(armDisagreements(asked, { gFold: 0.1, driftK: 5, neutralPhases: 'other' }).length, 2);
+});
+
+test('a stub is edits: the reasoning part removed, the output tagged; text and the call stay', () => {
+  const tool = { type: 'tool', tool: 'read', state: { input: { filePath: 'a.py' }, output: 'long output' } };
+  const original = { info: { id: 'b' }, parts: [{ type: 'reasoning', text: 'thinking…' }, { type: 'text', text: 'Let me read a.py' }, tool] };
+  const live = [{ info: { id: 'a' }, parts: [{ type: 'text', text: 'task' }] }, original];
+  const result = applyDecisions(live, [{ id: 'b', action: 'edit', edits: [{ part: 'reasoning', text: null }, { part: 'tool', index: 0, text: '[folded · recall: fetch {"stub":3}]' }] }]);
+  assert.deepEqual(result, { dropped: 0, edited: 1, reasoning_edited: 1, reasoning_replaced: 0, text_edited: 0, outputs_edited: 1, parts_removed: 1, tools_removed: 0 });
+  assert.deepEqual(live[1].parts.map((p) => p.type), ['text', 'tool']);
+  assert.equal(live[1].parts[1].state.output, '[folded · recall: fetch {"stub":3}]');
+  assert.deepEqual(live[1].parts[1].state.input, { filePath: 'a.py' });
+  // The host's own object is what the session store and the grading export hold.
+  assert.equal(original.parts.length, 3);
+  assert.equal(tool.state.output, 'long output');
+});
+
+test('a reasoning part is replaced in place (the think rule); a carrier replaces it and removes the tool parts', () => {
+  const mk = () => ({ info: { id: 'b' }, parts: [{ type: 'reasoning', text: 'long thinking' }, { type: 'tool', tool: 'read', state: { input: {}, output: 'out' } }] });
+  const think = [mk()];
+  const thought = applyDecisions(think, [{ id: 'b', action: 'edit', edits: [{ part: 'reasoning', text: '[folded thinking] tail' }] }]);
+  assert.deepEqual(think[0].parts.map((p) => p.text ?? p.state.output), ['[folded thinking] tail', 'out']);
+  assert.deepEqual([thought.reasoning_edited, thought.reasoning_replaced, thought.tools_removed], [1, 1, 0]);
+  const carrier = [mk()];
+  const carried = applyDecisions(carrier, [{ id: 'b', action: 'edit', edits: [{ part: 'reasoning', text: '[summary m9 …]' }, { part: 'tool', index: 0, text: null }] }]);
+  assert.deepEqual([carried.reasoning_replaced, carried.tools_removed, carried.parts_removed], [1, 1, 1]);
+  assert.deepEqual(carrier[0].parts.map((p) => p.type), ['reasoning']);
+  assert.equal(carrier[0].parts[0].text, '[summary m9 …]');
+});
+
+test('a message left with no reasoning, text or tool part is removed: an empty message is not a message', () => {
+  const live = [{ info: { id: 'a' }, parts: [{ type: 'text', text: 'task' }] }, { info: { id: 'b' }, parts: [{ type: 'reasoning', text: 'hm' }, { type: 'step-finish' }] }];
+  assert.equal(applyDecisions(live, [{ id: 'b', action: 'edit', edits: [{ part: 'reasoning', text: null }] }]).edited, 1);
+  assert.equal(live.length, 1);
 });

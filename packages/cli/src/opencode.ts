@@ -11,6 +11,7 @@
  */
 import type {
   AssistantMessageEvent,
+  ReasoningEvent,
   ToolCallEvent,
   ToolResultEvent,
   TraceEventInput,
@@ -71,6 +72,8 @@ export function mapOpencodeExport(
     }
 
     const ts = epochMsToIso(info.time, msg.time);
+    // One opencode message is one turn; its id is the only boundary a text-less message leaves.
+    const turn = typeof info.id === 'string' && info.id.length > 0 ? { turn_id: info.id } : {};
 
     const parts = msg.parts;
     if (!Array.isArray(parts)) {
@@ -79,6 +82,7 @@ export function mapOpencodeExport(
     }
 
     const textParts: string[] = [];
+    const reasoningParts: string[] = [];
     const toolParts: Array<Record<string, unknown>> = [];
 
     for (const part of parts as unknown[]) {
@@ -89,10 +93,16 @@ export function mapOpencodeExport(
       } else if (type === 'tool') {
         toolParts.push(part);
       } else if (type === 'reasoning') {
-        skipped += 1;
+        if (typeof part.text === 'string' && part.text.length > 0) reasoningParts.push(part.text);
       } else if (typeof type === 'string') {
         skipped += 1;
       }
+    }
+
+    // opencode replays a message's reasoning to the model with the rest of it (D24).
+    if (reasoningParts.length > 0) {
+      const event: TraceEventInput<ReasoningEvent> = { seq: nextSeq(), type: 'reasoning', ts, blob: put(reasoningParts.join('\n\n')), ...turn };
+      events.push(event);
     }
 
     let messageSeq: number | undefined;
@@ -102,8 +112,8 @@ export function mapOpencodeExport(
       const blob = put(text);
       const event: TraceEventInput<UserMessageEvent> | TraceEventInput<AssistantMessageEvent> =
         role === 'user'
-          ? { seq: messageSeq, type: 'user_message', ts, blob }
-          : { seq: messageSeq, type: 'assistant_message', ts, blob };
+          ? { seq: messageSeq, type: 'user_message', ts, blob, ...turn }
+          : { seq: messageSeq, type: 'assistant_message', ts, blob, ...turn };
       events.push(event);
     }
 
@@ -123,6 +133,7 @@ export function mapOpencodeExport(
         type: 'tool_call',
         ts,
         tool: toolName,
+        ...turn,
       };
 
       const path = firstString(input, ['filePath', 'file_path', 'path']);
@@ -149,6 +160,7 @@ export function mapOpencodeExport(
             type: 'tool_result',
             ts: resultTs(state, ts),
             call_seq: callSeq,
+            ...turn,
           };
           if (output.length > 0) resultEvent.output_blob = put(output);
           if (status === 'error') {

@@ -50,19 +50,32 @@ Run selection and endpoint:
 | `CT_RUN_TIMEOUT_S` | `3600` | **always set 7200.** 3600 once killed an already-solved run |
 | `CT_SANDBOX` | on | `0` disables it — and silently disables the `mcp`/`ct` arms with it |
 
-Context-tree arms (`CT_ARM=ct` only; `off`/`mcp` ignore them):
+Context-tree arms (`CT_ARM=ct` only; `off`/`mcp` ignore them). The arm has two halves in two
+processes. The **plugin** holds the POLICY: a treatment turn calls the `@context-tree/mcp` tool
+`assemble` (how each unit is represented) and then `evict` only when its trigger fires; `evict`
+takes the assembly as input and may overrule it. The **sidecar** is a host adapter with no pipeline
+logic; it holds the tools' server defaults. Rulings are sticky. Spec: `reports/algorithm.md`.
+
+Policy (plugin, `oc-plugin/policy.mjs`):
 
 | Var | Default | Meaning |
 |---|---|---|
 | `CT_ARM` | `off` | `off` (control) \| `mcp` (tools only) \| `ct` (tools + assembly plugin) |
-| `CT_CT_TRIGGER` | `soft` | `off` \| `hard` \| `soft` \| `cadence` |
-| `CT_CT_WINDOW` | `50347` | the soft limit, in **absolute tokens** — the swept variable, not a fraction of the served window. Check it can fire before using it (references/running.md) |
+| `CT_CT_TRIGGER` | `soft` | `off` \| `hard` \| `soft` — the window `assemble`, `fold` and `evict` are called at. Whether anything folds, comes back, is summarized or deleted is gravity's (`CT_CT_G_*`, `CT_CT_GRAVITY_*` — registry rows, D27), not this |
+| `CT_CT_WINDOW` | `50347` | the soft limit, in **heuristic** tokens — the swept variable. Check it can fire (references/running.md) |
 | `CT_CT_HARD_WINDOW` | `151040` | the model's real context |
-| `CT_CT_CADENCE_N` | `5` | fire every Nth turn under `cadence` |
-| `CT_CT_SUMMARIES` | `0` | `1` folds evicted units to summaries instead of dropping |
-| `CT_CT_ANCHOR` / `CT_CT_TOPK` / `CT_CT_PROTECT_TAIL` | `4` / `5` / `6` | never-evicted units, retrieval hits, protected trailing messages |
-| `CT_CT_REPLY_RESERVE` | `8192` | headroom left for the reply |
-| `CT_ASSEMBLE_PORT` | `8899` | loopback assembly endpoint |
+| `CT_CT_REPLY_RESERVE` / `CT_CT_HEAD_TOKENS` | `8192` / `12000` | held back from the window: the reply, and the head the plugin cannot see |
+| `CT_ASSEMBLE_MS` / `CT_ASSEMBLE_PORT` | `8000` / `8899` | per-turn budget before the plugin fails open; the loopback tool API |
+
+Pipeline (sidecar): **not listed here.** Unit granularity, protection, anchor, summaries, reducer,
+top-k, every score weight, half-life, headroom, drift, RRF and chunking are one registry —
+`packages/mcp/src/params.ts` — and the driver forwards and checks whatever that registry holds:
+
+```bash
+node -e "import('./packages/mcp/dist/index.js').then(m => console.table(m.describeParams().map(({env, default: d, stages, describe}) => ({env, default: d, stages: stages.join('+'), describe}))))"
+```
+
+Sidecar-only: `CT_CT_NEUTRAL_PHASES` (phase granularity) and `CT_CONTRACT` (`v4` tells the agent about the pipeline tools).
 
 `CT_WINDOW` / `CT_OUTPUT_CAP` are a **different mechanism**: they re-declare `limit.context` so
 *opencode's* compaction binds earlier. They do not exercise context-tree. Don't confuse the two.
@@ -87,13 +100,35 @@ Each of these produces a run that completes, grades, and reports nothing wrong.
 - **`@opencode-ai/plugin` fails to install in the sandbox** (`background dependency install failed`,
   ECONNREFUSED — there is no network). It is a detached fork whose result is ignored, so it does
   **not** block plugin loading. Expect the WARN in every sandboxed run and do not chase it.
-- **`CT_CT_HEAD_TOKENS` cannot be set from the shell** for a sandboxed run. The sidecar reads it
-  (default 12,000) but the runner's forwarded key set omits it and `sandboxEnv` is a whitelist.
+- **An arm that evicts silently never gets a recall.** In 21 ct cells the agent called a recall
+  tool once: a spliced-out message leaves nothing to act on, and contract v1 describes summaries the
+  prompt never shows. The fold arms (D26) leave tags with ids that work in one call
+  (`fetch {"stub":31}`): `CT_CT_FOLD_TRIGGER=pressure` + `CT_CONTRACT=v5`; `CT_CT_FOLD_SUMMARIES=1`
+  makes `assemble` ask for summaries, which the sidecar fulfils through `summarize` on the same local
+  model via the relay (`CT_SUMMARY_*`, set by the sandbox). A turn is `assemble → fold → evict`.
+  Check `cell.mcp.tools` before saying anything about recall, and count cells whose last step
+  finished `length` (the 32,000-token output cap) — U18's `soft` losses were those.
+- **Tokens in this arm are HEURISTIC — one heuristic, on both sides.** Sidecar unit sizes, W, the
+  ceiling and the plugin's `kept_tokens` are all core's `HeuristicTokenizer` over what the host
+  sends (`hostContent` / `oc-plugin/size.mjs`). It is not the served tokenizer: one cell measured
+  0.92 served tokens per heuristic token (chars/4, used before 2026-09-21, measured 1.19). The
+  ratio is a per-turn measurement that drifts, never a constant.
+- **Unit granularity decides whether a limit can be held at all.** With `CT_CT_UNIT=phase` one
+  unit can be a 30-turn, ~80K `diagnosis` phase; U18's first gate failed exactly that way. The
+  default is now `turn` (one host message): replayed offline, that same session stayed inside its
+  budget on 102/102 turns against 8/102 for phase units. Check `first_edit_turn` and
+  `max_kept_before_first_edit` in a gate record before blaming W.
+- **Reduce-on-overflow is inert at small W.** The per-unit budget is `(f·W − reserve)/(A+1)`; at
+  W=50,347 with a 20,192 reserve and `f`=0.375 it is 0, so `assemble` reduces nothing. Raise
+  `CT_CT_SOFT_TARGET_FRAC` if the arm is meant to reduce.
 - **`swebench-endpoint.mjs`'s `LOCAL_MODEL` is hardcoded to the Q8 model**, not Swift. `auto` will
   never choose Swift — that is why every Swift baseline is explicitly pinned.
 - **A mistyped knob is refused at start-up**, deliberately: `CT_CT_WINDOW=50k` reads as `NaN`, which
   the keep-everything path would swallow with nothing logged. Trust the refusal; don't work around it.
-- **The arm knobs travel five hops to reach the sidecar, and a break anywhere is silent.** For the
+- **The arm knobs travel to TWO processes, and a break on either path is silent.** Policy rides
+  opencode's process env to the plugin; pipeline rides the MCP `environment` block to the sidecar.
+  `ct.arm_agrees` compares what was asked against the plugin's `loaded` row and the sidecar's
+  `ready` row together. History: For the
   whole of this arm's life `openSandbox` dropped `mcp.env`, so no `CT_CT_*` ever arrived and the
   sidecar booted on its own defaults — `CT_CT_TRIGGER=off`, which never evicts — while the cell
   recorded the arm that was asked for. Fixed, and the cell now carries the sidecar's own account:
@@ -105,6 +140,11 @@ Each of these produces a run that completes, grades, and reports nothing wrong.
   each empty. What cannot be masked is pip's vendored copy inside every venv
   (`site-packages/pip/_vendor/requests`) — search a run's `events.jsonl` for it
   (`experiments/u18-soft-limit/lib.mjs foreignLibraryReads`). Re-check when the pool changes.
+- **The plugin and the sidecar read different halves of the env.** The plugin gets `POLICY_KEYS`
+  only; every registry row reaches only the sidecar. So nothing the plugin decides may depend on a
+  registry row — the think gate of 2026-09-21 ran as its control because the plugin's decision to
+  call `fold` depended on `fold_reasoning_after`, which only the sidecar had. Since D27 the plugin
+  calls `fold` on every turn it assembles and gravity decides the rest in the sidecar.
 - **An arm byte-identical to its control is void, not a null result.** Prove the mechanism fired
   (units dropped > 0) before reporting anything about it.
 

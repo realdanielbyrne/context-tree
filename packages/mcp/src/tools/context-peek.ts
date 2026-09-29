@@ -1,5 +1,5 @@
 /**
- * §9 `context_peek` — "suspicion costs one small call, not a full expansion".
+ * §9 `peek` — "suspicion costs one small call, not a full expansion".
  * Reads RAW L0 payloads, not the summary: the contract's rule 3 points here
  * precisely when a summary is suspected of lagging the branch it describes.
  */
@@ -9,9 +9,9 @@ import { failFrom, ok, parseArgs, requireNode } from '../result.js';
 import { recordRetrieval } from '../observe.js';
 import type { ToolContext, ToolOutcome } from '../types.js';
 
-export const CONTEXT_PEEK = 'context_peek';
+export const CONTEXT_PEEK = 'peek';
 
-/** Small on purpose: a peek that returns a branch is a `context_fetch` wearing a cheaper name. */
+/** Small on purpose: a peek that returns a branch is a `fetch` wearing a cheaper name. */
 export const DEFAULT_PEEK_CHARS = 2_000;
 /** Hard ceiling. A model that asks for 200k here has decided to fetch; make it say so. */
 export const MAX_PEEK_CHARS = 8_000;
@@ -20,10 +20,10 @@ export const CONTEXT_PEEK_DESCRIPTION =
   'Return a short raw excerpt from one node — the recorded events themselves, not their summary. ' +
   'Reach for it when you suspect a summary is stale, thin or wrong and want to check before paying ' +
   `for a full fetch. Excerpts are capped at ${String(MAX_PEEK_CHARS)} characters; if you need more than that, ` +
-  'the honest call is context_fetch.';
+  'the honest call is fetch.';
 
 const shape = {
-  node_id: z.string().min(1).describe('Node to excerpt, from a context_search hit or a fetched branch.'),
+  node_id: z.string().min(1).describe('Node to excerpt, from a search hit or a fetched branch.'),
   max_chars: z
     .number()
     .int()

@@ -17,6 +17,7 @@
 import type { NodeId, NodeSummary, SummaryMeta, TreeStore } from '../contracts/index.js';
 import { summaryMetaFrom } from './contract.js';
 import { branchFacts } from './detail.js';
+import { writeSummary, type Ledger } from '../segment/ledger.js';
 
 /** The `model` stamped on composed root rows — an audit marker, not an LLM id. */
 export const DETERMINISTIC_ROOT_MODEL = 'deterministic-rollup-v1';
@@ -32,10 +33,28 @@ const HEADLINE_MAX_CHARS = 200;
 export const ROOT_KEEP_DEFAULT = 40;
 
 /** First line (or sentence) of a leaf summary, capped — the branch's one-line index entry. */
-function headline(text: string): string {
+export function headline(text: string): string {
   const firstLine = text.split('\n', 1)[0] ?? '';
   const firstSentence = /^.*?[.!?](?=\s|$)/.exec(firstLine)?.[0] ?? firstLine;
   return firstSentence.slice(0, HEADLINE_MAX_CHARS);
+}
+
+const FOLD_LINE_FILES = 6;
+
+/**
+ * A folded phase as the prompt shows it: what it did in one sentence, the files it touched,
+ * and the call that brings it back. The form with evidence behind it — a headline with an id
+ * and a recall line recovered every planted fact (15/15, `reports/metrics/loop8-interim.md`),
+ * while longer summaries cost tokens for no gain and removed the reason to fetch.
+ */
+export function foldLine(summary: NodeSummary, render: 'headline' | 'full' = 'headline'): string {
+  const files = [...new Set(summary.meta.files.map((f) => f.path))];
+  const shown = files.slice(0, FOLD_LINE_FILES).join(', ') + (files.length > FOLD_LINE_FILES ? `, +${String(files.length - FOLD_LINE_FILES)}` : '');
+  return [
+    `[folded phase · ${render === 'full' ? summary.text : headline(summary.text)}`,
+    ...(files.length > 0 ? [`files: ${shown}`] : []),
+    `recall: search, or fetch {"branch_id":"${summary.node_id}"}]`,
+  ].join(' · ');
 }
 
 function mergedMeta(children: readonly NodeSummary[]): SummaryMeta {
@@ -74,6 +93,7 @@ export function composeRootSummary(
   rootId: NodeId,
   now?: () => string,
   rootKeep: number = ROOT_KEEP_DEFAULT,
+  ledger: Ledger | null = null,
 ): NodeSummary | null {
   const root = store.getNode(rootId);
   if (root === null) throw new Error(`composeRootSummary: unknown node ${rootId}`);
@@ -88,7 +108,7 @@ export function composeRootSummary(
   const folded = rootKeep >= covered.length ? [] : covered.slice(0, covered.length - rootKeep);
   const lines = keep.map(({ summary }) => `- ${headline(summary.text)}`);
   // Fold line first, at the oldest members' position — creation order holds
-  // (D5 rule 1). Endpoints AND titles: a bare count gives context_search no
+  // (D5 rule 1). Endpoints AND titles: a bare count gives search no
   // vocabulary to match on, which is this design's one named failure mode.
   const oldest = folded[0];
   const newest = folded[folded.length - 1];
@@ -98,7 +118,7 @@ export function composeRootSummary(
       : [
           `- branches 1..${folded.length} (${folded.length} folded: ${oldest.id}..${newest.id}) ` +
             `— "${headline(oldest.summary.text)}" .. "${headline(newest.summary.text)}" ` +
-            `— call context_search or context_fetch to recall`,
+            `— call search or fetch to recall`,
         ];
   const open = [...new Set(keep.flatMap(({ summary }) => summary.meta.open_questions))];
   const text = [root.title, ...foldLine, ...lines, ...(open.length > 0 ? [`open: ${open.join('; ')}`] : [])].join(
@@ -107,7 +127,7 @@ export function composeRootSummary(
   if (text === store.currentSummary(rootId)?.text) return null;
 
   const childIds = covered.map(({ id }) => id); // ALL children — lossy in prompt, lossless on disk
-  return store.putSummary({
+  return writeSummary(store, {
     node_id: rootId,
     model: DETERMINISTIC_ROOT_MODEL,
     text,
@@ -116,5 +136,5 @@ export function composeRootSummary(
       ...childIds,
     ]),
     ...(now !== undefined ? { created_at: now() } : {}),
-  });
+  }, ledger, 'compose-root');
 }

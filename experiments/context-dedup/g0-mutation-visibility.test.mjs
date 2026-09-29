@@ -8,7 +8,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { g0Decisions } from './ct-sidecar.mjs';
+import { g0Decisions, g0FoldText } from './ct-sidecar.mjs';
 import { gradeG0 } from './g0-mutation-visibility.mjs';
 
 const messages = (n) => Array.from({ length: n }, (_, i) => ({ id: `m${i}` }));
@@ -26,16 +26,16 @@ test('the gate FOLDS the task statement rather than splicing it, so a user messa
   // Splicing it produced `500 Jinja Exception: No user query found in messages` — opencode's
   // loop has exactly one user message. A rejected request cannot answer the gate's question.
   const fired = g0Decisions(messages(3), FOLD);
-  assert.deepEqual(fired[0], { id: 'm0', action: 'fold', text: FOLD, g0: true });
+  assert.deepEqual(fired[0], { id: 'm0', action: 'edit', unit: 'g0', edits: [{ part: 'text', text: FOLD }], g0: true });
   assert.deepEqual(fired.slice(1).map((d) => d.action), ['keep', 'keep']);
 });
 
 test('the gate also splices an assistant message, which is what the arms actually do', () => {
   const fired = g0Decisions(messages(4), FOLD);
-  assert.equal(fired[0].action, 'fold');
+  assert.equal(fired[0].action, 'edit');
   // Index 1 is an assistant message: its tool calls and results travel together inside it,
   // so removing it can never orphan a result.
-  assert.deepEqual(fired[1], { id: 'm1', action: 'drop', g0: true });
+  assert.deepEqual(fired[1], { id: 'm1', action: 'drop', unit: 'g0', g0: true });
   assert.deepEqual(fired.slice(2).map((d) => d.action), ['keep', 'keep']);
 });
 
@@ -49,12 +49,19 @@ const arm = (over = {}) => ({
   before_first_drop: 1, before_all_marked: true, after_first_drop: 3, after_all_clean: true,
   after_all_replaced: true, replacement_seen: 3,
   plugin_loaded: true, plugin_turns: 4, plugin_errors: 0, fold_turns: 3, drop_turns: 3,
+  reduce_turns: 2, after_first_reduce: 2, after_all_reduced: true, reduce_seen: 2,
+  stub_turns: 2, after_first_stub: 2, after_all_stubbed: true, stub_seen: 2,
+  think_turns: 2, after_first_think: 2, after_all_thought: true, think_seen: 2,
+  carrier_turns: 2, after_first_carrier: 2, after_all_carried: true, carrier_seen: 2,
   sidecar_g0_rows: 3, sidecar_assembles: 4, ...over,
 });
 const control = (over = {}) => arm({
   tag: 'control', present: 4, missing: 0, fold_turns: 0, drop_turns: 0, sidecar_g0_rows: 0,
   before_first_drop: 4, after_first_drop: 0, after_all_clean: false, after_all_replaced: false,
-  replacement_seen: 0, ...over,
+  replacement_seen: 0, reduce_turns: 0, after_first_reduce: 0, after_all_reduced: false, reduce_seen: 0,
+  stub_turns: 0, after_first_stub: 0, after_all_stubbed: false, stub_seen: 0,
+  think_turns: 0, after_first_think: 0, after_all_thought: false, think_seen: 0,
+  carrier_turns: 0, after_first_carrier: 0, after_all_carried: false, carrier_seen: 0, ...over,
 });
 
 test('G0 passes only when the control holds the marker and the treatment loses it in order', () => {
@@ -167,4 +174,55 @@ test('a replacement that shows up in the control was never unique to the plugin'
   const verdict = gradeG0({ control: control({ replacement_seen: 2 }), treatment: arm() });
   assert.equal(verdict.void, true);
   assert.match(verdict.voids.join(' '), /not unique to the plugin/);
+});
+
+test('an in-place output reduction that never reaches the wire fails the gate', () => {
+  assert.match(gradeG0({ control: control(), treatment: arm({ reduce_turns: 0 }) }).reasons.join(' '), /never reduced/);
+  assert.match(gradeG0({ control: control(), treatment: arm({ after_all_reduced: false }) }).reasons.join(' '), /reduced tool output never reached/);
+  assert.match(gradeG0({ control: control({ reduce_seen: 1 }), treatment: arm() }).voids.join(' '), /reduced-output text appeared/);
+  assert.match(gradeG0({ control: control(), treatment: arm({ stub_turns: 0 }) }).reasons.join(' '), /never stubbed/);
+  assert.match(gradeG0({ control: control(), treatment: arm({ after_all_stubbed: false }) }).reasons.join(' '), /stub tag never reached/);
+  assert.match(gradeG0({ control: control({ stub_seen: 1 }), treatment: arm() }).voids.join(' '), /stub tag's text appeared/);
+});
+
+test('the gate makes every edit an arm makes, one per tool-bearing message, each with its own marker', () => {
+  const messages = [0, 1, 2, 3, 4, 5, 6, 7].map((i) => ({ id: `m${i}`, hasTools: i >= 3 }));
+  const all = g0Decisions(messages, 'FOLD', 'REDUCED', 'STUB', 'THINK', 'CARRIER');
+  const edit = (i) => all[i].edits;
+  assert.deepEqual(edit(3), [{ part: 'tool', index: 0, text: 'REDUCED' }]);
+  assert.deepEqual(edit(4), [{ part: 'reasoning', text: null }, { part: 'tool', index: 0, text: 'STUB' }]);
+  assert.deepEqual(edit(5), [{ part: 'reasoning', text: 'THINK' }]);
+  assert.deepEqual(edit(6), [{ part: 'reasoning', text: 'CARRIER' }, { part: 'tool', index: 0, text: null }]);
+  assert.equal(all[7].action, 'keep');
+  // Each case waits for enough messages, and never lands on a message without tools.
+  assert.ok(g0Decisions(messages.slice(0, 4), 'FOLD', 'REDUCED').every((d) => d.action !== 'edit' || d.id === 'm0'));
+  assert.ok(g0Decisions(messages, 'FOLD').slice(2).every((d) => d.action === 'keep'));
+});
+
+test('a stub turn is not a think turn: the think and carrier cases are dated from their own counters', () => {
+  // The live FAIL of 2026-09-21: the stub case removes a reasoning part one request before the think
+  // case replaces one, and dating "first think" from `reasoning_edited` put a marker-free request in its window.
+  assert.match(gradeG0({ control: control(), treatment: arm({ after_all_thought: false }) }).reasons.join(' '), /replaced reasoning never reached/);
+  const v = gradeG0({ control: control(), treatment: arm({ carrier_turns: 0, after_first_carrier: 0, after_all_carried: false }) });
+  assert.match(v.reasons.join(' '), /never carried a summary/);
+});
+
+test('the task statement recalled through a tool voids the gate rather than failing it', () => {
+  // 2026-09-21: the agent called fetch on the task node; the original marker came back inside a
+  // tool output the gate never edits and rode on every later request beside the replacement.
+  const v = gradeG0({ control: control(), treatment: arm({ recalled: 1, after_all_clean: false, present: 16, missing: 6 }) });
+  assert.equal(v.pass, false);
+  assert.match(v.voids.join(' '), /recalled the task statement/);
+  // With a clean wire the recall changes nothing.
+  assert.deepEqual(gradeG0({ control: control(), treatment: arm({ recalled: 1 }) }).voids, []);
+});
+
+test('the gate folds the task to the statement with the marker swapped, so the agent has no reason to recall it', () => {
+  const task = 'Fix the bug.\nIgnore this line; it is a harness marker: CTG0-aaa\nDo a review.';
+  const folded = g0FoldText(task, 'CTG0-aaa', 'CTG0FOLD-bbb', 'fallback');
+  assert.equal(folded, 'Fix the bug.\nIgnore this line; it is a harness marker: CTG0FOLD-bbb\nDo a review.');
+  assert.ok(!folded.includes('CTG0-aaa'));
+  // Before the task is ingested, or without a marker in it, only the short text is left to fold to.
+  assert.equal(g0FoldText('', 'CTG0-aaa', 'CTG0FOLD-bbb', 'fallback'), 'fallback');
+  assert.equal(g0FoldText('no marker here', 'CTG0-aaa', 'CTG0FOLD-bbb', 'fallback'), 'fallback');
 });

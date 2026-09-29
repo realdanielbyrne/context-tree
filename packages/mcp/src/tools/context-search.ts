@@ -1,15 +1,15 @@
 /**
- * §9 `context_search` — RRF ensemble retrieval over the L0-unit corpus.
+ * §9 `search` — RRF ensemble retrieval over the L0-unit corpus.
  *
  * The corpus is the store's nodes chunked by the recursive character splitter; the
  * ranker is BM25 + vector kNN fused by RRF (`ensembleRetrieve`), degrading to
  * BM25-only when no embedder is available. Each HIT is a whole UNIT (a phase/branch,
  * or a file node under `kind: "file"`): its coordinates plus an excerpt of its
- * best-matching chunk. `context_fetch` / `context_peek` read the whole unit.
+ * best-matching chunk. `fetch` / `peek` read the whole unit.
  *
  * This replaced the tested-and-lost summary-ranking path + the never-compared
  * provider fan-out (see `reports/session-handoff.md`); `retrieve/retriever.ts`
- * survives only for `context_fetch` / `context_peek` (L0 replay + expansion).
+ * survives only for `fetch` / `peek` (L0 replay + expansion).
  */
 import { z } from 'zod';
 import {
@@ -23,7 +23,7 @@ import { failFrom, ok, parseArgs } from '../result.js';
 import { recordRetrieval } from '../observe.js';
 import type { ToolContext, ToolOutcome } from '../types.js';
 
-export const CONTEXT_SEARCH = 'context_search';
+export const CONTEXT_SEARCH = 'search';
 
 export const CONTEXT_SEARCH_DESCRIPTION =
   "Search this task's recorded history. Reach for it when you know WHAT you need but not WHERE it " +
@@ -31,7 +31,7 @@ export const CONTEXT_SEARCH_DESCRIPTION =
   'answering anything that must reproduce a literal. Each hit is one UNIT of work (a phase/branch, or a ' +
   'file node when `kind: "file"`): its `node_id`, `title`, position (`seq`), and an `excerpt` of its ' +
   "best-matching content. If the excerpt already shows the exact literal you need, answer from it. " +
-  "Otherwise call context_fetch with the hit's node_id as branch_id to read the whole unit — that is the " +
+  "Otherwise call fetch with the hit's node_id as branch_id to read the whole unit — that is the " +
   'expensive read; the excerpt is the cheap one.';
 
 const shape = {

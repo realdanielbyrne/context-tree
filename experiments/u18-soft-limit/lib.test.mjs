@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { analyze as analyzeRaw, cellProblems, foreignLibraryReads, gateVerdict, instrumentFailure, signFlipP, wireStats, MODEL, RULES, SERVED_WINDOW } from './lib.mjs';
+import { ARMS, recallCalls, KNOBS, U18_DEFAULTS, U18_FIXED, armKnobs, resolveKnobs, servedPerHeuristic, tagBase, analyze as analyzeRaw, cellProblems, foreignLibraryReads, gateVerdict, instrumentFailure, signFlipP, wireStats, MODEL, RULES, SERVED_WINDOW } from './lib.mjs';
 
 // The fixture's control solves 27/30; the A/A rung is exercised on its own below.
 const analyze = (o) => analyzeRaw({ historicalSolved: 27, ...o });
@@ -103,7 +103,7 @@ test('cellProblems catches the silent arm failures', () => {
 
 test('gate: soft must evict, keep the wire clean, and hold the real peak near W', () => {
   const wire = { present: true, requests: 80, ok: 80, rejected: 0, peak_bytes: 1 };
-  const side = { max_ms: 900, over_ceiling_turns: 0 };
+  const side = { max_ms: 900, over_ceiling_turns: 0, over_budget_rulings: 0 };
   const good = cell('soft', 'g', 0, { peak: 60000, fired: true });
   const v = (c, w = wire, s2 = side, arm = 'soft') => gateVerdict(c, w, s2, { arm, window: W }).pass;
   assert.equal(v(good), true);
@@ -113,6 +113,7 @@ test('gate: soft must evict, keep the wire clean, and hold the real peak near W'
   assert.equal(v(cell('soft', 'g', 0, { peak: Math.round(W * RULES.gatePeakFactor) + 1, fired: true })), false);
   assert.equal(v(cell('soft', 'g', 0, { peak: Math.round(W * RULES.gatePeakFactor), fired: true })), true);
   assert.equal(v(good, wire, { ...side, max_ms: RULES.gateMaxAssembleMs + 1 }), false);
+  assert.equal(v(good, wire, { ...side, over_budget_rulings: 1 }), false, 'a ruling the pinned units defeated');
   assert.equal(v(cell('hard', 'g', 0, { peak: 140000 }), wire, side, 'hard'), true, 'hard need not evict');
 });
 
@@ -188,4 +189,128 @@ test('signFlipP is exact and one-sided', () => {
   assert.equal(signFlipP([-1, -1, -1]), 1 / 8);
   assert.equal(signFlipP([1, 1, 1]), 1);
   assert.equal(signFlipP([-2, 1]), 2 / 4);
+});
+
+test('the pipeline knobs ARE the package registry; only the stated departures differ', async () => {
+  const { PIPELINE_PARAMS, PIPELINE_DEFAULTS } = await import(new URL('../../packages/mcp/dist/index.js', import.meta.url).href);
+  const k = resolveKnobs({});
+  for (const spec of PIPELINE_PARAMS) {
+    if (spec.env in U18_FIXED) { assert.ok(!KNOBS.some((x) => x.ct === spec.env), `${spec.env} is fixed, not a knob`); continue; }
+    const knob = KNOBS.find((x) => x.ct === spec.env);
+    assert.ok(knob, `${spec.env} is a knob with no edit here`);
+    const packageDefault = spec.kind === 'bool' ? (spec.default ? '1' : '0') : String(spec.default);
+    assert.equal(k[spec.env], U18_DEFAULTS[spec.env] ?? packageDefault, spec.env);
+  }
+  assert.deepEqual(Object.keys(U18_DEFAULTS).sort(), ['CT_CT_ANCHOR', 'CT_CT_G_FOLD', 'CT_CT_G_SUMMARIZE', 'CT_CT_G_UNFOLD', 'CT_CT_G_UNSUMMARIZE']);
+  assert.equal(PIPELINE_DEFAULTS.anchor, 4, 'the package default is still 4; U18 runs at 3 on purpose');
+  assert.equal(new Set(KNOBS.map((x) => x.ct)).size, KNOBS.length);
+  assert.equal(new Set(KNOBS.map((x) => x.name)).size, KNOBS.length);
+  // top_k was deleted once; it is a knob again, and so is what makes it matter.
+  assert.deepEqual(['TOPK', 'W_RELEVANCE', 'UNIT', 'PROTECTION'].filter((n) => !KNOBS.some((x) => x.name === n)), []);
+});
+
+test('a knob that does not parse is refused, and so is a window that cannot work', () => {
+  for (const bad of [{ U18_ANCHOR: '2.5' }, { U18_ANCHOR: 'three' }, { U18_W_DORMANCY: '-1' }, { U18_REDUCER: 'magic' }, { U18_DRIFT_K: '0' }, { U18_SOFT_TARGET_FRAC: '1.5' }, { U18_UNIT: 'message' }, { U18_PRIORITY_HALFLIFE: '0' }, { U18_WINDOW: '20000' }, { U18_WINDOW: '151040' }, { U18_HARD_WINDOW: '262144' }]) {
+    assert.throws(() => resolveKnobs(bad), RangeError, JSON.stringify(bad));
+  }
+  assert.equal(resolveKnobs({ U18_ANCHOR: '0', U18_NEUTRAL_PHASES: 'none' }).CT_CT_ANCHOR, '0');
+});
+
+test('tags separate every setting an arm depends on, and nothing it does not', () => {
+  const base = resolveKnobs({});
+  assert.match(tagBase('soft', base), /^u18-soft-W50347-A3-[0-9a-f]{6}$/);
+  assert.equal(tagBase('off', base), 'u18-off');
+  const tags = (env) => ['soft', 'hard'].map((a) => tagBase(a, resolveKnobs(env)));
+  const [soft, hard] = tags({});
+  assert.notEqual(tags({ U18_ANCHOR: '4' })[0], soft);
+  assert.notEqual(tags({ U18_W_DORMANCY: '2' })[1], hard, 'a weight moves the hard arm too');
+  // The soft window is not something `hard` reads: a W sweep re-uses its cells.
+  assert.deepEqual(tags({ U18_WINDOW: '75520' }).map((t, i) => t === [soft, hard][i]), [false, true]);
+  assert.equal(armKnobs('hard', base).CT_CT_WINDOW, undefined);
+});
+
+test('a cell that ran under another config is an integrity problem', () => {
+  const knobs = resolveKnobs({});
+  const c = cell('soft', 'p0', 0, { peak: 1, fired: true });
+  Object.assign(c.ct, armKnobs('soft', knobs));
+  assert.deepEqual(cellProblems(c, { arm: 'soft', window: W, knobs }), []);
+  c.ct.CT_CT_ANCHOR = '4';
+  assert.match(cellProblems(c, { arm: 'soft', window: W, knobs })[0], /CT_CT_ANCHOR ran as "4"/);
+});
+
+test('served-per-heuristic is a per-turn distribution, and null when the join cannot be trusted', () => {
+  const rows = [{ kept_tokens: 900 }, { kept_tokens: 10_000 }, { kept_tokens: 20_000 }, { kept_tokens: 40_000 }, { kept_tokens: 40_000 }];
+  const served = [11_000, 22_000, 35_000, 59_000, 63_000];
+  assert.deepEqual(servedPerHeuristic(rows, served), { aligned: true, turns: 4, min: 1.1, median: 1.2, max: 1.3, first_quartile_median: 1.1, last_quartile_median: 1.3 });
+  assert.deepEqual(servedPerHeuristic(rows, served.slice(1)), { aligned: false, turns: 0 });
+});
+
+/** A gravity-arm cell: soft trigger, blocks folded, optionally the agent's own recall calls. */
+function recallCell(arm, instance, repeat, { pass = true, recalls = 0, over = {} } = {}) {
+  const base = cell('soft', instance, repeat, { pass, peak: 45000, fired: true });
+  const mode = arm === 'gravity-adaptive' ? 'adaptive' : 'fixed';
+  return {
+    ...base, mcp: { tools: recalls ? { 'context-tree_fetch': recalls } : {} },
+    ct: { ...base.ct, stubs_folded: 9, stubs_unfolded: 2, reasoning_edited: 4, kappa_changes: mode === 'adaptive' ? 3 : 0, arm_effective: { trigger: 'soft', softWindow: W, gravityMode: mode } },
+    ...over,
+  };
+}
+
+test('the arms are a ladder: each sets one thing more, and recorded tags do not move', () => {
+  const knobs = resolveKnobs({});
+  assert.equal(armKnobs('soft', knobs).CT_CT_G_FOLD, 'Infinity', 'soft pins every breakpoint: a sweep cannot perturb the control');
+  assert.equal(armKnobs('soft', resolveKnobs({ U18_G_FOLD: '0.1' })).CT_CT_G_FOLD, 'Infinity');
+  assert.equal(armKnobs('gravity', resolveKnobs({ U18_G_FOLD: '0.1' })).CT_CT_G_FOLD, '0.1');
+  assert.equal(armKnobs('gravity', knobs).CT_CT_GRAVITY_MODE, 'fixed');
+  assert.equal(armKnobs('gravity', knobs).CT_CONTRACT, 'v5');
+  assert.equal(armKnobs('gravity-adaptive', knobs).CT_CT_GRAVITY_MODE, 'adaptive');
+  assert.throws(() => armKnobs('nope', knobs), /unknown arm/);
+  // Waves were recorded under these two tags before gravity existed.
+  assert.equal(tagBase('soft', knobs), 'u18-soft-W50347-A3-0b6139');
+  assert.equal(tagBase('hard', knobs), 'u18-hard-A3-3b1020');
+  assert.equal(tagBase('soft', resolveKnobs({ U18_G_FOLD: '0.1' })), 'u18-soft-W50347-A3-0b6139');
+  assert.equal(new Set(['soft', 'hard', 'gravity', 'gravity-adaptive'].map((a) => tagBase(a, knobs))).size, 4);
+  // A breakpoint or κ moved is part of the key like any other knob.
+  assert.notEqual(tagBase('gravity', resolveKnobs({ U18_G_FOLD: '0.2' })), tagBase('gravity', knobs));
+  assert.notEqual(tagBase('gravity', resolveKnobs({ U18_GRAVITY_K: '2' })), tagBase('gravity', knobs));
+});
+
+test('an older cell that never recorded a late knob is not an integrity problem; a wrong value is', () => {
+  const knobs = resolveKnobs({});
+  const recorded = Object.fromEntries(Object.entries(armKnobs('soft', knobs)).filter(([k]) => !/G_|GRAVITY|REPEAT|BOUNDARY|COVARIANCE|FOLD_REASONING|SUMMARY_/.test(k)));
+  const old = cell('soft', 'p0', 0, { peak: 45000, fired: true });
+  assert.deepEqual(cellProblems({ ...old, ct: { ...old.ct, ...recorded } }, { arm: 'soft', window: W, knobs }), []);
+  assert.match(cellProblems({ ...old, ct: { ...old.ct, ...recorded, CT_CT_G_FOLD: '0.5' } }, { arm: 'soft', window: W, knobs }).join(' '), /CT_CT_G_FOLD ran as/);
+  // The mode belongs to exactly one arm.
+  assert.match(cellProblems(recallCell('gravity-adaptive', 'p0', 0), { arm: 'gravity', window: W }).join(' '), /gravity adaptive: not what the gravity arm is/);
+});
+
+test('gate: a cell too short to show anything fails, and a fold arm must have done what it is', () => {
+  const wire = { present: true, requests: 80, ok: 80, rejected: 0, peak_bytes: 1 };
+  const side = { max_ms: 900, over_ceiling_turns: 0, over_budget_rulings: 0 };
+  const verdict = (c, arm) => gateVerdict(c, wire, side, { arm, window: W });
+  assert.match(verdict(cell('hard', 'g', 0, { peak: 13059, over: { steps: 1 } }), 'hard').reasons.join(' '), /too short/);
+  assert.equal(verdict(recallCell('gravity', 'g', 0), 'gravity').pass, true);
+  assert.equal(verdict(recallCell('gravity-adaptive', 'g', 0), 'gravity-adaptive').pass, true);
+  const silent = recallCell('gravity', 'g', 0);
+  assert.match(verdict({ ...silent, ct: { ...silent.ct, stubs_folded: 0, fired: true, evicted_units: 3 } }, 'gravity').reasons.join(' '), /no block was ever folded/);
+  const still = recallCell('gravity-adaptive', 'g', 0);
+  assert.match(verdict({ ...still, ct: { ...still.ct, kappa_changes: 0 } }, 'gravity-adaptive').reasons.join(' '), /κ never moved/);
+});
+
+test('a recall arm whose agent never recalled says nothing about recall', () => {
+  const base = arms();
+  const gravity = (recalls) => IDS.flatMap((id, i) => [0, 1, 2].map((r) => recallCell('gravity', id, r, { pass: id !== 'p9', recalls: i < recalls && r === 0 ? 2 : 0 })));
+  const quiet = analyze({ arms: { ...base, gravity: gravity(0) }, window: W });
+  assert.equal(quiet.recall.gravity.exercised, false);
+  assert.match(quiet.recall.gravity.note, /RECALL NOT EXERCISED/);
+  assert.equal(quiet.arms.gravity.recall_tool_calls, 0);
+  const used = analyze({ arms: { ...base, gravity: gravity(RULES.minRecallCells) }, window: W, finish: (c) => ({ last: c.arm === 'ct' && c.instance === 'p0' ? 'length' : 'stop' }) });
+  assert.equal(used.recall.gravity.exercised, true);
+  assert.equal(used.arms.gravity.recall_tool_calls, 2 * RULES.minRecallCells);
+  assert.equal(used.recall.gravity.vs_soft.delta_solved_itt, 0);
+  assert.ok(used.arms.gravity.cells_ended_at_output_cap > 0);
+  // The registered ladder is untouched by the extra arm.
+  assert.equal(used.verdict, analyze({ arms: base, window: W }).verdict);
+  assert.equal(recallCalls({ mcp: { tools: { 'context-tree_evict': 3, 'context-tree_search': 1 } } }), 1);
 });

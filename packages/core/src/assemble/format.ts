@@ -28,7 +28,7 @@ function spanLabel(span: SymbolSpan): string {
  * block's decisions/open-questions/fetchable-nodes are merges over EVERY child,
  * so an uncapped list re-introduces the ~50-tok/branch growth that capping the
  * root's headline list (D17) removed. Prompt lossy, L1 lossless — the full list
- * stays in the stored SummaryMeta and is reachable by context_fetch.
+ * stays in the stored SummaryMeta and is reachable by fetch.
  */
 const LIST_MAX_VALUES = 40;
 
@@ -42,7 +42,7 @@ function listLine(label: string, values: readonly string[]): string | null {
 /**
  * A Zone B summary block. The §8 rehydration pointers (files, symbols, tests,
  * artifacts, open questions, covered node ids) are rendered, not just the prose:
- * they are what lets the model notice it needs `context_fetch` at all (§9).
+ * they are what lets the model notice it needs `fetch` at all (§9).
  */
 export function renderSummaryBlock(node: TreeNode, summary: NodeSummary, isRoot: boolean): string {
   // No seq range here, deliberately: `span_end_seq` grows on every append to
@@ -94,7 +94,7 @@ export function renderLinksBlock(node: TreeNode, links: readonly NodeLink[]): st
  * Max rendered args bytes when a post-state blob is also present (v5.9b).
  *
  * Exported because the SAME rule has to hold wherever an event is rendered.
- * It did not: `retrieve/detail.ts` rendered `context_fetch` results with
+ * It did not: `retrieve/detail.ts` rendered `fetch` results with
  * uncapped args, so a write's content appeared twice — once JSON-escaped in the
  * args and once raw in the post-state — in exactly the payload the model reads
  * back. Measured on the frozen store: 6 of 754 events carry a byte-identical
@@ -103,12 +103,52 @@ export function renderLinksBlock(node: TreeNode, links: readonly NodeLink[]): st
  */
 export const ARGS_CAP_WITH_BLOB = 512;
 
+/**
+ * What a HOST sends for this event — the strings a unit is SIZED by. Not `renderEvent`:
+ * that adds `### …` headers and repeats a write's content from its post-state blob, none of
+ * which a host puts in the prompt, and a unit sized by it cannot be compared with the
+ * message array it stands for.
+ */
+export function hostContent(event: TraceEvent, blobs: BlobStore): string[] {
+  switch (event.type) {
+    case 'user_message':
+    case 'assistant_message':
+    case 'reasoning':
+      return [blobs.getText(event.blob)];
+    case 'tool_call':
+      return event.args_blob === undefined ? [] : [blobs.getText(event.args_blob)];
+    case 'tool_result':
+      return event.output_blob === undefined ? [] : [blobs.getText(event.output_blob)];
+    case 'segment_boundary':
+    case 'manual_annotation':
+    case 'fold':
+    case 'unfold':
+      return [];
+  }
+}
+
+const FIRST_LINE_CHARS = 100;
+
+/**
+ * What replaces an evicted tool output. It DESCRIBES and never instructs: what was here,
+ * how large, how it began, and the one call that returns it. A reference that names its
+ * content beat a length-matched placebo (T12b); "stop re-reading" nudges were ignored 33
+ * times out of 33 (`reports/metrics/coding-harness/report-readloop.md`).
+ */
+export function evictedTag(output: string, tokens: number, unitId: string): string {
+  const first = output.split('\n').find((line) => line.trim().length > 0)?.trim() ?? '';
+  const shown = first.length > FIRST_LINE_CHARS ? `${first.slice(0, safeCut(first, FIRST_LINE_CHARS))}…` : first;
+  return `[evicted · ${String(tokens)} tokens · began: ${JSON.stringify(shown)} · recall: fetch {"unit":"${unitId}"}]`;
+}
+
 export function renderEvent(event: TraceEvent, blobs: BlobStore): string {
   switch (event.type) {
     case 'user_message':
       return `### user (seq ${event.seq})\n${blobs.getText(event.blob)}`;
     case 'assistant_message':
       return `### assistant (seq ${event.seq})\n${blobs.getText(event.blob)}`;
+    case 'reasoning':
+      return `### reasoning (seq ${event.seq})\n${blobs.getText(event.blob)}`;
     case 'tool_call': {
       const target = event.path === undefined ? '' : ` ${event.path}`;
       const lines = [`### tool_call ${event.tool}${target} (seq ${event.seq})`];
@@ -144,10 +184,14 @@ export function renderEvent(event: TraceEvent, blobs: BlobStore): string {
       return `### phase boundary ${event.from ?? 'none'} -> ${event.to} (seq ${event.seq})`;
     case 'manual_annotation':
       return `### annotation (seq ${event.seq})\n${blobs.getText(event.blob)}`;
+    case 'fold':
+      return `### fold ${event.fold_id} (${event.kind} over seq ${String(event.from_seq)}–${String(event.to_seq)})`;
+    case 'unfold':
+      return `### unfold ${event.fold_id}`;
   }
 }
 
-/** A tail block — `context_fetch` / `context_search` / `context_peek` output. */
+/** A tail block — `fetch` / `search` / `peek` output. */
 export function renderTailBlock(id: string, text: string, ephemeral: boolean): string {
   return `## retrieved: ${id}${ephemeral ? ' (dropped at the next phase boundary)' : ''}\n${text}`;
 }
@@ -155,7 +199,7 @@ export function renderTailBlock(id: string, text: string, ephemeral: boolean): s
 const BARE_ELISION = '...';
 
 export function elision(dropped: number): string {
-  return `\n...[${dropped} chars elided - call \`context_fetch\` for the full detail]`;
+  return `\n...[${dropped} chars elided - call \`fetch\` for the full detail]`;
 }
 
 /** Never split a surrogate pair — a lone half is not valid text to send. */
@@ -170,7 +214,7 @@ export function safeCut(text: string, at: number): number {
  * Shrinks `text` to at most `maxTokens` under `tokenizer`, keeping the head and
  * saying loudly how much went missing. Truncation is deliberately visible in the
  * text: §10 rule 4's Zone C overflow is supposed to push the model toward a
- * narrow `context_fetch`, which it cannot do if the loss is invisible.
+ * narrow `fetch`, which it cannot do if the loss is invisible.
  */
 export function truncateToTokens(text: string, maxTokens: number, tokenizer: Tokenizer): string {
   if (tokenizer.count(text) <= maxTokens) return text;

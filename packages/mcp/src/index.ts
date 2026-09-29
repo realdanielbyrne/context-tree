@@ -1,12 +1,36 @@
 /**
- * `@context-tree/mcp` — the agent-facing surface (§9). Four tools and one
- * contract, over stdio.
+ * `@context-tree/mcp` — the pipeline as tools (§9): one registry, served to agents
+ * over MCP stdio and to host plugins over loopback HTTP, plus the contract.
  *
  * The handlers are exported beside the server on purpose: §11's eval harness
  * runs its own tool-use loop, and an eval that called a different code path
  * would measure a surface the agent never sees.
  */
-export { CONTRACT_PROMPT, SERVER_NAME, SERVER_VERSION, createServer, type CreateServerOptions } from './server.js';
+export { CONTRACT_PROMPT, SERVER_NAME, SERVER_VERSION, createServer, toolContext, type CreateServerOptions } from './server.js';
+export { createHttpApi, type HttpApi, type HttpApiOptions } from './http.js';
+export {
+  PIPELINE_DEFAULTS,
+  PIPELINE_PARAMS,
+  boundaryOf,
+  describeParams,
+  pipelineFromEnv,
+  stageArgsShape,
+  withOverrides,
+  type ParamSpec,
+  type PipelineParams,
+  type Stage,
+} from './params.js';
+export {
+  advanceTurn,
+  createSession,
+  dispositionOf,
+  sessionOf,
+  sessionUnits,
+  viewOf,
+  type Session,
+  type SessionUnit,
+  type UnitView,
+} from './session.js';
 export * from './tools/index.js';
 export { fail, failFrom, ok, parseArgs, requireNode, toCallToolResult } from './result.js';
 export { recordAnnotation, recordRetrieval, type AnnotationRecord } from './observe.js';
