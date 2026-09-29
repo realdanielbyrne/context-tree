@@ -201,7 +201,7 @@ test('the pipeline knobs ARE the package registry; only the stated departures di
     const packageDefault = spec.kind === 'bool' ? (spec.default ? '1' : '0') : String(spec.default);
     assert.equal(k[spec.env], U18_DEFAULTS[spec.env] ?? packageDefault, spec.env);
   }
-  assert.deepEqual(U18_DEFAULTS, { CT_CT_ANCHOR: '3' });
+  assert.deepEqual(Object.keys(U18_DEFAULTS).sort(), ['CT_CT_ANCHOR', 'CT_CT_G_FOLD', 'CT_CT_G_SUMMARIZE', 'CT_CT_G_UNFOLD', 'CT_CT_G_UNSUMMARIZE']);
   assert.equal(PIPELINE_DEFAULTS.anchor, 4, 'the package default is still 4; U18 runs at 3 on purpose');
   assert.equal(new Set(KNOBS.map((x) => x.ct)).size, KNOBS.length);
   assert.equal(new Set(KNOBS.map((x) => x.name)).size, KNOBS.length);

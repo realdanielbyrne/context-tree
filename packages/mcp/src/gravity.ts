@@ -73,10 +73,14 @@ export function observe(state: GravityState, events: readonly TraceEvent[], fold
   let recall = 0;
   let repeat = 0;
   let foldedRead = 0;
+  // A repeat is the same call getting the same answer: rerunning the tests after an edit is work,
+  // the same grep returning the same nothing (the 1,300-step loop of 2026-09-22) is not.
+  const answer = new Map<number, string>();
+  for (const event of events) if (event.seq > state.scannedSeq && event.type === 'tool_result') answer.set(event.call_seq, event.output_blob ?? '');
   for (const event of events) {
     if (event.seq <= state.scannedSeq || event.type !== 'tool_call') continue;
     if (RECALL.test(event.tool)) recall += 1;
-    const key = [event.tool, event.args_blob ?? '', event.command ?? '', event.path ?? ''].join('\u0000');
+    const key = [event.tool, event.args_blob ?? '', event.command ?? '', event.path ?? '', answer.get(event.seq) ?? ''].join('\u0000');
     const last = state.calls.get(key);
     if (last !== undefined && turn - last <= params.repeatWindow) repeat += 1;
     state.calls.set(key, turn);

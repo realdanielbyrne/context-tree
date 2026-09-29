@@ -352,7 +352,14 @@ describe('folds (D26, D27): one pull folds, unfolds and asks for summaries; summ
     expect(starved.signals?.repeat).toBeGreaterThan(0);
     expect(starved.kappa).toBeLessThan(k0);
     unwrap(await contextEvict(ctx, { window_tokens: total / 3, gravity_mode: 'adaptive', turn: 2 }));
+    // Rerunning the tests after an edit is work, not a repeat: same call, different result.
+    for (const [id, out] of [['m9', '1 failed'], ['m10', '1 passed']]) {
+      const k = trace.append({ type: 'tool_call', ts: TS, tool: 'bash', command: 'pytest t.py', args_blob: blobs.put('{"command":"pytest t.py"}'), turn_id: id });
+      trace.append({ type: 'tool_result', ts: TS, call_seq: k.seq, output_blob: blobs.put(out), turn_id: id });
+    }
+    ingest({ handle: ctx.handle });
     const after = unwrap(await contextFold(ctx, { window_tokens: total, gravity_mode: 'adaptive', turn: 3 }));
+    expect(after.signals?.repeat).toBe(0);
     expect(after.signals?.overflow).toBe(1);
     expect(after.kappa).toBeGreaterThan(starved.kappa);
   });

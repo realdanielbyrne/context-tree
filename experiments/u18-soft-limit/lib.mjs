@@ -109,7 +109,13 @@ const LATE_KNOBS = Object.freeze([
 const atLateDefault = (ct, value) => LATE_KNOBS.includes(ct) && value === KNOBS.find((k) => k.ct === ct)?.pkg;
 
 /** Where U18 runs away from the package default, and since when. */
-export const U18_DEFAULTS = Object.freeze({ CT_CT_ANCHOR: '3' /* 2026-09-20; package default 4 */ });
+export const U18_DEFAULTS = Object.freeze({
+  CT_CT_ANCHOR: '3', // 2026-09-20; package default 4
+  // 2026-09-22, from the offline gravity replay (reports/metrics/u18-soft-limit/replay-gravity/): folding
+  // from turn ~10, no deletion below the budget in 156 turns with the summary rung on. The controls pin
+  // every breakpoint to Infinity (INERT), so these reach only the gravity arms.
+  CT_CT_G_FOLD: '0.1', CT_CT_G_UNFOLD: '0.025', CT_CT_G_SUMMARIZE: '0.3', CT_CT_G_UNSUMMARIZE: '0.025',
+});
 
 const POLICY_KNOBS = [
   { ct: 'CT_CT_WINDOW', def: '50347', triggers: ['soft'], describe: 'The soft limit, in heuristic tokens — the swept variable.' },
