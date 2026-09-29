@@ -339,3 +339,38 @@ driver's convention), verdicts in `reports/metrics/u18-soft-limit/`. Write the r
     model repeats itself. No earlier cell of any arm exceeded 156 steps. Both defects are fixed
     offline; the `think` and `summary` gates are owed again, and the loop is now a thing to watch
     for in every evicting arm (`steps` and the last tool call's repetition are in the cell).
+- **2026-09-22, D27 — gravity replaces the D26 trigger rules; offline replay (no GPU).** One pull
+  `g = κ·M·m/d²` for every block kind decides fold / unfold / summarize / retire-summary / delete by
+  breakpoints (`reports/algorithm.md` § Gravity). Arms now `off · hard · soft · gravity ·
+  gravity-adaptive`; `soft`/`hard` pin every breakpoint to Infinity and keep their tags.
+  `replay-gravity.mjs` replayed two recorded sessions (actions fixed; summaries answered by a stand-in
+  one-liner, synchronously — live, a real model can fail here, see the gate above);
+  `reports/metrics/u18-soft-limit/replay-gravity/{stub-gate-156,loop-800}.json`:
+
+  | session · setting | peak | first fold | first delete | folds / back | summaries written / rejected / retired | deleted | msgs changed |
+  |---|---|---|---|---|---|---|---|
+  | 156 turns · `soft` | 30,145 | — | 12 | 0 / 0 | — | 130 | 130 |
+  | 156 · `gravity` (fold 0.1, back 0.025, summarize 0.3, retire 0.025) | 29,954 | 10 | **none** | 279 / 3 | 99 / 2 / 0 | 0 | 354 |
+  | 156 · same, delete at 3 | 23,691 | 10 | 56 | 225 / 6 | 65 / 0 / 0 | 42 | 344 |
+  | 156 · fold 1, back 0.25 | 29,917 | 10 | none | 259 / 14 | 93 / 2 / 0 | 0 | 299 |
+  | 156 · `gravity-adaptive` | 30,013 | 10 | none | 265 / 22 | 91 / 2 / 1 | 0 | 385 |
+  | 800 turns of the loop session · `soft` | 30,155 | — | 12 | 0 / 0 | — | 602 | 602 |
+  | 800 · `gravity` | 30,155 | 3 | 189 | 245 / 19 | 68 / 0 / 1 | 591 | 916 |
+  | 800 · `gravity-adaptive` | 30,155 | 3 | 188 | 247 / 21 | 69 / 0 / 1 | 589 | 938 |
+
+  Read-outs. (1) With the summary rung on, the 156-turn session deletes **nothing** — summaries take
+  what the fit guarantee used to delete — at the cost of ~2.3 changed messages per turn vs 0.8 for
+  `soft` (the cache price). (2) A delete breakpoint below the window lowers the peak (the record says
+  success tracks achieved peak), so the arms keep `gDelete = Infinity`. (3) Higher fold breakpoints
+  bring more blocks back (3 → 14 unfolds) and let the context run fuller (median headroom 35% → 20%).
+  (4) While the prompt is over the budget `d` sits at its floor and every pull is huge, so the first
+  fold lands at turn ~10 whatever the breakpoint; breakpoints differentiate once there is room.
+  (5) The loop session's repeated turns end up deleted by the fit guarantee under every setting;
+  whether gravity breaks the loop needs the live agent. (6) Adaptive κ falls to its floor (0.1) on
+  both sessions: "a file call on a path folded away" fires on 93 of 156 turns (the agent re-reads
+  and edits the same few files), and only an overflow raises κ — which, with summaries absorbing
+  deletions, never happens. The arm therefore behaves as "fold only when forced". The replay also
+  found two defects, fixed: a tool block carrying a summary was sized without its call input (23
+  turns over budget by ≤ 133 tokens; host and sidecar now agree to the token on every traced turn),
+  and a rerun of the tests counted as a repeat (a repeat is now the same call with the same result).
+  Owed: G0 (packages changed) and the `gravity` / `gravity-adaptive` gates.

@@ -101,7 +101,7 @@ async function replay({ name, arm = 'gravity', env: over }) {
     stats.peak = Math.max(stats.peak, kept);
     stats.raw_peak = Math.max(stats.raw_peak, sizeOf(all));
     if (kept > budget) stats.over_budget_turns += 1;
-    if (TRACE) traced.push({ name, turn, kept, sidecar_after: ev.tokens_after, fold_after: fold.tokens_after, folded: fold.folded.length, unfolded: fold.unfolded.length, requests: fold.summary_requests.length, evicted: ev.evicted.length, kappa: fold.kappa, d: fold.d_after });
+    if (TRACE) traced.push({ name, turn, kept, sidecar_after: ev.tokens_after, fold_after: fold.tokens_after, folded: fold.folded.length, unfolded: fold.unfolded.length, requests: fold.summary_requests.length, evicted: ev.evicted.length, kappa: fold.kappa, d: fold.d_after, ...(fold.signals ? { signals: fold.signals } : {}) });
     stats.d_after.push(Math.max(0, (budget - kept) / budget));
   }
   handle.close();
