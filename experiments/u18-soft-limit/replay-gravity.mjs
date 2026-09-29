@@ -33,6 +33,8 @@ const arg = (name, fallback) => { const i = process.argv.indexOf(`--${name}`); r
 const RUN = arg('run');
 if (!RUN) throw new Error('--run <run dir> is required');
 const TURNS = Number(arg('turns', 'Infinity'));
+const TRACE = arg('trace');
+const traced = [];
 const GRID = arg('grid') ? JSON.parse(readFileSync(arg('grid'), 'utf8')) : [{ name: 'soft', arm: 'soft', env: {} }];
 
 const text = readFileSync(join(RUN, 'export.json'), 'utf8');
@@ -99,6 +101,7 @@ async function replay({ name, arm = 'gravity', env: over }) {
     stats.peak = Math.max(stats.peak, kept);
     stats.raw_peak = Math.max(stats.raw_peak, sizeOf(all));
     if (kept > budget) stats.over_budget_turns += 1;
+    if (TRACE) traced.push({ name, turn, kept, sidecar_after: ev.tokens_after, fold_after: fold.tokens_after, folded: fold.folded.length, unfolded: fold.unfolded.length, requests: fold.summary_requests.length, evicted: ev.evicted.length, kappa: fold.kappa, d: fold.d_after });
     stats.d_after.push(Math.max(0, (budget - kept) / budget));
   }
   handle.close();
@@ -119,4 +122,5 @@ for (const config of GRID) {
   console.error(JSON.stringify(r));
 }
 const out = arg('out');
+if (TRACE) writeFileSync(TRACE, traced.map((r) => JSON.stringify(r)).join('\n') + '\n');
 if (out) writeFileSync(out, `${JSON.stringify({ run: RUN, turns: TURNS, results }, null, 2)}\n`);

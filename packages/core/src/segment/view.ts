@@ -28,6 +28,8 @@ export interface FoldTexts {
   stub(fold: Fold): StubBlob;
   /** A summary fold as the prompt shows it, and its size. */
   summary(fold: Fold): { text: string; tokens: number };
+  /** What the host still sends of a carrier block beside the summary: a tool call's input (only its output is replaced). */
+  kept?(block: Block): number;
 }
 
 export function foldView(blocks: readonly Block[], folds: readonly Fold[], texts: FoldTexts): Map<number, BlockState> {
@@ -54,7 +56,7 @@ export function foldView(blocks: readonly Block[], folds: readonly Fold[], texts
     for (const b of inside) {
       if (b === carrier) {
         carriers.add(b.stub);
-        view.set(b.stub, { kind: 'carrier', fold: fold.id, text, tokens });
+        view.set(b.stub, { kind: 'carrier', fold: fold.id, text, tokens: tokens + (texts.kept?.(b) ?? 0) });
       } else if (!carriers.has(b.stub)) {
         view.set(b.stub, { kind: 'covered', fold: fold.id, tokens: 0 });
       }

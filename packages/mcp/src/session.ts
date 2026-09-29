@@ -203,6 +203,10 @@ export async function sessionUnits(ctx: ToolContext): Promise<Snapshot> {
       const text = summaryLine(fold, parseSummaryBlob(blobs.getText(fold.blob)));
       return { text, tokens: session.tokenizer.count(text) };
     },
+    kept: (block) => {
+      const call = events[block.fromSeq - 1];
+      return block.kind === 'tool' && call?.type === 'tool_call' ? hostContent(call, blobs).reduce((n, t) => n + session.tokenizer.count(t), 0) : 0;
+    },
   });
   const units = spans.map((span, i): SessionUnit => {
     const flex = mapped.units[i]!;

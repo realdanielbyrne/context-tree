@@ -118,6 +118,10 @@ describe('the fold view: summary over stub over raw, overlapping summaries both 
       // The second summary overlaps the first; its carrier is the first free text-or-reasoning block in its range.
       expect(view.get(5)).toMatchObject({ kind: 'carrier', fold: 'm102', text: 'sum m102' });
       expect(view.get(6)).toMatchObject({ kind: 'covered', fold: 'm102' });
+      // A tool carrier keeps its call's input on the host (only the output is replaced): it is sized with it.
+      const toolOnly = foldsFrom([...events, { seq: 103, ts: TS, type: 'fold', fold_id: 'm103', kind: 'summary', from_seq: 4, to_seq: 5, blob: 'z' }]);
+      const kept = foldView(blocks, toolOnly, { stub: () => ({ parts: [], tokens: 0 }), summary: () => ({ text: 's', tokens: 5 }), kept: (b) => (b.kind === 'tool' ? 11 : 0) });
+      expect(kept.get(4)).toMatchObject({ kind: 'carrier', tokens: 16 });
     } finally {
       handle.close();
       rmSync(root, { recursive: true, force: true });
