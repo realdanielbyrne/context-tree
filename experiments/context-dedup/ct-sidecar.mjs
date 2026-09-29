@@ -245,19 +245,23 @@ function logCall({ tool, ok, ms, input, outcome }) {
   const actions = data.decisions ? countActions(data.decisions) : null;
   if (tool === 'assemble') {
     const by = (kind) => (data.units ?? []).filter((u) => u.representation === kind).length;
-    record({ event: 'assemble', turn: data.turn, window: input.window_tokens, per_unit_budget: data.per_unit_budget, units: data.units?.length ?? 0, tokens_raw: data.tokens_raw, tokens_assembled: data.tokens_assembled, reduced: by('reduce'), summary_requests: data.summary_requests ?? [], actions, ms, ...(G0_DROP_FIRST ? { g0: 'drop_first' } : {}) });
-    fulfilSummaries?.(data.summary_requests);
+    record({ event: 'assemble', turn: data.turn, window: input.window_tokens, per_unit_budget: data.per_unit_budget, units: data.units?.length ?? 0, tokens_raw: data.tokens_raw, tokens_assembled: data.tokens_assembled, reduced: by('reduce'), actions, ms, ...(G0_DROP_FIRST ? { g0: 'drop_first' } : {}) });
   } else if (tool === 'fold') {
-    record({ event: 'fold', turn: data.turn, window: input.window_tokens, fired: data.fired, folded: data.folded, folds_total: data.folds_total, tokens_before: data.tokens_before, tokens_after: data.tokens_after, actions, ms });
+    record({
+      event: 'fold', turn: data.turn, window: input.window_tokens, fired: data.fired, folded: data.folded, unfolded: data.unfolded, unsummarized: data.unsummarized,
+      summary_requests: data.summary_requests ?? [], folds_total: data.folds_total, tokens_before: data.tokens_before, tokens_after: data.tokens_after,
+      kappa: data.kappa, mass: data.mass, d_before: data.d_before, d_after: data.d_after, ...(data.signals ? { signals: data.signals } : {}), actions, ms,
+    });
+    fulfilSummaries?.(data.summary_requests);
   } else if (tool === 'evict') {
-    record({ event: 'evict', turn: data.turn, window: input.window_tokens, reserve: input.reserve_tokens ?? 0, fired: data.fired, evicted: data.evicted, evicted_total: data.evicted_total, tokens_before: data.tokens_before, tokens_after: data.tokens_after, over_budget: data.over_budget, actions, ms });
+    record({ event: 'evict', turn: data.turn, window: input.window_tokens, reserve: input.reserve_tokens ?? 0, fired: data.fired, evicted: data.evicted, deleted_by_pull: data.deleted_by_pull ?? [], kappa: data.kappa, evicted_total: data.evicted_total, tokens_before: data.tokens_before, tokens_after: data.tokens_after, over_budget: data.over_budget, actions, ms });
   } else {
     record({ event: 'tool', tool, ms });
   }
 }
 
 /**
- * SUMMARIES ON REQUEST (D26). `assemble` reports the ranges it would like summarized; this
+ * SUMMARIES ON REQUEST (D26, D27). `fold` reports the runs the pull reaches; this
  * fulfils them in the background, one at a time, through `summarize` — the same tool the
  * agent can call — against the model the agent itself runs on, reached through the sandbox
  * relay. `assemble` never waits (D11): a slow or failed summary costs a fold, never a turn.
@@ -303,7 +307,7 @@ function ingestedTaskText(ctx) {
 const g0Assemble = async (ctx, input) => ({
   ok: true,
   data: {
-    turn: input?.turn ?? 0, per_unit_budget: 0, tokens_raw: 0, tokens_assembled: 0, units: [], summary_requests: [],
+    turn: input?.turn ?? 0, per_unit_budget: 0, tokens_raw: 0, tokens_assembled: 0, units: [],
     decisions: g0Decisions(input?.messages ?? [], g0FoldText(ingestedTaskText(ctx), G0_MARKER, G0_FOLD_MARKER, G0_FOLD_TEXT), G0_REDUCE_TEXT, G0_STUB_TEXT, G0_THINK_TEXT, G0_CARRIER_TEXT),
   },
 });

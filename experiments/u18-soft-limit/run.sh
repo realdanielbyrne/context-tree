@@ -51,7 +51,7 @@ GATE_ARMS="${*:2}"
 die() { echo "u18: $*" >&2; exit 1; }
 say() { echo "u18: $*" >&2; }
 
-for a in $ARMS; do [[ "$a" =~ ^(off|soft|hard|think|stub|summary)$ ]] || die "unknown arm '$a' (lib.mjs ARMS)"; done
+for a in $ARMS; do [[ "$a" =~ ^(off|soft|hard|gravity|gravity-adaptive)$ ]] || die "unknown arm '$a' (lib.mjs ARMS)"; done
 [[ " $ARMS " == *" off "* && " $ARMS " == *" soft "* ]] || die "U18 needs at least the off and soft arms"
 [[ "${CT_SANDBOX:-1}" != 0 ]] || die "CT_SANDBOX=0 refused: an unsandboxed agent can read the gold patch, and the ct arm silently degrades to its control"
 

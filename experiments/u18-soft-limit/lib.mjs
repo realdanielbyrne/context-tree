@@ -60,35 +60,39 @@ const { PIPELINE_PARAMS } = await import(new URL('../../packages/mcp/dist/index.
  * THE ARMS. Each is a trigger plus what it SETS on top of the shared knobs, and each adds one
  * thing to the one before it:
  *
- *   off      the host alone
- *   hard     the plumbing, evicting only at the real window        — plumbing-matched control
- *   soft     evicts at W, SILENTLY: a dropped message leaves nothing behind, nothing folds
- *   think    NO eviction: the segmenter folds the reasoning of every turn older than the newest
- *            K to its conclusion (D26) — how much window does thinking alone give back?
- *   stub     soft + the segmenter folds blocks under pressure before anything is deleted: a
- *            tool output becomes a tag with a recall id, thinking keeps its tail; contract v5
- *            describes the tags. No summaries.
- *   summary  stub + assemble asks for summaries over runs of folded blocks (U20)
+ *   off               the host alone
+ *   hard              the plumbing, evicting only at the real window        — plumbing-matched control
+ *   soft              evicts at W, SILENTLY: nothing folds (every gravity breakpoint at Infinity)
+ *   gravity           soft + gravity (D27): one pull g = κ·M·m/d² folds, unfolds, asks for
+ *                     summaries and deletes at breakpoints, κ fixed; contract v5 describes the tags
+ *   gravity-adaptive  gravity with κ moved by what the model does (recall, repeats, churn, overflow)
  *
- * `soft` exists unchanged because its cells were run before the others were designed: in 21
- * ct cells the agent never once called a recall tool, which is what the fold arms address.
+ * The breakpoints and κ are KNOBS (swept, hashed into the tag); only the arms that fold read
+ * them — `soft` and `hard` pin every breakpoint to Infinity, so a sweep cannot perturb the
+ * controls. The retired `think` / `stub` / `summary` arms (D26 trigger rules) never ran a wave.
  */
+export const INERT = Object.freeze({ CT_CT_G_FOLD: 'Infinity', CT_CT_G_UNFOLD: '0', CT_CT_G_SUMMARIZE: 'Infinity', CT_CT_G_UNSUMMARIZE: '0', CT_CT_G_DELETE: 'Infinity', CT_CT_GRAVITY_MODE: 'fixed' });
 export const ARMS = Object.freeze({
   off: { trigger: null, set: {} },
-  hard: { trigger: 'hard', set: {} },
-  soft: { trigger: 'soft', set: {} },
-  think: { trigger: 'off', set: { CT_CT_FOLD_REASONING_AFTER: '3', CT_CONTRACT: 'v5' } },
-  stub: { trigger: 'soft', set: { CT_CT_FOLD_TRIGGER: 'pressure', CT_CONTRACT: 'v5' } },
-  summary: { trigger: 'soft', set: { CT_CT_FOLD_TRIGGER: 'pressure', CT_CONTRACT: 'v5', CT_CT_FOLD_SUMMARIES: '1' } },
+  hard: { trigger: 'hard', set: INERT },
+  soft: { trigger: 'soft', set: INERT },
+  gravity: { trigger: 'soft', set: { CT_CT_GRAVITY_MODE: 'fixed', CT_CONTRACT: 'v5' } },
+  'gravity-adaptive': { trigger: 'soft', set: { CT_CT_GRAVITY_MODE: 'adaptive', CT_CONTRACT: 'v5' } },
 });
 export const CT_ARMS = Object.freeze(Object.keys(ARMS).filter((a) => a !== 'off'));
 /** Arms whose purpose is that the agent can get folded content back. */
-export const RECALL_ARMS = Object.freeze(['stub', 'summary']);
+export const RECALL_ARMS = Object.freeze(['gravity', 'gravity-adaptive']);
 /** Arms in which the segmenter folds. */
-export const FOLD_ARMS = Object.freeze(['think', 'stub', 'summary']);
+export const FOLD_ARMS = Object.freeze(['gravity', 'gravity-adaptive']);
 
 /** Set per arm (`ARMS`), never from the command line: what an arm IS is not a knob. */
-export const U18_FIXED = Object.freeze({ CT_CT_FOLD_TRIGGER: 'none', CT_CT_FOLD_SUMMARIES: '0', CT_CT_FOLD_REASONING_AFTER: '0' });
+export const U18_FIXED = Object.freeze({});
+
+/**
+ * Knobs the package no longer has, at the value the code still behaves as. They stay in the
+ * tag hash so the tags of cells recorded before their removal do not move.
+ */
+const RETIRED_KNOBS = Object.freeze({ CT_CT_EVICT_HEADROOM: '0' });
 
 /**
  * Parameters added to the package AFTER cells had been recorded. At its package default such a
@@ -97,9 +101,12 @@ export const U18_FIXED = Object.freeze({ CT_CT_FOLD_TRIGGER: 'none', CT_CT_FOLD_
  */
 const LATE_KNOBS = Object.freeze([
   'CT_CT_BOUNDARY', 'CT_CT_BOUNDARY_WINDOW', 'CT_CT_BOUNDARY_THRESHOLD', 'CT_CT_BOUNDARY_TOPK', 'CT_CT_W_COVARIANCE', 'CT_CT_COVARIANCE_K', 'CT_CT_COVARIANCE_M',
-  'CT_CT_FOLD_STUB_AT', 'CT_CT_CADENCE_N', 'CT_CT_FOLD_REASONING', 'CT_CT_FOLD_REASONING_TAIL', 'CT_CT_FOLD_SUMMARIZE_AT', 'CT_CT_FOLD_MIN_RUN', 'CT_CT_SUMMARY_RATIO', 'CT_CT_SUMMARY_MAX_TOKENS',
+  'CT_CT_FOLD_REASONING', 'CT_CT_FOLD_REASONING_TAIL', 'CT_CT_SUMMARY_RATIO', 'CT_CT_SUMMARY_MAX_TOKENS',
+  'CT_CT_GRAVITY_K', 'CT_CT_GRAVITY_MODE', 'CT_CT_G_FOLD', 'CT_CT_G_UNFOLD', 'CT_CT_G_SUMMARIZE', 'CT_CT_G_UNSUMMARIZE', 'CT_CT_G_DELETE',
+  'CT_CT_GRAVITY_ETA', 'CT_CT_GRAVITY_K_MIN', 'CT_CT_GRAVITY_K_MAX', 'CT_CT_REPEAT_WINDOW',
 ]);
-const atLateDefault = (ct, value) => LATE_KNOBS.includes(ct) && value === KNOBS.find((k) => k.ct === ct)?.def;
+/** At the PACKAGE default (not U18's): a U18 default for a late knob must still move the tag of an arm that uses it. */
+const atLateDefault = (ct, value) => LATE_KNOBS.includes(ct) && value === KNOBS.find((k) => k.ct === ct)?.pkg;
 
 /** Where U18 runs away from the package default, and since when. */
 export const U18_DEFAULTS = Object.freeze({ CT_CT_ANCHOR: '3' /* 2026-09-20; package default 4 */ });
@@ -123,7 +130,7 @@ const fromRegistry = (spec) => ({
 
 export const KNOBS = Object.freeze(
   [...POLICY_KNOBS.map((k) => ({ ...k, half: 'policy' })), ...PIPELINE_PARAMS.filter((spec) => !(spec.env in U18_FIXED)).map((spec) => ({ ...fromRegistry(spec), half: 'pipeline' }))]
-    .map((k) => ({ ...k, name: k.ct.replace(/^CT_(CT_)?/, ''), def: U18_DEFAULTS[k.ct] ?? k.def })),
+    .map((k) => ({ ...k, name: k.ct.replace(/^CT_(CT_)?/, ''), pkg: k.def, def: U18_DEFAULTS[k.ct] ?? k.def })),
 );
 
 /** The resolved knob set, as `CT_*` -> string. Throws on anything that does not parse. */
@@ -136,7 +143,7 @@ export function resolveKnobs(env = process.env) {
     else if (!k.text) {
       const n = Number(value);
       const min = k.min ?? 0;
-      if (!Number.isFinite(n) || (k.exclusiveMin ? n <= min : n < min) || (k.int && !Number.isInteger(n)) || (k.max !== undefined && n > k.max)) problems.push(`U18_${k.name} is not a valid value: "${value}"`);
+      if (!(Number.isFinite(n) || (n === Infinity && k.max === undefined && !k.int)) || (k.exclusiveMin ? n <= min : n < min) || (k.int && !Number.isInteger(n)) || (k.max !== undefined && n > k.max)) problems.push(`U18_${k.name} is not a valid value: "${value}"`);
     }
     out[k.ct] = value;
   }
@@ -162,7 +169,7 @@ export function armKnobs(arm, knobs) {
  */
 export function tagBase(arm, knobs) {
   if (arm === 'off') return 'u18-off';
-  const mine = Object.entries(armKnobs(arm, knobs)).filter(([ct, value]) => !atLateDefault(ct, value));
+  const mine = [...Object.entries(armKnobs(arm, knobs)).filter(([ct, value]) => !atLateDefault(ct, value)), ...Object.entries(RETIRED_KNOBS)];
   const hash = createHash('sha256').update(JSON.stringify(mine.sort())).digest('hex').slice(0, 6);
   return `u18-${arm}-${ARMS[arm].trigger === 'soft' ? `W${knobs.CT_CT_WINDOW}-` : ''}A${knobs.CT_CT_ANCHOR}-${hash}`;
 }
@@ -257,7 +264,7 @@ export function cellProblems(cell, { arm, window, knobs = null, foreignReads = [
     const { trigger, set } = ARMS[arm];
     if (ct.arm_effective?.trigger !== trigger) out.push(`trigger ${ct.arm_effective?.trigger}, expected ${trigger}`);
     if (trigger === 'soft' && ct.arm_effective?.softWindow !== window) out.push(`soft window ${ct.arm_effective?.softWindow}, expected ${window}`);
-    if (Boolean(ct.arm_effective?.foldSummaries) !== (set.CT_CT_FOLD_SUMMARIES === '1')) out.push(`summaries ${ct.arm_effective?.foldSummaries ? 'ON' : 'off'}: not what the ${arm} arm is`);
+    if ((ct.arm_effective?.gravityMode ?? 'fixed') !== (set.CT_CT_GRAVITY_MODE ?? 'fixed')) out.push(`gravity ${ct.arm_effective?.gravityMode}: not what the ${arm} arm is`);
     // The cell must have run under exactly the config this analysis is reading.
     for (const [key, want] of Object.entries(knobs ? armKnobs(arm, knobs) : {})) {
       if (ct[key] === undefined && atLateDefault(key, want)) continue;
@@ -359,13 +366,9 @@ export function gateVerdict(cell, wire, sidecar, { arm, window, knobs = null }) 
   if (sidecar.over_budget_rulings > 0) reasons.push(`G2: ${sidecar.over_budget_rulings} ruling(s) could not meet the budget — the pinned units alone exceeded it`);
   if ((cell.steps ?? 0) < RULES.gateMinSteps) reasons.push(`the cell ran ${cell.steps ?? 0} step(s) (< ${RULES.gateMinSteps}): too short to show anything about the arm`);
   const { set } = ARMS[arm];
-  if (set.CT_CT_FOLD_TRIGGER === 'pressure' && !((cell.ct?.stubs_folded ?? 0) > 0)) reasons.push('G2: no block was ever folded — the arm ran as silent eviction');
-  if (set.CT_CT_FOLD_SUMMARIES === '1' && !((cell.ct?.summaries_written ?? 0) > 0)) reasons.push('G2: no summary was ever written — the arm ran as `stub`');
-  if (Number(set.CT_CT_FOLD_REASONING_AFTER ?? 0) > 0) {
-    // think evicts nothing by policy: it passes by folding enough thinking that the session fits
-    // the real window without host compaction. Offline, this problem is 270K raw and 131K folded.
-    if (!((cell.ct?.reasoning_edited ?? 0) > 0)) reasons.push('G2: no reasoning part was ever folded — the arm ran as the control');
-    if (!(cell.peak_prompt_tokens <= SERVED_WINDOW)) reasons.push(`G2: real peak ${cell.peak_prompt_tokens} exceeds the served window ${SERVED_WINDOW}: folding thinking did not keep the session inside it`);
+  if (FOLD_ARMS.includes(arm)) {
+    if (!((cell.ct?.stubs_folded ?? 0) > 0)) reasons.push('G2: no block was ever folded — gravity never reached g_fold, the arm ran as `soft`');
+    if (set.CT_CT_GRAVITY_MODE === 'adaptive' && !((cell.ct?.kappa_changes ?? 0) > 0)) reasons.push('G2: κ never moved — the arm ran as `gravity`');
   }
   if (ARMS[arm].trigger === 'soft') {
     if (!engaged(cell)) reasons.push('G2: nothing evicted — the mechanism did not fire');

@@ -40,14 +40,12 @@ test('the floor fires under every arm when the host prompt alone would overflow,
   assert.equal(ceilingOf(policy('off')), HARD - 12_000 - 8192);
 });
 
-test('a treatment turn assembles at the arm\'s own window; the control assembles nothing — unless it folds on its own', () => {
+test('a treatment turn assembles at the arm\'s own window; the control assembles nothing', () => {
   assert.equal(assembleWindowFor(policy('off')), null);
   assert.equal(assembleWindowFor(policy('soft')), SOFT);
   assert.equal(assembleWindowFor(policy('hard')), HARD);
-  // The think arm: eviction off, the segmenter folds reasoning by age — assemble and fold still run.
-  assert.equal(assembleWindowFor(policyFromEnv({ CT_CT_TRIGGER: 'off', CT_CT_FOLD_REASONING_AFTER: '3' })), SOFT);
-  assert.equal(assembleWindowFor(policyFromEnv({ CT_CT_TRIGGER: 'off', CT_CT_FOLD_TRIGGER: 'pressure' })), SOFT);
-  assert.equal(evictCallFor(policyFromEnv({ CT_CT_TRIGGER: 'off', CT_CT_FOLD_TRIGGER: 'pressure' }), 3, 1000), null);
+  // Gravity's breakpoints are the sidecar's (D27): they never make the control call anything.
+  assert.equal(assembleWindowFor(policyFromEnv({ CT_CT_TRIGGER: 'off', CT_CT_G_FOLD: '0.1' })), null);
   assert.equal(reserveOf(policy('soft'), SOFT), 20_192);
   assert.equal(reserveOf(policy('soft'), 100), 99, 'a reserve can never swallow the window');
 });
@@ -204,18 +202,9 @@ test('a sidecar that never reported ready, or a plugin that never loaded, is a d
 });
 
 test('booleans, numbers and phase lists are compared after casting, not as strings', () => {
-  const asked = { CT_CT_FOLD_SUMMARIES: '1', CT_CT_DRIFT_K: '5', CT_CT_NEUTRAL_PHASES: 'none' };
-  assert.deepEqual(armDisagreements(asked, { foldSummaries: true, driftK: 5, neutralPhases: '' }), []);
-  assert.equal(armDisagreements(asked, { foldSummaries: false, driftK: 5, neutralPhases: 'other' }).length, 2);
-});
-
-test('the plugin booting without the fold keys it reads is a disagreement, not a control', () => {
-  // The think gate of 2026-09-21: the sidecar had fold_reasoning_after=3, the plugin's env did not,
-  // and the cell ran byte-identical to the control with arm_agrees true.
-  const asked = { CT_CT_FOLD_REASONING_AFTER: '3', CT_CT_FOLD_TRIGGER: 'none' };
-  assert.match(armDisagreements(asked, { foldReasoningAfter: 3, foldTrigger: 'none', foldsAlone: false }).join(' '), /asked foldsAlone=true, plugin booted false/);
-  assert.deepEqual(armDisagreements(asked, { foldReasoningAfter: 3, foldTrigger: 'none', foldsAlone: true }), []);
-  assert.deepEqual(armDisagreements({ CT_CT_TRIGGER: 'soft' }, { trigger: 'soft', foldsAlone: false }), []);
+  const asked = { CT_CT_G_FOLD: 'Infinity', CT_CT_DRIFT_K: '5', CT_CT_NEUTRAL_PHASES: 'none' };
+  assert.deepEqual(armDisagreements(asked, { gFold: Number.POSITIVE_INFINITY, driftK: 5, neutralPhases: '' }), []);
+  assert.equal(armDisagreements(asked, { gFold: 0.1, driftK: 5, neutralPhases: 'other' }).length, 2);
 });
 
 test('a stub is edits: the reasoning part removed, the output tagged; text and the call stay', () => {

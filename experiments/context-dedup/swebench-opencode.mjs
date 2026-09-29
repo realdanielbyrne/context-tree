@@ -45,7 +45,7 @@ import { parseJsonLines, sessionIdOf, summarizeEvents, costAt, classifyExit, sum
 import { chooseEndpoint, acquireSlots, LEASE_MARKER, MAX_LOCAL_SLOTS } from './swebench-endpoint.mjs';
 import { openSandbox, exitFromSandbox, pythonHomeOf, MASKED, MASKED_LIBRARIES } from './swebench-sandbox.mjs';
 import { writeResults, gitSha, nowISO } from '../rung-1-live-probe/lib.mjs';
-import { FOLD_KEYS, foldsAloneOf, policyFromEnv, validatePolicy } from './oc-plugin/policy.mjs';
+import { policyFromEnv, validatePolicy } from './oc-plugin/policy.mjs';
 import { pathToFileURL } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -300,11 +300,6 @@ export function armDisagreements(requested, ready) {
         const want = cast(requested[key]);
         if (ready[field] !== want) out.push(`${key}: asked ${JSON.stringify(want)}, sidecar booted ${JSON.stringify(ready[field])}`);
     }
-    // Whether the plugin calls `fold` without evicting is read from registry rows on ITS env: the
-    // sidecar agreeing to them says nothing about the plugin having seen them.
-    if (ready.foldsAlone !== undefined && ready.foldsAlone !== foldsAloneOf(requested)) {
-        out.push(`${FOLD_KEYS.join('/')}: asked foldsAlone=${String(foldsAloneOf(requested))}, plugin booted ${String(ready.foldsAlone)}`);
-    }
     return out;
 }
 
@@ -344,10 +339,15 @@ function assembleActivity(runDir) {
         reasoning_edited: turns.reduce((n, r) => n + (r.reasoning_edited ?? 0), 0),
         outputs_edited: turns.reduce((n, r) => n + (r.outputs_edited ?? 0), 0),
         reduced_units: Math.max(0, ...rows.filter((r) => r.event === 'assemble').map((r) => r.reduced ?? 0)),
-        // The ledger's account (D26): stubs written, summaries asked for and written.
+        // The ledger's account (D26, D27): folds and unfolds, summaries asked for, written and retired, κ.
         stubs_folded: rows.filter((r) => r.event === 'fold').reduce((n, r) => n + (r.folded?.length ?? 0), 0),
+        stubs_unfolded: rows.filter((r) => r.event === 'fold').reduce((n, r) => n + (r.unfolded?.length ?? 0), 0),
+        summaries_retired: rows.filter((r) => r.event === 'fold').reduce((n, r) => n + (r.unsummarized?.length ?? 0), 0),
         fold_calls: rows.filter((r) => r.event === 'fold').length,
-        summary_requests: rows.filter((r) => r.event === 'assemble').reduce((n, r) => n + (r.summary_requests?.length ?? 0), 0),
+        summary_requests: rows.filter((r) => r.event === 'fold').reduce((n, r) => n + (r.summary_requests?.length ?? 0), 0),
+        kappa_range: (() => { const k = rows.filter((r) => r.event === 'fold' && typeof r.kappa === 'number').map((r) => r.kappa); return k.length ? [Math.min(...k), Math.max(...k)] : null; })(),
+        kappa_changes: rows.filter((r) => r.event === 'fold' && typeof r.kappa === 'number').reduce((acc, r) => ({ n: acc.n + (acc.last !== null && r.kappa !== acc.last ? 1 : 0), last: r.kappa }), { n: 0, last: null }).n,
+        deleted_by_pull: rows.filter((r) => r.event === 'evict').reduce((n, r) => n + (r.deleted_by_pull?.length ?? 0), 0),
         summaries_written: rows.filter((r) => r.event === 'summary' && r.status === 'written').length,
         summaries_rejected: rows.filter((r) => r.event === 'summary' && r.ok && r.status === 'rejected').length,
         summary_errors: rows.filter((r) => r.event === 'summary' && !r.ok).length,
@@ -481,7 +481,7 @@ async function runOne(task, repeat) {
                     ...(OUTPUT_CAP > 0 ? { OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX: String(OUTPUT_CAP) } : {}),
                     // The plugin runs inside opencode, so its settings ride on the process env.
                     ...(WANTS_PLUGIN ? {
-                        ...POLICY_ENV, ...fromEnv(FOLD_KEYS), CT_ASSEMBLE_MS: ASSEMBLE_MS, ...(G0_DROP_FIRST ? { CT_G0_DROP_FIRST: '1' } : {}),
+                        ...POLICY_ENV, CT_ASSEMBLE_MS: ASSEMBLE_MS, ...(G0_DROP_FIRST ? { CT_G0_DROP_FIRST: '1' } : {}),
                         CT_TOOLS_URL: `http://127.0.0.1:${ASSEMBLE_PORT}/v1/tools`,
                         CT_PLUGIN_EVENTS: join(runDir, 'mcp', 'ct-plugin.jsonl'),
                     } : {}),

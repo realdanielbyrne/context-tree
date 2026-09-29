@@ -3,33 +3,23 @@
  *
  * The pipeline is tools (`@context-tree/mcp`) and its rulings are sticky, so a treatment
  * turn is `assemble` (how each unit is represented — removes nothing), then `fold` (the
- * segmenter folds blocks under its own policy, a registry parameter: `CT_CT_FOLD_TRIGGER`),
- * then an OPTIONAL `evict`, which takes the assembly as input and may overrule it. What is
- * decided HERE is only when `evict` is called, and at what window:
+ * segmenter's gravity: folds, unfolds, summary requests — registry parameters `CT_CT_G_*`),
+ * then an OPTIONAL `evict` (the delete breakpoint, then the fit guarantee). What is decided
+ * HERE is only which window those calls are made at:
  *
  *   off      never                                   the control
  *   hard     every turn, at the model's real context   the plumbing-matched control
  *   soft     every turn, at a limit well below it      U18
  *
- * `fold` is called on every turn the arm assembles, plus on every turn when folding is
- * configured on its own (`fold_reasoning_after`, the `think` arm) with eviction off.
+ * `fold` is called on every turn the arm assembles. Whether anything folds is gravity's
+ * (D27): at the default breakpoints (Infinity) nothing does, and `soft` is what it was.
  *
  * Lives beside the plugin, not in it: opencode calls every export of a plugin module as
  * a plugin factory, so the plugin module may export exactly one thing.
  */
 export const TRIGGERS = Object.freeze(['off', 'hard', 'soft']);
 
-/**
- * Registry rows the plugin's policy ALSO reads. They are the sidecar's, but whether the plugin
- * calls `fold` at all is decided here, so a driver must put them on opencode's process env too —
- * the think gate of 2026-09-21 ran as its control because only the sidecar had them.
- */
-export const FOLD_KEYS = Object.freeze(['CT_CT_FOLD_TRIGGER', 'CT_CT_FOLD_REASONING_AFTER']);
-
 const num = (env, key, fallback) => (env[key] === undefined || env[key] === '' ? fallback : Number(env[key]));
-
-/** Folding that runs without eviction: the segmenter's own trigger, or the think rule. */
-export const foldsAloneOf = (env) => (env.CT_CT_FOLD_TRIGGER || 'none') !== 'none' || num(env, 'CT_CT_FOLD_REASONING_AFTER', 0) > 0;
 
 /** Defaults are INERT: a run that loses its environment is the control, never a silent arm. */
 export function policyFromEnv(env = process.env) {
@@ -40,7 +30,6 @@ export function policyFromEnv(env = process.env) {
     replyReserve: num(env, 'CT_CT_REPLY_RESERVE', 8192),
     /** What the plugin cannot see: opencode's system block, tool schemas and skills. */
     headTokens: num(env, 'CT_CT_HEAD_TOKENS', 12_000),
-    foldsAlone: foldsAloneOf(env),
     /** The G0 gate: every turn calls `assemble`, whose handler the sidecar has swapped for the gate's edits. */
     gate: env.CT_G0_DROP_FIRST === '1',
   });
@@ -75,7 +64,7 @@ export const ceilingOf = (policy) => policy.hardWindow - policy.headTokens - pol
 export function assembleWindowFor(policy) {
   if (policy.gate) return policy.hardWindow;
   if (policy.trigger === 'hard') return policy.hardWindow;
-  if (policy.trigger === 'soft' || policy.foldsAlone) return policy.softWindow;
+  if (policy.trigger === 'soft') return policy.softWindow;
   return null;
 }
 

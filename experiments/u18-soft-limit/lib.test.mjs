@@ -245,79 +245,71 @@ test('served-per-heuristic is a per-turn distribution, and null when the join ca
   assert.deepEqual(servedPerHeuristic(rows, served.slice(1)), { aligned: false, turns: 0 });
 });
 
-/** A recall-arm cell: soft trigger, stubs applied, optionally the agent's own recall calls. */
+/** A gravity-arm cell: soft trigger, blocks folded, optionally the agent's own recall calls. */
 function recallCell(arm, instance, repeat, { pass = true, recalls = 0, over = {} } = {}) {
   const base = cell('soft', instance, repeat, { pass, peak: 45000, fired: true });
+  const mode = arm === 'gravity-adaptive' ? 'adaptive' : 'fixed';
   return {
     ...base, mcp: { tools: recalls ? { 'context-tree_fetch': recalls } : {} },
-    ct: { ...base.ct, stubs_folded: 9, reasoning_edited: 4, summaries_written: arm === 'summary' ? 2 : 0, arm_effective: { trigger: 'soft', softWindow: W, foldSummaries: arm === 'summary' } },
+    ct: { ...base.ct, stubs_folded: 9, stubs_unfolded: 2, reasoning_edited: 4, kappa_changes: mode === 'adaptive' ? 3 : 0, arm_effective: { trigger: 'soft', softWindow: W, gravityMode: mode } },
     ...over,
   };
 }
 
 test('the arms are a ladder: each sets one thing more, and recorded tags do not move', () => {
   const knobs = resolveKnobs({});
-  assert.deepEqual(ARMS.soft.set, {});
-  assert.equal(armKnobs('think', knobs).CT_CT_FOLD_REASONING_AFTER, '3');
-  assert.equal(armKnobs('think', knobs).CT_CT_FOLD_TRIGGER, undefined, 'think does not fold under pressure');
-  assert.equal(armKnobs('stub', knobs).CT_CT_FOLD_TRIGGER, 'pressure');
-  assert.equal(armKnobs('stub', knobs).CT_CONTRACT, 'v5');
-  assert.equal(armKnobs('stub', knobs).CT_CT_FOLD_SUMMARIES, undefined);
-  assert.equal(armKnobs('summary', knobs).CT_CT_FOLD_SUMMARIES, '1');
-  assert.equal(armKnobs('soft', knobs).CT_CT_FOLD_TRIGGER, undefined, 'what an arm IS is never a knob');
+  assert.equal(armKnobs('soft', knobs).CT_CT_G_FOLD, 'Infinity', 'soft pins every breakpoint: a sweep cannot perturb the control');
+  assert.equal(armKnobs('soft', resolveKnobs({ U18_G_FOLD: '0.1' })).CT_CT_G_FOLD, 'Infinity');
+  assert.equal(armKnobs('gravity', resolveKnobs({ U18_G_FOLD: '0.1' })).CT_CT_G_FOLD, '0.1');
+  assert.equal(armKnobs('gravity', knobs).CT_CT_GRAVITY_MODE, 'fixed');
+  assert.equal(armKnobs('gravity', knobs).CT_CONTRACT, 'v5');
+  assert.equal(armKnobs('gravity-adaptive', knobs).CT_CT_GRAVITY_MODE, 'adaptive');
   assert.throws(() => armKnobs('nope', knobs), /unknown arm/);
-  // Waves were recorded under these two tags before the fold parameters existed.
+  // Waves were recorded under these two tags before gravity existed.
   assert.equal(tagBase('soft', knobs), 'u18-soft-W50347-A3-0b6139');
   assert.equal(tagBase('hard', knobs), 'u18-hard-A3-3b1020');
-  assert.equal(new Set(['soft', 'hard', 'think', 'stub', 'summary'].map((a) => tagBase(a, knobs))).size, 5);
-  // ...but a late knob moved OFF its default is part of the key like any other.
-  assert.notEqual(tagBase('soft', resolveKnobs({ U18_FOLD_STUB_AT: '0.5' })), 'u18-soft-W50347-A3-0b6139');
+  assert.equal(tagBase('soft', resolveKnobs({ U18_G_FOLD: '0.1' })), 'u18-soft-W50347-A3-0b6139');
+  assert.equal(new Set(['soft', 'hard', 'gravity', 'gravity-adaptive'].map((a) => tagBase(a, knobs))).size, 4);
+  // A breakpoint or κ moved is part of the key like any other knob.
+  assert.notEqual(tagBase('gravity', resolveKnobs({ U18_G_FOLD: '0.2' })), tagBase('gravity', knobs));
+  assert.notEqual(tagBase('gravity', resolveKnobs({ U18_GRAVITY_K: '2' })), tagBase('gravity', knobs));
 });
 
 test('an older cell that never recorded a late knob is not an integrity problem; a wrong value is', () => {
   const knobs = resolveKnobs({});
-  const late = new Set(['CT_CT_FOLD_STUB_AT', 'CT_CT_CADENCE_N', 'CT_CT_FOLD_REASONING', 'CT_CT_FOLD_REASONING_TAIL', 'CT_CT_FOLD_SUMMARIZE_AT', 'CT_CT_FOLD_MIN_RUN', 'CT_CT_SUMMARY_RATIO', 'CT_CT_SUMMARY_MAX_TOKENS']);
-  const recorded = Object.fromEntries(Object.entries(armKnobs('soft', knobs)).filter(([k]) => !late.has(k) && !k.includes('BOUNDARY') && !k.includes('COVARIANCE')));
+  const recorded = Object.fromEntries(Object.entries(armKnobs('soft', knobs)).filter(([k]) => !/G_|GRAVITY|REPEAT|BOUNDARY|COVARIANCE|FOLD_REASONING|SUMMARY_/.test(k)));
   const old = cell('soft', 'p0', 0, { peak: 45000, fired: true });
   assert.deepEqual(cellProblems({ ...old, ct: { ...old.ct, ...recorded } }, { arm: 'soft', window: W, knobs }), []);
-  assert.match(cellProblems({ ...old, ct: { ...old.ct, ...recorded, CT_CT_FOLD_STUB_AT: '0.5' } }, { arm: 'soft', window: W, knobs }).join(' '), /CT_CT_FOLD_STUB_AT ran as/);
-  // Summaries belong to exactly one arm.
-  assert.match(cellProblems(recallCell('summary', 'p0', 0), { arm: 'stub', window: W }).join(' '), /summaries ON/);
-  assert.match(cellProblems(recallCell('stub', 'p0', 0), { arm: 'summary', window: W }).join(' '), /summaries off/);
+  assert.match(cellProblems({ ...old, ct: { ...old.ct, ...recorded, CT_CT_G_FOLD: '0.5' } }, { arm: 'soft', window: W, knobs }).join(' '), /CT_CT_G_FOLD ran as/);
+  // The mode belongs to exactly one arm.
+  assert.match(cellProblems(recallCell('gravity-adaptive', 'p0', 0), { arm: 'gravity', window: W }).join(' '), /gravity adaptive: not what the gravity arm is/);
 });
 
 test('gate: a cell too short to show anything fails, and a fold arm must have done what it is', () => {
   const wire = { present: true, requests: 80, ok: 80, rejected: 0, peak_bytes: 1 };
   const side = { max_ms: 900, over_ceiling_turns: 0, over_budget_rulings: 0 };
   const verdict = (c, arm) => gateVerdict(c, wire, side, { arm, window: W });
-  // The cell that once passed `hard`: one step, nothing evicted, nothing wrong — and nothing shown.
   assert.match(verdict(cell('hard', 'g', 0, { peak: 13059, over: { steps: 1 } }), 'hard').reasons.join(' '), /too short/);
-  assert.equal(verdict(recallCell('stub', 'g', 0), 'stub').pass, true);
-  assert.match(verdict(recallCell('stub', 'g', 0), 'summary').reasons.join(' '), /summaries off/);
-  const silent = recallCell('stub', 'g', 0);
-  assert.match(verdict({ ...silent, ct: { ...silent.ct, stubs_folded: 0, fired: true, evicted_units: 3 } }, 'stub').reasons.join(' '), /no block was ever folded/);
-  const unwritten = recallCell('summary', 'g', 0);
-  assert.match(verdict({ ...unwritten, ct: { ...unwritten.ct, summaries_written: 0 } }, 'summary').reasons.join(' '), /no summary was ever written/);
-  // think: no eviction at all, so no evict clauses; it must have folded reasoning and given window back.
-  const think = { ...recallCell('think', 'g', 0), peak_prompt_tokens: 90_000 };
-  think.ct = { ...think.ct, arm_effective: { trigger: 'off', softWindow: W, foldSummaries: false }, fired: true, evicted_units: 0 };
-  assert.equal(verdict(think, 'think').pass, true);
-  assert.match(verdict({ ...think, ct: { ...think.ct, reasoning_edited: 0 } }, 'think').reasons.join(' '), /no reasoning part was ever folded/);
-  assert.match(verdict({ ...think, peak_prompt_tokens: 160_000 }, 'think').reasons.join(' '), /exceeds the served window/);
+  assert.equal(verdict(recallCell('gravity', 'g', 0), 'gravity').pass, true);
+  assert.equal(verdict(recallCell('gravity-adaptive', 'g', 0), 'gravity-adaptive').pass, true);
+  const silent = recallCell('gravity', 'g', 0);
+  assert.match(verdict({ ...silent, ct: { ...silent.ct, stubs_folded: 0, fired: true, evicted_units: 3 } }, 'gravity').reasons.join(' '), /no block was ever folded/);
+  const still = recallCell('gravity-adaptive', 'g', 0);
+  assert.match(verdict({ ...still, ct: { ...still.ct, kappa_changes: 0 } }, 'gravity-adaptive').reasons.join(' '), /κ never moved/);
 });
 
 test('a recall arm whose agent never recalled says nothing about recall', () => {
   const base = arms();
-  const stub = (recalls) => IDS.flatMap((id, i) => [0, 1, 2].map((r) => recallCell('stub', id, r, { pass: id !== 'p9', recalls: i < recalls && r === 0 ? 2 : 0 })));
-  const quiet = analyze({ arms: { ...base, stub: stub(0) }, window: W });
-  assert.equal(quiet.recall.stub.exercised, false);
-  assert.match(quiet.recall.stub.note, /RECALL NOT EXERCISED/);
-  assert.equal(quiet.arms.stub.recall_tool_calls, 0);
-  const used = analyze({ arms: { ...base, stub: stub(RULES.minRecallCells) }, window: W, finish: (c) => ({ last: c.arm === 'ct' && c.instance === 'p0' ? 'length' : 'stop' }) });
-  assert.equal(used.recall.stub.exercised, true);
-  assert.equal(used.arms.stub.recall_tool_calls, 2 * RULES.minRecallCells);
-  assert.equal(used.recall.stub.vs_soft.delta_solved_itt, 0);
-  assert.ok(used.arms.stub.cells_ended_at_output_cap > 0);
+  const gravity = (recalls) => IDS.flatMap((id, i) => [0, 1, 2].map((r) => recallCell('gravity', id, r, { pass: id !== 'p9', recalls: i < recalls && r === 0 ? 2 : 0 })));
+  const quiet = analyze({ arms: { ...base, gravity: gravity(0) }, window: W });
+  assert.equal(quiet.recall.gravity.exercised, false);
+  assert.match(quiet.recall.gravity.note, /RECALL NOT EXERCISED/);
+  assert.equal(quiet.arms.gravity.recall_tool_calls, 0);
+  const used = analyze({ arms: { ...base, gravity: gravity(RULES.minRecallCells) }, window: W, finish: (c) => ({ last: c.arm === 'ct' && c.instance === 'p0' ? 'length' : 'stop' }) });
+  assert.equal(used.recall.gravity.exercised, true);
+  assert.equal(used.arms.gravity.recall_tool_calls, 2 * RULES.minRecallCells);
+  assert.equal(used.recall.gravity.vs_soft.delta_solved_itt, 0);
+  assert.ok(used.arms.gravity.cells_ended_at_output_cap > 0);
   // The registered ladder is untouched by the extra arm.
   assert.equal(used.verdict, analyze({ arms: base, window: W }).verdict);
   assert.equal(recallCalls({ mcp: { tools: { 'context-tree_evict': 3, 'context-tree_search': 1 } } }), 1);
