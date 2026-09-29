@@ -217,14 +217,22 @@ export async function sessionUnits(ctx: ToolContext): Promise<Snapshot> {
   return session.snapshot;
 }
 
-/** The residue of a block if it were stubbed now, or null when it already is folded or could not shrink. */
+const residues = new WeakMap<Session, Map<string, number | null>>();
+
+/** The residue of a block if it were stubbed now, or null when it already is folded or could not shrink. A block's stub is a pure function of its span, so it is computed once. */
 export function residueOf(ctx: ToolContext, snapshot: Snapshot, block: Block): number | null {
   const session = sessionOf(ctx);
   const state = snapshot.view.get(block.stub);
   if (state === undefined || state.kind !== 'raw') return null;
-  const events = ctx.handle.trace.all();
-  const stub = stubOf(block, events, ctx.handle.blobs, session.tokenizer, { foldReasoning: session.params.foldReasoning, foldReasoningTail: session.params.foldReasoningTail });
-  return stub.parts.length === 0 ? null : stub.tokens;
+  const params = { foldReasoning: session.params.foldReasoning, foldReasoningTail: session.params.foldReasoningTail };
+  const key = `${String(block.fromSeq)}:${String(block.toSeq)}:${String(block.followedByText)}:${params.foldReasoning}:${String(params.foldReasoningTail)}`;
+  let cache = residues.get(session);
+  if (cache === undefined) residues.set(session, (cache = new Map()));
+  if (cache.has(key)) return cache.get(key)!;
+  const stub = stubOf(block, ctx.handle.trace.all(), ctx.handle.blobs, session.tokenizer, params);
+  const residue = stub.parts.length === 0 ? null : stub.tokens;
+  cache.set(key, residue);
+  return residue;
 }
 
 const EVICTED: Disposition = Object.freeze({ kind: 'drop', why: 'evicted' });

@@ -21,9 +21,10 @@ conditions, rejected alternatives, parameter audit, and development history live
 2. **A hardcoded value is a defect** unless shown to hold across models and harnesses. Derive every
    parameter from the host's declared limits; a value fitted on one host is a defect until re-derived.
 3. **Err toward MORE context.** Eviction is conservative: dropping context that turns out to be needed
-   costs the *task*; keeping extra costs *tokens* — not symmetric. This shapes the ejector: **topic
-   shift decides *what* is eligible to evict; the soft-target floor decides *when* eviction fires and
-   *how much*** — never prune below the floor, and uncertain relevance stays.
+   costs the *task*; keeping extra costs *tokens* — not symmetric. This shapes the whole ladder:
+   **irrelevance decides *what* is pulled; distance from the window decides *how hard*** (§ Gravity)
+   — nothing is deleted below the budget unless its pull reaches the delete breakpoint, and uncertain
+   relevance stays.
 4. **Nothing reorders a cached prefix.** Prefix-keyed caches invalidate everything after the first
    changed byte, so the design rewards a *stable layout*, not a minimal payload. The working buffer only
    appends and evicts in place; it never re-mixes (a freely re-mixed buffer is cache-death).
@@ -82,12 +83,13 @@ rebuildable; **L1 stores coordinates, not content** (a node names a `seq` range;
 Two scorers feed one decider, and retrieval serves on demand: the **classifier** scores
 query-independent state (has the topic shifted), the **retriever** scores query-dependent relevance
 (what matches this turn). Then three separate rulings, in order: the **assembler** decides how each
-unit is *represented* (and asks for summaries), the **segmenter** decides what is *folded* (§ Folds —
-written to the ledger), and the **ejector** — optional, taking both as its input, and free to overrule
-them — decides what is *removed*. All are sticky until explicitly restored, so a turn on which no ruling
-is made leaves the prompt byte-for-byte as it was. **fold → summarize → delete** is the compression
-ladder: as a stretch of the session becomes less relevant to what is being discussed now, it is more
-likely to be folded, then summarized and referenced, then deleted.
+unit is *represented*, the **segmenter** decides what is *folded* and what comes back (§ Folds —
+written to the ledger — and asks for summaries), and the **ejector** — optional, taking both as its
+input, and free to overrule them — decides what is *removed*. A ruling holds until it is reversed,
+so a turn on which no ruling is made leaves the prompt byte-for-byte as it was. **fold → summarize →
+delete** is the compression ladder, and all three are breakpoints on ONE pull (§ Gravity, D27): the
+less relevant a block is and the nearer the prompt is to the window, the harder it is pulled down the
+ladder — and when the pull falls, a fold or a summary is released and the block comes back.
 
 **0 — Ingest.** Append each event to L0; store payloads in L2; cap edit-tool arguments (replace the
 argument blob with its L2 hash once the post-state blob exists). Segment L0 deterministically under a
@@ -122,14 +124,8 @@ append-only) followed by a **creation-order flex buffer** of units, with a **cac
 the head so the head caches.
 - **Representation:** units are **raw** by default, sized at their FOLDED size (§ Folds). A raw unit
   over the per-unit budget is **reduced** (below). A reduction, ruled, is sticky: a unit does not flip
-  back to raw on a roomier turn, which would rewrite the prefix. Assembly folds nothing.
-- **Summary requests (D26).** When `foldSummaries` is on and a run of at least `foldMinRun`
-  consecutive folded blocks outside the anchor stands for more than `foldSummarizeAt` of the budget
-  in raw tokens (what the summary would cover — not what the stubs take, which for an empty tool
-  output is more than the output), assembly asks for ONE summary over that run — widened to the segment that contains it when every
-  block of that segment is folded — and reports the request. It does not wait: a summary takes a model
-  call, and the caller (a host adapter, the agent) fulfils it through `summarize`; the next view shows
-  it. A range already under a summary is not asked for again.
+  back to raw on a roomier turn, which would rewrite the prefix. Assembly folds nothing and asks for
+  no summaries (both are the segmenter's, § Gravity).
 
 **2b — Fold (the segmenter; D26).** Folding is what the segmenter does to the segments it cut:
 show a block in a shorter form, written to the **ledger** — `fold` / `unfold` events in L0, so what
@@ -144,19 +140,37 @@ changes once written (D5).
   {"stub":30}]` (`foldReasoning: tail | drop | keep`, `foldReasoningTail`: the conclusion sits at
   the end of a thinking block, the deliberation at the start). A text block folds to its first line.
 - **A summary** is a fold over 1..n stubs — an epoch of the session — written ONLY by `summarize`,
-  on request (§ Assemble): `[summary m91 · <one sentence> · files: … · recall: fetch
+  on request (§ Gravity): `[summary m91 · <one sentence> · files: … · recall: fetch
   {"from_seq":12,"to_seq":40}]`, carried by the first text block in its range (else its first
   reasoning block, else its first block), the rest of the range hidden. Ranges may **overlap**
   (`1:65` and `40:85`); both show. A summary whose range is a segment's span IS that segment's
   summary (`node_summaries` is derived from the ledger). A summary counts only if
   `summary_tokens ≤ summaryRatio × tokens_summarized`; otherwise the stubs stand. A phase summary,
   the root roll-up (the range over all blocks) and an ad hoc range are one thing.
-- **What makes a block fold is the research variable** (`foldTrigger`): `none` — nothing folds;
-  `pressure` — once the prompt exceeds `foldStubAt` × budget, the lowest-scored blocks fold until it
-  fits, reasoning before tool outputs before text within a turn, never inside the anchor or a
-  pinned turn; `cadence` — the pressure rule every `cadenceN` turns (DV3's cost lever). Independently,
-  `foldReasoningAfter = K` folds the reasoning of every turn older than the newest K — the cheapest
-  loss there is and a third of the prompt, so it is tested on its own (U18's `think` arm).
+- **Gravity (D27) — when a block folds, is summarized, is deleted, or comes back.** One pull, the same
+  for every kind of block:
+  ```
+  B = window − reserve        d = max(ε, (B − live) / B)          distance from the window
+  e(u) = 1 − scoreN(u)        irrelevance ∈ [0,1], min-max over live units; pinned → 0
+  m(b) = e(unit) · raw(b) / B                                       a block's irrelevance mass
+  M = Σ m over live blocks                                          the context's mass
+  g(b) = κ · M · m(b) / d²                                          the pull
+  ```
+  | rung | goes at | comes back below | applied by |
+  |---|---|---|---|
+  | fold (a stub, ledgered) | `gFold` | `gUnfold`, if it would stay below with its raw form back in | `fold` |
+  | summarize (a run of ≥ 2 consecutive folded blocks, widened to its segment when all of it is folded) | `gSummarize` → a `summary_request` the host fulfils through `summarize` | `gUnsummarize` (every covered block) → the summary's fold ends | `fold` |
+  | delete (a unit, by its whole mass `e·raw(u)/B`) | `gDelete`, then the fit guarantee | never — deletion stays until `restore` | `evict` |
+
+  Each rung recomputes `live` after the one before, so the well is self-limiting: a fold widens `d`
+  and every other pull falls. The order of pulls is the order of masses (`d` is shared), so a rung is
+  one sort. Unfolds run first. κ is `fixed` (swept; against fixed breakpoints only `g/κ` matters) or
+  `adaptive`: `κ ← κ·exp(η·(overflow − starvation − thrash))`, bounded — *starvation* is a recall call,
+  the same tool call repeated within `repeatWindow` turns, or a file call on a path whose earlier call
+  is folded away; *thrash* is a fold and unfold of one block within that window; *overflow* is a turn
+  that needed the fit guarantee. Every fold and unfold rewrites the cached prompt after it (D5); the
+  per-turn count of changed messages is the mechanism's cost and the gap between each breakpoint and
+  its way back is the knob that trades it. Package defaults are inert (every breakpoint Infinity).
 - **Score** (shared with eviction): priority, recency, reference recency, dormancy, and — at weight
   0 until U3 tests it — **contextual covariance** (`wCovariance`, `covarianceK`, `covarianceM`), the one
   offline signal that survived deep dormancy. Every tag describes and never instructs: a reference
@@ -168,10 +182,10 @@ changes once written (D5).
 **3 — Evict (removal; optional; input = the assembly and the folds).** Units are sized **as shown**
 — folded, reduced — so a folded unit is cheap to keep, and any unit can still be removed here. The
 ejector never chooses a representation and writes no fold.
-- **Eviction — what / when / how much.** *When:* eviction fires only when the buffer exceeds the
-  **hard limit** `window − replyReserve`; never below it. *What:* above the limit, evict the
-  **lowest-scoring** units first (the dormant, low-priority, old ones). *How much:* just enough to fit,
-  plus an optional `evictHeadroomTokens` (default 0) so eviction need not fire again next turn.
+- **Eviction — what / when / how much (D27).** Two steps. The **delete rung**: a unit goes once its
+  pull reaches `gDelete` (Infinity by default), most pulled first. Then the **fit guarantee**: if the
+  rest still exceeds the budget `window − reserve`, evict the **lowest-scoring** units first (the
+  dormant, low-priority, old ones), just enough to fit.
   Score each non-pinned,
   > **Resolved 2026-09-14 (was OPEN).** The trigger was a soft-target floor `f = 0.375·W`. Live evidence
   > retired it: task success tracks **achieved peak** — the tokens actually present at call time — at
@@ -252,8 +266,8 @@ The pipeline runs as host hooks and never owns the agent loop:
   or removed, a tool part's **output** replaced or the part removed (the call and its result travel
   together, so nothing is orphaned) — and a whole message is dropped only when it is evicted or
   nothing is left of it. Because a turn *is* a host message and a block *is* a part, the mapping is
-  exact. When to call evict — every turn, never — is the host's policy; when a block folds is the
-  segmenter's (`foldTrigger`).
+  exact. When to call evict — every turn, never — is the host's policy; when a block folds, is
+  summarized or comes back is the segmenter's (gravity, D27).
 - **frozen head** (system / tool-schema transform): the head is assembled after the message transform, so
   it is out of the eviction path by construction. Cache breakpoints are Anthropic-explicit; on a host
   without them the *layout stability* (principle 4) still yields prefix reuse.
@@ -275,7 +289,8 @@ registry cannot say is what each quantity *means*:
 | Per-unit budget `b` | `(f·W − reserve) ÷ (A + 1)`; a raw unit over `b` is reduced to it. **Degenerate when `f·W ≤ reserve`** — at W = 50,347 with a 20,192 reserve and `f` = 0.375, `b` = 0 and reduce-on-overflow never fires |
 | Drift `K`, `τ` | recent window in units; z-drift above which a unit is coarsely dormant |
 | Signal normalization | per-turn min-max across candidate units, before weighting |
-| Eviction weights | a *linear* mix of priority, recency, reference-recency, −dormancy, and relevance (default 0) |
+| Eviction weights | a *linear* mix of priority, recency, reference-recency, −dormancy, and relevance (default 0); `1 −` its min-max is the irrelevance `e` gravity reads |
+| Gravity (D27) | `g = κ·M·m/d²`; breakpoints `gFold`/`gUnfold`, `gSummarize`/`gUnsummarize`, `gDelete`; κ `fixed` or `adaptive`. Defaults inert (Infinity). **Not yet measured live**: the breakpoints and κ are what U18's `gravity` arms sweep |
 | Reducer | chunk (keep the spans matching the query, mark the gaps) or summarize; default chunk |
 | Chunker, `RRF_K` | recursive character splitter; rank-fusion constant |
 | Reply reserve | the host-declared `Model.limit.output`, plus whatever the caller cannot see (system block, tool schemas) |

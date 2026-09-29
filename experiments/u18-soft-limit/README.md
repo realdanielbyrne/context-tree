@@ -42,8 +42,10 @@ the pipeline half *is* the package's parameter registry (`packages/mcp/src/param
 parameter added there is a knob here with no edit; the policy half is `POLICY_KNOBS` in `lib.mjs`.
 `run.sh config` prints every knob resolved, with each arm's tag. A value that does not parse is
 refused before anything runs. U18 departs from the package defaults in exactly one place —
-`U18_ANCHOR=3` (package: 4) — and holds the three knobs that define an arm — `CT_CT_FOLD_TRIGGER`, `CT_CT_FOLD_SUMMARIES`,
-`CT_CT_FOLD_REASONING_AFTER` — out of the command line (`lib.mjs ARMS` sets them). Each arm's tag
+`U18_ANCHOR=3` (package: 4). The gravity breakpoints and κ (`U18_G_FOLD`, `U18_G_UNFOLD`,
+`U18_G_SUMMARIZE`, `U18_G_UNSUMMARIZE`, `U18_G_DELETE`, `U18_GRAVITY_K`, …) are knobs like any other,
+but `soft` and `hard` pin every breakpoint to Infinity (`lib.mjs INERT`), so a sweep cannot perturb
+the controls; the mode (`fixed` / `adaptive`) is set by the arm. Each arm's tag
 carries a hash of the knobs it depends on, the full set is written to
 `reports/metrics/u18-soft-limit/configs/<tag>.json`, and the analysis refuses a cell whose recorded
 knobs differ — so settings cannot pool by accident.
@@ -77,14 +79,15 @@ GPU mid-cell.
 | `off` | `CT_ARM=off` | the handoff's control: host compaction at 119,040, no plugin, no MCP tools |
 | `soft` | `CT_ARM=ct CT_CT_TRIGGER=soft CT_CT_WINDOW=W` | the treatment: every turn the plugin calls `assemble` then `evict`, both at `{window_tokens: W, reserve_tokens: 20,192}`. Eviction fires when the assembled units exceed `W − 20,192` heuristic tokens |
 | `hard` | `CT_ARM=ct CT_CT_TRIGGER=hard` | plumbing-matched control: same tools, plugin, `--pure` dropped, host compaction off — but both calls are made at the real window (151,040) |
-| `think` | `CT_ARM=ct CT_CT_TRIGGER=off CT_CT_FOLD_REASONING_AFTER=3 CT_CONTRACT=v5` | **no eviction at all.** The segmenter folds the reasoning of every turn older than the newest 3 to its conclusion (`[folded thinking · N tokens · recall: fetch {"stub":30}]` + its last 120 tokens; to nothing when the model's own text follows it). Text, calls and outputs stay raw. How much window does thinking alone give back, at what cost? |
-| `stub` | `soft` + `CT_CT_FOLD_TRIGGER=pressure CT_CONTRACT=v5` | **folding before deletion.** Once the prompt passes the budget the segmenter folds the lowest-scored blocks — a tool output becomes `[folded · N tokens · began: "…" · recall: fetch {"stub":31}]`, thinking keeps its tail, text its first line — and `evict` deletes only what still does not fit, at the folded size. Every fold is an L0 event. No summaries. |
-| `summary` | `stub` + `CT_CT_FOLD_SUMMARIES=1` | `stub`, and `assemble` asks for a summary over any run of ≥ 3 folded blocks outside the anchor that holds > 25% of the budget (the segment containing it when it is all folded); the sidecar fulfils it through `summarize` on the same local model via the relay; it shows as `[summary m91 · <one sentence> · files: … · recall: fetch {"from_seq":…,"to_seq":…}]` and counts only if ≤ 10% of what it summarizes |
+| `gravity` | `soft` + `CT_CT_GRAVITY_MODE=fixed CT_CONTRACT=v5` + the breakpoints | **gravity (D27).** Every block of every kind is pulled by `g = κ·M·m/d²` (irrelevance mass × the context's mass ÷ distance from the window squared). It folds at `gFold` — a tool output becomes `[folded · N tokens · began: "…" · recall: fetch {"stub":31}]`, thinking keeps its tail, text its first line — comes back below `gUnfold`, is asked to be summarized at `gSummarize` (the sidecar fulfils it through `summarize` on the same local model via the relay; counts only if ≤ 10% of what it summarizes), and a summary retires below `gUnsummarize`. `evict` deletes at `gDelete`, then fits the rest. Every fold and unfold is an L0 event |
+| `gravity-adaptive` | `gravity` with `CT_CT_GRAVITY_MODE=adaptive` | κ moves each turn: down when the model reaches for what it lacks (a recall call, the same call repeated, a read of something folded away) or folds churn; up after a turn that needed the fit guarantee |
 
 The table is `lib.mjs ARMS`; each arm is one step from its neighbour
-(`soft` → `think` / `stub` → `summary`). What an arm IS is set by the table, never from the command line.
+(`soft` → `gravity` → `gravity-adaptive`). What an arm IS is set by the table, never from the command
+line. The D26 arms `think`, `stub` and `summary` were retired on 2026-09-22 before any wave: each
+was a static trigger rule, replaced by gravity (see the record).
 
-### Why the fold arms exist (added 2026-09-21, after wave 0, before any cell of them ran)
+### Why the fold arms exist (added 2026-09-21, after wave 0, before any cell of them ran; the arms are gravity's since D27)
 
 `soft` evicts **silently**: a dropped message is spliced out, nothing marks the gap, and contract
 v1 tells the agent to fetch "the branch a summary mentions" in a prompt that has no summaries and
@@ -110,18 +113,18 @@ The two arms apply what earlier experiments here found, and avoid what they foun
 | more summary prose, hit keywords | +32% tokens, no change (`ds-star-delivery-pass-report.md`) |
 | ids that may not resolve | retrieval with an unreachable answer stalled 52% of runs vs 0% |
 
-Summary SIZE is not swept here: the prior is null, and an arm costs 30 cells. `headline` is the
-registered setting; `U18_SUMMARY_RENDER=full` exists for the follow-up and changes the tag.
+Summary SIZE is not swept here: the prior is null, and an arm costs 30 cells. Summaries are
+headline-sized (one sentence + pointers).
 
 **Registered for these arms before they ran.** The verdict ladder below is unchanged and stays
 `soft` vs `off`. Secondary outcomes are reported for every ct arm: **recall-tool calls by the
 agent** (`fetch`/`search`/`peek` over MCP — the plugin's own HTTP calls are not counted), **cells
 that ended on an output-cap step**, and the ledger's account — **blocks folded, reasoning parts
-folded, summaries requested / written / rejected**. A recall arm (`stub`, `summary`) in which the
-agent recalled in fewer than **3** cells is reported as **RECALL NOT EXERCISED**: its solve rate is
-then evidence about visible folding, not about recall. Each fold arm is compared with `off` and with
-`soft` by the same paired sign-flip test. `think` asks its own question — solves and peak against
-`off` with nothing evicted — and is read on those two numbers.
+folded, blocks unfolded, summaries requested / written / rejected / retired, deletions by the pull,
+κ's range, and messages changed per turn** (the cache cost). A gravity arm in which the agent
+recalled in fewer than **3** cells is reported as **RECALL NOT EXERCISED**: its solve rate is then
+evidence about visible folding, not about recall. Each gravity arm is compared with `off` and with
+`soft` by the same paired sign-flip test.
 
 `soft` vs `off` is the **primary** comparison, as the handoff specifies. **`hard` is an addition
 to the handoff's U18 arm list** (it is U19's `hard` arm, so those cells are re-usable there). The
@@ -157,11 +160,8 @@ Arm order rotates per wave so no arm always runs first.
    - **Every ct arm: the cell must run ≥ 20 steps.** On 2026-09-21 a `hard` gate cell whose first
      reply ran into the output cap ended after one step and PASSED — nothing had gone wrong,
      because nothing had happened.
-   - `stub` PASS: as `soft`, and at least one block was folded. `summary` PASS: as `stub`, and at
-     least one summary was written (so the request → relay → `summarize` path closed in time).
-     `think` PASS: integrity, ≥ 20 steps, at least one reasoning part folded, and a served peak
-     inside the served window (151,040) with host compaction off — no eviction clauses, because it
-     evicts nothing but the floor. Offline replay of the stub gate session: 270K raw, 131K folded.
+   - `gravity` PASS: as `soft`, and at least one block was folded. `gravity-adaptive` PASS: as
+     `gravity`, and κ moved at least once.
    - `hard` PASS: the same without the eviction and peak clauses. It exists because the arm has
      never run live and its ceiling is denominated in heuristic tokens (see Known limits): with
      host compaction off, a problem that fills the window may be a hard session error.

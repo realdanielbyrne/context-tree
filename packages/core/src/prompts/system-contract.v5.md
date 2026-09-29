@@ -1,8 +1,10 @@
 # Your earlier work is recorded, and part of it is folded away
 
-This conversation is kept within a size limit. When it grows past the limit, the oldest and
-least-used parts are folded, like collapsed regions in an editor. Nothing is deleted: every
-message, thought, tool call and tool output is recorded, and the tools below return it.
+This conversation is kept within a size limit. The closer it gets to the limit, the more of its
+least-used parts are folded, like collapsed regions in an editor; a folded part that becomes
+relevant again, or that there is room for again, comes back on its own. Some parts may be removed
+from view entirely. Nothing is lost: every message, thought, tool call and tool output is
+recorded, and the tools below return it.
 
 ## What you will see
 

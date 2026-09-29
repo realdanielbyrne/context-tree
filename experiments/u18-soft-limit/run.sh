@@ -10,8 +10,8 @@
 #   experiments/u18-soft-limit/run.sh config|preflight|gate [arm...]|waves|analyze
 #
 #   U18_ARMS="off soft hard"  off = host control, soft = silent eviction at W, hard = plumbing-matched control;
-#                             stub = soft + evicted turns stay visible as stubs with a recall id (contract v5),
-#                             summary = stub + closed phases fold to a headline summary. The table is lib.mjs ARMS.
+#                             gravity = soft + gravity (D27): fold, unfold, summarize and delete by one pull,
+#                             gravity-adaptive = gravity with κ moved by what the model does. The table is lib.mjs ARMS.
 #   U18_WINDOW=50347          the soft limit, in HEURISTIC tokens (the swept variable)
 #   U18_ANCHOR=3              recency anchor: the last A units (phases) are never evictable
 #   U18_<KNOB>=...            every other value that still needs a sweep — eviction weights,

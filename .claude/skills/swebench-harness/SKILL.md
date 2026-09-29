@@ -61,7 +61,7 @@ Policy (plugin, `oc-plugin/policy.mjs`):
 | Var | Default | Meaning |
 |---|---|---|
 | `CT_ARM` | `off` | `off` (control) \| `mcp` (tools only) \| `ct` (tools + assembly plugin) |
-| `CT_CT_TRIGGER` | `soft` | `off` \| `hard` \| `soft` — WHEN `evict` is called. Cadence is the fold policy's (`CT_CT_FOLD_TRIGGER=cadence`), not this |
+| `CT_CT_TRIGGER` | `soft` | `off` \| `hard` \| `soft` — the window `assemble`, `fold` and `evict` are called at. Whether anything folds, comes back, is summarized or deleted is gravity's (`CT_CT_G_*`, `CT_CT_GRAVITY_*` — registry rows, D27), not this |
 | `CT_CT_WINDOW` | `50347` | the soft limit, in **heuristic** tokens — the swept variable. Check it can fire (references/running.md) |
 | `CT_CT_HARD_WINDOW` | `151040` | the model's real context |
 | `CT_CT_REPLY_RESERVE` / `CT_CT_HEAD_TOKENS` | `8192` / `12000` | held back from the window: the reply, and the head the plugin cannot see |
@@ -141,10 +141,10 @@ Each of these produces a run that completes, grades, and reports nothing wrong.
   (`site-packages/pip/_vendor/requests`) — search a run's `events.jsonl` for it
   (`experiments/u18-soft-limit/lib.mjs foreignLibraryReads`). Re-check when the pool changes.
 - **The plugin and the sidecar read different halves of the env.** The plugin gets `POLICY_KEYS`
-  plus the registry rows it also reads (`policy.mjs FOLD_KEYS`); everything else reaches only the
-  sidecar. A plugin decision that reads a new registry row must add that row to `FOLD_KEYS`, or the
-  sidecar is configured for a mechanism the plugin never invokes — the think gate of 2026-09-21 ran
-  as its control this way with `arm_agrees: true`. The cell now compares the plugin's `foldsAlone` too.
+  only; every registry row reaches only the sidecar. So nothing the plugin decides may depend on a
+  registry row — the think gate of 2026-09-21 ran as its control because the plugin's decision to
+  call `fold` depended on `fold_reasoning_after`, which only the sidecar had. Since D27 the plugin
+  calls `fold` on every turn it assembles and gravity decides the rest in the sidecar.
 - **An arm byte-identical to its control is void, not a null result.** Prove the mechanism fired
   (units dropped > 0) before reporting anything about it.
 
