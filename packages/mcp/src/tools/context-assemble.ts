@@ -3,20 +3,12 @@
  * removes nothing and folds nothing: folding is the segmenter's (`fold`, the ledger), and
  * `evict` runs after both, takes this result as its input, and may overrule it.
  *
- * It is also where SUMMARIES ARE ASKED FOR (D26). When a run of folded blocks outside the
- * anchor stands for more than `foldSummarizeAt` of the budget in RAW tokens — what a summary
- * would have to cover, not what the stubs take: a stub of an empty tool output is larger than
- * the output, and no summary of such a run can be small — assembly requests one summary over
- * that run — the segment that contains it when the whole segment is folded, else the run —
- * and reports the request. It does not wait: a summary takes a model call, and the caller
- * (a host adapter, an agent) fulfils it through `summarize`; the next view shows it.
- *
  * Reductions are sticky: a unit once reduced stays that way until `restore`, so
  * re-assembling each turn only ever adds to the ruling and the cached prefix is not
  * rewritten by a unit flipping back to raw.
  */
 import { z } from 'zod';
-import { perUnitBudget, representUnits, tokensUnder, type AssembleUnit, type Block, type Disposition } from '@context-tree/core';
+import { perUnitBudget, representUnits, tokensUnder, type AssembleUnit, type Disposition } from '@context-tree/core';
 import { stageArgsShape, withOverrides } from '../params.js';
 import { fail, failFrom, ok, parseArgs } from '../result.js';
 import { advanceTurn, dispositionOf, sessionOf, sessionUnits, viewOf, type SessionUnit, type UnitView } from '../session.js';
@@ -29,8 +21,7 @@ export const CONTEXT_ASSEMBLE = 'assemble';
 export const CONTEXT_ASSEMBLE_DESCRIPTION =
   'Decide how each unit of your context is represented for window_tokens: kept raw, or reduced to the ' +
   'per-unit budget (the spans matching query survive). Removes nothing — evict does that, afterwards, and ' +
-  'may overrule this. Reports the ranges of folded history it would like summarized (summary_requests); ' +
-  'summarize writes them. Reach for it when single units have grown large and you want them smaller ' +
+  'may overrule this. Reach for it when single units have grown large and you want them smaller ' +
   'without losing any of them.';
 
 const shape = {
@@ -51,19 +42,6 @@ export interface AssembledUnit extends UnitView {
   representation: Representation;
 }
 
-export interface SummaryRequest {
-  from_seq: number;
-  to_seq: number;
-  from_stub: number;
-  to_stub: number;
-  /** The segment whose span this is, when it is one. */
-  node_id: string | null;
-  /** What the run's stubs take in the prompt now. */
-  folded_tokens: number;
-  /** What the summary would cover. */
-  raw_tokens: number;
-}
-
 export interface ContextAssembleData {
   turn: number;
   per_unit_budget: number;
@@ -71,8 +49,6 @@ export interface ContextAssembleData {
   tokens_assembled: number;
   /** The assembly. Pass it to `evict` as `assembly`, or let `evict` read the session's copy. */
   units: AssembledUnit[];
-  /** Ranges of folded history assembly would like summarized. Fulfil with `summarize`. */
-  summary_requests: SummaryRequest[];
   decisions?: Decision[];
   actions?: Record<Decision['action'], number>;
 }
@@ -82,49 +58,6 @@ export function pinnedIds(units: readonly SessionUnit[]): ReadonlySet<string> {
   const taskStatement = units.find((u) => u.fromUser);
   const newest = units.at(-1);
   return new Set([taskStatement?.id, newest?.id].filter((id): id is string => id !== undefined));
-}
-
-/**
- * The runs of consecutive stubbed blocks outside the anchor, each widened to its segment when
- * every block of that segment is folded; a run already under a summary is not asked for again.
- */
-function summaryRequests(ctx: ToolContext, live: readonly SessionUnit[], budgetTokens: number): SummaryRequest[] {
-  const session = sessionOf(ctx);
-  const { params } = session;
-  const snapshot = session.snapshot;
-  if (!params.foldSummaries || snapshot === null) return [];
-  const anchored = new Set(live.slice(Math.max(0, live.length - params.anchor)).map((u) => u.id));
-  const eligible = live.filter((u) => !anchored.has(u.id)).flatMap((u) => u.blocks);
-  const stubbed = (b: Block): boolean => snapshot.view.get(b.stub)?.kind === 'stub';
-  const runs: Block[][] = [];
-  let run: Block[] = [];
-  for (const block of eligible) {
-    if (stubbed(block)) run.push(block);
-    else if (run.length > 0) { runs.push(run); run = []; }
-  }
-  if (run.length > 0) runs.push(run);
-
-  const phases = ctx.handle.store.nodesInCreationOrder().filter((n) => n.kind === 'phase' && n.span_start_seq !== null);
-  const out: SummaryRequest[] = [];
-  for (const r of runs) {
-    if (r.length < params.foldMinRun) continue;
-    const folded = r.reduce((n, b) => n + (snapshot.view.get(b.stub)?.tokens ?? 0), 0);
-    const raw = r.reduce((n, b) => n + b.tokens, 0);
-    if (raw <= params.foldSummarizeAt * budgetTokens) continue;
-    let fromSeq = r[0]!.fromSeq;
-    let toSeq = r[r.length - 1]!.toSeq;
-    let nodeId: string | null = null;
-    const phase = phases.find((p) => p.span_start_seq! <= fromSeq && toSeq <= (p.span_end_seq ?? p.span_start_seq!));
-    if (phase !== undefined) {
-      const span = { from: phase.span_start_seq!, to: phase.span_end_seq ?? phase.span_start_seq! };
-      const whole = snapshot.blocks.filter((b) => span.from <= b.fromSeq && b.toSeq <= span.to);
-      if (whole.every((b) => snapshot.view.get(b.stub)?.kind !== 'raw')) { fromSeq = span.from; toSeq = span.to; nodeId = phase.id; }
-    }
-    if (snapshot.folds.some((f) => f.kind === 'summary' && f.fromSeq <= fromSeq && toSeq <= f.toSeq)) continue;
-    const inside = snapshot.blocks.filter((b) => fromSeq <= b.fromSeq && b.toSeq <= toSeq);
-    out.push({ from_seq: fromSeq, to_seq: toSeq, from_stub: inside[0]!.stub, to_stub: inside[inside.length - 1]!.stub, node_id: nodeId, folded_tokens: folded, raw_tokens: raw });
-  }
-  return out;
 }
 
 export async function contextAssemble(ctx: ToolContext, input: unknown): Promise<ToolOutcome<ContextAssembleData>> {
@@ -167,7 +100,6 @@ export async function contextAssemble(ctx: ToolContext, input: unknown): Promise
       tokens_raw: rows.reduce((n, r) => n + r.tokens, 0),
       tokens_assembled: rows.reduce((n, r) => n + r.assembled_tokens, 0),
       units: rows,
-      summary_requests: summaryRequests(ctx, live, budgetTokens),
       ...(decisions !== undefined ? { decisions, actions: countActions(decisions) } : {}),
     });
   } catch (error) {

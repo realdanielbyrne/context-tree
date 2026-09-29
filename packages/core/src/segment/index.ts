@@ -12,4 +12,7 @@ export { foldsFrom, parseSummaryBlob, replaySummaries, stubFoldId, summaryFoldId
 export { blocksOf, type Block, type BlockKind } from './blocks.js';
 export { outputTag, stubOf, tailOf, thinkingTag, type FoldReasoning, type Stub, type StubParams, type StubPart } from './stubs.js';
 export { foldView, shownTokens, type BlockState, type FoldTexts, type StubBlob } from './view.js';
-export { planFolds, type FoldCandidate, type FoldPlan, type FoldPolicyParams, type FoldTrigger } from './policy.js';
+export {
+  GRAVITY_EPSILON, adaptKappa, distanceOf, irrelevanceOf, massOf, planDeletions, planGravity, pullOf,
+  type BlockFoldState, type Breakpoints, type DeletePlan, type GravityBlock, type GravityInput, type GravityPlan, type GravitySummary, type GravityUnit, type KappaSignals,
+} from './gravity.js';

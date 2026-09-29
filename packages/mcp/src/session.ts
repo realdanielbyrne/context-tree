@@ -41,6 +41,7 @@ import {
   type TraceEvent,
   type TreeNode,
 } from '@context-tree/core';
+import { createGravityState, type GravityState } from './gravity.js';
 import { PIPELINE_DEFAULTS, type PipelineParams } from './params.js';
 import { summaryLine } from './tools/render-summary.js';
 import type { ToolContext } from './types.js';
@@ -69,7 +70,7 @@ export interface SessionUnit {
   readonly chunks: number;
 }
 
-interface Snapshot {
+export interface Snapshot {
   readonly lastSeq: number;
   readonly units: readonly SessionUnit[];
   readonly corpus: readonly EnsembleUnit[];
@@ -94,6 +95,8 @@ export interface Session {
   readonly referenced: Map<string, number>;
   scannedSeq: number;
   snapshot: Snapshot | null;
+  /** κ and what the model did turn to turn (D27). */
+  readonly gravity: GravityState;
 }
 
 export function createSession(params: PipelineParams = PIPELINE_DEFAULTS): Session {
@@ -108,6 +111,7 @@ export function createSession(params: PipelineParams = PIPELINE_DEFAULTS): Sessi
     referenced: new Map(),
     scannedSeq: 0,
     snapshot: null,
+    gravity: createGravityState(),
   };
 }
 

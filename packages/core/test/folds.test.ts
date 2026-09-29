@@ -5,7 +5,10 @@ import { join } from 'node:path';
 import { resolveConfig } from '../src/config.js';
 import { ingest, openTaskStore, type TaskStore } from '../src/ingest/index.js';
 import { HeuristicTokenizer } from '../src/tokens/index.js';
-import { blocksOf, foldView, foldsFrom, planFolds, stubOf, tailOf, type FoldCandidate } from '../src/segment/index.js';
+import {
+  adaptKappa, blocksOf, distanceOf, foldView, foldsFrom, irrelevanceOf, planDeletions, planGravity, pullOf, stubOf, tailOf,
+  type Breakpoints, type GravityBlock,
+} from '../src/segment/index.js';
 import { summarizeRange } from '../src/summarize/index.js';
 
 const TS = '2026-09-21T00:00:00.000Z';
@@ -122,29 +125,92 @@ describe('the fold view: summary over stub over raw, overlapping summaries both 
   });
 });
 
-describe('the fold policy: nothing below the threshold; reasoning first; the think rule folds on its own', () => {
-  const cand = (stub: number, kind: FoldCandidate['kind'], turnsFromNewest: number, score: number, tokens: number, residue: number | null = 10): FoldCandidate =>
-    ({ stub, kind, turnsFromNewest, score, tokens, residue, pinned: false });
-  const base = { budgetTokens: 1000, foldStubAt: 1, cadenceN: 0, turn: 7, anchor: 1, foldReasoningAfter: 0 };
+describe('gravity (D27): one pull for every block; fold, summarize and their way back are breakpoints on it', () => {
+  const INF = Number.POSITIVE_INFINITY;
+  const bp = (over: Partial<Breakpoints> = {}): Breakpoints => ({ fold: INF, unfold: 0, summarize: INF, unsummarize: 0, ...over });
+  const blk = (stub: number, e: number, raw: number, over: Partial<GravityBlock> = {}): GravityBlock =>
+    ({ stub, kind: 'tool', unit: `u${String(stub)}`, e, raw, shown: raw, state: 'raw', residue: 10, pinned: false, ...over });
+  const input = (blocks: GravityBlock[], live: number, over: Partial<Breakpoints> = {}, kappa = 1) =>
+    ({ budget: 1000, live, kappa, blocks, summaries: [], breakpoints: bp(over) });
 
-  it('none folds nothing; pressure folds the lowest-scored, reasoning before tools before text, never inside the anchor', () => {
-    const cs = [cand(1, 'text', 3, 0.1, 300), cand(2, 'reasoning', 2, 0.2, 300), cand(3, 'tool', 2, 0.2, 300), cand(4, 'text', 0, 0.9, 300)];
-    expect(planFolds(cs, { ...base, trigger: 'none' })).toMatchObject({ fired: false, stubs: [] });
-    const plan = planFolds(cs, { ...base, trigger: 'pressure', budgetTokens: 700 });
-    expect(plan.stubs).toEqual([1, 2]);
-    expect(plan.tokensAfter).toBeLessThanOrEqual(700);
-    expect(planFolds(cs, { ...base, trigger: 'pressure', budgetTokens: 2000 })).toMatchObject({ fired: false });
+  it('the pull rises without bound toward the window and is monotone in irrelevance, size and κ', () => {
+    expect(distanceOf(500, 1000)).toBe(0.5);
+    expect(distanceOf(1200, 1000)).toBeGreaterThan(0);
+    const g = (d: number, m = 0.1, k = 1) => pullOf(k, 1, m, d);
+    expect(g(0.1)).toBeGreaterThan(g(0.5));
+    expect(g(0.001)).toBeGreaterThan(1e5 * g(1));
+    expect(g(0.5, 0.2)).toBeGreaterThan(g(0.5, 0.1));
+    expect(g(0.5, 0.1, 2)).toBe(2 * g(0.5, 0.1, 1));
   });
 
-  it('cadence acts only on its turn', () => {
-    const cs = [cand(1, 'text', 3, 0.1, 900), cand(2, 'text', 0, 0.9, 900)];
-    expect(planFolds(cs, { ...base, trigger: 'cadence', cadenceN: 5, turn: 7 }).fired).toBe(false);
-    expect(planFolds(cs, { ...base, trigger: 'cadence', cadenceN: 5, turn: 10 }).fired).toBe(true);
+  it('is blind to kind: the same masses give the same plan whatever the blocks are', () => {
+    const kinds = ['reasoning', 'text', 'tool'] as const;
+    const plan = (rot: number) => planGravity(input([0, 1, 2].map((i) => blk(i + 1, [1, 0.5, 0.2][i]!, 200, { kind: kinds[(i + rot) % 3]! })), 700, { fold: 0.05 }));
+    expect(plan(1).folds).toEqual(plan(0).folds);
+    expect(plan(2).folds).toEqual(plan(0).folds);
   });
 
-  it('foldReasoningAfter folds old reasoning with no pressure at all, and nothing else', () => {
-    const cs = [cand(1, 'reasoning', 3, 0.1, 100), cand(2, 'tool', 3, 0.1, 100), cand(3, 'reasoning', 1, 0.5, 100), cand(4, 'reasoning', 0, 0.9, 100)];
-    expect(planFolds(cs, { ...base, trigger: 'none', foldReasoningAfter: 2, budgetTokens: 10_000 }).stubs).toEqual([1]);
+  it('folds nothing while every pull is under the breakpoint, and folding is self-limiting', () => {
+    const blocks = [blk(1, 1, 300), blk(2, 0.6, 300), blk(3, 0.3, 300)];
+    expect(planGravity(input(blocks, 300, { fold: 10 })).folds).toEqual([]);
+    const plan = planGravity(input(blocks, 950, { fold: 2 }));
+    // The first fold widens the gap to the window; the next pulls fall below the breakpoint.
+    expect(plan.folds[0]).toBe(1);
+    expect(plan.folds.length).toBeLessThan(3);
+    expect(plan.dAfter).toBeGreaterThan(plan.dBefore);
+  });
+
+  it('never folds a pinned or most-relevant block', () => {
+    const plan = planGravity(input([blk(1, 1, 300, { pinned: true }), blk(2, 0, 300), blk(3, 1, 300)], 990, { fold: 0 }));
+    expect(plan.folds).toEqual([3]);
+  });
+
+  it('unfolds a folded block once its pull falls below the lower breakpoint, not between the two', () => {
+    const folded = (e: number) => blk(1, e, 400, { state: 'stub', shown: 20, residue: null });
+    const other = blk(2, 0.5, 100);
+    const d = (live: number) => distanceOf(live, 1000);
+    // The pull on the folded block with the window far away:
+    const m = (0.2 * 400) / 1000;
+    const M = m + (0.5 * 100) / 1000;
+    const g = pullOf(1, M, m, d(120 + 380));
+    expect(planGravity(input([folded(0.2), other], 120, { fold: g * 4, unfold: g * 2 })).unfolds).toEqual([1]);
+    expect(planGravity(input([folded(0.2), other], 120, { fold: g * 4, unfold: g / 2 })).unfolds).toEqual([]);
+  });
+
+  it('an unfold that would be pulled straight back, or overflow the budget, is skipped', () => {
+    const b = blk(1, 1, 900, { state: 'stub', shown: 20, residue: null });
+    expect(planGravity(input([b], 200, { fold: 1e9, unfold: 1e9 })).unfolds).toEqual([]);
+  });
+
+  it('asks for a summary over a run of two or more folded blocks the pull reaches, never one already covered; and releases a summary', () => {
+    const st = (stub: number, e: number) => blk(stub, e, 300, { state: 'stub', shown: 20, residue: null });
+    const blocks = [st(1, 1), st(2, 1), blk(3, 0, 300), st(4, 1)];
+    const plan = planGravity(input(blocks, 700, { summarize: 0.01 }));
+    expect(plan.summarize).toEqual([{ fromStub: 1, toStub: 2 }]);
+    const covered = planGravity({ ...input(blocks, 700, { summarize: 0.01 }), summaries: [{ id: 'm9', stubs: [1, 2] }] });
+    expect(covered.summarize).toEqual([]);
+    const release = planGravity({ ...input(blocks, 100, { unsummarize: 1e9 }), summaries: [{ id: 'm9', stubs: [1, 2] }] });
+    expect(release.unsummarize).toEqual(['m9']);
+  });
+
+  it('irrelevance is 1 − score, min-max over the unpinned units; pinned is 0', () => {
+    expect(irrelevanceOf([3, 1, 2, 9], [false, false, false, true])).toEqual([0, 1, 0.5, 0]);
+    expect(irrelevanceOf([2, 2], [false, false])).toEqual([0, 0]);
+  });
+
+  it('the delete rung takes the most-pulled units first and stops when the pull no longer reaches', () => {
+    const units = [{ id: 'a', e: 1, raw: 400, shown: 400, pinned: false }, { id: 'b', e: 0.1, raw: 400, shown: 400, pinned: false }, { id: 'p', e: 1, raw: 400, shown: 400, pinned: true }];
+    expect(planDeletions(units, { budget: 1000, live: 950, kappa: 1, mass: 1, gDelete: INF }).deleted).toEqual([]);
+    expect(planDeletions(units, { budget: 1000, live: 950, kappa: 1, mass: 1, gDelete: 1 }).deleted).toEqual(['a']);
+  });
+
+  it('adaptive κ falls on starvation and on thrash, rises on overflow, and stays in bounds', () => {
+    const p = { eta: Math.log(2), min: 0.25, max: 4 };
+    expect(adaptKappa(1, { starvation: 3, thrash: 0, overflow: 0 }, p)).toBeCloseTo(0.5);
+    expect(adaptKappa(1, { starvation: 0, thrash: 1, overflow: 0 }, p)).toBeCloseTo(0.5);
+    expect(adaptKappa(1, { starvation: 0, thrash: 0, overflow: 1 }, p)).toBeCloseTo(2);
+    expect(adaptKappa(0.25, { starvation: 1, thrash: 1, overflow: 0 }, p)).toBe(0.25);
+    expect(adaptKappa(4, { starvation: 0, thrash: 0, overflow: 1 }, p)).toBe(4);
   });
 });
 

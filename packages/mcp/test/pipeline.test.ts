@@ -179,7 +179,7 @@ describe('evict — takes the assembly as input, and may overrule it', () => {
   it('evict deletes at the FOLDED size: a folded unit is cheap to keep, and evict writes no fold', async () => {
     const ctx = seed();
     const total = unwrap(await contextUnits(ctx, {})).tokens_raw;
-    const folded = unwrap(await contextFold(ctx, { window_tokens: total / 2, fold_trigger: 'pressure', anchor: 1 }));
+    const folded = unwrap(await contextFold(ctx, { window_tokens: total / 2, g_fold: 0.01 }));
     expect(folded.fired).toBe(true);
     expect(folded.tokens_after).toBeLessThanOrEqual(total / 2);
     const after = unwrap(await contextEvict(ctx, { window_tokens: total / 2, dry_run: true }));
@@ -277,14 +277,14 @@ describe('decisions for host messages — a rendering of the rulings, with no ru
   });
 });
 
-describe('folds (D26): the segmenter folds blocks, assemble asks for summaries, summarize writes them', () => {
+describe('folds (D26, D27): one pull folds, unfolds and asks for summaries; summarize writes them', () => {
   const meta = { files: [{ path: 'src/a.ts', start_line: 1, end_line: 2 }], symbols: [], tests: [], artifacts: [], open_questions: [], decisions: [], node_ids: [] };
   const provider = (text: string) => ({ id: 'fake', complete: async () => ({ text: JSON.stringify({ text, meta }), model: 'fake-m', usage: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 }, toolCalls: [], stopReason: 'stop' }) });
 
   it('a fold is a ledger event: sticky, byte-stable, rendered as part edits, and fetchable by its stub id', async () => {
     const ctx = seed(6, 400);
     const total = unwrap(await contextUnits(ctx, {})).tokens_raw;
-    const first = unwrap(await contextFold(ctx, { window_tokens: total / 2, fold_trigger: 'pressure', messages: messages(7) }));
+    const first = unwrap(await contextFold(ctx, { window_tokens: total / 2, g_fold: 0.01, messages: messages(7) }));
     expect(first.folded.length).toBeGreaterThan(0);
     const edit = first.decisions!.find((d) => d.action === 'edit') as { id: string; edits: { part: string; index?: number; text: string | null }[] };
     expect(edit.edits[0]).toMatchObject({ part: 'tool', index: 0 });
@@ -292,7 +292,7 @@ describe('folds (D26): the segmenter folds blocks, assemble asks for summaries, 
     const stub = Number(/"stub":(\d+)/.exec(edit.edits[0]!.text!)![1]);
     expect(unwrap(await contextFetch(ctx, { stub })).text).toContain('word399');
     // The next turn: nothing new folds, the same edit is rendered from the ledger.
-    const again = unwrap(await contextFold(ctx, { window_tokens: total / 2, fold_trigger: 'pressure', messages: messages(7) }));
+    const again = unwrap(await contextFold(ctx, { window_tokens: total / 2, g_fold: 0.01, messages: messages(7) }));
     expect(again.fired).toBe(false);
     expect(again.decisions!.find((d) => d.id === edit.id)).toEqual(first.decisions!.find((d) => d.id === edit.id));
     expect(ctx.handle.trace.all().filter((e) => e.type === 'fold')).toHaveLength(first.folded.length);
@@ -303,7 +303,7 @@ describe('folds (D26): the segmenter folds blocks, assemble asks for summaries, 
     expect(ctx.handle.trace.all().filter((e) => e.type === 'fold')).toHaveLength(first.folded.length);
   });
 
-  it("fold_trigger 'none' folds nothing; fold_reasoning_after folds old thinking with no pressure", async () => {
+  it('nothing folds at infinite breakpoints; thinking folds under the same pull as everything else, to its tagged tail', async () => {
     const ctx = seed(4, 100);
     const { trace, blobs } = ctx.handle;
     trace.append({ type: 'reasoning', ts: TS, blob: blobs.put(Array.from({ length: 300 }, (_, i) => `thought ${String(i)}`).join('\n')), turn_id: 'm5' });
@@ -314,22 +314,54 @@ describe('folds (D26): the segmenter folds blocks, assemble asks for summaries, 
       trace.append({ type: 'tool_result', ts: TS, call_seq: k.seq, output_blob: blobs.put('y'), turn_id: id });
     }
     ingest({ handle: ctx.handle });
-    expect(unwrap(await contextFold(ctx, { window_tokens: 10, fold_trigger: 'none' })).fired).toBe(false);
-    const think = unwrap(await contextFold(ctx, { window_tokens: 1_000_000, fold_trigger: 'none', fold_reasoning_after: 1, messages: messages(8) }));
-    expect(think.folded).toHaveLength(1);
-    const edit = think.decisions!.find((d) => d.id === 'm5') as { edits: { part: string; text: string | null }[] };
-    expect(edit.edits).toHaveLength(1);
-    expect(edit.edits[0]!.part).toBe('reasoning');
-    expect(edit.edits[0]!.text).toMatch(/^\[folded thinking · \d+ tokens · recall: fetch \{"stub":\d+\}\]\n/);
-    expect(edit.edits[0]!.text).toContain('thought 299');
+    expect(unwrap(await contextFold(ctx, { window_tokens: 10 })).fired).toBe(false);
+    const total = unwrap(await contextUnits(ctx, {})).tokens_raw;
+    const pulled = unwrap(await contextFold(ctx, { window_tokens: total, g_fold: 0.001, messages: messages(8) }));
+    const edit = pulled.decisions!.find((d) => d.id === 'm5') as { edits: { part: string; text: string | null }[] };
+    const thinking = edit.edits.find((x) => x.part === 'reasoning')!;
+    expect(thinking.text).toMatch(/^\[folded thinking · \d+ tokens · recall: fetch \{"stub":\d+\}\]\n/);
+    expect(thinking.text).toContain('thought 299');
   });
 
-  it('assemble requests a summary over a run of folded blocks; summarize writes it; the view shows it through a carrier', async () => {
-    const ctx = seed(6, 400, { foldSummaries: true, foldMinRun: 2, foldSummarizeAt: 0, anchor: 1 });
+  it('a folded block comes back when the pull falls below the lower breakpoint; refolded, it is byte-identical', async () => {
+    const ctx = seed(6, 400);
+    const total = unwrap(await contextUnits(ctx, {})).tokens_raw;
+    const tight = unwrap(await contextFold(ctx, { window_tokens: total / 2, g_fold: 0.01, messages: messages(7), turn: 1 }));
+    expect(tight.folded.length).toBeGreaterThan(0);
+    const loose = unwrap(await contextFold(ctx, { window_tokens: total * 20, g_fold: 0.01, g_unfold: 0.005, messages: messages(7), turn: 2 }));
+    expect(loose.unfolded.length).toBeGreaterThan(0);
+    expect(loose.d_after).toBeGreaterThan(0.9);
+    expect(ctx.handle.trace.all().filter((e) => e.type === 'unfold')).toHaveLength(loose.unfolded.length);
+    expect(loose.decisions!.filter((d) => d.action === 'edit').length).toBeLessThan(tight.decisions!.filter((d) => d.action === 'edit').length);
+    const refold = unwrap(await contextFold(ctx, { window_tokens: total / 2, g_fold: 0.01, messages: messages(7), turn: 3 }));
+    const was = tight.decisions!.find((d) => d.action === 'edit')!;
+    expect(refold.decisions!.find((d) => d.id === was.id)).toEqual(was);
+  });
+
+  it('adaptive κ falls when the model repeats itself and rises after the fit guarantee', async () => {
+    const ctx = seed(6, 400);
+    const total = unwrap(await contextUnits(ctx, {})).tokens_raw;
+    const k0 = unwrap(await contextFold(ctx, { window_tokens: total, gravity_mode: 'adaptive', turn: 1 })).kappa;
+    const { trace, blobs } = ctx.handle;
+    for (const id of ['m7', 'm8']) {
+      const k = trace.append({ type: 'tool_call', ts: TS, tool: 'bash', command: 'grep -rn Date django', args_blob: blobs.put('{"command":"grep -rn Date django"}'), turn_id: id });
+      trace.append({ type: 'tool_result', ts: TS, call_seq: k.seq, output_blob: blobs.put(''), turn_id: id });
+    }
+    ingest({ handle: ctx.handle });
+    const starved = unwrap(await contextFold(ctx, { window_tokens: total, gravity_mode: 'adaptive', turn: 2 }));
+    expect(starved.signals?.repeat).toBeGreaterThan(0);
+    expect(starved.kappa).toBeLessThan(k0);
+    unwrap(await contextEvict(ctx, { window_tokens: total / 3, gravity_mode: 'adaptive', turn: 2 }));
+    const after = unwrap(await contextFold(ctx, { window_tokens: total, gravity_mode: 'adaptive', turn: 3 }));
+    expect(after.signals?.overflow).toBe(1);
+    expect(after.kappa).toBeGreaterThan(starved.kappa);
+  });
+
+  it('fold asks for a summary over a run of folded blocks the pull reaches; summarize writes it; the view shows it through a carrier', async () => {
+    const ctx = seed(6, 400);
     ctx.summarizer = { provider: provider('Read and edited f0..f3.'), model: 'fake-m' };
     const total = unwrap(await contextUnits(ctx, {})).tokens_raw;
-    unwrap(await contextFold(ctx, { window_tokens: total / 3, fold_trigger: 'pressure' }));
-    const asked = unwrap(await contextAssemble(ctx, { window_tokens: total / 3 }));
+    const asked = unwrap(await contextFold(ctx, { window_tokens: total / 3, g_fold: 0.01, g_summarize: 0 }));
     expect(asked.summary_requests.length).toBeGreaterThan(0);
     const req = asked.summary_requests[0]!;
     const written = unwrap(await contextSummarize(ctx, { from_stub: req.from_stub, to_stub: req.to_stub, trigger: 'test' }));
@@ -339,14 +371,26 @@ describe('folds (D26): the segmenter folds blocks, assemble asks for summaries, 
     const states = units.units.flatMap((u) => u.blocks.map((b) => b.state));
     expect(states).toContain('carrier');
     expect(states).toContain('covered');
-    // Asked again, the same range is not requested twice.
-    expect(unwrap(await contextAssemble(ctx, { window_tokens: total / 3 })).summary_requests.some((r) => r.from_seq === req.from_seq && r.to_seq === req.to_seq)).toBe(false);
-    // The carrier renders the summary line; covered blocks are removed.
+    expect(unwrap(await contextFold(ctx, { window_tokens: total / 3, g_fold: 0.01, g_summarize: 0 })).summary_requests.some((r) => r.from_seq === req.from_seq && r.to_seq === req.to_seq)).toBe(false);
     const { decisions } = unwrap(await contextAssemble(ctx, { window_tokens: total / 3, messages: messages(7) }));
     const line = decisions!.flatMap((d) => (d.action === 'edit' ? d.edits : [])).find((e) => typeof e.text === 'string' && e.text.startsWith('[summary '));
     // Files come from the tree (D9), never from the reply's meta.
     expect(line?.text).toMatch(/^\[summary m\d+ · Read and edited f0\.\.f3\. · files: src\/f\d\.ts.* · recall: fetch \{"from_seq":\d+,"to_seq":\d+\}\]$/);
     expect(line?.text).not.toContain('src/a.ts');
+    // The well releases it: once every covered block is pulled below g_unsummarize, the summary retires.
+    const released = unwrap(await contextFold(ctx, { window_tokens: total * 50, g_unsummarize: 1e9 }));
+    expect(released.unsummarized.length).toBeGreaterThan(0);
+    expect(unwrap(await contextUnits(ctx, {})).folds.some((f) => f.kind === 'summary')).toBe(false);
+  });
+
+  it('evict deletes by the pull once a unit reaches g_delete, never a pinned one, then fits the rest', async () => {
+    const ctx = seed(8, 400);
+    const total = unwrap(await contextUnits(ctx, {})).tokens_raw;
+    const out = unwrap(await contextEvict(ctx, { window_tokens: total * 0.9, g_delete: 0.01 }));
+    expect(out.deleted_by_pull.length).toBeGreaterThan(0);
+    expect(out.evicted).toEqual(expect.arrayContaining(out.deleted_by_pull));
+    expect(out.evicted).not.toContain(unwrap(await contextUnits(ctx, {})).units.at(-1)!.id);
+    expect(out.tokens_after).toBeLessThanOrEqual(total * 0.9);
   });
 
   it('summarize is unavailable without a provider and rejects a summary over the ratio', async () => {
@@ -360,8 +404,8 @@ describe('folds (D26): the segmenter folds blocks, assemble asks for summaries, 
 
 describe('the parameter registry', () => {
   it('is the single source: env, defaults, tool arguments and /v1/params all derive from it', () => {
-    const p = pipelineFromEnv({ CT_CT_ANCHOR: '3', CT_CT_W_DORMANCY: '2.5', CT_CT_REDUCER: 'summarize', CT_CT_FOLD_SUMMARIES: '1', CT_CT_UNIT: 'phase', CT_CT_TOPK: '9' });
-    expect(p).toMatchObject({ anchor: 3, wDormancy: 2.5, reducer: 'summarize', foldSummaries: true, unit: 'phase', topK: 9 });
+    const p = pipelineFromEnv({ CT_CT_ANCHOR: '3', CT_CT_W_DORMANCY: '2.5', CT_CT_REDUCER: 'summarize', CT_CT_G_FOLD: '0.5', CT_CT_G_DELETE: 'Infinity', CT_CT_GRAVITY_MODE: 'adaptive', CT_CT_UNIT: 'phase', CT_CT_TOPK: '9' });
+    expect(p).toMatchObject({ anchor: 3, wDormancy: 2.5, reducer: 'summarize', gFold: 0.5, gDelete: Number.POSITIVE_INFINITY, gravityMode: 'adaptive', unit: 'phase', topK: 9 });
     expect(pipelineFromEnv({})).toEqual(PIPELINE_DEFAULTS);
     const described = describeParams(p);
     expect(described.map((d) => d.key)).toEqual(PIPELINE_PARAMS.map((s) => s.key));
@@ -371,7 +415,7 @@ describe('the parameter registry', () => {
   });
 
   it('refuses a value that does not parse — from the environment and from a tool call alike', async () => {
-    for (const env of [{ CT_CT_ANCHOR: 'three' }, { CT_CT_ANCHOR: '2.5' }, { CT_CT_REDUCER: 'magic' }, { CT_CT_FOLD_SUMMARIES: 'yes' }, { CT_CT_PRIORITY_HALFLIFE: '0' }, { CT_CT_SOFT_TARGET_FRAC: '1.5' }]) {
+    for (const env of [{ CT_CT_ANCHOR: 'three' }, { CT_CT_ANCHOR: '2.5' }, { CT_CT_REDUCER: 'magic' }, { CT_CT_GRAVITY_MODE: 'magic' }, { CT_CT_G_FOLD: '-1' }, { CT_CT_ANCHOR: 'Infinity' }, { CT_CT_PRIORITY_HALFLIFE: '0' }, { CT_CT_SOFT_TARGET_FRAC: '1.5' }]) {
       expect(() => pipelineFromEnv(env), JSON.stringify(env)).toThrow(/pipeline misconfigured/);
     }
     const bad = await contextEvict(seed(), { window_tokens: 1000, anchor: -1 });
@@ -381,9 +425,10 @@ describe('the parameter registry', () => {
     const fractional = await contextEvict(seed(), { window_tokens: 1000, anchor: 2.5 });
     expect(fractional.ok ? '' : fractional.error.message).toMatch(/must be an integer/);
     // A stage takes only the parameters it reads.
-    expect(Object.keys((TOOLS.find((t) => t.name === 'assemble')!).inputShape)).toEqual(expect.arrayContaining(['anchor', 'reducer', 'soft_target_frac', 'fold_summaries']));
+    expect(Object.keys((TOOLS.find((t) => t.name === 'assemble')!).inputShape)).toEqual(expect.arrayContaining(['anchor', 'reducer', 'soft_target_frac']));
     expect(Object.keys((TOOLS.find((t) => t.name === 'assemble')!).inputShape)).not.toContain('w_relevance');
-    expect(Object.keys((TOOLS.find((t) => t.name === 'evict')!).inputShape)).toEqual(expect.arrayContaining(['anchor', 'top_k', 'w_relevance', 'protection']));
+    expect(Object.keys((TOOLS.find((t) => t.name === 'evict')!).inputShape)).toEqual(expect.arrayContaining(['anchor', 'top_k', 'w_relevance', 'protection', 'g_delete', 'gravity_k']));
+    expect(Object.keys((TOOLS.find((t) => t.name === 'fold')!).inputShape)).toEqual(expect.arrayContaining(['g_fold', 'g_unfold', 'g_summarize', 'g_unsummarize', 'gravity_k', 'gravity_mode', 'w_priority']));
   });
 });
 

@@ -1,17 +1,19 @@
 /**
- * `evict` / `restore` — WHAT is removed. `evict` takes an assembly as its input (passed
- * inline, else the session's latest) and rules on removal against the sizes assembly
- * produced, so it can overrule a representation: a unit `assemble` kept, reduced or
- * folded can still go. It never chooses a representation itself.
+ * `evict` / `restore` — WHAT is removed (D27). Two steps, in order: the delete rung — a
+ * unit goes once its pull (`segment/gravity.ts`, the same pull `fold` reads) reaches
+ * `gDelete` — then the FIT GUARANTEE: if what is left still exceeds the budget, the
+ * score-priority packing (`planRetention`) removes the least valuable until it fits. Units
+ * are sized as shown (folded, reduced), so a folded unit is cheap to keep.
  *
  * Removal is sticky — a unit stays out until `restore` — so a caller's policy is simply
  * WHEN it calls: every turn, every Nth, only above some size, or never.
  */
 import { z } from 'zod';
-import { covarianceScores, ensembleRetrieve, planRetention, unitSignals, type RetentionUnit } from '@context-tree/core';
-import { stageArgsShape, withOverrides, type PipelineParams } from '../params.js';
+import { covarianceScores, planDeletions, planRetention, unitSignals, type RetentionUnit } from '@context-tree/core';
+import { contextMass, irrelevance, kappaFor, observe, protectionAt, relevanceRanks } from '../gravity.js';
+import { stageArgsShape, withOverrides } from '../params.js';
 import { fail, failFrom, ok, parseArgs } from '../result.js';
-import { advanceTurn, sessionOf, sessionUnits, unitShownTokens, type Session, type SessionUnit } from '../session.js';
+import { advanceTurn, sessionOf, sessionUnits, unitShownTokens } from '../session.js';
 import type { ToolContext, ToolOutcome } from '../types.js';
 import { pinnedIds } from './context-assemble.js';
 import { budgetOf, messagesArg, turnArg, windowShape } from './pipeline-args.js';
@@ -60,6 +62,9 @@ export interface ContextEvictData {
   fired: boolean;
   /** Removed outright. */
   evicted: string[];
+  /** Of those, removed by the delete rung (the rest by the fit guarantee). */
+  deleted_by_pull: string[];
+  kappa: number;
   tokens_before: number;
   tokens_after: number;
   /** True when the pinned units alone exceed the budget: no policy can fix that overflow. */
@@ -67,20 +72,6 @@ export interface ContextEvictData {
   evicted_total: number;
   decisions?: Decision[];
   actions?: Record<Decision['action'], number>;
-}
-
-/** 1 for the newest live unit, halving every `halfLife` units back, 0 outside the anchor. */
-const protectionAt = (fromNewest: number, params: PipelineParams): number =>
-  fromNewest < params.anchor ? Math.pow(0.5, fromNewest / params.priorityHalfLife) : 0;
-
-async function relevanceRanks(session: Session, live: readonly SessionUnit[], params: PipelineParams, query: string | undefined): Promise<ReadonlyMap<string, number>> {
-  if (params.wRelevance === 0 || params.topK === 0 || query === undefined || query.trim() === '') return new Map();
-  const hits = await ensembleRetrieve(query, live.map((u) => ({ id: u.id, text: u.flex.raw })), undefined, {
-    topK: params.topK,
-    rrfK: session.params.rrfK,
-    chunk: { chunkSize: session.params.chunkSize, chunkOverlap: session.params.chunkOverlap },
-  });
-  return new Map(hits.map((hit, rank) => [hit.unitId, 1 - rank / params.topK]));
 }
 
 export async function contextEvict(ctx: ToolContext, input: unknown): Promise<ToolOutcome<ContextEvictData>> {
@@ -105,10 +96,22 @@ export async function contextEvict(ctx: ToolContext, input: unknown): Promise<To
     }
     const relevance = await relevanceRanks(session, live, params, query);
 
+    const state = session.gravity;
+    const kappa = kappaFor(state, params, turn, () => observe(state, ctx.handle.trace.all(), new Set(), turn, params));
+    const e = await irrelevance(session, live, pinned, params, turn);
+    const shown = (u: (typeof live)[number]): number => inline.get(u.id) ?? unitShownTokens(session, u);
+    const liveTokens = live.reduce((n, u) => n + shown(u), 0);
+    const pulled = planDeletions(
+      live.map((u) => ({ id: u.id, e: e.get(u.id) ?? 0, raw: u.blocks.reduce((t, b) => t + b.tokens, 0), shown: shown(u), pinned: pinned.has(u.id) })),
+      { budget: budgetTokens, live: liveTokens, kappa, mass: contextMass(live, e, budgetTokens), gDelete: params.gDelete },
+    );
+    const gone = new Set(pulled.deleted);
+    const kept = live.map((u, i) => ({ u, i })).filter(({ u }) => !gone.has(u.id));
+
     const plan = planRetention(
-      live.map((u, i): RetentionUnit => ({
+      kept.map(({ u, i }): RetentionUnit => ({
         id: u.id,
-        tokens: inline.get(u.id) ?? unitShownTokens(session, u),
+        tokens: shown(u),
         signals: signals[i]!,
         pinned: pinned.has(u.id),
         protection: protectionAt(live.length - 1 - i, params),
@@ -116,7 +119,7 @@ export async function contextEvict(ctx: ToolContext, input: unknown): Promise<To
       })),
       {
         budgetTokens,
-        headroomTokens: params.headroomTokens,
+        headroomTokens: 0,
         weights: { priority: params.wPriority, recency: params.wRecency, refRecency: params.wRefRecency, dormancy: params.wDormancy, relevance: params.wRelevance, covariance: params.wCovariance },
         protection: params.protection,
         protectionBonus: params.protectionBonus,
@@ -124,14 +127,20 @@ export async function contextEvict(ctx: ToolContext, input: unknown): Promise<To
     );
 
     const applied = args.dry_run !== true;
-    if (applied) for (const id of plan.dropped) session.evicted.add(id);
+    const evicted = [...pulled.deleted, ...plan.dropped];
+    if (applied) {
+      for (const id of evicted) session.evicted.add(id);
+      if (plan.dropped.length > 0) state.overflow = true;
+    }
     const decisions = args.messages !== undefined ? await decisionsFor(ctx, args.messages) : undefined;
     return ok({
       turn,
       applied,
-      fired: plan.fired,
-      evicted: [...plan.dropped],
-      tokens_before: plan.tokensBefore,
+      fired: plan.fired || pulled.deleted.length > 0,
+      evicted,
+      deleted_by_pull: [...pulled.deleted],
+      kappa,
+      tokens_before: liveTokens,
       tokens_after: plan.tokensAfter,
       over_budget: plan.overBudget,
       evicted_total: session.evicted.size,
